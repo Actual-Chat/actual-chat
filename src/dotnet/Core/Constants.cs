@@ -61,6 +61,7 @@ public static partial class Constants
 
     public static class Contacts
     {
+        public static int MinLoadLimit { get; } = 20;
         public static TimeSpan MinTouchInterval { get; } =  TimeSpan.FromSeconds(10);
     }
 

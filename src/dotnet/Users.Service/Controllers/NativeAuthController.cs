@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
 using ActualChat.Users.Module;
+using ActualChat.Web;
 using AspNet.Security.OAuth.Apple;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -26,14 +27,13 @@ public sealed class NativeAuthController : Controller
 
     [HttpGet("sign-in-apple")]
     public async Task SignInApple(
-        string sessionId,
         string userId,
         string code,
         string? email,
         string? name,
         CancellationToken cancellationToken)
     {
-        var session = new Session(sessionId).RequireValid();
+        var session = HttpContext.GetSession();
         userId.RequireNonEmpty(nameof(userId));
         code.RequireNonEmpty(nameof(code));
 
@@ -78,9 +78,9 @@ public sealed class NativeAuthController : Controller
     }
 
     [HttpGet("sign-in-google")]
-    public async Task SignInGoogle(string sessionId, string code, CancellationToken cancellationToken)
+    public async Task SignInGoogle(string code, CancellationToken cancellationToken)
     {
-        var session = new Session(sessionId).RequireValid();
+        var session = HttpContext.GetSession();
         // code = code.UrlDecode(); // Weird, but this is somehow necessary
         code.RequireNonEmpty(nameof(code));
         var schemeName = GoogleDefaults.AuthenticationScheme;

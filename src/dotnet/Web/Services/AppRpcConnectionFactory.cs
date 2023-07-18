@@ -6,8 +6,6 @@ namespace ActualChat.Web.Services;
 
 public class AppRpcConnectionFactory
 {
-    public string SessionParameterName { get; init; } = "session";
-
     public Task<RpcConnection> Invoke(
         RpcServerPeer peer, Channel<RpcMessage> channel, ImmutableOptionSet options,
         CancellationToken cancellationToken)
@@ -15,7 +13,7 @@ public class AppRpcConnectionFactory
         if (!options.TryGet<HttpContext>(out var httpContext))
             return RpcConnectionTask(channel, options);
 
-        var session = SessionCookies.Read(httpContext, SessionParameterName);
+        var session = httpContext.TryGetSession("s");
         return session != null
             ? AppRpcConnectionTask(channel, options, session)
             : RpcConnectionTask(channel, options);

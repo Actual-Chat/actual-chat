@@ -1,5 +1,6 @@
 import { Disposable } from 'disposable';
 import { filter, from, fromEvent, map, Subject, switchMap, takeUntil } from 'rxjs';
+import {BrowserInit} from "../../Services/BrowserInit/browser-init";
 
 export interface Options {
     maxSize?: number;
@@ -64,7 +65,7 @@ export class FileUpload implements Disposable {
 
     private getUrl(url: string) {
         // @ts-ignore
-        const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
+        const baseUri = BrowserInit.baseUri;
         return baseUri ? new URL(url, baseUri).toString() : url;
     }
 }

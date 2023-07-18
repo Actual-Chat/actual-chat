@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
+using ActualChat.Security;
 using Stl.RestEase;
 
 namespace ActualChat.Users.Module;

@@ -9,6 +9,7 @@ const sessionStorage = window.sessionStorage;
 
 export class BrowserInit {
     public static apiVersion = "";
+    public static baseUri = "";
     public static sessionHash = "";
     public static windowId = "";
     public static readonly isMauiApp = document.body.classList.contains('app-maui');
@@ -17,16 +18,17 @@ export class BrowserInit {
     public static readonly reconnectedEvents = new EventHandlerSet<void>();
     public static connectionState = "";
 
-    public static async init(apiVersion: string, sessionHash: string | null, calls: Array<unknown>): Promise<void> {
+    public static async init(apiVersion: string, baseUri: string, sessionHash: string, calls: Array<unknown>): Promise<void> {
         if (this.whenInitialized.isCompleted()) {
             errorLog?.log('init: already initialized, skipping');
             return;
         }
 
         try {
-            infoLog?.log('-> init');
+            infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
             this.apiVersion = apiVersion;
-            this.initSessionHash(sessionHash);
+            this.baseUri = baseUri;
+            this.sessionHash = sessionHash;
             this.initWindowId();
             this.initAndroid();
             calls = Array.from(calls);
@@ -134,10 +136,6 @@ export class BrowserInit {
     }
 
     // Private methods
-
-    private static initSessionHash(sessionHash: string = null) {
-        this.sessionHash = sessionHash ?? window['App']?.sessionHash;
-    }
 
     private static initWindowId(): void {
         // Set App.windowId

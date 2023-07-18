@@ -17,12 +17,11 @@ public sealed class NativeAppleAuth
         };
         var result = await AppleSignInAuthenticator.AuthenticateAsync(options).ConfigureAwait(false);
 
-        var sessionId = Services.Session().Id.Value;
         var code = result.Properties["authorization_code"];
         var email = result.Properties["email"];
         var name = result.Properties["name"];
         var userId = result.Properties["user_id"];
         var nativeAuthClient = Services.GetRequiredService<INativeAuthClient>();
-        await nativeAuthClient.SignInApple(sessionId, code, name, email, userId).ConfigureAwait(false);
+        await nativeAuthClient.SignInApple(code, name, email, userId).ConfigureAwait(false);
     }
 }

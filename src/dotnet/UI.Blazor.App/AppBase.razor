@@ -83,25 +83,18 @@
         using var _1 = Tracer.Region();
 
         var appKind = HostInfo.AppKind;
-        if (!appKind.IsMauiApp()) {
-            // Set ISessionResolver.Session
-            if (SessionId.IsNullOrEmpty())
-                throw new ArgumentOutOfRangeException(nameof(SessionId));
-
-            var session = appKind.IsWasmApp()
-                ? Session.Default
-                : new Session(SessionId);
+        if (appKind.IsServer()) {
             if (!SessionResolver.HasSession) {
+                var session = new Session(SessionId).RequireValid();
                 SessionResolver.Session = session;
-            } else if (SessionResolver.Session != session) {
-                // No way to change Session other than page reload
-                var nav = Services.GetRequiredService<NavigationManager>();
-                nav.NavigateTo(nav.Uri, true);
-                return;
             }
-
-            if (appKind.IsClient()) // MAUI app does this earlier
-                _ = AppServiceStarter.PostSessionWarmup(SessionResolver.Session, CancellationToken.None);
+        }
+        else if (appKind.IsWasmApp()) {
+            // MAUI app does all of this earlier
+            var session = new Session(SessionId).RequireValid();
+            var trueSessionResolver = Services.GetRequiredService<TrueSessionResolver>();
+            trueSessionResolver.Session = session;
+            _ = AppServiceStarter.PostSessionWarmup(SessionResolver.Session, CancellationToken.None);
         }
 
         var whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken);

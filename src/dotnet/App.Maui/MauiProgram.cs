@@ -39,7 +39,7 @@ public static partial class MauiProgram
 #endif
 
         try {
-            _ = MauiSessionResolver.Start();
+            _ = MauiSession.Start();
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
@@ -121,13 +121,13 @@ public static partial class MauiProgram
         AppServices = app.Services;
         LoadingUI.MarkAppBuilt();
         _ = Task.Run(async () => {
-            var sessionResolver = AppServices.GetRequiredService<ISessionResolver>();
-            if (sessionResolver is MauiSessionResolver mauiSessionResolver)
-                _ = mauiSessionResolver.AcquireSession();
+            var mauiSession = AppServices.GetRequiredService<MauiSession>();
+            _ = mauiSession.Acquire();
+            var trueSessionResolver = AppServices.GetRequiredService<TrueSessionResolver>();
+            await trueSessionResolver.SessionTask.ConfigureAwait(false);
 
-            var session = await sessionResolver.SessionTask.ConfigureAwait(false);
             var appServiceStarter = AppServices.GetRequiredService<AppServiceStarter>();
-            _ = appServiceStarter.PostSessionWarmup(session, CancellationToken.None);
+            _ = appServiceStarter.PostSessionWarmup(Session.Default, CancellationToken.None);
         });
     }
 

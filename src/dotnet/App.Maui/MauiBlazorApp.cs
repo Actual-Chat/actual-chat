@@ -8,7 +8,7 @@ public class MauiBlazorApp : AppBase
     protected override async Task OnInitializedAsync()
     {
         try {
-            var session = await SessionResolver.SessionTask.ConfigureAwait(true);
+            var session = await HiddenSession.SessionTask.ConfigureAwait(true);
             MainPage.Current!.SetupSessionCookie(session);
 
             try {
@@ -17,7 +17,7 @@ public class MauiBlazorApp : AppBase
             catch (Exception) {
                 Log.LogWarning("OnInitializedAsync: can't change ScopedServices - reloading");
                 DiscardScopedServices();
-                Services.GetRequiredService<ReloadUI>().Reload();
+                Services.GetRequiredService<ReloadUI>().Reload(false);
                 return; // No call to base.OnInitializedAsync() is intended here: reload is all we want
             }
             await base.OnInitializedAsync().ConfigureAwait(false);

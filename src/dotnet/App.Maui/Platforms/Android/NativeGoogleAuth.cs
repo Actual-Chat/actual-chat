@@ -87,9 +87,8 @@ public sealed class NativeGoogleAuth
                 if (code == null)
                     throw StandardError.External("Failed to retrieve Google account.");
 
-                var sessionId = Services.Session().Id.Value;
                 var nativeAuthClient = Services.GetRequiredService<INativeAuthClient>();
-                await nativeAuthClient.SignInGoogle(sessionId, code).ConfigureAwait(true);
+                await nativeAuthClient.SignInGoogle(code).ConfigureAwait(true);
             }
             catch (Exception e) {
                 Log.LogError(e, "Google sign-in failed");

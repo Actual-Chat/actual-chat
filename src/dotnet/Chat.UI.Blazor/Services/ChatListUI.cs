@@ -57,7 +57,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
         var type = GetType();
         // var isClient = HostInfo.AppKind.IsClient();
-        _loadLimit = StateFactory.NewMutable(int.MaxValue,
+        _loadLimit = StateFactory.NewMutable(Constants.Contacts.MinLoadLimit,
             StateCategories.Get(type, nameof(_loadLimit)));
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
             StateCategories.Get(type, nameof(_isSelectedChatUnlisted)));

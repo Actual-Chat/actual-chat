@@ -18,6 +18,10 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
         if (!HostInfo.AppKind.HasBlazorUI())
             return; // Blazor UI only module
 
+        if (HostInfo.AppKind.IsClient()) {
+            services.AddSingleton(c => new TrueSessionResolver(c));
+            services.AddScoped<ISessionResolver>(c => new DefaultSessionResolver(c));
+        }
         services.AddScoped<AppServiceStarter>(c => new AppServiceStarter(c));
         services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c));
         services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c));

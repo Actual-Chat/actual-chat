@@ -4,6 +4,7 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Redis.Module;
+using ActualChat.Security;
 using ActualChat.Users.Db;
 using ActualChat.Users.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;

@@ -56,7 +56,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(_ => new DisposeMonitor());
         services.AddScoped(c => new SafeJSRuntime(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new BrowserInit(c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped(c => new JavaScriptAppSettings(c));
         services.AddScoped(c => new BrowserInfo(c));
         services.AddScoped(c => new WebShareInfo(c));
 

@@ -1,6 +1,7 @@
 @page "/"
 @addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
 @namespace ActualChat.App.Server.Pages
+@using ActualChat.App.Wasm
 @using ActualChat.Hosting
 @using ActualChat.Web
 @using Microsoft.AspNetCore.Mvc.TagHelpers
@@ -12,7 +13,7 @@
 @inject ISessionResolver SessionResolver
 @inject HostInfo HostInfo
 @{
-    var session = await SessionCookies.Authenticate(HttpContext, ServerAuthHelper);
+    var session = await HttpContext.Authenticate(ServerAuthHelper);
     SessionResolver.Session = session;
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
     var isServerSideBlazor = BlazorSwitchEndpoint.IsServerSideBlazor(HttpContext);
@@ -71,16 +72,14 @@
         window.FusionAuth.schemas = "@authSchemas";
         window.App = {
             environment: '@(HostInfo.Environment.Value)',
-            baseUri: null,
-            sessionHash: '@(session.Hash)',
             postMessage: function (data) {
                 throw Error("Internal error: App.postMessage is available only in mobile apps.");
             },
             whenBundleReady: null,
             markBundleReady: function() { },
-            browserInit: async function(apiVersion, sessionHash, calls) {
+            browserInit: async function(apiVersion, baseUri, sessionHash, calls) {
                 await window.App.whenBundleReady;
-                await window.ui.BrowserInit.init(apiVersion, sessionHash, calls);
+                await window.ui.BrowserInit.init(apiVersion, baseUri, sessionHash, calls);
             },
         };
         window.App.whenBundleReady = new Promise((resolve, _) => {
@@ -115,8 +114,9 @@
     </div>
 } else {
     <app id="app" class="flex flex-col h-full">
-        @(await Html.RenderApp(Services, HttpContext))
-        @* <component type="typeof(App)" render-mode="Server" /> *@
+        @(await Html.RenderComponentAsync<WasmApp>(
+            isServerSideBlazor ? RenderMode.Server : RenderMode.WebAssembly,
+            new { SessionId = session.Id.Value }))
     </app>
 
     <!-- This block must go right after app, otherwise page content won't be blurred -->

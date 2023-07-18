@@ -2,6 +2,7 @@ import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 import { OperationCancelledError, PromiseSource } from 'promises';
 import { Log } from 'logging';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
+import {BrowserInit} from "../../../UI.Blazor/Services/BrowserInit/browser-init";
 
 const { errorLog } = Log.get('Attachments');
 
@@ -191,7 +192,7 @@ class FileUpload {
 
     private getUrl(url: string) {
         // @ts-ignore
-        const baseUri = window.App.baseUri; // Web API base URI when running in MAUI
+        const baseUri = BrowserInit.baseUri;
         return baseUri ? new URL(url, baseUri).toString() : url;
     }
 }

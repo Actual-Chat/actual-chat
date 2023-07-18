@@ -77,15 +77,15 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         CancellationToken cancellationToken)
     {
         var (id, expectedVersion, change) = command;
-        var context = CommandContext.GetCurrent();
         var ownerId = id.OwnerId;
+        var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invIsChanged = context.Operation().Items.GetOrDefault(false);
-            if (invIsChanged) {
+            var invIndex = context.Operation().Items.GetOrDefault(int.MinValue);
+            if (invIndex != int.MinValue) {
                 _ = Get(ownerId, id, default);
-                if (!change.Update.HasValue) // Create or Delete
-                    _ = ListIds(ownerId, default);
+                if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
+                    _ = ListIds(ownerId, default); // Create, Delete or move into MinLoadLimit
             }
             return default!;
         }
@@ -93,6 +93,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         id.Require();
         ownerId.Require();
         change.RequireValid();
+        var oldContactIds = await ListIds(ownerId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -143,7 +144,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(true);
+        context.Operation().Items.Set(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1);
         contact = dbContact.ToModel();
         return contact;
     }
@@ -152,10 +153,19 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
     public virtual async Task OnTouch(ContactsBackend_Touch command, CancellationToken cancellationToken)
     {
         var id = command.Id;
+        var ownerId = id.OwnerId;
+        var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            _ = Get(id.OwnerId, id, default);
+            var invIndex = context.Operation().Items.GetOrDefault(int.MinValue);
+            if (invIndex != int.MinValue) {
+                _ = Get(ownerId, id, default);
+                if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
+                    _ = ListIds(ownerId, default); // Create, Delete or move into MinLoadLimit
+            }
             return;
         }
+
+        var contactIds = await ListIds(ownerId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -174,6 +184,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         dbContact.UpdateFrom(contact);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation().Items.Set(contactIds.IndexOf(id));
     }
 
     // Events

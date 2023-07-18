@@ -11,12 +11,14 @@ public class BrowserInit
     public BrowserInit(IJSRuntime js)
         => JS = js;
 
-    public async ValueTask Initialize(string apiVersion, string? sessionHash, Func<List<object?>, ValueTask> callsBuilder)
+    public async ValueTask Initialize(string apiVersion, string baseUri, string sessionHash, Func<List<object?>, ValueTask> callsBuilder)
     {
         try {
             var calls = new List<object?>();
             await callsBuilder.Invoke(calls).ConfigureAwait(false);
-            await JS.InvokeVoidAsync("window.App.browserInit", apiVersion, sessionHash, calls.ToArray()).ConfigureAwait(false);
+            await JS
+                .InvokeVoidAsync("window.App.browserInit", apiVersion, baseUri, sessionHash, calls.ToArray())
+                .ConfigureAwait(false);
         }
         finally {
             _whenInitializedSource.TrySetResult();

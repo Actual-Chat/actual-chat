@@ -1,5 +1,5 @@
+using ActualChat.Security;
 using ActualChat.Transcription;
-using ActualChat.Users;
 using ActualChat.Web;
 using Microsoft.AspNetCore.SignalR;
 
@@ -60,8 +60,7 @@ public class AudioHub : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var session = await GetSession(recorderToken, CancellationToken.None).ConfigureAwait(false)
-            ?? SessionCookies.Read(httpContext).RequireValid();
+        var session = GetSessionFromToken(recorderToken) ?? httpContext.GetSession();
 
         var audioRecord = AudioRecord.New(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
         var frameStream = audioStream
@@ -85,13 +84,13 @@ public class AudioHub : Hub
     public Task<string> Ping()
         => Task.FromResult("Pong");
 
-    private async Task<Session?> GetSession(string recorderToken, CancellationToken cancellationToken)
+    private Session? GetSessionFromToken(string recorderToken)
     {
         // [Obsolete("2023.07: Legacy clients use 'default' value.")]
         if (recorderToken.IsNullOrEmpty() || OrdinalEquals(recorderToken, "default"))
             return null;
 
-        var sessionId = await SecureTokensBackend.Parse(recorderToken, cancellationToken).ConfigureAwait(false);
-        return new Session(sessionId).RequireValid();
+        var sessionId = SecureTokensBackend.Parse(recorderToken);
+        return SessionExt.NewValidOrNull(sessionId);
     }
 }

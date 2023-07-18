@@ -13,11 +13,15 @@ using ActualChat.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
+using Cysharp.Text;
 using Stl.Interception.Interceptors;
 using Stl.RestEase;
+using Stl.Rpc;
+using Stl.Rpc.Clients;
 
 namespace ActualChat.UI.Blazor.App
 {
@@ -47,7 +51,7 @@ namespace ActualChat.UI.Blazor.App
                     client.DefaultRequestVersion = HttpVersion.Version30;
                     client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
                     if (appKind.IsMauiApp()) {
-                        var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
+                        var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
                         client.DefaultRequestHeaders.Add(gclbCookieHeader.Name, gclbCookieHeader.Value);
                     }
                 });
@@ -59,17 +63,46 @@ namespace ActualChat.UI.Blazor.App
             });
 
             fusion.Rpc.AddWebSocketClient(c => {
+                var trueSessionResolver = c.GetService<TrueSessionResolver>();
                 var urlMapper = c.GetRequiredService<UrlMapper>();
-                return urlMapper.BaseUri.ToString();
+                var baseUrl = urlMapper.BaseUrl.TrimSuffix("/");
+                var isWebSocketUrl = baseUrl.StartsWith("ws://", StringComparison.Ordinal)
+                    || baseUrl.StartsWith("wss://", StringComparison.Ordinal);
+                if (!isWebSocketUrl) {
+                    if (baseUrl.StartsWith("http://", StringComparison.Ordinal))
+                        baseUrl = "ws://" + baseUrl.Substring(7);
+                    else if (baseUrl.StartsWith("https://", StringComparison.Ordinal))
+                        baseUrl = "wss://" + baseUrl.Substring(8);
+                    else
+                        baseUrl = "wss://" + baseUrl;
+                }
+
+                return new RpcWebSocketClient.Options() {
+                    ConnectionUriResolver = (client, peer) => {
+                        var settings = client.Settings;
+                        using var sb = ZString.CreateStringBuilder();
+                        var isDefaultClient = peer.Ref == RpcPeerRef.Default;
+                        sb.Append(isDefaultClient ? baseUrl : $"ws://{peer.Ref.Id.Value}");
+                        sb.Append(settings.RequestPath);
+                        sb.Append('?');
+                        sb.Append(settings.ClientIdParameterName);
+                        sb.Append('=');
+                        sb.Append(client.ClientId.UrlEncode());
+                        if (isDefaultClient && trueSessionResolver != null) {
+                            sb.Append("&s=");
+                            sb.Append(trueSessionResolver.Session.Id.UrlEncode());
+                        }
+                        return sb.ToString().ToUri();
+                    },
+                };
             });
-            if (appKind.IsMauiApp()) {
+            if (appKind.IsMauiApp())
                 services.AddTransient<ClientWebSocket>(_ => {
                     var ws = new ClientWebSocket();
-                    var gclbCookieHeader = AppLoadBalancerSettings.Default.GclbCookieHeader;
+                    var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
                     ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
                     return ws;
                 });
-            }
 
             // Creating modules
             using var _ = tracer.Region($"{nameof(ModuleHostBuilder)}.{nameof(ModuleHostBuilder.Build)}");

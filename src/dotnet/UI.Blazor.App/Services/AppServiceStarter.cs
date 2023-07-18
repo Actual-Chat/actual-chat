@@ -23,15 +23,28 @@ public class AppServiceStarter
 
     public Task PostSessionWarmup(Session session, CancellationToken cancellationToken)
         => Task.Run(async () => {
-            // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here!
             using var _1 = Tracer.Region();
             try {
-                // _ = Task.Run(WarmupSystemJsonSerializer, CancellationToken.None);
-                var accountUI = Services.GetRequiredService<AccountUI>();
-                Services.GetRequiredService<ChatUI>();
-                Services.GetRequiredService<IContacts>();
+                // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here!
+
+                // Access key services
+                var accounts = Services.GetRequiredService<IAccounts>();
+                var contacts = Services.GetRequiredService<IContacts>();
                 Services.GetRequiredService<IChats>();
-                await accountUI.WhenLoaded.ConfigureAwait(false);
+
+                // Preload own account
+                var ownAccountTask = accounts.GetOwn(session, cancellationToken);
+
+                // Start preloading top contacts
+                var contactIdsTask = contacts.ListIds(session, cancellationToken);
+                var contactIds = await contactIdsTask.ConfigureAwait(false);
+                foreach (var contactId in contactIds.Take(Constants.Contacts.MinLoadLimit))
+                    _ = contacts.Get(session, contactId, cancellationToken);
+
+                // Complete own account preloading
+                await ownAccountTask.ConfigureAwait(false);
+
+                // _ = Task.Run(WarmupSystemJsonSerializer, CancellationToken.None);
             }
             catch (Exception e) {
                 Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
@@ -51,18 +64,19 @@ public class AppServiceStarter
         var autoNavigationUrlTask = autoNavigationUI.GetAutoNavigationUrl(cancellationToken);
 
         // Creating core services - this should be done as early as possible
-        var jsAppSettings = Services.GetRequiredService<JavaScriptAppSettings>();
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
 
         // Initializing them at once
         Tracer.Point("BulkInitUI.Invoke");
         var browserInit = Services.GetRequiredService<BrowserInit>();
+        var baseUri = HostInfo.BaseUrl;
         var session = Services.Session();
-        var sessionHash = session == Session.Default ? null : session.Hash; // Session.Default is used only in WASM
-        var browserInitTask = browserInit.Initialize(Constants.Api.Version, sessionHash, async initCalls => {
-            await jsAppSettings.Initialize(initCalls).ConfigureAwait(false);
-            await browserInfo.Initialize(initCalls).ConfigureAwait(false);
-        });
+        var trueSession = session.IsDefault() ? Services.GetRequiredService<TrueSessionResolver>().Session : session;
+        var browserInitTask = browserInit.Initialize(
+            Constants.Api.Version, baseUri, trueSession.Hash,
+            async initCalls => {
+                await browserInfo.Initialize(initCalls).ConfigureAwait(false);
+            });
 
         // Starting ThemeUI
         Tracer.Point("ThemeUI.Start");

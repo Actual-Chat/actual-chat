@@ -7,26 +7,23 @@ namespace ActualChat.Users.Controllers;
 [ApiController, Route("api/avatars")]
 public sealed class AvatarPicturesController : ControllerBase
 {
-    private IContentSaver ContentSaver { get; }
-    private ICommander Commander { get; }
-    private ISessionResolver SessionResolver { get; }
-    private IAuth Auth { get; }
+    private IAuth? _auth;
+    private IContentSaver? _contentSaver;
+    private ICommander? _commander;
 
-    public AvatarPicturesController(
-        IContentSaver contentSaver,
-        ICommander commander,
-        ISessionResolver sessionResolver,
-        IAuth auth)
-    {
-        ContentSaver = contentSaver;
-        Commander = commander;
-        SessionResolver = sessionResolver;
-        Auth = auth;
-    }
+    private IServiceProvider Services { get; }
+    private IAuth Auth => _auth ??= Services.GetRequiredService<IAuth>();
+    private IContentSaver ContentSaver => _contentSaver ??= Services.GetRequiredService<IContentSaver>();
+    private ICommander Commander => _commander ??= Services.Commander();
+
+    public AvatarPicturesController(IServiceProvider services)
+        => Services = services;
 
     [HttpPost("upload-picture")]
     public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
     {
+        var session = HttpContext.GetSession("s");
+
         var httpRequest = HttpContext.Request;
         if (!httpRequest.HasFormContentType || httpRequest.Form.Files.Count == 0)
             return BadRequest("No file content found");
@@ -41,11 +38,6 @@ public sealed class AvatarPicturesController : ControllerBase
         if (file.Length > Constants.Attachments.FileSizeLimit)
             return BadRequest("Image is too big");
 
-        var session = SessionCookies.Read(HttpContext, "s");
-        if (session is null)
-            return BadRequest("No Session");
-
-        SessionResolver.Session = session;
         var user = await Auth.GetUser(session, cancellationToken).ConfigureAwait(false);
         if (user is null)
             return BadRequest("No Account");
