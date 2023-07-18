@@ -68,7 +68,7 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         app.UseForwardedHeaders();
 
         // And here we can modify httpContext.Request.Scheme & Host manually to whatever we like
-        var baseUrl = Settings.BaseUrl;
+        var baseUrl = Settings.BaseUri;
         if (!baseUrl.IsNullOrEmpty()) {
             Log.LogInformation("Overriding request host to {BaseUrl}", baseUrl);
             app.UseBaseUrl(baseUrl);
