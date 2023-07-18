@@ -13,7 +13,6 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     private History? _history;
     private AutoNavigationUI? _autoNavigationUI;
     private IDeviceTokenRetriever? _deviceTokenRetriever;
-    private UICommander? _uiCommander;
     private ILogger? _log;
 
     private IServiceProvider Services { get; }
@@ -24,7 +23,6 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     private HostInfo HostInfo => History.HostInfo;
     private UrlMapper UrlMapper => History.UrlMapper;
     private IJSRuntime JS => History.JS;
-    private UICommander UICommander => _uiCommander ??= Services.GetRequiredService<UICommander>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public IState<PermissionState> State => _state;
@@ -134,6 +132,6 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
             _deviceId.Value = deviceId;
 
         var command = new Notifications_RegisterDevice(Session, deviceId, DeviceType.WebBrowser);
-        await UICommander.Run(command, cancellationToken).ConfigureAwait(false);
+        await Services.Commander().Run(command, cancellationToken).ConfigureAwait(false);
     }
 }
