@@ -88,7 +88,7 @@ namespace ActualChat.UI.Blazor.App
                         sb.Append(settings.ClientIdParameterName);
                         sb.Append('=');
                         sb.Append(client.ClientId.UrlEncode());
-                        if (isDefaultClient && trueSessionResolver != null) {
+                        if (isDefaultClient && trueSessionResolver is { HasSession: true }) {
                             sb.Append("&s=");
                             sb.Append(trueSessionResolver.Session.Id.UrlEncode());
                         }
