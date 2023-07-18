@@ -15,7 +15,7 @@ namespace ActualChat.Users.Controllers;
 
 [Obsolete("Kept only for compatibility with the old API.")]
 [ApiController, Route("mobileAuth")]
-public sealed class MobileAuthController : Controller
+public sealed class LegacyMobileAuthController : Controller
 {
     private ServerAuthHelper? _serverAuthHelper;
     private UrlMapper? _urlMapper;
@@ -28,7 +28,7 @@ public sealed class MobileAuthController : Controller
     private ICommander Commander => _commander ??= Services.Commander();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public MobileAuthController(IServiceProvider services)
+    public LegacyMobileAuthController(IServiceProvider services)
         => Services = services;
 
     [HttpGet("signIn/{sessionId}/{scheme}")]

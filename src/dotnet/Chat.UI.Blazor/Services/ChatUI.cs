@@ -25,7 +25,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private IChatPositions? _chatPositions;
     private IMentions? _mentions;
     private AccountSettings? _accountSettings;
-    private History? _history;
     private KeepAwakeUI? _keepAwakeUI;
     private TuneUI? _tuneUI;
     private ModalUI? _modalUI;
@@ -49,7 +48,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
     private IMentions Mentions => _mentions ??= Services.GetRequiredService<IMentions>();
     private AccountSettings AccountSettings => _accountSettings ??= Services.GetRequiredService<AccountSettings>();
-    private History History => _history ??= Services.GetRequiredService<History>();
     private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
     private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();

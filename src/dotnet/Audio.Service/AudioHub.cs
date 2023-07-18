@@ -11,7 +11,7 @@ public class AudioHub : Hub
     private IAudioProcessor AudioProcessor { get; }
     private IAudioStreamServer AudioStreamServer { get; }
     private ITranscriptStreamServer TranscriptStreamServer { get; }
-    private IAuthTokensBackend AuthTokensBackend { get; }
+    private ISecureTokensBackend SecureTokensBackend { get; }
     private OtelMetrics Metrics { get; }
 
     public AudioHub(IServiceProvider services)
@@ -21,7 +21,7 @@ public class AudioHub : Hub
         AudioProcessor = services.GetRequiredService<IAudioProcessor>();
         AudioStreamServer = services.GetRequiredService<IAudioStreamServer>();
         TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
-        AuthTokensBackend = services.GetRequiredService<IAuthTokensBackend>();
+        SecureTokensBackend = services.GetRequiredService<ISecureTokensBackend>();
     }
 
     public async IAsyncEnumerable<byte[]> GetAudioStream(
@@ -50,7 +50,7 @@ public class AudioHub : Hub
     }
 
     public async Task ProcessAudio(
-        string recorderId,
+        string recorderToken,
         string chatId,
         string repliedChatEntryId,
         double clientStartOffset,
@@ -60,7 +60,7 @@ public class AudioHub : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var session = await GetSession(recorderId, CancellationToken.None).ConfigureAwait(false)
+        var session = await GetSession(recorderToken, CancellationToken.None).ConfigureAwait(false)
             ?? SessionCookies.Read(httpContext).RequireValid();
 
         var audioRecord = AudioRecord.New(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
@@ -87,13 +87,11 @@ public class AudioHub : Hub
 
     private async Task<Session?> GetSession(string recorderToken, CancellationToken cancellationToken)
     {
-        // TODO(AK): Security: migrate to session lookup / decryption here
-        if (OrdinalEquals(recorderToken, Constants.Recorder.DefaultId))
-            recorderToken = "";
-
-        if (recorderToken.IsNullOrEmpty() || recorderToken.Length < 10)
+        // [Obsolete("2023.07: Legacy clients use 'default' value.")]
+        if (recorderToken.IsNullOrEmpty() || OrdinalEquals(recorderToken, "default"))
             return null;
 
-        return await AuthTokensBackend.Validate(recorderToken, TokenType.Audio, cancellationToken).ConfigureAwait(false);
+        var sessionId = await SecureTokensBackend.Parse(recorderToken, cancellationToken).ConfigureAwait(false);
+        return new Session(sessionId).RequireValid();
     }
 }

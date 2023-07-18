@@ -15,8 +15,8 @@ public interface IMobileAuth : IMobileSessionsV1
 [Obsolete("Retired in favour of IMobileSessions.")]
 public interface IMobileSessionsV1 : IComputeService
 {
-    [Obsolete("Retired in favour of IMobileAuth.")]
+    [Obsolete("2023.07: Retired in favour of IMobileAuth.")]
     Task<string> Create(CancellationToken cancellationToken);
-    [Obsolete("Retired in favour of IMobileAuth.")]
+    [Obsolete("2023.07: Retired in favour of IMobileAuth.")]
     Task<string> Validate(string sessionId, CancellationToken cancellationToken);
 }

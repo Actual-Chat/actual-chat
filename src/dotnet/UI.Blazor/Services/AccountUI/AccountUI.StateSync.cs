@@ -1,3 +1,4 @@
+using ActualChat.Users;
 using Stl.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -9,7 +10,7 @@ public partial class AccountUI
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var baseChains = new AsyncChain[] {
-            new(nameof(Update), Update),
+            new(nameof(MonitorAccountChange), MonitorAccountChange),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (
@@ -20,7 +21,7 @@ public partial class AccountUI
             ).RunIsolated(cancellationToken);
     }
 
-    private async Task Update(CancellationToken cancellationToken)
+    private async Task MonitorAccountChange(CancellationToken cancellationToken)
     {
         var cOwnAccount = await Computed
             .Capture(() => Accounts.GetOwn(Session, cancellationToken))
@@ -44,40 +45,36 @@ public partial class AccountUI
                 continue; // Only account properties have changed
 
             await BlazorCircuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-            await BlazorCircuitContext.Dispatcher.InvokeAsync(OnAccountChange).ConfigureAwait(false);
+            await BlazorCircuitContext.Dispatcher
+                .InvokeAsync(() => ProcessAccountChange(newAccount, oldAccount))
+                .ConfigureAwait(false);
         }
     }
 
     // Private methods
 
-    private async Task OnAccountChange()
+    private async Task ProcessAccountChange(AccountFull account, AccountFull oldAccount)
     {
-        var account = OwnAccount.Value;
-        var isSignIn = !account.IsGuestOrNone;
+        AccountChanged?.Invoke(account, oldAccount);
+        var history = Services.GetRequiredService<History>();
+        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
+        if (account.IsGuestOrNone || !oldAccount.IsGuestOrNone) {
+            // Sign-out or account change
+            var clientComputedCache = Services.GetService<IClientComputedCache>();
+            if (clientComputedCache != null)
+                await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(true);
+        }
 
-        for (var i = 0; i < 3; i++) {
-            try {
-                var history = Services.GetRequiredService<History>();
-                var targetUrl = history.LocalUrl;
-                if (isSignIn) { // Sign-in or account change
-                    if (!targetUrl.IsChatOrChatRoot())
-                        targetUrl = Links.Chats;
-                }
-                else { // Sign-out
-                    targetUrl = Links.Home;
-                    // Clear computed cache on sign-out to evict cached account from there
-                    var clientComputedCache = Services.GetService<IClientComputedCache>();
-                    if (clientComputedCache != null)
-                        await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(true);
-                }
-
-                await history.ForceReload(isSignIn ? "sign-in" : "sign-out", targetUrl);
+        if (account.IsGuestOrNone) {
+            // Sign-out
+            await autoNavigationUI.NavigateTo(Links.Home, AutoNavigationReason.SignOut);
+        }
+        else {
+            // Sign-in or account change
+            if (history.LocalUrl.IsChatOrChatRoot())
                 return;
-            }
-            catch (InvalidOperationException) {
-                // History may fail due to uninitialized NavigationManager, we'll retry in this case
-                await Task.Delay(100);
-            }
+
+            await autoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
         }
     }
 }

@@ -28,7 +28,7 @@ public sealed partial record AccountFull(
         (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin));
 
     [DataMember, MemoryPackOrder(5)] public bool IsAdmin { get; init; }
-    [Obsolete("Allows legacy clients to deserialize new version of this type.")]
+    [Obsolete("2023.07: Allows legacy clients to deserialize new version of this type.")]
     [DataMember, MemoryPackOrder(6)] public string LegacyPhone { get; private set; } = "";
     [DataMember, MemoryPackOrder(7)] public bool SyncContacts { get; init; }
     [DataMember, MemoryPackOrder(12)] public Phone Phone { get; init; }

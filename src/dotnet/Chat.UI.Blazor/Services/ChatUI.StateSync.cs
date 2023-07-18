@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Chat.UI.Blazor.Services;
+﻿using ActualChat.UI.Blazor.Services;
+
+namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatUI
 {
@@ -9,7 +11,7 @@ public partial class ChatUI
         await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
         var baseChains = new AsyncChain[] {
             new(nameof(InvalidateSelectedChatDependencies), InvalidateSelectedChatDependencies),
-            new(nameof(HardRedirectOnFixableChat), HardRedirectOnFixableChat),
+            new(nameof(NavigateToFixedSelectedChat), NavigateToFixedSelectedChat),
             new(nameof(ResetHighlightedEntry), ResetHighlightedEntry),
             new(nameof(PushKeepAwakeState), PushKeepAwakeState),
         };
@@ -43,26 +45,26 @@ public partial class ChatUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<string> GetFixableChatRedirectUrl(CancellationToken cancellationToken)
+    protected virtual async Task<ChatId> GetFixedSelectedChatId(CancellationToken cancellationToken)
     {
         var chatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         var fixedChatId = await FixChatId(chatId, cancellationToken);
         var wasFixed = fixedChatId != chatId;
-        return wasFixed ? Links.Chat(fixedChatId) : "";
+        return wasFixed ? fixedChatId : default;
     }
 
-    private async Task HardRedirectOnFixableChat(CancellationToken cancellationToken)
+    private async Task NavigateToFixedSelectedChat(CancellationToken cancellationToken)
     {
-        var cRedirectUrl = await Computed
-            .Capture(() => GetFixableChatRedirectUrl(cancellationToken))
+        var cFixedSelectedChatId = await Computed
+            .Capture(() => GetFixedSelectedChatId(cancellationToken))
             .ConfigureAwait(false);
-        cRedirectUrl = await cRedirectUrl
-            .When(x => !x.IsNullOrEmpty(), cancellationToken)
+        cFixedSelectedChatId = await cFixedSelectedChatId
+            .When(x => !x.IsNone, cancellationToken)
             .ConfigureAwait(false);
 
-        // Quite rare case, so it's sub-optimal to resolve this dependency in .ctor
-        var redirectUrl = cRedirectUrl.Value;
-        _ = History.ForceReload("chat ID fix", redirectUrl);
+        var link = Links.Chat(cFixedSelectedChatId.Value);
+        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
+        _ = autoNavigationUI.NavigateTo(link, AutoNavigationReason.FixedChatId);
     }
 
     [ComputeMethod]

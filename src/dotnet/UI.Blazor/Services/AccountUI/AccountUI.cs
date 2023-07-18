@@ -22,6 +22,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
 
     public Task WhenLoaded => _whenLoadedSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
+    public event Action<AccountFull, AccountFull>? AccountChanged;
 
     public AccountUI(IServiceProvider services)
     {

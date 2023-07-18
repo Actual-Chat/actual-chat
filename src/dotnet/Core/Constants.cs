@@ -64,12 +64,6 @@ public static partial class Constants
         public static TimeSpan MinTouchInterval { get; } =  TimeSpan.FromSeconds(10);
     }
 
-    public static class Recorder
-    {
-        // Obsolete: must be removed after a few releases
-        public static string DefaultId = "default";
-    }
-
     public static class Session
     {
         public static string CookieName { get; } = "FusionAuth.SessionId";

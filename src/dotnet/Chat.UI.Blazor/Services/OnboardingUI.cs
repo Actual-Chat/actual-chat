@@ -8,10 +8,11 @@ public class OnboardingUI
 {
     private readonly ISyncedState<UserOnboardingSettings> _settings;
 
+    private IServiceProvider Services { get; }
     private Session Session { get; }
     private IAccounts Accounts { get; }
     private AccountSettings AccountSettings { get; }
-    private ModalUI ModalUI { get; }
+    private AccountUI AccountUI { get; }
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
 
@@ -19,10 +20,11 @@ public class OnboardingUI
 
     public OnboardingUI(IServiceProvider services)
     {
+        Services = services;
         Session = services.Session();
         Accounts = services.GetRequiredService<IAccounts>();
         AccountSettings = services.GetRequiredService<AccountSettings>();
-        ModalUI = services.GetRequiredService<ModalUI>();
+        AccountUI = services.GetRequiredService<AccountUI>();
         Clocks = services.Clocks();
 
         var stateFactory = services.StateFactory();
@@ -32,6 +34,7 @@ public class OnboardingUI
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
+        AccountUI.AccountChanged += OnAccountChanged;
     }
 
     public async ValueTask TryShow()
@@ -40,13 +43,20 @@ public class OnboardingUI
             return;
 
         UpdateSettings(Settings.Value with { LastShownAt = Now });
-        await ModalUI.Show(new OnboardingModal.Model());
+        var modalUI = Services.GetRequiredService<ModalUI>();
+        await modalUI.Show(new OnboardingModal.Model());
     }
 
     public void UpdateSettings(UserOnboardingSettings value)
         => _settings.Value = value;
 
     // Private methods
+
+    private void OnAccountChanged(AccountFull account, AccountFull oldAccount)
+    {
+        if (!account.IsGuestOrNone)
+            _ = TryShow();
+    }
 
     private async Task<bool> ShouldBeShown()
     {

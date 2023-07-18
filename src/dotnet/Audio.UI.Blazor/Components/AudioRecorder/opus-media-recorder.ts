@@ -110,8 +110,8 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     public async start(recorderId: string, chatId: string, repliedChatEntryId: string, onStateChanged: RecorderStateChanged): Promise<void> {
         this.onStateChanged = onStateChanged;
         debugLog?.log('-> start(): #', chatId);
-        if (!recorderId || !chatId)
-            throw new Error('start: recorderId or chatId is unspecified.');
+        if (!chatId)
+            throw new Error('start: chatId is unspecified.');
 
         await this.whenInitialized;
         debugLog?.log(`start(): awaited whenInitialized`);

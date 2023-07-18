@@ -6,7 +6,9 @@ public enum AutoNavigationReason
 {
     Unknown = 0,
     SignIn = 1,
-    Notification = 10,
+    FixedChatId = 2,
+    Notification = 50,
+    SignOut = 100,
 }
 
 public abstract class AutoNavigationUI : IHasServices

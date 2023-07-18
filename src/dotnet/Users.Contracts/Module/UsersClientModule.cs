@@ -19,6 +19,9 @@ public sealed class UsersClientModule : HostModule
             services.AddRestEase(restEase => restEase.AddClient<INativeAuthClient>());
 
         var fusion = services.AddFusion().AddAuthClient();
+        var rpc = fusion.Rpc;
+        rpc.AddClient<ISecureTokens>();
+
         fusion.AddClient<ISystemProperties>();
         fusion.AddClient<IMobileSessions>();
         fusion.AddClient<IServerKvas>();

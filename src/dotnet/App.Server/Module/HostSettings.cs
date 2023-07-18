@@ -14,9 +14,4 @@ public sealed class HostSettings
     /// </summary>
     public string DataProtection { get; set; } = "";
     public string OpenTelemetryEndpoint { get; set; } = "";
-
-    // Obsolete
-
-    [Obsolete("Use BaseUrl instead.")]
-    public string BaseUri { get => BaseUrl; set => BaseUrl = value; }
 }
