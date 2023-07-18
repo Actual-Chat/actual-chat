@@ -21,11 +21,19 @@
     </Body>
     <Buttons>
         <div class="btn-group">
-            @{
-                var submitClass = $"btn-primary {(canSend ? "" : "disabled")}";
-            }
-            <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
-            <Button Type="@ButtonType.Submit" Class="@submitClass" Click="OnSend">Send</Button>
+            <Button
+                Type="@ButtonType.Button"
+                Class="btn-cancel"
+                Click="OnCancel">
+                Cancel
+            </Button>
+            <Button
+                Type="@ButtonType.Submit"
+                Class="btn-primary"
+                IsDisabled="@(!canSend)"
+                Click="OnSend">
+                Send
+            </Button>
         </div>
     </Buttons>
 </DialogFrame>
