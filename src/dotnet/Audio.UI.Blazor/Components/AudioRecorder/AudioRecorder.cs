@@ -2,8 +2,8 @@
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Security;
-using ActualChat.Users;
 using Stl.Locking;
+using AsyncChain = Stl.Async.AsyncChain;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
@@ -22,7 +22,7 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
     private bool DebugMode => Constants.DebugMode.AudioRecording;
     private DotNetObjectReference<IAudioRecorderBackend>? _blazorRef;
 
-    private Session Session { get; }
+    private HostInfo HostInfo { get; }
     private IJSRuntime JS { get; }
     private IServiceProvider Services { get; }
     private ISecureTokens SecureTokens { get; }
@@ -36,8 +36,8 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
     {
         Services = services;
         Log = services.LogFor(GetType());
-        Session = services.Session();
         Clocks = services.Clocks();
+        HostInfo = services.GetRequiredService<HostInfo>();
         JS = services.GetRequiredService<IJSRuntime>();
         MicrophonePermission = services.GetRequiredService<MicrophonePermissionHandler>();
         SecureTokens = services.GetRequiredService<ISecureTokens>();
@@ -50,9 +50,8 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
 
         async Task Initialize()
         {
-            var hostInfo = services.GetRequiredService<HostInfo>();
-            _recorderToken = hostInfo.ClientKind == ClientKind.Ios
-                ? await SecureTokens.CreateForSession(Session, CancellationToken.None)
+            _recorderToken = HostInfo.ClientKind == ClientKind.Ios
+                ? await SecureTokens.CreateForDefaultSession(CancellationToken.None)
                 : null;
             _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
@@ -169,9 +168,9 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
     {
         await WhenInitialized;
 
-        var baseChains = new AsyncChain[] {
-            new (nameof(RefreshRecorderToken), RefreshRecorderToken),
-        };
+        var baseChains = new List<AsyncChain>();
+        if (HostInfo.ClientKind == ClientKind.Ios)
+            baseChains.Add(new(nameof(RefreshRecorderToken), RefreshRecorderToken));
         var retryDelays = RetryDelaySeq.Exp(0.1, 5);
         await (
             from chain in baseChains
@@ -197,7 +196,7 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
             if (refreshAt >= clock.Now + TimeSpan.FromSeconds(0.1)) // 0.1s gap = just skip tiny waits
                 await clock.Delay(refreshAt, cancellationToken).ConfigureAwait(false);
 
-            recorderToken = await SecureTokens.CreateForSession(Session, cancellationToken);
+            recorderToken = await SecureTokens.CreateForDefaultSession(cancellationToken);
             Interlocked.Exchange(ref _recorderToken, recorderToken);
             await _jsRef
                 .InvokeVoidAsync("updateRecorderId", cancellationToken, recorderToken.Token)

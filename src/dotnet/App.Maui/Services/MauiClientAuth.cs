@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
@@ -71,8 +72,9 @@ internal sealed class MauiClientAuth : IClientAuth
     {
         var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("sign-in");
         try {
-            var sessionId = Services.Session().Id.Value;
-            var url = $"{MauiSettings.BaseUrl}maui-auth/{endpoint}?s={sessionId.UrlEncode()}";
+            var secureTokens = Services.GetRequiredService<ISecureTokens>();
+            var sessionToken = await secureTokens.CreateForDefaultSession().ConfigureAwait(true);
+            var url = $"{MauiSettings.BaseUrl}maui-auth/{endpoint}?s={sessionToken.Token.UrlEncode()}";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
                 await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);
                 // NOTE(AY): WebView crashes on the call below in Android:

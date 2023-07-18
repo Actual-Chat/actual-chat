@@ -90,7 +90,6 @@ public class AudioHub : Hub
         if (recorderToken.IsNullOrEmpty() || OrdinalEquals(recorderToken, "default"))
             return null;
 
-        var sessionId = SecureTokensBackend.Parse(recorderToken);
-        return SessionExt.NewValidOrNull(sessionId);
+        return SecureTokensBackend.ParseSessionToken(recorderToken);
     }
 }
