@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
@@ -8,7 +9,8 @@ public class MauiBlazorApp : AppBase
     protected override async Task OnInitializedAsync()
     {
         try {
-            var session = await HiddenSession.SessionTask.ConfigureAwait(true);
+            var trueSessionResolver = Services.GetRequiredService<TrueSessionResolver>();
+            var session = await trueSessionResolver.SessionTask.ConfigureAwait(true);
             MainPage.Current!.SetupSessionCookie(session);
 
             try {
