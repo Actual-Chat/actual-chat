@@ -25,7 +25,7 @@ export class FileUpload implements Disposable {
     {
         let url = this.getUrl(options.uploadUrl);
         if (options.sessionId) {
-            url = url + '?' + new URLSearchParams({ s: options.sessionId}).toString();
+            url = url + '?' + new URLSearchParams({ s: options.sessionId }).toString();
         }
 
         fromEvent(input, 'change')
