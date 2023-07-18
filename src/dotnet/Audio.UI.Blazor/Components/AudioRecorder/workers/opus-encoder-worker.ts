@@ -36,6 +36,7 @@ let codecModule: Codec | null = null;
 const CHUNKS_WILL_BE_SENT_ON_RESUME = 6; // 20ms * 6 = 120ms
 const CHUNKS_WILL_BE_SENT_ON_RECONNECT = 500; // 20ms * 100 = 2s
 const FADE_CHUNKS = 3;
+const BUFFER_CHUNKS = 4; // 80ms
 const CHUNK_SIZE = 960; // 20ms @ 48000KHz
 
 /** buffer or callbackId: number of `end` message */
@@ -43,7 +44,7 @@ const queue = new Denque<ArrayBuffer>();
 const worker = self as unknown as Worker;
 
 let hubConnection: signalR.HubConnection;
-let recordingSubject: signalR.Subject<Uint8Array> = null;
+let recordingSubject: signalR.Subject<Array<Uint8Array>> = null;
 let state: 'inactive' | 'created' | 'encoding' | 'ended' = 'inactive';
 let vadState: 'voice' | 'silence' = 'silence';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
@@ -255,11 +256,11 @@ async function startRecording(): Promise<void> {
         return;
 
     recordingSubject?.complete(); // Just in case
-    recordingSubject = new signalR.Subject<Uint8Array>();
+    recordingSubject = new signalR.Subject<Array<Uint8Array>>();
     if (!encoder)
         encoder = new codecModule.Encoder();
     const preSkip = encoder.preSkip;
-    await hubConnection.send('ProcessAudio', recorderId, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
+    await hubConnection.send('ProcessAudioChunks', recorderId, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
     processQueue('in');
 }
 
@@ -274,12 +275,15 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     if (!encoder)
         return;
 
+    if (queue.length < BUFFER_CHUNKS)
+        return;
+
     try {
         isEncoding = true;
+        const result = new Array<Uint8Array>();
         let fadeWindowIndex: number | null = null;
         if (fade === 'in') {
-            const result = encoder.encode(silenceChunk.buffer);
-            recordingSubject?.next(result);
+            result.push(encoder.encode(silenceChunk.buffer));
             chunkTimeOffset = 20;
         }
         else if (fade === 'out') {
@@ -314,7 +318,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             const typedViewEncodedChunk = encoder.encode(buffer);
             const encodedChunk = new Uint8Array(typedViewEncodedChunk.length);
             encodedChunk.set(typedViewEncodedChunk);
-            recordingSubject?.next(encodedChunk);
+            result.push(encodedChunk);
 
             void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
 
@@ -322,11 +326,12 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
         }
         if (fade === 'out') {
             while (chunkTimeOffset < 2200) {
-                const result = encoder.encode(silenceChunk.buffer);
-                recordingSubject?.next(result);
+                result.push(encoder.encode(silenceChunk.buffer));
                 chunkTimeOffset += 20;
             }
         }
+
+        recordingSubject?.next(result);
     }
     catch (error) {
         errorLog?.log(`processQueue: unhandled error:`, error);

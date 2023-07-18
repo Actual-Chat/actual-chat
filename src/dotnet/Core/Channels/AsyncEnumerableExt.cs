@@ -437,6 +437,44 @@ public static class AsyncEnumerableExt
             yield return item;
     }
 
+    public static IAsyncEnumerable<TSource> AsAsyncEnumerable<TSource>(this IList<TSource> source)
+    {
+        if (source == null)
+            throw StandardError.Constraint(nameof(AsAsyncEnumerable), "source is null.");
+
+        return source.Count == 0
+            ? AsyncEnumerable.Empty<TSource>()
+            : new AsyncEnumerableAdapter<TSource>(source);
+    }
+
+    private readonly struct AsyncEnumerableAdapter<T> : IAsyncEnumerable<T>
+    {
+        private readonly IList<T> _source;
+
+        public AsyncEnumerableAdapter(IList<T> source)
+            => _source = source;
+
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
+            => new AsyncEnumeratorAdapter<T>(_source);
+    }
+
+    private sealed class AsyncEnumeratorAdapter<T> : IAsyncEnumerator<T>
+    {
+        private readonly IList<T> _source;
+        private int _index = -1;
+
+        public AsyncEnumeratorAdapter(IList<T> source)
+            => _source = source;
+
+        public ValueTask DisposeAsync()
+            => ValueTask.CompletedTask;
+
+        public ValueTask<bool> MoveNextAsync()
+            => new (++_index < _source.Count);
+
+        public T Current => _source[_index];
+    }
+
     /* This exists in Stl, though the impl. is different, so temp. keeping it here:
 
     public static IAsyncEnumerable<T> TrimOnCancellation<T>(this IAsyncEnumerable<T> source,

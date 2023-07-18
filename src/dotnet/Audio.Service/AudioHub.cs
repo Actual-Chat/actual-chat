@@ -49,6 +49,22 @@ public class AudioHub : Hub
             yield return chunk;
     }
 
+    public Task ProcessAudioChunks(
+        string recorderToken,
+        string chatId,
+        string repliedChatEntryId,
+        double clientStartOffset,
+        int preSkipFrames,
+        IAsyncEnumerable<byte[][]> audioStream)
+        // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+        => ProcessAudio(
+            recorderToken,
+            chatId,
+            repliedChatEntryId,
+            clientStartOffset,
+            preSkipFrames,
+            audioStream.SelectMany(c => c.AsAsyncEnumerable()));
+
     public async Task ProcessAudio(
         string recorderToken,
         string chatId,
