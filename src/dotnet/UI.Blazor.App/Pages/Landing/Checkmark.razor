@@ -1,0 +1,16 @@
+<div class="checkmark">
+    @if (Checked) {
+        <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="checked">
+    } else {
+        <img draggable="false" src="/dist/images/landing/checkmark-unchecked.svg" alt="unchecked">
+    }
+    <span class="c-text">
+        @ChildContent
+    </span>
+</div>
+
+
+@code {
+    [Parameter] public bool Checked { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

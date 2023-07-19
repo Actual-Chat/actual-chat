@@ -126,3 +126,15 @@ body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable
 .navbar-chats .tab-panel .tab-panel-tabs .message-counter-badge {
     @apply h-4 min-w-6;
 }
+
+.sort-menu .ac-menu-icon > i {
+    @apply text-03;
+}
+.sort-menu .ac-menu-text {
+    @apply text-headline-1 text-02;
+}
+.sort-menu .ac-menu-item:hover .ac-menu-text,
+.sort-menu .ac-menu-item:hover .ac-menu-icon > i {
+    @apply text-primary;
+}
+
