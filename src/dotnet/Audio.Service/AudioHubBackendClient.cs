@@ -10,7 +10,7 @@ public class AudioHubBackendClient : HubClientBase,
     ITranscriptStreamClient
 {
     public static IRetryDelayer ReconnectDelayer { get; set; } =
-        new RetryDelayer() { Delays = RetryDelaySeq.Exp(0.5, 5) };
+        new RetryDelayer() { Delays = RetryDelaySeq.Exp(0.1, 0.5) };
 
     public int AudioStreamBufferSize { get; init; } = 64;
     public int TranscriptStreamBufferSize { get; init; } = 16;
