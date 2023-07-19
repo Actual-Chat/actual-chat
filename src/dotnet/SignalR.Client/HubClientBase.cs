@@ -50,6 +50,9 @@ public abstract class HubClientBase : IDisposable
             .WithUrl(hubUri, options => {
                 options.SkipNegotiation = true;
                 options.Transports = HttpTransportType.WebSockets;
+                options.WebSocketConfiguration = o => {
+                    o.KeepAliveInterval = TimeSpan.FromSeconds(30);
+                };
             });
         if (Constants.DebugMode.SignalR)
             builder.AddJsonProtocol();
