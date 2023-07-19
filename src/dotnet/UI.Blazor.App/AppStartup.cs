@@ -83,9 +83,7 @@ namespace ActualChat.UI.Blazor.App
                     sb.Append(settings.ClientIdParameterName);
                     sb.Append('=');
                     sb.Append(client.ClientId.UrlEncode());
-                    var uri = sb.ToString().ToUri();
-                    client.Services.LogFor<RpcWebSocketClient.Options>().LogWarning("Uri: {Uri}", uri);
-                    return uri;
+                    return sb.ToString().ToUri();
                 },
             });
             if (appKind.IsMauiApp())
