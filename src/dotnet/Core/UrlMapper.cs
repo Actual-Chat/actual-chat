@@ -21,6 +21,7 @@ public sealed partial class UrlMapper
 
     public string BaseUrl { get; }
     public string ApiBaseUrl { get; }
+    public string WebsocketBaseUrl { get; }
     public string ContentBaseUrl { get; }
     public string ImageProxyBaseUrl { get; }
     public string BoringAvatarsProxyBaseUrl { get; }
@@ -41,6 +42,7 @@ public sealed partial class UrlMapper
         IsLocalActualChat = OrdinalIgnoreCaseEquals(BaseUri.Host, "local.actual.chat");
 
         ApiBaseUrl = $"{BaseUrl}api/";
+        WebsocketBaseUrl = GetWebSocketUrl(_baseUrlWithoutBackslash);
         ContentBaseUrl = $"{ApiBaseUrl}content/";
         BoringAvatarsProxyBaseUrl = $"{BaseUrl}boringavatars/";
         ImageProxyBaseUrl = "";
@@ -59,6 +61,21 @@ public sealed partial class UrlMapper
 
     public static bool IsAbsolute(string url)
         => IsAbsoluteUrlRegex.IsMatch(url);
+
+    public static string GetWebSocketUrl(string url)
+    {
+        if (url.StartsWith("ws://", StringComparison.Ordinal)
+            || url.StartsWith("wss://", StringComparison.Ordinal))
+            return url;
+
+        if (url.StartsWith("http://", StringComparison.Ordinal))
+            return "ws://" + url.Substring(7);
+        if (url.StartsWith("https://", StringComparison.Ordinal))
+            return "wss://" + url.Substring(8);
+
+        // Probably no prefix at all
+        return "wss://" + url;
+    }
 
     public string ToAbsolute(string url, bool allowAbsoluteUrl = false)
         => ToAbsolute(BaseUrl, url, allowAbsoluteUrl);

@@ -4,7 +4,7 @@ using Stl.Rpc.Infrastructure;
 
 namespace ActualChat.Web.Services;
 
-public class AppRpcConnectionFactory
+public class AppRpcServerConnectionFactory
 {
     public Task<RpcConnection> Invoke(
         RpcServerPeer peer, Channel<RpcMessage> channel, ImmutableOptionSet options,
@@ -13,7 +13,7 @@ public class AppRpcConnectionFactory
         if (!options.TryGet<HttpContext>(out var httpContext))
             return RpcConnectionTask(channel, options);
 
-        var session = httpContext.TryGetSession("s");
+        var session = httpContext.TryGetSession();
         return session != null
             ? AppRpcConnectionTask(channel, options, session)
             : RpcConnectionTask(channel, options);

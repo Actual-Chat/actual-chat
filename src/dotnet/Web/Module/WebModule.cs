@@ -31,8 +31,8 @@ public sealed class WebModule : HostModule, IWebModule
         services.RemoveAll<SessionMiddleware>();
 
         // Replace RpcServerConnectionFactory with AppRpcConnectionFactory
-        services.AddSingleton(_ => new AppRpcConnectionFactory());
-        services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<AppRpcConnectionFactory>().Invoke);
+        services.AddSingleton(_ => new AppRpcServerConnectionFactory());
+        services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<AppRpcServerConnectionFactory>().Invoke);
 
         // Replace DefaultSessionReplacerRpcMiddleware with AppDefaultSessionReplacerRpcMiddleware
         rpc.RemoveInboundMiddleware<DefaultSessionReplacerRpcMiddleware>();

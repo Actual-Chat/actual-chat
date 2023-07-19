@@ -66,46 +66,40 @@ namespace ActualChat.UI.Blazor.App
             });
 
             fusion.Rpc.AddWebSocketClient(c => {
-                var trueSessionResolver = c.GetService<TrueSessionResolver>();
-                var urlMapper = c.GetRequiredService<UrlMapper>();
-                var baseUrl = urlMapper.BaseUrl.TrimSuffix("/");
-                var isWebSocketUrl = baseUrl.StartsWith("ws://", StringComparison.Ordinal)
-                    || baseUrl.StartsWith("wss://", StringComparison.Ordinal);
-                if (!isWebSocketUrl) {
-                    if (baseUrl.StartsWith("http://", StringComparison.Ordinal))
-                        baseUrl = "ws://" + baseUrl.Substring(7);
-                    else if (baseUrl.StartsWith("https://", StringComparison.Ordinal))
-                        baseUrl = "wss://" + baseUrl.Substring(8);
-                    else
-                        baseUrl = "wss://" + baseUrl;
-                }
-
                 return new RpcWebSocketClient.Options() {
                     ConnectionUriResolver = (client, peer) => {
                         var settings = client.Settings;
+                        var urlMapper = client.Services.GetRequiredService<UrlMapper>();
                         using var sb = ZString.CreateStringBuilder();
                         var isDefaultClient = peer.Ref == RpcPeerRef.Default;
-                        sb.Append(isDefaultClient ? baseUrl : $"ws://{peer.Ref.Id.Value}");
+                        if (isDefaultClient)
+                            sb.Append(urlMapper.WebsocketBaseUrl);
+                        else {
+                            var addressAndPort = peer.Ref.Id.Value;
+                            sb.Append(addressAndPort.OrdinalEndsWith(":443") ? "wss://" : "ws://");
+                            sb.Append(addressAndPort);
+                        }
                         sb.Append(settings.RequestPath);
                         sb.Append('?');
                         sb.Append(settings.ClientIdParameterName);
                         sb.Append('=');
                         sb.Append(client.ClientId.UrlEncode());
-                        if (isDefaultClient && trueSessionResolver is { HasSession: true }) {
-                            sb.Append("&s=");
-                            sb.Append(trueSessionResolver.Session.Id.UrlEncode());
-                        }
                         return sb.ToString().ToUri();
                     },
                 };
             });
-            if (appKind.IsMauiApp())
-                services.AddTransient<ClientWebSocket>(_ => {
-                    var ws = new ClientWebSocket();
-                    var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
-                    ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
+            services.AddTransient<ClientWebSocket>(c => {
+                var ws = new ClientWebSocket();
+                ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
+                if (!appKind.IsMauiApp())
                     return ws;
-                });
+
+                var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
+                ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
+                if (c.GetService<TrueSessionResolver>() is { HasSession: true } trueSessionResolver)
+                    ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id.Value);
+                return ws;
+            });
 
             // Creating modules
             using var _ = tracer.Region($"{nameof(ModuleHostBuilder)}.{nameof(ModuleHostBuilder.Build)}");
