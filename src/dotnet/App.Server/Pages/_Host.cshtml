@@ -3,6 +3,7 @@
 @namespace ActualChat.App.Server.Pages
 @using ActualChat.App.Wasm
 @using ActualChat.Hosting
+@using ActualChat.Security
 @using ActualChat.Web
 @using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Stl.Fusion.Server.Authentication
@@ -11,6 +12,7 @@
 @inject HostInfo HostInfo
 @inject ServerAuthHelper ServerAuthHelper
 @inject ISessionResolver SessionResolver
+@inject ISecureTokens SecureTokens
 @{
     var session = await HttpContext.Authenticate(ServerAuthHelper);
     SessionResolver.Session = session;
@@ -113,9 +115,14 @@
     </div>
 } else {
     <app id="app" class="flex flex-col h-full">
+        @{
+            var sessionToken = "";
+            if (isServerSideBlazor)
+                sessionToken = (await SecureTokens.CreateForSession(session)).Token;
+        }
         @(await Html.RenderComponentAsync<WasmApp>(
             isServerSideBlazor ? RenderMode.Server : RenderMode.WebAssembly,
-            new { SessionId = session.Id.Value }))
+            new { SessionHash = session.Hash, SessionToken = sessionToken }))
     </app>
 
     <!-- This block must go right after app, otherwise page content won't be blurred -->

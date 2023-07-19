@@ -125,9 +125,8 @@ public static partial class MauiProgram
             _ = mauiSession.Acquire();
             var trueSessionResolver = AppServices.GetRequiredService<TrueSessionResolver>();
             await trueSessionResolver.SessionTask.ConfigureAwait(false);
-
             var appServiceStarter = AppServices.GetRequiredService<AppServiceStarter>();
-            _ = appServiceStarter.PostSessionWarmup(Session.Default, CancellationToken.None);
+            _ = appServiceStarter.PostSessionWarmup(CancellationToken.None);
         });
     }
 

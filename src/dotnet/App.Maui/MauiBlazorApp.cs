@@ -9,8 +9,8 @@ public class MauiBlazorApp : AppBase
     protected override async Task OnInitializedAsync()
     {
         try {
-            var trueSessionResolver = Services.GetRequiredService<TrueSessionResolver>();
-            var session = await trueSessionResolver.SessionTask.ConfigureAwait(true);
+            TrueSessionResolver = Services.GetRequiredService<TrueSessionResolver>();
+            var session = await TrueSessionResolver.SessionTask.ConfigureAwait(true);
             MainPage.Current!.SetupSessionCookie(session);
 
             try {

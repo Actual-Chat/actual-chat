@@ -15,12 +15,14 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.AppKind.HasBlazorUI())
+        var appKind = HostInfo.AppKind;
+        if (!appKind.HasBlazorUI())
             return; // Blazor UI only module
 
-        if (HostInfo.AppKind.IsClient()) {
-            services.AddSingleton(c => new TrueSessionResolver(c));
+        if (appKind.IsClient()) {
             services.AddScoped<ISessionResolver>(c => new DefaultSessionResolver(c));
+            if (appKind.IsMauiApp())
+                services.AddSingleton(c => new TrueSessionResolver(c));
         }
         services.AddScoped<AppServiceStarter>(c => new AppServiceStarter(c));
         services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c));

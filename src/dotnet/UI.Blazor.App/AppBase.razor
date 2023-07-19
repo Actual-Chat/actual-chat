@@ -1,6 +1,7 @@
 @using ActualChat.Hosting
 @using ActualChat.Module
 @using ActualChat.Chat.UI.Blazor.Services
+@using ActualChat.Security
 @implements IRootComponent
 @implements IDisposable
 @{
@@ -60,8 +61,10 @@
     [Inject] protected ISessionResolver SessionResolver { get; init; } = null!;
     [Inject] protected LoadingUI LoadingUI { get; init; } = null!;
     [Inject] protected Tracer Tracer { get; init; } = null!;
+    protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
 
-    [Parameter] public string SessionId { get; set; } = Symbol.Empty;
+    [Parameter] public string SessionHash { get; set; } = "";
+    [Parameter] public string SessionToken { get; set; } = "";
 
     public AppBase() {
         _disposeTokenSource = new CancellationTokenSource();
@@ -83,21 +86,24 @@
         using var _1 = Tracer.Region();
 
         var appKind = HostInfo.AppKind;
+        var sessionHash = SessionHash;
         if (appKind.IsServer()) {
-            if (!SessionResolver.HasSession) {
-                var session = new Session(SessionId).RequireValid();
-                SessionResolver.Session = session;
-            }
+            var secureTokensBackend = Services.GetRequiredService<ISecureTokensBackend>();
+            var session = secureTokensBackend.ParseSessionToken(SessionToken);
+            SessionResolver.Session = session; // All clients use DefaultSessionResolver
+            sessionHash = session.Hash;
         }
+        else if (appKind.IsMauiApp()) {
+            sessionHash = TrueSessionResolver!.Session.Hash;
+        }
+#if false // Prob. doesn't make sense to run PostSessionWarmup in WASM
         else if (appKind.IsWasmApp()) {
-            // MAUI app does all of this earlier
-            var session = new Session(SessionId).RequireValid();
-            var trueSessionResolver = Services.GetRequiredService<TrueSessionResolver>();
-            trueSessionResolver.Session = session;
-            _ = AppServiceStarter.PostSessionWarmup(SessionResolver.Session, CancellationToken.None);
+            // MAUI app does this earlier
+            _ = AppServiceStarter.PostSessionWarmup(_disposeToken);
         }
+#endif
 
-        var whenReadyToRender = AppServiceStarter.ReadyToRender(_disposeToken);
+        var whenReadyToRender = AppServiceStarter.ReadyToRender(sessionHash, _disposeToken);
 
         UIAssembly ??= typeof(AppBase).Assembly;
         UIModuleAssemblies ??= Host.Modules

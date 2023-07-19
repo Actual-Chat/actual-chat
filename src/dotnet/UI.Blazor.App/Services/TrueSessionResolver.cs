@@ -1,6 +1,5 @@
 using Stl.Internal;
 using Stl.Rpc;
-using Stl.Rpc.Infrastructure;
 
 namespace ActualChat.UI.Blazor.App.Services;
 

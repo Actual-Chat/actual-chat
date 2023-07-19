@@ -21,11 +21,12 @@ public class AppServiceStarter
         Tracer = Services.Tracer(GetType());
     }
 
-    public Task PostSessionWarmup(Session session, CancellationToken cancellationToken)
+    public Task PostSessionWarmup(CancellationToken cancellationToken)
         => Task.Run(async () => {
             using var _1 = Tracer.Region();
             try {
                 // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here!
+                var session = Session.Default; // All clients use default session
 
                 // Access key services
                 var accounts = Services.GetRequiredService<IAccounts>();
@@ -51,7 +52,7 @@ public class AppServiceStarter
             }
         }, cancellationToken);
 
-    public async Task ReadyToRender(CancellationToken cancellationToken)
+    public async Task ReadyToRender(string sessionHash, CancellationToken cancellationToken)
     {
         using var _1 = Tracer.Region();
 
@@ -70,10 +71,8 @@ public class AppServiceStarter
         Tracer.Point("BulkInitUI.Invoke");
         var browserInit = Services.GetRequiredService<BrowserInit>();
         var baseUri = HostInfo.BaseUrl;
-        var session = Services.Session();
-        var trueSession = session.IsDefault() ? Services.GetRequiredService<TrueSessionResolver>().Session : session;
         var browserInitTask = browserInit.Initialize(
-            Constants.Api.Version, baseUri, trueSession.Hash,
+            Constants.Api.Version, baseUri, sessionHash,
             async initCalls => {
                 await browserInfo.Initialize(initCalls).ConfigureAwait(false);
             });
