@@ -6,9 +6,8 @@ public partial class MauiBlazorWebViewHandler
 {
     protected override void ConnectHandler(WKWebView platformView)
     {
-        Log.LogDebug("MauiBlazorWebViewHandler.ConnectHandler");
+        Tracer.Point(nameof(ConnectHandler));
         base.ConnectHandler(platformView);
-
         PlatformView.ScrollView.Bounces = false;
         PlatformView.AllowsBackForwardNavigationGestures = false;
     }

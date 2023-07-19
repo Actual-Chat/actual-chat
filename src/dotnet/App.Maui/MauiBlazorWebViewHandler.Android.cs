@@ -8,12 +8,9 @@ public partial class MauiBlazorWebViewHandler
     protected override void ConnectHandler(WebView platformView)
     {
         Tracer.Point(nameof(ConnectHandler));
-        Log.LogDebug(nameof(ConnectHandler));
-
         base.ConnectHandler(platformView);
 
         platformView.Settings.JavaScriptEnabled = true;
-
         var jsInterface = new AndroidJSInterface(this, platformView);
         // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
         platformView.AddJavascriptInterface(jsInterface, "Android");

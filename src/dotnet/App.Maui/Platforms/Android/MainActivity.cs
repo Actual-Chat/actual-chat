@@ -96,7 +96,6 @@ public class MainActivity : MauiAppCompatActivity
                 });
             }));
         CreateNotificationChannel();
-
         TryHandleNotificationTap(Intent);
 
         // Keep the splash screen on-screen for longer periods
@@ -147,7 +146,6 @@ public class MainActivity : MauiAppCompatActivity
     {
         Log.LogDebug("OnNewIntent");
         base.OnNewIntent(intent);
-
         TryHandleNotificationTap(intent);
     }
 

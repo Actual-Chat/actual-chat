@@ -10,8 +10,6 @@ public class TrueSessionResolver : ISessionResolver
     private volatile TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();
     private volatile Session? _session;
 
-    public static readonly string HeaderName = "X-Session";
-
     public IServiceProvider Services { get; }
     public bool HasSession => _session != null;
     public Task<Session> SessionTask => _sessionSource.Task;
@@ -33,8 +31,6 @@ public class TrueSessionResolver : ISessionResolver
             Services.RpcHub().GetClientPeer(RpcPeerRef.Default).Disconnect();
         }
     }
-
-    public RpcHeader Header => new(HeaderName, Session.Id);
 
     public TrueSessionResolver(IServiceProvider services)
         => Services = services;

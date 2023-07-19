@@ -66,10 +66,12 @@ public static class HttpSessionExt
                 return session;
         }
 
-        var cookies = httpContext.Request.Cookies;
-        var cookieName = Cookie.Name ?? "";
-        cookies.TryGetValue(cookieName, out var sessionId);
-        return SessionExt.NewValidOrNull(sessionId);
+        var request = httpContext.Request;
+        if (request.Headers.TryGetValue(Constants.Session.HeaderName, out var sessionIds))
+            return SessionExt.NewValidOrNull(sessionIds.SingleOrDefault());
+        if (request.Cookies.TryGetValue(Constants.Session.CookieName, out var sessionId))
+            return SessionExt.NewValidOrNull(sessionId);
+        return null;
     }
 
     public static Session GetSessionFromQuery(this HttpContext httpContext, string parameterName)
@@ -92,8 +94,8 @@ public static class HttpSessionExt
     {
         session.RequireValid();
         var cookieBuilder = Cookie;
-        var sessionCookie = cookieBuilder.Build(httpContext);
-        httpContext.Response.Cookies.Append(cookieBuilder.Name!, session.Id.Value, sessionCookie);
+        var cookie = cookieBuilder.Build(httpContext);
+        httpContext.Response.Cookies.Append(Constants.Session.CookieName, session.Id.Value, cookie);
         return session;
     }
 }

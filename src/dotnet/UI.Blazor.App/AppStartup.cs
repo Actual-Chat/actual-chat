@@ -46,6 +46,7 @@ namespace ActualChat.UI.Blazor.App
             restEase.ConfigureHttpClient((c, name, o) => {
                 var urlMapper = c.GetRequiredService<UrlMapper>();
                 var clientBaseUrl = urlMapper.ApiBaseUrl;
+                var trueSessionResolver = c.GetService<TrueSessionResolver>();
                 o.HttpClientActions.Add(client => {
                     client.BaseAddress = clientBaseUrl.ToUri();
                     client.DefaultRequestVersion = HttpVersion.Version30;
@@ -53,6 +54,8 @@ namespace ActualChat.UI.Blazor.App
                     if (appKind.IsMauiApp()) {
                         var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
                         client.DefaultRequestHeaders.Add(gclbCookieHeader.Name, gclbCookieHeader.Value);
+                        if (trueSessionResolver is { HasSession: true })
+                            client.DefaultRequestHeaders.Add(Constants.Session.HeaderName, trueSessionResolver.Session.Id.Value);
                     }
                 });
                 if (appKind.IsMauiApp())

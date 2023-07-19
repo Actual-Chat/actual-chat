@@ -1,5 +1,4 @@
-﻿using ActualChat.App.Maui.Services;
-using ActualChat.Users;
+﻿using ActualChat.Users;
 using Android.Content;
 using Android.Gms.Auth.Api.SignIn;
 using Activity = Android.App.Activity;

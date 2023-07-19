@@ -19,10 +19,4 @@ public sealed partial class MauiBlazorWebViewHandler : BlazorWebViewHandler
         // ReSharper disable once ArrangeConstructorOrDestructorBody
         Tracer.Point(".ctor");
     }
-
-    public override void SetMauiContext(IMauiContext mauiContext)
-    {
-        Tracer.Point(nameof(SetMauiContext));
-        base.SetMauiContext(mauiContext);
-    }
 }
