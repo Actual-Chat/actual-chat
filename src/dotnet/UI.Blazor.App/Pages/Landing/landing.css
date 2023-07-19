@@ -953,3 +953,18 @@ body.hoverable .landing-download-tile:hover .c-text {
 body.narrow .landing-download-tile .c-content {
     @apply flex-x items-center;
 }
+
+.checkmark {
+    @apply flex-x items-center gap-x-4;
+}
+.checkmark > .c-text {
+    @apply text-3.5xl md:text-4.5xl font-normal;
+}
+body.wide .checkmark img {
+    width: 4rem;
+    height: 4rem;
+}
+body.narrow .checkmark img {
+    width: 2.75rem;
+    height: 2.75rem;
+}

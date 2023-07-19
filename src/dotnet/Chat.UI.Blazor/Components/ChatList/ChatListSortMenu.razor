@@ -2,7 +2,7 @@
 @inherits MenuBase
 
 <div class="sort-menu">
-    <div class="p-2 font-semibold">
+    <div class="p-2 text-02 font-semibold">
         Sort by:
     </div>
     <MenuEntry
@@ -11,12 +11,12 @@
         Click="@(() => OnClick(ChatListOrder.ByLastEventTime))">
     </MenuEntry>
     <MenuEntry
-        Icon="icon-sort-by-message"
+        Icon="icon-sort-by-me"
         Text="Recency of your own activity"
         Click="@(() => OnClick(ChatListOrder.ByOwnUpdateTime))">
     </MenuEntry>
     <MenuEntry
-        Icon="icon-sort-by-recent"
+        Icon="icon-sort-by-message"
         Text="Count of unread messages"
         Click="@(() => OnClick(ChatListOrder.ByUnreadCount))">
     </MenuEntry>
