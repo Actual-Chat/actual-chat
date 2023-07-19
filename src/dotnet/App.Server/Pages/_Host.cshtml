@@ -8,10 +8,9 @@
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Endpoints
 
-@inject IServiceProvider Services
+@inject HostInfo HostInfo
 @inject ServerAuthHelper ServerAuthHelper
 @inject ISessionResolver SessionResolver
-@inject HostInfo HostInfo
 @{
     var session = await HttpContext.Authenticate(ServerAuthHelper);
     SessionResolver.Session = session;
