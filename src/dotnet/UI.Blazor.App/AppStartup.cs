@@ -65,28 +65,26 @@ namespace ActualChat.UI.Blazor.App
                     });
             });
 
-            fusion.Rpc.AddWebSocketClient(c => {
-                return new RpcWebSocketClient.Options() {
-                    ConnectionUriResolver = (client, peer) => {
-                        var settings = client.Settings;
-                        var urlMapper = client.Services.GetRequiredService<UrlMapper>();
-                        using var sb = ZString.CreateStringBuilder();
-                        var isDefaultClient = peer.Ref == RpcPeerRef.Default;
-                        if (isDefaultClient)
-                            sb.Append(urlMapper.WebsocketBaseUrl);
-                        else {
-                            var addressAndPort = peer.Ref.Id.Value;
-                            sb.Append(addressAndPort.OrdinalEndsWith(":443") ? "wss://" : "ws://");
-                            sb.Append(addressAndPort);
-                        }
-                        sb.Append(settings.RequestPath);
-                        sb.Append('?');
-                        sb.Append(settings.ClientIdParameterName);
-                        sb.Append('=');
-                        sb.Append(client.ClientId.UrlEncode());
-                        return sb.ToString().ToUri();
-                    },
-                };
+            fusion.Rpc.AddWebSocketClient(_ => new RpcWebSocketClient.Options() {
+                ConnectionUriResolver = (client, peer) => {
+                    var settings = client.Settings;
+                    var urlMapper = client.Services.GetRequiredService<UrlMapper>();
+                    using var sb = ZString.CreateStringBuilder();
+                    var isDefaultClient = peer.Ref == RpcPeerRef.Default;
+                    if (isDefaultClient)
+                        sb.Append(urlMapper.WebsocketBaseUrl);
+                    else {
+                        var addressAndPort = peer.Ref.Id.Value;
+                        sb.Append(addressAndPort.OrdinalEndsWith(":443") ? "wss://" : "ws://");
+                        sb.Append(addressAndPort);
+                    }
+                    sb.Append(settings.RequestPath);
+                    sb.Append('?');
+                    sb.Append(settings.ClientIdParameterName);
+                    sb.Append('=');
+                    sb.Append(client.ClientId.UrlEncode());
+                    return sb.ToString().ToUri();
+                },
             });
             services.AddTransient<ClientWebSocket>(c => {
                 var ws = new ClientWebSocket();
