@@ -116,6 +116,9 @@ body.hoverable .tile:hover {
     @apply min-w-10 max-w-10;
     @apply text-icons-01;
 }
+.tile-item.first-tile-item {
+    @apply h-14;
+}
 .first-tile-item .tile-item-icon {
     @apply justify-start;
 }

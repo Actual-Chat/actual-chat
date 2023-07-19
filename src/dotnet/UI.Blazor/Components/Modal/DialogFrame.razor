@@ -14,7 +14,11 @@
 <ModalFrame Class="@cls">
     <Header>
         @if (HasHeader) {
-            <DialogHeader DialogFrame="@this" Title="@Title" HasCloseButton="@HasCloseButton"/>
+            <DialogHeader
+                DialogFrame="@this"
+                Title="@Title"
+                HasCloseButton="@HasCloseButton"
+                IsMultiStep="@IsMultiStep"/>
         }
     </Header>
     <ChildContent>
@@ -36,6 +40,7 @@
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
+    [Parameter] public bool IsMultiStep { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }

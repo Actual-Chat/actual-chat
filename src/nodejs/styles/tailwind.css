@@ -172,6 +172,11 @@
         @apply shadow-inner shadow-scrollbar;
     }
 
+    .custom-scrollbar-outside {
+        @apply custom-scrollbar;
+        @apply -mr-2 pr-1;
+    }
+
     /* Mozilla */
     .custom-scrollbar, .custom-scrollbar-x {
         scrollbar-width: 2px;

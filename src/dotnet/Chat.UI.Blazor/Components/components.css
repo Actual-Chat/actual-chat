@@ -5,15 +5,15 @@
     @apply mb-4;
     @apply overflow-hidden;
 }
+.delete-message-modal .c-wrapper {
+    @apply overflow-y-scroll;
+    @apply custom-scrollbar-outside;
+}
 .delete-message-modal .c-message {
     @apply flex-initial flex-y;
     @apply overflow-hidden;
     @apply rounded-lg;
     @apply border-2 border-bg-04;
-}
-.delete-message-modal .chat-message {
-    @apply md:max-h-48;
-    @apply overflow-auto custom-scrollbar; /* This is what we scroll */
 }
 .delete-message-modal .message-content {
     @apply min-h-fit;
@@ -191,7 +191,7 @@ body.hoverable .people-tab .avatar-badge:hover {
 }
 
 body.wide .author-modal {
-    @apply w-80;
+    @apply w-82;
 }
 .author-modal .header-tile-item .tile-item-body-content {
     @apply max-h-8;

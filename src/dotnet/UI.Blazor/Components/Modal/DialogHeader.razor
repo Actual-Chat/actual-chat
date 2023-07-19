@@ -5,9 +5,9 @@
     <div class="modal-header">
         <h3 class="modal-title">@Title</h3>
         @if (HasCloseButton) {
-            <div class="modal-close">
-                <ButtonX Class="btn-sm" Click="OnCloseClick"/>
-            </div>
+            <HeaderButton Click="OnCloseClick">
+                <i class="icon-close"></i>
+            </HeaderButton>
         }
     </div>
 } else {
@@ -24,15 +24,20 @@
             SubmitButtonText="@submitText"
             SubmitClick="@settings.SubmitClick" />
     } else {
-        <div class="modal-header-mobile">
-            @if (HasCloseButton) {
-                <ButtonRound Click="OnCloseClick" Class="btn-sm transparent">
-                    <i class="icon-arrow-left text-2xl"></i>
-                </ButtonRound>
+        <div class="modal-header">
+            @if (IsMultiStep) {
+                <HeaderButton Click="OnCloseClick">
+                    <i class="icon-arrow-left"></i>
+                </HeaderButton>
             }
             <div class="modal-title">
                 @Title
             </div>
+            @if (HasCloseButton) {
+                <HeaderButton Click="OnCloseClick">
+                    <i class="icon-close"></i>
+                </HeaderButton>
+            }
         </div>
     }
 }
@@ -45,6 +50,7 @@
     // ReSharper disable once RedundantNameQualifier
     [Parameter] public ActualChat.UI.Blazor.Components.DialogFrame DialogFrame { get; set; } = null!;
     [Parameter] public bool HasCloseButton { get; set; }
+    [Parameter] public bool IsMultiStep { get; set; }
     [Parameter] public string Title { get; set; } = "";
 
     private void OnCloseClick()

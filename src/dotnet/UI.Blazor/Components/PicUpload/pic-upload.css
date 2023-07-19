@@ -65,6 +65,10 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
     @apply w-12 h-12 min-w-12 min-h-12 max-w-12 max-h-12;
 }
 
+.pic-size-14 {
+    @apply w-14 h-14 min-w-14 min-h-14 max-w-14 max-h-14;
+}
+
 .pic-size-16 {
     @apply w-16 h-16 min-w-16 min-h-16 max-w-16 max-h-16;
 }

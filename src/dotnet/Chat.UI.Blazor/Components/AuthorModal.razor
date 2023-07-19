@@ -3,12 +3,16 @@
 @inherits ComputedStateComponent<AuthorModal.ComputedModel>
 @{
     var m = State.Value;
-    var title = m.IsOwn ? "Your profile" : $"{m.Author.Avatar.Name}";
+    var title = "User profile";
+    if (m.IsOwn)
+        title = "Your profile";
+    else if (m.Author.IsAnonymous)
+        title = "Anonymous profile";
 }
 
-<DialogFrame Title="@title" Class="author-modal" HasHeader="false">
+<DialogFrame Title="@title" Class="author-modal modal-sm" HasCloseButton="true">
     <Body>
-    <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn"/>
+        <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn"/>
     </Body>
     <Buttons>
         @if (m.IsOwn) {
@@ -22,7 +26,10 @@
             <Button Class="btn-modal" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                <Button Class="btn-modal" Click="OnStartPeerChat">Chat with @m.Author.Avatar.Name</Button>
+                <Button Class="btn-modal" Click="OnStartPeerChat">
+                    <i class="icon-message-ellipse text-xl"></i>
+                    Chat with @m.Author.Avatar.Name
+                </Button>
             } else {
                 <Button Class="btn-modal" Click="OnCancel">Close</Button>
             }
