@@ -15,7 +15,7 @@
 
 /* "Dash" and "O" styling */
 .toggle > .dash {
-    @apply self-start flex-none relative;
+    @apply self-center flex-none relative;
     @apply my-2 h-3.5 w-8;
     @apply rounded-3xl bg-icons-02;
     @apply text-sm;

@@ -14,17 +14,17 @@
         </Steps>
         <Header>
             @if (stepper.CanMoveBack) {
-                <ButtonRound
-                    Class="transparent"
-                    Click="stepper.MoveBack">
+                <HeaderButton Click="stepper.MoveBack">
                     <i class="icon-arrow-left text-2xl"></i>
-                </ButtonRound>
+                </HeaderButton>
                 <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
             }
             <div class="grow"></div>
 
             @if (ModalModel.CanBeClosed) {
-                <ButtonX Click="@(() => Modal.Close())"/>
+                <HeaderButton Click="() => Modal.Close()">
+                    <i class="icon-close"></i>
+                </HeaderButton>
             }
         </Header>
         <Footer>

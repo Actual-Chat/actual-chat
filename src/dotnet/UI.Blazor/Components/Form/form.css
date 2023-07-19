@@ -3,7 +3,7 @@
     @apply mt-2;
 }
 .form-section-content {
-    @apply flex-y items-start gap-y-1;
+    @apply flex-y items-start justify-center gap-y-1;
     @apply w-full;
 }
 .form-section-content > * {
@@ -53,7 +53,7 @@
 
 .form-buttons {
     @apply mt-2;
-    @apply flex-x w-full items-center gap-x-1;
+    @apply flex-x w-full items-center gap-x-4;
 }
 
 .form-section-validation {
@@ -82,7 +82,10 @@
 }
 
 .form .form-section-content.label-inside-input label {
-    @apply text-xs font-normal text-accent;
+    @apply text-xs font-normal text-03;
+}
+.form .form-section-content.label-inside-input:focus-within label {
+    @apply text-accent;
 }
 .form section.invalid .form-section-content.label-inside-input label {
     @apply text-error;
@@ -141,7 +144,7 @@
 }
 
 .form-block .form-block-title {
-    @apply text-02;
+    @apply text-caption-1;
 }
 
 /* separator between form blocks */
@@ -151,4 +154,8 @@
 
 .form-block section {
     @apply mt-0; /* reset top margin on FormSection */
+}
+
+.form-section-label {
+    line-height: 0.875rem;
 }

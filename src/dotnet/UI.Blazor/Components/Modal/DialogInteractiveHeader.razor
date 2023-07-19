@@ -1,16 +1,16 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <div class="modal-header-interactive no-padding-header-decorator">
-    <ButtonRound Class="btn-close" Click="CloseClick">
-        <i class="icon-close text-xl"></i>
-    </ButtonRound>
+    <HeaderButton Click="CloseClick">
+        <i class="icon-close"></i>
+    </HeaderButton>
     <div class="modal-title">
         @Title
     </div>
     @if (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button) {
-        <ButtonRound Class="btn-submit" Type="SubmitButtonType" Click="SubmitClick">
+        <HeaderButton Class="btn-submit" Type="SubmitButtonType" Click="SubmitClick">
             <span>@SubmitButtonText</span>
-        </ButtonRound>
+        </HeaderButton>
     }
 </div>
 

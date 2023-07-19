@@ -2,11 +2,14 @@
     @apply flex-y grow;
 }
 .stepper-header {
-    @apply flex-x min-h-14 max-h-14 px-2 gap-x-2 items-center;
+    @apply flex-x gap-x-4 items-center;
+    @apply min-h-14 max-h-14;
+    @apply px-4;
 }
 .stepper-body {
-    @apply flex-y grow px-6 justify-center;
+    @apply flex-y grow justify-center;
+    @apply px-4;
 }
 .stepper-footer {
-    @apply mt-8;
+    @apply mt-8 px-4;
 }

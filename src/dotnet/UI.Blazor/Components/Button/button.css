@@ -1,6 +1,6 @@
 .btn, .btn-md {
     @apply inline-flex-x justify-center relative;
-    @apply py-1 px-3 fill-current rounded-md border outline-none;
+    @apply py-1 px-3 fill-current rounded-lg border outline-none;
     @apply min-w-32 md:min-w-24 max-w-full md:max-w-max;
     @apply h-12 md:h-10 min-h-12 md:min-h-10;
     @apply text-xl md:text-lg font-normal md:font-normal;
@@ -256,7 +256,7 @@ body.hoverable .btn.btn-square:hover > .btn-content {
 }
 body.hoverable .btn.btn-round:hover .btn-content,
 body.hoverable .btn.btn-round.transparent:hover .btn-content {
-    @apply hover:bg-round-focus;
+    @apply bg-round-focus;
 }
 body.hoverable .btn.blackout:hover .btn-content,
 .btn.blackout:focus .btn-content,
@@ -307,10 +307,25 @@ button.off, .btn.off, .btn.btn-square.off, .btn.btn-round.off {
 }
 
 /* Specific buttons */
-.btn-x {
-    @apply transparent;
+/*.btn-x {*/
+/*    @apply transparent;*/
+/*}*/
+body.hoverable .btn.btn-x .btn-content,
+body.hoverable .btn.btn-x:hover .btn-content,
+body.hoverable .btn.btn-x:focus .btn-content,
+body.hoverable .btn.btn-x:active .btn-content {
+    @apply bg-transparent;
 }
 .btn-x .btn-content-inner > i {
     @apply relative top-px; /* To make it properly centered */
     @apply text-2xl font-medium;
+}
+
+.btn-h {
+    @apply flex-none flex items-center justify-center;
+    @apply min-w-5 min-h-5;
+    @apply text-icons-01;
+}
+.btn-h i {
+    @apply text-xl font-semibold leading-5;
 }

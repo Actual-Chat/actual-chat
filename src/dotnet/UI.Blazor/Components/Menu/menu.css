@@ -84,7 +84,7 @@ body.hoverable .ac-menu-item:hover .ac-menu-icon {
 }
 .ac-menu-item.important-item.on .ac-menu-icon > i,
 .ac-menu-item.important-item.on .ac-menu-text {
-    @apply text-error;
+    @apply text-icons-04;
 }
 body.hoverable .ac-menu-item.important-item.on:hover {
     @apply bg-menuitem-hover-warning;
@@ -92,11 +92,7 @@ body.hoverable .ac-menu-item.important-item.on:hover {
 body.hoverable .ac-menu-item.warning-item:hover {
     @apply bg-menuitem-hover-warning;
 }
-body.hoverable .ac-menu-item.warning-item:hover .ac-menu-icon > i,
-body.hoverable .ac-menu-item.warning-item:hover .ac-menu-text {
-    @apply text-error;
-}
-.touch-capable .ac-menu-item.warning-item .ac-menu-icon > i,
-.touch-capable .ac-menu-item.warning-item .ac-menu-text {
-    @apply text-error;
+.ac-menu-item.warning-item .ac-menu-icon > i,
+.ac-menu-item.warning-item .ac-menu-text {
+    @apply text-icons-04;
 }

@@ -27,6 +27,20 @@
     @apply h-full md:h-[90vh] w-full;
 }
 
+body.narrow .modal-frame.modal-md {
+    @apply absolute bottom-0 left-0 right-0;
+    @apply w-auto h-auto rounded-b-none;
+    min-height: 80vh;
+}
+body.narrow .modal-frame.modal-sm {
+    @apply absolute;
+    @apply left-4 right-4;
+    @apply min-h-fit;
+    @apply rounded-xl;
+    max-height: 80vh;
+    bottom: 4vh;
+}
+
 .narrow .narrow-view__modal__position-bottom {
     @apply absolute bottom-0 left-0 right-0;
     @apply w-auto h-auto rounded-b-none;
@@ -60,17 +74,13 @@
 }
 .modal-frame {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;
-    @apply p-2;
+    @apply pb-4;
     @apply h-full w-full md:h-auto md:w-modal;
     @apply rounded-lg;
     @apply font-medium;
+    @apply max-h-screen md:max-h-160;
 }
-body.narrow .modal-frame.bubble-styled-modal {
-    @apply absolute;
-    @apply bottom-4 left-4 right-4;
-    @apply min-h-fit;
-    @apply rounded-xl;
-}
+
 .btn.btn-square.modal-close {
     @apply h-fit -mr-1.5;
 }
@@ -79,9 +89,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .modal-header {
-    @apply flex-none flex-x justify-between items-center gap-x-2;
-    @apply min-h-10 max-h-10;
-    @apply p-2;
+    @apply flex-none flex-x justify-between items-center gap-x-3;
+    @apply min-h-14 max-h-14;
+    @apply px-4;
     @apply overflow-visible;
 }
 
@@ -90,7 +100,8 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .modal-header .modal-title {
-    @apply text-xl md:text-lg font-semibold md:font-medium truncate;
+    @apply truncate;
+    @apply text-title-1 text-02;
 }
 .modal-header .modal-close {
     @apply flex-none;
@@ -101,7 +112,8 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .modal-header-mobile {
     @apply flex-x justify-start items-center gap-x-2;
-    @apply p-2;
+    @apply min-h-14 max-h-14;
+    @apply p-4;
 }
 
 .modal-header-mobile .modal-title {
@@ -109,9 +121,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .modal-header-interactive {
-    @apply flex-x items-center;
+    @apply flex-x items-center gap-x-3;
     @apply min-h-14;
-    @apply pr-2; /* indent to Submit button */
+    @apply px-4; /* indent to Submit button */
     @apply bg-02 border-bg-04 border-b;
 }
 
@@ -129,20 +141,17 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 
 .dialog-body {
-    @apply flex-1 p-2;
+    @apply flex-1 px-4;
     @apply flex-y items-stretch overflow-y-auto;
 }
 
 .dialog-buttons {
-    @apply flex-none p-2;
+    @apply flex-none px-4;
     @apply flex-x gap-x-2 overflow-hidden;
 }
-
 body.narrow .dialog-buttons {
-    @apply p-2;
     @apply -flex-y gap-y-2;
 }
-
 .dialog-buttons .btn {
     @apply flex-1 max-w-none;
 }
@@ -173,7 +182,10 @@ body.narrow .dialog-buttons {
     @apply md:w-full md:h-full;
 }
 .modal-overlay-fullscreen .modal-frame.modal-chrome {
-    @apply w-full h-full p-0 gap-y-0 rounded-none;
+    @apply gap-y-0;
+    @apply w-full h-full;
+    @apply p-0;
+    @apply rounded-none;
 }
 .modal-overlay-fullscreen .dialog-body {
     @apply p-0;
@@ -184,8 +196,4 @@ body.narrow .dialog-buttons {
 }
 .modal-overlay-fullscreen .modal-header {
     @apply hidden;
-}
-
-.modal-frame .no-padding-header-decorator {
-    @apply -mt-2 -ml-2 -mr-2;
 }

@@ -1,37 +1,10 @@
-@{
-    string headerTitle;
-    var nameTitle = "Name";
-    if (IsOwn) {
-        if (Author.IsAnonymous) {
-            headerTitle = "Your profile (Anonymous)";
-            nameTitle = "";
-        } else {
-            headerTitle = "Your profile";
-        }
-    }
-    else if (Author.IsAnonymous) {
-        headerTitle = "Anonymous author";
-        nameTitle = "";
-    } else
-        headerTitle = Author.Avatar.Name;
-}
-
 <Tile>
-    <TileItem IsHoverable="false" Class="header-tile-item">
-        <Content>
-            @headerTitle
-        </Content>
-        <Right>
-            <ButtonX Class="btn-sm" Click="@(_ => Modal.Close())"/>
-        </Right>
-    </TileItem>
-
     <TileItem IsHoverable="false" Class="first-tile-item my-2">
         <Icon>
             @if (Author.IsAnonymous) {
-                <AnonymousIcon Class="w-12 h-12"></AnonymousIcon>
+                <AnonymousIcon Class="w-14 h-14"></AnonymousIcon>
             } else {
-                <AuthorCircle AuthorSid="@Author.Id" Size="SquareSize.Size12" ShowPresence="true" ShowRecording="true"/>
+                <AuthorCircle AuthorSid="@Author.Id" Size="SquareSize.Size14" ShowPresence="true" ShowRecording="true"/>
             }
         </Icon>
         <Right>
@@ -46,7 +19,7 @@
             }
         </Content>
         <Caption>
-            @nameTitle
+            @(Author.IsAnonymous ? "" : "Name")
         </Caption>
     </TileItem>
 

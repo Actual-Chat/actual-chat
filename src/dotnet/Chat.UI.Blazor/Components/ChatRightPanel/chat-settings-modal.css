@@ -12,10 +12,6 @@
     @apply mx-0;
 }
 
-.edit-chat-settings-modal .modal-header {
-    @apply mx-4;
-}
-
 .edit-chat-settings-modal .dialog-body {
     @apply p-0;
 }
