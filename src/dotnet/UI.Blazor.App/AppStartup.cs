@@ -69,9 +69,9 @@ namespace ActualChat.UI.Blazor.App
                 ConnectionUriResolver = (client, peer) => {
                     var settings = client.Settings;
                     var urlMapper = client.Services.GetRequiredService<UrlMapper>();
+
                     using var sb = ZString.CreateStringBuilder();
-                    var isDefaultClient = peer.Ref == RpcPeerRef.Default;
-                    if (isDefaultClient)
+                    if (peer.Ref == RpcPeerRef.Default)
                         sb.Append(urlMapper.WebsocketBaseUrl);
                     else {
                         var addressAndPort = peer.Ref.Id.Value;
@@ -83,21 +83,23 @@ namespace ActualChat.UI.Blazor.App
                     sb.Append(settings.ClientIdParameterName);
                     sb.Append('=');
                     sb.Append(client.ClientId.UrlEncode());
-                    return sb.ToString().ToUri();
+                    var uri = sb.ToString().ToUri();
+                    client.Services.LogFor<RpcWebSocketClient.Options>().LogWarning("Uri: {Uri}", uri);
+                    return uri;
                 },
             });
-            services.AddTransient<ClientWebSocket>(c => {
-                var ws = new ClientWebSocket();
-                ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
-                if (!appKind.IsMauiApp())
+            if (appKind.IsMauiApp())
+                services.AddTransient<ClientWebSocket>(c => {
+                    // NOTE(AY): "new ClientWebSocket()" triggers this exception in WASM:
+                    // - PlatformNotSupportedException: Operation is not supported on this platform.
+                    // So the code below should never run in WASM.
+                    var ws = new ClientWebSocket();
+                    var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
+                    ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
+                    if (c.GetService<TrueSessionResolver>() is { HasSession: true } trueSessionResolver)
+                        ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id.Value);
                     return ws;
-
-                var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
-                ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
-                if (c.GetService<TrueSessionResolver>() is { HasSession: true } trueSessionResolver)
-                    ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id.Value);
-                return ws;
-            });
+                });
 
             // Creating modules
             using var _ = tracer.Region($"{nameof(ModuleHostBuilder)}.{nameof(ModuleHostBuilder.Build)}");
