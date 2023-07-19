@@ -1,4 +1,5 @@
 ﻿using ActualChat.Security;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 using Stl.Fusion.Server.Authentication;
 
@@ -55,10 +56,20 @@ public static class HttpSessionExt
         return session;
     }
 
-    public static Session GetSession(this HttpContext httpContext, string? queryParameterName = null)
+    public static Session GetSession(this HttpContext httpContext)
+        => httpContext.TryGetSession().RequireValid();
+
+    [Obsolete("Do not use query string to pass session")]
+    public static Session GetSession(this HttpContext httpContext, string? queryParameterName)
         => httpContext.TryGetSession(queryParameterName).RequireValid();
 
-    public static Session? TryGetSession(this HttpContext httpContext, string? queryParameterName = null)
+    public static Session? TryGetSession(this HttpContext httpContext)
+ #pragma warning disable CS0618 // Type or member is obsolete
+        => TryGetSession(httpContext, null);
+ #pragma warning restore CS0618 // Type or member is obsolete
+
+    [Obsolete("Do not use query string to pass session")]
+    public static Session? TryGetSession(this HttpContext httpContext, string? queryParameterName)
     {
         if (!queryParameterName.IsNullOrEmpty()) {
             var session = httpContext.TryGetSessionFromQuery(queryParameterName);
@@ -69,15 +80,31 @@ public static class HttpSessionExt
         var request = httpContext.Request;
         if (request.Headers.TryGetValue(Constants.Session.HeaderName, out var sessionIds))
             return SessionExt.NewValidOrNull(sessionIds.SingleOrDefault());
+
         if (request.Cookies.TryGetValue(Constants.Session.CookieName, out var sessionId))
             return SessionExt.NewValidOrNull(sessionId);
+
+        if (request.Headers.TryGetValue(Constants.SecureToken.HeaderName, out var secureTokens)) {
+            var secureTokensBackend = httpContext.RequestServices.GetRequiredService<ISecureTokensBackend>();
+            var secureToken = secureTokens.SingleOrDefault();
+            return secureToken.IsNullOrEmpty()
+                ? null
+                : secureTokensBackend.ParseSessionToken(secureToken);
+        }
         return null;
     }
 
-    public static Session GetSessionFromQuery(this HttpContext httpContext, string parameterName)
-        => httpContext.TryGetSessionFromQuery(parameterName).RequireValid();
+    public static Session AddSessionCookie(this HttpContext httpContext, Session session)
+    {
+        session.RequireValid();
+        var cookieBuilder = Cookie;
+        var cookie = cookieBuilder.Build(httpContext);
+        httpContext.Response.Cookies.Append(Constants.Session.CookieName, session.Id.Value, cookie);
+        return session;
+    }
 
-    public static Session? TryGetSessionFromQuery(this HttpContext httpContext, string parameterName)
+    [Obsolete("Do not use query string to pass session or secure token")]
+    private static Session? TryGetSessionFromQuery(this HttpContext httpContext, string parameterName)
     {
         var sessionId = httpContext.Request.Query[parameterName].SingleOrDefault() ?? "";
         if (sessionId.IsNullOrEmpty())
@@ -88,14 +115,5 @@ public static class HttpSessionExt
             sessionId = secureTokensBackend.TryParse(sessionId)?.Value;
         }
         return SessionExt.NewValidOrNull(sessionId);
-    }
-
-    public static Session AddSessionCookie(this HttpContext httpContext, Session session)
-    {
-        session.RequireValid();
-        var cookieBuilder = Cookie;
-        var cookie = cookieBuilder.Build(httpContext);
-        httpContext.Response.Cookies.Append(Constants.Session.CookieName, session.Id.Value, cookie);
-        return session;
     }
 }

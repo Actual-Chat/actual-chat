@@ -14,7 +14,7 @@ export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly onReconnected: EventHandler<void>;
 
-    private recorderId: string;
+    private secureToken: string;
 
     private static whenInitialized: Promise<void> | null;
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
@@ -31,21 +31,21 @@ export class AudioRecorder {
     }
 
     /** Called from Blazor */
-    public static create(blazorRef: DotNet.DotNetObject, recorderId: string) {
-        return new AudioRecorder(blazorRef, recorderId);
+    public static create(blazorRef: DotNet.DotNetObject, secureToken: string) {
+        return new AudioRecorder(blazorRef, secureToken);
     }
 
-    public constructor(blazorRef: DotNet.DotNetObject, recorderId: string) {
+    public constructor(blazorRef: DotNet.DotNetObject, secureToken: string) {
         this.blazorRef = blazorRef;
-        this.recorderId = recorderId;
+        this.secureToken = secureToken;
         this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.reconnect());
         void AudioRecorder.init();
     }
 
     /** Called from Blazor */
-    public async updateRecorderId(recorderId: string): Promise<void> {
-        this.recorderId = recorderId;
-        await opusMediaRecorder.updateRecorderId(recorderId);
+    public async updateSecureToken(secureToken: string): Promise<void> {
+        this.secureToken = secureToken;
+        await opusMediaRecorder.updateRecorderId(secureToken);
     }
 
     /** Called from Blazor */
@@ -161,7 +161,7 @@ export class AudioRecorder {
             debugLog?.log(`startRecording(), after isWebsiteHasMicrophonePermissions`);
 
             await opusMediaRecorder.start(
-                this.recorderId,
+                this.secureToken,
                 chatId,
                 repliedChatEntryId,
                 (isRecording, isConnected, isVoiceActive) =>

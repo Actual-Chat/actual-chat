@@ -108,4 +108,9 @@ public static partial class Constants
             public const string SchemeName = "Apple";
         }
     }
+
+    public static class SecureToken
+    {
+        public const string HeaderName = "Secure-Token";
+    }
 }

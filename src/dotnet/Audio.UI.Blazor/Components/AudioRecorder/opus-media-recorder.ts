@@ -107,7 +107,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         debugLog?.log(`<- init()`);
     }
 
-    public async start(recorderId: string, chatId: string, repliedChatEntryId: string, onStateChanged: RecorderStateChanged): Promise<void> {
+    public async start(secureToken: string, chatId: string, repliedChatEntryId: string, onStateChanged: RecorderStateChanged): Promise<void> {
         this.onStateChanged = onStateChanged;
         debugLog?.log('-> start(): #', chatId);
         if (!chatId)
@@ -264,7 +264,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
 
             debugLog?.log(`start(): awaiting encoder worker start and vad worker reset ...`);
             await Promise.all([
-                this.encoderWorker.start(recorderId, chatId, repliedChatEntryId),
+                this.encoderWorker.start(secureToken, chatId, repliedChatEntryId),
                 this.vadWorker.reset(),
             ]);
         }
@@ -277,7 +277,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     }
 
     public async updateRecorderId(recorderId: string): Promise<void> {
-        await this.encoderWorker.updateRecorderId(recorderId);
+        await this.encoderWorker.updateSecureToken(recorderId);
     }
 
     public async stop(): Promise<void> {

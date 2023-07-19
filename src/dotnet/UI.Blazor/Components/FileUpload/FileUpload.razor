@@ -1,7 +1,8 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
-@implements IAsyncDisposable
+@using ActualChat.Security
+@inherits ComputedStateComponent<FileUpload.Model>
 
 <input @ref="InputRef" type="file" @attributes="InputAttributes"/>
 
@@ -14,6 +15,7 @@
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] private SecureTokenProvider SecureTokenProvider { get; init; } = null!;
 
     [Parameter, EditorRequired] public string UploadUrl { get; set; } = "";
     [Parameter] public int? MaxSize { get; set; }
@@ -26,12 +28,15 @@
         if (!firstRender)
             return;
 
+        var m = State.ValueOrDefault;
+        var secureToken = m?.SecureToken?.Token;
+
         BlazorRef = DotNetObjectReference.Create(this);
-        var options = new Options {
+        var options = new JsOptions {
             MaxSize = MaxSize,
             UploadUrl = UploadUrl,
-            SessionId = BrowserInfo is { AppKind: AppKind.MauiApp, IsIos: true }
-                ? Session.Id
+            SecureToken = BrowserInfo is { AppKind: AppKind.MauiApp, IsIos: true }
+                ? secureToken
                 : null,
         };
         JSRef = await JS
@@ -40,6 +45,14 @@
                 InputRef,
                 BlazorRef,
                 options);
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var token = await SecureTokenProvider.CurrentToken.Use(cancellationToken);
+
+        await JSRef.InvokeVoidAsync("updateSecureToken", cancellationToken, token?.Token ?? "");
+
+        return new (token);
     }
 
     [JSInvokable]
@@ -56,19 +69,23 @@
         ErrorUI.ShowError(StandardError.Constraint($"File is too big. Max file size: {size}."));
     }
 
-    public async ValueTask DisposeAsync() {
+    public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
+        await base.DisposeAsync();
     }
 
     // Nested types
 
-    public class Options
+    public class JsOptions
     {
         public int? MaxSize { get; set; }
         public string? UploadUrl { get; set; }
-        public string? SessionId { get; set; }
+        public string? SecureToken { get; set; }
     }
+
+    public record Model(SecureToken? SecureToken);
+
 }

@@ -1,13 +1,13 @@
 ﻿using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
-using ActualChat.Security;
+using ActualChat.UI.Blazor.Services;
 using Stl.Locking;
 using AsyncChain = Stl.Async.AsyncChain;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
+public class AudioRecorder : WorkerBase, IAudioRecorderBackend
 {
     private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
@@ -15,7 +15,6 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
     private readonly AsyncLock _stateLock = AsyncLock.New(LockReentryMode.Unchecked);
     private readonly IMutableState<AudioRecorderState> _state;
     private IJSObjectReference _jsRef = null!;
-    private volatile SecureToken? _recorderToken;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -25,7 +24,7 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
     private HostInfo HostInfo { get; }
     private IJSRuntime JS { get; }
     private IServiceProvider Services { get; }
-    private ISecureTokens SecureTokens { get; }
+    private SecureTokenProvider SecureTokenProvider { get; }
     private MomentClockSet Clocks { get; }
 
     public MicrophonePermissionHandler MicrophonePermission { get; }
@@ -40,7 +39,7 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
         HostInfo = services.GetRequiredService<HostInfo>();
         JS = services.GetRequiredService<IJSRuntime>();
         MicrophonePermission = services.GetRequiredService<MicrophonePermissionHandler>();
-        SecureTokens = services.GetRequiredService<ISecureTokens>();
+        SecureTokenProvider = services.GetRequiredService<SecureTokenProvider>();
 
         _state = services.StateFactory().NewMutable(
             AudioRecorderState.Idle,
@@ -50,14 +49,12 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
 
         async Task Initialize()
         {
-            _recorderToken = HostInfo.ClientKind == ClientKind.Ios
-                ? await SecureTokens.CreateForDefaultSession(CancellationToken.None)
-                : null;
+            await SecureTokenProvider.WhenInitialized.ConfigureAwait(false);
             _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                     $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
                     _blazorRef,
-                    _recorderToken?.Token ?? "")
+                    SecureTokenProvider.CurrentToken.Value?.Token ?? "")
                 .ConfigureAwait(false);
 
             this.Start();
@@ -182,24 +179,12 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend, IAsyncDisposable
 
     private async Task RefreshRecorderToken(CancellationToken cancellationToken)
     {
-        var refreshAdvance = TimeSpan.FromMinutes(3);
-        var clock = Clocks.ServerClock;
-        while (!cancellationToken.IsCancellationRequested) {
-            var recorderToken = _recorderToken;
-            if (recorderToken == null) {
-                // Recorder token isn't created yet or is never going to be created
-                await clock.Delay(refreshAdvance, cancellationToken).ConfigureAwait(false);
+        await foreach (var token in SecureTokenProvider.CurrentToken.Changes(cancellationToken)) {
+            if (token.Value == null)
                 continue;
-            }
 
-            var refreshAt = recorderToken.ExpiresAt - refreshAdvance;
-            if (refreshAt >= clock.Now + TimeSpan.FromSeconds(0.1)) // 0.1s gap = just skip tiny waits
-                await clock.Delay(refreshAt, cancellationToken).ConfigureAwait(false);
-
-            recorderToken = await SecureTokens.CreateForDefaultSession(cancellationToken);
-            Interlocked.Exchange(ref _recorderToken, recorderToken);
             await _jsRef
-                .InvokeVoidAsync("updateRecorderId", cancellationToken, recorderToken.Token)
+                .InvokeVoidAsync("updateSecureToken", cancellationToken, token.Value.Token)
                 .ConfigureAwait(false);
         }
     }
