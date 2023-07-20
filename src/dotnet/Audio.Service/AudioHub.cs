@@ -50,7 +50,7 @@ public class AudioHub : Hub
     }
 
     public Task ProcessAudioChunks(
-        string recorderToken,
+        string sessionToken,
         string chatId,
         string repliedChatEntryId,
         double clientStartOffset,
@@ -58,7 +58,7 @@ public class AudioHub : Hub
         IAsyncEnumerable<byte[][]> audioStream)
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
         => ProcessAudio(
-            recorderToken,
+            sessionToken,
             chatId,
             repliedChatEntryId,
             clientStartOffset,
@@ -66,7 +66,7 @@ public class AudioHub : Hub
             audioStream.SelectMany(c => c.AsAsyncEnumerable()));
 
     public async Task ProcessAudio(
-        string recorderToken,
+        string sessionToken,
         string chatId,
         string repliedChatEntryId,
         double clientStartOffset,
@@ -76,7 +76,7 @@ public class AudioHub : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var session = GetSessionFromToken(recorderToken) ?? httpContext.GetSession();
+        var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSession();
 
         var audioRecord = AudioRecord.New(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
         var frameStream = audioStream

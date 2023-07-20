@@ -31,7 +31,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
         HostInfo = services.GetRequiredService<HostInfo>();
 
         ModalUI = services.GetRequiredService<ModalUI>();
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         _backendRef = DotNetObjectReference.Create<IInteractiveUIBackend>(this);
 
         _isInteractive = services.StateFactory().NewMutable(false);

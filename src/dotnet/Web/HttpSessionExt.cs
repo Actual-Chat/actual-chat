@@ -1,5 +1,4 @@
 ﻿using ActualChat.Security;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Http;
 using Stl.Fusion.Server.Authentication;
 
@@ -78,19 +77,21 @@ public static class HttpSessionExt
         }
 
         var request = httpContext.Request;
-        if (request.Headers.TryGetValue(Constants.Session.HeaderName, out var sessionIds))
-            return SessionExt.NewValidOrNull(sessionIds.SingleOrDefault());
+        string? sessionId;
+        if (request.Headers.TryGetValue(Constants.Session.HeaderName, out var sessionIds)) {
+            sessionId = sessionIds.SingleOrDefault();
+            if (!sessionId.IsNullOrEmpty()) {
+                if (SecureToken.HasValidPrefix(sessionId)) {
+                    var secureTokensBackend = httpContext.RequestServices.GetRequiredService<ISecureTokensBackend>();
+                    sessionId = secureTokensBackend.TryParse(sessionId)?.Value;
+                }
+                return SessionExt.NewValidOrNull(sessionId);
+            }
+        }
 
-        if (request.Cookies.TryGetValue(Constants.Session.CookieName, out var sessionId))
+        if (request.Cookies.TryGetValue(Constants.Session.CookieName, out sessionId))
             return SessionExt.NewValidOrNull(sessionId);
 
-        if (request.Headers.TryGetValue(Constants.SecureToken.HeaderName, out var secureTokens)) {
-            var secureTokensBackend = httpContext.RequestServices.GetRequiredService<ISecureTokensBackend>();
-            var secureToken = secureTokens.SingleOrDefault();
-            return secureToken.IsNullOrEmpty()
-                ? null
-                : secureTokensBackend.ParseSessionToken(secureToken);
-        }
         return null;
     }
 

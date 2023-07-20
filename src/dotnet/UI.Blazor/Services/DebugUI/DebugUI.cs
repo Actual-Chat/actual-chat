@@ -20,7 +20,7 @@ public sealed class DebugUI : IDisposable
     {
         Services = services;
         Log = services.LogFor(GetType());
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         HostInfo = services.GetRequiredService<HostInfo>();
         WhenReady = Initialize();
     }

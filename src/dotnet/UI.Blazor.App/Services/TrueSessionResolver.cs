@@ -3,7 +3,7 @@ using Stl.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class TrueSessionResolver : ISessionResolver
+public sealed class TrueSessionResolver : ISessionResolver
 {
     private readonly object _lock = new();
     private volatile TaskCompletionSource<Session> _sessionSource = TaskCompletionSourceExt.New<Session>();

@@ -3,11 +3,10 @@ using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using Stl.Locking;
-using AsyncChain = Stl.Async.AsyncChain;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-public class AudioRecorder : WorkerBase, IAudioRecorderBackend
+public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 {
     private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
@@ -24,7 +23,6 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend
     private HostInfo HostInfo { get; }
     private IJSRuntime JS { get; }
     private IServiceProvider Services { get; }
-    private SecureTokenProvider SecureTokenProvider { get; }
     private MomentClockSet Clocks { get; }
 
     public MicrophonePermissionHandler MicrophonePermission { get; }
@@ -37,9 +35,8 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
         HostInfo = services.GetRequiredService<HostInfo>();
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         MicrophonePermission = services.GetRequiredService<MicrophonePermissionHandler>();
-        SecureTokenProvider = services.GetRequiredService<SecureTokenProvider>();
 
         _state = services.StateFactory().NewMutable(
             AudioRecorderState.Idle,
@@ -47,17 +44,12 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend
         WhenInitialized = Initialize();
         return;
 
-        async Task Initialize()
-        {
-            await SecureTokenProvider.WhenInitialized.ConfigureAwait(false);
+        async Task Initialize() {
             _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                     $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
-                    _blazorRef,
-                    SecureTokenProvider.CurrentToken.Value?.Token ?? "")
+                    _blazorRef)
                 .ConfigureAwait(false);
-
-            this.Start();
         }
     }
 
@@ -160,34 +152,6 @@ public class AudioRecorder : WorkerBase, IAudioRecorderBackend
     }
 
     // Private methods
-
-    protected override async Task OnRun(CancellationToken cancellationToken)
-    {
-        await WhenInitialized;
-
-        var baseChains = new List<AsyncChain>();
-        if (HostInfo.ClientKind == ClientKind.Ios)
-            baseChains.Add(new(nameof(RefreshRecorderToken), RefreshRecorderToken));
-        var retryDelays = RetryDelaySeq.Exp(0.1, 5);
-        await (
-            from chain in baseChains
-            select chain
-                .Log(LogLevel.Debug, DebugLog)
-                .RetryForever(retryDelays, DebugLog)
-            ).RunIsolated(cancellationToken);
-    }
-
-    private async Task RefreshRecorderToken(CancellationToken cancellationToken)
-    {
-        await foreach (var token in SecureTokenProvider.CurrentToken.Changes(cancellationToken)) {
-            if (token.Value == null)
-                continue;
-
-            await _jsRef
-                .InvokeVoidAsync("updateSecureToken", cancellationToken, token.Value.Token)
-                .ConfigureAwait(false);
-        }
-    }
 
     private async Task<bool> StopRecordingUnsafe()
     {

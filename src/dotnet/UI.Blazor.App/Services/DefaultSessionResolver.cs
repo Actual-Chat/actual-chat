@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class DefaultSessionResolver : ISessionResolver
+public sealed class DefaultSessionResolver : ISessionResolver
 {
     private readonly Session _session = Session.Default;
 

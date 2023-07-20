@@ -68,7 +68,7 @@ public static partial class Constants
     public static class Session
     {
         public static string CookieName { get; } = "FusionAuth.SessionId";
-        public static string HeaderName { get; } = "X-Session";
+        public static string HeaderName { get; } = "Session";
         public static TimeSpan MinUpdatePresencePeriod { get; } = TimeSpan.FromHours(1);
         public static TimeSpan SessionInfoUpdatePeriod { get; } = TimeSpan.FromHours(1);
     }
@@ -107,10 +107,5 @@ public static partial class Constants
         {
             public const string SchemeName = "Apple";
         }
-    }
-
-    public static class SecureToken
-    {
-        public const string HeaderName = "Secure-Token";
     }
 }

@@ -7,7 +7,7 @@ public sealed class VibrationUI
     private IJSRuntime JS { get; }
 
     public VibrationUI(IServiceProvider services)
-        => JS = services.GetRequiredService<IJSRuntime>();
+        => JS = services.JSRuntime();
 
     public ValueTask Vibrate(double? duration = null, CancellationToken cancellationToken = default)
         => Vibrate(duration is { } d ? TimeSpan.FromSeconds(d) : null, cancellationToken);

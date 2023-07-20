@@ -19,7 +19,7 @@ public class LanguageUI
     {
         TuneUI = services.GetRequiredService<TuneUI>();
         AccountSettings = services.GetRequiredService<AccountSettings>();
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
 
         var stateFactory = services.StateFactory();
         _settings = stateFactory.NewKvasSynced<UserLanguageSettings>(

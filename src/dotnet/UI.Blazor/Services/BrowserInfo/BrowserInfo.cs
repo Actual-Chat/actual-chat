@@ -41,7 +41,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         Log = services.LogFor(GetType());
 
         HostInfo = services.GetRequiredService<HostInfo>();
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         UICommander = services.GetRequiredService<UICommander>();
         AppKind = HostInfo.AppKind;
 

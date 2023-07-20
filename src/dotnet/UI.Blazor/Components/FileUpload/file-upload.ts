@@ -1,11 +1,11 @@
 import { Disposable } from 'disposable';
 import { filter, from, fromEvent, map, Subject, switchMap, takeUntil } from 'rxjs';
 import { BrowserInit } from "../../Services/BrowserInit/browser-init";
+import { SessionToken } from "../../Services/Security/session-token";
 
 export interface Options {
     maxSize?: number;
     uploadUrl: string;
-    secureToken?: string;
 }
 
 export class FileUpload implements Disposable {
@@ -43,7 +43,11 @@ export class FileUpload implements Disposable {
                     formData.append('file', file, file.name);
                     return formData;
                 }),
-                map((formData: FormData) => fetch(url, this.getFetchRequest(formData))),
+                map((formData: FormData) => fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { [SessionToken.headerName]: SessionToken.current },
+                })),
                 switchMap((promise: Promise<Response>) => from(promise)),
             )
             .subscribe(async (response: Response) => {
@@ -52,25 +56,12 @@ export class FileUpload implements Disposable {
             });
     }
 
-    public updateSecureToken(secureToken: string): void {
-        this.options.secureToken = secureToken;
-    }
-
     public dispose(): void {
         if (this.disposed$.isStopped)
             return;
 
         this.disposed$.next();
         this.disposed$.complete();
-    }
-
-    private getFetchRequest(formData: FormData): RequestInit {
-        return {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Secure-Token': this.options.secureToken ?? '',
-            }};
     }
 
     private getUrl(url: string) {

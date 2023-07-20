@@ -7,7 +7,7 @@ public class KeepAwakeUI : IHasServices
     private IJSRuntime? _js;
     public IServiceProvider Services { get; }
     protected ILogger Log { get; private init; }
-    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
+    private IJSRuntime JS => _js ??= Services.JSRuntime();
 
     public KeepAwakeUI(IServiceProvider services)
     {

@@ -59,7 +59,7 @@ public partial class History : IHasServices, IDisposable
         HostInfo = services.GetRequiredService<HostInfo>();
         UrlMapper = services.GetRequiredService<UrlMapper>();
         Nav = services.GetRequiredService<NavigationManager>();
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         NavigationQueue = new NavigationQueue(this); // Services must be initialized before this call
 
         _isSaveSuppressed = new RegionalValue<bool>(false);

@@ -1,4 +1,5 @@
 ﻿using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Components;
 
@@ -17,7 +18,7 @@ public class WebShareInfo : IDisposable, IWebShareInfoBackend
     public WebShareInfo(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         _ = Initialize();
     }
 

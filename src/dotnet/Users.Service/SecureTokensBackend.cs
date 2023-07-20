@@ -7,7 +7,6 @@ namespace ActualChat.Users;
 
 public class SecureTokensBackend : ISecureTokensBackend
 {
-    private static readonly TimeSpan ExpirationPeriod = TimeSpan.FromMinutes(15);
     private static readonly RandomStringGenerator AugmentedPartGenerator = Alphabet.AlphaNumeric64.Generator16;
 
     private ITimeLimitedDataProtector DataProtector { get; }
@@ -30,7 +29,7 @@ public class SecureTokensBackend : ISecureTokensBackend
 
         var augmentedPartLength = Random.Shared.Next(8, 16);
         var augmentedValue = $"{AugmentedPartGenerator.Next(augmentedPartLength)} {value}";
-        var expiresAt = Clock.Now + ExpirationPeriod;
+        var expiresAt = Clock.Now + SecureToken.Lifespan;
         var token = SecureToken.Prefix + DataProtector.Protect(augmentedValue, expiresAt.ToDateTimeOffset());
         return ValueTask.FromResult(new SecureToken(token, expiresAt));
     }

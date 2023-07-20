@@ -15,7 +15,7 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
 
     public UserActivityUI(IServiceProvider services)
     {
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         Clock = services.Clocks().CpuClock;
         _activeUntil = services.StateFactory().NewMutable(
             Now + Constants.Presence.CheckPeriod,

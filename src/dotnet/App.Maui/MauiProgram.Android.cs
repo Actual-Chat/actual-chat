@@ -96,7 +96,7 @@ public static partial class MauiProgram
         if (!canGoBack2 || !TryGetScopedServices(out var scopedServices))
             return false;
 
-        var js = scopedServices.GetRequiredService<IJSRuntime>();
+        var js = scopedServices.JSRuntime();
         await js.InvokeVoidAsync("eval", "history.back()").ConfigureAwait(false);
         return true;
     }

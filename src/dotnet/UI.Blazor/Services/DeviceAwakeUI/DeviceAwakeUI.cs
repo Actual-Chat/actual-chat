@@ -18,7 +18,7 @@ public class DeviceAwakeUI : ISleepDurationProvider, IDeviceAwakeUIBackend, IDis
     public DeviceAwakeUI(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         HostInfo = services.GetRequiredService<HostInfo>();
 
         _totalSleepDuration = services.StateFactory().NewMutable(

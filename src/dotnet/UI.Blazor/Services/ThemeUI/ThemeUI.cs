@@ -19,7 +19,7 @@ public class ThemeUI : WorkerBase
     private IServiceProvider Services { get; }
     private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
-    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
+    private IJSRuntime JS => _js ??= Services.JSRuntime();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public IState<ThemeSettings> Settings => _settings;

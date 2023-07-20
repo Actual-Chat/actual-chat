@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Audio.UI.Blazor.Services;
 
@@ -26,7 +27,7 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
         Services = services;
         Log = services.LogFor(GetType());
 
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         UrlMapper = services.GetRequiredService<UrlMapper>();
         HostInfo = services.GetRequiredService<HostInfo>();
         WhenInitialized = Initialize();
@@ -49,7 +50,7 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
                     UrlMapper.BaseUrl,
                     canUseNNVad);
             })
-            .Log(Log)
+            .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
             .RunIsolated();
 

@@ -7,7 +7,7 @@ public sealed class TuneUI
     private IJSRuntime JS { get; }
 
     public TuneUI(IServiceProvider services)
-        => JS = services.GetRequiredService<IJSRuntime>();
+        => JS = services.JSRuntime();
 
     public ValueTask Play(string tuneName, CancellationToken cancellationToken = default)
         => JS.InvokeVoidAsync(

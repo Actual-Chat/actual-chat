@@ -119,7 +119,7 @@ public sealed class LoadingUI
             return;
 
         _isLoadingOverlayShown = true;
-        var js = Services.GetRequiredService<IJSRuntime>();
+        var js = Services.JSRuntime();
         // We want to do this via script, coz BrowserInit might not be loaded yet
         const string script = """
         (function() {
@@ -136,7 +136,7 @@ public sealed class LoadingUI
             return;
 
         _isLoadingOverlayShown = false;
-        var js = Services.GetRequiredService<IJSRuntime>();
+        var js = Services.JSRuntime();
         // We want to do this via script, coz BrowserInit might not be loaded yet
         const string script = """
         (function() {

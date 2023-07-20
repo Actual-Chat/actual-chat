@@ -1,6 +1,7 @@
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
@@ -27,7 +28,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     {
         Services = services;
         _id = id;
-        JS = services.GetRequiredService<IJSRuntime>();
+        JS = services.JSRuntime();
         UpdateBufferState(true);
     }
 

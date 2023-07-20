@@ -39,7 +39,7 @@ public class ServerTimeSync : WorkerBase
             .RetryForever(RetryDelaySeq.Exp(0.5, 60))
             .AppendDelay(GetNextSyncDelay)
             .CycleForever()
-            .Log(Log)
+            .Log(LogLevel.Debug, Log)
             .PrependDelay(TimeSpan.FromSeconds(3))
             .RunIsolated(cancellationToken);
     }

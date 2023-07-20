@@ -73,7 +73,7 @@ internal sealed class MauiClientAuth : IClientAuth
         var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("sign-in");
         try {
             var secureTokens = Services.GetRequiredService<ISecureTokens>();
-            var sessionToken = await secureTokens.CreateForDefaultSession().ConfigureAwait(true);
+            var sessionToken = await secureTokens.CreateSessionToken().ConfigureAwait(true);
             var url = $"{MauiSettings.BaseUrl}maui-auth/{endpoint}?s={sessionToken.Token.UrlEncode()}";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
                 await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);

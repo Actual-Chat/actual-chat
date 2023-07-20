@@ -50,7 +50,8 @@ let vadState: 'voice' | 'silence' = 'silence';
 let encoderWorklet: OpusEncoderWorklet & Disposable = null;
 let vadWorker: AudioVadWorker & Disposable = null;
 let encoder: Encoder | null;
-let lastInitArguments: { secureToken: string, chatId: string, repliedChatEntryId: string } | null = null;
+let lastInitArguments: { chatId: string, repliedChatEntryId: string } | null = null;
+let lastSessionToken = '';
 let isEncoding = false;
 let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
@@ -120,8 +121,8 @@ const serverImpl: OpusEncoderWorker = {
         state = 'ended';
     },
 
-    start: async (secureToken: string, chatId: string, repliedChatEntryId: string): Promise<void> => {
-        lastInitArguments = { secureToken, chatId, repliedChatEntryId };
+    start: async (chatId: string, repliedChatEntryId: string): Promise<void> => {
+        lastInitArguments = { chatId, repliedChatEntryId };
         debugLog?.log(`start`);
 
         state = 'encoding';
@@ -130,8 +131,8 @@ const serverImpl: OpusEncoderWorker = {
         // do not set vadState there - it's independent from the recording state
     },
 
-    updateSecureToken: async (secureToken: string, _noWait?: RpcNoWait): Promise<void> => {
-        lastInitArguments.secureToken = secureToken;
+    setSessionToken: async (sessionToken: string, _noWait?: RpcNoWait): Promise<void> => {
+        lastSessionToken = sessionToken;
     },
 
     stop: async (): Promise<void> => {
@@ -249,7 +250,7 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 }
 
 async function startRecording(): Promise<void> {
-    const { secureToken, chatId, repliedChatEntryId } = lastInitArguments;
+    const { chatId, repliedChatEntryId } = lastInitArguments;
 
     const isConnected = hubConnection.state === HubConnectionState.Connected;
     if (!isConnected)
@@ -260,7 +261,7 @@ async function startRecording(): Promise<void> {
     if (!encoder)
         encoder = new codecModule.Encoder();
     const preSkip = encoder.preSkip;
-    await hubConnection.send('ProcessAudioChunks', secureToken, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
+    await hubConnection.send('ProcessAudioChunks', lastSessionToken, chatId, repliedChatEntryId, Date.now() / 1000, preSkip, recordingSubject);
     processQueue('in');
 }
 
