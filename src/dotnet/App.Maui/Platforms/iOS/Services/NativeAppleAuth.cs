@@ -22,6 +22,6 @@ public sealed class NativeAppleAuth
         var name = result.Properties["name"];
         var userId = result.Properties["user_id"];
         var nativeAuthClient = Services.GetRequiredService<INativeAuthClient>();
-        await nativeAuthClient.SignInApple(code, name, email, userId).ConfigureAwait(false);
+        await nativeAuthClient.SignInApple(userId, code, email, name).ConfigureAwait(false);
     }
 }
