@@ -30,7 +30,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
             var blazorRef = DotNetObjectReference.Create(this);
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorderTestPage.createObj",
-                _cts.Token, blazorRef, DebugMode, _recordsRef, _recordNumber++, Session.Id
+                _cts.Token, blazorRef, DebugMode, _recordsRef, _recordNumber++
                 );
 #pragma warning disable VSTHRD101, MA0040
             // ReSharper disable once AsyncVoidLambda
