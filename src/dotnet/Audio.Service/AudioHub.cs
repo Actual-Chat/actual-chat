@@ -106,6 +106,9 @@ public class AudioHub : Hub
         if (recorderToken.IsNullOrEmpty() || OrdinalEquals(recorderToken, "default"))
             return null;
 
+        if (recorderToken.Length < 50)
+            return null; // old clients don't send proper session token (usually has length > 150)
+
         return SecureTokensBackend.ParseSessionToken(recorderToken);
     }
 }
