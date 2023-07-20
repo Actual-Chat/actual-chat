@@ -16,11 +16,6 @@
         <DataAnnotationsValidator/>
         <ValidationSummary/>
 
-        <AvatarCard
-            Avatar="@_account.Avatar"
-            Size="SquareSize.Size30"
-            Class="edit-account-avatar"/>
-
         <FormSection For="() => _form.Name" IsRequired="true" InputId="@_form.NameFieldId" Label="First name" IsLabelInsideInput="true">
             <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true"/>
         </FormSection>

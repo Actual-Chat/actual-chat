@@ -50,20 +50,6 @@
             </Caption>
         </TileItem>
     }
-
-    @if (!Author.IsAnonymous && !Author.Avatar.Bio.IsNullOrEmpty()) {
-        <TileItem>
-            <Icon>
-                <i class="icon-person text-xl"></i>
-            </Icon>
-            <Content>
-                @Author.Avatar.Bio
-            </Content>
-            <Caption>
-                Bio
-            </Caption>
-        </TileItem>
-    }
 </Tile>
 
 @code {

@@ -57,18 +57,6 @@
         </Caption>
     </TileItem>
 
-    <TileItem>
-        <Icon>
-            <i class="icon-info text-xl"></i>
-        </Icon>
-        <Content>
-            @avatar.Bio
-        </Content>
-        <Caption>
-            Bio
-        </Caption>
-    </TileItem>
-
     <LinkTileItem Link="@Links.User(account.Id)"
                   Caption="Link to your account"
                   data-bubble="@(BubbleRef.New<LinkToAccountBubble>())"
