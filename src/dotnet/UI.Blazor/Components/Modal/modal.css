@@ -78,7 +78,7 @@ body.narrow .modal-frame.modal-sm {
     @apply h-full w-full md:h-auto md:w-modal;
     @apply rounded-lg;
     @apply font-medium;
-    @apply max-h-screen md:max-h-160;
+    @apply max-h-screen;
 }
 
 .btn.btn-square.modal-close {
