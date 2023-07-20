@@ -106,7 +106,9 @@
 
 @if (isCloseWindowRequest) {
     <script>
-        setInterval(function () { window.close(); }, 500)
+        setTimeout(function () {
+            window.open('','_self').close();
+        }, 500)
     </script>
     <div class="fusion-close" data-flow-name="@(closeWindowFlowName)">
         <div class="c-content">
