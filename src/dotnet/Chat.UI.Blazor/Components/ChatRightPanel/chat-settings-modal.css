@@ -20,7 +20,6 @@
     @apply -flex-x;
     @apply px-4;
     @apply pt-4;
-    @apply pb-2;
 }
 .edit-chat-settings-modal .dialog-buttons .btn-group {
     @apply flex-1;
