@@ -26,8 +26,7 @@
                         ImagePicked="OnImagePicked"
                         Size="SquareSize.Size24"
                         Title="@_form.Title"
-                        Picture="@_form.Picture"
-                        GenerateAvatar="OnGenerateAvatarClick">
+                        Picture="@_form.Picture">
                     </PicUpload>
 
                     <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
@@ -264,11 +263,6 @@
         var invite = Invite.New(10000, new ChatInviteOption(ModalModel.Chat.Id));
         invite = await UICommander.Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
-    }
-
-    private void OnGenerateAvatarClick() {
-        _form.Picture = new Picture(null, DefaultUserPicture.GetBoringAvatar(IdGenerator.Next()));
-        StateHasChanged();
     }
 
     public sealed class FormModel {

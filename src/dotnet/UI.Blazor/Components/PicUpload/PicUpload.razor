@@ -29,7 +29,7 @@
                class="pic-upload-input-file-label">
         </label>
     </div>
-    <div class="flex-1 flex-y justify-center gap-4">
+    <div class="flex-1 flex-y gap-4">
         <Button Class="btn-modal !justify-start">
             <i class="icon-image text-2xl mx-2"></i>
             <span class="mx-2">Upload image</span>
@@ -37,10 +37,12 @@
                    class="pic-upload-input-file-label absolute">
             </label>
         </Button>
-        <Button Class="btn-modal !justify-start" Click="GenerateAvatar">
-            <i class="icon-sync text-2xl mx-2"></i>
-            <span class="mx-2">Generate avatar</span>
-        </Button>
+        @if (GenerateAvatar.HasDelegate) {
+            <Button Class="btn-modal !justify-start" Click="GenerateAvatar">
+                <i class="icon-sync text-2xl mx-2"></i>
+                <span class="mx-2">Generate avatar</span>
+            </Button>
+        }
     </div>
 </div>
 
@@ -78,17 +80,6 @@
                 $"{BlazorUICoreModule.ImportName}.{nameof(PicUpload)}.create",
                 _dropZoneRef,
                 _inputId);
-    }
-
-    private string GenerateColor() {
-        var hash = Title.GetDjb2HashCode();
-        var h = hash % 360;
-        return $"hsl({h}, 30%, 80%)";
-    }
-
-    private void OnGenerateAvatarClick() {
-        Picture = new Picture(null, DefaultUserPicture.GetBoringAvatar(IdGenerator.Next()));
-        StateHasChanged();
     }
 
     private async Task OnUploaded(MediaContent mediaContent)
