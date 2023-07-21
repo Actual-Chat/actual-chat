@@ -8,47 +8,47 @@
 }
 
 <div @ref="Ref" class="landing" xmlns="http://www.w3.org/1999/html">
-    <LandingLeftMenu @ref="_landingLeftMenu" />
+<LandingLeftMenu @ref="_landingLeftMenu" />
 
-    @* Header *@
-    <LandingHeader Click="@OnMenuHandleClick"/>
+@* Header *@
+<LandingHeader Click="@OnMenuHandleClick"/>
 
-    @* Page 1 *@
-    <div class="page page-1 h-screen">
-        <div class="page-1-wrapper overflow-hidden">
-            <div class="flex-x h-full overflow-hidden px-8">
-                <div class="main-text">
-                    <div class="md:text-4xl font-normal text-04 pt-12">
-                        <div class="flex-y gap-y-2 title-text main">
-                            <Checkmark Checked="true">efficiency of texting</Checkmark>
-                            <Checkmark Checked="true">focus of calls</Checkmark>
-                            <Checkmark>drawbacks of either</Checkmark>
-                        </div>
-                        <p class="!pt-8">
-                            Actual Chat is built with a single goal:
-                            <span class="font-semibold">to make your communication more efficient.</span>
-                            Even if it means shaking up the established paradigms.
-                        </p>
-                        <p class="!pt-8">
-                            We are here to redefine the meaning of "Chat".
-                        </p>
+@* Page 1 *@
+<div class="page page-1 h-screen">
+    <div class="page-1-wrapper overflow-hidden">
+        <div class="flex-x h-full overflow-hidden px-8">
+            <div class="main-text">
+                <div class="md:text-4xl font-normal text-04 pt-12">
+                    <div class="flex-y gap-y-2 title-text main">
+                        <Checkmark Checked="true">efficiency of texting</Checkmark>
+                        <Checkmark Checked="true">focus of calls</Checkmark>
+                        <Checkmark>drawbacks of either</Checkmark>
                     </div>
-                    <div class="flex gap-x-8 flex-col items-center md:items-start">
-                        @if (isGuest) {
-                            <button class="btn-download web-signin transparent" onclick="@SignIn">
-                                <span class="px-2 text-xl font-semibold">Sign in</span>
-                            </button>
-                        }
-                    </div>
+                    <p class="!pt-8">
+                        Actual Chat is built with a single goal:
+                        <span class="font-semibold">to make your communication more efficient.</span>
+                        Even if it means shaking up the established paradigms.
+                    </p>
+                    <p class="!pt-8">
+                        We are here to redefine the meaning of "Chat".
+                    </p>
                 </div>
-                <div class="hidden md:flex justify-center items-center w-2/5">
-                    <video autoplay muted playsinline loop class="landing-video" poster="/dist/images/landing/landing-tutorial-plug.png">
-                        <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
-                    </video>
+                <div class="flex gap-x-8 flex-col items-center md:items-start">
+                    @if (isGuest) {
+                        <button class="btn-download web-signin transparent" onclick="@SignIn">
+                            <span class="px-2 text-xl font-semibold">Sign in</span>
+                        </button>
+                    }
                 </div>
+            </div>
+            <div class="hidden md:flex justify-center items-center w-2/5">
+                <video autoplay muted playsinline loop class="landing-video" poster="/dist/images/landing/landing-tutorial-plug.png">
+                    <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
+                </video>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 @code {
