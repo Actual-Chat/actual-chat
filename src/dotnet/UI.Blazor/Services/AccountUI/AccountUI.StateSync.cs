@@ -32,7 +32,12 @@ public partial class AccountUI
                 continue;
 
             Log.LogInformation("Update: new account: {Account}", newAccount);
-            _ownAccount.Value = newAccount;
+            // NOTE(AY): Set(_ => ...) below ensures equality comparison doesn't happen,
+            // and we want to avoid it here, coz Account changes when its Avatar changes,
+            // but this change happens w/o its Version change (avatars are stored in
+            // account settings - see Avatars_SetDefault command handler), thus
+            // Account.EqualityComparer won't see such changes.
+            _ownAccount.Set(_ => newAccount);
             if (_whenLoadedSource.TrySetResult())
                 continue; // It's an initial account change
 
