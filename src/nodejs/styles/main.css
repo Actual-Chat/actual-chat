@@ -138,3 +138,22 @@ input.input-underlined {
     @apply h-auto;
     @apply overflow-y-auto;
 }
+
+/* Auto-closing windows */
+
+.fusion-close {
+    @apply flex-y justify-center;
+    @apply h-screen;
+    @apply bg-[#0036A3];
+}
+.fusion-close > .c-content {
+    @apply flex-1 flex-y items-center justify-center gap-y-4;
+}
+.fusion-close > .c-content > .c-title {
+    @apply flex-y items-center;
+    @apply text-3.5xl leading-9 text-04 font-normal;
+}
+.fusion-close > .c-content > .c-footer {
+    @apply flex-y items-center;
+    @apply text-lg text-04;
+}

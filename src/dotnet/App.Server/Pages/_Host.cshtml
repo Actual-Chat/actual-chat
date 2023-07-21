@@ -112,31 +112,13 @@
     </script>
     <div class="fusion-close" data-flow-name="@(closeWindowFlowName)">
         <div class="c-content">
-            <div class="flex-y justify-center h-screen bg-[#0036A3]">
-                <div class="c-header flex-x items-end">
-                    @if (HostInfo.AppKind.IsMauiApp()) {
-                        if (OSInfo.IsIOS) {
-                            <div class="p-4">
-                                <img draggable="false" src="/dist/images/signin-arrow.svg" alt="signin arrow">
-                            </div>
-                            <div class="flex-y items-start text-headline-1 text-04">
-                                <span>press Done</span>
-                                <span>to start messaging</span>
-                            </div>
-                        }
-                    }
-                </div>
-                <div class="c-content flex-1 flex-y items-center justify-center gap-y-4">
-                    <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="checked">
-                    <div class="flex-y items-center text-3.5xl leading-9 text-04 font-normal">
-                        <span>@(closeWindowFlowName)</span>
-                        <span>complete</span>
-                    </div>
-                    @* <div class="flex-y items-center text-headline-1 text-04"> *@
-                    @*     <span>Please press Done in the top left</span> *@
-                    @*     <span>corner to start messaging</span> *@
-                    @* </div> *@
-                </div>
+            <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="checked">
+            <div class="c-title">
+                <span>@(closeWindowFlowName)</span>
+                <span>completed.</span>
+            </div>
+            <div class="c-footer">
+                <span>You can close this window/tab now.</span>
             </div>
         </div>
     </div>
