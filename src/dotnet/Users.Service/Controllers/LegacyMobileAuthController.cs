@@ -13,18 +13,14 @@ using Microsoft.AspNetCore.Authentication.OAuth;
 
 namespace ActualChat.Users.Controllers;
 
-[Obsolete("Kept only for compatibility with the old API.")]
+[Obsolete("2023.07: Kept only for compatibility with the old API.")]
 [ApiController, Route("mobileAuth")]
 public sealed class LegacyMobileAuthController : Controller
 {
-    private ServerAuthHelper? _serverAuthHelper;
-    private UrlMapper? _urlMapper;
     private ICommander? _commander;
     private ILogger? _log;
 
     private IServiceProvider Services { get; }
-    private ServerAuthHelper ServerAuthHelper => _serverAuthHelper ??= Services.GetRequiredService<ServerAuthHelper>();
-    private UrlMapper UrlMapper => _urlMapper ??= Services.GetRequiredService<UrlMapper>();
     private ICommander Commander => _commander ??= Services.Commander();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 

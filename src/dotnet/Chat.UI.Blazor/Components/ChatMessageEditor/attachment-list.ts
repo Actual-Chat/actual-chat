@@ -3,7 +3,7 @@ import { OperationCancelledError, PromiseSource } from 'promises';
 import { Log } from 'logging';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import {BrowserInit} from "../../../UI.Blazor/Services/BrowserInit/browser-init";
-import {SessionToken} from "../../../UI.Blazor/Services/Security/session-token";
+import {SessionTokens} from "../../../UI.Blazor/Services/Security/session-tokens";
 
 const { errorLog } = Log.get('Attachments');
 
@@ -183,7 +183,7 @@ class FileUpload {
         };
         const url = this.getUrl(`api/chat-media/${this.chatId}/upload`);
         this.xhr.open('post', url, true);
-        this.xhr.setRequestHeader(SessionToken.headerName, SessionToken.current);
+        this.xhr.setRequestHeader(SessionTokens.headerName, SessionTokens.current);
         this.xhr.send(formData);
     }
 

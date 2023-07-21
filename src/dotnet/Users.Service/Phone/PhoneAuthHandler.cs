@@ -30,7 +30,7 @@ public class PhoneAuthHandler : RemoteAuthenticationHandler<PhoneAuthOptions>
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        var session = Context.GetSession();
+        var session = Context.GetSessionFromCookie();
         var authInfo = await Auth.GetSessionInfo(session, CancellationToken.None).ConfigureAwait(false);
         if (authInfo?.IsAuthenticated() == true) {
             Response.Redirect(properties.RedirectUri ?? UrlMapper.BaseUrl);
@@ -43,7 +43,7 @@ public class PhoneAuthHandler : RemoteAuthenticationHandler<PhoneAuthOptions>
 
     protected override async Task<HandleRequestResult> HandleRemoteAuthenticateAsync()
     {
-        var session = Context.GetSession();
+        var session = Context.GetSessionFromCookie();
         var user = await Auth.GetUser(session, Context.RequestAborted).ConfigureAwait(false);
         if (user?.IsAuthenticated() != true)
             return HandleRequestResult.NoResult();

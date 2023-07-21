@@ -1,7 +1,7 @@
 using Stl.Internal;
 using Stl.Rpc;
 
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.Security;
 
 public sealed class TrueSessionResolver : ISessionResolver
 {

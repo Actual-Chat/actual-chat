@@ -1,4 +1,6 @@
 using ActualChat.Media;
+using ActualChat.Security;
+using ActualChat.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,10 +24,13 @@ public sealed class ChatMediaController : ControllerBase
     }
 
     [HttpPost("{chatId}/upload")]
-    [Route("api/chats/{chatId}/upload-picture")] // TODO: Obsolete, remove in ~ Aug 2023
-    [Route("api/chats/{chatId}/files")] // TODO: Obsolete, remove in ~ Aug 2023
+    [Route("api/chats/{chatId}/upload-picture")] // [Obsolete("2023.07: Keep for legacy clients.")
+    [Route("api/chats/{chatId}/files")] // [Obsolete("2023.07: Keep for legacy clients.")
     public async Task<ActionResult<MediaContent>> Upload(ChatId chatId, CancellationToken cancellationToken)
     {
+        // TODO(AY): Uncomment this when obsolete routes above are removed
+        // var session = HttpContext.GetSessionFromHeader(SessionFormat.Token);
+
         var httpRequest = HttpContext.Request;
         if (!httpRequest.HasFormContentType || httpRequest.Form.Files.Count == 0)
             return BadRequest("No file content found");

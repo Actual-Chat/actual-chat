@@ -29,7 +29,7 @@ export type LogScope =
     | 'Rpc'
     | 'ScreenSize'
     | 'ServiceWorker'
-    | 'SessionToken'
+    | 'SessionTokens'
     | 'TimerQueue'
     | 'UndoStack'
     | 'Versioning'

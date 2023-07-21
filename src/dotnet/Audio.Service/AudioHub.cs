@@ -76,7 +76,7 @@ public class AudioHub : Hub
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
 
         var httpContext = Context.GetHttpContext()!;
-        var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSession();
+        var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSessionFromCookie();
 
         var audioRecord = AudioRecord.New(new Session(session.Id), new ChatId(chatId), clientStartOffset, new ChatEntryId(repliedChatEntryId));
         var frameStream = audioStream
@@ -106,8 +106,9 @@ public class AudioHub : Hub
         if (recorderToken.IsNullOrEmpty() || OrdinalEquals(recorderToken, "default"))
             return null;
 
-        if (recorderToken.Length < 50)
-            return new Session(recorderToken).RequireValid(); // old clients don't send proper session token (usually has length > 150)
+        // [Obsolete("2023.07: Legacy clients may use Session.Id instead of session token.")]
+        if (!SecureToken.HasValidPrefix(recorderToken))
+            return new Session(recorderToken).RequireValid();
 
         return SecureTokensBackend.ParseSessionToken(recorderToken);
     }

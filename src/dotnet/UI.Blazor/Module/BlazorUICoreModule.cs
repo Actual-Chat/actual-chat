@@ -110,7 +110,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Host-specific services
         services.AddScoped<IClientAuth>(c => new WebClientAuth(c));
-        services.AddScoped<SessionToken>(c => new SessionToken(c));
+        services.AddScoped<SessionTokens>(c => new SessionTokens(c));
 
         InjectDiagnosticsServices(services);
 

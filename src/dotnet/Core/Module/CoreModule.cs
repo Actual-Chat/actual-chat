@@ -2,6 +2,7 @@
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using ActualChat.Rpc;
+using ActualChat.Security;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.ObjectPool;
@@ -79,6 +80,10 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
             fusion = fusion.WithServiceMode(RpcServiceMode.Server, true);
         }
         else if (appKind.IsClient()) {
+            services.AddScoped<ISessionResolver>(c => new DefaultSessionResolver(c));
+            if (appKind.IsMauiApp())
+                services.AddSingleton(c => new TrueSessionResolver(c));
+
             services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) {
                 Delays = RetryDelaySeq.Exp(1, 180),
             });

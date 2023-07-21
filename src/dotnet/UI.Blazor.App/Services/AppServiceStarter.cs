@@ -109,7 +109,7 @@ public class AppServiceStarter
         // Starting less important UI services
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
         if (HostInfo.AppKind.IsClient())
-            Services.GetRequiredService<SessionToken>().Start();
+            Services.GetRequiredService<SessionTokens>().Start();
         Services.GetRequiredService<AppPresenceReporter>().Start();
         Services.GetRequiredService<AppIconBadgeUpdater>().Start();
         Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client

@@ -1,7 +1,7 @@
 import { Disposable } from 'disposable';
 import { filter, from, fromEvent, map, Subject, switchMap, takeUntil } from 'rxjs';
 import { BrowserInit } from "../../Services/BrowserInit/browser-init";
-import { SessionToken } from "../../Services/Security/session-token";
+import { SessionTokens } from "../../Services/Security/session-tokens";
 
 export interface Options {
     maxSize?: number;
@@ -46,7 +46,7 @@ export class FileUpload implements Disposable {
                 map((formData: FormData) => fetch(url, {
                     method: 'POST',
                     body: formData,
-                    headers: { [SessionToken.headerName]: SessionToken.current },
+                    headers: { [SessionTokens.headerName]: SessionTokens.current },
                 })),
                 switchMap((promise: Promise<Response>) => from(promise)),
             )

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
+using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;

@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.Security;
 
 public sealed class DefaultSessionResolver : ISessionResolver
 {

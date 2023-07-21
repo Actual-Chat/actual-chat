@@ -1,5 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.Security;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
@@ -72,8 +73,8 @@ internal sealed class MauiClientAuth : IClientAuth
     {
         var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("sign-in");
         try {
-            var secureTokens = Services.GetRequiredService<ISecureTokens>();
-            var sessionToken = await secureTokens.CreateSessionToken().ConfigureAwait(true);
+            var secureTokens = Services.GetRequiredService<SessionTokens>();
+            var sessionToken = await secureTokens.Get(secureTokens.AsGoodAsNewLifespan).ConfigureAwait(true);
             var url = $"{MauiSettings.BaseUrl}maui-auth/{endpoint}?s={sessionToken.Token.UrlEncode()}";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
                 await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);

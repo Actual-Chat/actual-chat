@@ -1,7 +1,4 @@
 ﻿using ActualChat.Security;
-using ActualChat.Web;
-using Microsoft.AspNetCore.Http;
-using Stl.Rpc.Infrastructure;
 
 namespace ActualChat.Users;
 
@@ -16,15 +13,5 @@ public class SecureTokens : ISecureTokens
         => await Backend.Create(value, cancellationToken).ConfigureAwait(false);
 
     public async Task<SecureToken> CreateForSession(Session session, CancellationToken cancellationToken = default)
-    {
-        if (session == Session.Default) {
-            var rpcContext = RpcInboundContext.Current;
-            if (rpcContext == null)
-                throw StandardError.Unauthorized("Can not use Default session without Rpc context.");
-
-            var httpContext = rpcContext.Peer.ConnectionState.Value.Connection!.Options.Get<HttpContext>()!;
-            session = httpContext.GetSession();
-        }
-        return await Create(session.Id, cancellationToken).ConfigureAwait(false);
-    }
+        => await Create(session.RequireValid().Id, cancellationToken).ConfigureAwait(false);
 }

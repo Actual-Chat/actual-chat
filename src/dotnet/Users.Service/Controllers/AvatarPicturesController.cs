@@ -1,4 +1,5 @@
 using ActualChat.Media;
+using ActualChat.Security;
 using ActualChat.Web;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,7 +23,8 @@ public sealed class AvatarPicturesController : ControllerBase
     [HttpPost("upload-picture")]
     public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
     {
-        var session = HttpContext.GetSession("s");
+        // NOTE(AY): Header is used by clients, cookie is used by SSB
+        var session = HttpContext.TryGetSessionFromHeader(SessionFormat.Token) ?? HttpContext.GetSessionFromCookie();
 
         var httpRequest = HttpContext.Request;
         if (!httpRequest.HasFormContentType || httpRequest.Form.Files.Count == 0)

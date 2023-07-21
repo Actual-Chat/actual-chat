@@ -15,15 +15,16 @@
     <Pic Title="@Title"
          Size="@Size"
          Picture="Picture"
-         Click="PictureClick"
+         Click="Click"
          NoPicture="NoPicture"/>
     <div class="pic-upload-picker @(sizeClass)">
-        <FileUpload id="@_inputId"
-                    UploadUrl="@ImageUploadUrl"
-                    Uploaded="OnUploaded"
-                    MaxSize="Constants.Attachments.FileSizeLimit"
-                    accept="image/*"
-                    hidden>
+        <FileUpload
+            id="@_inputId"
+            UploadUrl="@UploadUrl"
+            Uploaded="OnUploaded"
+            MaxSize="Constants.Attachments.FileSizeLimit"
+            accept="image/*"
+            hidden>
         </FileUpload>
         <label for="@_inputId"
                class="pic-upload-input-file-label">
@@ -59,10 +60,10 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
-    [Parameter] public string ImageUploadUrl { get; set; } = "";
+    [Parameter] public string UploadUrl { get; set; } = "";
     [Parameter] public RenderFragment? NoPicture { get; set; }
-    [Parameter] public EventCallback<MouseEventArgs> PictureClick { get; set; }
-    [Parameter] public EventCallback<MediaContent> ImagePicked { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter] public EventCallback<MediaContent> Picked { get; set; }
     [Parameter] public EventCallback GenerateAvatar { get; set; }
 
     protected override void OnInitialized() {
@@ -83,7 +84,7 @@
     }
 
     private async Task OnUploaded(MediaContent mediaContent)
-        => await ImagePicked.InvokeAsync(mediaContent).ConfigureAwait(false);
+        => await Picked.InvokeAsync(mediaContent).ConfigureAwait(false);
 
     private void UploadImage() {
 

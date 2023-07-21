@@ -34,7 +34,7 @@
                 <FileUpload
                     @key="@_stepModel.AvatarId.Value"
                     id="fileUpload"
-                    UploadUrl="@("/api/avatars/upload-picture")"
+                    UploadUrl="/api/avatars/upload-picture"
                     Uploaded="OnImagePicked"
                     MaxSize="Constants.Attachments.FileSizeLimit"
                     accept="image/*"

@@ -58,7 +58,6 @@ public abstract class AutoNavigationUI : IHasServices
 
     public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
-        DebugLog?.LogDebug("DispatchNavigateTo({Url}, {Reason})", url, reason);
         if (BlazorCircuitContext.WhenReady.IsCompleted)
             return Dispatcher.CheckAccess()
                 ? NavigateTo(url, reason)
@@ -77,13 +76,13 @@ public abstract class AutoNavigationUI : IHasServices
             return FixUrlAndNavigate(); // Initial navigation already happened
 
         // Initial navigation haven't happened yet
-        DebugLog?.LogDebug("NavigateTo({Url}, {Reason}): auto navigation candidate is added", url, reason);
+        Log.LogInformation("+ NavigateTo({Url}, {Reason})", url, reason);
         _autoNavigationCandidates.Add((url, reason));
         return History.WhenReady;
 
         async Task FixUrlAndNavigate()
         {
-            DebugLog?.LogDebug("NavigateTo({Url}, {Reason}): processing", url, reason);
+            Log.LogInformation("* NavigateTo({Url}, {Reason})", url, reason);
             var cancellationToken = BlazorCircuitContext.StopToken;
             url = await FixUrl(url, cancellationToken).ConfigureAwait(true);
             await History.NavigateTo(url).SilentAwait();

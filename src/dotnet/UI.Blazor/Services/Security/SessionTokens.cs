@@ -4,11 +4,12 @@ using Stl.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class SessionToken : WorkerBase, IComputeService
+public sealed class SessionTokens : WorkerBase, IComputeService
 {
     private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.Unchecked);
     private volatile SecureToken? _current;
 
+    private Session Session { get; }
     private ISecureTokens SecureTokens { get; }
     private IJSRuntime JS { get; }
     private IMomentClock Clock { get; }
@@ -20,8 +21,9 @@ public sealed class SessionToken : WorkerBase, IComputeService
     public TimeSpan RefreshReserve { get; init; } = TimeSpan.FromMinutes(1);
     public SecureToken? Current => _current;
 
-    public SessionToken(IServiceProvider services)
+    public SessionTokens(IServiceProvider services)
     {
+        Session = services.Session();
         SecureTokens = services.GetRequiredService<ISecureTokens>();
         JS = services.JSRuntime();
         Clock = services.Clocks().ServerClock;
@@ -47,7 +49,7 @@ public sealed class SessionToken : WorkerBase, IComputeService
         if (result != null && result.ExpiresAt >= Now + AsGoodAsNewLifespan)
             return result;
 
-        result = await SecureTokens.CreateSessionToken(cancellationToken).ConfigureAwait(false);
+        result = await SecureTokens.CreateSessionToken(Session, cancellationToken).ConfigureAwait(false);
         Interlocked.Exchange(ref _current, result);
         return result;
     }
@@ -66,7 +68,7 @@ public sealed class SessionToken : WorkerBase, IComputeService
     private async Task AutoRefresh(CancellationToken cancellationToken)
     {
         var minLifespan = MinLifespan + RefreshReserve;
-        var jsSetMethodName = $"{BlazorUICoreModule.ImportName}.SessionToken.set";
+        var jsSetMethodName = $"{BlazorUICoreModule.ImportName}.SessionTokens.setCurrent";
         while (!cancellationToken.IsCancellationRequested) {
             var current = await Get(minLifespan, cancellationToken);
             await JS.InvokeVoidAsync(jsSetMethodName, cancellationToken, current.Token).ConfigureAwait(false);

@@ -15,8 +15,8 @@
         <DataAnnotationsValidator/>
         <ValidationSummary/>
         <PicUpload
-            ImageUploadUrl="@UploadUrl"
-            ImagePicked="OnImagePicked"
+            UploadUrl="@UploadUrl"
+            Picked="OnImagePicked"
             Size="SquareSize.Size24"
             Title="@_form.Bio"
             Picture="_form.Picture"
@@ -79,6 +79,8 @@
 
 @code {
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+    private static readonly string UploadUrl = "/api/avatars/upload-picture";
+
     private Form _formRef = null!;
     private FormModel _form = null!;
 
@@ -88,7 +90,6 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    private string UploadUrl => "/api/avatars/upload-picture";
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

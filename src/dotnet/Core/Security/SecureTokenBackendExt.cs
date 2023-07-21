@@ -8,6 +8,12 @@ public static class SecureTokenBackendExt
         return secureValue?.Value ?? throw StandardError.Unauthorized("Invalid secure token.");
     }
 
+    public static Session? TryParseSessionToken(this ISecureTokensBackend backend, string sessionToken)
+    {
+        var sessionId = backend.TryParse(sessionToken);
+        return SessionExt.NewValidOrNull(sessionId?.Value);
+    }
+
     public static Session ParseSessionToken(this ISecureTokensBackend backend, string sessionToken)
     {
         var sessionId = backend.Parse(sessionToken);

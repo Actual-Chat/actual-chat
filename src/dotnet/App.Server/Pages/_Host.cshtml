@@ -14,7 +14,8 @@
 @inject ISessionResolver SessionResolver
 @inject ISecureTokens SecureTokens
 @{
-    var session = await HttpContext.Authenticate(ServerAuthHelper);
+    var cancellationToken = HttpContext.RequestAborted;
+    var session = await HttpContext.Authenticate(ServerAuthHelper, cancellationToken);
     SessionResolver.Session = session;
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
     var isServerSideBlazor = BlazorSwitchEndpoint.IsServerSideBlazor(HttpContext);
@@ -127,7 +128,7 @@
         @{
             var sessionToken = "";
             if (isServerSideBlazor)
-                sessionToken = (await SecureTokens.CreateForSession(session)).Token;
+                sessionToken = (await SecureTokens.CreateForSession(session, cancellationToken)).Token;
         }
         @(await Html.RenderComponentAsync<WasmApp>(
             isServerSideBlazor ? RenderMode.Server : RenderMode.WebAssembly,

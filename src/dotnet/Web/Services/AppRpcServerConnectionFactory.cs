@@ -13,8 +13,8 @@ public class AppRpcServerConnectionFactory
         if (!options.TryGet<HttpContext>(out var httpContext))
             return RpcConnectionTask(channel, options);
 
-        var session = httpContext.TryGetSession();
-        return session != null
+        var session = httpContext.TryGetSessionFromHeader() ?? httpContext.TryGetSessionFromCookie();
+        return session.IsValid()
             ? AppRpcConnectionTask(channel, options, session)
             : RpcConnectionTask(channel, options);
     }

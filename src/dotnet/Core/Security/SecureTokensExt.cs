@@ -4,6 +4,7 @@ public static class SecureTokensExt
 {
     public static Task<SecureToken> CreateSessionToken(
         this ISecureTokens secureTokens,
+        Session session,
         CancellationToken cancellationToken = default)
-        => secureTokens.CreateForSession(Session.Default, cancellationToken);
+        => secureTokens.CreateForSession(session, cancellationToken);
 }
