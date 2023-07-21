@@ -100,6 +100,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new TuneUI(c));
         services.AddScoped(c => new VibrationUI(c));
         services.AddScoped(c => new BubbleUI(c));
+        services.AddScoped(c => new ShareUI(c.GetRequiredService<ModalUI>()));
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
 
         // Actual Chat-specific UI services
@@ -120,7 +121,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             .Add<FeatureRequestModal.Model, FeatureRequestModal>()
             .Add<VisualMediaViewerModal.Model, VisualMediaViewerModal>()
             .Add<DemandUserInteractionModal.Model, DemandUserInteractionModal>()
-            .Add<ShareModal.Model, ShareModal>()
             .Add<DiscardModal.Model, DiscardModal>()
         );
         // IBannerViews

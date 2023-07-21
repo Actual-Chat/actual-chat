@@ -1,0 +1,23 @@
+﻿.embedded-message-editor {
+    @apply border-bg-04 border-b border-t;
+}
+.embedded-message-editor label {
+    @apply relative flex-x;
+}
+.embedded-message-editor button {
+    @apply absolute right-1;
+    @apply flex items-center justify-center;
+    @apply w-14 h-14;
+}
+.embedded-message-editor i {
+    @apply text-icons-01 text-2xl;
+}
+.embedded-message-editor input {
+    @apply h-14;
+    @apply pl-4 pr-14;
+    @apply w-full;
+    @apply text-left;
+}
+.embedded-message-editor input::placeholder {
+    @apply text-left;
+}

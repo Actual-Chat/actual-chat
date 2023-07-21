@@ -1,0 +1,46 @@
+﻿@import "./share-dialog-buttons.css";
+
+.share-modal {
+    @apply md:w-90;
+}
+
+.share-modal.modal-frame {
+    @apply px-0 pb-0;
+    @apply gap-y-0;
+}
+.share-modal .no-padding-header-decorator {
+    @apply mx-0;
+}
+.share-modal .modal-header {
+    @apply mx-4 p-0;
+    @apply min-h-12 max-h-12;
+}
+.share-modal .dialog-body {
+    @apply p-0;
+    @apply border-bg-04 border-b;
+}
+.share-modal .contact-select-list {
+    @apply pt-2;
+}
+.narrow .share-modal .modal-header-interactive {
+    @apply border-b-0;
+}
+.narrow .share-modal .contact-select-list {
+    @apply pb-0;
+}
+.share-modal .embedded-message-editor {
+    @apply border-0;
+}
+.share-modal .dialog-buttons {
+    @apply -flex-x;
+    @apply p-0;
+}
+.share-modal .share-modal-footer {
+    @apply flex-y grow;
+}
+.share-modal .share-dialog-buttons {
+    @apply px-4 py-4;
+}
+.share-dialog-buttons.hidden {
+    display: none;
+}

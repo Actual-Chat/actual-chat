@@ -1,0 +1,39 @@
+﻿.share-dialog-buttons {
+    @apply flex-y gap-y-4;
+}
+.share-dialog-buttons .c-buttons {
+    @apply flex-x gap-x-4;
+}
+.share-dialog-buttons .c-buttons > * {
+    @apply flex-1;
+}
+.share-dialog-buttons .btn {
+    @apply flex-1 max-w-none;
+}
+.share-dialog-buttons .btn-content {
+    @apply gap-x-3;
+}
+.share-dialog-buttons .btn-content > span {
+    @apply text-02 text-caption-2;
+}
+.share-dialog-buttons .c-link-info {
+    @apply flex-x gap-x-4;
+    @apply px-2 py-1;
+    @apply border rounded-lg border-bg-04;
+}
+.share-dialog-buttons .c-icon {
+    @apply flex items-center;
+    @apply text-icons-01;
+}
+.share-dialog-buttons .c-body {
+    @apply grid;
+    @apply max-w-full max-h-12;
+}
+.share-dialog-buttons .c-link {
+    @apply w-full min-h-5 max-h-5;
+    @apply truncate;
+    @apply leading-5 text-headline-1 text-02;
+}
+.share-dialog-buttons .c-link-hint {
+    @apply text-xs font-normal text-03;
+}

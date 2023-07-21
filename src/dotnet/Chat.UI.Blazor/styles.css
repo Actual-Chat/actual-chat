@@ -31,5 +31,6 @@
 @import './Components/RecordingSubHeader/recording-sub-header.css';
 @import './Components/ChatRightPanel/right-chat-panel.css';
 @import './Components/Settings/settings-modal.css';
+@import './Components/Share/share-modal.css';
 
 @import './Pages/user-page.css';

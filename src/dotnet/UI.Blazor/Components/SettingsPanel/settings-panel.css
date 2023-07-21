@@ -191,3 +191,13 @@ body.hoverable .tile-btn:hover {
 .header-tile-item .tile-item-icon {
     @apply hidden;
 }
+
+.tile-item.tile-item-share {
+    @apply cursor-pointer;
+}
+.tile-item.tile-item-share i {
+    @apply text-accent;
+}
+.tile-item.tile-item-share .tile-item-body-content {
+    @apply text-accent;
+}

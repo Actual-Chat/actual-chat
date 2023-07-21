@@ -1,5 +1,6 @@
 @using ActualChat.Invite
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Chat
 @namespace ActualChat.UI.Blazor.Components
 
 @if (Invites.Count > 0) {
@@ -32,22 +33,20 @@
                         Revoke
                     </Button>
                 }
-                <CopyTrigger Tooltip="Copy" CopyText="@link.AbsoluteUrl">
-                    <Button Class="btn-modal w-full">
-                        <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
-                        <i class="copied-hint fa fa-check text-lg" aria-hidden="true"></i>
-                        Copy
-                    </Button>
-                </CopyTrigger>
+                <Button Class="btn-modal" Click="@(() => OnShareClick(invite))">
+                    <i class="icon-share-more text-xl"></i>
+                    Share
+                </Button>
             </div>
         </div>
     }
 }
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
 
     [Parameter, EditorRequired] public ApiArray<Invite> Invites { get; set; } = ApiArray<Invite>.Empty;
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
@@ -69,5 +68,25 @@
     }
 
     private Task Revoke(Invite invite)
-        => UICommander.Run(new Invites_Revoke(Session, invite.Id));
+        => Services.UICommander().Run(new Invites_Revoke(Services.Session(), invite.Id));
+
+    private async Task OnShareClick(Invite invite) {
+        switch (invite.Details.Option) {
+            case UserInviteOption: {
+                ShareUI.ShareLink(GetLink(invite).AbsoluteUrl, "Share invite", "User invite link");
+                return;
+            }
+            case ChatInviteOption chatDetails: {
+                var linkDescription = "Chat join link";
+                var chats = Services.GetRequiredService<IChats>();
+                var chat = await chats.Get(Services.Session(), chatDetails.ChatId, default);
+                if (chat != null)
+                    linkDescription = $"Chat '{chat.Title}' join link";
+                ShareUI.ShareLink(GetLink(invite).AbsoluteUrl, "Share chat", linkDescription);
+                return;
+            }
+            default:
+                return;
+        }
+    }
 }

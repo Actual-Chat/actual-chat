@@ -5,6 +5,7 @@
         return;
 
     var avatar = account.Avatar;
+    var link = Links.User(account.Id).ToAbsolute(UrlMapper);
 }
 
 <Tile>
@@ -57,12 +58,19 @@
         </Caption>
     </TileItem>
 
-    <LinkTileItem Link="@Links.User(account.Id)"
-                  Caption="Link to your account"
-                  data-bubble="@(BubbleRef.New<LinkToAccountBubble>())"
-                  data-bubble-priority="301"
-                  data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())">
-    </LinkTileItem>
+    <div @onclick="@(() => OnShareClick(link))"
+         data-bubble="@(BubbleRef.New<LinkToAccountBubble>())"
+         data-bubble-priority="301"
+         data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())">
+        <TileItem Class="tile-item-share">
+            <Icon>
+                <i class="icon-share text-xl"></i>
+            </Icon>
+            <Content>
+                Share
+            </Content>
+        </TileItem>
+    </div>
 </Tile>
 
 <TileTopic Topic="My avatars"/>
@@ -76,6 +84,8 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
+    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
+
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
             InitialValue = AccountFull.Loading,
@@ -87,4 +97,7 @@
 
     private Task OnEditClick()
         => ModalUI.Show(OwnAccountEditorModal.Model.Default);
+
+    private void OnShareClick(string link)
+        => ShareUI.ShareLink(link, "Share your contact", "Your contact link");
 }
