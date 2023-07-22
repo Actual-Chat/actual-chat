@@ -14,7 +14,7 @@ using WebView = Android.Webkit.WebView;
 
 namespace ActualChat.App.Maui;
 
-internal class PermissionManagingWebChromeClient : WebChromeClient, IActivityResultCallback
+internal class AndroidWebChromeClient : WebChromeClient
 {
     // Example to control permissions in browser is taken from the comment
     // https://github.com/dotnet/maui/issues/4768#issuecomment-1137906982
@@ -46,29 +46,32 @@ internal class PermissionManagingWebChromeClient : WebChromeClient, IActivityRes
         // Add more Webkit resource -> Android permission mappings as needed.
     };
 
-    private readonly WebChromeClient _webChromeClient;
-    private readonly ComponentActivity _activity;
-    private readonly ActivityResultLauncher _requestPermissionLauncher;
+    private static ComponentActivity _activity = null!;
+    private static ActivityResultLauncher _requestPermissionLauncher = null!;
+    private static Action<bool>? _pendingPermissionRequestCallback;
 
-    private Action<bool>? _pendingPermissionRequestCallback;
+    private readonly WebChromeClient _client;
 
-    public PermissionManagingWebChromeClient(WebChromeClient webChromeClient, ComponentActivity activity)
+    public AndroidWebChromeClient(WebChromeClient client, ComponentActivity activity)
     {
-        _webChromeClient = webChromeClient;
-        _activity = activity;
-        _requestPermissionLauncher = _activity.RegisterForActivityResult(new ActivityResultContracts.RequestPermission(), this);
+        TryInitialize(activity);
+        _client = client;
     }
 
-    public override void OnCloseWindow(WebView? window)
+    public static void TryInitialize(ComponentActivity activity)
     {
-        _webChromeClient.OnCloseWindow(window);
-        _requestPermissionLauncher.Unregister();
+        if (_activity != null!)
+            return;
+
+        _activity = activity;
+        _requestPermissionLauncher = _activity.RegisterForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            new ActivityResultCallback());
     }
 
     public override void OnGeolocationPermissionsShowPrompt(string? origin, GeolocationPermissions.ICallback? callback)
     {
         ArgumentNullException.ThrowIfNull(callback, nameof(callback));
-
         RequestPermission(Manifest.Permission.AccessFineLocation, isGranted => callback.Invoke(origin, isGranted, false));
     }
 
@@ -82,12 +85,10 @@ internal class PermissionManagingWebChromeClient : WebChromeClient, IActivityRes
         }
 
         RequestAllResources(requestedResources, grantedResources => {
-            if (grantedResources.Count == 0) {
+            if (grantedResources.Count == 0)
                 request.Deny();
-            }
-            else {
+            else
                 request.Grant(grantedResources.ToArray());
-            }
         });
     }
 
@@ -163,51 +164,58 @@ internal class PermissionManagingWebChromeClient : WebChromeClient, IActivityRes
         _requestPermissionLauncher.Launch(permission);
     }
 
-    void IActivityResultCallback.OnActivityResult(Java.Lang.Object? isGranted)
-    {
-        var callback = _pendingPermissionRequestCallback;
-        _pendingPermissionRequestCallback = null;
-        callback?.Invoke(isGranted != null && (bool)isGranted);
-    }
-
     #region Unremarkable overrides
     // See: https://github.com/dotnet/maui/issues/6565
-    public override JniPeerMembers JniPeerMembers => _webChromeClient.JniPeerMembers;
-    public override Bitmap? DefaultVideoPoster => _webChromeClient.DefaultVideoPoster;
-    public override View? VideoLoadingProgressView => _webChromeClient.VideoLoadingProgressView;
+    public override JniPeerMembers JniPeerMembers => _client.JniPeerMembers;
+    public override Bitmap? DefaultVideoPoster => _client.DefaultVideoPoster;
+    public override View? VideoLoadingProgressView => _client.VideoLoadingProgressView;
     public override void GetVisitedHistory(IValueCallback? callback)
-        => _webChromeClient.GetVisitedHistory(callback);
+        => _client.GetVisitedHistory(callback);
     public override bool OnConsoleMessage(ConsoleMessage? consoleMessage)
-        => _webChromeClient.OnConsoleMessage(consoleMessage);
+        => _client.OnConsoleMessage(consoleMessage);
     public override bool OnCreateWindow(WebView? view, bool isDialog, bool isUserGesture, Message? resultMsg)
-        => _webChromeClient.OnCreateWindow(view, isDialog, isUserGesture, resultMsg);
+        => _client.OnCreateWindow(view, isDialog, isUserGesture, resultMsg);
+    public override void OnCloseWindow(WebView? window)
+        => _client.OnCloseWindow(window);
     public override void OnGeolocationPermissionsHidePrompt()
-        => _webChromeClient.OnGeolocationPermissionsHidePrompt();
+        => _client.OnGeolocationPermissionsHidePrompt();
     public override void OnHideCustomView()
-        => _webChromeClient.OnHideCustomView();
+        => _client.OnHideCustomView();
     public override bool OnJsAlert(WebView? view, string? url, string? message, JsResult? result)
-        => _webChromeClient.OnJsAlert(view, url, message, result);
+        => _client.OnJsAlert(view, url, message, result);
     public override bool OnJsBeforeUnload(WebView? view, string? url, string? message, JsResult? result)
-        => _webChromeClient.OnJsBeforeUnload(view, url, message, result);
+        => _client.OnJsBeforeUnload(view, url, message, result);
     public override bool OnJsConfirm(WebView? view, string? url, string? message, JsResult? result)
-        => _webChromeClient.OnJsConfirm(view, url, message, result);
+        => _client.OnJsConfirm(view, url, message, result);
     public override bool OnJsPrompt(WebView? view, string? url, string? message, string? defaultValue, JsPromptResult? result)
-        => _webChromeClient.OnJsPrompt(view, url, message, defaultValue, result);
+        => _client.OnJsPrompt(view, url, message, defaultValue, result);
     public override void OnPermissionRequestCanceled(PermissionRequest? request)
-        => _webChromeClient.OnPermissionRequestCanceled(request);
+        => _client.OnPermissionRequestCanceled(request);
     public override void OnProgressChanged(WebView? view, int newProgress)
-        => _webChromeClient.OnProgressChanged(view, newProgress);
+        => _client.OnProgressChanged(view, newProgress);
     public override void OnReceivedIcon(WebView? view, Bitmap? icon)
-        => _webChromeClient.OnReceivedIcon(view, icon);
+        => _client.OnReceivedIcon(view, icon);
     public override void OnReceivedTitle(WebView? view, string? title)
-        => _webChromeClient.OnReceivedTitle(view, title);
+        => _client.OnReceivedTitle(view, title);
     public override void OnReceivedTouchIconUrl(WebView? view, string? url, bool precomposed)
-        => _webChromeClient.OnReceivedTouchIconUrl(view, url, precomposed);
+        => _client.OnReceivedTouchIconUrl(view, url, precomposed);
     public override void OnRequestFocus(WebView? view)
-        => _webChromeClient.OnRequestFocus(view);
+        => _client.OnRequestFocus(view);
     public override void OnShowCustomView(View? view, ICustomViewCallback? callback)
-        => _webChromeClient.OnShowCustomView(view, callback);
+        => _client.OnShowCustomView(view, callback);
     public override bool OnShowFileChooser(WebView? webView, IValueCallback? filePathCallback, FileChooserParams? fileChooserParams)
-        => _webChromeClient.OnShowFileChooser(webView, filePathCallback, fileChooserParams);
+        => _client.OnShowFileChooser(webView, filePathCallback, fileChooserParams);
     #endregion
+
+    // Nested types
+
+    public sealed class ActivityResultCallback : Java.Lang.Object, IActivityResultCallback
+    {
+        public void OnActivityResult(Java.Lang.Object? isGranted)
+        {
+            var callback = _pendingPermissionRequestCallback;
+            _pendingPermissionRequestCallback = null;
+            callback?.Invoke(isGranted != null && (bool)isGranted);
+        }
+    }
 }
