@@ -60,7 +60,7 @@ internal class AndroidWebChromeClient : WebChromeClient
 
     public static void TryInitialize(ComponentActivity activity)
     {
-        if (_activity != null!)
+        if (_activity == activity)
             return;
 
         _activity = activity;
