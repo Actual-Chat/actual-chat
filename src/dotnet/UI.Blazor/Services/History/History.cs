@@ -81,7 +81,7 @@ public partial class History : IHasServices, IDisposable
 
     public Task Initialize(LocalUrl autoNavigationUrl)
     {
-        Log.LogInformation("Initialize({AutoNavigationUrl})", autoNavigationUrl);
+        Log.LogInformation("Initialize @ {AutoNavigationUrl}", autoNavigationUrl);
         _backendRef = DotNetObjectReference.Create(this);
         _ = JS.InvokeVoidAsync(
             $"{BlazorUICoreModule.ImportName}.History.init",

@@ -27,6 +27,7 @@ public sealed class TrueSessionResolver : ISessionResolver
                 _session = value;
                 _sessionSource.TrySetResult(value);
             }
+            Tracer.Default[nameof(TrueSessionResolver)].Point($"Session = '{Session}'");
             Services.RpcHub().GetClientPeer(RpcPeerRef.Default).Disconnect();
         }
     }

@@ -13,9 +13,11 @@ public sealed class MauiSession
 
     private static readonly object _lock = new();
     private static volatile Task<Session?> _readSessionTask = null!;
+    private IMobileSessions? _mobileSessions;
 
     private IServiceProvider Services { get; }
     private TrueSessionResolver TrueSessionResolver { get; }
+    private IMobileSessions MobileSessions => _mobileSessions ??= Services.GetRequiredService<IMobileSessions>();
 
     public static Task Start()
         => _readSessionTask = Task.Run(Read);
@@ -26,42 +28,33 @@ public sealed class MauiSession
         TrueSessionResolver = services.GetRequiredService<TrueSessionResolver>();
     }
 
-    public Task<Session> Acquire()
+    public Task Acquire()
     {
         if (TrueSessionResolver.HasSession)
-            return Task.FromResult(TrueSessionResolver.Session);
+            return Task.CompletedTask;
 
         return Task.Run(async () => {
             using var _1 = Tracer.Region();
 
-            var mobileSessions = Services.GetRequiredService<IMobileSessions>();
             var session = await _readSessionTask.ConfigureAwait(false);
             if (session == null) {
                 // No session -> create one
-                session = await mobileSessions.CreateSession(CancellationToken.None).ConfigureAwait(false);
+                session = await MobileSessions.CreateSession(CancellationToken.None).ConfigureAwait(false);
                 TrueSessionResolver.Session = session;
                 _ = Task.Run(() => Store(session));
-                return session;
+                return;
             }
 
             // Session is there -> validate it
             TrueSessionResolver.Session = session;
             var validSession =
-                await mobileSessions.ValidateSession(session, CancellationToken.None).ConfigureAwait(false);
-            if (session == validSession)
-                return session;
+                await MobileSessions.ValidateSession(session, CancellationToken.None).ConfigureAwait(false);
+            if (session == validSession || Random.Shared.Next(2) == 0)
+                return;
 
             // Session is invalid -> update it to valid + reload MAUI App
-            _ = Task.Run(() => Store(validSession));
-            lock (_lock) {
-                _readSessionTask = Task.FromResult(validSession)!; // Just in case - we don't want to re-read it
-                TrueSessionResolver.Replace(validSession);
-            }
-            _ = Task.Run(async () => {
-                var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
-                scopedServices.GetRequiredService<ReloadUI>().Reload(true);
-            });
-            return validSession;
+            await Store(validSession).ConfigureAwait(false);
+            Services.GetRequiredService<ReloadUI>().Reload(true);
         });
     }
 

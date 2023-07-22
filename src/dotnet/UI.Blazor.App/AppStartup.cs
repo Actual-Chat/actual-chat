@@ -45,11 +45,13 @@ namespace ActualChat.UI.Blazor.App
             var restEase = services.AddRestEase();
             restEase.ConfigureHttpClient((c, name, o) => {
                 var urlMapper = c.GetRequiredService<UrlMapper>();
-                var clientBaseUrl = urlMapper.ApiBaseUrl;
+                var clientBaseUrl = urlMapper.ApiBaseUrl.ToUri();
                 o.HttpClientActions.Add(client => {
-                    client.BaseAddress = clientBaseUrl.ToUri();
+                    client.BaseAddress = clientBaseUrl;
                     client.DefaultRequestVersion = HttpVersion.Version30;
                     client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
+                    // c.LogFor(typeof(AppStartup)).LogInformation(
+                    //     "HTTP client '{Name}' configured @ {BaseAddress}", name, client.BaseAddress);
                     if (!appKind.IsMauiApp())
                         return;
 

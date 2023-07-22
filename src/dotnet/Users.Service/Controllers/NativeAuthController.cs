@@ -34,7 +34,7 @@ public sealed class NativeAuthController : Controller
         string? name,
         CancellationToken cancellationToken)
     {
-        var session = HttpContext.GetSessionFromHeader(SessionFormat.Token);
+        var session = HttpContext.GetSessionFromHeader();
         userId.RequireNonEmpty(nameof(userId));
         code.RequireNonEmpty(nameof(code));
 
@@ -81,7 +81,7 @@ public sealed class NativeAuthController : Controller
     [HttpGet("sign-in-google")]
     public async Task SignInGoogle(string code, CancellationToken cancellationToken)
     {
-        var session = HttpContext.GetSessionFromHeader(SessionFormat.Token);
+        var session = HttpContext.GetSessionFromHeader();
         // code = code.UrlDecode(); // Weird, but this is somehow necessary
         code.RequireNonEmpty(nameof(code));
         var schemeName = GoogleDefaults.AuthenticationScheme;

@@ -4,8 +4,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class ReloadUI
 {
-    private IServiceProvider Services { get; }
-    private ILogger Log { get; }
+    protected IServiceProvider Services { get; }
+    protected ILogger Log { get; }
 
     public ReloadUI(IServiceProvider services)
     {
@@ -13,11 +13,11 @@ public class ReloadUI
         Log = services.LogFor(GetType());
     }
 
-    public void Reload(bool clearCache, string? url = null)
+    public virtual void Reload(bool clearCache = false)
     {
         var blazorCircuitContext = Services.GetRequiredService<AppBlazorCircuitContext>();
         _ = blazorCircuitContext.WhenReady.ContinueWith(_ => blazorCircuitContext.Dispatcher.InvokeAsync(async () => {
-            Log.LogWarning("Reloading URL: {Url}", url);
+            Log.LogWarning("Reloading...");
             try {
                 if (clearCache) {
                     var cache = Services.GetService<IClientComputedCache>();
@@ -25,7 +25,7 @@ public class ReloadUI
                         await cache.Clear().ConfigureAwait(true);
                 }
                 var nav = Services.GetRequiredService<NavigationManager>();
-                nav.NavigateTo(url ?? Links.Home, true);
+                nav.NavigateTo(Links.Home, true);
             }
             catch (Exception e) {
                 Log.LogError(e, "Reload failed");

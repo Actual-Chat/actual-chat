@@ -17,16 +17,15 @@ public class MauiBlazorApp : AppBase
                 ScopedServices = Services;
             }
             catch (Exception) {
-                Log.LogWarning("OnInitializedAsync: can't change ScopedServices - reloading");
-                DiscardScopedServices();
-                Services.GetRequiredService<ReloadUI>().Reload(false);
-                return; // No call to base.OnInitializedAsync() is intended here: reload is all we want
+                Log.LogWarning("OnInitializedAsync: can't change ScopedServices - will restart");
+                Services.GetRequiredService<ReloadUI>().Reload();
+                return;
             }
             await base.OnInitializedAsync().ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogError(e, "OnInitializedAsync failed");
-            throw;
+            Log.LogError(e, "OnInitializedAsync failed, restarting...");
+            Services.GetRequiredService<ReloadUI>().Reload();
         }
     }
 
