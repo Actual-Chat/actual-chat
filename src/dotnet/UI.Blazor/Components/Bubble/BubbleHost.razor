@@ -84,11 +84,11 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
-            var identifier = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
+            var jsCreate = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
             await BrowserInfo.WhenReady;
-            await BubbleUI.WhenReady;
+            await BubbleUI.WhenReadyToRenderHost();
             var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef, readBubbles);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(jsCreate, _blazorRef, readBubbles);
         }
     }
 

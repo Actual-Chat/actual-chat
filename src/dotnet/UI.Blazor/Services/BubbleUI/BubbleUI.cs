@@ -13,7 +13,6 @@ public sealed class BubbleUI
     private MomentClockSet Clocks { get; }
 
     public IState<UserBubbleSettings> Settings => _settings;
-    public Task WhenReady { get; }
 
     public BubbleUI(IServiceProvider services)
     {
@@ -29,10 +28,9 @@ public sealed class BubbleUI
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
-        WhenReady = Initialize();
     }
 
-    private async Task Initialize()
+    public async Task WhenReadyToRenderHost()
     {
         // 1. Wait for sign-in
         try {

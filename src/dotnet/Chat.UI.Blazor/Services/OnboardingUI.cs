@@ -34,7 +34,7 @@ public class OnboardingUI
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
-        AccountUI.AccountChanged += OnAccountChanged;
+        AccountUI.OwnAccountChanged += OnOwnAccountChanged;
     }
 
     public async ValueTask TryShow()
@@ -52,7 +52,7 @@ public class OnboardingUI
 
     // Private methods
 
-    private void OnAccountChanged(AccountFull account, AccountFull oldAccount)
+    private void OnOwnAccountChanged(AccountFull account)
     {
         if (!account.IsGuestOrNone)
             _ = TryShow();

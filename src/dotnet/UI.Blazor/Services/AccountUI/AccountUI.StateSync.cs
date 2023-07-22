@@ -46,16 +46,16 @@ public partial class AccountUI
 
             await BlazorCircuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             await BlazorCircuitContext.Dispatcher
-                .InvokeAsync(() => ProcessAccountChange(newAccount, oldAccount))
+                .InvokeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount))
                 .ConfigureAwait(false);
         }
     }
 
     // Private methods
 
-    private async Task ProcessAccountChange(AccountFull account, AccountFull oldAccount)
+    private async Task ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
     {
-        AccountChanged?.Invoke(account, oldAccount);
+        OwnAccountChanged?.Invoke(account);
         var history = Services.GetRequiredService<History>();
         var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
         if (account.IsGuestOrNone || !oldAccount.IsGuestOrNone) {

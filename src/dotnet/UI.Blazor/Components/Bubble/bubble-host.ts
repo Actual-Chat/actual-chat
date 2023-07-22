@@ -66,6 +66,10 @@ export class BubbleHost {
             });
     }
 
+    public dispose() {
+        this.mutationObserver.disconnect();
+    }
+
     public async skipBubbles(): Promise<string[]> {
         debugLog?.log(`skipBubbles`);
 
