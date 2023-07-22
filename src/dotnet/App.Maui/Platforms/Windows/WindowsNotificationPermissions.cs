@@ -7,9 +7,9 @@ public class WindowsNotificationPermissions : INotificationPermissions
     public WindowsNotificationPermissions()
     { }
 
-    public Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken)
+    public Task<PermissionState> GetPermissionState(CancellationToken cancellationToken)
         => Task.FromResult(PermissionState.Denied);
 
-    public Task RequestNotificationPermissions(CancellationToken cancellationToken)
+    public Task RequestNotificationPermission(CancellationToken cancellationToken)
         => Task.CompletedTask;
 }

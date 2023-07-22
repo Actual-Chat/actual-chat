@@ -2,6 +2,6 @@ namespace ActualChat.Notification.UI.Blazor;
 
 public interface INotificationPermissions
 {
-    Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken);
-    Task RequestNotificationPermissions(CancellationToken cancellationToken);
+    Task<PermissionState> GetPermissionState(CancellationToken cancellationToken);
+    Task RequestNotificationPermission(CancellationToken cancellationToken);
 }

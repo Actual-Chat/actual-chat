@@ -47,7 +47,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
     public Task<string?> GetDeviceToken(CancellationToken cancellationToken)
         => Messaging.GetTokenAsync();
 
-    public async Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken)
+    public async Task<PermissionState> GetPermissionState(CancellationToken cancellationToken)
     {
         var settings = await NotificationCenter.GetNotificationSettingsAsync().ConfigureAwait(false);
         switch (settings.AuthorizationStatus) {
@@ -64,7 +64,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         }
     }
 
-    public async Task RequestNotificationPermissions(CancellationToken cancellationToken)
+    public async Task RequestNotificationPermission(CancellationToken cancellationToken)
     {
         // TODO: replace with Messaging.CheckIfValidAsync() when they await result
         if (!UIDevice.CurrentDevice.CheckSystemVersion(10, 0))
@@ -81,8 +81,8 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         else
             Log.LogWarning("RequestNotificationPermissions: denied, {Error}", error);
 
-        var newState = await GetNotificationPermissionState(cancellationToken).ConfigureAwait(false);
-        NotificationUI.UpdateNotificationStatus(newState);
+        var state = await GetPermissionState(cancellationToken).ConfigureAwait(false);
+        NotificationUI.SetPermissionState(state);
     }
 
     private void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)

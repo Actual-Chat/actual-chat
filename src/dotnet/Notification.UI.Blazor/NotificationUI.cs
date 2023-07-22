@@ -4,16 +4,17 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Notification.UI.Blazor;
 
-public class NotificationUI : INotificationUIBackend, INotificationPermissions
+public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificationPermissions
 {
-    private readonly object _lock = new();
-    private readonly IMutableState<PermissionState> _state;
-    private readonly IMutableState<string?> _deviceId;
-    private readonly TaskCompletionSource _whenStateSet = TaskCompletionSourceExt.New();
+    private readonly IMutableState<PermissionState> _permissionState;
+    private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();
+    private volatile Task<string?>? _registerDeviceTask;
     private History? _history;
     private AutoNavigationUI? _autoNavigationUI;
     private IDeviceTokenRetriever? _deviceTokenRetriever;
     private ILogger? _log;
+
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     private IServiceProvider Services { get; }
     private History History => _history ??= Services.GetRequiredService<History>();
@@ -23,11 +24,8 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
     private HostInfo HostInfo => History.HostInfo;
     private UrlMapper UrlMapper => History.UrlMapper;
     private IJSRuntime JS => History.JS;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public IState<PermissionState> State => _state;
-    // ReSharper disable once InconsistentlySynchronizedField
-    public IState<string?> DeviceId => _deviceId;
+    public IState<PermissionState> PermissionState => _permissionState;
     public Task WhenReady { get; }
 
     public NotificationUI(IServiceProvider services)
@@ -35,8 +33,7 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         Services = services;
 
         var stateFactory = services.StateFactory();
-        _state = stateFactory.NewMutable(PermissionState.Denied, nameof(State));
-        _deviceId = stateFactory.NewMutable(default(string?), nameof(DeviceId));
+        _permissionState = stateFactory.NewMutable(Blazor.PermissionState.Denied, nameof(PermissionState));
         WhenReady = Initialize();
 
         async Task Initialize() {
@@ -50,25 +47,11 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
             else if (HostInfo.AppKind == AppKind.MauiApp) {
                 // There should be no cycle reference as we implement INotificationPermissions for MAUI platform separately
                 var notificationPermissions = services.GetRequiredService<INotificationPermissions>();
-                var permissionState = await notificationPermissions.GetNotificationPermissionState(CancellationToken.None).ConfigureAwait(false);
-                UpdateNotificationStatus(permissionState);
+                var permissionState = await notificationPermissions.GetPermissionState(CancellationToken.None).ConfigureAwait(false);
+                SetPermissionState(permissionState);
             }
-            await _whenStateSet.Task.ConfigureAwait(false);
+            await _whenPermissionStateReady.Task.ConfigureAwait(false);
         }
-    }
-
-    public async Task EnsureDeviceRegistered(CancellationToken cancellationToken)
-    {
-        // ReSharper disable once InconsistentlySynchronizedField
-        if (_deviceId.Value != null)
-            return;
-        lock (_lock)
-            if (_deviceId.Value != null)
-                return;
-
-        var deviceId = await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
-        if (deviceId != null)
-            await RegisterDevice(deviceId, cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask RegisterRequestNotificationHandler(ElementReference reference)
@@ -80,13 +63,13 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
             ).ConfigureAwait(false);
     }
 
-    public async Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken)
+    public async Task<PermissionState> GetPermissionState(CancellationToken cancellationToken)
     {
         await WhenReady.ConfigureAwait(false);
-        return _state.Value;
+        return _permissionState.Value;
     }
 
-    public Task RequestNotificationPermissions(CancellationToken cancellationToken)
+    public Task RequestNotificationPermission(CancellationToken cancellationToken)
         // Web browser notification permission requests are handled at notification-ui.ts
         => Task.CompletedTask;
 
@@ -102,36 +85,63 @@ public class NotificationUI : INotificationUIBackend, INotificationPermissions
         _ = AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
     }
 
-    public void UpdateNotificationStatus(PermissionState newState)
+    public void SetPermissionState(PermissionState state)
     {
-        if (newState != _state.Value)
-            _state.Value = newState;
-        if (newState == PermissionState.Granted)
-            _ = EnsureDeviceRegistered(CancellationToken.None);
-        _whenStateSet.SetResult();
+        try {
+            lock (Lock) {
+                if (state == _permissionState.Value)
+                    return;
+            }
+            _permissionState.Value = state;
+            if (state == Blazor.PermissionState.Granted)
+                RegisterDevice();
+        }
+        finally {
+            _whenPermissionStateReady.TrySetResult();
+        }
     }
 
     [JSInvokable]
-    public async Task UpdateNotificationStatus(string permissionState)
+    public void SetPermissionState(string permissionState)
     {
-        var newState = permissionState switch {
-            "granted" => PermissionState.Granted,
-            "prompt" => PermissionState.Prompt,
-            _ => PermissionState.Denied,
+        var state = permissionState switch {
+            "granted" => Blazor.PermissionState.Granted,
+            "prompt" => Blazor.PermissionState.Prompt,
+            _ => Blazor.PermissionState.Denied,
         };
-        if (newState != _state.Value)
-            _state.Value = newState;
-        if (newState == PermissionState.Granted)
-            await EnsureDeviceRegistered(CancellationToken.None).ConfigureAwait(false);
-
-        _whenStateSet.SetResult();
+        SetPermissionState(state);
     }
 
-    private async Task RegisterDevice(string deviceId, CancellationToken cancellationToken) {
-        lock (_lock)
-            _deviceId.Value = deviceId;
+    // Private methods
 
-        var command = new Notifications_RegisterDevice(Session, deviceId, DeviceType.WebBrowser);
-        await Services.Commander().Run(command, cancellationToken).ConfigureAwait(false);
+    public void RegisterDevice()
+    {
+        if (_registerDeviceTask != null)
+            return;
+        lock (Lock) {
+            if (_registerDeviceTask != null)
+                return;
+
+            _registerDeviceTask = Task.Run(async () => {
+                string? deviceId = null;
+                while (true) {
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                    using var cts = StopToken.LinkWith(timeoutCts.Token);
+                    var cancellationToken = cts.Token;
+                    try {
+                        deviceId ??= await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
+                        if (deviceId != null) {
+                            var command = new Notifications_RegisterDevice(Session, deviceId, DeviceType.WebBrowser);
+                            await Services.Commander().Run(command, cancellationToken).ConfigureAwait(false);
+                        }
+                        return deviceId;
+                    }
+                    catch (Exception e) when (!StopToken.IsCancellationRequested) {
+                        Log.LogError(e, "Failed to register notification device - will retry");
+                    }
+                    await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false);
+                }
+            }, CancellationToken.None);
+        }
     }
 }

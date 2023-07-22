@@ -1,3 +1,4 @@
+using ActualChat.Notification;
 using Stl.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -37,6 +38,10 @@ public abstract class AutoNavigationUI : IHasServices
     public async ValueTask<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken)
     {
         Dispatcher.AssertAccess();
+        var pendingNotificationNavigationTasks = Services.GetService<PendingNotificationNavigationTasks>();
+        if (pendingNotificationNavigationTasks != null)
+            await pendingNotificationNavigationTasks.WhenCompleted;
+
         var candidateUrl = (LocalUrl?)null;
         if (_autoNavigationCandidates == null)
             throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");

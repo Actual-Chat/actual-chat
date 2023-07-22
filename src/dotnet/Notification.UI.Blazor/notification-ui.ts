@@ -11,26 +11,19 @@ export class NotificationUI {
 
     public static async init(backendRef: DotNet.DotNetObject, appKind: AppKind): Promise<void> {
         // probably init can be called multiple times on MAUI
-        debugLog?.log('init');
-        NotificationUI.backendRef = backendRef;
-        NotificationUI.appKind = appKind;
+        debugLog?.log(`init`);
+        this.backendRef = backendRef;
+        this.appKind = appKind;
 
         if (appKind === 'MauiApp')
             return;
 
-        const status = await NotificationUI.getNotificationPermissionStatus();
-        await NotificationUI.updateNotificationStatus(status);
-        NotificationUI.registerNotificationHandler();
+        const state = await this.getPermissionState();
+        await this.setPermissionState(state);
+        this.registerNotificationHandler();
     }
 
-    public static async registerRequestNotificationHandler(buttonContainer: HTMLElement): Promise<void> {
-        buttonContainer.addEventListener('click', async () => {
-            await NotificationUI.requestNotificationPermission();
-            await NotificationUI.getDeviceToken();
-        });
-    }
-
-    public static async getNotificationPermissionStatus(): Promise<PermissionState> {
+    public static async getPermissionState(): Promise<PermissionState> {
         if (!('Notification' in window))
             return 'denied';
 
@@ -51,9 +44,8 @@ export class NotificationUI {
                : 'prompt';
 
         const status = await navigator.permissions.query({ name: 'notifications' });
-        if (!status.onchange) {
-            status.onchange = ev => NotificationUI.updateNotificationStatus(status.state);
-        }
+        if (!status.onchange)
+            status.onchange = _ => this.setPermissionState(status.state);
         return status.state;
     }
 
@@ -67,7 +59,7 @@ export class NotificationUI {
                 const app = initializeApp(config);
                 const messaging = getMessaging(app);
                 onMessage(messaging, (payload) => {
-                    debugLog?.log(`onMessage: payload:`, payload);
+                    debugLog?.log(`onMessage, payload:`, payload);
                 });
 
                 const origin = new URL('notification-ui.ts', import.meta.url).origin;
@@ -94,6 +86,13 @@ export class NotificationUI {
         }
     }
 
+    public static async registerRequestNotificationHandler(buttonContainer: HTMLElement): Promise<void> {
+        buttonContainer.addEventListener('click', async () => {
+            await this.requestNotificationPermission();
+            await this.getDeviceToken();
+        });
+    }
+
     public static async requestNotificationPermission(): Promise<boolean> {
         debugLog?.log('requestNotificationPermission()');
 
@@ -105,7 +104,7 @@ export class NotificationUI {
                 const permission = await Notification.requestPermission();
                 storeNotificationPermission(permission);
             } else {
-                // Legacy browsers / safari
+                // Legacy browsers / Safari
                 await new Promise<boolean>((resolve, reject) => {
                     try {
                         Notification.requestPermission(function(permission) {
@@ -122,31 +121,33 @@ export class NotificationUI {
         }
     }
 
-    private static async updateNotificationStatus(state: PermissionState): Promise<void> {
-        debugLog?.log('-> updateNotificationStatus');
-        await NotificationUI.backendRef.invokeMethodAsync('UpdateNotificationStatus', state);
-        debugLog?.log('<- updateNotificationStatus');
+    // Private methods
+
+    private static async setPermissionState(state: PermissionState): Promise<void> {
+        debugLog?.log(`setPermissionState(${state})`);
+        await this.backendRef.invokeMethodAsync('SetPermissionState', state);
     }
 
     private static registerNotificationHandler(): void {
-        navigator.serviceWorker.addEventListener('message', async (evt: MessageEvent) => {
-            debugLog?.log(`navigator.serviceWorker.message:`, evt);
-            if (evt.origin !== window.location.origin)
+        navigator.serviceWorker.addEventListener('message', async (event: MessageEvent) => {
+            debugLog?.log(`navigator.serviceWorker.message:`, event);
+            if (event.origin !== window.location.origin)
                 return;
-            if (evt.type !== 'message' && evt.data?.type !== 'NOTIFICATION_CLICK')
+            if (event.type !== 'message' && event.data?.type !== 'NOTIFICATION_CLICK')
                 return;
 
-            const url = evt.data?.url;
-            await NotificationUI.backendRef.invokeMethodAsync('HandleNotificationNavigation', url);
+            const url = event.data?.url;
+            await this.backendRef.invokeMethodAsync('HandleNotificationNavigation', url);
         });
     }
 }
 
+// Helpers
 
-function storeNotificationPermission(permission) {
+function storeNotificationPermission(permission: NotificationPermission) {
     // Whatever the user answers, we make sure Chrome stores the information
     if (!('permission' in Notification)) {
-        debugLog?.log(`storeNotificationPermission, permission:`, permission);
+        debugLog?.log(`storeNotificationPermission(${permission})`);
         // @ts-ignore readonly property
         Notification['permission'] = permission;
     }

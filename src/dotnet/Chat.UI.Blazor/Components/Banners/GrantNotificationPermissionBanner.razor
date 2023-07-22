@@ -51,7 +51,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var permissionState = await NotificationUI.State.Use(cancellationToken);
+        var permissionState = await NotificationUI.PermissionState.Use(cancellationToken);
         // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
         var dismissedAt = await _dismissedAt.Use(cancellationToken);
         var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
@@ -66,7 +66,7 @@
 
 
     private Task OnConfigureClick(MouseEventArgs arg)
-        => NotificationPermissions.RequestNotificationPermissions(CancellationToken.None);
+        => NotificationPermissions.RequestNotificationPermission(CancellationToken.None);
 
     private async Task OnConfigureRendered(ElementReference buttonRef) {
         if (_isHandlerRegistered)

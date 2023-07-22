@@ -11,7 +11,7 @@ public class AndroidNotificationPermissions : INotificationPermissions
     public AndroidNotificationPermissions()
     { }
 
-    public Task<PermissionState> GetNotificationPermissionState(CancellationToken cancellationToken)
+    public Task<PermissionState> GetPermissionState(CancellationToken cancellationToken)
     {
         var activity = Platform.CurrentActivity!;
         if (ContextCompat.CheckSelfPermission(activity, Manifest.Permission.PostNotifications) == Permission.Granted)
@@ -21,11 +21,10 @@ public class AndroidNotificationPermissions : INotificationPermissions
             : PermissionState.Prompt);
     }
 
-    public async Task RequestNotificationPermissions(CancellationToken cancellationToken)
+    public async Task RequestNotificationPermission(CancellationToken cancellationToken)
     {
         var activity = Platform.CurrentActivity!;
-        var state = await GetNotificationPermissionState(cancellationToken).ConfigureAwait(true);
-
+        var state = await GetPermissionState(cancellationToken).ConfigureAwait(true);
         if (state == PermissionState.Granted)
             return;
 

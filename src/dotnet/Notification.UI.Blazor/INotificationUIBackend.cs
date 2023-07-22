@@ -4,7 +4,6 @@ public interface INotificationUIBackend
 {
     [JSInvokable]
     void HandleNotificationNavigation(string absoluteUrl);
-
     [JSInvokable]
-    Task UpdateNotificationStatus(string permissionState);
+    void SetPermissionState(string permissionState);
 }

@@ -64,9 +64,9 @@ public class MainActivity : MauiAppCompatActivity
             // and user brings it back to foreground by launching app icon or picking app from recents,
             // then warm start happens https://developer.android.com/topic/performance/vitals/launch-time#warm
             // MainActivity is created again, BlazorWebView and MauiBlazorApp also created also,
-            // But the new instance of MauiBlazorApp uses same service provider and some services are initialized again.
-            // Which is not expected.
-            // As result, splash screen is hid very early and user sees index.html and other subsequent views.
+            // But the new instance of MauiBlazorApp uses same service provider and some services
+            // are initialized again.
+            // As a result, splash screen is getting hidden early and user sees index.html w/o any content yet.
             // TODO: to think how we can gracefully handle this partial recreation.
         }
         Log = AppServices.LogFor(GetType());
@@ -92,7 +92,7 @@ public class MainActivity : MauiAppCompatActivity
                 _ = Task.Run(async () => {
                     var scopedServices1 = await ScopedServicesTask.ConfigureAwait(false);
                     var notificationUI = scopedServices1.GetRequiredService<NotificationUI>();
-                    notificationUI.UpdateNotificationStatus(notificationState);
+                    notificationUI.SetPermissionState(notificationState);
                 });
             }));
         CreateNotificationChannel();
@@ -162,7 +162,7 @@ public class MainActivity : MauiAppCompatActivity
             _ = Task.Run(async () => {
                 var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
                 var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
-                notificationUI.UpdateNotificationStatus(notificationState);
+                notificationUI.SetPermissionState(notificationState);
             });
         }
     }
@@ -197,6 +197,7 @@ public class MainActivity : MauiAppCompatActivity
                 continue;
             if (data.ContainsKey(key))
                 continue;
+
             var extraValue = extras.Get(key);
             if (extraValue != null)
                 data.Add(key, extraValue.ToString());
@@ -211,11 +212,12 @@ public class MainActivity : MauiAppCompatActivity
         if (url.IsNullOrEmpty())
             return;
 
-        _ = Task.Run(async () => {
+        var pendingNotificationNavigationTasks = AppServices.GetRequiredService<PendingNotificationNavigationTasks>();
+        pendingNotificationNavigationTasks.Add(Task.Run(async () => {
             var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
             var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
             notificationUI.HandleNotificationNavigation(url);
-        });
+        }));
     }
 
     public class SplashScreenExitAnimationListener : GenericAnimatorListener, ISplashScreenOnExitAnimationListener
