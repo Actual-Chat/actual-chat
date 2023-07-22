@@ -1,4 +1,5 @@
 namespace ActualChat.App.Maui;
+
 public class App : Application
 {
     private ILogger Log { get; }

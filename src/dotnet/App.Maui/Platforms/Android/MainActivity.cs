@@ -70,10 +70,10 @@ public class MainActivity : MauiAppCompatActivity
             // TODO: to think how we can gracefully handle this partial recreation.
         }
         Log = AppServices.LogFor(GetType());
-        Log.LogDebug("OnCreate, is loaded: {IsLoaded}", isLoaded);
+        _tracer.Point($"OnCreate, is loaded: {isLoaded}");
 
         base.OnCreate(savedInstanceState);
-        Log.LogDebug("base.OnCreate completed");
+        _tracer.Point("OnCreate, base.OnCreate completed");
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
@@ -116,35 +116,31 @@ public class MainActivity : MauiAppCompatActivity
     protected override void OnStart()
     {
         _tracer.Point(nameof(OnStart));
-        Log.LogDebug(nameof(OnStart));
         base.OnStart();
     }
 
     protected override void OnResume()
     {
         _tracer.Point(nameof(OnResume));
-        Log.LogDebug(nameof(OnResume));
         base.OnResume();
     }
 
     protected override void OnStop()
     {
         _tracer.Point(nameof(OnStop));
-        Log.LogDebug(nameof(OnStop));
         base.OnStop();
     }
 
     protected override void OnDestroy()
     {
         _tracer.Point(nameof(OnDestroy));
-        Log.LogDebug(nameof(OnDestroy));
         base.OnDestroy();
         Interlocked.CompareExchange(ref _current, null, this);
     }
 
     protected override void OnNewIntent(Intent? intent)
     {
-        Log.LogDebug("OnNewIntent");
+        _tracer.Point(nameof(OnNewIntent));
         base.OnNewIntent(intent);
         TryHandleNotificationTap(intent);
     }
@@ -206,9 +202,9 @@ public class MainActivity : MauiAppCompatActivity
                 data.Add(key, extraValue.ToString());
         }
 
-        if (Log.IsEnabled(LogLevel.Debug)) {
+        if (Log.IsEnabled(LogLevel.Information)) {
             var dataAsText = data.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
-            Log.LogDebug("NotificationTap. Data: {Data}", dataAsText);
+            Log.LogInformation("NotificationTap. Data: {Data}", dataAsText);
         }
 
         var url = data.GetValueOrDefault(NotificationConstants.MessageDataKeys.Link);

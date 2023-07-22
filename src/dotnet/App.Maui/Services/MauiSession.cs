@@ -49,11 +49,13 @@ public sealed class MauiSession
             TrueSessionResolver.Session = session;
             var validSession =
                 await MobileSessions.ValidateSession(session, CancellationToken.None).ConfigureAwait(false);
-            if (session == validSession || Random.Shared.Next(2) == 0)
+            if (session == validSession)
                 return;
 
             // Session is invalid -> update it to valid + reload MAUI App
+            Log.LogWarning("Stored session is invalid - will reload");
             await Store(validSession).ConfigureAwait(false);
+            TrueSessionResolver.Replace(validSession);
             Services.GetRequiredService<ReloadUI>().Reload(true);
         });
     }
@@ -65,13 +67,13 @@ public sealed class MauiSession
         try {
             var sessionId = await storage.GetAsync(SessionStorageKey).ConfigureAwait(false);
             if (!sessionId.IsNullOrEmpty()) {
-                Log.LogInformation("Successfully read stored Session ID");
+                Log.LogInformation("Successfully read stored Session");
                 return new Session(sessionId).RequireValid();
             }
-            Log.LogInformation("No stored Session ID");
+            Log.LogInformation("No stored Session");
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Failed to read stored Session ID");
+            Log.LogWarning(e, "Failed to read stored Session");
             // ignored
             // https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
             // TODO: configure selective backup, to prevent app crashes after re-installing
@@ -87,25 +89,25 @@ public sealed class MauiSession
         bool isSaved;
         try {
             if (storage.Remove(SessionStorageKey))
-                Log.LogInformation("Removed stored Session ID");
+                Log.LogInformation("Removed stored Session");
             await storage.SetAsync(SessionStorageKey, session.Id.Value).ConfigureAwait(false);
             isSaved = true;
         }
         catch (Exception e) {
             isSaved = false;
-            Log.LogWarning(e, "Failed to store Session ID");
+            Log.LogWarning(e, "Failed to store Session");
             // Ignored, see:
             // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
         }
 
         if (!isSaved) {
-            Log.LogInformation("Second attempt to store Session ID");
+            Log.LogInformation("Second attempt to store Session");
             try {
                 storage.RemoveAll();
                 await storage.SetAsync(SessionStorageKey, session.Id.Value).ConfigureAwait(false);
             }
             catch (Exception e) {
-                Log.LogWarning(e, "Failed to store Session ID (second attempt)");
+                Log.LogWarning(e, "Failed to store Session (second attempt)");
                 // Ignored, see:
                 // - https://learn.microsoft.com/en-us/answers/questions/1001662/suddenly-getting-securestorage-issues-in-maui
             }

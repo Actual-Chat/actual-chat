@@ -17,7 +17,7 @@ public class MauiBlazorApp : AppBase
                 ScopedServices = Services;
             }
             catch (Exception) {
-                Log.LogWarning("OnInitializedAsync: can't change ScopedServices - will restart");
+                Log.LogWarning("OnInitializedAsync: can't set ScopedServices - will restart");
                 Services.GetRequiredService<ReloadUI>().Reload();
                 return;
             }
@@ -32,10 +32,9 @@ public class MauiBlazorApp : AppBase
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        // On refreshing page, MAUI dispose PageContext.
-        // Which dispose Renderer with all components.
-        // And after that container is disposed.
-        // So we forget previous scoped services container in advance.
-        DiscardScopedServices();
+        // Blazor disposes service container scope on page reload.
+        // So we must discard ScopedServices (unless they're already discarded)
+        // to make sure reload doesn't fail.
+        DiscardScopedServices(Services);
     }
 }

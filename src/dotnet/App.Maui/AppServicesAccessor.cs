@@ -59,11 +59,13 @@ public class AppServicesAccessor
         return scopedServices != null;
     }
 
-    public static void DiscardScopedServices()
+    public static void DiscardScopedServices(IServiceProvider? expectedScopedServices = null)
     {
         lock (_lock) {
             var scopedServices = _scopedServices;
             if (scopedServices == null)
+                return;
+            if (expectedScopedServices != null && !ReferenceEquals(scopedServices, expectedScopedServices))
                 return;
 
             _scopedServicesTask.TrySetCanceled();

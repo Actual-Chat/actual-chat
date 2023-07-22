@@ -25,13 +25,6 @@ public partial class MainPage
         webView.CookieManager.AddOrUpdateCookie(cookie);
     }
 
-    public partial void NavigateTo(string url)
-    {
-        var js = $"window.location.replace({SystemJsonSerializer.Default.Write(url)})";
-        PlatformWebView!.EvaluateJavaScript(new EvaluateJavaScriptAsyncRequest(js));
-        // PlatformWebView!.CoreWebView2.Navigate(url);
-    }
-
     private partial void OnWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e)
     { }
 

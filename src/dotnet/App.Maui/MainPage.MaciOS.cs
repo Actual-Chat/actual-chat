@@ -23,7 +23,6 @@ public partial class MainPage
     {
         var cookieName = Constants.Session.CookieName;
         var sessionId = session.Id.Value;
-
         var properties = isSecure
             ? new NSDictionary(
                 NSHttpCookie.KeyName, cookieName,
@@ -44,9 +43,6 @@ public partial class MainPage
                 );
         PlatformWebView!.Configuration.WebsiteDataStore.HttpCookieStore.SetCookie(new NSHttpCookie(properties), null);
     }
-
-    public partial void NavigateTo(string url)
-        => PlatformWebView!.LoadRequest(new NSUrlRequest(new NSUrl(url)));
 
     // To manage iOS permissions, update Info.plist to include the necessary keys to access
     // the APIs required by your app. You may have to perform additional configuration to enable

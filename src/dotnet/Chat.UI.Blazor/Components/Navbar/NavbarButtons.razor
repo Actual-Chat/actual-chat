@@ -36,18 +36,16 @@
         Tooltip="Test Pages">
         <i class="icon-alert-triangle text-2xl font-medium"></i>
     </NavbarGroupSelectionButton>
-}
 
-@*
-@if (HostInfo.AppKind.IsMauiApp()) {
-    <NavbarButton
-        Class="mt-auto"
-        Tooltip="Restart"
-        Click="OnRestartClick">
-        <i class="icon-refresh text-2xl font-medium"></i>
-    </NavbarButton>
+    @if (m.IsAdmin) {
+        <NavbarButton
+            Class="mt-auto"
+            Tooltip="Restart"
+            Click="OnRestartClick">
+            <i class="icon-refresh text-2xl font-medium"></i>
+        </NavbarButton>
+    }
 }
-*@
 
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;

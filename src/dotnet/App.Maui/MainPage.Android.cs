@@ -28,9 +28,6 @@ public partial class MainPage
         cookieManager.SetCookie("https://" + MauiSettings.Host, sessionCookieValue);
     }
 
-    public partial void NavigateTo(string url)
-        => PlatformWebView!.LoadUrl(url);
-
     // Example to control permissions in browser is taken from the comment
     // https://github.com/dotnet/maui/issues/4768#issuecomment-1137906982
     // https://github.com/MackinnonBuck/MauiBlazorPermissionsExample

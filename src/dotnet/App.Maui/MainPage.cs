@@ -6,7 +6,6 @@ namespace ActualChat.App.Maui;
 
 public partial class MainPage : ContentPage
 {
-    private readonly BlazorWebView _webView;
     private MauiNavigationInterceptor? _navigationInterceptor;
 
     public static MainPage? Current => Application.Current?.MainPage as MainPage;
@@ -22,26 +21,27 @@ public partial class MainPage : ContentPage
         Tracer.Point(".ctor");
         Services = services;
         BackgroundColor = Color.FromRgb(0x44, 0x44, 0x44);
+        RecreateWebView();
+    }
 
-        _webView = new BlazorWebView {
+    public void RecreateWebView()
+    {
+        var webView = new BlazorWebView {
             HostPage = "wwwroot/index.html",
         };
-        _webView.BlazorWebViewInitializing += OnWebViewInitializing;
-        _webView.BlazorWebViewInitialized += OnWebViewInitialized;
-        _webView.UrlLoading += OnWebViewUrlLoading;
-        _webView.Loaded += OnWebViewLoaded;
-        Content = _webView;
-
-        _webView.RootComponents.Add(
+        webView.BlazorWebViewInitializing += OnWebViewInitializing;
+        webView.BlazorWebViewInitialized += OnWebViewInitialized;
+        webView.UrlLoading += OnWebViewUrlLoading;
+        webView.Loaded += OnWebViewLoaded;
+        webView.RootComponents.Add(
             new RootComponent {
                 ComponentType = typeof(MauiBlazorApp),
                 Selector = "#app",
             });
+        Content = webView;
     }
 
     public partial void SetupSessionCookie(Session session);
-
-    public partial void NavigateTo(string url);
 
     // Private methods
 
