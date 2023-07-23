@@ -6,9 +6,11 @@ namespace ActualChat.UI.Blazor.Services;
 public sealed class BubbleUI
 {
     private readonly ISyncedState<UserBubbleSettings> _settings;
+    private AccountUI? _accountUI;
 
+    private IServiceProvider Services { get; }
     private Session Session { get; }
-    private IAccounts Accounts { get; }
+    private AccountUI AccountUI => _accountUI ??= Services.GetRequiredService<AccountUI>();
     private AccountSettings AccountSettings { get; }
     private MomentClockSet Clocks { get; }
 
@@ -16,8 +18,8 @@ public sealed class BubbleUI
 
     public BubbleUI(IServiceProvider services)
     {
+        Services = services;
         Session = services.Session();
-        Accounts = services.GetRequiredService<IAccounts>();
         AccountSettings = services.GetRequiredService<AccountSettings>();
         Clocks = services.Clocks();
 
@@ -34,8 +36,8 @@ public sealed class BubbleUI
     {
         // 1. Wait for sign-in
         try {
-            await Computed
-                .Capture(() => Accounts.GetOwn(Session, CancellationToken.None))
+            await AccountUI.WhenLoaded;
+            await AccountUI.OwnAccount
                 .When(x => !x.IsGuestOrNone, Clocks.Timeout(2))
                 .ConfigureAwait(false);
         }

@@ -4,14 +4,11 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class OnboardingUI
+public class OnboardingUI : IDisposable
 {
     private readonly ISyncedState<UserOnboardingSettings> _settings;
 
     private IServiceProvider Services { get; }
-    private Session Session { get; }
-    private IAccounts Accounts { get; }
-    private AccountSettings AccountSettings { get; }
     private AccountUI AccountUI { get; }
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
@@ -21,21 +18,22 @@ public class OnboardingUI
     public OnboardingUI(IServiceProvider services)
     {
         Services = services;
-        Session = services.Session();
-        Accounts = services.GetRequiredService<IAccounts>();
-        AccountSettings = services.GetRequiredService<AccountSettings>();
         AccountUI = services.GetRequiredService<AccountUI>();
         Clocks = services.Clocks();
 
         var stateFactory = services.StateFactory();
+        var accountSettings = services.GetRequiredService<AccountSettings>();
         _settings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
-            new (AccountSettings, UserOnboardingSettings.KvasKey) {
+            new (accountSettings, UserOnboardingSettings.KvasKey) {
                 InitialValue = new UserOnboardingSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
         AccountUI.OwnAccountChanged += OnOwnAccountChanged;
     }
+
+    public void Dispose()
+        => AccountUI.OwnAccountChanged -= OnOwnAccountChanged;
 
     public async ValueTask TryShow()
     {
@@ -62,8 +60,8 @@ public class OnboardingUI
     {
         // 1. Wait for sign-in
         try {
-            await Computed
-                .Capture(() => Accounts.GetOwn(Session, CancellationToken.None))
+            await AccountUI.WhenLoaded;
+            await AccountUI.OwnAccount
                 .When(x => !x.IsGuestOrNone, Clocks.Timeout(2))
                 .ConfigureAwait(false);
         }

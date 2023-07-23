@@ -1,22 +1,11 @@
 @using ActualChat.Hosting
 @using ActualChat.Module
-@using ActualChat.Chat.UI.Blazor.Services
 @using ActualChat.Security
 @implements IRootComponent
 @implements IDisposable
 @{
-    if (!_readyToRender) {
-        // We can't render anything till the moment a few key components completed the initialization,
-        // but we can render the Router to make sure its routing tables are initialized -
-        // Routing tables are cached, so another (actual) Router instance will reuse them;
-        // see RouteTableFactory.Create for details.
-        <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
-            <Found></Found>
-            <NotFound></NotFound>
-        </Router>
+    if (!_readyToRender)
         return;
-    }
-
     if (_simulatedCrashError != null)
         throw _simulatedCrashError;
 }
@@ -24,7 +13,7 @@
 <ScreenSizeProvider>
     <AlwaysVisibleComponents/>
 
-    <Router AppAssembly="UIAssembly" AdditionalAssemblies="UIModuleAssemblies">
+    <Router AppAssembly="@UIAssembly" AdditionalAssemblies="@UIModuleAssemblies">
         <Found Context="routeData">
             <RequirementChecker>
                 <Success>
@@ -43,12 +32,14 @@
 </ScreenSizeProvider>
 
 @code {
-    private static Assembly? UIAssembly { get; set; }
-    private static Assembly[]? UIModuleAssemblies { get; set; }
+    private static Assembly UIAssembly { get; set; } = null!;
+    private static Assembly[] UIModuleAssemblies { get; set; } = null!;
+    private static Task? _whenInitializedOnceTask;
 
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
     private bool _readyToRender;
+    private bool _shouldRender;
     private Exception? _simulatedCrashError;
 
     [Inject] protected IServiceProvider Services { get; init; } = null!;
@@ -73,6 +64,15 @@
 
     protected override void OnInitialized() {
         LoadingUI.MarkAppCreated();
+        _whenInitializedOnceTask ??= Task.Run(() => {
+            UIAssembly = typeof(AppBase).Assembly;
+            UIModuleAssemblies = Host.Modules
+                .OfType<IBlazorUIModule>()
+                .Select(p => p.GetType().Assembly)
+                .Where(a => a != UIAssembly)
+                .ToArray();
+            Tracer.Point("IBlazorUIModule assemblies evaluated");
+        }, CancellationToken.None);
 
         // Hit StaticImportsInitializer to make sure DefaultLog is set
         Services.GetRequiredService<StaticImportsInitializer>();
@@ -103,28 +103,16 @@
         }
 #endif
 
-        var whenReadyToRender = AppServiceStarter.ReadyToRender(sessionHash, _disposeToken);
-
-        UIAssembly ??= typeof(AppBase).Assembly;
-        UIModuleAssemblies ??= Host.Modules
-            .OfType<IBlazorUIModule>()
-            .Select(p => p.GetType().Assembly)
-            .Where(a => a != UIAssembly)
-            .ToArray();
-        Tracer.Point("IBlazorUIModule assemblies evaluated");
-
-        await whenReadyToRender;
+        await AppServiceStarter.ReadyToRender(sessionHash);
+        await _whenInitializedOnceTask!;
         LoadingUI.MarkLoaded();
-        _ = LoadingUI.WhenRendered.ContinueWith(
-            _ => AppServiceStarter.AfterRender(_disposeToken),
-            TaskScheduler.Default);
 
-        Services.GetRequiredService<UIEventHub>();
         _readyToRender = true;
+        _shouldRender = true;
         StateHasChanged();
 
-        var onboardingUI = Services.GetRequiredService<OnboardingUI>();
-        _ = onboardingUI.TryShow();
+        await LoadingUI.WhenRendered;
+        await AppServiceStarter.AfterRender(_disposeToken);
     }
 
     public void Dispose() {
@@ -140,9 +128,13 @@
 
     public void SimulateCrash(Exception error) {
         _simulatedCrashError = error;
+        _shouldRender = true;
         StateHasChanged();
     }
 
-    protected override bool ShouldRender()
-        => _readyToRender;
+    protected override bool ShouldRender() {
+        var shouldRender = _shouldRender;
+        _shouldRender = false;
+        return shouldRender;
+    }
 }

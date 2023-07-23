@@ -33,13 +33,13 @@ public static class ComputedExt
     {
         var cts = cancellationToken.CreateLinkedTokenSource();
         try {
-            var computedTask = computed.When(predicate, cts.Token);
+            var whenTask = computed.When(predicate, cts.Token);
             var timeoutTask = timeout.Wait(cts.Token);
-            await Task.WhenAny(timeoutTask, computedTask).ConfigureAwait(false);
+            await Task.WhenAny(timeoutTask, whenTask).ConfigureAwait(false);
             if (timeoutTask.IsCompleted && !cancellationToken.IsCancellationRequested)
                 throw new TimeoutException();
 
-            return await computedTask.ConfigureAwait(false);
+            return await whenTask.ConfigureAwait(false);
         }
         finally {
             cts.CancelAndDisposeSilently();

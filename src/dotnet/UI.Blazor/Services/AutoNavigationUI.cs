@@ -34,7 +34,7 @@ public abstract class AutoNavigationUI : IHasServices
         DebugLog = Log.IfEnabled(LogLevel.Debug);
     }
 
-    public Task<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken)
+    public Task<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken = default)
         => Dispatcher.InvokeAsync(async () => {
             if (_autoNavigationCandidates == null)
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
