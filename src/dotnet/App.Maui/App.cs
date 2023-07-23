@@ -2,14 +2,14 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
 
-public class App : Application, IHasServices
+public class App : Application
 {
     public static new App Current => (App)Application.Current!;
-    public static bool MustQuit { get; set; }
+    public static bool MustMinimizeOnQuit { get; private set; } = true;
 
     private ILogger? _log;
 
-    public IServiceProvider Services { get; }
+    private IServiceProvider Services { get; }
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public App(MainPage mainPage, IServiceProvider services)
@@ -40,5 +40,11 @@ public class App : Application, IHasServices
             var autoNavigationUI = scopedServices.GetRequiredService<AutoNavigationUI>();
             await autoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.AppLink).ConfigureAwait(false);
         }, Log, "Failed to handle AppLink request"));
+    }
+
+    public new void Quit()
+    {
+        MustMinimizeOnQuit = false;
+        base.Quit();
     }
 }

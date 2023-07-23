@@ -6,15 +6,13 @@ internal static class WindowsMinimization
 {
     public static void Configure(Microsoft.UI.Xaml.Window window)
     {
-        var mustMinimizeOnClose = true;
         WinUI.App.AppInstanceActivated += arguments => {
-            if (arguments.Contains(JumpListManager.QuitArgs)) {
-                mustMinimizeOnClose = false;
-                window.DispatcherQueue.TryEnqueue(window.Close);
-            }
-            else {
-                window.DispatcherQueue.TryEnqueue(window.Activate);
-            }
+            window.DispatcherQueue.TryEnqueue(() => {
+                if (arguments.Contains(JumpListManager.QuitArgs))
+                    App.Current.Quit();
+                else
+                    window.Activate();
+            });
         };
 
         _ = JumpListManager.PopulateJumpList();
@@ -26,12 +24,13 @@ internal static class WindowsMinimization
         };
 
         var appWindow = window.GetAppWindow()!;
-        appWindow.Closing += (s, e) => {
-            if (mustMinimizeOnClose && !App.MustQuit) {
-                var presenter = (Microsoft.UI.Windowing.OverlappedPresenter)appWindow.Presenter;
-                presenter.Minimize();
-                e.Cancel = true;
-            }
+        appWindow.Closing += (_, e) => {
+            if (!App.MustMinimizeOnQuit)
+                return;
+
+            var presenter = (Microsoft.UI.Windowing.OverlappedPresenter)appWindow.Presenter;
+            presenter.Minimize();
+            e.Cancel = true;
         };
     }
 }

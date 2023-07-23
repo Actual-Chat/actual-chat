@@ -51,8 +51,6 @@
         await UpdateAutoStart();
     }
 
-    private void OnQuitClick() {
-        throw new NotImplementedException();
-    }
-
+    private void OnQuitClick()
+        => ReloadUI.Quit();
 }

@@ -33,8 +33,5 @@ public class MauiReloadUI : ReloadUI
         });
 
     public override void Quit()
-    {
-        App.MustQuit = true;
-        App.Current.Quit();
-    }
+        => App.Current.Quit();
 }
