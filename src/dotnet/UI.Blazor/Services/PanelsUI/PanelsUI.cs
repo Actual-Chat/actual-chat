@@ -25,10 +25,8 @@ public class PanelsUI : WorkerBase, IHasServices
             throw StandardError.Internal(
                 $"{nameof(PanelsUI)} is resolved too early: {nameof(BrowserInfo)} is not ready yet.");
 
-        var autoNavigationUI = services.GetRequiredService<AutoNavigationUI>();
-        var initialLeftPanelIsVisible = autoNavigationUI.InitialLeftPanelIsVisible;
-
         ScreenSize = browserInfo.ScreenSize;
+        var initialLeftPanelIsVisible = ScreenSize.Value.IsWide() || History.LocalUrl.IsChatOrChatRoot();
         Left = new LeftPanel(this, initialLeftPanelIsVisible);
         Right = new RightPanel(this);
         Middle = new MiddlePanel(this);

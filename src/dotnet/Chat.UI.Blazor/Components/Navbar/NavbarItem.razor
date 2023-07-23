@@ -2,6 +2,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var activeClass = IsSelected ? "active" : "inactive";
+    var isCurrent = History.LocalUrl.Value == Url;
 }
 
 <div class="@Class @activeClass navbar-item group" @attributes="@Attributes">
@@ -9,12 +10,12 @@
         <div class="navbar-item-content">
             @ChildContent
         </div>
-    } else if (IsSelected) {
-        <div class="navbar-item-content" @onclick="@OnSelectedClick">
+    } else if (isCurrent) {
+        <div class="navbar-item-content" @onclick="@OnCurrentClick">
             @ChildContent
         </div>
     } else {
-        <div class="navbar-item-content" data-href="@Url" data-href-tune="select-navbar-item" data-chat-switch-with-replace="true">
+        <div class="navbar-item-content" data-href="@Url" data-replace-on-prefix="@ReplaceOnPrefix" data-href-tune="select-navbar-item">
             @ChildContent
         </div>
     }
@@ -25,23 +26,23 @@
 
 @code {
     [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsSelected { get; set; }
     [Parameter] public string Url { get; set; } = "";
+    [Parameter] public string ReplaceOnPrefix { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> Attributes { get; set; } = new();
 
-    private void OnSelectedClick() {
+    private void OnCurrentClick() {
         // Navigation doesn't happen when we click on the current URL,
         // but we still need to pretend it is happening.
-
-        var tuneUI = Services.GetRequiredService<TuneUI>();
-        _ = tuneUI.Play("select-navbar-item");
-
         var panelsUI = Services.GetRequiredService<PanelsUI>();
         panelsUI.HidePanels();
+        var tuneUI = Services.GetRequiredService<TuneUI>();
+        _ = tuneUI.Play("select-navbar-item");
     }
 }

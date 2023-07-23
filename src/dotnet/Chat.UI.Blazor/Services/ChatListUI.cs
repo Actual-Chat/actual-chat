@@ -202,7 +202,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
             DebugLog?.LogDebug("-> ListAllUnorderedRaw");
             var startedAt = CpuTimestamp.Now;
             var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
-            var loadLimit = _loadLimit.Value; // It is explicitly invalidated in BumpUpLoadLimit
+            var loadLimit = _loadLimit.Value; // It is explicitly invalidated in IncreaseLoadLimit
             if (contactIds.Count > loadLimit) {
                 contactIds = contactIds[..loadLimit];
                 _ = IncreaseLoadLimit();

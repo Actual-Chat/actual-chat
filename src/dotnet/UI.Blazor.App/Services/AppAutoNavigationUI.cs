@@ -21,14 +21,4 @@ public class AppAutoNavigationUI : AutoNavigationUI
             ? currentUrl
             : Links.Chats; // You're signed in - so we redirect you to /chats/
     }
-
-    protected override async ValueTask<LocalUrl> FixUrl(LocalUrl url, CancellationToken cancellationToken)
-    {
-        if (!url.IsChatRoot())
-            return url;
-
-        var chatUI = Services.GetRequiredService<ChatUI>();
-        await chatUI.WhenLoaded.ConfigureAwait(false);
-        return Links.Chat(chatUI.SelectedChatId.Value);
-    }
 }

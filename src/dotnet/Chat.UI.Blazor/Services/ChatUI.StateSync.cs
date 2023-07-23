@@ -1,4 +1,5 @@
-﻿using ActualChat.UI.Blazor.Services;
+﻿using ActualChat.Chat.UI.Blazor.Events;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -27,7 +28,7 @@ public partial class ChatUI
 
     private async Task InvalidateSelectedChatDependencies(CancellationToken cancellationToken)
     {
-        var oldChatId = SelectedChatId.Value;
+        var oldChatId = ChatId.None;
         var changes = SelectedChatId.Changes(cancellationToken);
         await foreach (var cSelectedContactId in changes.ConfigureAwait(false)) {
             var newChatId = cSelectedContactId.Value;
@@ -40,6 +41,9 @@ public partial class ChatUI
                 _ = IsSelected(newChatId);
             }
 
+            _ = ChatEditorUI.RestoreRelatedEntry(newChatId).ConfigureAwait(false);
+            _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
+            _ = UICommander.RunNothing();
             oldChatId = newChatId;
         }
     }

@@ -19,6 +19,7 @@
 else {
     <NavbarItem
         Url="@($"/chat/{chat.Id}")"
+        ReplaceOnPrefix="/chat/"
         IsSelected="@chatState.IsSelected"
         data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"

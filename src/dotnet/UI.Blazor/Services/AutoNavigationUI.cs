@@ -1,4 +1,3 @@
-using ActualChat.Notification;
 using Stl.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -26,8 +25,6 @@ public abstract class AutoNavigationUI : IHasServices
     public AppBlazorCircuitContext BlazorCircuitContext => _blazorCircuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
     public Dispatcher Dispatcher => BlazorCircuitContext.Dispatcher;
 
-    public bool? InitialLeftPanelIsVisible { get; set; }
-
     protected AutoNavigationUI(IServiceProvider services)
     {
         Services = services;
@@ -49,14 +46,8 @@ public abstract class AutoNavigationUI : IHasServices
             candidateUrl = _autoNavigationCandidates.MaxBy(t => (int) t.Reason).Url;
         _autoNavigationCandidates = null;
 
-        var currentUrl = History.LocalUrl;
         var url = candidateUrl ?? await GetDefaultAutoNavigationUrl().ConfigureAwait(false);
-        url = await FixUrl(url, cancellationToken).ConfigureAwait(false);
-        if (url != currentUrl && url.IsChat()) {
-            // Original URL was either home or chat root page,
-            // so left panel must be open when PanelsUI is loaded
-            InitialLeftPanelIsVisible = true;
-        }
+        Log.LogInformation("Auto navigation URL: {AutoNavigationUrl}", url);
         return url;
     }
 
@@ -76,25 +67,19 @@ public abstract class AutoNavigationUI : IHasServices
     public Task NavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
         Dispatcher.AssertAccess();
-        if (_autoNavigationCandidates == null)
-            return FixUrlAndNavigate(); // Initial navigation already happened
+        if (_autoNavigationCandidates == null) {
+            // Initial navigation already happened
+            Log.LogInformation("* NavigateTo({Url}, {Reason})", url, reason);
+            return History.NavigateTo(url).SuppressExceptions();
+        }
 
         // Initial navigation haven't happened yet
         Log.LogInformation("+ NavigateTo({Url}, {Reason})", url, reason);
         _autoNavigationCandidates.Add((url, reason));
         return History.WhenReady;
-
-        async Task FixUrlAndNavigate()
-        {
-            Log.LogInformation("* NavigateTo({Url}, {Reason})", url, reason);
-            var cancellationToken = BlazorCircuitContext.StopToken;
-            url = await FixUrl(url, cancellationToken).ConfigureAwait(true);
-            await History.NavigateTo(url).SilentAwait();
-        }
     }
 
     // Protected methods
 
     protected abstract ValueTask<LocalUrl> GetDefaultAutoNavigationUrl();
-    protected abstract ValueTask<LocalUrl> FixUrl(LocalUrl url, CancellationToken cancellationToken);
 }

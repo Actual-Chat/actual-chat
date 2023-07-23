@@ -14,33 +14,33 @@
 }
 @if (m.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
-        <NavbarItem Url="/admin/user-invites">Invite Users</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/user-invites">Invite Users</NavbarItem>
     </NavbarGroup>
 }
 @if (HostInfo.IsDevelopmentInstance) {
     <NavbarGroup Title="Test pages" Class="navbar-pages" Id="testPages">
-        <NavbarItem Url="/test/virtual-list">Virtual List</NavbarItem>
-        <NavbarItem Url="/test/audio-player">Audio Player</NavbarItem>
-        <NavbarItem Url="/test/audio-recorder">Audio Recorder</NavbarItem>
-        <NavbarItem Url="/test/render-slot">Render Slot</NavbarItem>
-        <NavbarItem Url="/test/error-barrier">Error Barrier</NavbarItem>
-        <NavbarItem Url="/test/error-toast">Error Toast</NavbarItem>
-        <NavbarItem Url="/test/reconnect-overlay">Reconnect Overlay</NavbarItem>
-        <NavbarItem Url="/test/reconnect-banner">Reconnect Banner</NavbarItem>
-        <NavbarItem Url="/test/loading-overlay">Loading Overlay</NavbarItem>
-        <NavbarItem Url="/test/skeletons">Skeletons</NavbarItem>
-        <NavbarItem Url="/test/requirements">Requirements</NavbarItem>
-        <NavbarItem Url="/test/features">Features</NavbarItem>
-        <NavbarItem Url="/test/compute-state">Compute State</NavbarItem>
-        <NavbarItem Url="/test/markup-editor">Markup Editor</NavbarItem>
-        <NavbarItem Url="/test/auth">Authentication</NavbarItem>
-        <NavbarItem Url="/test/blazor">Blazor</NavbarItem>
-        <NavbarItem Url="/test/js">JavaScript</NavbarItem>
-        <NavbarItem Url="/test/embedded">Embedded</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-player">Audio Player</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-recorder">Audio Recorder</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/render-slot">Render Slot</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/error-barrier">Error Barrier</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/error-toast">Error Toast</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/reconnect-overlay">Reconnect Overlay</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/reconnect-banner">Reconnect Banner</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/loading-overlay">Loading Overlay</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/skeletons">Skeletons</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/requirements">Requirements</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/features">Features</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/compute-state">Compute State</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/markup-editor">Markup Editor</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/auth">Authentication</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/blazor">Blazor</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/js">JavaScript</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/embedded">Embedded</NavbarItem>
         @if (HostInfo.AppKind == AppKind.MauiApp) {
-            <NavbarItem Url="/test/maui">Maui</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/test/" Url="/test/maui">Maui</NavbarItem>
         }
-        <NavbarItem Url="/test/system">System</NavbarItem>
+        <NavbarItem ReplaceOnPrefix="/test/" Url="/test/system">System</NavbarItem>
     </NavbarGroup>
 }
 

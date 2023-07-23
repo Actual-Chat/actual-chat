@@ -250,10 +250,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
 
             _selectedChatId.Value = chatId;
         }
-
-        _ = ChatEditorUI.RestoreRelatedEntry(chatId).ConfigureAwait(false);
-        _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
-        _ = UICommander.RunNothing();
+        // The rest is done by InvalidateSelectedChatDependencies
         return true;
     }
 

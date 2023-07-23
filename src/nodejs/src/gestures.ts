@@ -132,15 +132,13 @@ class DataHrefGesture extends Gesture {
         if (href.startsWith('http://') || href.startsWith('https://'))
             location.href = href; // External URL
         else {
-            const chatSwitchWithReplace = element.dataset['chatSwitchWithReplace'];
+            const replaceOnPrefix = element.dataset['replaceOnPrefix'];
             let mustReplace = false;
-            if (chatSwitchWithReplace) {
+            if (!!replaceOnPrefix) {
                 const url = new URL(location.href);
                 const path = url.pathname;
-                const prefix = '/chat/';
-                if (path.startsWith(prefix) && path.length > prefix.length) {
+                if (path.startsWith(replaceOnPrefix) && path.length > replaceOnPrefix.length)
                     mustReplace = true;
-                }
             }
             void History.navigateTo(href, mustReplace); // Internal URL
         }
