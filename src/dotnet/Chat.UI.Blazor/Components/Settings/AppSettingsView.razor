@@ -23,20 +23,10 @@
             </Right>
         </TileItem>
     }
-    <TileItem Class="quit" @onclick="OnQuitClick">
-        <Icon>
-            <i class="icon-close text-xl"></i>
-        </Icon>
-        <Content>
-            Quit Actual Chat
-        </Content>
-    </TileItem>
 </Tile>
 
 @code {
     private AutoStartState? _autoStartState;
-
-    [Inject] private ReloadUI ReloadUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public INativeAppSettings NativeAppSettings { get; set; } = null!;
 
@@ -50,7 +40,4 @@
         await NativeAppSettings.SetAutoStart(isEnabled);
         await UpdateAutoStart();
     }
-
-    private void OnQuitClick()
-        => ReloadUI.Quit();
 }

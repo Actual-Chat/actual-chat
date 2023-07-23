@@ -26,6 +26,11 @@
                @RenderTabTitle(tab)
            </Button>;
 
+    RenderFragment RenderQuitButton(SettingsTab tab)
+        => @<Button Class="" Click="@Quit" data-tab-id="@tab.Id" role="tab">
+               @RenderTabTitle(tab)
+           </Button>;
+
     RenderFragment RenderTabTitle(SettingsTab tab) =>
         @<div class="flex-x gap-x-4 items-center justify-between w-full">
             <div class="settings-tab-title">
@@ -61,12 +66,15 @@
                     }
                     <div class="c-tab-item @containerCls @activeCls">
                         @switch (tab.Id) {
-                            case "signOut":
-                                @RenderSignOutButton(tab)
-                                break;
-                            default:
-                                @RenderCommonButton(tab)
-                                break;
+                        case "signOut":
+                            @RenderSignOutButton(tab)
+                            break;
+                        case "quit":
+                            @RenderQuitButton(tab)
+                            break;
+                        default:
+                            @RenderCommonButton(tab)
+                            break;
                         }
                     </div>
                 }
@@ -97,8 +105,9 @@
     private readonly List<SettingsTab> _tabs = new();
     private SettingsTab? _activeTab;
 
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private ReloadUI ReloadUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
@@ -180,4 +189,7 @@
         Modal.Close();
         AccountUI.ClientAuth.SignOut();
     }
+
+    private void Quit()
+        => ReloadUI.Quit();
 }

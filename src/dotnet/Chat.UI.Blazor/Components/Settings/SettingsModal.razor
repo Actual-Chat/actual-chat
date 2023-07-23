@@ -1,4 +1,5 @@
 @using LanguageSettings = ActualChat.Chat.UI.Blazor.Components.LanguageSettings
+@using ActualChat.Hosting
 @implements IModalView<SettingsModal.Model>
 @inherits ComputedStateComponent<AccountFull>
 @{
@@ -13,14 +14,15 @@
     var showLanguages = true;
     var showThemeToggle = _enableIncompleteUI;
     var showLogout = !isGuestOrNone;
+    var showQuit = HostInfo.AppKind.IsMauiApp() && HostInfo.ClientKind == ClientKind.Windows;
 }
 
 <ModalFrame>
     <ButtonX Click="OnCloseClick"/>
     <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick">
         @if (showMyAccount) {
-            <SettingsTab @key="1" Title="My account" Id="myAccount" IconTitle="person">
-                <MyAccount/>
+            <SettingsTab @key="1" Title="Your account" Id="account" IconTitle="person">
+                <YourAccount/>
             </SettingsTab>
         }
 
@@ -67,8 +69,10 @@
 
         @if (showLogout) {
             <SettingsTab @key="100" Title="Log out" Id="signOut" IconTitle="log-out" HasSeparatorBefore="true">
-                <ChildContent>
-                </ChildContent>
+            </SettingsTab>
+        }
+        @if (showQuit) {
+            <SettingsTab @key="101" Title="Quit Actual Chat" Id="quit" IconTitle="close" HasSeparatorBefore="false">
             </SettingsTab>
         }
 
@@ -78,6 +82,7 @@
 @code {
     private bool _enableIncompleteUI;
 
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
 
