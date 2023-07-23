@@ -92,11 +92,8 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
             return;
         }
 
-        try {
-            NotificationUI.HandleNotificationNavigation(url);
-        }
-        catch (Exception ex) {
-            Log.LogError(ex, "Failed to handle notification tap");
-        }
+        _ = ForegroundTask.Run(
+            () => NotificationUI.HandleNotificationNavigation(url),
+            Log, "Failed to handle notification tap");
     }
 }

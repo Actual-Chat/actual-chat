@@ -212,12 +212,12 @@ public class MainActivity : MauiAppCompatActivity
         if (url.IsNullOrEmpty())
             return;
 
-        var pendingNotificationNavigationTasks = AppServices.GetRequiredService<PendingNotificationNavigationTasks>();
-        pendingNotificationNavigationTasks.Add(Task.Run(async () => {
+        var autoNavigationTasks = AppServices.GetRequiredService<AutoNavigationTasks>();
+        autoNavigationTasks.Add(ForegroundTask.Run(async () => {
             var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
             var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
-            notificationUI.HandleNotificationNavigation(url);
-        }));
+            await notificationUI.HandleNotificationNavigation(url).ConfigureAwait(false);
+        }, Log, "Failed to handle notification tap"));
     }
 
     public class SplashScreenExitAnimationListener : GenericAnimatorListener, ISplashScreenOnExitAnimationListener

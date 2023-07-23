@@ -32,4 +32,7 @@ public class ReloadUI
             }
         }), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
+
+    public virtual void Quit()
+        => throw new NotSupportedException("Can't close web app.");
 }

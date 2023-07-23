@@ -15,6 +15,5 @@ public sealed class NotificationClientModule : HostModule
 
         var fusion = services.AddFusion();
         fusion.AddClient<INotifications>();
-        services.AddSingleton<PendingNotificationNavigationTasks>();
     }
 }

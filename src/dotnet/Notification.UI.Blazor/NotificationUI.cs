@@ -74,15 +74,15 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
         => Task.CompletedTask;
 
     [JSInvokable]
-    public void HandleNotificationNavigation(string absoluteUrl)
+    public Task HandleNotificationNavigation(string absoluteUrl)
     {
         // This method can be invoked from any synchronization context
         if (LocalUrl.FromAbsolute(absoluteUrl, UrlMapper) is not { } localUrl)
-            return;
+            return Task.CompletedTask;
         if (!localUrl.IsChat())
-            return;
+            return Task.CompletedTask;
 
-        _ = AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
+        return AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
     }
 
     public void SetPermissionState(PermissionState state)

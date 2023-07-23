@@ -8,7 +8,8 @@ public partial class MainPage : ContentPage
 {
     private MauiNavigationInterceptor? _navigationInterceptor;
 
-    public static MainPage? Current => Application.Current?.MainPage as MainPage;
+    // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
+    public static MainPage? Current => (MainPage?)App.Current?.MainPage;
 
     private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
     private MauiNavigationInterceptor NavigationInterceptor =>

@@ -1,9 +1,8 @@
-using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
 
 namespace ActualChat.App.Maui.Services;
 
-public static class AppLinksExt
+public static class MauiAppBuilderExt
 {
     public static MauiAppBuilder UseAppLinks(this MauiAppBuilder builder)
     {
@@ -20,21 +19,5 @@ public static class AppLinksExt
 #if ANDROID
         events.AddAndroid(AppLinksWorkaround.ConfigureAndroidLifecycleEvents);
 #endif
-    }
-}
-
-public static class AppLinks
-{
-    public static void OnAppLinkRequestReceived(Uri uri)
-    {
-        if (!OrdinalIgnoreCaseEquals(uri.Host, MauiSettings.Host))
-            return;
-
-        _ = Task.Run(async () => {
-            var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
-            var url = new LocalUrl(uri.PathAndQuery + uri.Fragment);
-            var autoNavigationUI = scopedServices.GetRequiredService<AutoNavigationUI>();
-            _ = autoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.Notification);
-        });
     }
 }

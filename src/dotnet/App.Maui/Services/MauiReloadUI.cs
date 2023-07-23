@@ -28,7 +28,13 @@ public class MauiReloadUI : ReloadUI
             }
             catch (Exception e) {
                 Log.LogError(e, "Reload failed, terminating");
-                Application.Current!.Quit(); // We can't do much in this case
+                Quit(); // We can't do much in this case
             }
         });
+
+    public override void Quit()
+    {
+        App.MustQuit = true;
+        App.Current.Quit();
+    }
 }

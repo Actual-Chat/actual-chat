@@ -67,7 +67,7 @@ public static partial class MauiProgram
             if (eventArgs.Handled)
                 return;
         }
-        var webView = MainPage.Current?.PlatformWebView;
+        var webView = MainPage.Current!.PlatformWebView;
         var goBack = webView != null && await TryGoBack(webView).ConfigureAwait(false);
         if (goBack)
             return;

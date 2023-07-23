@@ -40,6 +40,6 @@ public class AppDelegate : MauiUIApplicationDelegate
         }
 
         if (!url.IsNullOrEmpty())
-            App.Current!.SendOnAppLinkRequestReceived(url.ToUri());
+            App.Current.SendOnAppLinkRequestReceived(url.ToUri());
     }
 }

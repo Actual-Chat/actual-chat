@@ -32,6 +32,6 @@ public static class AppLinksWorkaround
         if (link == null || !OrdinalEquals(Intent.ActionView, action))
             return;
 
-        Application.Current?.SendOnAppLinkRequestReceived(link.ToUri());
+        App.Current.SendOnAppLinkRequestReceived(link.ToUri());
     }
 }

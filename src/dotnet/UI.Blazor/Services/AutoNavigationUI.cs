@@ -9,6 +9,7 @@ public enum AutoNavigationReason
     SignIn = 1,
     FixedChatId = 2,
     Notification = 50,
+    AppLink = 51,
     SignOut = 100,
 }
 
@@ -38,9 +39,7 @@ public abstract class AutoNavigationUI : IHasServices
     public async ValueTask<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken)
     {
         Dispatcher.AssertAccess();
-        var pendingNotificationNavigationTasks = Services.GetService<PendingNotificationNavigationTasks>();
-        if (pendingNotificationNavigationTasks != null)
-            await pendingNotificationNavigationTasks.WhenCompleted;
+        await Services.GetRequiredService<AutoNavigationTasks>().Complete().WaitAsync(cancellationToken);
 
         var candidateUrl = (LocalUrl?)null;
         if (_autoNavigationCandidates == null)
