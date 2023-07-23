@@ -5,8 +5,9 @@ namespace ActualChat.UI.Blazor.Services;
 public enum AutoNavigationReason
 {
     Unknown = 0,
-    SignIn = 1,
-    FixedChatId = 2,
+    SecondaryAutoNavigation = 1,
+    SignIn = 10,
+    FixedChatId = 20,
     Notification = 50,
     AppLink = 51,
     SignOut = 100,
@@ -15,7 +16,7 @@ public enum AutoNavigationReason
 public abstract class AutoNavigationUI : IHasServices
 {
     private AppBlazorCircuitContext? _blazorCircuitContext;
-    private List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
+    private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
 
     protected ILogger Log { get; }
     protected ILogger? DebugLog { get; }
@@ -33,23 +34,23 @@ public abstract class AutoNavigationUI : IHasServices
         DebugLog = Log.IfEnabled(LogLevel.Debug);
     }
 
-    public async ValueTask<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken)
-    {
-        Dispatcher.AssertAccess();
-        await Services.GetRequiredService<AutoNavigationTasks>().Complete().WaitAsync(cancellationToken);
+    public Task<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken)
+        => Dispatcher.InvokeAsync(async () => {
+            if (_autoNavigationCandidates == null)
+                throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
 
-        var candidateUrl = (LocalUrl?)null;
-        if (_autoNavigationCandidates == null)
-            throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
+            var defaultUrl = await GetDefaultAutoNavigationUrl();
+            await Services.GetRequiredService<AutoNavigationTasks>().Complete().WaitAsync(cancellationToken);
+            var candidates = Interlocked.Exchange(ref _autoNavigationCandidates, null);
+            if (candidates == null)
+                throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
 
-        if (_autoNavigationCandidates.Count > 0)
-            candidateUrl = _autoNavigationCandidates.MaxBy(t => (int) t.Reason).Url;
-        _autoNavigationCandidates = null;
-
-        var url = candidateUrl ?? await GetDefaultAutoNavigationUrl().ConfigureAwait(false);
-        Log.LogInformation("Auto navigation URL: {AutoNavigationUrl}", url);
-        return url;
-    }
+            var url = candidates.Count > 0
+                ? candidates.MaxBy(t => (int) t.Reason).Url
+                : defaultUrl;
+            Log.LogInformation("Auto navigation URL: {AutoNavigationUrl}", url);
+            return url;
+        });
 
     public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {

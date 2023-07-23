@@ -11,12 +11,14 @@ public class AppServiceStarter
 {
     private HostInfo? _hostInfo;
     private History? _history;
+    private AutoNavigationUI? _autoNavigationUI;
     private volatile string? _secondaryAutoNavigationUrl;
 
     private IServiceProvider Services { get; }
     private Tracer Tracer { get; }
     private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     private History History => _history ??= Services.GetRequiredService<History>();
+    private AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
 
     public AppServiceStarter(IServiceProvider services)
     {
@@ -59,14 +61,6 @@ public class AppServiceStarter
     {
         using var _1 = Tracer.Region();
 
-        // Starting initial navigation URL resolving.
-        // This requires AccountUI.OwnAccount & ChatUI.SelectedChatId,
-        // so both of these services are started even earlier
-        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
-        var history = History;
-        // Note that GetAutoNavigationUrl must start in Blazor Dispatcher
-        var autoNavigationUrlTask = autoNavigationUI.GetAutoNavigationUrl(cancellationToken);
-
         // Creating core services - this should be done as early as possible
         var browserInfo = Services.GetRequiredService<BrowserInfo>();
 
@@ -105,19 +99,19 @@ public class AppServiceStarter
         await browserInitTask.ConfigureAwait(false); // Must be completed before the next call
 
         // Finishing with auto-navigation & History init
-        var autoNavigationUrl = await autoNavigationUrlTask.ConfigureAwait(false);
+        var autoNavigationUrl = await AutoNavigationUI.GetAutoNavigationUrl(cancellationToken).ConfigureAwait(false);
         if (autoNavigationUrl.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
             // We have to open chat root first - to make sure "Back" leads to it
             Interlocked.Exchange(ref _secondaryAutoNavigationUrl, autoNavigationUrl.Value);
             autoNavigationUrl = Links.Chats;
         }
-        await history.Initialize(autoNavigationUrl).ConfigureAwait(false);
+        await History.Initialize(autoNavigationUrl).ConfigureAwait(false);
     }
 
     public async Task AfterRender(CancellationToken cancellationToken)
     {
-        if (_secondaryAutoNavigationUrl is { } secondaryAutoNavigationUrl)
-            _ = History.Dispatcher.InvokeAsync(() => History.NavigateTo(secondaryAutoNavigationUrl));
+        if (_secondaryAutoNavigationUrl is { } url)
+            _ = AutoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.SecondaryAutoNavigation);
 
         // Starting less important UI services
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
