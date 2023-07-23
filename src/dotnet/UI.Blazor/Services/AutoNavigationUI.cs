@@ -48,7 +48,7 @@ public abstract class AutoNavigationUI : IHasServices
             var url = candidates.Count > 0
                 ? candidates.MaxBy(t => (int) t.Reason).Url
                 : defaultUrl;
-            Log.LogInformation("Auto navigation URL: {AutoNavigationUrl}", url);
+            Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{AutoNavigationUrl}}", url);
             return url;
         });
 
@@ -77,7 +77,7 @@ public abstract class AutoNavigationUI : IHasServices
         // Initial navigation haven't happened yet
         Log.LogInformation("+ NavigateTo({Url}, {Reason})", url, reason);
         _autoNavigationCandidates.Add((url, reason));
-        return History.WhenReady;
+        return Task.CompletedTask;
     }
 
     // Protected methods
