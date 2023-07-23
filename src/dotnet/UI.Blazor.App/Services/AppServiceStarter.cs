@@ -74,6 +74,9 @@ public class AppServiceStarter
                 await browserInfo.Initialize(initCalls).ConfigureAwait(false);
             });
 
+        // Start AccountUI updates
+        Services.GetRequiredService<AccountUI>();
+
         // Starting ThemeUI
         Tracer.Point("ThemeUI.Start");
         var themeUI = Services.GetRequiredService<ThemeUI>();

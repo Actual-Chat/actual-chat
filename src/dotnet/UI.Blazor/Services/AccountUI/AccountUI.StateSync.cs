@@ -18,40 +18,54 @@ public partial class AccountUI
 
     private async Task MonitorAccountChange(CancellationToken cancellationToken)
     {
+        var oldAccount = OwnAccount.Value;
         var cOwnAccount = await Computed
             .Capture(() => Accounts.GetOwn(Session, cancellationToken))
             .ConfigureAwait(false);
-        cOwnAccount = await cOwnAccount.UpdateIfCached(TimeSpan.FromSeconds(2), cancellationToken);
+        if (cOwnAccount.ValueOrDefault is { } ownAccount)
+            SetOwnAccount(ownAccount, false);
+        cOwnAccount = await cOwnAccount.UpdateIfCached(cancellationToken);
         var changes = cOwnAccount.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var (newAccount, error) in changes.ConfigureAwait(false)) {
             if (error != null || newAccount == null!)
                 continue;
 
-            var oldAccount = OwnAccount.Value;
-            if (ReferenceEquals(oldAccount, newAccount))
+            if (ReferenceEquals(oldAccount, newAccount)) {
+                // The cached value is still intact
+                _whenLoadedFromServerSource.TrySetResult();
                 continue;
+            }
 
             Log.LogInformation("Update: new account: {Account}", newAccount);
-            // NOTE(AY): Set(_ => ...) below ensures equality comparison doesn't happen,
-            // and we want to avoid it here, coz Account changes when its Avatar changes,
-            // but this change happens w/o its Version change (avatars are stored in
-            // account settings - see Avatars_SetDefault command handler), thus
-            // Account.EqualityComparer won't see such changes.
-            _ownAccount.Set(_ => newAccount);
-            if (_whenLoadedSource.TrySetResult())
-                continue; // It's an initial account change
-
-            if (oldAccount.Id == newAccount.Id)
+            SetOwnAccount(newAccount, true);
+            if (oldAccount.Id == newAccount.Id) {
+                oldAccount = newAccount;
                 continue; // Only account properties have changed
+            }
 
+            var oldAccountCopy = oldAccount; // Just to avoid "captured var is modified in closure" warning
             await BlazorCircuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             await BlazorCircuitContext.Dispatcher
-                .InvokeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount))
+                .InvokeAsync(() => ProcessOwnAccountChange(newAccount, oldAccountCopy))
                 .ConfigureAwait(false);
+            oldAccount = newAccount;
         }
     }
 
     // Private methods
+
+    private void SetOwnAccount(AccountFull account, bool isLoadedFromServer)
+    {
+        // NOTE(AY): Set(_ => ...) below ensures equality comparison doesn't happen,
+        // and we want to avoid it here, coz Account changes when its Avatar changes,
+        // but this change happens w/o its Version change (avatars are stored in
+        // account settings - see Avatars_SetDefault command handler), thus
+        // Account.EqualityComparer won't see such changes.
+        _ownAccount.Set(_ => account);
+        _whenLoadedSource.TrySetResult();
+        if (isLoadedFromServer)
+            _whenLoadedFromServerSource.TrySetResult();
+    }
 
     private async Task ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
     {

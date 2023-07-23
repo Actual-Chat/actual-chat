@@ -6,6 +6,7 @@ namespace ActualChat.UI.Blazor.Services;
 public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized, IHasServices
 {
     private readonly TaskCompletionSource _whenLoadedSource = TaskCompletionSourceExt.New();
+    private readonly TaskCompletionSource _whenLoadedFromServerSource = TaskCompletionSourceExt.New();
     private readonly IMutableState<AccountFull> _ownAccount;
     private AppBlazorCircuitContext? _blazorCircuitContext;
     private IClientAuth? _clientAuth;
@@ -21,6 +22,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
     public IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
 
     public Task WhenLoaded => _whenLoadedSource.Task;
+    public Task WhenLoadedFromServer => _whenLoadedFromServerSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
     public event Action<AccountFull>? OwnAccountChanged;
 

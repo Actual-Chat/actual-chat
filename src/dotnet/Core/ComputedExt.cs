@@ -1,5 +1,4 @@
 using Cysharp.Text;
-using Stl.Fusion.Client.Interception;
 using Stl.Fusion.Internal;
 using Stl.Fusion.Operations.Internal;
 
@@ -7,53 +6,6 @@ namespace ActualChat;
 
 public static class ComputedExt
 {
-    public static async ValueTask<Computed<T>> UpdateIfCached<T>(this Computed<T> computed,
-        TimeSpan waitDuration,
-        CancellationToken cancellationToken = default)
-    {
-        using var waitCts = new CancellationTokenSource(waitDuration);
-        using var cts = waitCts.Token.LinkWith(cancellationToken);
-        try {
-            return await computed.UpdateIfCached(cts.Token).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (waitCts.Token.IsCancellationRequested) {
-            // Timeout - we just update the computed in this case
-            return await computed.Update(cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    public static async ValueTask<Computed<T>> UpdateIfCached<T>(this Computed<T> computed,
-        CancellationToken cancellationToken = default)
-    {
-        while (true) {
-            computed = await computed.Update(cancellationToken).ConfigureAwait(false);
-            var clientComputed = computed as IClientComputed;
-            if (clientComputed?.CacheEntry == null)
-                break;
-
-            if (clientComputed.Call is not { } call) {
-                // No Call is bound yet - we just retry till the moment the call is bound
-                await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-                continue;
-            }
-
-            if (!call.ResultTask.IsCompleted) {
-                // Wait for either invalidation or call completion (which may trigger invalidation too)
-                await Task.WhenAny(
-                    computed.WhenInvalidated(cancellationToken),
-                    call.ResultTask.WaitAsync(cancellationToken)
-                ).ConfigureAwait(false);
-                if (computed.IsInvalidated())
-                    break; // Definitely not cached already
-            }
-
-            // call.ResultTask is completed, let's give system some time to process it
-            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
-        }
-        computed = await computed.Update(cancellationToken).ConfigureAwait(false);
-        return computed;
-    }
-
     public static async Task<Computed<T>> When<T>(
         this ValueTask<Computed<T>> computedTask,
         Func<T, bool> predicate,
