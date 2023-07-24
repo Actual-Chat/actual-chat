@@ -9,7 +9,7 @@
     @apply transition duration-150 ease-in-out;
 }
 .btn .btn-content {
-    @apply flex-x self-center;
+    @apply flex-x self-center items-center;
 }
 
 .btn:disabled {
@@ -62,14 +62,14 @@ body.hoverable .btn.btn-cancel:hover,
 .btn.btn-outline,
 .btn.btn-outline:active,
 .btn.btn-outline:focus:active {
-    @apply bg-outline border-primary text-outline-title;
+    @apply border-accent text-outline-title;
 }
 body.hoverable .btn.btn-outline:hover,
 body.hoverable .btn.btn-outline:focus:hover {
-    @apply bg-secondary-hover border-primary;
+    @apply bg-secondary-hover border-accent;
 }
 .btn.btn-outline:disabled {
-    @apply bg-outline border-disabled text-disabled;
+    @apply border-disabled text-disabled;
 }
 
 /* Error */

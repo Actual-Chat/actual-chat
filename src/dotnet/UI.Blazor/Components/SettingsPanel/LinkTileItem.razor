@@ -1,34 +1,44 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Services
+@inherits ComputedStateComponent<ActualChat.Users.AccountFull>
 @{
-    var link = new LocalUrl(Link).ToDisplayUrl(UrlMapper);
+    var account = State.Value;
+    if (ReferenceEquals(account, AccountFull.Loading) || account.IsGuestOrNone)
+        return;
 }
 
-<TileItem IsHoverable="IsHoverable"
-          @attributes="@AdditionalAttributes">
+<TileItem IsHoverable="false" Class="tile-item-my-account-link">
     <Icon>
-        <i class="icon-link-2 text-xl"></i>
+        <AvatarCircle Avatar="@account.Avatar" Size="@SquareSize.Size12" />
     </Icon>
     <Content>
-        <div class="flex-x justify-start items-center gap-x-1">
-            <div class="flex-none">
-                <a class="text-02">@link.ShortAbsoluteUrl</a>
-            </div>
-        </div>
+        @account.FullName
     </Content>
-    <Caption>@Caption</Caption>
     <Right>
-        <CopyToClipboard
-            ButtonClass="btn-sm transparent tile-hidden-btn"
-            Text="@link.AbsoluteUrl"/>
+        <Button Class="btn-sm btn-secondary" Click="@(() => OnShareClick(account.Id))">
+            <i class="icon-share text-2xl"></i>
+            <span>Share</span>
+        </Button>
     </Right>
 </TileItem>
 
 @code {
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string Link { get; set; } = "";
-    [Parameter] public string Caption { get; set; } = "";
-    [Parameter] public bool IsHoverable { get; set; } = true;
-    [Parameter(CaptureUnmatchedValues = true)]
-    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+    protected override ComputedState<AccountFull>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => await AccountUI.OwnAccount.Use(cancellationToken);
+
+    private void OnShareClick(UserId accountId) {
+        var urlMapper = Services.GetRequiredService<UrlMapper>();
+        var shareUI = Services.GetRequiredService<ShareUI>();
+        var link = Links.User(accountId).ToAbsolute(urlMapper);
+        shareUI.ShareLink(link, "Share your contact", "Your contact link");
+    }
 }

@@ -6,7 +6,7 @@
     @apply flex-1 md:flex-none flex-y;
     @apply md:w-110;
     @apply p-0 md:pl-30;
-    @apply bg-02 md:bg-03;
+    @apply bg-01 md:bg-03;
     @apply border-r border-bg-04;
 }
 .hide-panel.settings-panel > .c-tabs {
@@ -17,6 +17,7 @@
 .settings-panel > .c-tabs > .c-header {
     @apply flex-none flex-x items-center overflow-hidden;
     @apply min-h-14;
+    @apply bg-02 md:bg-transparent;
     @apply border-b border-bg-04 md:border-none;
 }
 .settings-header-title {
@@ -171,6 +172,7 @@ body.hoverable .tile-btn:hover {
 .settings-tab-header {
     @apply flex items-center;
     @apply min-h-14 w-full md:w-80;
+    @apply bg-02 md:bg-transparent;
     @apply border-b border-bg-04 md:border-none;
 }
 .settings-tab-header .settings-header-title {
@@ -200,4 +202,20 @@ body.hoverable .tile-btn:hover {
 }
 .tile-item.tile-item-share .tile-item-body-content {
     @apply text-accent;
+}
+
+.tile-item-my-account-link {
+    @apply p-2;
+    @apply border border-bg-04 rounded-xl;
+    @apply h-auto;
+}
+.tile-item-my-account-link .tile-item-icon {
+    @apply max-w-none;
+}
+.tile-item-my-account-link .tile-item-body-content {
+    @apply text-01 text-text-1;
+}
+
+.tile-item-my-account-link .btn {
+    @apply bg-secondary md:bg-04;
 }
