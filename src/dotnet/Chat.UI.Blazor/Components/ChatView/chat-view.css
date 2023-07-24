@@ -48,6 +48,15 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply min-w-0;
 }
 
+.chat-message > .c-content > .c-forwarded-author-header {
+    @apply flex-none flex-x items-baseline gap-x-1;
+    @apply min-w-0;
+}
+
+.chat-message-forwarded {
+    @apply max-h-6 overflow-hidden truncate;
+    @apply font-bold text-03;
+}
 .chat-message-author-name {
     @apply max-h-6 overflow-hidden truncate;
     @apply font-bold text-03;
