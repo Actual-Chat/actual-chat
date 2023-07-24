@@ -34,6 +34,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public long? RepliedChatEntryId { get; set; }
     public bool IsSystemEntry { get; set; }
 
+    public string? ForwardedChatEntryId { get; set; }
+    public string? ForwardedAuthorId { get; set; }
 
     public DateTime BeginsAt {
         get => _beginsAt.DefaultKind(DateTimeKind.Utc);
@@ -85,6 +87,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
             RepliedEntryLocalId = RepliedChatEntryId!,
+            ForwardedAuthorId = new AuthorId(ForwardedAuthorId),
+            ForwardedChatEntryId = new ChatEntryId(ForwardedChatEntryId),
             Attachments = attachments?.ToApiArray() ?? ApiArray<TextEntryAttachment>.Empty,
 #pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text
@@ -120,6 +124,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         AudioEntryId = model.AudioEntryId;
         VideoEntryId = model.VideoEntryId;
         RepliedChatEntryId = model.RepliedEntryLocalId;
+        ForwardedAuthorId = model.ForwardedAuthorId;
+        ForwardedChatEntryId = model.ForwardedChatEntryId;
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         IsSystemEntry = model.SystemEntry != null;
 #pragma warning disable IL2026
