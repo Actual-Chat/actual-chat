@@ -71,7 +71,7 @@ public abstract class AutoNavigationUI : IHasServices
         if (_autoNavigationCandidates == null) {
             // Initial navigation already happened
             Log.LogInformation("* NavigateTo({Url}, {Reason})", url, reason);
-            return History.NavigateTo(url).SuppressExceptions();
+            return History.NavigateTo(url);
         }
 
         // Initial navigation haven't happened yet

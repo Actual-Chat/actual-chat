@@ -18,60 +18,51 @@ public partial class AccountUI
 
     private async Task MonitorAccountChange(CancellationToken cancellationToken)
     {
-        var oldAccount = OwnAccount.Value;
-        var cOwnAccount = await Computed
+        Log.LogInformation(nameof(MonitorAccountChange));
+        var cOwnAccount0 = await Computed
             .Capture(() => Accounts.GetOwn(Session, cancellationToken))
             .ConfigureAwait(false);
-        if (cOwnAccount.ValueOrDefault is { } ownAccount)
-            SetOwnAccount(ownAccount, false);
-        cOwnAccount = await cOwnAccount.UpdateIfCached(cancellationToken);
-        var changes = cOwnAccount.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
-        await foreach (var (newAccount, error) in changes.ConfigureAwait(false)) {
+        var changes = cOwnAccount0.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
+        await foreach (var cOwnAccount in changes.ConfigureAwait(false)) {
+            var (newAccount, error) = cOwnAccount;
             if (error != null || newAccount == null!)
                 continue;
 
-            if (ReferenceEquals(oldAccount, newAccount)) {
-                // The cached value is still intact
-                _whenLoadedFromServerSource.TrySetResult();
+            if (!TrySetOwnAccount(newAccount, out var oldAccount))
                 continue;
-            }
 
-            Log.LogInformation("Update: new account: {Account}", newAccount);
-            SetOwnAccount(newAccount, true);
-            if (oldAccount.Id == newAccount.Id) {
-                oldAccount = newAccount;
+            Log.LogInformation("Account changed to: {Account}", newAccount);
+            if (oldAccount.Id == newAccount.Id)
                 continue; // Only account properties have changed
-            }
 
-            var oldAccountCopy = oldAccount; // Just to avoid "captured var is modified in closure" warning
             await BlazorCircuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             await BlazorCircuitContext.Dispatcher
-                .InvokeAsync(() => ProcessOwnAccountChange(newAccount, oldAccountCopy))
+                .InvokeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount))
                 .ConfigureAwait(false);
-            oldAccount = newAccount;
         }
     }
 
     // Private methods
 
-    private void SetOwnAccount(AccountFull account, bool isLoadedFromServer)
+    private bool TrySetOwnAccount(AccountFull account, out AccountFull oldAccount)
     {
         // NOTE(AY): Set(_ => ...) below ensures equality comparison doesn't happen,
         // and we want to avoid it here, coz Account changes when its Avatar changes,
         // but this change happens w/o its Version change (avatars are stored in
         // account settings - see Avatars_SetDefault command handler), thus
         // Account.EqualityComparer won't see such changes.
-        _ownAccount.Set(_ => account);
+
+        oldAccount = _ownAccount.Value;
+        var isChanged = !ReferenceEquals(oldAccount, account);
+        if (isChanged)
+            _ownAccount.Set(_ => account);
         _whenLoadedSource.TrySetResult();
-        if (isLoadedFromServer)
-            _whenLoadedFromServerSource.TrySetResult();
+        return isChanged;
     }
 
     private async Task ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
     {
         OwnAccountChanged?.Invoke(account);
-        var history = Services.GetRequiredService<History>();
-        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
         if (account.IsGuestOrNone || !oldAccount.IsGuestOrNone) {
             // Sign-out or account change
             var clientComputedCache = Services.GetService<IClientComputedCache>();
@@ -79,16 +70,18 @@ public partial class AccountUI
                 await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(true);
         }
 
+        var history = Services.GetRequiredService<History>();
+        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
         if (account.IsGuestOrNone) {
             // Sign-out
-            await autoNavigationUI.NavigateTo(Links.Home, AutoNavigationReason.SignOut);
+            _ = autoNavigationUI.NavigateTo(Links.Home, AutoNavigationReason.SignOut);
         }
         else {
             // Sign-in or account change
             if (history.LocalUrl.IsChatOrChatRoot())
                 return;
 
-            await autoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
+            _ = autoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
         }
     }
 }

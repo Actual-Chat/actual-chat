@@ -32,9 +32,8 @@
 </ScreenSizeProvider>
 
 @code {
-    private static Assembly UIAssembly { get; set; } = null!;
+    private static Assembly UIAssembly { get; set; } = typeof(AppBase).Assembly;
     private static Assembly[] UIModuleAssemblies { get; set; } = null!;
-    private static Task? _whenInitializedOnceTask;
 
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
@@ -64,18 +63,20 @@
 
     protected override void OnInitialized() {
         LoadingUI.MarkAppCreated();
-        _whenInitializedOnceTask ??= Task.Run(() => {
-            UIAssembly = typeof(AppBase).Assembly;
-            UIModuleAssemblies = Host.Modules
-                .OfType<IBlazorUIModule>()
-                .Select(p => p.GetType().Assembly)
-                .Where(a => a != UIAssembly)
-                .ToArray();
-            Tracer.Point("IBlazorUIModule assemblies evaluated");
-        }, CancellationToken.None);
 
         // Hit StaticImportsInitializer to make sure DefaultLog is set
         Services.GetRequiredService<StaticImportsInitializer>();
+
+        // Evaluate UIModuleAssemblies (just once - it's a static member)
+        if (ReferenceEquals(UIModuleAssemblies, null)) {
+            var uiModuleAssemblies = new HashSet<Assembly>();
+            foreach (var module in Host.Modules) {
+                if (module is IBlazorUIModule)
+                    uiModuleAssemblies.Add(module.GetType().Assembly);
+            }
+            uiModuleAssemblies.Remove(UIAssembly);
+            UIModuleAssemblies = uiModuleAssemblies.ToArray();
+        }
 
         // Configure CircuitContext
         CircuitContext.RootComponent = this;
@@ -104,7 +105,6 @@
 #endif
 
         await AppServiceStarter.ReadyToRender(sessionHash);
-        await _whenInitializedOnceTask!;
         LoadingUI.MarkLoaded();
 
         _readyToRender = true;

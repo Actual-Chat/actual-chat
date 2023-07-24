@@ -74,8 +74,9 @@ public class OnboardingUI : IDisposable
 
         // 3. Extra delay - just in case Origin is somehow set for cached settings
         await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+        await _settings.Synchronize();
 
-        // 4.Wait when settings migrated
+        // 4. Wait when settings migrated
         try {
             await _settings.Computed
                 .When(x => !x.Origin.IsNullOrEmpty(), Clocks.Timeout(1))
