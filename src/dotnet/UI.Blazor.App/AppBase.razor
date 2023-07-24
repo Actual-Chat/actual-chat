@@ -32,7 +32,7 @@
 </ScreenSizeProvider>
 
 @code {
-    private static Assembly UIAssembly { get; set; } = typeof(AppBase).Assembly;
+    private static Assembly UIAssembly { get; } = typeof(AppBase).Assembly;
     private static Assembly[] UIModuleAssemblies { get; set; } = null!;
 
     private readonly CancellationTokenSource _disposeTokenSource;
