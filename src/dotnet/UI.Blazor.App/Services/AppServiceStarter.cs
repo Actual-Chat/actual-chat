@@ -14,8 +14,6 @@ public class AppServiceStarter
     private AutoNavigationUI? _autoNavigationUI;
     private ILogger? _log;
 
-    private volatile string? _secondaryAutoNavigationUrl;
-
     private IServiceProvider Services { get; }
     private Tracer Tracer { get; }
     private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
@@ -107,13 +105,16 @@ public class AppServiceStarter
             await browserInitTask.ConfigureAwait(false); // Must be completed before the next call
 
             // Finishing with auto-navigation & History init
-            var autoNavigationUrl = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);
-            if (autoNavigationUrl.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
+            var url = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);
+            if (url.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
                 // We have to open chat root first - to make sure "Back" leads to it
-                Interlocked.Exchange(ref _secondaryAutoNavigationUrl, autoNavigationUrl.Value);
-                autoNavigationUrl = Links.Chats;
+                await History.Initialize(Links.Chats).ConfigureAwait(false);
+                await AutoNavigationUI
+                    .DispatchNavigateTo(url, AutoNavigationReason.SecondAutoNavigation)
+                    .ConfigureAwait(false);
             }
-            await History.Initialize(autoNavigationUrl).ConfigureAwait(false);
+            else
+                await History.Initialize(url).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, $"{nameof(ReadyToRender)} failed");
@@ -126,8 +127,6 @@ public class AppServiceStarter
         // Starts in Blazor dispatcher
         try {
             _ = Services.GetRequiredService<OnboardingUI>().TryShow();
-            if (_secondaryAutoNavigationUrl is { } url)
-                await AutoNavigationUI.NavigateTo(url, AutoNavigationReason.SecondaryAutoNavigation).ConfigureAwait(false);
 
             // Starting less important UI services
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);

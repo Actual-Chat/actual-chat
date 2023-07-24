@@ -26,8 +26,7 @@ public class PanelsUI : WorkerBase, IHasServices
                 $"{nameof(PanelsUI)} is resolved too early: {nameof(BrowserInfo)} is not ready yet.");
 
         ScreenSize = browserInfo.ScreenSize;
-        var initialLeftPanelIsVisible = ScreenSize.Value.IsWide() || History.LocalUrl.IsChatOrChatRoot();
-        Left = new LeftPanel(this, initialLeftPanelIsVisible);
+        Left = new LeftPanel(this);
         Right = new RightPanel(this);
         Middle = new MiddlePanel(this);
         this.Start();

@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 public enum AutoNavigationReason
 {
     Unknown = 0,
-    SecondaryAutoNavigation = 1,
+    SecondAutoNavigation = 1,
     SignIn = 10,
     FixedChatId = 20,
     Notification = 50,
@@ -46,7 +46,7 @@ public abstract class AutoNavigationUI : IHasServices
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
 
             var url = candidates.Count > 0
-                ? candidates.MaxBy(t => (int) t.Reason).Url
+                ? candidates.MaxBy(t => (int)t.Reason).Url
                 : defaultUrl;
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{AutoNavigationUrl}}", url);
             return url;

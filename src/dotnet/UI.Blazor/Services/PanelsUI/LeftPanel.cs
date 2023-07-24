@@ -6,28 +6,22 @@ public class LeftPanel
     private ILogger? _log;
 
     private IServiceProvider Services => Owner.Services;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
     private History History => Owner.History;
     private Dispatcher Dispatcher => Owner.Dispatcher;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
     public event Action? VisibilityChanged;
 
-    public LeftPanel(PanelsUI owner, bool? initialLeftPanelIsVisible)
+    public LeftPanel(PanelsUI owner)
     {
         Owner = owner;
-        var initialIsVisible = true;
-        var isVisibleOverride = GetIsVisibleOverride()
-            ?? initialLeftPanelIsVisible
-            ?? (History.LocalUrl.IsChat() ? false : null);
-        if (isVisibleOverride == false)
-            initialIsVisible = false;
+        var initialIsVisible = GetIsVisibleOverride() ?? false;
         _isVisible = Services.StateFactory().NewMutable(initialIsVisible);
-        History.Register(new OwnHistoryState(this, initialIsVisible));
-
-        // Log.LogDebug($".ctor: {History.LocalUrl} -> {isVisibleOverride}, {initialLeftPanelIsVisible}");
+        History.Register(new OwnHistoryState(this, false));
+        // Log.LogInformation("InitialIsVisible: {InitialIsVisible} @ {Url}", initialIsVisible, History.LocalUrl);
     }
 
     public void SetIsVisible(bool value)
