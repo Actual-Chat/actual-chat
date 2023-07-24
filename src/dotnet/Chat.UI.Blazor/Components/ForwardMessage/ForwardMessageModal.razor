@@ -16,6 +16,7 @@
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
             TextChanged="@OnFilter"/>
         <ContactSelect
+            ContactsToExclude="@ModalModel.ContactsToExclude"
             SearchPhrase="_searchPhrase"
             SelectionChanged="OnSelectionChanged" />
     </Body>
@@ -47,7 +48,9 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public sealed record Model(ChatId SourceChatId, Action<IReadOnlyCollection<ChatId>> ChatsSelected);
+    public sealed record Model(
+        IReadOnlyCollection<ChatId> ContactsToExclude,
+        Action<IReadOnlyCollection<ChatId>> ChatsSelected);
 
     private void OnCancel() {
         Modal.Close();
