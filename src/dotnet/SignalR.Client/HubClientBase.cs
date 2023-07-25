@@ -21,6 +21,7 @@ public abstract class HubClientBase : IDisposable
  #pragma warning disable MA0056
         Connector = new(Connect) {
             ReconnectDelayer = reconnectDelayer,
+            TerminalErrorDetector = e => e is ObjectDisposedException,
             Log = Log,
             LogTag = $"SignalR hub @ {HubUrl}",
             LogLevel = LogLevel.Debug,
