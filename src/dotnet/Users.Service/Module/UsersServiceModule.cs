@@ -181,7 +181,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddService<IPhoneAuth, PhoneAuth>();
         commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();
         services.AddTransient<Rfc6238AuthenticationService>();
-        fusion.AddService<TotpRandomSecrets>();
+        services.AddSingleton<TotpRandomSecrets>();
         services.AddSingleton<ITwilioRestClient>(_ => {
             TwilioClient.Init(Settings.TwilioAccountSid, Settings.TwilioAuthToken);
             return TwilioClient.GetRestClient();

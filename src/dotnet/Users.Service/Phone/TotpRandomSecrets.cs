@@ -7,7 +7,7 @@ using Stl.Redis;
 
 namespace ActualChat.Users;
 
-public class TotpRandomSecrets : IComputeService
+public class TotpRandomSecrets
 {
     private const string RedisKeyPrefix = ".TotpRandomSecret.";
     private readonly RandomStringGenerator _rsg;
@@ -27,17 +27,9 @@ public class TotpRandomSecrets : IComputeService
 
     [ComputeMethod]
     public virtual async Task<string> Get(Session session)
-    {
-        var key = Key(session);
-        var secret = await GetOrSet(key, _rsg.Next()).ConfigureAwait(false);
-        var expiresAt = await GetExpiration(key).ConfigureAwait(false);
-        var computed = Computed.GetCurrent();
-        // make sure security token doesn't change before totp is entered
-        computed!.Invalidate(expiresAt - Settings.TotpLifetime - TimeSpan.FromSeconds(5));
-        return secret;
-    }
+        => await GetOrSet(ToKey(session), _rsg.Next()).ConfigureAwait(false);
 
-    private string Key(Session session)
+    private static string ToKey(Session session)
         => $"{RedisKeyPrefix}{session.Id}";
 
     // redis helpers
@@ -58,11 +50,5 @@ public class TotpRandomSecrets : IComputeService
 
         var existing = await RedisDb.Database.StringGetAsync(key).ConfigureAwait(false);
         return DataProtector.Unprotect(existing.ToString());
-    }
-
-    private async Task<TimeSpan> GetExpiration(string key)
-    {
-        var expiresAt = await RedisDb.Database.KeyTimeToLiveAsync(key).ConfigureAwait(false);
-        return expiresAt ?? TimeSpan.Zero;
     }
 }
