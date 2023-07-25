@@ -215,7 +215,3 @@ body.hoverable .tile-btn:hover {
 .tile-item-my-account-link .tile-item-body-content {
     @apply text-01 text-text-1;
 }
-
-.tile-item-my-account-link .btn {
-    @apply bg-secondary md:bg-04;
-}
