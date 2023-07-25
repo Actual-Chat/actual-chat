@@ -1,17 +1,17 @@
 Near-term:
-- Make reconnection reliable + find out why "Server is disconnected" appears
 - Android AOT fine-tuning
 - Text editor - fix extra blank lines 
 
 Mid-term (team):
 - Record how we use background audio playback for Apple review
-- SignalR hub reconnection must depend on Rpc reconnection
 - Extract Session service & migrate it to Redis
 - "Notes" chat
 - "Search in this chat / everywhere" feature
 - "Install the app" banner
 - Real-time playback somehow shows cached user activities sometimes
 - Anonymous user names: come up w/ nicer naming scheme
+- Custom Account IDs
+- Import contacts & notify when some of your contacts register in Actual Chat
 
 - Join as guest shouldn't be enabled by default in chats w/ anonymity enabled
 - How private chat links work (no timer, no max. invite count, manually revoke, show the list of private links, but no "New private link" for public chats)
