@@ -17,7 +17,6 @@ public sealed partial record PhoneAuth_SendTotp(
     [property: DataMember, MemoryPackOrder(1)] Phone Phone
 ) : ISessionCommand<Moment>;
 
-
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record PhoneAuth_ValidateTotp(
