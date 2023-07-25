@@ -127,7 +127,7 @@ public static partial class MauiProgram
             var trueSessionResolver = AppServices.GetRequiredService<TrueSessionResolver>();
             await trueSessionResolver.SessionTask.ConfigureAwait(false);
             var appServiceStarter = AppServices.GetRequiredService<AppServiceStarter>();
-            _ = appServiceStarter.PostSessionWarmup(CancellationToken.None);
+            _ = appServiceStarter.StartNonScopedServices();
         });
     }
 

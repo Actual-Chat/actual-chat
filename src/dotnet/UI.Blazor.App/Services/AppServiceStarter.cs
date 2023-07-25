@@ -12,6 +12,7 @@ public class AppServiceStarter
     private HostInfo? _hostInfo;
     private History? _history;
     private AutoNavigationUI? _autoNavigationUI;
+    private LoadingUI? _loadingUI;
     private ILogger? _log;
 
     private IServiceProvider Services { get; }
@@ -19,6 +20,7 @@ public class AppServiceStarter
     private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     private History History => _history ??= Services.GetRequiredService<History>();
     private AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
+    private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public AppServiceStarter(IServiceProvider services)
@@ -27,12 +29,21 @@ public class AppServiceStarter
         Tracer = Services.Tracer(GetType());
     }
 
-    public Task PostSessionWarmup(CancellationToken cancellationToken)
+    public Task StartNonScopedServices()
         => Task.Run(async () => {
             using var _1 = Tracer.Region();
             try {
-                // NOTE(AY): This code runs in the root scope, so you CAN'T access any scoped services here!
+                // NOTE(AY): !!! This code runs in the root scope,
+                // so you CAN'T access any scoped services here!
+
+                var startHostedServicesTask = StartHostedServices();
+                if (HostInfo.AppKind.IsWasmApp()) {
+                    await startHostedServicesTask.ConfigureAwait(false);
+                    return; // Further code warms up some services, which isn't necessary in WASM
+                }
+
                 var session = Session.Default; // All clients use default session
+                var cancellationToken = CancellationToken.None; // No cancellation here
 
                 // Access key services
                 var accounts = Services.GetRequiredService<IAccounts>();
@@ -48,17 +59,18 @@ public class AppServiceStarter
                 foreach (var contactId in contactIds.Take(Constants.Contacts.MinLoadLimit))
                     _ = contacts.Get(session, contactId, cancellationToken);
 
-                // Complete own account preloading
-                await ownAccountTask.ConfigureAwait(false);
-
                 // _ = Task.Run(WarmupSystemJsonSerializer, CancellationToken.None);
+
+                // Complete the tasks we started earlier
+                await ownAccountTask.ConfigureAwait(false);
+                await startHostedServicesTask.ConfigureAwait(false);
             }
             catch (Exception e) {
-                Tracer.Point($"{nameof(PostSessionWarmup)} failed, error: " + e);
+                Tracer.Point($"{nameof(StartNonScopedServices)} failed, error: " + e);
             }
-        }, cancellationToken);
+        }, CancellationToken.None);
 
-    public async Task ReadyToRender(string sessionHash)
+    public async Task PrepareFirstRender(string sessionHash)
     {
         // Starts in Blazor dispatcher
         using var _1 = Tracer.Region();
@@ -117,15 +129,19 @@ public class AppServiceStarter
                 await History.Initialize(url).ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogError(e, $"{nameof(ReadyToRender)} failed");
+            Log.LogError(e, $"{nameof(PrepareFirstRender)} failed");
             throw;
+        }
+        finally {
+            LoadingUI.MarkLoaded();
         }
     }
 
-    public async Task AfterRender(CancellationToken cancellationToken)
+    public async Task AfterFirstRender(CancellationToken cancellationToken)
     {
         // Starts in Blazor dispatcher
         try {
+            await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(true);
             _ = Services.GetRequiredService<OnboardingUI>().TryShow();
 
             // Starting less important UI services
@@ -137,27 +153,30 @@ public class AppServiceStarter
             Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client
             if (HostInfo.AppKind.IsClient()) {
                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
-                await StartHostedServices(cancellationToken).ConfigureAwait(false);
+                await StartHostedServices().ConfigureAwait(false);
             }
 
             if (!HostInfo.IsProductionInstance)
                 Services.GetRequiredService<DebugUI>();
         }
-        catch (Exception e) {
-            Log.LogError(e, $"{nameof(AfterRender)} failed");
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, $"{nameof(AfterFirstRender)} failed");
             throw;
         }
     }
 
     // Private methods
 
-    private async Task StartHostedServices(CancellationToken cancellationToken)
+    private async Task StartHostedServices()
     {
         using var _ = Tracer.Region();
+        var tasks = new List<Task>();
+        var tracePrefix = nameof(StartHostedServices) + ": starting ";
         foreach (var hostedService in Services.HostedServices()) {
-            Tracer.Point($"{nameof(StartHostedServices)}: starting {hostedService.GetType().Name}");
-            await hostedService.StartAsync(default).ConfigureAwait(false);
+            Tracer.Point(tracePrefix + hostedService.GetType().Name);
+            tasks.Add(hostedService.StartAsync(default));
         }
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private void WarmupSystemJsonSerializer()

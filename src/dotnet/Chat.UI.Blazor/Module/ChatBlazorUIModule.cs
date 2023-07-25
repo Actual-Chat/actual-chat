@@ -53,7 +53,10 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         // Settings
         services.AddSingleton(_ => new AudioSettings());
         services.AddScoped(c => new LanguageUI(c));
+
+        // OnboardingUI
         services.AddScoped(c => new OnboardingUI(c));
+        services.AddAlias<IOnboardingUI, OnboardingUI>(ServiceLifetime.Scoped);
 
         // IMarkupViews
         services.AddTypeMapper<IMarkupView>(map => map

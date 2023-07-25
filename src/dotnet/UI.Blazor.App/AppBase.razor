@@ -49,7 +49,6 @@
     [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] protected AppServiceStarter AppServiceStarter { get; init; } = null!;
     [Inject] protected ISessionResolver SessionResolver { get; init; } = null!;
-    [Inject] protected LoadingUI LoadingUI { get; init; } = null!;
     [Inject] protected Tracer Tracer { get; init; } = null!;
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
 
@@ -57,13 +56,12 @@
     [Parameter] public string SessionToken { get; set; } = "";
 
     public AppBase() {
+        LoadingUI.MarkAppCreated();
         _disposeTokenSource = new CancellationTokenSource();
         _disposeToken = _disposeTokenSource.Token;
     }
 
     protected override void OnInitialized() {
-        LoadingUI.MarkAppCreated();
-
         // Hit StaticImportsInitializer to make sure DefaultLog is set
         Services.GetRequiredService<StaticImportsInitializer>();
 
@@ -76,7 +74,7 @@
         using var _1 = Tracer.Region();
 
         var appKind = HostInfo.AppKind;
-        var sessionHash = SessionHash;
+        var sessionHash = SessionHash; // It's passed directly only in WASM app
         if (appKind.IsServer()) {
             var secureTokensBackend = Services.GetRequiredService<ISecureTokensBackend>();
             var session = secureTokensBackend.ParseSessionToken(SessionToken);
@@ -86,14 +84,8 @@
         else if (appKind.IsMauiApp()) {
             sessionHash = TrueSessionResolver!.Session.Hash;
         }
-#if false // Prob. doesn't make sense to run PostSessionWarmup in WASM
-        else if (appKind.IsWasmApp()) {
-            // MAUI app does this earlier
-            _ = AppServiceStarter.PostSessionWarmup(_disposeToken);
-        }
-#endif
 
-        var whenReadyToRender = AppServiceStarter.ReadyToRender(sessionHash);
+        var prepareFirstRenderTask = AppServiceStarter.PrepareFirstRender(sessionHash);
         if (ReferenceEquals(UIModuleAssemblies, null)) {
             // Evaluate UIModuleAssemblies (just once - it's a static member)
             var uiModuleAssemblies = new HashSet<Assembly>();
@@ -104,15 +96,10 @@
             uiModuleAssemblies.Remove(UIAssembly);
             UIModuleAssemblies = uiModuleAssemblies.ToArray();
         }
-        await whenReadyToRender;
-        LoadingUI.MarkLoaded();
-
+        await prepareFirstRenderTask;
         _readyToRender = true;
         _shouldRender = true;
-        StateHasChanged();
-
-        await LoadingUI.WhenRendered;
-        await AppServiceStarter.AfterRender(_disposeToken);
+        _ = AppServiceStarter.AfterFirstRender(_disposeToken);
     }
 
     public void Dispose() {

@@ -78,6 +78,8 @@ public partial class AccountUI
         }
         else {
             // Sign-in or account change
+            var onboardingUI = Services.GetRequiredService<IOnboardingUI>();
+            _ = onboardingUI.TryShow();
             if (history.LocalUrl.IsChatOrChatRoot())
                 return;
 

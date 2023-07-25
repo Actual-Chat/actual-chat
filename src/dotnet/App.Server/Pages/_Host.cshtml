@@ -126,13 +126,17 @@
 } else {
     <app id="app" class="flex flex-col h-full">
         @{
+            var appComponentType = typeof(WasmApp);
+            var renderMode = RenderMode.WebAssembly;
             var sessionToken = "";
-            if (isServerSideBlazor)
+            if (isServerSideBlazor) {
+                appComponentType = typeof(ServerApp);
+                renderMode = RenderMode.Server;
                 sessionToken = (await SecureTokens.CreateForSession(session, cancellationToken)).Token;
+            }
+            var parameters = new { SessionHash = session.Hash, SessionToken = sessionToken };
         }
-        @(await Html.RenderComponentAsync<WasmApp>(
-            isServerSideBlazor ? RenderMode.Server : RenderMode.WebAssembly,
-            new { SessionHash = session.Hash, SessionToken = sessionToken }))
+        @(await Html.RenderComponentAsync(appComponentType, renderMode, parameters))
     </app>
 
     <!-- This block must go right after app, otherwise page content won't be blurred -->
