@@ -61,33 +61,30 @@ public partial class AccountUI
         return isChanged;
     }
 
-    private async Task ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
+    private void ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
     {
         Changed?.Invoke(account);
-        if (account.IsGuestOrNone || !oldAccount.IsGuestOrNone) {
-            // Sign-out or account change
-            var localSettings = Services.GetRequiredService<LocalSettings>();
-            var clearLocalSettingsTask = localSettings.Clear();
-            var clientComputedCache = Services.GetService<IClientComputedCache>();
-            if (clientComputedCache != null)
-                await clientComputedCache.Clear(CancellationToken.None);
-            await clearLocalSettingsTask;
-        }
-
+        var reloadUI = Services.GetRequiredService<ReloadUI>();
         var history = Services.GetRequiredService<History>();
         var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
         if (account.IsGuestOrNone) {
-            // Sign-out
-            _ = autoNavigationUI.NavigateTo(Links.Home, AutoNavigationReason.SignOut);
+            // We're signed out now
+            if (!oldAccount.IsGuestOrNone)
+                reloadUI.Reload(true); // And were signed in -> it's a sign-out
+            return;
         }
-        else {
-            // Sign-in or account change
-            var onboardingUI = Services.GetRequiredService<IOnboardingUI>();
-            _ = onboardingUI.TryShow();
-            if (history.LocalUrl.IsChatOrChatRoot())
-                return;
 
-            _ = autoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
+        // We're signed in now
+        if (!oldAccount.IsGuestOrNone) {
+            // And were signed in -> it's an account change
+            reloadUI.Reload(true);
+            return;
         }
+
+        // We were signed out -> it's a sign-in
+        var onboardingUI = Services.GetRequiredService<IOnboardingUI>();
+        _ = onboardingUI.TryShow();
+        if (!history.LocalUrl.IsChatOrChatRoot())
+            _ = autoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
     }
 }

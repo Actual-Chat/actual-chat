@@ -13,17 +13,14 @@ public class ReloadUI
         Log = services.LogFor(GetType());
     }
 
-    public virtual void Reload(bool clearCache = false)
+    public virtual void Reload(bool clearCaches = false)
     {
         var blazorCircuitContext = Services.GetRequiredService<AppBlazorCircuitContext>();
         _ = blazorCircuitContext.WhenReady.ContinueWith(_ => blazorCircuitContext.Dispatcher.InvokeAsync(async () => {
             Log.LogWarning("Reloading...");
             try {
-                if (clearCache) {
-                    var cache = Services.GetService<IClientComputedCache>();
-                    if (cache != null)
-                        await cache.Clear().ConfigureAwait(true);
-                }
+                if (clearCaches)
+                    await ClearCaches();
                 var nav = Services.GetRequiredService<NavigationManager>();
                 nav.NavigateTo(Links.Home, true);
             }
@@ -31,6 +28,22 @@ public class ReloadUI
                 Log.LogError(e, "Reload failed");
             }
         }), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    public virtual async Task ClearCaches()
+    {
+        Log.LogWarning("Cleaning caches & local settings...");
+        try {
+            var localSettings = Services.GetRequiredService<LocalSettings>();
+            var clientComputedCache = Services.GetService<IClientComputedCache>();
+            var clearLocalSettingsTask = localSettings.Clear();
+            if (clientComputedCache != null)
+                await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(false);
+            await clearLocalSettingsTask.ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "ClearCaches failed");
+        }
     }
 
     public virtual void Quit()
