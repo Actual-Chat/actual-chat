@@ -115,10 +115,12 @@ public class ServerKvas : IServerKvas
         // it's not guaranteed that GetUserPrefix will complete w/ a non-empty one here.
         // But it should complete with a non-empty one eventually, so...
         try {
-            await Computed
-                .Capture(() => Auth.GetUser(session, cancellationToken))
-                .When(u => u?.IsGuest() == false, Clocks.Timeout(3), cancellationToken)
-                .ConfigureAwait(false);
+            await Clocks.Timeout(3).ApplyTo(
+                ct => Computed
+                    .Capture(() => Auth.GetUser(session, ct))
+                    .When(u => u?.IsGuest() == false, ct),
+                cancellationToken
+                ).ConfigureAwait(false);
         }
         catch (TimeoutException) {
             Log.LogWarning("MigrateGuestKeys: Auth.GetUser couldn't complete in 3 seconds");

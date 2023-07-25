@@ -55,7 +55,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
             return (resultList.Get0<T>(), resultData);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log?.LogError(e, "Cached result read failed");
+            Log.LogError(e, "Cached result read failed");
             return null;
         }
     }

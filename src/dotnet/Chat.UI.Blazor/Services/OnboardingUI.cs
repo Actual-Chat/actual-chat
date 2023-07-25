@@ -47,12 +47,12 @@ public class OnboardingUI : IDisposable, IOnboardingUI
         _lastModalRef?.Close(true);
         _lastTryShowCts.CancelAndDisposeSilently();
         var shouldBeShown = false;
+        // We give it 5 seconds to complete, otherwise it won't be shown
         using var cts = _lastTryShowCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try {
             shouldBeShown = await ShouldBeShown(cts.Token);
         }
         catch (OperationCanceledException) { }
-        catch (TimeoutException) { }
         finally {
             if (_lastTryShowCts == cts)
                 _lastTryShowCts = null;
@@ -74,24 +74,19 @@ public class OnboardingUI : IDisposable, IOnboardingUI
 
     private async Task<bool> ShouldBeShown(CancellationToken cancellationToken)
     {
-        // 1. Wait for sign-in
-        await LoadingUI.WhenRendered.WaitAsync(cancellationToken);
-        await AccountUI.WhenLoaded.WaitAsync(cancellationToken);
-        await AccountUI.OwnAccount
-            .When(x => !x.IsGuestOrNone, Clocks.Timeout(2), cancellationToken)
-            .ConfigureAwait(false);
+        // Wait for sign-in
+        await AccountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, cancellationToken).ConfigureAwait(false);
 
-        // 2. Wait when settings are read
+        // If there was a recent account change, add a delay to let them hit the client
+        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);
+
+        // Wait when settings are read & synchronized
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
+        await _settings.Synchronize(cancellationToken).ConfigureAwait(false);
 
-        // 3. Extra delay - just in case Origin is somehow set for cached settings
-        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
-        await _settings.Synchronize(cancellationToken);
-
-        // 4. Wait when settings migrated
-        await _settings.Computed
-            .When(x => !x.Origin.IsNullOrEmpty(), Clocks.Timeout(2), cancellationToken)
-            .ConfigureAwait(false);
+        // Finally, wait for the possibility to render onboarding modal
+        await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         var settings = _settings.Value;
         return settings.HasUncompletedSteps;

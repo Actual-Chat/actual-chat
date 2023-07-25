@@ -33,11 +33,11 @@
 
     protected override void OnInitialized() {
         _ownAccount = AccountUI.OwnAccount.Value;
-        AccountUI.OwnAccountChanged += OnOwnAccountChanged;
+        AccountUI.Changed += OnOwnAccountChanged;
     }
 
     public void Dispose() {
-        AccountUI.OwnAccountChanged -= OnOwnAccountChanged;
+        AccountUI.Changed -= OnOwnAccountChanged;
     }
 
     protected override void OnAfterRender(bool firstRender) {

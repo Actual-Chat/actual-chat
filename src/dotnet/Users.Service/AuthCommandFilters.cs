@@ -83,8 +83,10 @@ public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
 
         // Follow-up actions
         var userId = new UserId(sessionInfo.UserId);
-        new ServerKvas_MigrateGuestKeys(command.Session)
-            .EnqueueOnCompletion();
+
+        // MigrateGuestKeys is disabled for now, coz it causes more problems than solves
+        // new ServerKvas_MigrateGuestKeys(command.Session)
+        //     .EnqueueOnCompletion();
 
         // Raise events
         var isNewUser = context.Operation().Items.GetOrDefault<bool>(); // Set by default command handler

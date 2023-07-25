@@ -15,37 +15,6 @@ public static class ComputedExt
         return await computed.When(predicate, cancellationToken).ConfigureAwait(false);
     }
 
-    public static async Task<Computed<T>> When<T>(
-        this ValueTask<Computed<T>> computedTask,
-        Func<T, bool> predicate,
-        Timeout timeout,
-        CancellationToken cancellationToken = default)
-    {
-        var computed = await computedTask.ConfigureAwait(false);
-        return await computed.When(predicate, timeout, cancellationToken).ConfigureAwait(false);
-    }
-
-    public static async Task<Computed<T>> When<T>(
-        this Computed<T> computed,
-        Func<T, bool> predicate,
-        Timeout timeout,
-        CancellationToken cancellationToken = default)
-    {
-        var cts = cancellationToken.CreateLinkedTokenSource();
-        try {
-            var whenTask = computed.When(predicate, cts.Token);
-            var timeoutTask = timeout.Wait(cts.Token);
-            await Task.WhenAny(timeoutTask, whenTask).ConfigureAwait(false);
-            if (timeoutTask.IsCompleted && !cancellationToken.IsCancellationRequested)
-                throw new TimeoutException();
-
-            return await whenTask.ConfigureAwait(false);
-        }
-        finally {
-            cts.CancelAndDisposeSilently();
-        }
-    }
-
     // Debug dump
 
     private static readonly ConcurrentDictionary<(Type, string), PropertyInfo?> _propertyCache = new();

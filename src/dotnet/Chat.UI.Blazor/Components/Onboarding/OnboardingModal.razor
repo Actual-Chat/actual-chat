@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<OnboardingModal.Model>
+@implements IDisposable
 
 <DialogFrame
     Class="onboarding-modal"
@@ -73,8 +74,23 @@
 </DialogFrame>
 
 @code {
+    private readonly CancellationTokenSource _disposeCts = new();
+
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public void Dispose()
+        => _disposeCts.CancelAndDisposeSilently();
+
+    protected override void OnInitialized() {
+        var cancellationToken = _disposeCts.Token;
+        _ = ForegroundTask.Run(async () => {
+            await AccountUI.OwnAccount.When(x => x.IsGuestOrNone, cancellationToken);
+            Modal.Close(true);
+        }, cancellationToken);
+    }
 
     // Event handlers
 

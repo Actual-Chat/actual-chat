@@ -86,7 +86,7 @@
             _blazorRef = DotNetObjectReference.Create(this);
             var jsCreate = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
             await BrowserInfo.WhenReady;
-            await BubbleUI.WhenReadyToRenderHost();
+            await BubbleUI.WhenReadyToShowBubbles();
             var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(jsCreate, _blazorRef, readBubbles);
         }

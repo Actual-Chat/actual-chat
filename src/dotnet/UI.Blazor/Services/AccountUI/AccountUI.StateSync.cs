@@ -35,6 +35,7 @@ public partial class AccountUI
             if (oldAccount.Id == newAccount.Id)
                 continue; // Only account properties have changed
 
+            _lastChangedAt.Value = Clock.Now;
             await BlazorCircuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             await BlazorCircuitContext.Dispatcher
                 .InvokeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount))
@@ -62,12 +63,15 @@ public partial class AccountUI
 
     private async Task ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
     {
-        OwnAccountChanged?.Invoke(account);
+        Changed?.Invoke(account);
         if (account.IsGuestOrNone || !oldAccount.IsGuestOrNone) {
             // Sign-out or account change
+            var localSettings = Services.GetRequiredService<LocalSettings>();
+            var clearLocalSettingsTask = localSettings.Clear();
             var clientComputedCache = Services.GetService<IClientComputedCache>();
             if (clientComputedCache != null)
-                await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(true);
+                await clientComputedCache.Clear(CancellationToken.None);
+            await clearLocalSettingsTask;
         }
 
         var history = Services.GetRequiredService<History>();

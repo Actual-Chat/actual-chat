@@ -32,35 +32,20 @@ public sealed class BubbleUI
             });
     }
 
-    public async Task WhenReadyToRenderHost()
+    public async Task WhenReadyToShowBubbles()
     {
-        // 1. Wait for sign-in
-        try {
-            await AccountUI.WhenLoaded;
-            await AccountUI.OwnAccount
-                .When(x => !x.IsGuestOrNone, Clocks.Timeout(2))
-                .ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            // Intended
-        }
+        // Wait for sign-in
+        await AccountUI.WhenLoaded;
+        await Clocks.Timeout(2)
+            .ApplyTo(ct => AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, ct), false)
+            .ConfigureAwait(false);
 
-        // 2. Wait when settings are read
+        // If there was a recent account change, add a delay to let them hit the client
+        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);
+
+        // Wait when settings are read
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-
-        // 3. Extra delay - just in case Origin is somehow set for cached settings
-        await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
         await _settings.Synchronize();
-
-        // 4.Wait when settings migrated
-        try {
-            await _settings.Computed
-                .When(x => !x.Origin.IsNullOrEmpty(), Clocks.Timeout(1))
-                .ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            // Intended
-        }
     }
 
     public void UpdateSettings(UserBubbleSettings value)
