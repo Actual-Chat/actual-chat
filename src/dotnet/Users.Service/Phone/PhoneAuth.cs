@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 
 public class PhoneAuth : IPhoneAuth
 {
-    private static readonly string TotpFormat = new string('0', Constants.Auth.Phone.TotpLength);
+    private static readonly string TotpFormat = new('0', Constants.Auth.Phone.TotpLength);
     private ICommander Commander { get; }
     private ISmsGateway Sms { get; }
     private Rfc6238AuthenticationService Totps { get; }

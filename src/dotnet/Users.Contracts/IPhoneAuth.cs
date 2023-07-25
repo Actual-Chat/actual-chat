@@ -6,7 +6,6 @@ public interface IPhoneAuth : IComputeService
 {
     [CommandHandler]
     Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task<bool> OnValidateTotp(PhoneAuth_ValidateTotp command, CancellationToken cancellationToken);
 }

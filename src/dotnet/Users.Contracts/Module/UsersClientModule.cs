@@ -30,5 +30,6 @@ public sealed class UsersClientModule : HostModule
         fusion.AddClient<IAvatars>();
         fusion.AddClient<IUserPresences>();
         fusion.AddClient<IChatPositions>();
+        fusion.AddClient<IPhoneAuth>();
     }
 }
