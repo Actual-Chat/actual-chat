@@ -30,15 +30,16 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
 
         // ClientComputedCache
-        var appDataDir = new FilePath(FileSystem.AppDataDirectory);
+        var appCacheDir = new FilePath(FileSystem.CacheDirectory);
         services.AddSingleton(_ => new SQLiteClientComputedCache.Options() {
-            DbPath = appDataDir & "CCC.db3",
+            DbPath = appCacheDir & "CCC.db3",
         });
         services.AddSingleton(c => new SQLiteClientComputedCache(
             c.GetRequiredService<SQLiteClientComputedCache.Options>(), c));
         services.AddAlias<IClientComputedCache, SQLiteClientComputedCache>();
 
         // LocalSettings backend override
+        var appDataDir = new FilePath(FileSystem.AppDataDirectory);
         services.AddSingleton(c => {
             var dbPath = appDataDir & "LocalSettings.db3";
             return new LocalSettings.Options() {
