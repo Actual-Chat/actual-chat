@@ -78,12 +78,12 @@ public class OnboardingUI : IDisposable, IOnboardingUI
         await AccountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         await AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, cancellationToken).ConfigureAwait(false);
 
-        // If there was a recent account change, add a delay to let them hit the client
-        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);
-
         // Wait when settings are read & synchronized
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         await _settings.Synchronize(cancellationToken).ConfigureAwait(false);
+
+        // If there was a recent account change, add a delay to let them hit the client
+        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);
 
         // Finally, wait for the possibility to render onboarding modal
         await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);

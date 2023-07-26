@@ -40,12 +40,12 @@ public sealed class BubbleUI
             .ApplyTo(ct => AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, ct), false)
             .ConfigureAwait(false);
 
-        // If there was a recent account change, add a delay to let them hit the client
-        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);
-
         // Wait when settings are read
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         await _settings.Synchronize();
+
+        // If there was a recent account change, add a delay to let them hit the client
+        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);
     }
 
     public void UpdateSettings(UserBubbleSettings value)

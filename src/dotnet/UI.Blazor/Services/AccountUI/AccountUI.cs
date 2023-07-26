@@ -28,6 +28,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
     public Task WhenLoaded => _whenLoadedSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
     public IState<Moment> LastChangedAt => _lastChangedAt;
+    public Moment StartedAt { get; }
     public event Action<AccountFull>? Changed;
 
     public AccountUI(IServiceProvider services)
@@ -38,6 +39,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
         Accounts = services.GetRequiredService<IAccounts>();
         Clock = services.Clocks().CpuClock;
 
+        StartedAt = Clock.Now;
         _maxInvalidationDelay = TimeSpan.FromSeconds(HostInfo.AppKind.IsServer() ? 0.5 : 2);
         var ownAccountTask = Accounts.GetOwn(Session, default);
  #pragma warning disable VSTHRD002, VSTHRD104
@@ -52,7 +54,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
             Category = StateCategories.Get(GetType(), nameof(OwnAccount)),
         });
         _lastChangedAt = stateFactory.NewMutable<Moment>(new () {
-            InitialValue = Clock.Now,
+            InitialValue = StartedAt,
             Category = StateCategories.Get(GetType(), nameof(OwnAccount)),
         });
         if (!ReferenceEquals(initialOwnAccount, AccountFull.Loading))
@@ -67,6 +69,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
     public TimeSpan GetPostChangeInvalidationDelay(TimeSpan maxInvalidationDelay)
     {
         maxInvalidationDelay = maxInvalidationDelay.Clamp(default, _maxInvalidationDelay);
-        return (LastChangedAt.Value + maxInvalidationDelay - Clock.Now).Positive();
+        var changedAt = Moment.Max(LastChangedAt.Value, StartedAt + TimeSpan.FromSeconds(1));
+        return (changedAt + maxInvalidationDelay - Clock.Now).Positive();
     }
 }
