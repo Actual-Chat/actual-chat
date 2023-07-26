@@ -121,7 +121,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply rounded-xl;
     @apply cursor-pointer;
 }
-.people-tab .avatar-badge .author-avatar-badge {
+.people-tab .avatar-badge .avatar-circle {
     @apply m-0.5;
 }
 body.hoverable .people-tab .avatar-badge:hover {
@@ -170,7 +170,7 @@ body.hoverable .people-tab .avatar-badge:hover {
 }
 
 .chat-header-control-panel {
-    @apply flex-x gap-x-1;
+    @apply flex-x items-center gap-x-3;
 }
 
 .language-settings {

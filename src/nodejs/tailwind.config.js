@@ -119,6 +119,7 @@ module.exports = {
         'round-active': 'var(--round-active)',
         'round-focus': 'var(--round-focus)',
         'round-title': 'var(--round-title)',
+        'header-btn-active': 'var(--round-active)',
         'recorder': 'var(--recorder)',
         'recorder-hover': 'var(--recorder-hover)',
         'recorder-title': 'var(--recorder-title)',

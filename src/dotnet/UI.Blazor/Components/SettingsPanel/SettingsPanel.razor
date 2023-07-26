@@ -32,18 +32,16 @@
            </Button>;
 
     RenderFragment RenderTabTitle(SettingsTab tab) =>
-        @<div class="flex-x gap-x-4 items-center justify-between w-full">
-            <div class="settings-tab-title">
-                <i class="icon-@tab.IconTitle text-2xl icon-title"></i>
-                @if (tab.TitleComment.IsNullOrEmpty()) {
+        @<div class="settings-tab-item">
+            <i class="icon-@tab.IconTitle text-2xl icon-title"></i>
+            @if (tab.TitleComment.IsNullOrEmpty()) {
+                <span>@tab.Title</span>
+            } else {
+                <div class="flex-y items-start">
                     <span>@tab.Title</span>
-                } else {
-                    <div class="flex-y items-start">
-                        <span>@tab.Title</span>
-                        <span class="text-xxs text-primary">@tab.TitleComment</span>
-                    </div>
-                }
-            </div>
+                    <span class="text-xxs text-primary">@tab.TitleComment</span>
+                </div>
+            }
             <div class="flex-x">
                 @tab.TitleContent
             </div>

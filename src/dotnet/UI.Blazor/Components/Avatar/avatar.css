@@ -4,6 +4,7 @@
 
 .avatar-name {
     @apply whitespace-nowrap;
+    @apply truncate;
 }
 .avatar-name > .c-anonymous {
     @apply sup;
@@ -15,7 +16,36 @@
     @apply text-center text-04;
 }
 
+.avatar-circle {
+    @apply flex-x items-center;
+    @apply rounded-full;
+}
+.avatar-circle > .c-content {
+    @apply relative;
+    @apply overflow-hidden;
+}
+.avatar-circle > .c-content > .c-skeleton {
+    @apply rounded-full;
+    @apply animate-pulse;
+    @apply bg-04;
+}
+.avatar-circle > .c-content > .c-avatar {
+    @apply block;
+    @apply rounded-full;
+}
 /* This dummy selector just "uses" the widths that are picked randomly by AuthorName.razor */
 .avatar-name-spacing {
     @apply w-10 w-11 w-12 w-14 w-16 w-20 w-24 w-28 w-32 w-36 w-40;
+}
+
+.presence-indicator {
+    @apply absolute right-0 bottom-0;
+    @apply flex items-center justify-center;
+    @apply w-2.5 h-2.5;
+    @apply rounded-full;
+    @apply bg-01;
+}
+.presence-indicator > .c-dot {
+    @apply w-1.75 h-1.75;
+    @apply rounded-full;
 }

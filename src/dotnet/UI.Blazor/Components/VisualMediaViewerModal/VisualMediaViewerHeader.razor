@@ -5,33 +5,33 @@
 
 <div class="image-viewer-header">
     @if (ChatEntry != null && _author != null) {
-        <ButtonRound Class="image-header-btn mobile" Click="CloseClick">
-            <i class="icon-close text-xl"></i>
-        </ButtonRound>
-        <div class="flex-x w-full mx-4 items-center gap-x-2">
+        <HeaderButton Class="inverted mobile" Click="CloseClick">
+            <i class="icon-close"></i>
+        </HeaderButton>
+        <div class="c-author">
             <AvatarCircle Avatar="@_author.Avatar" Size="SquareSize.Size10"/>
-            <div class="grid">
-                <AvatarName Avatar="@_author.Avatar" Class="text-base md:text-sm text-icons-02 max-h-6 overflow-y-hidden truncate"/>
-                <LiveTimeDeltaText Class="text-xs md:text-xxs text-icons-02" Moment="@ChatEntry.BeginsAt"/>
+            <div class="c-content">
+                <AvatarName Avatar="@_author.Avatar" Class="c-name"/>
+                <LiveTimeDeltaText Class="c-time" Moment="@ChatEntry.BeginsAt"/>
             </div>
         </div>
     }
-    <div class="flex-x md:gap-x-2">
+    <div class="c-control-panel">
         @if (_enableIncompleteUI) {
-            <ButtonRound Class="image-header-btn">
+            <HeaderButton Class="inverted">
                 <i class="icon-share"></i>
-            </ButtonRound>
+            </HeaderButton>
         }
         @if (_isDownloadEnabled) {
-            <a href="@DownloadUrl" target="_blank" download class="flex justify-center">
-                <ButtonRound Class="image-header-btn">
+            <a href="@DownloadUrl" target="_blank" download class="c-link">
+                <HeaderButton Class="inverted">
                     <i class="icon-download"></i>
-                </ButtonRound>
+                </HeaderButton>
             </a>
         }
-        <ButtonRound Class="image-header-btn desktop" Click="CloseClick">
+        <HeaderButton Class="inverted desktop" Click="CloseClick">
             <i class="icon-close"></i>
-        </ButtonRound>
+        </HeaderButton>
     </div>
 </div>
 

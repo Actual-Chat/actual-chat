@@ -1,4 +1,4 @@
-<button class="landing-download-tile" data-href="@Link">
+<button class="landing-download-tile" data-href="@Link" onclick="@OnClick">
     <div class="c-content">
         <div class="flex-y gap-1">
             <div class="c-title">@Title</div>
@@ -18,4 +18,5 @@
     [Parameter] public RenderFragment? Brand { get; set; }
     [Parameter] public RenderFragment? QrCode { get; set; }
     [Parameter] public string Link { get; set; } = "";
+    [Parameter] public EventCallback OnClick { get; set; }
 }

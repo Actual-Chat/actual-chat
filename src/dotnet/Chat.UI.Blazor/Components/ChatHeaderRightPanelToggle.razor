@@ -4,16 +4,15 @@
 }
 
 @if (isVisible) {
-    <ButtonRound
+    <HeaderButton
         data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
         data-bubble-priority="401"
         data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
         Click="Click"
-        Class="transparent btn-md"
         Tooltip="Chat properties"
         TooltipPosition="FloatingPosition.Bottom">
-        <i class="icon-layout text-2xl"></i>
-    </ButtonRound>
+        <i class="icon-layout"></i>
+    </HeaderButton>
 }
 
 @code {

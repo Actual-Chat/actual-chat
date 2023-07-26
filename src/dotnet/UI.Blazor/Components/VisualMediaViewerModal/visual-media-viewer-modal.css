@@ -7,17 +7,37 @@
 
 /*Image viewer header*/
 .image-viewer-header {
+    @apply ordinary-header;
     @apply absolute top-0 z-20;
-    @apply flex-x;
-    @apply min-h-14 w-full px-3 md:px-2;
+    @apply w-full;
     @apply bg-black md:bg-transparent;
     @apply backdrop-blur-none md:backdrop-blur-lg;
 }
-.image-viewer-header .image-header-btn.btn.btn-round.mobile {
-    @apply flex md:hidden;
-    @apply min-h-10 max-h-10 min-w-10 max-w-10;
+.image-viewer-header > .c-author {
+    @apply flex-x items-center gap-x-4;
+    @apply w-full;
 }
-.image-viewer-header .image-header-btn.btn.btn-round.desktop {
+.image-viewer-header > .c-author > .c-content {
+    @apply flex-y;
+}
+.image-viewer-header > .c-author > .c-content > .c-name {
+    @apply max-h-6;
+    @apply overflow-y-hidden truncate;
+    @apply text-base md:text-sm text-icons-02;
+}
+.image-viewer-header > .c-author > .c-content > .c-time {
+    @apply text-xs md:text-xxs text-icons-02;
+}
+.image-viewer-header .c-control-panel {
+    @apply flex-x gap-x-3 md:gap-x-4;
+}
+.image-viewer-header > .c-control-panel > .c-link {
+    @apply flex justify-center;
+}
+.image-viewer-header .btn-h.mobile {
+    @apply flex md:hidden;
+}
+.image-viewer-header .btn-h.desktop {
     @apply hidden md:flex;
 }
 .image-viewer-header .image-header-btn .btn-content {

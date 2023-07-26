@@ -299,7 +299,7 @@ body.narrow .related-chat-entry-panel {
 body.narrow .related-chat-entry-panel * {
     @apply bg-09;
 }
-.related-chat-entry-panel .c-content {
+.related-chat-entry-panel .related-chat-entry > .c-content {
     @apply flex-1 flex-x items-center gap-x-2;
     @apply max-w-full max-h-10 md:max-h-8;
 }

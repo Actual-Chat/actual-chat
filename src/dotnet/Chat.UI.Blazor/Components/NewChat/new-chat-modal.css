@@ -50,6 +50,6 @@ body.hoverable .new-chat-modal-selected-contact:hover {
 body.hoverable .new-chat-modal-selected-contact:hover .new-chat-modal-remove-contact-icon {
     @apply flex;
 }
-body.hoverable .new-chat-modal-selected-contact:hover .author-avatar-badge {
+body.hoverable .new-chat-modal-selected-contact:hover .avatar-circle {
     @apply hidden;
 }

@@ -322,10 +322,46 @@ body.hoverable .btn.btn-x:active .btn-content {
 }
 
 .btn-h {
+    @apply relative z-20;
     @apply flex-none flex items-center justify-center;
-    @apply min-w-5 min-h-5;
+    @apply min-w-6 min-h-6;
     @apply text-icons-01;
 }
+body.hoverable .btn-h:hover {
+    @apply text-03;
+}
+.btn-h > .c-content {
+    @apply relative z-20;
+    @apply flex items-center;
+}
+.btn-h > .c-ground {
+    @apply absolute z-10;
+    @apply rounded-full;
+    @apply invisible;
+    @apply bg-header-btn-active;
+    @apply w-10 h-10;
+}
+.btn-h:active > .c-ground {
+    @apply visible;
+}
+body.hoverable .btn-h:active > .c-ground {
+    @apply invisible;
+}
 .btn-h i {
-    @apply text-xl font-semibold leading-5;
+    @apply text-2xl leading-6;
+}
+.btn-h.btn-lg {
+    @apply h-10 w-10;
+}
+.btn-h.inverted {
+    @apply text-05;
+}
+.btn-h.inverted > .c-ground {
+    @apply bg-07;
+}
+body.hoverable .btn-h.inverted:hover {
+    @apply text-04;
+}
+body.narrow .btn-h.inverted {
+    @apply text-04;
 }

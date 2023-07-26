@@ -15,17 +15,17 @@
 
 /* Header */
 .settings-panel > .c-tabs > .c-header {
-    @apply flex-none flex-x items-center overflow-hidden;
-    @apply min-h-14;
-    @apply bg-02 md:bg-transparent;
+    @apply ordinary-header;
+    @apply flex-none;
     @apply border-b border-bg-04 md:border-none;
+    @apply text-title-1;
+    @apply bg-02 md:bg-transparent;
+    @apply overflow-hidden;
+
 }
 .settings-header-title {
-    @apply flex-1 flex-x justify-start items-center;
-    @apply px-2 md:px-4;
-}
-.settings-header-title .title {
-    @apply text-xl md:text-lg font-semibold md:font-medium;
+    @apply flex-1 flex-x justify-start items-center gap-x-4;
+    @apply px-4;
 }
 .settings-header-title .btn {
     @apply md:hidden;
@@ -47,7 +47,7 @@
     @apply md:bg-selected;
 }
 .settings-panel > .c-tabs .c-tab-item.on i {
-    @apply text-02;
+    @apply md:text-02;
 }
 .settings-panel > .c-tabs .c-tab-item.container-toggle,
 .settings-panel > .c-tabs .c-tab-item.container-toggle * {
@@ -170,18 +170,18 @@ body.hoverable .tile-btn:hover {
     @apply p-2 md:p-0;
 }
 .settings-tab-header {
-    @apply flex items-center;
-    @apply min-h-14 w-full md:w-80;
-    @apply bg-02 md:bg-transparent;
+    @apply ordinary-header;
+    @apply w-full md:w-80;
     @apply border-b border-bg-04 md:border-none;
+    @apply text-title-1;
+    @apply bg-02 md:bg-transparent;
 }
-.settings-tab-header .settings-header-title {
-    @apply flex-x gap-x-2 items-center;
-    @apply md:px-0;
-    @apply text-xl md:text-lg md:font-medium;
+
+.settings-tab-item {
+    @apply flex-x items-center gap-x-4;
 }
-.settings-tab-header .settings-header-title .icon-title {
-    @apply hidden;
+.settings-tab-item span {
+    @apply font-semibold md:font-medium;
 }
 .modal-toggle {
     @apply hidden;

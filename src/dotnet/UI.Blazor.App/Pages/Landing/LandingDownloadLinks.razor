@@ -25,14 +25,17 @@
                         <img draggable="false" src="/dist/images/landing/app-store-qr.svg" alt="App Store QR">
                     </QrCode>
                 </LandingDownloadTile>
-                <LandingDownloadTile>
+                <LandingDownloadTile Link="@(Links.Apps.Windows)">
                     <Title>Windows App</Title>
                     <Text>Desktop</Text>
                     <Brand>
                         <img draggable="false" src="/dist/images/landing/microsoft-store.svg" alt="Microsoft Store">
                     </Brand>
+                    <QrCode>
+                        <img draggable="false" src="/dist/images/landing/microsoft-store-qr.svg" alt="Microsoft Store QR">
+                    </QrCode>
                 </LandingDownloadTile>
-                <LandingDownloadTile>
+                <LandingDownloadTile OnClick="@SignIn">
                     <Title>Web App</Title>
                     <Text>Mobile, Desktop</Text>
                     <Brand>
@@ -49,3 +52,10 @@
         </div>
     </div>
 </div>
+
+@code {
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
+}

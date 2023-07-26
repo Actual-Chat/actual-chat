@@ -103,30 +103,89 @@ input.input-underlined {
 
 /* Layouts */
 
+.base-layout {
+    @apply relative;
+    @apply flex-1 flex-x;
+    @apply h-full max-h-full;
+    @apply bg-02;
+}
+
 .base-layout-body {
     @apply relative;
     @apply flex-1 flex-y flex-nowrap;
-    @apply overflow-y-auto;
+    @apply w-full;
     @apply float-left;
 }
-
-.list-view-layout .layout-body {
-    @apply flex-y flex-nowrap justify-between;
-    @apply h-full w-full;
-    @apply p-0 -mb-22 md:mb-0;
-    @apply overflow-y-auto;
+.base-layout-body > .c-layout-content {
+    @apply flex-1;
+    @apply overflow-hidden;
+    @apply bg-01;
+}
+.no-layout .base-layout-body > .c-layout-content {
+    @apply overflow-auto custom-scrollbar-hide;
 }
 
-.list-view-layout .layout-footer {
-    @apply min-h-footer;
+.layout-header {
+    @apply flex-none flex-y;
+    @apply w-full;
+    @apply overflow-hidden;
+    @apply bg-02;
+}
+.layout-header > .c-content {
+    @apply ordinary-header;
+    @apply justify-items-stretch;
+    @apply border-b border-bg-04;
+}
+
+.layout-subheader {
+    @apply absolute flex-none flex-y top-14 z-10;
+    @apply w-full;
+    @apply overflow-visible;
+    @apply bg-01;
+}
+
+.layout-body {
+    @apply flex-1 flex-y flex-nowrap;
+    @apply h-full w-full;
+    @apply overflow-y-auto custom-scrollbar;
+}
+
+.layout-footer {
+    @apply flex-none flex-y z-10;
+    @apply w-full min-h-footer;
+    @apply overflow-visible;
     @apply shadow-none;
 }
 
-.default-layout .layout-body {
-    @apply flex flex-col flex-nowrap justify-start gap-y-4;
+.layout-subfooter {
+    @apply flex-none flex-y;
+    @apply w-full;
+    @apply overflow-visible;
+}
+
+.list-view-layout {
+    @apply relative flex-y flex-nowrap justify-between;
     @apply h-full w-full;
+    @apply overflow-hidden;
+}
+.list-view-layout .layout-body {
+    @apply justify-between;
+    @apply p-0 -mb-22 md:mb-0;
+}
+
+.default-layout {
+    @apply w-full;
+    @apply overflow-hidden;
+}
+.default-layout .layout-header {
+    @apply ordinary-header;
+    @apply bg-02;
+    @apply border-b border-bg-04;
+}
+.default-layout .layout-body {
+    @apply justify-start gap-y-4;
     @apply p-4;
-    @apply overflow-y-auto;
+    @apply overflow-x-hidden;
     @apply float-left;
 }
 
@@ -137,6 +196,13 @@ input.input-underlined {
     @apply inset-x-0 md:inset-x-auto md:right-0;
     @apply h-auto;
     @apply overflow-y-auto;
+}
+.error-container > .c-content {
+    @apply relative;
+    @apply flex-y gap-y-4;
+    @apply h-full;
+    @apply p-4;
+    @apply overflow-y-auto custom-scrollbar;
 }
 
 /* Auto-closing windows */
@@ -156,4 +222,32 @@ input.input-underlined {
 .fusion-close > .c-content > .c-footer {
     @apply flex-y items-center;
     @apply text-lg text-04;
+}
+
+/* Page with header and footer */
+
+.page-with-header-and-footer {
+    @apply flex-x;
+    @apply h-full w-full;
+}
+
+.page-with-header-and-footer .layout-body-wrapper {
+    @apply flex-1 flex-x;
+    @apply h-full;
+    @apply overflow-hidden;
+}
+
+.page-with-header-and-footer .layout-body-wrapper > .c-container {
+    @apply relative flex-1 -flex-y;
+    @apply h-full;
+    @apply overflow-hidden;
+}
+
+.page-with-header-and-footer .layout-body .test-page-text {
+    @apply flex-y gap-y-4;
+    @apply h-full;
+    @apply text-lg;
+}
+.page-with-header-and-footer .layout-body .test-page-btn-group {
+    @apply flex-x flex-wrap gap-4;
 }
