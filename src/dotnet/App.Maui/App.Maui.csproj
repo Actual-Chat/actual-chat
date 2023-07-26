@@ -29,11 +29,11 @@
     <!-- Required for C# Hot Reload -->
     <UseInterpreter Condition="'$(Configuration)' == 'Debug'">True</UseInterpreter>
 
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">16.1</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">16.1</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">33.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
-    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">33.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
 
     <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
@@ -68,16 +68,61 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+
+  <!-- Project references -->
+
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
 
-  <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">-->
-  <!--<PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
+  <!-- Package references -->
+
+  <ItemGroup>
+    <PackageReference Remove="Microsoft.SourceLink.GitHub" />
+    <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
+    <PackageReference Include="Sentry.Serilog" />
+    <PackageReference Include="Sentry.Extensions.Logging" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Include="sqlite-net-pcl" />
+    <!--
+      An extra package to use SQLite on MAUI:
+      https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
+    <PackageReference Include="SQLitePCLRaw.bundle_green" />
+  </ItemGroup>
+
+  <!-- Platform-specific package references -->
+
+  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <PackageReference Include="Xamarin.Firebase.Messaging" />
+    <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
+    <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
+    <PackageReference Include="Xamarin.Google.Dagger" />
+    <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
+    <PackageReference Include="Serilog.Sinks.Xamarin" />
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Mono.AotProfiler.Android" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
+    <PackageReference Include="Plugin.Firebase.CloudMessaging" />
+    <PackageReference Include="Serilog.Sinks.Xamarin" />
+    <PackageReference Include="Xamarin.Build.Download" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
+    <PackageReference Include="Serilog.Sinks.Debug" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+
+  <!--
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
+  -->
+  <!--
+  <PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
     <GenerateAppxPackageOnBuild>true</GenerateAppxPackageOnBuild>
     <AppxPackageSigningEnabled>true</AppxPackageSigningEnabled>
     <PackageCertificateThumbprint>0BFF799D82CC03E61A65584D31D800924149453A</PackageCertificateThumbprint>
-  </PropertyGroup>-->
+  </PropertyGroup>
+  -->
 
   <!-- Common iOS and Android build properties -->
 
@@ -192,24 +237,6 @@
     <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,Stl.Interception</MTouchInterpreter>-->
   </PropertyGroup>
 
-  <!-- Platform-specific references -->
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-android'">
-    <PackageReference Include="Xamarin.Firebase.Messaging" />
-    <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
-    <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
-    <PackageReference Include="Xamarin.Google.Dagger" />
-    <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-android' and '$(Configuration)' == 'Debug'">
-    <PackageReference Include="Mono.AotProfiler.Android" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-ios'">
-    <PackageReference Include="Plugin.Firebase.CloudMessaging" />
-    <PackageReference Include="Xamarin.Build.Download" />
-  </ItemGroup>
-
   <!-- Resources -->
 
   <ItemGroup>
@@ -230,7 +257,7 @@
   <!-- Platform-specific files to compile -->
 
   <!-- Android -->
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-android')) != true">
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) != true">
     <Compile Remove="**\**\*.Android.cs" />
     <None Include="**\**\*.Android.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Android\**\*.cs" />
@@ -241,7 +268,7 @@
   </ItemGroup>
 
   <!-- Both iOS and Mac Catalyst -->
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-ios')) != true AND $(TargetFramework.StartsWith('net7.0-maccatalyst')) != true">
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
     <Compile Remove="**\**\*.MaciOS.cs" />
     <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\MaciOS\**\*.cs" />
@@ -249,7 +276,7 @@
   </ItemGroup>
 
   <!-- iOS -->
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-ios')) != true">
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\**\*.iOS.cs" />
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\iOS\**\*.cs" />
@@ -257,7 +284,7 @@
   </ItemGroup>
 
   <!-- Mac Catalyst -->
-  <ItemGroup Condition="$(TargetFramework.StartsWith('net7.0-maccatalyst')) != true">
+  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst')) != true">
     <Compile Remove="**\**\*.MacCatalyst.cs" />
     <None Include="**\**\*.MacCatalyst.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\MacCatalyst\**\*.cs" />
@@ -273,21 +300,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Remove="Microsoft.SourceLink.GitHub" />
-    <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
-    <PackageReference Include="Sentry.Serilog" />
-    <PackageReference Include="Sentry.Extensions.Logging" />
-    <PackageReference Include="Serilog" />
-    <PackageReference Include="Serilog.Extensions.Logging" />
-    <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.Debug" />
-    <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" Include="Serilog.Sinks.File" />
-    <PackageReference Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android' OR $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" Include="Serilog.Sinks.Xamarin" />
-    <PackageReference Include="sqlite-net-pcl" />
-    <!--
-      We needed an extra package to use SQLite on Android
-      https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
-    <PackageReference Include="SQLitePCLRaw.bundle_green" />
     <!--
       MAUI msbuild tasks doesn't work with
       <Content Include="..\UI.Blazor.Host\wwwroot\**\*.*" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)" />
@@ -305,17 +317,17 @@
     <Content Remove="Resources\Images\**" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND '$(TargetFramework)' == 'net7.0-android'">
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
-  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND '$(TargetFramework)' == 'net7.0-android'">
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-android'))">
     <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND '$(TargetFramework)' == 'net7.0-ios'">
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
   </ItemGroup>
-  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND '$(TargetFramework)' == 'net7.0-ios'">
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-ios'))">
     <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
   </ItemGroup>
 
@@ -337,12 +349,9 @@
 
   <!-- Versions -->
   <!-- Use approach described on https://github.com/dotnet/Nerdbank.GitVersioning/issues/828 -->
-  <Target Name="FixVersionForAndroid" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'" BeforeTargets="_GetAndroidPackageName" DependsOnTargets="SetApplicationVersion" />
-
-  <Target Name="FixVersionForIOS" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'" BeforeTargets="_CompileAppManifest" DependsOnTargets="SetApplicationVersion" />
-
-  <Target Name="FixVersionForWindows" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'" BeforeTargets="MauiGeneratePackageAppxManifest" DependsOnTargets="SetApplicationVersion" />
-
+  <Target Name="FixVersionForAndroid" Condition="$(TargetFramework.Contains('-android'))" BeforeTargets="_GetAndroidPackageName" DependsOnTargets="SetApplicationVersion" />
+  <Target Name="FixVersionForIOS" Condition="$(TargetFramework.Contains('-ios'))" BeforeTargets="_CompileAppManifest" DependsOnTargets="SetApplicationVersion" />
+  <Target Name="FixVersionForWindows" Condition="$(TargetFramework.Contains('-windows'))" BeforeTargets="MauiGeneratePackageAppxManifest" DependsOnTargets="SetApplicationVersion" />
   <Target Name="SetApplicationVersion" DependsOnTargets="GetBuildVersion">
 
     <PropertyGroup>
@@ -354,15 +363,15 @@
       <!-- Android requirement: ApplicationVersion must be a positive integer (used as an internal version number) -->
       <!-- iOS requirement: ApplicationVersion must be a three part version number -->
       <!-- Windows requirement: ApplicationVersion must be blank when ApplicationDisplayVersion is a four part version number -->
-      <ApplicationVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">$(_MajorStr)$(_MinorStr)$(_BuildStr)</ApplicationVersion>
-      <ApplicationVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">$(BuildVersionSimple)</ApplicationVersion>
-      <ApplicationVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'"></ApplicationVersion>
+      <ApplicationVersion Condition="$(TargetFramework.Contains('-android'))">$(_MajorStr)$(_MinorStr)$(_BuildStr)</ApplicationVersion>
+      <ApplicationVersion Condition="$(TargetFramework.Contains('-ios'))">$(BuildVersionSimple)</ApplicationVersion>
+      <ApplicationVersion Condition="$(TargetFramework.Contains('-windows'))"></ApplicationVersion>
 
       <!-- iOS requirement: ApplicationDisplayVersion must be a three part version number -->
       <!-- Windows requirement: ApplicationDisplayVersion must be a four part version number -->
-      <ApplicationDisplayVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">$(Version)</ApplicationDisplayVersion>
-      <ApplicationDisplayVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">$(BuildVersionSimple)</ApplicationDisplayVersion>
-      <ApplicationDisplayVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">$(BuildVersion)</ApplicationDisplayVersion>
+      <ApplicationDisplayVersion Condition="$(TargetFramework.Contains('-android'))">$(Version)</ApplicationDisplayVersion>
+      <ApplicationDisplayVersion Condition="$(TargetFramework.Contains('-ios'))">$(BuildVersionSimple)</ApplicationDisplayVersion>
+      <ApplicationDisplayVersion Condition="$(TargetFramework.Contains('-windows'))">$(BuildVersion)</ApplicationDisplayVersion>
 
     </PropertyGroup>
 

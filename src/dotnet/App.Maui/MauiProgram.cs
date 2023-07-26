@@ -20,10 +20,6 @@ public static partial class MauiProgram
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
     private static HostInfo HostInfo => Constants.HostInfo;
 
-    public static partial LoggerConfiguration ConfigurePlatformLogger(LoggerConfiguration loggerConfiguration);
-
-    public static partial string? GetAppSettingsFilePath();
-
     public static MauiApp CreateMauiApp()
     {
         using var _1 = Tracer.Region();
@@ -197,31 +193,19 @@ public static partial class MauiProgram
     public static HostInfo CreateHostInfo(IConfiguration configuration)
     {
         // Add HostInfo
-        var platform = DeviceInfo.Current.Platform;
-        var clientKind = ClientKind.Unknown;
-        if (platform == DevicePlatform.Android)
-            clientKind = ClientKind.Android;
-        else if (platform == DevicePlatform.iOS)
-            clientKind = ClientKind.Ios;
-        else if (platform == DevicePlatform.WinUI)
-            clientKind = ClientKind.Windows;
-        else if (platform == DevicePlatform.macOS)
-            clientKind = ClientKind.MacOS;
 
 #if IS_FIXED_ENVIRONMENT_PRODUCTION || !DEBUG
         var environment = Environments.Production;
 #else
         var environment = Environments.Development;
 #endif
-
-        var deviceInfo = DeviceInfo.Current;
         var hostInfo = new HostInfo {
             AppKind = AppKind.MauiApp,
-            ClientKind = clientKind,
+            ClientKind = MauiSettings.ClientKind,
             Environment = environment,
             Configuration = configuration,
             BaseUrl = MauiSettings.BaseUrl,
-            DeviceModel = deviceInfo.Model,
+            DeviceModel = DeviceInfo.Current.Model,
         };
         return hostInfo;
     }

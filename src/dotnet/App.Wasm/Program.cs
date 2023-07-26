@@ -83,20 +83,7 @@ public static class Program
         services.AddSingleton(new ScopedTracerProvider(Tracer)); // We don't want to have scoped tracers in WASM app
 
         // Logging
-        services.AddLogging(logging => logging
-            .SetMinimumLevel(LogLevel.Debug)
-            .AddFilter(null, LogLevel.Information) // Default level
-            .AddFilter("System.Net.Http.HttpClient", LogLevel.Warning)
-            .AddFilter("Microsoft.AspNetCore.Authorization", LogLevel.Warning)
-            .AddFilter("Stl.Rpc", LogLevel.Debug)
-            .AddFilter("ActualChat", LogLevel.Debug)
-            .AddFilter("ActualChat.Audio", LogLevel.Debug)
-            .AddFilter("ActualChat.Audio.UI.Blazor", LogLevel.Debug)
-            .AddFilter("ActualChat.Audio.UI.Blazor.Components", LogLevel.Debug)
-            .AddFilter("ActualChat.Chat", LogLevel.Debug)
-            .AddFilter("ActualChat.MediaPlayback", LogLevel.Debug)
-            .AddFilter("ActualChat.Audio.Client", LogLevel.Debug)
-        );
+        services.AddLogging(logging => logging.ConfigureClientFilters(ClientKind.Wasm));
 
         // Other services shared with plugins
         services.TryAddSingleton(configuration);

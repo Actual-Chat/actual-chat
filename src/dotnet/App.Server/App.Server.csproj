@@ -15,9 +15,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" />
-    <PackageReference Include="Serilog.Extensions.Logging.File" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Extensions.Logging" />
+    <PackageReference Include="Serilog.Sinks.File" />
     <PackageReference Include="Stl.Fusion.Server" />
-    <PackageReference Include="Swashbuckle.AspNetCore" />
     <!-- Only for adjust Grpc.Core thread pool, for google transcriber & oltp exporter -->
     <PackageReference Include="Grpc.Core" />
     <PackageReference Include="OpenTelemetry" />
@@ -65,7 +66,7 @@
     <Watch Remove="wwwroot\**\*.woff" />
     <Watch Remove="wwwroot\**\*.woff2" />
   </ItemGroup>
-  
+
   <!-- Copy Stl* pdb to the output folder -->
   <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences">
     <ItemGroup>

@@ -4,7 +4,6 @@ using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Microsoft.JSInterop;
 using Microsoft.Maui.LifecycleEvents;
-using Serilog;
 using Activity = Android.App.Activity;
 using Result = Android.App.Result;
 
@@ -12,20 +11,6 @@ namespace ActualChat.App.Maui;
 
 public static partial class MauiProgram
 {
-    public static partial LoggerConfiguration ConfigurePlatformLogger(LoggerConfiguration loggerConfiguration)
-        => loggerConfiguration
-            .WriteTo.AndroidTaggedLog(
-                AndroidConstants.LogTag,
-                outputTemplate: "({ThreadID}) [{SourceContext}] {Message:l{NewLine:l}{Exception:l}");
-
-    public static partial string? GetAppSettingsFilePath()
-    {
-        var dirPath = Platform.AppContext.GetExternalFilesDir(null);
-        if (dirPath == null)
-            return null;
-        return Path.Combine(dirPath.Path, MauiSettings.AppSettingsFileName);
-    }
-
     private static partial void AddPlatformServices(this IServiceCollection services)
     {
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>

@@ -16,6 +16,7 @@ using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Transcription.Module;
+using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Module;
@@ -25,6 +26,7 @@ using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Logging.Console;
+using Serilog;
 
 namespace ActualChat.App.Server;
 
@@ -42,39 +44,30 @@ public class Startup
 
     public void ConfigureServices(IServiceCollection services)
     {
+        var hostSettings = Cfg.GetSettings<HostSettings>();
+        var appKind = hostSettings.AppKind ?? AppKind.WebServer;
+
         // Logging
         services.AddLogging(logging => {
             logging.ClearProviders();
+            logging.ConfigureServerFilters(Env.EnvironmentName);
             logging.AddConsole();
-            var devLogPath = Environment.GetEnvironmentVariable("DevLog");
-            if (!devLogPath.IsNullOrEmpty())
-                logging.AddFile(
-                    devLogPath,
-                    LogLevel.Debug,
-                    new Dictionary<string, LogLevel>(StringComparer.Ordinal) {
-                        { "ActualChat", LogLevel.Debug },
-                        { "ActualChat.Transcription", LogLevel.Debug },
-                        { "ActualChat.Transcription.Google", LogLevel.Debug },
-                        { "Microsoft", LogLevel.Warning },
-                        // { "Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Debug },
-                        // { "Microsoft.AspNetCore.Components", LogLevel.Debug },
-                        { "Stl", LogLevel.Warning },
-                        { "Stl.Fusion", LogLevel.Information },
-                    },
-                    retainedFileCountLimit: 1,
-                    outputTemplate: "{Timestamp:mm:ss.fff} {Level:u3}-{SourceContext} {Message}{NewLine}{Exception}"
-                    );
-
 #pragma warning disable IL2026
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
 #pragma warning restore IL2026
-            logging.SetMinimumLevel(Env.IsDevelopment() ? LogLevel.Debug : LogLevel.Warning);
-            // Use appsettings*.json to configure logging filters
+            if (AppLogging.IsDevLogRequested && appKind.IsServer()) { // This excludes TestServer
+                var serilog = new LoggerConfiguration()
+                    .Enrich.FromLogContext()
+                    .WriteTo.File(AppLogging.DevLogPath,
+                        outputTemplate: AppLogging.OutputTemplate,
+                        fileSizeLimitBytes: AppLogging.FileSizeLimit)
+                    .CreateLogger();
+                logging.AddFilteringSerilog(serilog, true);
+            }
         });
 
         // HostInfo
         services.AddSingleton(c => {
-            var hostSettings = Cfg.GetSettings<HostSettings>();
             var baseUrl = hostSettings.BaseUri;
             BaseUrlProvider? baseUrlProvider = null;
             if (baseUrl.IsNullOrEmpty()) {
@@ -99,7 +92,7 @@ public class Startup
             }
 
             return new HostInfo() {
-                AppKind = hostSettings.AppKind ?? AppKind.WebServer,
+                AppKind = appKind,
                 ClientKind = ClientKind.Unknown,
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,

@@ -2,24 +2,31 @@ using ActualChat.App.Maui.Services;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.Extensions.Configuration;
 using Sentry;
 using Sentry.Maui.Internal;
 using Sentry.Serilog;
 using Serilog;
-using Serilog.Events;
 using Serilog.Extensions.Logging;
-using Exception = System.Exception;
+using Stl.IO;
+using ILogger = Serilog.ILogger;
 
 namespace ActualChat.App.Maui;
 
 public static class MauiDiagnostics
 {
+    private const string LogFolder = "Logs";
+    private const string LogFile = "ActualChat.log";
+    private const string AndroidOutputTemplate = "({ThreadID}) [{SourceContext}] {Message:l}{NewLine:l}{Exception}";
     private static readonly TimeSpan SentryStartDelay = TimeSpan.FromSeconds(5);
-    private const string LogTag = "actual.chat";
 
-    private static Exception? _configureLoggerException;
+#if DEBUG
+    public const string LogTag = "dev.actual.chat";
+#else
+    public const string LogTag = "actual.chat";
+#endif
+
     private static SentryOptions? _sentryOptions;
 
     public static readonly ILoggerFactory LoggerFactory;
@@ -27,21 +34,18 @@ public static class MauiDiagnostics
 
     static MauiDiagnostics()
     {
-        Log.Logger = CreateSerilogLoggerConfiguration().CreateLogger();
-        Tracer.Default = Tracer = CreateTracer();
+        Log.Logger = CreateAppLogger();
+        Tracer.Default = Tracer = CreateAppTracer();
         LoggerFactory = new SerilogLoggerFactory(Log.Logger);
-
         DefaultLog = LoggerFactory.CreateLogger("ActualChat.Unknown");
-        if (_configureLoggerException != null)
-            DefaultLog.LogError(_configureLoggerException, "Failed to configure logger");
 
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = LoggerFactory.CreateLogger(typeof(WebMReader));
 
         if (_sentryOptions != null)
-            _ = LoadingUI.WhenAppRendered.WithDelay(SentryStartDelay).ContinueWith(_ => {
-                    InitSentrySdk(_sentryOptions);
-                }, TaskScheduler.Default);
+            _ = LoadingUI.WhenAppRendered
+                .WithDelay(SentryStartDelay)
+                .ContinueWith(_ => InitSentrySdk(_sentryOptions), TaskScheduler.Default);
     }
 
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)
@@ -50,32 +54,51 @@ public static class MauiDiagnostics
         services.AddTracer(Tracer); // We don't want to have scoped tracers in MAUI app
         services.AddLogging(logging => {
             logging.ClearProviders();
-            var minLevel = Log.Logger.IsEnabled(LogEventLevel.Debug)
-                ? LogLevel.Debug
-                : LogLevel.Information;
-            logging
-                .AddSerilog(Log.Logger, dispose: dispose)
-                .SetMinimumLevel(minLevel);
+            logging.ConfigureClientFilters(MauiSettings.ClientKind);
+            logging.AddFilteringSerilog(Log.Logger, dispose: dispose);
         });
         return services;
     }
 
     // Private methods
 
-    private static LoggerConfiguration CreateSerilogLoggerConfiguration()
+    private static ILogger CreateAppLogger()
     {
-        var configuration = new LoggerConfiguration()
-            .MinimumLevel.Is(LogEventLevel.Information)
-            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-            .MinimumLevel.Override("System", LogEventLevel.Warning)
+        var logging = new LoggerConfiguration()
             .Enrich.With(new ThreadIdEnricher())
             .Enrich.FromLogContext()
             .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
-        configuration = ConfigureFromJsonFile(configuration, MauiProgram.GetAppSettingsFilePath());
-        configuration = MauiProgram.ConfigurePlatformLogger(configuration);
+        logging = AddPlatformLoggerSinks(logging);
         if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
-            configuration = configuration.WriteTo.Sentry(ConfigureSentrySerilog);
-        return configuration;
+            logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);
+        return logging.CreateLogger();
+    }
+
+    private static Tracer CreateAppTracer()
+    {
+#if DEBUG
+        var logger = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@trace");
+        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+        return new Tracer("MauiApp", x => logger.Information(x.Format()));
+#else
+        return Tracer.None;
+#endif
+    }
+
+    private static LoggerConfiguration AddPlatformLoggerSinks(LoggerConfiguration logging)
+    {
+#if WINDOWS
+        var logPath = (FilePath)FileSystem.AppDataDirectory & LogFolder & LogFile;
+        logging = logging.WriteTo.Debug(outputTemplate: AppLogging.DebugOutputTemplate);
+        logging = logging.WriteTo.File(logPath,
+            outputTemplate: AppLogging.OutputTemplate,
+            fileSizeLimitBytes: AppLogging.FileSizeLimit);
+#elif ANDROID
+        logging = logging.WriteTo.AndroidTaggedLog(LogTag, outputTemplate: AndroidOutputTemplate);
+#elif IOS
+        logging = logging.WriteTo.NSLog();
+#endif
+        return logging;
     }
 
     private static void ConfigureSentrySerilog(SentrySerilogOptions options)
@@ -94,7 +117,6 @@ public static class MauiDiagnostics
 
         // We'll use an event processor to set things like SDK name
         options.AddEventProcessor(new SentryMauiEventProcessor2(options));
-
         _sentryOptions = options;
     }
 
@@ -113,90 +135,20 @@ public static class MauiDiagnostics
         disposer.Register(disposable);
     }
 
-    private static LoggerConfiguration ConfigureFromJsonFile(
-        LoggerConfiguration loggerConfiguration,
-        string? filePath)
+    public static ILoggingBuilder AddFilteringSerilog(
+        this ILoggingBuilder builder,
+        ILogger? logger = null,
+        bool dispose = false)
     {
-        if (filePath == null) {
-            LogInfo("No config file path provided");
-            return loggerConfiguration;
-        }
+        // NOTE(AY): It's almost the same code as in .AddSerilog, but with a single line commented out (see below)
+        if (builder == null)
+            throw new ArgumentNullException(nameof (builder));
 
-        try {
-            LogInfo($"Config file path: '{filePath}'");
-            var f = new FileInfo(filePath);
-            if (!f.Exists) {
-                LogInfo("Config file does not exist");
-                return loggerConfiguration;
-            }
-
-            var loggerFilterOptions = ReadLoggerFilterRules(f);
-            if (loggerFilterOptions.Rules.Count == 0) {
-                LogInfo("No logger filter rules");
-                return loggerConfiguration;
-            }
-            foreach (var rule in loggerFilterOptions.Rules) {
-                if (!rule.LogLevel.HasValue)
-                    continue;
-                LogInfo($"Logger config. Category: '{rule.CategoryName}', Level: '{rule.LogLevel.Value}'");
-                var logEventLevel = ToLogEventLevel(rule.LogLevel.Value);
-                loggerConfiguration = rule.CategoryName != null
-                    ? loggerConfiguration.MinimumLevel.Override(rule.CategoryName, logEventLevel)
-                    : loggerConfiguration.MinimumLevel.Is(logEventLevel);
-            }
-        }
-        catch (Exception e) {
-            LogWarn(e, "Failed to configure logger");
-            _configureLoggerException = e;
-        }
-        return loggerConfiguration;
-    }
-
-    private static LoggerFilterOptions ReadLoggerFilterRules(FileInfo f)
-    {
-        var loggerFilterOptions = new LoggerFilterOptions();
-        var jsonConfig = new ConfigurationBuilder().AddJsonFile(f.FullName).Build();
-        var loggerFilterConfigureOptions = new LoggerFilterConfigureOptions(jsonConfig);
-        loggerFilterConfigureOptions.Configure(loggerFilterOptions);
-        return loggerFilterOptions;
-    }
-
-    private static LogEventLevel ToLogEventLevel(LogLevel logLevel)
-        => logLevel switch {
-            LogLevel.Critical => LogEventLevel.Fatal,
-            LogLevel.Error => LogEventLevel.Error,
-            LogLevel.Warning => LogEventLevel.Warning,
-            LogLevel.Information => LogEventLevel.Information,
-            LogLevel.Debug => LogEventLevel.Debug,
-            LogLevel.Trace => LogEventLevel.Verbose,
-            _ => throw new ArgumentOutOfRangeException(nameof(logLevel), logLevel, null)
-        };
-
-    private static void LogInfo(string message)
-    {
-#if ANDROID
-        Android.Util.Log.Info(LogTag, message);
-#endif
-    }
-
-    private static void LogWarn(Exception? exception, string message)
-    {
-#if ANDROID
-        if (exception != null)
-            Android.Util.Log.Warn(LogTag, Java.Lang.Throwable.FromException(exception),  message);
+        if (dispose)
+            builder.Services.AddSingleton<ILoggerProvider, SerilogLoggerProvider>(_ => new SerilogLoggerProvider(logger, true));
         else
-            Android.Util.Log.Warn(LogTag, message);
-#endif
-    }
-
-    private static Tracer CreateTracer()
-    {
-#if DEBUG
-        var logger = Log.Logger.ForContext(Serilog.Core.Constants.SourceContextPropertyName, "@trace");
-        // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-        return new Tracer("MauiApp", x => logger.Information(x.Format()));
-#else
-        return Tracer.None;
-#endif
+            builder.AddProvider(new SerilogLoggerProvider(logger));
+        // builder.AddFilter<SerilogLoggerProvider>(null, LogLevel.Trace);
+        return builder;
     }
 }
