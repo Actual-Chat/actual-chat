@@ -36,7 +36,7 @@
         <Buttons>
             <FormButtons>
                 @{
-                    var submitClass = $"btn-primary {(_formRef.IsValid ? "" : "disabled")}";
+                    var submitClass = $"btn-primary {_formRef.IsValid.ToEnabledClass()}";
                 }
                 <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
                 <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
