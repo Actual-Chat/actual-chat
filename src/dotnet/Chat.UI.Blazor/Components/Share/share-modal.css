@@ -26,6 +26,9 @@
     @apply pb-0;
 }
 
+.share-modal .embedded-message-editor {
+    @apply border-b-0;
+}
 .share-modal .link-info {
     @apply flex-x gap-x-4;
     @apply mx-4 mt-3;
