@@ -25,9 +25,8 @@ public class TotpRandomSecrets
         _rsg = new (Settings.TotpRandomSecretLength);
     }
 
-    [ComputeMethod]
-    public virtual async Task<string> Get(Session session)
-        => await GetOrSet(ToKey(session), _rsg.Next()).ConfigureAwait(false);
+    public Task<string> Get(Session session)
+        => GetOrSet(ToKey(session), _rsg.Next());
 
     private static string ToKey(Session session)
         => $"{RedisKeyPrefix}{session.Id}";
