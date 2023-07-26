@@ -7,12 +7,12 @@
     var title = HasTooltip ? Avatar.Name : "";
 }
 
-<div class="author-avatar-badge flex-x items-center rounded-full">
-    <div class="relative overflow-hidden">
+<div class="avatar-circle">
+    <div class="c-content">
         @if (ReferenceEquals(Avatar, Avatar.Loading)) {
-            <div class="animate-pulse rounded-full bg-04 @_avatarClass"></div>
+            <div class="c-skeleton @_avatarClass"></div>
         } else {
-            <img draggable="false" class="@_avatarClass @Class rounded-full block"
+            <img draggable="false" class="@_avatarClass @Class c-avatar"
                  src="@_avatarPictureUrl" alt="avatar" title="@title"
                  @onclick="@Click"/>
         }

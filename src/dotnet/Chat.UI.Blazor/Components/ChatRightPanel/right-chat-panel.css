@@ -14,3 +14,8 @@
     @apply flex-y;
     @apply border-t-4 border-bg-04;
 }
+
+.right-chat-panel > .c-header {
+    @apply ordinary-header;
+    @apply border-b border-bg-04;
+}

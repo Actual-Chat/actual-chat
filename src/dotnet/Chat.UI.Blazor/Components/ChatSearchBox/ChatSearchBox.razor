@@ -1,24 +1,23 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 @if (_isCollapsed == true) {
-    <ButtonRound
+    <HeaderButton
         Click="OnExpandClick"
-        Class="btn-md transparent"
         Tooltip="@Placeholder"
         TooltipPosition="FloatingPosition.Bottom">
-        <i class="icon-search text-2xl"></i>
-    </ButtonRound>
+        <i class="icon-search"></i>
+    </HeaderButton>
 } else {
     <div class="@Class chat-search-box">
         <label>
-            <ButtonRound
-                Class="btn-md search-button"
+            <HeaderButton
+                Class="btn-lg search-button"
                 Click="OnSearchButtonClick"
                 IsDisabled="!CanBeTriggered"
                 Tooltip="@Placeholder"
                 TooltipPosition="FloatingPosition.Bottom">
-                <i class="icon-search text-2xl font-medium"></i>
-            </ButtonRound>
+                <i class="icon-search"></i>
+            </HeaderButton>
             <TextInput
                 @ref="_inputRef"
                 Class="w-full"
@@ -34,13 +33,13 @@
                 </div>
             } else {
                 @if (ShowClose) {
-                    <ButtonRound
+                    <HeaderButton
                         Class="cancel-button"
                         Click="@Cancel"
                         Tooltip="Close"
                         TooltipPosition="FloatingPosition.Bottom">
-                        <i class="icon-close text-2xl"></i>
-                    </ButtonRound>
+                        <i class="icon-close"></i>
+                    </HeaderButton>
                 }
             }
         </label>

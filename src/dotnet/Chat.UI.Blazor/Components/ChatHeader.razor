@@ -3,15 +3,13 @@
 @{
     var chat = Chat;
 }
-<div class="flex-x justify-items-stretch items-center px-2 min-h-14 border-b border-bg-04">
+<div class="c-content">
     @if (IsLeftNavigateButtonVisible) {
-        <div>
-            <ButtonRound Click="OnOpenLeftPanelClick" Class="md:!hidden transparent">
-                <i class="icon-arrow-left text-2xl"></i>
-            </ButtonRound>
-        </div>
+        <HeaderButton Click="OnOpenLeftPanelClick" Class="md:hidden">
+            <i class="icon-arrow-left"></i>
+        </HeaderButton>
     }
-    <div class="flex-auto flex-x justify-between items-center grow gap-x-2 py-0.5 md:pl-2 overflow-hidden">
+    <div class="flex-auto flex-x justify-between items-center grow gap-x-2 py-0.5 overflow-hidden">
         @if (!ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
             <ChatIcon Chat="@chat"/>
             <div class="flex-1 flex-x chat-header-title select-text no-highlight truncate">
@@ -27,7 +25,7 @@
         }
     </div>
     @if (!chat.Id.IsNone) {
-        <div class="chat-header-control-panel ml-2">
+        <div class="chat-header-control-panel">
             <div class="flex-x gap-x-1">
                 <ChatSearch @key="@chat" Chat="@chat"/>
             </div>

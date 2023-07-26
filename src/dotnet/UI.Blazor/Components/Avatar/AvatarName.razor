@@ -7,13 +7,13 @@
     var tailwindSpacing = new [] { 10, 11, 12, 14, 16, 20, 24, 28, 32, 36, 40 };
     var firstLength = tailwindSpacing[Random.Shared.Next(5, tailwindSpacing.Length - 1)];
     var secondLength = tailwindSpacing[Random.Shared.Next(0, 7)];
-    <span class="@Class avatar-name truncate skeleton animate-pulse">
+    <span class="@Class avatar-name skeleton animate-pulse">
         <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@firstLength h-4"></span>
         <span class="bg-skeleton rounded-md border-skeleton-border border-2 w-@secondLength h-4"></span>
     </span>
 } else {
     var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
-    <span class="@Class @extraClass avatar-name truncate" @onclick="@Click">
+    <span class="@Class @extraClass avatar-name" @onclick="@Click">
         @Avatar.Name
         @if (IsAnonymous) {
             <span class="c-anonymous" title="This author is anonymous">ā</span>

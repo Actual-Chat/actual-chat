@@ -7,12 +7,12 @@
     var failures = UIActionFailureTracker.Items;
 }
 
-<div class="base-layout bg-02 flex-1 flex-x h-full max-h-full relative">
+<div class="base-layout">
     <div class="base-layout-body">
-        <div class="bg-01 flex-1 overflow-hidden">
+        <div class="c-layout-content">
             @if (failures.Count != 0) {
                 <div class="error-container custom-scrollbar">
-                    <div class="relative flex-y gap-y-4 h-full overflow-y-auto custom-scrollbar p-4">
+                    <div class="c-content">
                         @foreach (var failure in failures) {
                             <Error @key="failure"
                                    Title="Action failed!"

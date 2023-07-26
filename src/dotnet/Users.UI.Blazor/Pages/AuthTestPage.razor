@@ -19,7 +19,7 @@
 <ul>
     <li><code>Session.Id</code>: <b><code>@Session.Id.Value</code></b></li>
     <li><code>SessionInfo.GetGuestId()</code>: <b><code>@(m.SessionInfo.GetGuestId())</code></b></li>
-    <li><code>SessionInfo</code>: <br/><pre>@(JsonFormatter.Format(m.SessionInfo!))</pre></li>
+    <li><code>SessionInfo</code>: <br/><pre class="whitespace-break-spaces">@(JsonFormatter.Format(m.SessionInfo!))</pre></li>
 </ul>
 
 <h3 class="section">User</h3>
@@ -44,7 +44,7 @@
 </ul>
 
 <h3 class="section">Account</h3>
-<pre>@(JsonFormatter.Format(m.Account))</pre>
+<pre class="whitespace-break-spaces">@(JsonFormatter.Format(m.Account))</pre>
 
 @if (m.Account.IsAdmin) {
     <div class="flex-x">

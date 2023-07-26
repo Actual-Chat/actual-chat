@@ -13,7 +13,7 @@
     @apply opacity-0 translate-y-4;
 }
 
-.navigate-to-end .c-content {
+.navigate-to-end > .c-content {
     @apply absolute bottom-3 md:bottom-0 right-3 md:mb-2 z-10;
     @apply flex-y items-center justify-center shadow-scrollbar;
 }

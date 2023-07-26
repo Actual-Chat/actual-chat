@@ -24,8 +24,17 @@ body.hoverable .system-entry.message-wrapper:hover {
 
 .chat-message > .c-author-badge {
     @apply flex-none;
+    @apply h-fit;
+    @apply p-1.5;
     @apply overflow-hidden;
     @apply select-none;
+}
+.chat-message > .c-author-badge:has(.c-empty) {
+    @apply py-2;
+}
+.chat-message > .c-author-badge > .c-empty {
+    @apply flex items-center justify-center;
+    @apply w-9 h-2.5;
 }
 
 .chat-message > .c-content {
@@ -66,16 +75,14 @@ body.hoverable .message-wrapper.mention.replied-message:hover {
     @apply bg-replied-message-hover border-l-2 border-replied-message-border;
 }
 
-.chat-message-timestamp {
+.chat-message-timestamp,
+.chat-message-timestamp-on-hover {
     @apply text-03 text-xs;
 }
 .chat-message-timestamp-on-hover {
     @apply invisible;
-    @apply text-03 text-xs;
 }
-body.hoverable .chat-message:hover .chat-message-timestamp-on-hover {
-    @apply visible;
-}
+body.hoverable .chat-message:hover .chat-message-timestamp-on-hover,
 body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     @apply visible;
 }

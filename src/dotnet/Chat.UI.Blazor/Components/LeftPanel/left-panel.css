@@ -15,14 +15,12 @@
     @apply overflow-hidden;
 }
 .left-panel-content > .c-search {
-    @apply flex-x justify-center items-center gap-x-1;
-    @apply min-h-14;
+    @apply ordinary-header;
     @apply px-2;
-    @apply border-b border-t border-bg-04;
+    @apply border-b border-bg-04;
 }
 .left-panel-content > .c-title {
-    @apply flex-x justify-center items-center gap-x-1;
-    @apply min-h-14;
-    @apply pr-2 pl-4;
+    @apply ordinary-header;
+    @apply justify-center;
     @apply border-b border-bg-04;
 }

@@ -8,27 +8,27 @@
     // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
 }
 
-<div class="page-with-header-and-footer h-full w-full flex-x">
+<div class="page-with-header-and-footer">
     <ErrorBarrier>
         <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
-            <div class="list-view-layout relative h-full w-full flex-y flex-nowrap justify-between overflow-hidden">
-                <div class="layout-header flex-none flex-y w-full overflow-hidden bg-02">
+            <div class="list-view-layout">
+                <div class="layout-header">
                     <ChatHeader @key="@chat" Chat="@chat" IsLeftNavigateButtonVisible="@false" IsRightNavigateButtonVisible="@false" />
                 </div>
-                <div class="layout-subheader flex-none flex-y w-full overflow-visible absolute top-14 z-10 bg-01">
+                <div class="layout-subheader">
                     @if (hasChat) {
                         <Banners @key="@chat" Chat="@chat"/>
                     }
                 </div>
-                <div class="flex-1 flex-x h-full overflow-hidden">
-                    <div class="flex-1 -flex-y h-full overflow-hidden relative">
-                        <div class="layout-footer flex-none flex-y w-full overflow-visible z-10">
+                <div class="layout-body-wrapper">
+                    <div class="c-container">
+                        <div class="layout-footer">
                             <ChatFooter ChatPageModel="@m" />
                         </div>
-                        <div class="layout-subfooter flex-none flex-y w-full overflow-visible">
+                        <div class="layout-subfooter">
                             <RenderStack Name="SubFooter"/>
                         </div>
-                        <div class="layout-body flex-1 custom-scrollbar">
+                        <div class="layout-body">
                             @if (ReferenceEquals(chat, SpecialChat.Loading)) {
                                 <chat-view-skeleton count="15" />
                             } else if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {

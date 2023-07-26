@@ -4,18 +4,20 @@
     var failures = UIActionFailureTracker.Items;
 }
 
-<div class="base-layout no-layout bg-02 flex-1 flex-x h-full max-h-full relative">
+<div class="base-layout no-layout">
     <div class="base-layout-body">
-        <div class="bg-01 flex-1 overflow-auto custom-scrollbar-hide">
+        <div class="c-layout-content">
             @if (failures.Count != 0) {
-                <div class="flex-y absolute z-50 top-16 w-auto md:w-1/4 inset-x-2 md:inset-x-auto md:right-2 overflow-y-auto">
-                    @foreach (var failure in failures) {
-                        <Error @key="failure"
-                               Title="Action failed!"
-                               Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
-                            @failure.Error!.Message
-                        </Error>
-                    }
+                <div class="error-container custom-scrollbar">
+                    <div class="c-content">
+                        @foreach (var failure in failures) {
+                            <Error @key="failure"
+                                   Title="Action failed!"
+                                   Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
+                                @failure.Error!.Message
+                            </Error>
+                        }
+                    </div>
                 </div>
             }
             <NoComponent @key="BodyKey">

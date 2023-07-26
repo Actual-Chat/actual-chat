@@ -5,12 +5,13 @@
     @apply hidden;
 }
 .tab-panel-tabs {
-    @apply flex-none flex-x;
-    @apply mb-2.5 pb-1.5 items-center;
+    @apply flex-none flex-x items-center;
+    @apply mb-2.5 pb-1.5;
     @apply overflow-hidden;
 }
 .tab-panel-tabs .btn-group {
-    @apply w-full justify-evenly;
+    @apply justify-evenly;
+    @apply w-full;
 }
 .tab-panel-tabs .btn-group-container {
     @apply flex-y;
@@ -27,7 +28,9 @@
 
 /* Buttons */
 .tab-panel-tabs .btn.tab-btn {
-    @apply min-w-2 border-0 rounded-none;
+    @apply min-w-2;
+    @apply rounded-none;
+    @apply border-0;
     @apply text-02 text-caption-1 tracking-wider;
 }
 .tab-panel-tabs .btn.tab-btn.bottom-border-btn {
@@ -45,7 +48,9 @@
 
 /* Bottom hill */
 .tab-panel-tabs .tab-panel-bottom-hill {
-    @apply h-1 rounded-t self-center;
+    @apply self-center;
+    @apply h-1;
+    @apply rounded-t;
     width: calc(100% - 0.7rem);
 }
 
@@ -57,17 +62,23 @@
 
 /* SideNav tabs */
 .side-nav .tab-panel-tabs {
-    @apply max-h-14 p-0 m-0;
+    @apply max-h-14;
+    @apply p-0 m-0;
     @apply border-b border-bg-04;
 }
 .side-nav .tab-panel-tabs .btn-group {
-    @apply min-h-14 justify-start px-4 gap-x-0;
+    @apply justify-start gap-x-0;
+    @apply min-h-14;
+    @apply px-4;
 }
 .side-nav .tab-panel-tabs .btn-group .btn-group-container {
-    @apply min-h-14 self-center;
+    @apply self-center;
+    @apply min-h-14;
 }
 .side-nav .tab-panel-tabs .btn {
-    @apply min-w-0 min-h-0 p-0 rounded-lg;
+    @apply min-w-0 min-h-0;
+    @apply p-0;
+    @apply rounded-lg;
 }
 .side-nav .tab-panel-tabs .btn.tab-btn.on .btn-content {
     @apply text-02;
@@ -79,13 +90,17 @@ body.hoverable .side-nav .tab-panel-tabs .tab-btn.on:hover .btn-content {
     @apply bg-transparent cursor-default;
 }
 .side-nav .tab-panel-tabs .tab-btn .btn-content {
-    @apply py-1.5 px-2 rounded-xl;
+    @apply py-1.5 px-2;
+    @apply rounded-xl;
 }
 .side-nav .tab-panel-tabs .tab-btn .btn-content .message-counter-badge {
     @apply ml-1;
 }
 
 .side-nav.side-nav-right .tab-panel-tabs .btn-group {
-    @apply min-h-14 justify-between px-4 overflow-x-hidden;
+    @apply justify-between;
+    @apply min-h-14;
+    @apply px-4;
+    @apply overflow-x-hidden;
 }
 

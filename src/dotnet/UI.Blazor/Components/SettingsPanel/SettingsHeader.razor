@@ -1,13 +1,11 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="settings-header-title">
-    <ButtonRound Click="ArrowClick" Class="transparent">
-        <i class="icon-arrow-left text-2xl text-icons-01"></i>
-    </ButtonRound>
-    <div class="title">
-        @Title
-    </div>
+<HeaderButton Click="ArrowClick" Class="md:hidden">
+    <i class="icon-arrow-left"></i>
+</HeaderButton>
+<div class="c-title">
+    @Title
 </div>
 
 @code {

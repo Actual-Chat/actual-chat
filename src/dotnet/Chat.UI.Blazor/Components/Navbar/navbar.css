@@ -74,12 +74,12 @@ body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
 .navbar-item {
     @apply relative;
     @apply flex-x justify-start items-center gap-x-1;
-    @apply px-1 py-0.5;
+    @apply p-1;
     @apply rounded-lg;
 }
 .navbar-item .navbar-item-content {
     @apply flex-1 flex-x;
-    @apply my-0.5 overflow-hidden;
+    @apply overflow-hidden;
     @apply text-02;
 }
 .navbar-item .navbar-item-ending {

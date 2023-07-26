@@ -400,9 +400,9 @@ body.narrow .landing .landing-menu {
     @apply bg-01;
 }
 .landing-menu .c-container .menu-header {
-    @apply flex-x justify-start items-center;
-    @apply min-h-14;
-    @apply py-2;
+    @apply ordinary-header;
+    @apply justify-start;
+    @apply px-0 py-2;
 }
 .landing-menu .menu-footer {
     @apply flex-x items-center justify-start gap-x-2;

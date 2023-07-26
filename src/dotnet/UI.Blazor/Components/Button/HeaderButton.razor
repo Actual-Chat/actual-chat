@@ -11,7 +11,10 @@
         data-must-keep-awake="@MustKeepAwake.ToString()"
         @attributes="@AdditionalAttributes"
         @onclick="@Click">
-    @ChildContent
+    <div class="c-content">
+        @ChildContent
+    </div>
+    <div class="c-ground"></div>
 </button>
 
 @code {

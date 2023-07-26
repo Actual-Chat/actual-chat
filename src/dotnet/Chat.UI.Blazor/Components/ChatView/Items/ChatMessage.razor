@@ -63,14 +63,12 @@
     <div class="chat-message group">
         <div class="c-author-badge">
             @if (showAuthor) {
-                <div class="m-1.5">
-                    <ChatMessageAuthorCircle
-                        AuthorSid="@entry.AuthorId"
-                        Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
-                </div>
+                <ChatMessageAuthorCircle
+                    AuthorSid="@entry.AuthorId"
+                    Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
             } else {
                 var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
-                <div class="w-8 mx-2">
+                <div class="c-empty">
                     <span class="chat-message-timestamp-on-hover">@timestamp</span>
                 </div>
             }
