@@ -1,6 +1,4 @@
-﻿@import "./share-dialog-buttons.css";
-
-.share-modal {
+﻿.share-modal {
     @apply md:w-90;
 }
 
@@ -17,30 +15,52 @@
 }
 .share-modal .dialog-body {
     @apply p-0;
-    @apply border-bg-04 border-b;
+}
+.share-modal .dialog-footer {
+    @apply p-0;
 }
 .share-modal .contact-select-list {
     @apply pt-2;
 }
-.narrow .share-modal .modal-header-interactive {
-    @apply border-b-0;
-}
 .narrow .share-modal .contact-select-list {
     @apply pb-0;
 }
-.share-modal .embedded-message-editor {
-    @apply border-0;
+
+.share-modal .link-info {
+    @apply flex-x gap-x-4;
+    @apply mx-4 mt-3;
+    @apply border rounded-lg border-bg-04;
 }
+.share-modal .link-info .c-icon {
+    @apply flex items-center;
+    @apply text-icons-01 pl-3;
+}
+.share-modal .link-info .c-body {
+    @apply grow;
+    @apply flex-x items-center;
+}
+.share-modal .link-info .c-link {
+    @apply w-full max-h-5;
+    @apply truncate;
+    @apply leading-5 text-headline-1 text-02;
+}
+.share-modal .copy-to-clipboard .btn.btn-round .btn-content {
+    @apply min-h-12 min-w-12 max-h-12 max-w-12;
+}
+
 .share-modal .dialog-buttons {
     @apply -flex-x;
-    @apply p-0;
+    @apply px-4 pt-2 pb-4;
 }
-.share-modal .share-modal-footer {
-    @apply flex-y grow;
+.share-modal .dialog-buttons > * {
+    @apply flex-1 max-w-none;
 }
-.share-modal .share-dialog-buttons {
-    @apply px-4 py-4;
-}
-.share-dialog-buttons.hidden {
+.share-button.hidden {
     display: none;
+}
+.share-externally-button {
+    @apply flex-x;
+}
+.share-externally-button .btn {
+    @apply flex-1;
 }

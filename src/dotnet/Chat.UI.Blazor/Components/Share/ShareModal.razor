@@ -4,44 +4,58 @@
 
 @{
     var shareDialogButtonsClass = _selectedChats.Count == 0 ? "" : "hidden";
-    var editorClass = _selectedChats.Count == 0 ? "hidden" : "";
-    _viewSettings.CanSubmit = _selectedChats.Count > 0;
+    var shareButtonClass = _selectedChats.Count == 0 ? "hidden" : "";
+    shareButtonClass += " btn-modal share-button";
+    var canShare = _selectedChats.Count > 0;
 }
 
 <DialogFrame
     Class="share-modal"
     HasCloseButton="true"
     Title="@(ModalModel.Title.NullIfEmpty() ?? "Share")"
-    NarrowViewSettings="_viewSettings">
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <SearchBoxNew
-        Placeholder="Who would you like to share with"
-        MaxLength="@Constants.Chat.MaxSearchFilterLength"
-        TextChanged="@OnFilter"/>
-    <ContactSelect
-        SearchPhrase="_searchPhrase"
-        SelectionChanged="OnSelectionChanged" />
+        <SearchBoxNew
+            Placeholder="Who would you like to share with"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <ContactSelect
+            SearchPhrase="_searchPhrase"
+            SelectionChanged="OnSelectionChanged" />
     </Body>
+    <Footer>
+        <EmbeddedMessageEditor
+            Text="@_comment"
+            Placeholder="Add your comment (optional)"
+            TextChanged="OnCommentChanged"
+            Post="OnPost"/>
+        @if (ModalModel.Link != null) {
+            <input type="hidden" @ref="@_copyTextSourceRef" value="@GetCopyText()" />
+            @if (!_copyTextSourceRef.Id.IsNullOrEmpty()) {
+                <ShareLinkInfo Link="@ModalModel.Link" CopyTextInputSource="@_copyTextSourceRef"/>
+            }
+        }
+    </Footer>
     <Buttons>
-        <div class="share-modal-footer">
-            <ShareDialogButtons
-                Class="@shareDialogButtonsClass"
-                Title="@ModalModel.Title"
-                Text="@ModalModel.Text"
-                Link="@ModalModel.Link"
-                LinkDescription="@ModalModel.LinkDescription" />
-            <EmbeddedMessageEditor
-                Class="@editorClass"
-                Post="OnPost"/>
-        </div>
+        <ShareExternallyButton
+            Class="@shareDialogButtonsClass"
+            Title="@ModalModel.Title"
+            Text="@ModalModel.Text"
+            Link="@ModalModel.Link"
+            LinkDescription="@_comment" />
+        <Button Class="@shareButtonClass" IsDisabled="@(!canShare)" Click="OnShareClicked">
+            <i class="icon-share text-2xl"></i>
+            <span>Send to selected contacts</span>
+        </Button>
     </Buttons>
 </DialogFrame>
 
 
 @code {
-    private DialogFrameNarrowViewSettings _viewSettings = null!;
     private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
     private IReadOnlyCollection<ChatId> _selectedChats = Array.Empty<ChatId>();
+    private string _comment = "";
+    private ElementReference _copyTextSourceRef;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
 
@@ -50,8 +64,14 @@
     [Parameter] public ShareModalModel ModalModel { get; set; } = null!;
 
     protected override void OnInitialized() {
-        _viewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnShareClicked, "Share");
-        _viewSettings = _viewSettings with { ShouldHideButtons = false };
+        _comment = ModalModel.LinkDescription;
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender) {
+            // Trigger StateHasChanged to render ShareLinkInfo with CopyTextSource reference
+            StateHasChanged();
+        }
     }
 
     private void OnFilter(string filter) {
@@ -89,5 +109,17 @@
 
         var history = Services.GetRequiredService<History>();
         await history.NavigateTo(Links.Chat(_selectedChats.First()));
+    }
+
+    private Task OnCommentChanged(string text) {
+        _comment = text;
+        return Task.CompletedTask;
+    }
+
+    private string GetCopyText() {
+        var link = ModalModel.Link!.ToString();
+        if (_comment.IsNullOrEmpty())
+            return link;
+        return _comment + Environment.NewLine + link;
     }
 }

@@ -149,6 +149,11 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply flex-y items-stretch overflow-y-auto;
 }
 
+.dialog-footer {
+    @apply px-4;
+    @apply flex-y items-stretch overflow-hidden;
+}
+
 .dialog-buttons {
     @apply flex-none px-4;
     @apply flex-x gap-x-2 overflow-hidden;

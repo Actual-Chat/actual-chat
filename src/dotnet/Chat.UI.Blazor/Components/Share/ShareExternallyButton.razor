@@ -2,59 +2,39 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="share-dialog-buttons @Class">
-    @if (Link != null) {
-        var localUrl = LocalUrl.FromAbsolute(Link.ToString(), UrlMapper);
-        var linkText = localUrl.HasValue ? localUrl.Value.Value[1..] : $"{Link.Host}{Link.AbsolutePath}";
-        <div class="c-link-info">
-            <div class="c-icon">
-                <i class="icon-link-2 text-xl"></i>
+<div class="share-button share-externally-button @Class">
+    @if (_mauiShare != null) {
+        <Button Class="btn-modal" Click="OnShareClicked">
+            <i class="icon-share-more text-2xl"></i>
+            <span>Share Externally</span>
+        </Button>
+    } else if (_canShareWithWeb) {
+        <button class="btn btn-modal"
+                onclick="@($"{BlazorUICoreModule.ImportName}.Share.onClick(event)")"
+                data-share-link="@GetLink()"
+                data-share-text="@Text"
+                data-share-title="@Title">
+            <div class="btn-content" tabindex="-1">
+                <i class="icon-share-more text-2xl"></i>
+                <span>Share Externally</span>
             </div>
-            <div class="c-body">
-                <div class="c-link">
-                    @linkText
-                </div>
-                @if (!LinkDescription.IsNullOrEmpty()) {
-                    <div class="c-link-hint">
-                        @LinkDescription
-                    </div>
-                }
-            </div>
-        </div>
-    }
-    <div class="c-buttons">
+        </button>
+    } else {
+        var text = Link != null ? "Copy link" : "Copy to clipboard";
         <CopyTrigger Tooltip="Copy" CopyText="@GetText()">
             <Button Class="btn-modal">
                 <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
                 <i class="copied-hint fa fa-check text-xl" aria-hidden="true"></i>
-                <span>Copy link</span>
+                <span>@text</span>
             </Button>
         </CopyTrigger>
-        @if (_mauiShare != null) {
-            <Button Class="btn-modal" Click="OnShareClicked">
-                <i class="icon-share-more text-2xl"></i>
-                <span>Share</span>
-            </Button>
-        } else if (_canShareWithWeb) {
-            <button class="btn btn-modal"
-                    onclick="@($"{BlazorUICoreModule.ImportName}.Share.onClick(event)")"
-                    data-share-link="@GetLink()"
-                    data-share-text="@Text"
-                    data-share-title="@Title">
-                <div class="btn-content" tabindex="-1">
-                    <i class="icon-share-more text-2xl"></i>
-                    <span>Share</span>
-                </div>
-            </button>
-        }
-    </div>
+    }
 </div>
 
 @code {
     private bool _canShareWithWeb;
     private IMauiShare? _mauiShare;
 
-    [Inject] IJSRuntime JSRuntime { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] IServiceProvider Services { get; init; } = null!;
 
@@ -63,7 +43,6 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Uri? Link { get; set; }
     [Parameter] public string LinkDescription { get; set; } = "";
-    [Parameter] public bool ShowLinkInfo { get; set; }
 
     protected override async Task OnInitializedAsync() {
         _mauiShare = Services.GetService<IMauiShare>();
@@ -89,7 +68,7 @@
     private async Task OnShareClicked() {
         var link = GetLink();
         if (!link.IsNullOrEmpty())
-            await _mauiShare!.ShareLink(Title, link);
+            await _mauiShare!.ShareLink(Title, link, LinkDescription);
         else
             await _mauiShare!.ShareText(Title, Text);
     }

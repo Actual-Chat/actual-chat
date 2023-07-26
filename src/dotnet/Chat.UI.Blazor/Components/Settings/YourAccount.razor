@@ -57,7 +57,7 @@
         </Caption>
     </TileItem>
 
-    <div @onclick="@(() => OnShareClick(link))"
+    <div @onclick="@(() => OnShareClick(link, account.Avatar.Name))"
          data-bubble="@(BubbleRef.New<LinkToAccountBubble>())"
          data-bubble-priority="301"
          data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())">
@@ -97,6 +97,6 @@
     private Task OnEditClick()
         => ModalUI.Show(OwnAccountEditorModal.Model.Default);
 
-    private void OnShareClick(string link)
-        => ShareUI.ShareLink(link, "Share your contact", "Your contact link");
+    private void OnShareClick(string link, string name)
+        => ShareUI.ShareLink(link, "Share your contact", $"{name} on Actual Chat");
 }

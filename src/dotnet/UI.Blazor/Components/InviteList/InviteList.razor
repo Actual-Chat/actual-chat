@@ -73,7 +73,7 @@
     private async Task OnShareClick(Invite invite) {
         switch (invite.Details.Option) {
             case UserInviteOption: {
-                ShareUI.ShareLink(GetLink(invite).AbsoluteUrl, "Share invite", "User invite link");
+                ShareUI.ShareLink(GetLink(invite).AbsoluteUrl, "Share invite", "User invite to Actual Chat");
                 return;
             }
             case ChatInviteOption chatDetails: {
@@ -81,7 +81,7 @@
                 var chats = Services.GetRequiredService<IChats>();
                 var chat = await chats.Get(Services.Session(), chatDetails.ChatId, default);
                 if (chat != null)
-                    linkDescription = $"Chat '{chat.Title}' join link";
+                    linkDescription = $"\"{chat.Title}\" on Actual Chat join link";
                 ShareUI.ShareLink(GetLink(invite).AbsoluteUrl, "Share chat", linkDescription);
                 return;
             }

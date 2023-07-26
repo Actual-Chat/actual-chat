@@ -16,7 +16,7 @@
         @account.FullName
     </Content>
     <Right>
-        <Button Class="btn-outline btn-sm" Click="@(() => OnShareClick(account.Id))">
+        <Button Class="btn-outline btn-sm" Click="@(() => OnShareClick(account.Id, account.Avatar.Name))">
             <i class="icon-share text-2xl"></i>
             <span>Share</span>
         </Button>
@@ -35,10 +35,11 @@
     protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => await AccountUI.OwnAccount.Use(cancellationToken);
 
-    private void OnShareClick(UserId accountId) {
+    private void OnShareClick(UserId accountId, string name) {
         var urlMapper = Services.GetRequiredService<UrlMapper>();
         var shareUI = Services.GetRequiredService<ShareUI>();
         var link = Links.User(accountId).ToAbsolute(urlMapper);
-        shareUI.ShareLink(link, "Share your contact", "Your contact link");
+
+        shareUI.ShareLink(link, "Share your contact", $"{name} on Actual Chat");
     }
 }

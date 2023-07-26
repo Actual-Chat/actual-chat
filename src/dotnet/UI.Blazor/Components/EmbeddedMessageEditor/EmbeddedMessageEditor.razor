@@ -5,11 +5,11 @@
         <TextInput
             @ref="_inputRef"
             Class="dialog-unstyled"
+            Text="@Text"
             Placeholder="@Placeholder"
             TextChanged="OnInput"
             KeyUp="OnKeyUp">
         </TextInput>
-        @* <i class="icon-message-ellipse" @onclick="OnPost"></i> *@
         <ButtonRound Class="transparent" Click="OnPost">
             <i class="icon-message-ellipse"></i>
         </ButtonRound>
@@ -22,6 +22,8 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "Write a message";
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
     [Parameter] public EventCallback<string> Post { get; set; }
 
     public ValueTask Focus()
@@ -39,6 +41,9 @@
             OnPost();
     }
 
-    private void OnInput(string text)
-        => _text = text;
+    private Task OnInput(string text) {
+        _text = text;
+        return TextChanged.InvokeAsync(text);
+    }
+
 }

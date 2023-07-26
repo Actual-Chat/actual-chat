@@ -1,0 +1,36 @@
+﻿@using ActualChat.UI.Blazor.Module
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+@{
+    var localUrl = LocalUrl.FromAbsolute(Link.ToString(), UrlMapper);
+    var linkText = localUrl.HasValue ? localUrl.Value.Value[1..] : $"{Link.Host}{Link.AbsolutePath}";
+}
+
+<div class="link-info">
+    <div class="c-icon">
+        <i class="icon-link-2 text-xl"></i>
+    </div>
+    <div class="c-body">
+        <div class="c-link">
+            @linkText
+        </div>
+    </div>
+    <div class="c-right">
+        <CopyTrigger CopyTextInputSource="@CopyTextInputSource">
+            <ButtonRound
+                ContentClass="flex-x gap-x-1"
+                Class="transparent">
+                <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
+                <i class="copied-hint fa fa-check text-xl" aria-hidden="true"></i>
+            </ButtonRound>
+        </CopyTrigger>
+    </div>
+</div>
+
+@code {
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+
+    [Parameter] public Uri Link { get; set; } = null!;
+    [Parameter] public ElementReference CopyTextInputSource { get; set; }
+}

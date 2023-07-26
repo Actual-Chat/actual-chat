@@ -149,7 +149,7 @@
         => ModalUI.Show(new InviteAuthorModal.Model(Chat));
 
     private void OnShareClick(string link)
-        => ShareUI.ShareLink(link, "Share chat", $"Chat '{Chat.Title}' link");
+        => ShareUI.ShareLink(link, "Share chat", $"\"{Chat.Title}\" on Actual Chat");
 
     public sealed record Model {
         public static Model None { get; } = new();
