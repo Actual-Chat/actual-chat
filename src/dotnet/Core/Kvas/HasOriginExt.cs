@@ -6,25 +6,15 @@ public static class HasOriginExt
 {
     private static readonly ConcurrentDictionary<Type, Action<object, string>> OriginSetters = new();
 
-    public static T WithOrigin<T>(this T source, string origin)
-        where T: IHasOrigin
-    {
-        if (OrdinalEquals(source.Origin, origin))
-            return source;
-
-        return MemberwiseCloner.Invoke(source).SetOrigin(origin);
-    }
-
-    public static T SetOrigin<T>(this T target, string origin)
-        where T: IHasOrigin
+    public static void SetOrigin(this IHasOrigin target, string origin)
     {
         if (origin.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(origin));
         if (OrdinalEquals(target.Origin, origin))
-            return target;
+            return;
 
         var setter = OriginSetters.GetOrAdd(
-            typeof(T),
+            target.GetType(),
             static ([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] type) => {
                 var property = type.GetProperty(nameof(IHasOrigin.Origin));
                 if (property?.GetSetMethod() == null)
@@ -33,6 +23,5 @@ public static class HasOriginExt
                 return property.GetSetter<string>();
             });
         setter.Invoke(target, origin);
-        return target;
     }
 }

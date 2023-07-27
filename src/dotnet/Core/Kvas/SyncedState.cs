@@ -2,30 +2,35 @@ using ActualChat.Pooling;
 
 namespace ActualChat.Kvas;
 
-public interface ISyncedState<T> : IMutableState<T>, IDisposable
+public interface ISyncedState : IMutableState, IDisposable
 {
     CancellationToken DisposeToken { get; }
     Task WhenFirstTimeRead { get; }
     Task WhenDisposed { get; }
-    IComputedState<T> ReadState { get; }
+    IComputedState ReadState { get; }
+    public string? OwnOrigin { get; }
 
     Task WhenWritten(CancellationToken cancellationToken = default);
 }
 
+public interface ISyncedState<T> : IMutableState<T>, ISyncedState
+{
+    new IComputedState<T> ReadState { get; }
+}
+
 public static class SyncedState
 {
-    private static readonly string LocalOriginBase = Alphabet.AlphaNumeric.Generator8.Next() + "-";
+    private static readonly string OriginPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     private static long _lastId;
 
-    public static string NextLocalOrigin()
-        => LocalOriginBase + Interlocked.Increment(ref _lastId).Format();
+    public static string NextOrigin()
+        => OriginPrefix + Interlocked.Increment(ref _lastId).Format();
 }
 
 public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 {
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
-    private readonly string? _localOrigin;
     private Option<T> _writingValue;
     private Option<T> _writtenValue;
     private bool _isReading;
@@ -38,7 +43,9 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     public CancellationToken DisposeToken { get; }
     public Task WhenFirstTimeRead => _whenFirstTimeReadSource.Task;
     public Task WhenDisposed { get; private set; } = null!;
+    IComputedState ISyncedState.ReadState => ReadState;
     public IComputedState<T> ReadState { get; }
+    public string? OwnOrigin { get; }
 
     public SyncedState(Options options, IServiceProvider services, bool initialize = true)
         : base(options, services, false)
@@ -47,7 +54,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         _disposeTokenSource = new CancellationTokenSource();
         DisposeToken = _disposeTokenSource.Token;
         if (typeof(IHasOrigin).IsAssignableFrom(typeof(T)))
-            _localOrigin = SyncedState.NextLocalOrigin();
+            OwnOrigin = SyncedState.NextOrigin();
 
         var stateFactory = services.StateFactory();
         ReadState = stateFactory.NewComputed(
@@ -107,8 +114,8 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     protected override void OnSetSnapshot(StateSnapshot<T> snapshot, StateSnapshot<T>? prevSnapshot)
     {
         if (!_isReading && !snapshot.IsInitial && snapshot.Computed.IsValue(out var value)) {
-            if (_localOrigin != null)
-                (value as IHasOrigin)?.SetOrigin(_localOrigin);
+            if (OwnOrigin != null && value is IHasOrigin hasOrigin)
+                hasOrigin.SetOrigin(OwnOrigin);
 
             var writeIndex = ++_writeIndex;
             var prevWriteTask = _writeTask;
@@ -193,22 +200,22 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         }
 
         DebugLog?.LogDebug("{State}: Read = {Result}", this, result);
-        var oldIsSetFromRead = _isReading;
+        var oldIsReading = _isReading;
         _isReading = true;
         try {
             Set(result);
             _whenFirstTimeReadSource.TrySetResult();
         }
         finally {
-            _isReading = oldIsSetFromRead;
+            _isReading = oldIsReading;
         }
     }
 
     private bool IsPreviouslyWritten(T value)
     {
-        if (_localOrigin != null) {
+        if (OwnOrigin != null) {
             var hasOrigin = value as IHasOrigin; // null only if value == null
-            return hasOrigin != null && OrdinalEquals(hasOrigin.Origin, _localOrigin);
+            return hasOrigin != null && OrdinalEquals(hasOrigin.Origin, OwnOrigin);
         }
 
         if (_writtenValue.IsSome(out var writtenValue) && EqualityComparer<T>.Default.Equals(value, writtenValue)) {
@@ -276,7 +283,9 @@ public class SyncedStateLease<T> : MutableStateLease<T, ISyncedState<T>>, ISynce
     public CancellationToken DisposeToken => State.DisposeToken;
     public Task WhenFirstTimeRead => State.WhenFirstTimeRead;
     public Task WhenDisposed => State.WhenDisposed;
+    IComputedState ISyncedState.ReadState => ReadState;
     public IComputedState<T> ReadState => State.ReadState;
+    public string? OwnOrigin => State.OwnOrigin;
 
     public SyncedStateLease(SharedResourcePool<Symbol, ISyncedState<T>>.Lease lease) : base(lease) { }
 

@@ -1,5 +1,6 @@
 using ActualChat.Core.UnitTests.Kvas.Services;
 using ActualChat.Kvas;
+using MemoryPack;
 using Microsoft.Toolkit.HighPerformance.Buffers;
 
 namespace ActualChat.Core.UnitTests.Kvas;
@@ -70,24 +71,92 @@ public class ComputedKvasTest : TestBase
     }
 
     [Fact]
-    public async Task SyncedStateTest()
+    public async Task SyncedStateTest1()
     {
         var services = CreateServices();
         var kvas = services.GetRequiredService<IKvas>();
         var stateFactory = services.StateFactory();
         var timeout = TimeSpan.FromSeconds(1);
+        var updateDelayer = FixedDelayer.Instant;
 
         // Instant set
 
-        var s1 = stateFactory.NewKvasSynced<string>(new(kvas, "s1"));
+        var s1 = stateFactory.NewKvasSynced<string>(new(kvas, "s1") {
+            UpdateDelayer = updateDelayer,
+        });
         s1.Value = "a";
         await s1.WhenWritten().WaitAsync(timeout);
 
-        var s1a = stateFactory.NewKvasSynced<string>(new(kvas, "s1"));
-        await s1a.WhenFirstTimeRead;
-        s1a.Value.Should().Be("a");
+        var s2 = stateFactory.NewKvasSynced<string>(new(kvas, "s1") {
+            UpdateDelayer = updateDelayer,
+        });
+        await s2.WhenFirstTimeRead;
+        s2.Value.Should().Be("a");
 
         s1.Value = "b";
-        await s1a.When(x => OrdinalEquals(x, "b")).WaitAsync(timeout);
+        await s2.When(x => OrdinalEquals(x, "b")).WaitAsync(timeout);
+
+        s2.Value = "c";
+        await s1.When(x => OrdinalEquals(x, "c")).WaitAsync(timeout);
+
+        s1.Value = "x1";
+        s2.Value = "x2";
+        await s1.WhenWritten().WaitAsync(timeout);
+        await s2.WhenWritten().WaitAsync(timeout);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        s1.Value.Should().Be(s2.Value);
     }
+
+    [Fact]
+    public async Task SyncedStateTest2()
+    {
+        var services = CreateServices();
+        var kvas = services.GetRequiredService<IKvas>();
+        var stateFactory = services.StateFactory();
+        var timeout = TimeSpan.FromSeconds(1);
+        var updateDelayer = FixedDelayer.Instant;
+
+        // Instant set
+
+        var s1 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
+            UpdateDelayer = updateDelayer,
+        });
+        s1.Value = "a";
+        s1.Value.Origin.Should().Be(s1.OwnOrigin);
+        await s1.WhenWritten().WaitAsync(timeout);
+
+        var s2 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
+            UpdateDelayer = updateDelayer,
+        });
+        await s2.WhenFirstTimeRead;
+        s2.Value.Value.Should().Be("a");
+        s2.Value.Origin.Should().Be(s1.OwnOrigin);
+
+        s1.Value = "b";
+        s1.Value.Origin.Should().Be(s1.OwnOrigin);
+        await s2.When(x => OrdinalEquals(x.Value, "b")).WaitAsync(timeout);
+        s2.Value.Origin.Should().Be(s1.OwnOrigin);
+
+        s2.Value = "c";
+        s2.Value.Origin.Should().Be(s2.OwnOrigin);
+        await s1.When(x => OrdinalEquals(x.Value, "c")).WaitAsync(timeout);
+        s1.Value.Origin.Should().Be(s2.OwnOrigin);
+
+        s1.Value = "x1";
+        s2.Value = "x2";
+        await s1.WhenWritten().WaitAsync(timeout);
+        await s2.WhenWritten().WaitAsync(timeout);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        s1.Value.Should().Be(s2.Value);
+        s1.Value.Origin.Should().Be(s2.Value.Origin);
+    }
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record StringState(
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] string Value,
+    [property: DataMember(Order = 1), MemoryPackOrder(1)] string Origin = ""
+    ) : IHasOrigin
+{
+    public static implicit operator StringState(string value) => new (value);
 }
