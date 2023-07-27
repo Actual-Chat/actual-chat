@@ -3,7 +3,7 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BubbleUI
+public sealed class BubbleUI : IDisposable
 {
     private readonly ISyncedState<UserBubbleSettings> _settings;
     private AccountUI? _accountUI;
@@ -31,6 +31,9 @@ public sealed class BubbleUI
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
     }
+
+    public void Dispose()
+        => _settings.Dispose();
 
     public async Task WhenReadyToShowBubbles()
     {

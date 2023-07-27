@@ -5,7 +5,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class LanguageUI
+public class LanguageUI : IDisposable
 {
     private readonly ISyncedState<UserLanguageSettings> _settings;
 
@@ -30,6 +30,9 @@ public class LanguageUI
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
     }
+
+    public void Dispose()
+        => _settings.Dispose();
 
     public async ValueTask<Language> GetChatLanguage(ChatId chatId, CancellationToken cancellationToken = default)
     {

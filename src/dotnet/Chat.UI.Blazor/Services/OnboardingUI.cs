@@ -36,7 +36,10 @@ public class OnboardingUI : IDisposable, IOnboardingUI
     }
 
     public void Dispose()
-        => _lastTryShowCts.CancelAndDisposeSilently();
+    {
+        _lastTryShowCts.CancelAndDisposeSilently();
+        _settings.Dispose();
+    }
 
     public async Task<bool> TryShow()
     {

@@ -46,6 +46,12 @@ public class ThemeUI : WorkerBase
         _whenReadySource.TrySetResult();
     }
 
+    protected override Task DisposeAsyncCore()
+    {
+        _settings.Dispose();
+        return base.DisposeAsyncCore();
+    }
+
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
