@@ -4,7 +4,7 @@ namespace ActualChat.Audio;
 
 public abstract class StreamServerBase<TItem> : IDisposable
 {
-    private readonly CancellationTokenSource _disposeCts = new ();
+    private readonly CancellationTokenSource _disposeTokenSource = new();
     private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, TaskCompletionSource<AsyncMemoizer<TItem>>>> _streams = new ();
 
     protected int StreamBufferSize { get; init; } = 64;
@@ -33,7 +33,7 @@ public abstract class StreamServerBase<TItem> : IDisposable
 
 
     public void Dispose()
-        => _disposeCts.CancelAndDisposeSilently();
+        => _disposeTokenSource.CancelAndDisposeSilently();
 
     protected async Task<IAsyncEnumerable<TItem>> Read(Symbol streamId, CancellationToken cancellationToken)
     {
@@ -75,7 +75,7 @@ public abstract class StreamServerBase<TItem> : IDisposable
             static (streamId1, arg) => {
                 var (self, expiresIn) = arg;
                 var memoizerSource = TaskCompletionSourceExt.New<AsyncMemoizer<TItem>>();
-                var disposeTokenSource = self._disposeCts.Token.CreateLinkedTokenSource();
+                var disposeTokenSource = self._disposeTokenSource.Token.CreateLinkedTokenSource();
                 var entry = ExpiringEntry
                     .New(self._streams, streamId1, memoizerSource, disposeTokenSource)
                     .SetDisposer(e => {

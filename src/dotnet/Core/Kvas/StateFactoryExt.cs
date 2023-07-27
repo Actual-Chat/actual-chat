@@ -26,18 +26,15 @@ public static class StateFactoryExt
     public static ISyncedState<T> NewSynced<T>(
         this IStateFactory stateFactory,
         SyncedState<T>.Options options)
-        where T: IHasOrigin
         => new SyncedState<T>(options, stateFactory.Services);
 
     public static ISyncedState<T> NewCustomSynced<T>(
         this IStateFactory stateFactory,
         SyncedState<T>.CustomOptions options)
-        where T: IHasOrigin
         => new SyncedState<T>(options, stateFactory.Services);
 
     public static ISyncedState<T> NewKvasSynced<T>(
         this IStateFactory stateFactory,
         SyncedState<T>.KvasOptions options)
-        where T: IHasOrigin
         => new SyncedState<T>(options, stateFactory.Services);
 }

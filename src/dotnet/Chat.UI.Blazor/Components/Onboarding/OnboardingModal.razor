@@ -74,7 +74,7 @@
 </DialogFrame>
 
 @code {
-    private readonly CancellationTokenSource _disposeCts = new();
+    private readonly CancellationTokenSource _disposeTokenSource = new();
 
     [Inject] private AccountUI AccountUI { get; init; } = null!;
 
@@ -82,10 +82,10 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     public void Dispose()
-        => _disposeCts.CancelAndDisposeSilently();
+        => _disposeTokenSource.CancelAndDisposeSilently();
 
     protected override void OnInitialized() {
-        var cancellationToken = _disposeCts.Token;
+        var cancellationToken = _disposeTokenSource.Token;
         _ = ForegroundTask.Run(async () => {
             await AccountUI.OwnAccount.When(x => x.IsGuestOrNone, cancellationToken);
             Modal.Close(true);

@@ -12,7 +12,7 @@ public abstract class ComputedMenuBase<TState> : ComputedStateComponent<TState>,
     public Task WhenClosed => _whenClosedSource.Task;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (State.Snapshot.UpdateCount > 0)
+        if (!State.Snapshot.IsInitial)
             await Host.Position(this);
     }
 

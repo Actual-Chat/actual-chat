@@ -41,7 +41,7 @@ public class KubeServices : IKubeInfo
         var lease = await _discoveryWorkerPool.Rent(kubeService, cancellationToken).ConfigureAwait(false);
         var state = lease.Resource.State;
         // We want to wait for the first update, otherwise we'll get an empty set of endpoints
-        while (state.Snapshot.UpdateCount == 0)
+        while (state.Snapshot.IsInitial)
             await state.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
         return new MutableStateLease<
             KubeServiceEndpoints,

@@ -1,6 +1,6 @@
 using ActualChat.Kvas;
 
-namespace ActualChat.Core.UnitTests.Kvas;
+namespace ActualChat.Core.UnitTests.Kvas.Services;
 
 public class TestBatchingKvasBackend : IBatchingKvasBackend
 {

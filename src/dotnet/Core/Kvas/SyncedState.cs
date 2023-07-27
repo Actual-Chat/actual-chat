@@ -1,27 +1,41 @@
 using ActualChat.Pooling;
-using Stl.Generators;
 
 namespace ActualChat.Kvas;
 
 public interface ISyncedState<T> : IMutableState<T>, IDisposable
-    where T: IHasOrigin
 {
+    CancellationToken DisposeToken { get; }
     Task WhenFirstTimeRead { get; }
+    Task WhenDisposed { get; }
+    IComputedState<T> ReadState { get; }
+
+    Task WhenWritten(CancellationToken cancellationToken = default);
+}
+
+public static class SyncedState
+{
+    private static readonly string LocalOriginBase = Alphabet.AlphaNumeric.Generator8.Next() + "-";
+    private static long _lastId;
+
+    public static string NextLocalOrigin()
+        => LocalOriginBase + Interlocked.Increment(ref _lastId).Format();
 }
 
 public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
-    where T: IHasOrigin
 {
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
-    private bool _mustKeepOriginOnSet;
+    private readonly string? _localOrigin;
+    private Option<T> _writingValue;
+    private Option<T> _writtenValue;
+    private bool _isReading;
+    private int _writeIndex;
+    private volatile Task<bool>? _writeTask;
 
-    private MomentClockSet Clocks { get; }
     private Options Settings { get; }
     private ILogger? DebugLog => Constants.DebugMode.SyncedState ? Log : null;
 
     public CancellationToken DisposeToken { get; }
-    private string LocalOrigin { get; }
     public Task WhenFirstTimeRead => _whenFirstTimeReadSource.Task;
     public Task WhenDisposed { get; private set; } = null!;
     public IComputedState<T> ReadState { get; }
@@ -29,18 +43,13 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     public SyncedState(Options options, IServiceProvider services, bool initialize = true)
         : base(options, services, false)
     {
-        if (ReferenceEquals(options.InitialValue, null))
-            throw new ArgumentOutOfRangeException(
-                nameof(options),
-                "SyncedState requires Settings.InitialValue != null.");
-
         Settings = options;
-        Clocks = services.Clocks();
         _disposeTokenSource = new CancellationTokenSource();
         DisposeToken = _disposeTokenSource.Token;
+        if (typeof(IHasOrigin).IsAssignableFrom(typeof(T)))
+            _localOrigin = SyncedState.NextLocalOrigin();
 
         var stateFactory = services.StateFactory();
-        LocalOrigin = RandomStringGenerator.Default.Next(8);
         ReadState = stateFactory.NewComputed(
             new ComputedState<T>.Options() {
                 ComputedOptions = options.ComputedOptions,
@@ -67,8 +76,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     protected override void Initialize(State<T>.Options options)
     {
         base.Initialize(options);
-
-        WhenDisposed = BackgroundTask.Run(SyncCycle, DisposeToken);
+        WhenDisposed = BackgroundTask.Run(ReadCycle, DisposeToken);
     }
 
     public void Dispose()
@@ -81,126 +89,138 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
             _whenFirstTimeReadSource.TrySetCanceled(DisposeToken);
     }
 
+    public async Task WhenWritten(CancellationToken cancellationToken = default)
+    {
+        while (true) {
+            var writeTask = _writeTask;
+            if (writeTask == null)
+                return;
+
+            var isWritten = await writeTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (isWritten)
+                return;
+        }
+    }
+
     // Private & protected methods
 
     protected override void OnSetSnapshot(StateSnapshot<T> snapshot, StateSnapshot<T>? prevSnapshot)
     {
-        if (snapshot.Computed.IsValue(out var value)) {
-            if (value.Origin.IsNullOrEmpty() || (!_mustKeepOriginOnSet && !OrdinalEquals(value.Origin, LocalOrigin))) {
-                DebugLog?.LogDebug(
-                    "{State}: OnSetSnapshot: fix {Value} with Origin = {LocalOrigin}",
-                    this, value, LocalOrigin);
-                value.SetOrigin(LocalOrigin);
-            }
-        }
+        if (!_isReading && !snapshot.IsInitial && snapshot.Computed.IsValue(out var value)) {
+            if (_localOrigin != null)
+                (value as IHasOrigin)?.SetOrigin(_localOrigin);
 
+            var writeIndex = ++_writeIndex;
+            var prevWriteTask = _writeTask;
+            _writeTask = Task.Run(() => Write(value, writeIndex, prevWriteTask), CancellationToken.None);
+        }
         base.OnSetSnapshot(snapshot, prevSnapshot);
     }
 
-    private void SetKeepOrigin(Result<T> result)
+    private async Task<bool> Write(T value, int writeIndex, Task? prevWriteTask)
     {
-        Monitor.Enter(Lock);
-        var oldMustKeepOriginOnSet = _mustKeepOriginOnSet;
-        _mustKeepOriginOnSet = true;
-        try {
-            Set(result);
-        }
-        finally {
-            _mustKeepOriginOnSet = oldMustKeepOriginOnSet;
-            Monitor.Exit(Lock);
+        if (prevWriteTask is { IsCompleted: false })
+            await prevWriteTask.SilentAwait(false);
+
+        var cancellationToken = DisposeToken;
+        var isLogged = false;
+        while (true) {
+            try {
+                lock (Lock) {
+                    if (writeIndex != _writeIndex)
+                        return false; // Another write task is already started, so let it do the job
+
+                    _writingValue = value;
+                }
+
+                if (!isLogged) {
+                    DebugLog?.LogDebug("{State}: Write = {Value}", this, value);
+                    isLogged = true;
+                }
+                await Settings.Write(value, cancellationToken).ConfigureAwait(false);
+                lock (Lock) {
+                    _writtenValue = value;
+                    _writingValue = default;
+                    return true;
+                }
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                var delay = Settings.WriteFailureDelay.Next();
+                Log.LogError(e, $"{nameof(Write)} failed, will retry after {{Delay}}", delay.ToShortString());
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 
-    private async Task SyncCycle()
+    private async Task ReadCycle()
     {
         var cancellationToken = DisposeToken;
-
         IStateSnapshot<T>? lastReadSnapshot = null;
-        IStateSnapshot<T>? lastWrittenSnapshot = null;
         while (!cancellationToken.IsCancellationRequested) {
             try {
-                var snapshot = Snapshot;
-                var readyToReadTask = lastReadSnapshot != ReadState.Snapshot
-                    ? Task.CompletedTask
-                    : lastReadSnapshot.WhenUpdated().WaitAsync(cancellationToken);
-                var readyToWriteTask = lastWrittenSnapshot != snapshot
-                    ? Task.CompletedTask
-                    : lastWrittenSnapshot.WhenUpdated().WaitAsync(cancellationToken);
-                await Task.WhenAny(readyToReadTask, readyToWriteTask).ConfigureAwait(false);
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-
-                if (readyToReadTask.IsCompleted && Read(snapshot))
+                if (lastReadSnapshot == ReadState.Snapshot)
+                    await ReadState.Snapshot.WhenUpdated().WaitAsync(cancellationToken).ConfigureAwait(false);
+                lastReadSnapshot = ReadState.Snapshot;
+                if (lastReadSnapshot is not { IsInitial: false })
                     continue;
-                if (readyToWriteTask.IsCompleted)
-                    Write(Snapshot);
+
+                var readResult = lastReadSnapshot.Computed.AsResult();
+                lock (Lock)
+                    ReadFromLock(readResult);
             }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                var delay = Settings.SyncFailureDelay.Next();
-                Log.LogError(e, "Failure inside SyncCycle(), will continue after {Delay}", delay.ToShortString());
-                await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            catch (OperationCanceledException) {
+                break;
             }
-        }
-        return;
-
-        bool Read(IStateSnapshot<T> snapshot)
-        {
-            lastReadSnapshot = ReadState.Snapshot;
-            if (lastReadSnapshot.UpdateCount == 0)
-                return false; // Initial value, i.e. nothing is read yet
-
-            try {
-                var result = lastReadSnapshot.Computed.AsResult();
-                var valueOrigin = StateFactoryExt.ExternalOrigin;
-                if (result.IsValue(out var value)) {
-                    valueOrigin = value.Origin;
-                    if (valueOrigin.IsNullOrEmpty()) {
-                        valueOrigin = StateFactoryExt.ExternalOrigin;
-                        value.SetOrigin(valueOrigin);
-                    }
-                }
-                else if (!Settings.ExposeReadErrors) {
-                    DebugLog?.LogDebug("{State}: Read: skipping (result is an error)", this);
-                    return false;
-                }
-
-                var mustSet = !OrdinalEquals(valueOrigin, LocalOrigin); // External origin or error (null origin is external too)
-                lock (Lock) {
-                    mustSet &= snapshot == Snapshot; // And user didn't update it concurrently; this check requires Lock
-                    if (mustSet)
-                        SetKeepOrigin(result);
-                }
-
-                if (mustSet)
-                    DebugLog?.LogDebug("{State}: Read = {Result}", this, result);
-                else
-                    DebugLog?.LogDebug("{State}: Read: skipping (local origin or changed concurrently)", this);
-                return mustSet;
-            }
-            finally {
-                if (!WhenFirstTimeRead.IsCompleted)
-                    _whenFirstTimeReadSource.TrySetResult();
+            catch (Exception e) {
+                var delay = Settings.ReadFailureDelay.Next();
+                Log.LogError(e, $"{nameof(ReadCycle)} failed, will continue after {{Delay}}", delay.ToShortString());
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
+    }
 
-        bool Write(IStateSnapshot<T> snapshot)
-        {
-            lastWrittenSnapshot = snapshot;
-            var computed = snapshot.Computed;
-            if (snapshot.UpdateCount == 0 || !computed.IsValue(out var value))
-                return false; // Initial value or error
-
-            if (!OrdinalEquals(value.Origin, LocalOrigin)) {
-                DebugLog?.LogDebug("{State}: Write: skipping (external origin)", this);
-                return false;
+    private void ReadFromLock(Result<T> result)
+    {
+        if (result.IsValue(out var value)) {
+            if (IsPreviouslyWritten(value)) {
+                DebugLog?.LogDebug("{State}: Read: skipping previously written value", this);
+                return;
             }
+        }
+        else if (!Settings.ExposeReadErrors) {
+            DebugLog?.LogDebug("{State}: Read: skipping an error", this);
+            return;
+        }
 
-            DebugLog?.LogDebug("{State}: Write = {Value}", this, value);
-            _ = ForegroundTask.Run(
-                () => Settings.Write(value, cancellationToken),
-                Log, "Write failed", cancellationToken);
+        DebugLog?.LogDebug("{State}: Read = {Result}", this, result);
+        var oldIsSetFromRead = _isReading;
+        _isReading = true;
+        try {
+            Set(result);
+            _whenFirstTimeReadSource.TrySetResult();
+        }
+        finally {
+            _isReading = oldIsSetFromRead;
+        }
+    }
+
+    private bool IsPreviouslyWritten(T value)
+    {
+        if (_localOrigin != null) {
+            var hasOrigin = value as IHasOrigin; // null only if value == null
+            return hasOrigin != null && OrdinalEquals(hasOrigin.Origin, _localOrigin);
+        }
+
+        if (_writtenValue.IsSome(out var writtenValue) && EqualityComparer<T>.Default.Equals(value, writtenValue)) {
+            _writtenValue = default;
             return true;
         }
+        if (_writingValue.IsSome(out var writingValue) && EqualityComparer<T>.Default.Equals(value, writingValue)) {
+            _writtenValue = default;
+            _writingValue = default;
+            return true;
+        }
+        return false;
     }
 
     // Nested types
@@ -208,7 +228,8 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     public new abstract record Options : MutableState<T>.Options
     {
         public IUpdateDelayer? UpdateDelayer { get; init; }
-        public RandomTimeSpan SyncFailureDelay { get; init; } = TimeSpan.FromSeconds(1);
+        public RandomTimeSpan ReadFailureDelay { get; init; } = TimeSpan.FromSeconds(1);
+        public RandomTimeSpan WriteFailureDelay { get; init; } = TimeSpan.FromSeconds(1);
         public bool ExposeReadErrors { get; init; }
 
         internal abstract Task<T> Read(CancellationToken cancellationToken);
@@ -234,13 +255,10 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         internal override async Task<T> Read(CancellationToken cancellationToken)
         {
             var valueOpt = await Kvas.TryGet<T>(Key, cancellationToken).ConfigureAwait(false);
-            if (!valueOpt.IsSome(out var value)) {
-                value = MissingValueFactory != null
+            if (!valueOpt.IsSome(out var value))
+                return MissingValueFactory != null
                     ? await MissingValueFactory(cancellationToken).ConfigureAwait(false)
                     : InitialValue;
-                // Set the origin to external to make sure it won't get written
-                return value.SetOrigin(StateFactoryExt.ExternalOrigin);
-            }
 
             if (Corrector != null)
                 value = await Corrector.Invoke(value, cancellationToken).ConfigureAwait(false);
@@ -255,7 +273,13 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 public class SyncedStateLease<T> : MutableStateLease<T, ISyncedState<T>>, ISyncedState<T>
     where T: IHasOrigin
 {
+    public CancellationToken DisposeToken => State.DisposeToken;
     public Task WhenFirstTimeRead => State.WhenFirstTimeRead;
+    public Task WhenDisposed => State.WhenDisposed;
+    public IComputedState<T> ReadState => State.ReadState;
 
     public SyncedStateLease(SharedResourcePool<Symbol, ISyncedState<T>>.Lease lease) : base(lease) { }
+
+    public Task WhenWritten(CancellationToken cancellationToken = default)
+        => State.WhenWritten(cancellationToken);
 }

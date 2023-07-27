@@ -31,7 +31,7 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
     {
         var computed = base.CreateComputed();
         var snapshot = Snapshot;
-        if (snapshot.UpdateCount == 0) {
+        if (snapshot.IsInitial) {
             // Initial value
             var initialSnapshot = snapshot;
             _ = ForegroundTask.Run(async () => {

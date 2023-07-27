@@ -1,26 +1,18 @@
-using System.Text;
+using ActualChat.Core.UnitTests.Kvas.Services;
 using ActualChat.Kvas;
 using Microsoft.Toolkit.HighPerformance.Buffers;
 
 namespace ActualChat.Core.UnitTests.Kvas;
 
-public class KvasTest : TestBase
+public class ComputedKvasTest : TestBase
 {
-    public KvasTest(ITestOutputHelper @out) : base(@out) { }
+    public ComputedKvasTest(ITestOutputHelper @out) : base(@out) { }
 
     private IServiceProvider CreateServices()
     {
         var services = new ServiceCollection();
-        services.AddSingleton(_ => new TestBatchingKvasBackend() { Out = Out });
-        services.AddSingleton(_ => new BatchingKvas.Options() {
-            ReadBatchConcurrencyLevel = 1,
-            ReadBatchDelayTaskFactory = null,
-            ReadBatchMaxSize = 10,
-            FlushDelay = TimeSpan.FromMilliseconds(10),
-        });
-        services.AddTransient(c => new BatchingKvas(c.GetRequiredService<BatchingKvas.Options>(), c) {
-            Backend = c.GetRequiredService<TestBatchingKvasBackend>(),
-        });
+        var fusion = services.AddFusion();
+        fusion.AddService<IKvas, TestComputedKvas>();
         return services.BuildServiceProvider();
     }
 
@@ -28,7 +20,7 @@ public class KvasTest : TestBase
     public async Task BasicTest()
     {
         var services = CreateServices();
-        var kvas = services.GetRequiredService<BatchingKvas>();
+        var kvas = services.GetRequiredService<IKvas>();
 
         await kvas.Set("a", "a");
         (await kvas.Get<string>("a")).Should().Be("a");
@@ -44,9 +36,8 @@ public class KvasTest : TestBase
         await kvas.Remove("b");
         (await kvas.Get<int>("b")).Should().Be(0);
         (await kvas.TryGet<int>("b")).Should().Be(Option<int>.None);
-        await kvas.Flush();
 
-        var kvas2 = services.GetRequiredService<BatchingKvas>();
+        var kvas2 = services.GetRequiredService<IKvas>();
         var aTask = kvas2.Get<string>("a");
         var bTask = kvas2.Get<string>("b");
         var cTask = kvas2.Get<string>("c");
@@ -69,7 +60,7 @@ public class KvasTest : TestBase
     public async Task JsonHandlingTest()
     {
         var services = CreateServices();
-        var kvas = services.GetRequiredService<BatchingKvas>();
+        var kvas = services.GetRequiredService<IKvas>();
 
         var moment = CpuClock.Now;
         var buffer = new ArrayPoolBufferWriter<byte>();
@@ -79,41 +70,24 @@ public class KvasTest : TestBase
     }
 
     [Fact]
-    public async Task StoredStateTest()
+    public async Task SyncedStateTest()
     {
         var services = CreateServices();
-        var kvas = services.GetRequiredService<BatchingKvas>();
-        var kvasBackend = services.GetRequiredService<TestBatchingKvasBackend>();
-
-        await using var services2 = new ServiceCollection()
-            .AddFusion().Services
-            .AddSingleton(kvas)
-            .AddSingleton(_ => kvas.WithPrefix(GetType()))
-            .BuildServiceProvider();
-        var stateFactory = services2.StateFactory();
-        var prefixedKvas = services2.GetRequiredService<IKvas>();
+        var kvas = services.GetRequiredService<IKvas>();
+        var stateFactory = services.StateFactory();
+        var timeout = TimeSpan.FromSeconds(1);
 
         // Instant set
 
-        var s1 = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s1"));
+        var s1 = stateFactory.NewKvasSynced<string>(new(kvas, "s1"));
         s1.Value = "a";
+        await s1.WhenWritten().WaitAsync(timeout);
 
-        var s1a = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s1"));
-        await s1a.WhenRead;
+        var s1a = stateFactory.NewKvasSynced<string>(new(kvas, "s1"));
+        await s1a.WhenFirstTimeRead;
         s1a.Value.Should().Be("a");
 
-        // Delayed set
-
-        var s2 = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
-        s2.Value = "b";
-
-        await Task.Delay(200);
-        kvas.ClearReadCache();
-
-        var s2a = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
-        await s2a.WhenRead;
-        s2a.Value.Should().Be("b");
-        s2a.Value = "c";
-        s2a.Value.Should().Be("c");
+        s1.Value = "b";
+        await s1a.When(x => OrdinalEquals(x, "b")).WaitAsync(timeout);
     }
 }
