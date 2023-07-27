@@ -43,7 +43,7 @@
             Text="@ModalModel.Text"
             Link="@ModalModel.Link"
             LinkDescription="@_comment" />
-        <Button Class="@shareButtonClass" IsDisabled="@(!canShare)" Click="OnShareClicked">
+        <Button Class="@shareButtonClass" IsDisabled="@(!canShare)" Click="OnSendClicked">
             <i class="icon-share text-2xl"></i>
             <span>Send to selected contacts</span>
         </Button>
@@ -83,26 +83,26 @@
         _selectedChats = selectedChats;
     }
 
-    private Task OnShareClicked()
-        => ShareWithContacts();
+    private Task OnSendClicked()
+        => ShareWithContacts(_comment);
 
-    private Task OnPost(string message)
-        => ShareWithContacts(message);
+    private Task OnPost(string comment)
+        => ShareWithContacts(comment);
 
-    private async Task ShareWithContacts(string message = "")
+    private async Task ShareWithContacts(string comment)
     {
         var text = ModalModel.Text.NullIfEmpty() ?? ModalModel.Link?.ToString() ?? "";
 
         var session = Services.Session();
         var uiCommander = Services.UICommander();
         foreach (var chatId in _selectedChats) {
-            var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
-            _ = await uiCommander.Run(cmd, CancellationToken.None);
-
-            if (!message.IsNullOrEmpty()) {
-                var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, message);
+            if (!comment.IsNullOrEmpty()) {
+                var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
                 _ = await uiCommander.Run(cmd2, CancellationToken.None);
             }
+
+            var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
+            _ = await uiCommander.Run(cmd, CancellationToken.None);
         }
 
         Modal.Close(true);
