@@ -44,7 +44,7 @@ internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invChangedMentionIds = context.Operation().Items.Get<HashSet<Symbol>>();
+            var invChangedMentionIds = context.Operation().Items.Get<HashSet<MentionId>>();
             if (invChangedMentionIds != null) {
                 foreach (var mentionId in invChangedMentionIds)
                     _ = GetLast(entry.ChatId, mentionId, default);
