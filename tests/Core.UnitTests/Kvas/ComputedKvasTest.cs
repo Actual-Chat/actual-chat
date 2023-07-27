@@ -122,7 +122,9 @@ public class ComputedKvasTest : TestBase
             UpdateDelayer = updateDelayer,
         });
         s1.Value = "a";
-        s1.Value.Origin.Should().Be(s1.OwnOrigin);
+        var s1Value = s1.Value;
+        var s1Origin = s1Value.Origin;
+        OrdinalEquals(s1Origin, s1.OwnOrigin).Should().BeTrue();
         await s1.WhenWritten().WaitAsync(timeout);
 
         var s2 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
