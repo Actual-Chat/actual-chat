@@ -1,0 +1,49 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+
+<div class="@Class embedded-message-editor">
+    <label>
+        <TextInput
+            @ref="_inputRef"
+            Class="dialog-unstyled"
+            Text="@Text"
+            Placeholder="@Placeholder"
+            TextChanged="OnInput"
+            KeyUp="OnKeyUp">
+        </TextInput>
+        <ButtonRound Class="transparent" Click="OnPost">
+            <i class="icon-message-ellipse"></i>
+        </ButtonRound>
+    </label>
+</div>
+
+@code {
+    private TextInput? _inputRef;
+    private string _text = "";
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "Write a message";
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public EventCallback<string> TextChanged { get; set; }
+    [Parameter] public EventCallback<string> Post { get; set; }
+
+    public ValueTask Focus()
+        => _inputRef?.Focus() ?? default;
+
+    public ValueTask Cancel()
+        => _inputRef?.Clear() ?? default;
+
+    private void OnPost() {
+        Post.InvokeAsync(_text);
+    }
+
+    private void OnKeyUp(KeyboardEventArgs eventArgs) {
+        if (eventArgs.Code == "Enter" && eventArgs.HasNoModifier())
+            OnPost();
+    }
+
+    private Task OnInput(string text) {
+        _text = text;
+        return TextChanged.InvokeAsync(text);
+    }
+
+}

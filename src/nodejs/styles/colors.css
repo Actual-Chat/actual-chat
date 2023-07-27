@@ -34,17 +34,17 @@
     --primary-hover: #2569F1;
     --primary-title: #FFFFFF;
 
-    --secondary: #E1EFFA;
+    --secondary: #F5F5F5;
     --secondary-hover: #C5D8FF;
-    --secondary-title: #2970FF;
+    --secondary-title: #007AFF;
 
     --cancel: #E7E7E7;
     --cancel-hover: #E7E7E7;
     --cancel-title: #444444;
 
     --outline: #FFFFFF;
-    --outline-hover: #C5D8FF;
-    --outline-title: #2970FF;
+    --outline-hover: #E1EFFA;
+    --outline-title: #007AFF;
 
     --error: #FF7070;
     --error-hover: #FFE4E4;

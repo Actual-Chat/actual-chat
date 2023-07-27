@@ -12,8 +12,8 @@ public class WebShareInfo : IDisposable, IWebShareInfoBackend
     private DotNetObjectReference<IWebShareInfoBackend>? _backendRef;
 
     private Task WhenReady => _whenReadySource.Task;
-    protected IJSRuntime JS { get; }
-    protected ILogger Log { get; }
+    private IJSRuntime JS { get; }
+    private ILogger Log { get; }
 
     public WebShareInfo(IServiceProvider services)
     {

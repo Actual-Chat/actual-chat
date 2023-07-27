@@ -12,6 +12,7 @@ public record DialogFrameNarrowViewSettings
     public ButtonType SubmitButtonType { get; init; } = ButtonType.Button;
     public EventCallback SubmitClick { get; init; }
     public string SubmitButtonText { get; init; } = "";
+    public bool CanSubmit { get; set; } = true;
 
     public bool IsSubmitDefined
         => SubmitButtonType != ButtonType.Button || SubmitClick.HasDelegate;

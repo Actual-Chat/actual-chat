@@ -25,6 +25,11 @@
         <div class="dialog-body custom-scrollbar">
             @Body
         </div>
+        @if (Footer != null && Footer != RenderFragments.Null) {
+            <div class="dialog-footer">
+                @Footer
+            </div>
+        }
         @if (Buttons != null && showButtons && Buttons != RenderFragments.Null) {
             <div class="dialog-buttons @ButtonsClass">
                 @Buttons
@@ -43,6 +48,7 @@
     [Parameter] public bool IsMultiStep { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
     [Parameter] public ElementReference? Ref { get; set; }
     [Parameter] public DialogFrameNarrowViewSettings NarrowViewSettings { get; set; } = DialogFrameNarrowViewSettings.Bottom;

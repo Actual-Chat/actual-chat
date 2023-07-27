@@ -2,18 +2,11 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="share-dialog-buttons">
-    <CopyTrigger Tooltip="Copy" CopyText="@GetText()">
-        <Button Class="btn-modal">
-            <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
-            <i class="copied-hint fa fa-check text-xl" aria-hidden="true"></i>
-            <span>Copy link</span>
-        </Button>
-    </CopyTrigger>
+<div class="share-button share-externally-button @Class">
     @if (_mauiShare != null) {
         <Button Class="btn-modal" Click="OnShareClicked">
             <i class="icon-share-more text-2xl"></i>
-            <span>Share</span>
+            <span>Share Externally</span>
         </Button>
     } else if (_canShareWithWeb) {
         <button class="btn btn-modal"
@@ -23,9 +16,18 @@
                 data-share-title="@Title">
             <div class="btn-content" tabindex="-1">
                 <i class="icon-share-more text-2xl"></i>
-                <span>Share</span>
+                <span>Share Externally</span>
             </div>
         </button>
+    } else {
+        var text = Link != null ? "Copy link" : "Copy to clipboard";
+        <CopyTrigger Tooltip="Copy" CopyText="@GetText()">
+            <Button Class="btn-modal">
+                <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
+                <i class="copied-hint fa fa-check text-xl" aria-hidden="true"></i>
+                <span>@text</span>
+            </Button>
+        </CopyTrigger>
     }
 </div>
 
@@ -33,12 +35,14 @@
     private bool _canShareWithWeb;
     private IMauiShare? _mauiShare;
 
-    [Inject] IJSRuntime JSRuntime { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] IServiceProvider Services { get; init; } = null!;
 
+    [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Uri? Link { get; set; }
+    [Parameter] public string LinkDescription { get; set; } = "";
 
     protected override async Task OnInitializedAsync() {
         _mauiShare = Services.GetService<IMauiShare>();
@@ -64,7 +68,7 @@
     private async Task OnShareClicked() {
         var link = GetLink();
         if (!link.IsNullOrEmpty())
-            await _mauiShare!.ShareLink(Title, link);
+            await _mauiShare!.ShareLink(Title, link, LinkDescription);
         else
             await _mauiShare!.ShareText(Title, Text);
     }

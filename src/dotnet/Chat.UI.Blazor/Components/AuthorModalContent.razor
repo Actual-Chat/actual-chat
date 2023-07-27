@@ -50,10 +50,43 @@
             </Caption>
         </TileItem>
     }
+
+    @if (!Author.IsAnonymous) {
+        <div @onclick="OnShareClick">
+            <TileItem Class="tile-item-share">
+                <Icon>
+                    <i class="icon-share text-xl"></i>
+                </Icon>
+                <Content>
+                    Share
+                </Content>
+            </TileItem>
+        </div>
+    }
 </Tile>
 
 @code {
+
+    [Inject] private IServiceProvider Services { get; set; } = null!;
+    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
+
+    private async Task OnShareClick() {
+        var urlMapper = Services.GetRequiredService<UrlMapper>();
+        if (IsOwn) {
+            var account = await Services.GetRequiredService<AccountUI>().OwnAccount.Use();
+            var link = Links.User(account.Id).ToAbsolute(urlMapper);
+            ShareUI.ShareLink(link, "Share your contact", $"{account.Avatar.Name} on Actual Chat");
+        } else {
+            var authors = Services.GetRequiredService<IAuthors>();
+            var account = await authors.GetAccount(Services.Session(), Author.ChatId, Author.Id, default);
+            if (account != null) {
+                var link = Links.User(account.Id).ToAbsolute(urlMapper);
+                ShareUI.ShareLink(link, "Share user contact", $"{account.Avatar.Name} on Actual Chat");
+            }
+        }
+    }
 }

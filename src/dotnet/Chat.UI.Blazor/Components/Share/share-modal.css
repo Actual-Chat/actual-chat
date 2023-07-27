@@ -1,0 +1,69 @@
+﻿.share-modal {
+    @apply md:w-90;
+}
+
+.share-modal.modal-frame {
+    @apply px-0 pb-0;
+    @apply gap-y-0;
+}
+.share-modal .no-padding-header-decorator {
+    @apply mx-0;
+}
+.share-modal .modal-header {
+    @apply mx-4 p-0;
+    @apply min-h-12 max-h-12;
+}
+.share-modal .dialog-body {
+    @apply p-0;
+}
+.share-modal .dialog-footer {
+    @apply p-0;
+}
+.share-modal .contact-select-list {
+    @apply pt-2;
+}
+.narrow .share-modal .contact-select-list {
+    @apply pb-0;
+}
+
+.share-modal .embedded-message-editor {
+    @apply border-b-0;
+}
+.share-modal .link-info {
+    @apply flex-x gap-x-4;
+    @apply mx-4 mt-3;
+    @apply border rounded-lg border-bg-04;
+}
+.share-modal .link-info .c-icon {
+    @apply flex items-center;
+    @apply text-icons-01 pl-3;
+}
+.share-modal .link-info .c-body {
+    @apply grow;
+    @apply flex-x items-center;
+}
+.share-modal .link-info .c-link {
+    @apply w-full max-h-5;
+    @apply truncate;
+    @apply leading-5 text-headline-1 text-02;
+}
+.share-modal .copy-to-clipboard .btn.btn-round .btn-content {
+    @apply min-h-12 min-w-12 max-h-12 max-w-12;
+}
+
+.share-modal .dialog-buttons {
+    @apply -flex-x;
+    @apply px-4 pt-2 pb-4;
+}
+.share-modal .dialog-buttons > * {
+    @apply flex-1 max-w-none;
+}
+.share-button.hidden {
+    display: none;
+}
+.share-externally-button {
+    @apply flex-x;
+}
+.share-externally-button .btn {
+    @apply flex-1;
+}

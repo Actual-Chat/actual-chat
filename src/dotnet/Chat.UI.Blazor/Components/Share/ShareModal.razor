@@ -1,0 +1,125 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Search
+@implements IModalView<ShareModalModel>
+
+@{
+    var shareDialogButtonsClass = _selectedChats.Count == 0 ? "" : "hidden";
+    var shareButtonClass = _selectedChats.Count == 0 ? "hidden" : "";
+    shareButtonClass += " btn-modal share-button";
+    var canShare = _selectedChats.Count > 0;
+}
+
+<DialogFrame
+    Class="share-modal"
+    HasCloseButton="true"
+    Title="@(ModalModel.Title.NullIfEmpty() ?? "Share")"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
+    <Body>
+        <SearchBoxNew
+            Placeholder="Who would you like to share with"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <ContactSelect
+            SearchPhrase="_searchPhrase"
+            SelectionChanged="OnSelectionChanged" />
+    </Body>
+    <Footer>
+        <EmbeddedMessageEditor
+            Text="@_comment"
+            Placeholder="Add your comment (optional)"
+            TextChanged="OnCommentChanged"
+            Post="OnPost"/>
+        @if (ModalModel.Link != null) {
+            <input type="hidden" @ref="@_copyTextSourceRef" value="@GetCopyText()" />
+            @if (!_copyTextSourceRef.Id.IsNullOrEmpty()) {
+                <ShareLinkInfo Link="@ModalModel.Link" CopyTextInputSource="@_copyTextSourceRef"/>
+            }
+        }
+    </Footer>
+    <Buttons>
+        <ShareExternallyButton
+            Class="@shareDialogButtonsClass"
+            Title="@ModalModel.Title"
+            Text="@ModalModel.Text"
+            Link="@ModalModel.Link"
+            LinkDescription="@_comment" />
+        <Button Class="@shareButtonClass" IsDisabled="@(!canShare)" Click="OnSendClicked">
+            <i class="icon-share text-2xl"></i>
+            <span>Send to selected contacts</span>
+        </Button>
+    </Buttons>
+</DialogFrame>
+
+
+@code {
+    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
+    private IReadOnlyCollection<ChatId> _selectedChats = Array.Empty<ChatId>();
+    private string _comment = "";
+    private ElementReference _copyTextSourceRef;
+
+    [Inject] private IServiceProvider Services { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public ShareModalModel ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _comment = ModalModel.LinkDescription;
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender) {
+            // Trigger StateHasChanged to render ShareLinkInfo with CopyTextSource reference
+            StateHasChanged();
+        }
+    }
+
+    private void OnFilter(string filter) {
+        _searchPhrase = filter.ToSearchPhrase(true, false);
+        StateHasChanged();
+    }
+
+    private void OnSelectionChanged(IReadOnlyCollection<ChatId> selectedChats) {
+        _selectedChats = selectedChats;
+    }
+
+    private Task OnSendClicked()
+        => ShareWithContacts(_comment);
+
+    private Task OnPost(string comment)
+        => ShareWithContacts(comment);
+
+    private async Task ShareWithContacts(string comment)
+    {
+        var text = ModalModel.Text.NullIfEmpty() ?? ModalModel.Link?.ToString() ?? "";
+
+        var session = Services.Session();
+        var uiCommander = Services.UICommander();
+        foreach (var chatId in _selectedChats) {
+            if (!comment.IsNullOrEmpty()) {
+                var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
+                _ = await uiCommander.Run(cmd2, CancellationToken.None);
+            }
+
+            var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
+            _ = await uiCommander.Run(cmd, CancellationToken.None);
+        }
+
+        Modal.Close(true);
+
+        var history = Services.GetRequiredService<History>();
+        await history.NavigateTo(Links.Chat(_selectedChats.First()));
+    }
+
+    private Task OnCommentChanged(string text) {
+        _comment = text;
+        return Task.CompletedTask;
+    }
+
+    private string GetCopyText() {
+        var link = ModalModel.Link!.ToString();
+        if (_comment.IsNullOrEmpty())
+            return link;
+        return _comment + Environment.NewLine + link;
+    }
+}

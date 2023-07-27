@@ -23,21 +23,6 @@
         </div>
     </div>
 
-    @if (m.Link is { } publicUrl) {
-        <RightPanelChatInfoItem
-            Class="group"
-            Icon="icon-link-2 text-icons-03"
-            Content="@publicUrl.ShortLocalUrl"
-            Hint="@(isPublicGroupChat ? "Public join link" : "User link")">
-            <Right>
-                <CopyToClipboard
-                    @key="@publicUrl.AbsoluteUrl"
-                    ButtonClass="btn-sm transparent md:invisible group-hover:md:visible hover:text-accent"
-                    Text="@publicUrl.AbsoluteUrl" />
-            </Right>
-        </RightPanelChatInfoItem>
-    }
-
     @if (m.Owners is not null) {
         @foreach (var owner in m.Owners) {
             <RightPanelChatInfoItem
@@ -58,9 +43,9 @@
         </Right>
     </RightPanelChatInfoItem>
 
-    @if (m.Link is { } publicUrl2) {
+    @if (m.Link is { } publicUrl) {
         <RightPanelChatInfoItem
-            Click="@(() => OnShareClick(publicUrl2.AbsoluteUrl))"
+            Click="@(() => OnShareClick(publicUrl.AbsoluteUrl))"
             Icon="icon-share text-accent"
             ContentClass="text-accent"
             Content="Share" />
@@ -87,8 +72,10 @@
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
+
+    private ModalUI ModalUI => Services.GetRequiredService<ModalUI>();
+    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -162,7 +149,7 @@
         => ModalUI.Show(new InviteAuthorModal.Model(Chat));
 
     private void OnShareClick(string link)
-        => ModalUI.Show(new ShareModal.Model(new Uri(link)) { Title = "Share Chat" });
+        => ShareUI.ShareLink(link, "Share chat", $"\"{Chat.Title}\" on Actual Chat");
 
     public sealed record Model {
         public static Model None { get; } = new();
