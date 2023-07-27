@@ -76,7 +76,7 @@ public class ComputedKvasTest : TestBase
         var services = CreateServices();
         var kvas = services.GetRequiredService<IKvas>();
         var stateFactory = services.StateFactory();
-        var timeout = TimeSpan.FromSeconds(1);
+        var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
         var updateDelayer = FixedDelayer.Instant;
 
         // Instant set
@@ -113,8 +113,8 @@ public class ComputedKvasTest : TestBase
         var services = CreateServices();
         var kvas = services.GetRequiredService<IKvas>();
         var stateFactory = services.StateFactory();
-        var timeout = TimeSpan.FromSeconds(1);
         var updateDelayer = FixedDelayer.Instant;
+        var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
 
         // Instant set
 
@@ -146,7 +146,7 @@ public class ComputedKvasTest : TestBase
         s2.Value = "x2";
         await s1.WhenWritten().WaitAsync(timeout);
         await s2.WhenWritten().WaitAsync(timeout);
-        await Task.Delay(TimeSpan.FromSeconds(1));
+        await Task.Delay(timeout);
         s1.Value.Should().Be(s2.Value);
         s1.Value.Origin.Should().Be(s2.Value.Origin);
     }

@@ -146,6 +146,9 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
                 }
                 await Settings.Write(value, cancellationToken).ConfigureAwait(false);
                 lock (Lock) {
+                    if (!_writingValue.HasValue)
+                        return true; // It's already read & reset
+
                     _writtenValue = value;
                     _writingValue = default;
                     return true;
