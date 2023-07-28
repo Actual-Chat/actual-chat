@@ -27,8 +27,7 @@
         <EmbeddedMessageEditor
             Text="@_comment"
             Placeholder="Add your comment (optional)"
-            TextChanged="OnCommentChanged"
-            Post="OnPost"/>
+            TextChanged="OnCommentChanged" />
         @if (ModalModel.Link != null) {
             <input type="hidden" @ref="@_copyTextSourceRef" value="@GetCopyText()" />
             @if (!_copyTextSourceRef.Id.IsNullOrEmpty()) {
@@ -58,6 +57,7 @@
     private ElementReference _copyTextSourceRef;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private ILogger<ShareModal> Log { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -86,9 +86,6 @@
     private Task OnSendClicked()
         => ShareWithContacts(_comment);
 
-    private Task OnPost(string comment)
-        => ShareWithContacts(comment);
-
     private async Task ShareWithContacts(string comment)
     {
         var text = ModalModel.Text.NullIfEmpty() ?? ModalModel.Link?.ToString() ?? "";
@@ -98,11 +95,13 @@
         foreach (var chatId in _selectedChats) {
             if (!comment.IsNullOrEmpty()) {
                 var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
-                _ = await uiCommander.Run(cmd2, CancellationToken.None);
+                var _2 = await uiCommander.Run(cmd2, CancellationToken.None);
+                Log.LogInformation("Text entry created: '{ChatEntry}'", _2.Value);
             }
 
             var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
-            _ = await uiCommander.Run(cmd, CancellationToken.None);
+            var _1 = await uiCommander.Run(cmd, CancellationToken.None);
+            Log.LogInformation("Text entry 2 created: '{ChatEntry}'", _1.Value);
         }
 
         Modal.Close(true);

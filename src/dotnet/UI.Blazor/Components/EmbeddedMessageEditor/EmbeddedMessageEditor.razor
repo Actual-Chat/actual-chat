@@ -10,9 +10,15 @@
             TextChanged="OnInput"
             KeyUp="OnKeyUp">
         </TextInput>
-        <ButtonRound Class="transparent" Click="OnPost">
-            <i class="icon-message-ellipse"></i>
-        </ButtonRound>
+        @if (Post.HasDelegate) {
+            <ButtonRound Class="transparent" Click="OnPost">
+                <i class="icon-message-ellipse"></i>
+            </ButtonRound>
+        } else {
+            <div class="glyph">
+                <i class="icon-message-ellipse"></i>
+            </div>
+        }
     </label>
 </div>
 

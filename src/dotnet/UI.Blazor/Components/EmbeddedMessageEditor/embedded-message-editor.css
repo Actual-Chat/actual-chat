@@ -9,6 +9,11 @@
     @apply flex items-center justify-center;
     @apply w-14 h-14;
 }
+.embedded-message-editor .glyph {
+    @apply absolute right-1;
+    @apply flex items-center justify-center;
+    @apply w-12 h-14;
+}
 .embedded-message-editor i {
     @apply text-icons-01 text-2xl;
 }
