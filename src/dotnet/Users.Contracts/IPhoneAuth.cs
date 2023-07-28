@@ -4,6 +4,8 @@ namespace ActualChat.Users;
 
 public interface IPhoneAuth : IComputeService
 {
+    [ComputeMethod]
+    Task<bool> IsEnabled(CancellationToken cancellationToken);
     [CommandHandler]
     Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken);
     [CommandHandler]

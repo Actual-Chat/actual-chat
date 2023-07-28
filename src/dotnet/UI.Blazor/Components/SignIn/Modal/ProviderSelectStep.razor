@@ -25,71 +25,75 @@
         }
     </div>
 
-    <div class="c-separator">or</div>
+    @if (_isPhoneAuthEnabled) {
+        <div class="c-separator">or</div>
 
-    <div class="c-header">
-        <div class="c-title">Sign-in with your phone number</div>
-        <p class="c-description">
-            Enter your phone number and click "Continue" to receive a text message
-            with one-time verification code.
-        </p>
-    </div>
-
-    <Form
-        @ref="_formRef"
-        Class="c-phone-form"
-        Model="@_stepModel"
-        OnValidSubmit="OnSignInWithPhone">
-        <DataAnnotationsValidator/>
-        <div class="flex-x gap-x-4 items-center">
-            <FormSection
-                For="() => _stepModel.Code"
-                InputId="@_stepModel.CodeFieldId"
-                Label="Code"
-                Class="w-20"
-                IsLabelInsideInput="true"
-                IsRequired="true">
-                @* TODO: seems like we need custom country code control *@
-                <InputText
-                    id="@_stepModel.CodeFieldId"
-                    @bind-Value="_stepModel.Code"
-                    list="phoneCodes"
-                    pattern="@StepModel.CountryCodePattern"
-                    onfocus="this.select()"/>
-                <datalist id="phoneCodes">
-                    @foreach (var phoneCode in PhoneCodes.List) {
-                        <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
-                    }
-                </datalist>
-            </FormSection>
-            <FormSection
-                For="() => _stepModel.Number"
-                InputId="@_stepModel.NumberFieldId"
-                Label="Phone number"
-                Class="grow"
-                IsLabelInsideInput="true"
-                IsRequired="true">
-                <InputText
-                    id="@_stepModel.NumberFieldId"
-                    @bind-Value="_stepModel.Number"
-                    autocomplete="tel-national"
-                    type="tel"
-                    pattern="@StepModel.NumberPattern"
-                    inputmode="tel"/>
-            </FormSection>
+        <div class="c-header">
+            <div class="c-title">Sign-in with your phone number</div>
+            <p class="c-description">
+                Enter your phone number and click "Continue" to receive a text message
+                with one-time verification code.
+            </p>
         </div>
-         <FormButtons IsEndAligned="false">
-            <Button Type="@ButtonType.Submit" Class="btn-primary btn-modal sign-in">Continue</Button>
-        </FormButtons>
-    </Form>
+
+        <Form
+            @ref="_formRef"
+            Class="c-phone-form"
+            Model="@_stepModel"
+            OnValidSubmit="OnSignInWithPhone">
+            <DataAnnotationsValidator/>
+            <div class="flex-x gap-x-4 items-center">
+                <FormSection
+                    For="() => _stepModel.Code"
+                    InputId="@_stepModel.CodeFieldId"
+                    Label="Code"
+                    Class="w-20"
+                    IsLabelInsideInput="true"
+                    IsRequired="true">
+                    @* TODO: seems like we need custom country code control *@
+                    <InputText
+                        id="@_stepModel.CodeFieldId"
+                        @bind-Value="_stepModel.Code"
+                        list="phoneCodes"
+                        pattern="@StepModel.CountryCodePattern"
+                        onfocus="this.select()"/>
+                    <datalist id="phoneCodes">
+                        @foreach (var phoneCode in PhoneCodes.List) {
+                            <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
+                        }
+                    </datalist>
+                </FormSection>
+                <FormSection
+                    For="() => _stepModel.Number"
+                    InputId="@_stepModel.NumberFieldId"
+                    Label="Phone number"
+                    Class="grow"
+                    IsLabelInsideInput="true"
+                    IsRequired="true">
+                    <InputText
+                        id="@_stepModel.NumberFieldId"
+                        @bind-Value="_stepModel.Number"
+                        autocomplete="tel-national"
+                        type="tel"
+                        pattern="@StepModel.NumberPattern"
+                        inputmode="tel"/>
+                </FormSection>
+            </div>
+             <FormButtons IsEndAligned="false">
+                <Button Type="@ButtonType.Submit" Class="btn-primary btn-modal sign-in">Continue</Button>
+            </FormButtons>
+        </Form>
+    }
 </div>
 
 @code {
     private Form _formRef = null!;
     private StepModel _stepModel = null!;
     private List<AuthSchemaModel>? _authSchemas;
+    private bool _isPhoneAuthEnabled;
 
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
@@ -101,6 +105,7 @@
     public override bool IsCompleted { get; } = false;
 
     protected override async Task OnInitializedAsync() {
+        _isPhoneAuthEnabled = await Features.Get<Features_EnablePhoneAuth, bool>(CancellationToken.None);
         _stepModel = new StepModel(ComponentIdGenerator).CopyToBase();
         var schemas = await ClientAuth.GetSchemas();
         _authSchemas = schemas

@@ -49,6 +49,9 @@
 }
 
 /* Sign-in step - auth providers block */
+.provider-select-step:not(:has(.c-separator)) {
+    @apply justify-center;
+}
 
 .sign-in-step .c-auth-providers {
     @apply flex-y gap-y-4;

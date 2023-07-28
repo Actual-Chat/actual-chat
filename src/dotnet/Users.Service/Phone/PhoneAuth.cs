@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using ActualChat.Hosting;
 using ActualChat.Users.Module;
 
 namespace ActualChat.Users;
@@ -7,22 +8,29 @@ namespace ActualChat.Users;
 public class PhoneAuth : IPhoneAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Phone.TotpLength);
-    private ICommander Commander { get; }
+    private UsersSettings Settings { get; }
+    private HostInfo HostInfo { get; }
     private ISmsGateway Sms { get; }
     private Rfc6238AuthenticationService Totps { get; }
     private TotpRandomSecrets RandomSecrets { get; set; }
     private MomentClockSet Clocks { get; }
-    private UsersSettings Settings { get; }
+    private ICommander Commander { get; }
 
     public PhoneAuth(IServiceProvider services)
     {
-        Commander = services.Commander();
+        Settings = services.GetRequiredService<UsersSettings>();
+        HostInfo = services.GetRequiredService<HostInfo>();
         Sms = services.GetRequiredService<ISmsGateway>();
         Totps = services.GetRequiredService<Rfc6238AuthenticationService>();
         RandomSecrets = services.GetRequiredService<TotpRandomSecrets>();
         Clocks = services.Clocks();
-        Settings = services.GetRequiredService<UsersSettings>();
+        Commander = services.Commander();
     }
+
+    // [ComputeMethod]
+    // TODO: move to Features_EnablePhoneAuth
+    public virtual Task<bool> IsEnabled(CancellationToken cancellationToken)
+        => Task.FromResult(HostInfo.IsDevelopmentInstance || Settings.IsTwilioEnabled);
 
     // [CommandHandler]
     public virtual async Task<Moment> OnSendTotp(PhoneAuth_SendTotp command, CancellationToken cancellationToken)
