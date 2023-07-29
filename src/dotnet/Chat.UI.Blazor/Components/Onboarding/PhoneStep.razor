@@ -67,9 +67,12 @@
             For="() => _stepModel.Email"
             InputId="email"
             Label="Email"
-            IsRequired="@_hasPhoneIdentity"
+            IsRequired="@(!_hasEmail)"
             IsLabelInsideInput="true">
-            <InputText id="email" @bind-Value="_stepModel.Email" disabled="@(!_hasPhoneIdentity)"/>
+            <InputText
+                id="email"
+                @bind-Value="_stepModel.Email"
+                disabled="@(_hasEmail)"/>
         </FormSection>
     </Form>
 </div>
@@ -78,6 +81,7 @@
     private readonly PhoneStepModel _stepModel = new();
     private Form? _formRef;
     private bool _hasPhoneIdentity;
+    private bool _hasEmail;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -92,6 +96,7 @@
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
         _hasPhoneIdentity = account.User.HasPhoneIdentity();
+        _hasEmail = !account.Email.IsNullOrEmpty();
         _stepModel.Email = account.Email;
         if (!account.Phone.IsNone) {
             var phoneCode = PhoneCodes.GetByCode(account.Phone.Code);
@@ -117,7 +122,8 @@
         var command = new Accounts_Update(
             Session,
             account with {
-                Phone = new (_stepModel.Code!, _stepModel.Number!),
+                Phone = new (_stepModel.Code, _stepModel.Number),
+                Email = _hasEmail ? account.Email : _stepModel.Email,
             },
             account.Version);
         var (_, error) = await UICommander.Run(command);
@@ -137,14 +143,14 @@
         }
 
         [Required]
-        public string? Code { get; set; } = PhoneCodes.Default.DisplayCode;
+        public string Code { get; set; } = PhoneCodes.Default.DisplayCode;
 
         [Required]
         [Phone]
-        public string? Number { get; set; }
+        public string Number { get; set; } = "";
 
         [Required]
         [EmailAddress]
-        public string? Email { get; set; }
+        public string Email { get; set; } = "";
     }
 }
