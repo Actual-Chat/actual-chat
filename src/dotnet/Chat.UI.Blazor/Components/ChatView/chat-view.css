@@ -48,21 +48,31 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply min-w-0;
 }
 
-.chat-message > .c-content > .c-forwarded-author-header {
-    @apply flex-none flex-x items-baseline gap-x-1;
-    @apply min-w-0;
-}
-
-.chat-message-forwarded {
-    @apply max-h-6 overflow-hidden truncate;
-    @apply font-bold text-03;
-}
 .chat-message-author-name {
     @apply max-h-6 overflow-hidden truncate;
     @apply font-bold text-03;
     @apply hover:opacity-80;
     @apply cursor-pointer;
 }
+
+.chat-message .forwarded-author-header {
+    @apply flex-x items-center gap-x-1;
+    @apply min-w-0;
+}
+.chat-message .forwarded-author-header-icon {
+    @apply font-medium text-primary;
+}
+.chat-message .forwarded-author-header-title {
+    @apply max-h-6 overflow-hidden truncate;
+    @apply font-medium text-primary;
+}
+.chat-message .forwarded-author-header-author-name {
+    @apply max-h-6 overflow-hidden truncate;
+    @apply font-medium text-primary;
+    @apply hover:opacity-80;
+    @apply cursor-pointer;
+}
+
 .message-wrapper.own-message .author-name {
     @apply text-06;
 }

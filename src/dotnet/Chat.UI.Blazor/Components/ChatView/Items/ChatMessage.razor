@@ -82,15 +82,16 @@
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>
                 @if (isForward) {
-                    <div class="c-forwarded-author-header">
-                        <span class="chat-message-forwarded">Forwarded from </span>
+                    <div class="forwarded-author-header">
+                        <i class="icon-share forwarded-author-header-icon"></i>
+                        <span class="forwarded-author-header-title">Forwarded from </span>
                         @if (m.ForwardedChat != null) {
-                            <span class="chat-message-author-name"
+                            <span class="forwarded-author-header-author-name"
                                   @onclick="() => OnForwardedMessageHeaderClick(entry)">
                                 @m.ForwardedChat.Title
                             </span>
                         } else {
-                            <AuthorName AuthorSid="@entry.ForwardedAuthorId" Class="chat-message-author-name"/>
+                            <AuthorName AuthorSid="@entry.ForwardedAuthorId" Class="forwarded-author-header-author-name"/>
                         }
                     </div>
                 }
