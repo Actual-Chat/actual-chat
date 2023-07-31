@@ -5,16 +5,16 @@
 
 <NavbarItem>
     <ChildContent>
-        <div class="flex-1 flex-x items-center gap-x-2 skeleton">
+        <div class="c-container skeleton">
             <AvatarCircle Avatar="@Avatar.Loading" Size="@SquareSize.Size10" Presence="@Presence.Unknown" />
-            <div class="flex-1 grid gap-y-1">
-                <div class="text-headline-1 text-02 truncate">
-                    <div class="bg-skeleton rounded-md" style="width: @(30+rnd.Next(50))%;">
+            <div class="c-description">
+                <div class="c-title">
+                    <div class="c-skeleton" style="width: @(30+rnd.Next(50))%;">
                         <span class="invisible">&nbsp;</span>
                     </div>
                 </div>
-                <div class="text-xs text-03 truncate">
-                    <div class="bg-skeleton rounded-md" style="width: @(40+rnd.Next(50))%;">
+                <div class="c-last-message">
+                    <div class="c-skeleton" style="width: @(40+rnd.Next(50))%;">
                         <span class="invisible">&nbsp;</span>
                     </div>
                 </div>

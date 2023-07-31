@@ -18,6 +18,9 @@
 .btn-square.account-btn .avatar-badge {
     @apply bg-transparent p-0;
 }
+.btn-square.account-btn .avatar-badge > .c-name {
+    @apply hidden;
+}
 .btn-square.account-btn .btn-content {
     @apply p-2;
 }

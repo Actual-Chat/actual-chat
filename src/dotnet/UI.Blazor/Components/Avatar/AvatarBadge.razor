@@ -5,14 +5,10 @@
 
 <div class="avatar-badge @Class" @onclick="@Click">
     <AvatarCircle Avatar="@Avatar" Size="@Size" Presence="@Presence" Click="@Click"/>
-    <div class="flex-y ml-2">
-        <div class="avatar-badge-name grid">
-            <AvatarName Avatar="@Avatar" Class="@NameClass"/>
-        </div>
+    <div class="c-name">
+        <AvatarName Avatar="@Avatar" Class="@NameClass"/>
         @if (ShowStatusText && !_statusText.IsNullOrEmpty()) {
-            <div>
-                <span class="@_statusTextClass">@_statusText</span>
-            </div>
+            <span class="@_statusTextClass">@_statusText</span>
         }
     </div>
 </div>
@@ -45,5 +41,5 @@
         };
 
     private string GetStatusTextClass()
-        => (int)Size < 12 ? "text-xxs leading-4" : "";
+        => (int)Size < 12 ? "text-xxs leading-3" : "";
 }

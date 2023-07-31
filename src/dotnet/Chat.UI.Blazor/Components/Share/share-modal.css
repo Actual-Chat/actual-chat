@@ -9,10 +9,6 @@
 .share-modal .no-padding-header-decorator {
     @apply mx-0;
 }
-.share-modal .modal-header {
-    @apply mx-4 p-0;
-    @apply min-h-12 max-h-12;
-}
 .share-modal .dialog-body {
     @apply p-0;
 }

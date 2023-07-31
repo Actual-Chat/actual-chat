@@ -2,22 +2,46 @@
 
 @{
     RenderFragment RenderContent() =>
-        @<div class="flex-x overflow-hidden hover:bg-round-hover rounded-lg @Class">
-            <div class="flex min-w-12 min-h-12 mr-3 items-center justify-center">
-                <i class="text-2xl @Icon"></i>
+        @<div class="right-panel-chat-info-item @Class">
+            <div class="c-icon">
+                @Icon
             </div>
-            <div class="flex-y min-w-0 self-center grow">
-                <div class="@ContentClass text-headline-1 truncate">
+            <div class="c-content">
+                <div class="@ContentClass c-text">
                     @Content
                 </div>
                 @if (Hint != null) {
-                    <div class="text-03 text-caption-2">
+                    <div class="c-hint">
                         @Hint
                     </div>
                 }
             </div>
             @if (Right != null) {
-                <div class="flex-x self-center">
+                <div class="c-right">
+                    @Right
+                </div>
+            }
+        </div>;
+
+    RenderFragment RenderContentWithPointer() =>
+        @<div class="right-panel-chat-info-item hovered @Class"
+              @onclick="@Click"
+              @onclick:preventDefault="true">
+            <div class="c-icon">
+                @Icon
+            </div>
+            <div class="c-content">
+                <div class="@ContentClass c-text">
+                    @Content
+                </div>
+                @if (Hint != null) {
+                    <div class="c-hint">
+                        @Hint
+                    </div>
+                }
+            </div>
+            @if (Right != null) {
+                <div class="c-right">
                     @Right
                 </div>
             }
@@ -25,23 +49,17 @@
 }
 
 @if (Click.HasDelegate) {
-    <div class="cursor-pointer"
-         @onclick="@Click"
-         @onclick:preventDefault="true">
-        @RenderContent()
-    </div>
+    @RenderContentWithPointer()
 } else {
-    <div>
-        @RenderContent()
-    </div>
+    @RenderContent()
 }
 
 @code {
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback Click { get; set; }
-    [Parameter] public string Icon { get; set; } = "";
     [Parameter] public string Content { get; set; } = "";
     [Parameter] public string ContentClass { get; set; } = "text-01";
     [Parameter] public string? Hint { get; set; }
+    [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public RenderFragment? Right { get; set; }
 }

@@ -10,15 +10,18 @@
     @apply overflow-hidden;
 }
 .tab-panel-tabs .btn-group {
+    @apply relative;
     @apply justify-evenly;
     @apply w-full;
 }
 .tab-panel-tabs .btn-group-container {
     @apply flex-y;
+    @apply max-h-8;
+    @apply rounded-full;
 }
 
 .tab-panel-tabs .c-container {
-    @apply self-center;
+    @apply flex-x self-center;
     @apply max-h-8;
     @apply rounded-full;
 }
@@ -42,12 +45,12 @@
 .tab-panel-tabs .btn.tab-btn.on .btn-content {
     @apply text-02 text-primary;
 }
-.tab-panel-tabs .btn.tab-btn.on + .tab-panel-bottom-hill {
+.tab-panel-tabs .btn.tab-btn.on + .c-bottom-hill {
     @apply bg-primary;
 }
 
 /* Bottom hill */
-.tab-panel-tabs .tab-panel-bottom-hill {
+.tab-panel-tabs .c-bottom-hill {
     @apply self-center;
     @apply h-1;
     @apply rounded-t;

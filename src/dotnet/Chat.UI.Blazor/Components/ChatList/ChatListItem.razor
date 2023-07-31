@@ -25,17 +25,17 @@ else {
         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
         @attributes="@Attributes">
         <ChildContent>
-            <div class="flex-1 flex-x items-center gap-x-2">
+            <div class="c-container">
                 <ChatIcon Chat="chatState.Chat"/>
-                <div class="grid justify-start items-start gap-y-1">
-                    <span class="text-headline-1 text-02 truncate">
+                <div class="c-description">
+                    <span class="c-title">
                         <SearchUIHighlighter Text="@chatState.Chat.Title"/>
                     </span>
                     @if (lastTextEntry != null) {
-                        <div class="text-xs text-03 truncate">
+                        <div class="c-last-message">
                             @if (chatState.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                                 <span>
-                                    <AuthorName Class="text-xs text-02 font-medium" AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
+                                    <AuthorName AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
                                 </span>
                             }
                             @chatInfo.LastTextEntryText

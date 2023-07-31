@@ -51,7 +51,12 @@ body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
     @apply flex-1 flex-y gap-y-1;
     @apply overflow-auto custom-scrollbar;
 }
-
+.navbar-group > .c-container {
+    @apply flex-y;
+}
+.navbar-group > .c-container > .c-delimiter {
+    @apply border-t-4 border-bg-04;
+}
 /* Navgar subgroup */
 .navbar-subgroup {
     @apply flex-x justify-start items-center gap-x-1;

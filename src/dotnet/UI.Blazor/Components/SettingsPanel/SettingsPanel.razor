@@ -64,20 +64,20 @@
                     }
                     <div class="c-tab-item @containerCls @activeCls">
                         @switch (tab.Id) {
-                        case "signOut":
-                            @RenderSignOutButton(tab)
-                            break;
-                        case "quit":
-                            @RenderQuitButton(tab)
-                            break;
-                        default:
-                            @RenderCommonButton(tab)
-                            break;
+                            case "signOut":
+                                @RenderSignOutButton(tab)
+                                break;
+                            case "quit":
+                                @RenderQuitButton(tab)
+                                break;
+                            default:
+                                @RenderCommonButton(tab)
+                                break;
                         }
                     </div>
                 }
             </div>
-            <div class="px-3 pb-2">
+            <div class="p-2">
                 <LinkTileItem />
             </div>
             <div class="c-footer">

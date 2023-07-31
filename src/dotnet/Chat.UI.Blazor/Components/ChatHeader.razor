@@ -9,16 +9,12 @@
             <i class="icon-arrow-left"></i>
         </HeaderButton>
     }
-    <div class="flex-auto flex-x justify-between items-center grow gap-x-2 py-0.5 overflow-hidden">
+    <div class="chat-header-center">
         @if (!ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
             <ChatIcon Chat="@chat"/>
-            <div class="flex-1 flex-x chat-header-title select-text no-highlight truncate">
-                <div class="flex-y self-center truncate">
-                    <div class="text-01 font-medium truncate">@chat.Title</div>
-                    <div class="text-icons-02"></div>
-                </div>
-                <div class="flex-1"></div>
-                <div class="flex-none flex-x items-center gap-x-3 px-0.5">
+            <div class="chat-header-title">
+                <div class="c-title">@chat.Title</div>
+                <div class="c-activities-container">
                     <ChatActivities @key="@chat" Chat="@chat"/>
                 </div>
             </div>
@@ -26,9 +22,7 @@
     </div>
     @if (!chat.Id.IsNone) {
         <div class="chat-header-control-panel">
-            <div class="flex-x gap-x-1">
-                <ChatSearch @key="@chat" Chat="@chat"/>
-            </div>
+            <ChatSearch @key="@chat" Chat="@chat"/>
             @if (IsRightNavigateButtonVisible) {
                 <ChatHeaderRightPanelToggle Click="OnSwitchRightPanelClick"/>
             }

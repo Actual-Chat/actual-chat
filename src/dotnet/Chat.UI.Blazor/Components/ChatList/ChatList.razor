@@ -14,7 +14,7 @@
          data-bubble="@(BubbleRef.New<RecentChatsBubble>())"
          data-bubble-priority="202"
          data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-        <div class="text-sm font-medium px-2 pb-2" data-tooltip="Your active or recently used chats, 3 at most">@title</div>
+        <div class="c-title" data-tooltip="Your active or recently used chats, 3 at most">@title</div>
 
         <div class="chat-list chat-list-active">
             @for (var i = 0; i < m.ChatCount; i++) {

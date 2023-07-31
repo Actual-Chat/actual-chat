@@ -1,3 +1,8 @@
+.left-panel {
+    @apply flex-x;
+    @apply h-full;
+    @apply bg-04;
+}
 .left-panel-buttons {
     @apply flex md:w-30 h-full flex-x bg-04 z-10 px-1 md:px-3
 }
@@ -7,7 +12,21 @@
 .left-panel-buttons > .c-content {
     @apply flex h-full flex-y;
 }
-
+.left-panel-buttons > .c-content > .c-logo {
+    @apply flex justify-center;
+    @apply w-full;
+    @apply py-3;
+    @apply cursor-pointer;
+}
+.left-panel-buttons > .c-content > .c-buttons {
+    @apply flex-y grow items-center gap-y-3 md:gap-y-2;
+    @apply w-full;
+}
+.left-panel-buttons > .c-content > .c-account {
+    @apply flex justify-center;
+    @apply w-full;
+    @apply py-2;
+}
 .left-panel-content {
     @apply -flex-y md:flex-y;
     @apply w-full md:w-80 h-full;

@@ -18,10 +18,16 @@
 .navbar-chats {
     will-change: custom; /* Ensures its own composition layer */
 }
-
+.navbar-chats > .c-container > .tab-panel {
+    @apply md:overflow-y-hidden;
+}
 /* Top-level container - active-chats, pinned-chats, etc. */
 .active-chats {
     @apply relative flex-y bottom-0 p-2;
+}
+.active-chats > .c-title {
+    @apply px-2 pb-2;
+    @apply text-sm font-medium;
 }
 .active-chats .navbar-item.active {
     @apply bg-selected;
@@ -68,6 +74,33 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
 .chat-list .navbar-item-content {
     @apply flex-1;
 }
+.chat-list .navbar-item-content > .c-container {
+    @apply flex-1 flex-x items-center gap-x-2;
+}
+.chat-list .navbar-item-content > .c-container > .c-description {
+    @apply grid justify-start items-start gap-y-1;
+}
+.chat-list .navbar-item-content > .c-container.skeleton > .c-description {
+    @apply flex-1;
+    justify-content: normal;
+}
+.chat-list .navbar-item-content > .c-container > .c-description > .c-title {
+    @apply truncate;
+    @apply text-headline-1 text-02;
+}
+.chat-list .navbar-item-content > .c-container > .c-description > .c-last-message {
+    @apply truncate;
+    @apply text-xs text-03;
+}
+.chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-title > .c-skeleton,
+.chat-list .navbar-item-content > .c-container.skeleton > .c-description > .c-last-message > .c-skeleton {
+    @apply rounded-md;
+    @apply bg-skeleton;
+}
+.chat-list .navbar-item-content .c-last-message .avatar-name {
+    @apply text-xs text-02 font-medium;
+}
+
 .chat-list .navbar-item .btn {
     /* @apply w-8 h-12; */
     @apply w-6 h-6;
@@ -120,7 +153,7 @@ body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable
 .navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .btn.tab-btn {
     @apply min-h-10 max-h-10;
 }
-.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .tab-panel-bottom-hill {
+.navbar-chats .tab-panel .tab-panel-tabs .btn-group .btn-group-container .c-bottom-hill {
     @apply min-h-1 -mt-1;
 }
 .navbar-chats .tab-panel .tab-panel-tabs .message-counter-badge {
