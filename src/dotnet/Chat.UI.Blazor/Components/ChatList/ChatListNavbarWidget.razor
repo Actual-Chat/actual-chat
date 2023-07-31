@@ -23,16 +23,15 @@
 
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
-        <div class="flex-y min-h-min">
+        <div class="c-container">
             <ChatList Kind="ChatListKind.Active">
                 <FooterDelimiter>
-                    <div class="border-t-4 border-bg-04"></div>
+                    <div class="c-delimiter"></div>
                 </FooterDelimiter>
             </ChatList>
             <TabPanel
                 @ref="@_tabPanel"
                 BottomHill="true"
-                Class="md:overflow-y-hidden"
                 TabsClass="left-panel-tabs"
                 SelectedTabIdChanged="@OnSelectedTabIdChanged">
                 <AdditionalButton>

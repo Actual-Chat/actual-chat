@@ -1,7 +1,9 @@
 .avatar-badge {
-    @apply flex-x items-center;
+    @apply flex-x items-center gap-x-2;
 }
-
+.avatar-badge > .c-name {
+    @apply flex-y;
+}
 .avatar-name {
     @apply whitespace-nowrap;
     @apply truncate;

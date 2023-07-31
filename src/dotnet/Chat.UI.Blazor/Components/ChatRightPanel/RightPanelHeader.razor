@@ -6,21 +6,21 @@
 
 <div class="c-header">
     <HeaderButton Click="OnHideRightPanelClick" Class="md:!hidden">
-        <i class="icon-arrow-left text-2xl"></i>
+        <i class="icon-arrow-left"></i>
     </HeaderButton>
-    <div class="flex gap-x-4 grow">
-        <div class="flex flex-1 md:flex-none text-02 text-title-1 self-center">Chat Settings</div>
+    <div class="c-center">
+        <div class="c-title">Chat Settings</div>
         @if (m.CanEditProperties()) {
             <HeaderButton
                 Click="@OnEditChatSettingsClick"
                 Tooltip="Edit"
                 TooltipPosition="FloatingPosition.Bottom">
-                <i class="icon-edit text-2xl"></i>
+                <i class="icon-edit"></i>
             </HeaderButton>
         }
     </div>
     <HeaderButton Click="OnHideRightPanelClick" Class="!hidden md:!flex">
-        <i class="icon-layout text-2xl"></i>
+        <i class="icon-layout"></i>
     </HeaderButton>
 </div>
 

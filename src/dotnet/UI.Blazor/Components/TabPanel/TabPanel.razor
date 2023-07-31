@@ -7,7 +7,7 @@
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="@Class tab-panel">
         <div class="@TabsClass tab-panel-tabs" role="tablist">
-            <div class="relative btn-group">
+            <div class="btn-group">
                 @if (AdditionalButton != null) {
                     @AdditionalButton
                 }
@@ -17,30 +17,27 @@
                         _renderedSelectedTab = tab;
 
                     var cls = $"tab-btn {(isActive ? "on" : "")} {(BottomBorder ? "bottom-border-btn" : "")} {tab.ButtonClass} ";
-                    <div class="c-container flex-x">
-                        <div @key="@tab.Id" class="btn-group-container">
-                            <Button
-                                data-tab-id="@tab.Id"
-                                role="tab"
-                                aria-selected="@isActive"
-                                Class="@cls"
-                                ContentClass="items-center"
-                                Click="@(_ => SelectedTabId = tab.Id)">
+                    <div @key="@tab.Id" class="btn-group-container">
+                        <Button
+                            data-tab-id="@tab.Id"
+                            role="tab"
+                            aria-selected="@isActive"
+                            Class="@cls"
+                            Click="@(_ => SelectedTabId = tab.Id)">
 
-                                @if (tab.TitleContent != null) {
-                                    @tab.TitleContent
-                                } else {
-                                    @tab.Title
-                                }
-                            </Button>
-                            @if (BottomHill) {
-                                <div class="tab-panel-bottom-hill"></div>
+                            @if (tab.TitleContent != null) {
+                                @tab.TitleContent
+                            } else {
+                                @tab.Title
                             }
-                        </div>
-                        @if (tab.TitleExtras != null) {
-                            @tab.TitleExtras
+                        </Button>
+                        @if (BottomHill) {
+                            <div class="c-bottom-hill"></div>
                         }
                     </div>
+                    @if (tab.TitleExtras != null) {
+                        @tab.TitleExtras
+                    }
                 }
             </div>
         </div>

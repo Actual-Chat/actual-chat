@@ -9,7 +9,38 @@
     @apply flex-y;
     @apply overflow-y-auto custom-scrollbar;
 }
-
+.right-chat-panel > .c-panel-content > .c-chat-info {
+    @apply flex-y gap-y-1;
+    @apply p-4;
+}
+.right-panel-chat-info-item {
+    @apply flex-x;
+    @apply overflow-hidden;
+    @apply rounded-lg;
+}
+.right-panel-chat-info-item.hovered {
+    @apply cursor-pointer;
+    @apply hover:bg-round-hover;
+}
+.right-panel-chat-info-item > .c-icon {
+    @apply flex items-center justify-center;
+    @apply min-w-12 min-h-12;
+    @apply mr-3;
+}
+.right-panel-chat-info-item > .c-content {
+    @apply flex-y self-center grow;
+    @apply min-w-0;
+}
+.right-panel-chat-info-item > .c-content > .c-text {
+    @apply truncate;
+    @apply text-headline-1;
+}
+.right-panel-chat-info-item > .c-content > .c-hint {
+    @apply text-03 text-caption-2;
+}
+.right-panel-chat-info-item > .c-content > .c-right {
+    @apply flex-x self-center;
+}
 .right-chat-panel > .c-panel-content > .c-panel-tabs {
     @apply flex-y;
     @apply border-t-4 border-bg-04;
@@ -18,4 +49,38 @@
 .right-chat-panel > .c-header {
     @apply ordinary-header;
     @apply border-b border-bg-04;
+}
+.right-chat-panel > .c-header > .c-center {
+    @apply flex gap-x-4 grow;
+}
+.right-chat-panel > .c-header > .c-center > .c-title {
+    @apply flex flex-1 md:flex-none self-center;
+    @apply text-02 text-title-1;
+}
+
+
+.tab-panel > .tab > .author-list-tab {
+    @apply flex-y;
+    @apply h-full;
+    @apply px-5 py-3;
+}
+.author-list-tab .avatar-badge {
+    @apply p-0.5 mr-1;
+    @apply rounded-xl;
+    @apply cursor-pointer;
+}
+.author-list-tab .avatar-badge .avatar-circle {
+    @apply m-0.5;
+}
+body.hoverable .author-list-tab .avatar-badge:hover {
+    @apply bg-round-hover;
+}
+.author-list-tab > .c-content {
+    @apply flex-auto flex-y gap-y-1;
+}
+.author-list-tab > .c-content > .c-group-title {
+    @apply text-caption-1 text-02;
+}
+.author-list-tab .avatar-badge .avatar-name {
+    @apply font-medium text-02;
 }

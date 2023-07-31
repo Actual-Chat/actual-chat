@@ -4,13 +4,13 @@
 <div class="left-panel-buttons">
     <div class="c-spacer"></div>
     <div class="c-content">
-        <div class="flex w-full py-3 justify-center cursor-pointer" @onclick="@OnLogoClick">
+        <div class="c-logo" @onclick="@OnLogoClick">
             <img draggable="false" class="w-8 h-8 fill-current" alt="Actual Chat" src="/favicon.svg"/>
         </div>
-        <div class="flex-y w-full grow items-center gap-y-3 md:gap-y-2">
+        <div class="c-buttons">
             <NavbarButtons/>
         </div>
-        <div class="flex w-full py-2 justify-center">
+        <div class="c-account">
             <AccountDropdown/>
         </div>
     </div>

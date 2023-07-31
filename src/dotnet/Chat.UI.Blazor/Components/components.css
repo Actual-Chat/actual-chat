@@ -53,10 +53,6 @@
     @apply self-start;
 }
 
-.tab-panel .tab.people-tab {
-    @apply h-full;
-}
-
 .people-group {
     @apply gap-x-12;
 }
@@ -116,18 +112,6 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply m-0;
 }
 
-.people-tab .avatar-badge {
-    @apply p-0.5 mr-1;
-    @apply rounded-xl;
-    @apply cursor-pointer;
-}
-.people-tab .avatar-badge .avatar-circle {
-    @apply m-0.5;
-}
-body.hoverable .people-tab .avatar-badge:hover {
-    @apply bg-round-hover;
-}
-
 .navbar-pages {
     @apply gap-y-1;
     @apply p-1;
@@ -163,12 +147,30 @@ body.hoverable .people-tab .avatar-badge:hover {
 .signin-footer .btn {
     @apply h-10 min-h-10 min-w-0;
     @apply px-4;
-    @apply rounded-full md:rounded-md;
 }
 .signin-footer .btn .btn-content {
     @apply text-lg;
 }
 
+.chat-header-center {
+    @apply flex-auto flex-x justify-between items-center grow gap-x-2;
+    @apply py-0.5;
+    @apply overflow-hidden;
+    @apply truncate;
+}
+.chat-header-center > .chat-header-title {
+    @apply flex-1 flex-x;
+    @apply select-text truncate;
+    @apply no-highlight;
+}
+.chat-header-center > .chat-header-title > .c-title {
+    @apply text-01 font-medium;
+    @apply truncate;
+}
+.chat-header-center > .chat-header-title > .c-activities-container {
+    @apply flex-none flex-x items-center gap-x-3;
+    @apply px-0.5;
+}
 .chat-header-control-panel {
     @apply flex-x items-center gap-x-3;
 }

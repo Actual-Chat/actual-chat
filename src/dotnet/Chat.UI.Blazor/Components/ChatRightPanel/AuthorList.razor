@@ -6,24 +6,22 @@
     var m = State.Value;
 }
 
-<div class="flex flex-col h-full px-5 py-3 people-tab">
-    <div class="flex-auto flex-y gap-y-1">
-        <div class="text-caption-1 text-02">Online — @m.OnlineAuthorIds.Count</div>
+<div class="author-list-tab">
+    <div class="c-content">
+        <div class="c-group-title">Online — @m.OnlineAuthorIds.Count</div>
         @foreach (var authorId in m.OnlineAuthorIds) {
             <AuthorBadge
                 @key="@authorId"
                 AuthorSid="@authorId"
                 ShowPresence="true"
-                NameClass="font-medium text-02"
                 Click="@(_ => AuthorUI.Show(authorId))"/>
         }
-        <div class="text-caption-1 text-02">Offline — @m.OfflineAuthorIds.Count</div>
+        <div class="c-group-title">Offline — @m.OfflineAuthorIds.Count</div>
         @foreach (var authorId in m.OfflineAuthorIds) {
             <AuthorBadge
                 @key="@authorId"
                 AuthorSid="@authorId"
                 ShowPresence="true"
-                NameClass="font-medium text-02"
                 Click="@(_ => AuthorUI.Show(authorId))"/>
         }
     </div>

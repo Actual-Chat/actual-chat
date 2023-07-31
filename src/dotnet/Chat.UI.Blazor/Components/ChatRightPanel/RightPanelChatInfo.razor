@@ -8,36 +8,35 @@
     var isPublicGroupChat = Chat is { Kind: ChatKind.Group, IsPublic: true };
 }
 
-<div class="flex-y gap-y-1 p-4">
-    <div class="flex-x">
-        <div class="mr-3">
+<div class="c-chat-info">
+    <RightPanelChatInfoItem
+        Content="@m.Title"
+        Hint="@(isPublicGroupChat ? "Public" : "Private")">
+        <Icon>
             <ChatIcon Chat="Chat" Size="SquareSize.Size16"/>
-        </div>
-        <div class="flex-y min-w-0 self-center">
-            <div class="text-01 text-title-1 truncate">
-                @m.Title
-            </div>
-            <div class="text-03 text-caption-2">
-                @(isPublicGroupChat ? "Public" : "Private")
-            </div>
-        </div>
-    </div>
+        </Icon>
+    </RightPanelChatInfoItem>
 
     @if (m.Owners is not null) {
         @foreach (var owner in m.Owners) {
             <RightPanelChatInfoItem
                 Click="@(_ => OnOwnerClick(owner.AuthorId))"
-                Icon="icon-person text-icons-03"
                 Content="@owner.AvatarName"
-                Hint="Owner" />
+                Hint="Owner">
+                <Icon>
+                    <i class="text-2xl icon-person"></i>
+                </Icon>
+            </RightPanelChatInfoItem>
         }
     }
 
     <RightPanelChatInfoItem
         Click="@(_ => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted))"
-        Icon="icon-bell text-icons-03"
         Content="Notifications"
         Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
+        <Icon>
+            <i class="text-2xl icon-bell"></i>
+        </Icon>
         <Right>
             <Toggle Class="mr-2" IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)"/>
         </Right>
@@ -46,17 +45,23 @@
     @if (m.Link is { } publicUrl) {
         <RightPanelChatInfoItem
             Click="@(() => OnShareClick(publicUrl.AbsoluteUrl))"
-            Icon="icon-share text-accent"
             ContentClass="text-accent"
-            Content="Share" />
+            Content="Share">
+            <Icon>
+                <i class="text-2xl icon-share text-accent"></i>
+            </Icon>
+        </RightPanelChatInfoItem>
     }
 
     @if (m.Rules.CanInvite()) {
         <RightPanelChatInfoItem
             Click="@OnInviteClick"
-            Icon="icon-person-add text-accent"
             ContentClass="text-accent"
-            Content="Add members" />
+            Content="Add members">
+            <Icon>
+                <i class="text-2xl icon-person text-accent"></i>
+            </Icon>
+        </RightPanelChatInfoItem>
     }
 </div>
 
