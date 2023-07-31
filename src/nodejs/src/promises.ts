@@ -211,12 +211,12 @@ class Call<T extends (...args: unknown[]) => unknown> {
     }
 }
 
-export type ThrottleMode = 'skip' | 'delayHead';
+export type ThrottleMode = 'default' | 'skip' | 'delayHead';
 
 export function throttle<T extends (...args: unknown[]) => unknown>(
     func: (...args: Parameters<T>) => ReturnType<T>,
     intervalMs: number,
-    mode: ThrottleMode = 'skip',
+    mode: ThrottleMode = 'default',
     name : string | undefined = undefined
 ): ResettableFunc<T> {
     let lastCall: Call<T> | null = null;
@@ -259,17 +259,17 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
 
         if (timeoutHandle === null) {
             // lastCall is null here
+            nextFireTime = Date.now() + intervalMs;
+            timeoutHandle = setTimeout(fire, intervalMs);
             if (mode === 'delayHead') {
                 if (name)
                     debugLog?.log(`throttle '${name}': delaying head call`);
                 lastCall = call;
-            } else {
+            } else { // skip or default mode
                 if (name)
                     debugLog?.log(`throttle '${name}': fire (head call)`);
                 call?.invokeSilently();
             }
-            nextFireTime = Date.now() + intervalMs;
-            timeoutHandle = setTimeout(fire, intervalMs);
         } else {
             // timeoutHandle !== null, so all we need to do here is to update lastCall
             if (name)

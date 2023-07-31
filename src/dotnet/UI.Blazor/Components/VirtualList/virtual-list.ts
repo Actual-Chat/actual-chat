@@ -16,15 +16,15 @@ import { DeviceInfo } from 'device-info';
 
 const { debugLog } = Log.get('VirtualList');
 
-const UpdateViewportInterval: number = 200;
+const UpdateViewportInterval: number = 160;
 const UpdateItemVisibilityInterval: number = 250;
 const IronPantsHandlePeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 160;
-const ScrollDebounce: number = 750;
-const RemoveOldItemsDebounce: number = 600;
+const ScrollDebounce: number = 200;
+const RemoveOldItemsDebounce: number = 320;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
 const UpdateTimeout: number = 800;
@@ -554,10 +554,12 @@ export class VirtualList {
         }
     }
 
-    private readonly updateViewportThrottled = throttle((getRidOfOldItems?: boolean) => this.updateViewport(getRidOfOldItems), UpdateViewportInterval);
-    private readonly updateViewport = serialize(async (getRidOfOldItems?: boolean) => {
+    private readonly updateViewportThrottled = throttle((getRidOfOldItems?: boolean) => this.updateViewport(getRidOfOldItems), UpdateViewportInterval, 'default', 'updateViewport');
+    private async updateViewport(getRidOfOldItems?: boolean): Promise<void> {
         const rs = this._renderState;
-        if (this._isDisposed || this._isRendering)
+        // if (this._isDisposed || this._isRendering)
+        // disable viewport calc and data request during scroll to get rid of unexpected list jumps
+        if (this._isDisposed || this._isRendering || this._isScrolling)
             return;
 
         // do not update client state when we haven't completed rendering for the first time
@@ -600,27 +602,22 @@ export class VirtualList {
 
         // update item range
         const isViewportUnknown = viewport == null;
-        if (!this.ensureItemRangeCalculated(isViewportUnknown) && !this._itemRange) {
+        if (!this.ensureItemRangeCalculated(isViewportUnknown) && !this._itemRange)
             this.updateViewportThrottled();
-            return;
-        }
+        else if (isViewportUnknown)
+            await this.updateViewport();
+        else {
+            if (this._viewport && viewport) {
+                if (viewport.start < this._viewport.start)
+                    this._scrollDirection = 'up';
+                else
+                    this._scrollDirection = 'down';
+            }
 
-        if (isViewportUnknown)
-            debugLog?.log(`updateViewport: `, null);
-
-        if (this._viewport && viewport) {
-            if (viewport.start < this._viewport.start)
-                this._scrollDirection = 'up';
-            else
-                this._scrollDirection = 'down';
-        }
-
-        this._viewport = viewport;
-        if (!isViewportUnknown)
+            this._viewport = viewport;
             await this.requestData(getRidOfOldItems);
-        else
-            this.updateViewportThrottled();
-    }, 2);
+        }
+    }
 
     private readonly updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateItemVisibilityInterval, 'delayHead', 'updateVisibleKeys');
     private readonly updateVisibleKeys = serialize(async () => {
@@ -765,8 +762,8 @@ export class VirtualList {
     private async requestOldItemsRemoval(): Promise<void> {
         const items = this._orderedItems;
         const oldCount = items.reduceRight((prev, item) => (!!item.isOld ? 1 : 0) + prev, 0);
-        if (oldCount > 20)
-            this.updateViewportThrottled(true);
+        const removeOldItems = oldCount > 20;
+        this.updateViewportThrottled(removeOldItems);
     }
 
     private getAllItemRefs(): HTMLLIElement[] {
@@ -913,16 +910,20 @@ export class VirtualList {
             return;
 
         const query = this.getDataQuery(getRidOfOldItems);
-        if (!this.isDataRequestRequired(query, getRidOfOldItems))
+        if (!this.isDataRequestRequired(query, getRidOfOldItems)) {
+            debugLog?.log(`requestData: data request is not required`);
             return;
+        }
         if (query.isNone)
             return;
 
         this._query = query;
 
         const whenUpdateCompleted = this._whenUpdateCompleted;
-        if (whenUpdateCompleted && !whenUpdateCompleted.isCompleted())
+        if (whenUpdateCompleted && !whenUpdateCompleted.isCompleted()) {
+            debugLog?.log(`requestData: update is not completed`);
             return;
+        }
 
         const newWhenUpdateCompleted = new PromiseSourceWithTimeout<void>();
         newWhenUpdateCompleted.setTimeout(UpdateTimeout, () => {
@@ -963,12 +964,13 @@ export class VirtualList {
         if (intersection.isEmpty)
             return true;
 
-        // if old items area is big enough - rerender without it
-        if (getRidOfOldItems)
-            return intersection.start - currentItemRange.start > viewportSize
-                || currentItemRange.end - intersection.end > viewportSize;
-        return intersection.start - queryItemRange.start > viewportSize
+        const requiresMoreData = intersection.start - queryItemRange.start > viewportSize
             || queryItemRange.end - intersection.end > viewportSize;
+
+        // if old items area is big enough or more data is required - rerender
+        if (getRidOfOldItems)
+            return requiresMoreData || currentItemRange.end - intersection.end > viewportSize;
+        return requiresMoreData;
     }
 
     private getDataQuery(getRidOfOldItems: boolean): VirtualListDataQuery {
