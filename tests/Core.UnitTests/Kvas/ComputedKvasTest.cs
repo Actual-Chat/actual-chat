@@ -122,9 +122,8 @@ public class ComputedKvasTest : TestBase
             UpdateDelayer = updateDelayer,
         });
         s1.Value = "a";
-        var s1Value = s1.Value;
-        var s1Origin = s1Value.Origin;
-        OrdinalEquals(s1Origin, s1.OwnOrigin).Should().BeTrue();
+        await Task.Delay(50); // NOTE(AY): Check why w/o this delay the test is failing on build server sometimes
+        OrdinalEquals(s1.Value.Origin, s1.OwnOrigin).Should().BeTrue();
         await s1.WhenWritten().WaitAsync(timeout);
 
         var s2 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
