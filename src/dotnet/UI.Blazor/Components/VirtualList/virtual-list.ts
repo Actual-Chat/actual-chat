@@ -465,7 +465,10 @@ export class VirtualList {
                 else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                 }
+                // reset state as we can navigate to item that doesn't intersect with previously loaded items
                 this._pivots = [];
+                this._itemRange = null;
+                this._viewport = null;
             } else if (this._stickyEdge != null) {
                 // Sticky edge scroll
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
