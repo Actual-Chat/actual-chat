@@ -106,6 +106,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             // Overriding / adding extra DbAuthentication services
             services.AddSingleton<IDbUserIdHandler<string>, DbUserIdHandler>();
             db.AddEntityConverter<DbSessionInfo, SessionInfo, DbSessionInfoConverter>();
+            db.AddEntityConverter<DbUser, User, DbUserConverter>();
             db.AddEntityResolver<string, DbUserIdentity<string>>();
             db.AddEntityResolver<string, DbKvasEntry>();
             db.AddEntityResolver<string, DbAccount>();

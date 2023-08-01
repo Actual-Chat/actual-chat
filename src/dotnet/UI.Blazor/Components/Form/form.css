@@ -3,10 +3,13 @@
     @apply mt-2;
 }
 .form-section-content {
-    @apply flex-y items-start justify-center gap-y-1;
-    @apply w-full;
+    @apply flex-x items-center;
+    @apply flex-1;
 }
-.form-section-content > * {
+.form-section-content > .c-left {
+    @apply flex-y flex-1 items-start justify-center gap-y-1;
+}
+.form-section-content > .c-left > * {
     @apply w-full;
 }
 
@@ -78,7 +81,7 @@
 .label-inside-input input,
 .label-inside-input select {
     @apply bg-transparent border-none rounded-none text-02 font-normal;
-    @apply h-10 md:h-6;
+    @apply h-10 min-h-10 md:h-6 md:min-h-6;
 }
 
 .form .form-section-content.label-inside-input label {

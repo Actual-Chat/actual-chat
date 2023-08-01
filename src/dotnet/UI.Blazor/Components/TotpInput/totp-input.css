@@ -1,8 +1,8 @@
 .totp-input {
-    @apply flex-y gap-y-4 justify-center;
+    @apply flex-y flex-1 gap-y-4 justify-center items-stretch;
 }
 .totp-input > .c-digits {
-    @apply flex-x gap-x-4 items-center justify-center;
+    @apply flex-x flex-1 justify-between items-center;
 }
 .totp-input > .c-digits > input[type=text].c-digit {
     @apply w-8 h-11 rounded-t-lg rounded-b-none border-l-0 border-t-0 border-r-0 border-b-text-01;

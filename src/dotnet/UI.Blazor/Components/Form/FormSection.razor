@@ -16,25 +16,28 @@
 }
 
 <section data-control-id="@InputId" class="@cls">
-    @if (!IsLabelInsideInput) {
-        @if (!Label.IsNullOrEmpty()) {
-            <div class="@LabelClass form-section-label">
-                <Label InputId="@InputId" Text="@Label" IsRequired="@IsRequired"></Label>
-            </div>
-        }
-        <div class="@ContentClass form-section-content">
-            @ChildContent
-        </div>
-    } else {
-        <div class="@ContentClass form-section-content label-inside-input">
+        @if (!IsLabelInsideInput) {
             @if (!Label.IsNullOrEmpty()) {
                 <div class="@LabelClass form-section-label">
                     <Label InputId="@InputId" Text="@Label" IsRequired="@IsRequired"></Label>
                 </div>
             }
-            @ChildContent
-        </div>
-    }
+            <div class="@ContentClass form-section-content">
+                @ChildContent
+            </div>
+        } else {
+            <div class="@ContentClass form-section-content label-inside-input">
+                <div class="c-left">
+                    @if (!Label.IsNullOrEmpty()) {
+                        <div class="@LabelClass form-section-label">
+                            <Label InputId="@InputId" Text="@Label" IsRequired="@IsRequired"></Label>
+                        </div>
+                    }
+                    @ChildContent
+                </div>
+                @Right
+            </div>
+        }
     @if (isInvalid && ShowErrors) {
         <div class="form-section-validation">
             @foreach (var message in messages) {
@@ -65,6 +68,7 @@
     [Parameter] public bool IsLabelInsideInput { get; set; }
     [Parameter] public bool ShowErrors { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Right { get; set; }
     [Parameter] public Expression<Func<TValue>>? For { get; set; }
 
     protected override void OnParametersSet() {

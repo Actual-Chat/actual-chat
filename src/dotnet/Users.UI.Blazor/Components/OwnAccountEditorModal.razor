@@ -3,6 +3,9 @@
 @{
     if (ReferenceEquals(_account, AccountFull.Loading))
         return;
+    var isPhoneValid = PhoneValidation.IsValid(_form.Code, _form.Number);
+    var phone = _form.Phone;
+    var isPhoneVerified = _account.IsPhoneVerified();
 }
 
 <Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
@@ -24,22 +27,71 @@
             <TextBox @bind-Value="@_form.LastName" Id="@_form.LastNameFieldId" Autofocus="true"/>
         </FormSection>
 
-        <FormSection For="() => _form.Email" InputId="@_form.EmailFieldId" Label="Email" IsLabelInsideInput="true">
-            <TextBox @bind-Value="@_form.Email" Id="@_form.EmailFieldId" Autofocus="true" disabled/>
-        </FormSection>
+        <div class="flex-x gap-x-4 items-center">
+            <FormSection
+                For="() => _form.Code"
+                InputId="@_form.CodeFieldId"
+                Label="Code"
+                Class="w-20"
+                IsLabelInsideInput="true"
+                IsRequired="true">
+                @* TODO: seems like we need custom country code control *@
+                <InputText
+                    id="@_form.CodeFieldId"
+                    @bind-Value="_form.Code"
+                    list="phoneCodes"
+                    pattern="@PhoneValidation.CountryCodePattern"
+                    onfocus="this.select()"
+                    disabled="@_account.IsPhoneVerified()"/>
+                <datalist id="phoneCodes">
+                    @foreach (var phoneCode in PhoneCodes.List) {
+                        <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
+                    }
+                </datalist>
+            </FormSection>
+            <FormSection
+                For="() => _form.Number"
+                InputId="@_form.NumberFieldId"
+                Label="Phone number"
+                Class="grow"
+                IsLabelInsideInput="true"
+                IsRequired="true">
+                <ChildContent>
+                    <InputText
+                        id="@_form.NumberFieldId"
+                        @bind-Value="_form.Number"
+                        autocomplete="tel-national"
+                        type="tel"
+                        pattern="@PhoneValidation.NumberPattern"
+                        inputmode="tel"
+                        disabled="@isPhoneVerified"/>
+                </ChildContent>
+                <Right>
+                    @if (isPhoneValid) {
+                        <VerificationStatus IsVerified="isPhoneVerified"/>
+                    }
+                </Right>
+            </FormSection>
+        </div>
 
-        <FormSection For="() => _form.Phone" InputId="@_form.PhoneFieldId" Label="Phone" IsLabelInsideInput="true">
-            <TextBox @bind-Value="@_form.Phone" Id="@_form.PhoneFieldId" Autofocus="true" disabled/>
+        @if (isPhoneValid && !isPhoneVerified) {
+            <PhoneVerifier Phone="@phone.Value" Class="my-3" Verified="OnPhoneVerified"/>
+        }
+
+        <FormSection For="() => _form.Email" InputId="@_form.EmailFieldId" Label="Email" IsLabelInsideInput="true">
+            <ChildContent>
+                <TextBox @bind-Value="@_form.Email" Id="@_form.EmailFieldId" Autofocus="true" disabled/>
+            </ChildContent>
+            <Right>
+                <VerificationStatus IsVerified="@_account.IsEmailVerified()"/>
+            </Right>
         </FormSection>
 
         </Body>
         <Buttons>
             <FormButtons>
-                @{
-                    var submitClass = $"btn-primary {_formRef.IsValid.ToEnabledClass()}";
-                }
                 <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
-                <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
+                <Button Type="@ButtonType.Submit" Class="btn-primary" IsDisabled="@(!_formRef.IsValid)">Save</Button>
             </FormButtons>
         </Buttons>
     </DialogFrame>
@@ -64,7 +116,8 @@
         _form.Name = _account.Name;
         _form.LastName = _account.LastName;
         _form.Email = _account.Email;
-        _form.Phone = _account.Phone.ToReadable();
+        _form.Code = PhoneCodes.GetByCode(_account.Phone.Code)?.DisplayCode ?? PhoneCodes.Default.DisplayCode;
+        _form.Number = _account.Phone.Number;
         _form.CopyToBase();
     }
 
@@ -88,6 +141,9 @@
     private void OnCancel()
         => Modal.Close();
 
+    private async Task OnPhoneVerified()
+        => _account = await Accounts.GetOwn(Session, default);
+
     public sealed class FormModel : FormModel<FormModel> {
 
         [Required, MinLength(4, ErrorMessage = "Name must be at least 4 characters.")]
@@ -97,8 +153,11 @@
         public string LastNameFieldId { get; set; } = "";
         public string Email { get; set; } = "";
         public string EmailFieldId { get; set; } = "";
-        public string Phone { get; set; } = "";
-        public string PhoneFieldId { get; set; } = "";
+        [Required, CountryCode] public string Code { get; set; } = PhoneCodes.Default.DisplayCode;
+        public string CodeFieldId { get; set; } = "";
+        [Required, PhoneNumber] public string Number { get; set; } = "";
+        public string NumberFieldId { get; set; } = "";
+        public Phone Phone => new(Code, Number);
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
             : base("own-account-editor", componentIdGenerator)
@@ -107,5 +166,6 @@
 
     public sealed record Model {
         public static Model Default { get; } = new();
-    };
+    }
+
 }

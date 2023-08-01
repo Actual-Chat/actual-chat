@@ -1,0 +1,91 @@
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+<UITimer Period="@(TotpTtl)" Tick="OnTotpExpired"/>
+<div class="totp-verifier @Class" @onclick="@(() => Focus())">
+    <span class="c-description">
+        Please enter the code we've sent to <span class="whitespace-nowrap">@(new Phone(Phone).ToReadable())</span>
+        to verify you own this phone number.
+    </span>
+    <TotpInput @ref="_totpInput" Completed="OnInputCompleted"/>
+
+    @if (_totpExpiresAt != null) {
+        @if (Clocks.SystemClock.Now < _totpExpiresAt) {
+            <div class="c-resend-code">
+                <span>You can request a new code in</span>
+                <Countdown Class="w-9" EndsAt="_totpExpiresAt.Value"/>
+            </div>
+        } else {
+            <Button Class="btn-modal sign-in" Click="OnResendCodeClick">Resend</Button>
+        }
+    }
+</div>
+
+@code {
+    private TotpInput? _totpInput;
+    private Moment? _totpExpiresAt;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private TuneUI TuneUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string Phone { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter, EditorRequired] public TotpPurpose Purpose { get; set; }
+    [Parameter] public EventCallback Verified { get; set; }
+
+    private TimeSpan TotpTtl
+        => _totpExpiresAt != null
+            ? _totpExpiresAt.Value - Clocks.SystemClock.Now + TimeSpan.FromMilliseconds(10)
+            : TimeSpan.Zero;
+
+    protected override Task OnInitializedAsync()
+        => UpdateTotp();
+
+    public ValueTask Focus()
+        => _totpInput?.Focus() ?? ValueTask.CompletedTask;
+
+    private async Task OnInputCompleted(int totp) {
+        // as for now we can decide what to do with totp right here, no need for external handling
+        ICommand<bool> cmd = Purpose switch
+        {
+            TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, new Phone(Phone), totp),
+            TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, new Phone(Phone), totp),
+            _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
+            };
+
+        var (isValid, error) = await UICommander.Run(cmd);
+        if (error != null) {
+            ErrorUI.ShowError(error);
+            return;
+        }
+
+        if (!isValid && _totpInput != null) {
+            _ = TuneUI.Play("input-error");
+            await _totpInput.ShowError();
+        }
+
+        await Verified.InvokeAsync();
+    }
+
+    private Task OnResendCodeClick()
+        => UpdateTotp();
+
+    private async Task UpdateTotp()
+    {
+        var (expiresAt, error) = await UICommander.Run(new PhoneAuth_SendTotp(Session, new Phone(Phone), Purpose));
+        if (error != null) {
+            ErrorUI.ShowError(error);
+            return;
+        }
+
+        _totpExpiresAt = expiresAt;
+    }
+
+    private void OnTotpExpired() {
+        // Do nothing, just re-render
+    }
+}
