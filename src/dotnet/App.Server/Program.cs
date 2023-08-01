@@ -39,6 +39,9 @@ internal static class Program
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = appHost.Services.LogFor(typeof(WebMReader));
 
+        if (Constants.DebugMode.Npgsql)
+            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(),true);
+
         await appHost.InvokeDbInitializers().ConfigureAwait(false);
         await appHost.Run().ConfigureAwait(false);
 

@@ -10,6 +10,8 @@ public static class ServiceCollectionExt
             // Overriding default logging to more test-friendly one
             logging.ClearProviders();
             logging.SetMinimumLevel(LogLevel.Debug);
+            // Set Constants.DebugMode.Npgsql to true, to enable Npgsql logging
+            logging.AddFilter("Npgsql", LogLevel.Trace);
             // logging.AddFilter(DbLoggerCategory.Update.Name, LogLevel.Information);
             // logging.AddFilter(DbLoggerCategory.Database.Command.Name, LogLevel.Information);
             // logging.AddFilter(DbLoggerCategory.Database.Transaction.Name, LogLevel.Debug);

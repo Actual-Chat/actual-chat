@@ -68,6 +68,8 @@ public static class TestHostFactory
             },
         };
         await appHost.Build();
+        if (Constants.DebugMode.Npgsql)
+            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(),true);
         await appHost.InvokeDbInitializers();
         _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // force service instantiation
         await appHost.Start();

@@ -39,6 +39,9 @@ public static partial class Constants
         public static readonly bool TranscriberGoogle = false;
         public static readonly bool TranscriptStreamProxy = false;
 
+        // Database
+        public static readonly bool Npgsql = false;
+
         // Misc.
         public static readonly bool KubeEmulation = false;
     }

@@ -27,6 +27,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Logging.Console;
 using Serilog;
+using Serilog.Events;
 
 namespace ActualChat.App.Server;
 
@@ -57,7 +58,9 @@ public class Startup
 #pragma warning restore IL2026
             if (AppLogging.IsDevLogRequested && appKind.IsServer()) { // This excludes TestServer
                 var serilog = new LoggerConfiguration()
+                    .MinimumLevel.Is(LogEventLevel.Verbose)
                     .Enrich.FromLogContext()
+                    .Enrich.With(new ThreadIdEnricher())
                     .WriteTo.File(AppLogging.DevLogPath,
                         outputTemplate: AppLogging.OutputTemplate,
                         fileSizeLimitBytes: AppLogging.FileSizeLimit)
