@@ -12,6 +12,8 @@ const MentionListId = '@';
 const ZeroWidthSpace = "\u200b";
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, "g");
 const CrlfRe = /\r\n/g
+const DoubleLfRe = /\n\n/g
+const SingleLfRe = /[^\n^]\n[^\n$]/g
 
 export class MarkupEditor {
     static create(
@@ -47,7 +49,7 @@ export class MarkupEditor {
         this.undoStack = new UndoStack<string>(
             () => normalize(this.contentDiv.innerHTML),
             value => {
-                this.transaction(() => {
+                this.transaction('init', () => {
                     // To make sure both undo and redo stacks have something
                     document.execCommand("insertHTML", false, "&#8203");
                     document.execCommand("insertHTML", false, "&#8203");
@@ -60,8 +62,6 @@ export class MarkupEditor {
 
         // Attach listeners & observers
         this.contentDiv.addEventListener("focus", this.onFocus)
-        this.contentDiv.addEventListener("blur", this.onBlur)
-        this.contentDiv.addEventListener("pointerdown", this.onPointerDown)
         this.contentDiv.addEventListener("keydown", this.onKeyDown);
         this.contentDiv.addEventListener("keypress", this.onKeyPress);
         this.contentDiv.addEventListener("paste", this.onPaste);
@@ -76,8 +76,6 @@ export class MarkupEditor {
 
     public dispose() {
         this.contentDiv.removeEventListener("focus", this.onFocus)
-        this.contentDiv.removeEventListener("blur", this.onBlur)
-        this.contentDiv.removeEventListener("pointerdown", this.onPointerDown)
         this.contentDiv.removeEventListener("keydown", this.onKeyDown);
         this.contentDiv.removeEventListener("keypress", this.onKeyPress);
         this.contentDiv.removeEventListener("paste", this.onPaste);
@@ -87,14 +85,15 @@ export class MarkupEditor {
         document.removeEventListener("click", this.onDocumentClick);
     }
 
-    public transaction(action: () => void): void {
-        debugLog?.log("transaction");
+    public transaction(title: string, action: () => void): void {
+        debugLog?.log(`-> transaction ${title}`);
         const oldTransaction = this.currentTransaction;
         this.currentTransaction = action;
         try {
             action();
         }
         finally {
+            debugLog?.log(`<- transaction ${title}`);
             this.currentTransaction = oldTransaction;
             if (oldTransaction == null) {
                 const html = this.contentDiv.innerHTML;
@@ -107,42 +106,47 @@ export class MarkupEditor {
     }
 
     public focus() {
-        let isFocused = document.activeElement === this.contentDiv;
-        if (!isFocused) {
-            const parents = listParents(document.activeElement, this.contentDiv);
-            for (const p of parents)
-                if (document.activeElement === p)
-                    isFocused = true;
-        }
-        if (isFocused)
+        if (this.hasFocus())
             return;
 
-        // This workaround is needed only for iOS
         if (!DeviceInfo.isIos) {
             debugLog?.log("focus");
             this.contentDiv.focus();
-            this.fixVirtualKeyboard();
+            return;
         }
-        else {
-            // This makes sure mobile keyboard is shown on iOS,
-            // and this works only after the first interaction.
-            debugLog?.log("focus: using iOS workaround");
-            const target = this.contentDiv;
-            const tempElement = document.createElement('input');
-            tempElement.style.position = 'absolute';
-            tempElement.style.top = (target.offsetTop + 7) + 'px';
-            tempElement.style.left = target.offsetLeft + 'px';
-            tempElement.style.height = '0';
-            tempElement.style.opacity = '0';
-            document.body.appendChild(tempElement);
-            tempElement.focus();
-            Timeout.startRegular(100, () => {
-                target.focus();
-                target.click();
-                document.body.removeChild(tempElement);
-                this.fixVirtualKeyboard();
-            });
-        }
+
+        // The code blow makes sure mobile keyboard is shown on iOS.
+        // It works only after the first interaction.
+        debugLog?.log("focus: using iOS workaround");
+        const contentDiv = this.contentDiv;
+        const tempInput = document.createElement('input');
+        tempInput.style.position = 'absolute';
+        tempInput.style.top = (contentDiv.offsetTop + 7) + 'px';
+        tempInput.style.left = contentDiv.offsetLeft + 'px';
+        tempInput.style.height = '0';
+        tempInput.style.opacity = '0';
+        document.body.appendChild(tempInput);
+        tempInput.focus();
+        Timeout.startRegular(100, () => {
+            contentDiv.focus();
+            contentDiv.click();
+            document.body.removeChild(tempInput);
+        });
+    }
+
+    public hasFocus(): boolean {
+        const activeElement = document.activeElement;
+        if (!activeElement)
+            return false;
+        if (activeElement === this.contentDiv)
+            return true;
+
+        const parents = listParents(activeElement, this.contentDiv);
+        for (const p of parents)
+            if (activeElement === p)
+                return true;
+
+        return false;
     }
 
     public isEditable(mustBeEditable: boolean = null): boolean {
@@ -166,7 +170,7 @@ export class MarkupEditor {
     }
 
     public setHtml(html: string, mustFocus: boolean = false, clearUndoStack: boolean = true) {
-        this.transaction(() => {
+        this.transaction('setHtml', () => {
             this.contentDiv.innerHTML = html;
             this.fixEverything();
         })
@@ -179,13 +183,12 @@ export class MarkupEditor {
     }
 
     public insertHtml(html: string, listId?: string) {
-        const isFocused = document.activeElement === this.contentDiv;
-        if (!isFocused) {
+        if (!this.hasFocus()) {
             this.focus();
             this.restoreSelection();
         }
         if (!listId) {
-            this.transaction(() => {
+            this.transaction('insertHtml', () => {
                 document.execCommand('insertHTML', false, html);
                 this.fixEverything();
             });
@@ -198,7 +201,7 @@ export class MarkupEditor {
         if (!this.expandSelection(listHandler))
             return;
 
-        this.transaction(() => {
+        this.transaction(`insertHtml(listId: ${listId})`, () => {
             document.execCommand('insertHTML', true, html);
             this.fixEverything();
         });
@@ -240,24 +243,13 @@ export class MarkupEditor {
         debugLog?.log("onFocus");
         if (!this.isContentDivInitialized) {
             this.isContentDivInitialized = true;
-            this.transaction(() => {
+            this.transaction('onFocus - init', () => {
                 document.execCommand("insertBrOnReturn", false, "true");
                 document.execCommand("styleWithCSS", false, "false");
             });
             if (DeviceInfo.isIos)
                 this.focus();
         }
-        this.fixVirtualKeyboard();
-    }
-
-    private onBlur = () => {
-        debugLog?.log("onBlur");
-        this.fixVirtualKeyboard();
-    }
-
-    private onPointerDown = (e: PointerEvent) => {
-        debugLog?.log("onPointerDown, event:", e);
-        this.focus();
     }
 
     private onKeyDown = (e: KeyboardEvent) => {
@@ -323,7 +315,7 @@ export class MarkupEditor {
                 return ok();
             }
 
-            this.transaction(() => {
+            this.transaction('fix line feed', () => {
                 const text1 = this.getText();
                 document.execCommand('insertHTML', false, '\n');
                 const text2 = this.getText();
@@ -344,10 +336,10 @@ export class MarkupEditor {
 
         const data = e.clipboardData;
         const plainText = data.getData('text');
-        const text = cleanPastedText(plainText, data.types.includes('text/html'));
+        const text = cleanupPastedText(plainText, data.types.includes('text/html'));
 
         // debugLog?.log(`onPaste: text:`, text)
-        this.transaction(() => {
+        this.transaction('onPaste', () => {
             this.insertTextAtCursor(text);
         });
         return ok();
@@ -509,7 +501,6 @@ export class MarkupEditor {
         debugLog?.log(`fixEverything`);
         this.fixContent();
         this.fixSelection();
-        this.fixVirtualKeyboard();
     }
 
     private fixSelection() {
@@ -531,24 +522,29 @@ export class MarkupEditor {
         if (!cursorRange.collapsed)
             return;
 
+        const hadFocus = this.hasFocus();
         const parents = listParents(node, this.contentDiv);
-        let wasFocused = document.activeElement === this.contentDiv;
-        if (!wasFocused) {
-            for (const p of parents)
-                if (document.activeElement === p)
-                    wasFocused = true;
-        }
-
+        parents.reverse();
         for (let parent of parents) {
-            const elementContentEditable = parent as unknown as ElementContentEditable;
-            if (elementContentEditable.contentEditable && !elementContentEditable.isContentEditable) {
-                debugLog?.log(`fixSelection: fixing it for:`, parent);
+            const mention = asMention(parent);
+            if (mention) {
+                debugLog?.log(`fixSelection: mention:`, mention);
                 const newRange = document.createRange();
-                newRange.setStartAfter(parent);
-                newRange.collapse(false);
+                const text = getPostMentionText(mention);
+                if (text && text.textContent.startsWith(ZeroWidthSpace)) {
+                    newRange.setStart(text, 1);
+                    newRange.collapse(false);
+                }
+                else {
+                    newRange.setStartAfter(mention);
+                    newRange.collapse(false);
+                    this.transaction('fixSelection - remove invalid mention', () => {
+                        mention.remove();
+                    })
+                }
                 selection.removeAllRanges();
                 selection.addRange(newRange);
-                if (wasFocused && DeviceInfo.isIos)
+                if (hadFocus && DeviceInfo.isIos)
                     this.focus();
                 this.lastSelectedRange = newRange;
                 return;
@@ -566,67 +562,49 @@ export class MarkupEditor {
         // - https://github.com/ProseMirror/prosemirror/issues/565#issuecomment-552805191
         const process = (parent: Node) => {
             let mustNormalize = false;
-            let skipAfter: Node = null;
-            for (const node0 of parent.childNodes) {
-                if (skipAfter) {
-                    if (node0 !== skipAfter)
-                        continue;
-                    skipAfter = null;
+            let skipNode: Node = null;
+            for (const node of parent.childNodes) {
+                if (node === skipNode) {
+                    skipNode = null;
                     continue;
                 }
 
-                const t0 = asText(node0);
-                if (t0) {
-                    const oldText = t0.textContent;
+                debugLog?.log("fixContent: processing", node);
+                let text = asText(node);
+                if (text) {
+                    const oldText = text.textContent;
                     const newText = oldText.replace(ZeroWidthSpaceRe, ""); // \u200B (hex) = 8203 (dec)
                     if (newText.length !== oldText.length) {
-                        t0.textContent = newText;
+                        text.textContent = newText;
                         mustNormalize = true;
                     }
                     continue;
                 }
 
-                const e0 = asHTMLElement(node0);
-                if (e0) {
-                    if (e0.contentEditable !== "false") {
-                        process(e0);
-                        continue;
-                    }
-                    let t1 = asText(e0.nextSibling);
-                    while (t1 && t1.textContent.length == 0) {
-                        const t2 = asText(t1.nextSibling);
-                        t1.remove();
-                        t1 = t2;
-                    }
-                    if (t1 && t1.textContent.startsWith(ZeroWidthSpace)) {
-                        skipAfter = t1;
-                        continue;
-                    }
-                    node0.remove();
+                const element = asHTMLElement(node);
+                if (!element)
+                    continue;
+
+                const mention = asMention(element);
+                if (!mention) {
+                    process(element);
+                    continue;
                 }
+
+                text = getPostMentionText(element);
+                if (!text || !text.textContent.startsWith(ZeroWidthSpace)) {
+                    debugLog?.log('fixContent: removing mention', mention);
+                    mention.remove();
+                }
+                else
+                    skipNode = text;
             }
 
             if (mustNormalize)
                 parent.normalize();
         }
 
-        this.transaction(() => process(this.contentDiv));
-    }
-
-    private fixVirtualKeyboard() {
-        return; // Maybe we'll use it some day
-
-        if (!('virtualKeyboard' in navigator))
-            return;
-
-        debugLog?.log(`fixVirtualKeyboard`);
-        let mustShow = document.activeElement == this.contentDiv;
-        // @ts-ignore
-        let virtualKeyboard = navigator.virtualKeyboard as { show(), hide() };
-        if (mustShow)
-            virtualKeyboard.show();
-        else
-            virtualKeyboard.hide();
+        this.transaction('fixContent', () => process(this.contentDiv));
     }
 }
 
@@ -719,6 +697,15 @@ enum ListCommandKind {
 
 // Helpers
 
+function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | null {
+    if (!node)
+        return null;
+    if (node.nodeType !== nodeType)
+        return null;
+
+    return node as unknown as TNode;
+}
+
 function asHTMLElement(node: Node): HTMLElement | null {
     return castNode<HTMLElement>(node, Node.ELEMENT_NODE);
 }
@@ -727,19 +714,38 @@ function asText(node: Node): Text | null {
     return castNode<Text>(node, Node.TEXT_NODE);
 }
 
-function castNode<TNode extends Node>(node: Node, nodeType: number): TNode | null {
-    if (!node)
+function asMention(node: Node): HTMLElement | null {
+    const element = node as HTMLElement;
+    if (!element)
         return null;
-    if (node.nodeType !== nodeType)
+
+    const contentEditable = element as ElementContentEditable;
+    if (!contentEditable.contentEditable)
         return null;
-    return node as unknown as TNode;
+
+    if (!contentEditable.isContentEditable)
+        return element;
+
+    const altIsContentEditable = element?.dataset['contentEditable'];
+    if (altIsContentEditable && altIsContentEditable !== 'true')
+        return element;
+
+    return null;
 }
 
-function cleanPastedText(text: string, removeDoubleNewLines: boolean): string {
+function getPostMentionText(mention: HTMLElement): Text | null {
+    let text = asText(mention.nextSibling);
+    while (text && text.textContent.length == 0)
+        text = asText(text.nextSibling);
+    return text;
+}
+
+function cleanupPastedText(text: string, fixDoubleNewLines: boolean): string {
     text = text.replace(ZeroWidthSpaceRe, '');
     text = normalize(text);
-    if (removeDoubleNewLines)
-        text = text.replace("\n\n", "\n");
+    if (fixDoubleNewLines && !text.match(SingleLfRe))
+        text = text.replace(DoubleLfRe, '\n');
+    text = text.trim();
     return text;
 }
 
@@ -747,18 +753,16 @@ function normalize(text: string): string {
     return text.normalize().replace(CrlfRe, "\n");
 }
 
-const listParents = (node: Node, upToNode: Node): Array<HTMLElement> => {
+function listParents(start: Node, endExclusive: Node): HTMLElement[] {
     const parents = new Array<HTMLElement>();
-    let parent = node;
-    while (parent && parent !== upToNode) {
-        const eParent = asHTMLElement(parent);
+    let node = start;
+    while (node && node !== endExclusive) {
+        const eParent = asHTMLElement(node);
         if (eParent)
             parents.push(eParent)
-        parent = parent.parentElement;
+        node = node.parentElement;
     }
-    if (!parent)
+    if (!node)
         parents.length = 0;
-    else
-        parents.reverse();
     return parents;
 }

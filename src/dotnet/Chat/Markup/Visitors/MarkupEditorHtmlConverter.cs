@@ -20,6 +20,7 @@ public record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
         AddHtml("<span", ref state);
         AddAttribute("class", MentionClass, false, ref state);
         AddAttribute("contenteditable", "false", false, ref state);
+        AddAttribute("data-content-editable", "false", false, ref state);
         AddAttribute("data-id", markup.Id, true, ref state);
         AddHtml(">@", ref state);
         AddHiddenText("`", ref state);
