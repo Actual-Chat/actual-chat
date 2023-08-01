@@ -233,18 +233,21 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
     const fire = () => {
         if (timeoutHandle !== null)
             clearTimeout(timeoutHandle);
-        timeoutHandle = null;
-        nextFireTime = 0;
+
         if (lastCall !== null) {
             if (name)
                 debugLog?.log(`throttle '${name}': fire`);
             const call = lastCall;
             lastCall = null;
+            nextFireTime = Date.now() + intervalMs;
+            timeoutHandle = setTimeout(fire, intervalMs);
             call?.invokeSilently(); // This must be done at last
         }
         else {
             if (name)
                 debugLog?.log(`throttle '${name}': delay ended`);
+            timeoutHandle = null;
+            nextFireTime = 0;
         }
     };
 

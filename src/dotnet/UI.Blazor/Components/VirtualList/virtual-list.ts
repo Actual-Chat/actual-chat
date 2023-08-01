@@ -14,9 +14,9 @@ import { Log } from 'logging';
 import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
 import { DeviceInfo } from 'device-info';
 
-const { debugLog } = Log.get('VirtualList');
+const { warnLog, debugLog } = Log.get('VirtualList');
 
-const UpdateViewportInterval: number = 160;
+const UpdateViewportInterval: number = 320;
 const UpdateItemVisibilityInterval: number = 250;
 const IronPantsHandlePeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
@@ -367,14 +367,30 @@ export class VirtualList {
         if (this._isRendering)
             return;
 
-        // get 10  closest to viewport entries
-        this._pivots = entries
+        // get most recent measurement results
+        const pivots = entries
+            .sort((l, r) => r.time - l.time)
             .map((entry): Pivot => ({
                 itemKey: getItemKey(entry.target as HTMLElement),
                 offset: entry.boundingClientRect.top,
-            }))
-            .sort((l, r) => Math.abs(l.offset) - Math.abs(r.offset))
-            .slice(0, 10);
+                time: entry.time,
+            }));
+        const matchedJumps = pivots
+            .map(p1 => ({p1, p2: this._pivots.find(p2 => p2.itemKey === p1.itemKey)}))
+            .filter(x => x.p2)
+            .filter(x => Math.abs(x.p1.offset - x.p2.offset) > (this._viewport?.size ?? MinViewPortSize) * 2) // location of the same item has changed significantly
+            .filter(x => Math.abs(x.p1.time - x.p2.time) < 100); // less than 100 ms between measurements
+
+        if (matchedJumps.length) {
+            warnLog?.log('onScrollPivotVisibilityChange: scroll jump', matchedJumps, this._viewport);
+            void this.restoreScrollPosition().then(() => {
+                this._pivots = [];
+            });
+            return;
+        }
+
+        // keep 10 pivots to simplify calculation further
+        this._pivots = pivots.slice(0, 10);
         this.updateViewportThrottled();
     };
 
@@ -499,48 +515,7 @@ export class VirtualList {
                 // - items are added before the viewport (in our reverse-rendered list)
                 // - or skeletons are visible (because browsers can start scrolling automatically to the latest visible element after adding new child elements to the list)
                 // - or we are cleaning up old items removing items before the viewport
-                for (const pivot of this._pivots) {
-                    // resync scroll to make pivot ref position the same within viewport
-                    const pivotRef = this.getItemRef(pivot.itemKey);
-                    if (!pivotRef)
-                        continue;
-
-                    let scrollTop: number | null = null;
-                    let shouldResync = false;
-                    fastRaf({
-                        read: () => {
-                            const pivotOffset = pivot.offset;
-                            const itemRect = pivotRef.getBoundingClientRect();
-                            const currentPivotOffset = itemRect.top;
-                            const dPivotOffset = pivotOffset - currentPivotOffset;
-                            scrollTop = this._ref.scrollTop
-                            if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
-                                debugLog?.log(`onRenderEnd: resync [${pivot.itemKey}]: ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`, pivot);
-                                scrollTop -= dPivotOffset;
-                                shouldResync = true;
-                            }
-                        },
-                        write: () => {
-                            if (shouldResync) {
-                                // debug helper
-                                // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
-                                // if (DeviceInfo.isIos) {
-                                //     this._ref.style.overflow = 'hidden';
-                                // }
-                                this._ref.scrollTop = scrollTop;
-                                // if (DeviceInfo.isIos) {
-                                //     this._ref.style.overflow = '';
-                                // }
-                            } else {
-                                debugLog?.log(`onRenderEnd: resync skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
-                            }
-                        }
-                    });
-                    // wait for scroll resync
-                    await fastWriteRaf();
-
-                    break;
-                }
+                await this.restoreScrollPosition();
             }
         } finally {
             this._isRendering = false;
@@ -557,9 +532,7 @@ export class VirtualList {
     private readonly updateViewportThrottled = throttle((getRidOfOldItems?: boolean) => this.updateViewport(getRidOfOldItems), UpdateViewportInterval, 'default', 'updateViewport');
     private async updateViewport(getRidOfOldItems?: boolean): Promise<void> {
         const rs = this._renderState;
-        // if (this._isDisposed || this._isRendering)
-        // disable viewport calc and data request during scroll to get rid of unexpected list jumps
-        if (this._isDisposed || this._isRendering || this._isScrolling)
+        if (this._isDisposed || this._isRendering)
             return;
 
         // do not update client state when we haven't completed rendering for the first time
@@ -599,6 +572,9 @@ export class VirtualList {
                 viewport = clientViewport.fitInto(fullRange);
             }
         }
+        // set min viewport size if smaller
+        if (viewport && viewport.size < MinViewPortSize)
+            viewport = new NumberRange(viewport.end - MinViewPortSize, viewport.end);
 
         // update item range
         const isViewportUnknown = viewport == null;
@@ -852,6 +828,49 @@ export class VirtualList {
             return true;
         }
         return false;
+    }
+
+    private async restoreScrollPosition(): Promise<void> {
+        for (const pivot of this._pivots) {
+            // resync scroll to make pivot ref position the same within viewport
+            const pivotRef = this.getItemRef(pivot.itemKey);
+            if (!pivotRef)
+                continue;
+
+            let scrollTop: number | null = null;
+            let shouldResync = false;
+            fastRaf({
+                read: () => {
+                    const pivotOffset = pivot.offset;
+                    const itemRect = pivotRef.getBoundingClientRect();
+                    const currentPivotOffset = itemRect.top;
+                    const dPivotOffset = pivotOffset - currentPivotOffset;
+                    scrollTop = this._ref.scrollTop
+                    if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
+                        debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`, pivot);
+                        scrollTop -= dPivotOffset;
+                        shouldResync = true;
+                    }
+                },
+                write: () => {
+                    if (shouldResync) {
+                        // debug helper
+                        // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+                        // if (DeviceInfo.isIos) {
+                        //     this._ref.style.overflow = 'hidden';
+                        // }
+                        this._ref.scrollTop = scrollTop;
+                        debugLog?.log(`restoreScrollPosition: scroll set`);
+                        // if (DeviceInfo.isIos) {
+                        //     this._ref.style.overflow = '';
+                        // }
+                    } else {
+                        debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
+                    }
+                }
+            });
+            break;
+        }
     }
 
     private ensureItemRangeCalculated(isRecalculationForced: boolean): boolean {

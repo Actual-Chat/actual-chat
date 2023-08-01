@@ -176,6 +176,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('event-handling', LogLevel.Debug);
     // minLevels.set('Rpc', LogLevel.Debug);
     // minLevels.set('AsyncProcessor', LogLevel.Debug);
+    // minLevels.set('promises', LogLevel.Debug);
     minLevels.set('Interactive', LogLevel.Debug);
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
     minLevels.set('AudioContextRef', LogLevel.Debug);
