@@ -41,6 +41,26 @@ body.narrow .modal-frame.modal-sm {
     bottom: 4vh;
 }
 
+.modal-frame.modal-xs {
+    @apply min-h-fit;
+    @apply rounded-xl;
+    @apply max-w-72;
+}
+body.narrow .modal-frame.modal-xs {
+    @apply absolute;
+    @apply left-4 right-4;
+    @apply min-h-fit max-w-none;
+    @apply rounded-xl;
+    bottom: 4vh;
+}
+.modal-frame.modal-xs .c-text {
+    @apply flex-y gap-y-2;
+    @apply font-medium text-sm;
+}
+body.narrow .modal-frame.modal-xs .c-text {
+    @apply font-medium text-base;
+}
+
 .narrow .narrow-view__modal__position-bottom {
     @apply absolute bottom-0 left-0 right-0;
     @apply w-auto h-auto rounded-b-none;
@@ -79,6 +99,10 @@ body.narrow .modal-frame.modal-sm {
     @apply rounded-lg;
     @apply font-medium;
     @apply max-h-screen;
+}
+
+.modal-frame:not(:has(.modal-header)) .dialog-body {
+    @apply pt-4;
 }
 
 .btn.btn-square.modal-close {
