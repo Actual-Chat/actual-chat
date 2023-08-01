@@ -68,6 +68,38 @@ public class DbTest: AppHostTestBase
         logger.LogInformation("Completed test");
     }
 
+    [Fact]
+    public async Task DeadlockShouldBeDetected()
+    {
+        using var appHost = await NewAppHost();
+        var logger = appHost.Services.LogFor<DbTest>();
+        logger.LogInformation("app host init");
+
+        var chatId = TestChatId;
+        var entryKind = ChatEntryKind.Text;
+        var localId1 = 1500;
+        var localId2 = 1600;
+
+        var dbHub = appHost.Services.GetRequiredService<DbHub<ChatDbContext>>();
+
+        var task1 = Task.Run(() => ProvokeDeadlock(dbHub, chatId, entryKind, localId1, localId2, default));
+
+        var task2 = Task.Run(() => ProvokeDeadlock(dbHub, chatId, entryKind, localId2, localId1, default));
+
+        Exception? exception = null;
+        try {
+            await Task.WhenAll(task1, task2);
+        }
+        catch (Exception ex) {
+            exception = ex;
+        }
+        var postgresException = exception.Flatten().FirstOrDefault(c => c is Npgsql.PostgresException);
+        postgresException.Should().NotBeNull();
+        postgresException!.Message.Should().Contain("deadlock");
+
+        logger.LogInformation("Completed test");
+    }
+
     private async Task<TimeSpan> MeasureDuration(Func<Task> taskFactory, ILogger logger, string? taskDescription = null)
     {
         taskDescription ??= "Unknown";
@@ -118,7 +150,6 @@ public class DbTest: AppHostTestBase
             .Where(e => e.Id == entryId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-
         dbEntry.Require();
 
         const string suffix = ".Suffix";
@@ -135,6 +166,42 @@ public class DbTest: AppHostTestBase
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbEntry.ToModel();
+    }
+
+    private static async Task<Unit> ProvokeDeadlock(
+        DbHub<ChatDbContext> dbHub,
+        ChatId chatId,
+        ChatEntryKind entryKind,
+        long entry1LocalId,
+        long entry2LocalId,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = dbHub.CreateDbContext(true);
+        await using var __ = dbContext.ConfigureAwait(false);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var entry1Id = new ChatEntryId(chatId, entryKind, entry1LocalId, AssumeValid.Option);
+        var dbEntry1 = await dbContext.ChatEntries
+            .ForUpdate()
+            .Where(e => e.Id == entry1Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        dbEntry1.Require();
+
+        await Task.Delay(1000, cancellationToken);
+
+        var entry2Id = new ChatEntryId(chatId, entryKind, entry2LocalId, AssumeValid.Option);
+        var dbEntry2 = await dbContext.ChatEntries
+            .ForUpdate()
+            .Where(e => e.Id == entry2Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        dbEntry2.Require();
+
+        await transaction.CommitAsync(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Unit.Default;
     }
 
     public DbTest(ITestOutputHelper @out) : base(@out)
