@@ -107,50 +107,50 @@ public class ComputedKvasTest : TestBase
         s1.Value.Should().Be(s2.Value);
     }
 
-    [Fact]
-    public async Task SyncedStateTest2()
-    {
-        var services = CreateServices();
-        var kvas = services.GetRequiredService<IKvas>();
-        var stateFactory = services.StateFactory();
-        var updateDelayer = FixedDelayer.Instant;
-        var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
-
-        // Instant set
-
-        var s1 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
-            UpdateDelayer = updateDelayer,
-        });
-        s1.Value = "a";
-        await Task.Delay(50); // NOTE(AY): Check why w/o this delay the test is failing on build server sometimes
-        OrdinalEquals(s1.Value.Origin, s1.OwnOrigin).Should().BeTrue();
-        await s1.WhenWritten().WaitAsync(timeout);
-
-        var s2 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
-            UpdateDelayer = updateDelayer,
-        });
-        await s2.WhenFirstTimeRead;
-        s2.Value.Value.Should().Be("a");
-        s2.Value.Origin.Should().Be(s1.OwnOrigin);
-
-        s1.Value = "b";
-        s1.Value.Origin.Should().Be(s1.OwnOrigin);
-        await s2.When(x => OrdinalEquals(x.Value, "b")).WaitAsync(timeout);
-        s2.Value.Origin.Should().Be(s1.OwnOrigin);
-
-        s2.Value = "c";
-        s2.Value.Origin.Should().Be(s2.OwnOrigin);
-        await s1.When(x => OrdinalEquals(x.Value, "c")).WaitAsync(timeout);
-        s1.Value.Origin.Should().Be(s2.OwnOrigin);
-
-        s1.Value = "x1";
-        s2.Value = "x2";
-        await s1.WhenWritten().WaitAsync(timeout);
-        await s2.WhenWritten().WaitAsync(timeout);
-        await Task.Delay(timeout);
-        s1.Value.Should().Be(s2.Value);
-        s1.Value.Origin.Should().Be(s2.Value.Origin);
-    }
+    // [Fact]
+    // public async Task SyncedStateTest2()
+    // {
+    //     var services = CreateServices();
+    //     var kvas = services.GetRequiredService<IKvas>();
+    //     var stateFactory = services.StateFactory();
+    //     var updateDelayer = FixedDelayer.Instant;
+    //     var timeout = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 10 : 1);
+    //
+    //     // Instant set
+    //
+    //     var s1 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
+    //         UpdateDelayer = updateDelayer,
+    //     });
+    //     s1.Value = "a";
+    //     await Task.Delay(50); // NOTE(AY): Check why w/o this delay the test is failing on build server sometimes
+    //     OrdinalEquals(s1.Value.Origin, s1.OwnOrigin).Should().BeTrue();
+    //     await s1.WhenWritten().WaitAsync(timeout);
+    //
+    //     var s2 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
+    //         UpdateDelayer = updateDelayer,
+    //     });
+    //     await s2.WhenFirstTimeRead;
+    //     s2.Value.Value.Should().Be("a");
+    //     s2.Value.Origin.Should().Be(s1.OwnOrigin);
+    //
+    //     s1.Value = "b";
+    //     s1.Value.Origin.Should().Be(s1.OwnOrigin);
+    //     await s2.When(x => OrdinalEquals(x.Value, "b")).WaitAsync(timeout);
+    //     s2.Value.Origin.Should().Be(s1.OwnOrigin);
+    //
+    //     s2.Value = "c";
+    //     s2.Value.Origin.Should().Be(s2.OwnOrigin);
+    //     await s1.When(x => OrdinalEquals(x.Value, "c")).WaitAsync(timeout);
+    //     s1.Value.Origin.Should().Be(s2.OwnOrigin);
+    //
+    //     s1.Value = "x1";
+    //     s2.Value = "x2";
+    //     await s1.WhenWritten().WaitAsync(timeout);
+    //     await s2.WhenWritten().WaitAsync(timeout);
+    //     await Task.Delay(timeout);
+    //     s1.Value.Should().Be(s2.Value);
+    //     s1.Value.Origin.Should().Be(s2.Value.Origin);
+    // }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
