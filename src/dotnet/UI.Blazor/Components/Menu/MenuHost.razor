@@ -77,9 +77,10 @@
                 History.Save<OwnHistoryState>();
         }
 
-        if (_jsMenuId != null) {
+        var jsMenuId = _jsMenuId;
+        if (jsMenuId != null) {
             _jsMenuId = null;
-            await _jsRef.InvokeVoidAsync("hideById", _jsMenuId);
+            await _jsRef.InvokeVoidAsync("hideById", jsMenuId);
         }
     }
 

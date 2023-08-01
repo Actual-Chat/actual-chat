@@ -95,8 +95,10 @@ export class MenuHost implements Disposable {
         position?: Vector2D | null,
     ): void {
         let menu = this.create(menuRef, isHoverMenu, triggerElement, placement, position);
-        if (this.isShown(menu))
+        if (this.isShown(menu)) {
+            debugLog?.log(`showOrPosition: already shown. Setting position.`);
             void this.position(this.menu, menu);
+        }
         else
             this.show(menu);
     }
@@ -308,6 +310,7 @@ export class MenuHost implements Disposable {
             : null;
         const menu = this.create(menuRef, false, triggerElement, null, position);
         if (this.isShown(menu)) {
+            debugLog?.log(`onClick: already shown. Setting position.`);
             // Is it the second click on the same button that triggered the menu?
             if (triggerElement.nodeName == 'BUTTON')
                 this.hide();
