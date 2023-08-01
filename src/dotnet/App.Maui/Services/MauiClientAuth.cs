@@ -27,8 +27,10 @@ internal sealed class MauiClientAuth : IClientAuth
 #if ANDROID
         if (OrdinalEquals(IClientAuth.GoogleSchemeName, schema)) {
             var googleAuth = Services.GetRequiredService<NativeGoogleAuth>();
-            await googleAuth.SignIn().ConfigureAwait(false);
-            return;
+            if (googleAuth.IsAvailable()) {
+                await googleAuth.SignIn().ConfigureAwait(false);
+                return;
+            }
         }
 #endif
 #if IOS

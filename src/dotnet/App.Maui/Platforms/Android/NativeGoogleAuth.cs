@@ -1,6 +1,7 @@
 ﻿using ActualChat.Users;
 using Android.Content;
 using Android.Gms.Auth.Api.SignIn;
+using Android.Gms.Common;
 using Activity = Android.App.Activity;
 using Exception = System.Exception;
 using Result = Android.App.Result;
@@ -45,6 +46,12 @@ public sealed class NativeGoogleAuth
     {
         AndroidActivityResultHandlers.Unregister(OnActivityResult);
         _googleSignInClient.Dispose();
+    }
+
+    public bool IsAvailable()
+    {
+        var statusCode = GoogleApiAvailability.Instance.IsGooglePlayServicesAvailable(Platform.AppContext);
+        return statusCode == ConnectionResult.Success;
     }
 
     public Task SignIn()
