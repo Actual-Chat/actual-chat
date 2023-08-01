@@ -230,7 +230,7 @@ export class ChatMessageEditor {
                     : 'Normal';
                 if (this.panelModel !== panelMode) {
                     this.panelModel = panelMode;
-                    if (panelMode == 'Narrow')
+                    if (panelMode === 'Narrow')
                         this.editorDiv.classList.add('narrow-panel');
                     else
                         this.editorDiv.classList.remove('narrow-panel');
