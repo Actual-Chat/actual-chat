@@ -21,15 +21,16 @@ export class ChatMessageEditor {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
-    private markupEditor: MarkupEditor;
-    private readonly input: HTMLDivElement;
+    private readonly postPanelDiv: HTMLDivElement;
     private readonly postButton: HTMLButtonElement;
     private readonly attachButton: HTMLButtonElement;
-    private attachmentList: AttachmentList;
-    private attachmentListElement: HTMLDivElement;
+    private readonly input: HTMLDivElement;
     private readonly attachmentListObserver: MutationObserver;
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver: MutationObserver;
+    private markupEditor: MarkupEditor;
+    private attachmentList: AttachmentList;
+    private attachmentListElement: HTMLDivElement;
     private lastHeight: number;
     private lastWidth: number;
     private isNarrowScreen: boolean = null; // Intended: updateLayout needs this on the first run
@@ -45,10 +46,11 @@ export class ChatMessageEditor {
     constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
-        this.input = this.editorDiv.querySelector(':scope .post-panel .message-input');
-        this.postButton = this.editorDiv.querySelector(':scope .post-panel .post-message');
-        this.attachButton = this.editorDiv.querySelector(':scope .attach-btn');
-        this.notifyPanel = this.editorDiv.querySelector(':scope .notify-call-panel');
+        this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel');
+        this.postButton = this.postPanelDiv.querySelector(':scope .post-message');
+        this.attachButton = this.postPanelDiv.querySelector(':scope .attach-btn');
+        this.notifyPanel = this.postPanelDiv.querySelector(':scope .notify-call-panel');
+        this.input = this.postPanelDiv.querySelector(':scope .message-input');
 
         this.updateLayout();
         this.updateHasContent();
@@ -58,6 +60,7 @@ export class ChatMessageEditor {
             .pipe(takeUntil(this.disposed$))
             .subscribe(this.updateLayoutThrottled);
         this.input.addEventListener('paste', this.onInputPaste);
+        this.postPanelDiv.addEventListener('click', this.onPostPanelClick);
         this.attachButton.addEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.addEventListener('click', this.onNotifyPanelClick);
         this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
@@ -82,6 +85,7 @@ export class ChatMessageEditor {
         this.disposed$.next();
         this.disposed$.complete();
         this.input.removeEventListener('paste', this.onInputPaste);
+        this.postPanelDiv.removeEventListener('click', this.onPostPanelClick);
         this.attachButton.removeEventListener('click', this.onAttachButtonClick);
         this.notifyPanel.removeEventListener('click', this.onNotifyPanelClick);
         if (this.attachmentListElement != null) {
@@ -146,7 +150,12 @@ export class ChatMessageEditor {
 
     // Event handlers
 
-    private onAttachButtonClick = ((event: Event & { target: Element; }) => {
+    private onPostPanelClick = ((event: MouseEvent) => {
+        if (event.target === this.postPanelDiv)
+            this.markupEditor.focus();
+    });
+
+    private onAttachButtonClick = ((event: MouseEvent) => {
         this.attachmentList.showFilePicker();
         if (this.panelModel == 'Narrow') {
             this.markupEditor.focus();
@@ -154,7 +163,7 @@ export class ChatMessageEditor {
         }
     });
 
-    private onReturnFocusOnInput = ((event: Event & { target: Element; }) => {
+    private onReturnFocusOnInput = ((event: MouseEvent) => {
         if (this.panelModel == 'Narrow') {
             debugLog?.log("onReturnFocusOnInput");
             this.markupEditor.focus();
