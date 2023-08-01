@@ -33,6 +33,9 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddAndroid(android => {
+            var livenessProbeAdapter = new AndroidWebViewLivenessProbeAdapter();
+            android.OnResume(livenessProbeAdapter.OnResume);
+            android.OnPause(livenessProbeAdapter.OnPause);
             android.OnActivityResult(OnActivityResult);
             android.OnBackPressed(activity => {
                 _ = HandleBackPressed(activity);
