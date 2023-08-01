@@ -53,8 +53,8 @@ public class DbTest: AppHostTestBase
         for (var i = 0; i < 10; i++) {
             var localI = i;
             var readTask = MeasureDuration(
-            () => ReadChatEntries(dbHub, chatId, entryKind, range, default),
-            logger, $"ReadChatEntries#{localI}");
+                () => ReadChatEntries(dbHub, chatId, entryKind, range, default),
+                logger, $"ReadChatEntries#{localI}");
             readTasks.Add(readTask);
         }
         await Task.WhenAll(readTasks.ToArray());
@@ -120,6 +120,7 @@ public class DbTest: AppHostTestBase
     {
         var dbContext = dbHub.CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var dbEntries = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId
@@ -130,6 +131,7 @@ public class DbTest: AppHostTestBase
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        await transaction.CommitAsync(cancellationToken);
         var entries = dbEntries
             .Select(e => e.ToModel(null))
             .ToApiArray();
@@ -144,6 +146,7 @@ public class DbTest: AppHostTestBase
     {
         var dbContext = dbHub.CreateDbContext(true);
         await using var __ = dbContext.ConfigureAwait(false);
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         var dbEntry = await dbContext.ChatEntries
             .ForUpdate()
@@ -164,6 +167,7 @@ public class DbTest: AppHostTestBase
         if (delay > TimeSpan.Zero)
             await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
 
+        await transaction.CommitAsync(cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbEntry.ToModel();
     }
