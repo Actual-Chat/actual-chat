@@ -154,16 +154,16 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 
 .chat-header-center {
     @apply flex-auto flex-x justify-between items-center grow gap-x-2;
-    @apply py-0.5;
     @apply overflow-hidden;
     @apply truncate;
 }
 .chat-header-center > .chat-header-title {
     @apply flex-1 flex-x;
-    @apply select-text truncate;
+    @apply select-none truncate;
     @apply no-highlight;
 }
 .chat-header-center > .chat-header-title > .c-title {
+    @apply flex-1;
     @apply text-01 font-medium;
     @apply truncate;
 }

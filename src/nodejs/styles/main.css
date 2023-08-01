@@ -168,6 +168,9 @@ input.input-underlined {
     @apply h-full w-full;
     @apply overflow-hidden;
 }
+.list-view-layout > .layout-header > .c-content {
+    @apply gap-x-2;
+}
 .list-view-layout .layout-body {
     @apply justify-between;
     @apply p-0 -mb-22 md:mb-0;
