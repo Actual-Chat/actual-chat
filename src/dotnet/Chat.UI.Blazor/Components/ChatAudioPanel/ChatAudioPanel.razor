@@ -3,11 +3,11 @@
 @inherits FusionComponentBase
 
 <div class="chat-audio-panel">
-    <div class="language-button"
-         data-bubble="@(BubbleRef.New<TranscriptionLanguageButtonBubble>())"
-         data-bubble-priority="120"
-         data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
-        <LanguageToggle Chat="@Chat" />
+    <div class="playback-button"
+         data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
+         data-bubble-priority="110"
+         data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+        <PlaybackToggle Chat="@Chat"/>
     </div>
     <div class="recorder-button">
         <div data-bubble="@(BubbleRef.New<RecordButtonBubble1>())"
@@ -24,11 +24,11 @@
         </div>
         <RecorderToggle Chat="@Chat"/>
     </div>
-    <div class="playback-button"
-         data-bubble="@(BubbleRef.New<ListenButtonBubble>())"
-         data-bubble-priority="110"
-         data-bubble-placement="@(FloatingPosition.TopEnd.ToPositionString())">
-        <PlaybackToggle Chat="@Chat"/>
+    <div class="language-button"
+         data-bubble="@(BubbleRef.New<TranscriptionLanguageButtonBubble>())"
+         data-bubble-priority="120"
+         data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
+        <LanguageToggle Chat="@Chat" />
     </div>
 </div>
 

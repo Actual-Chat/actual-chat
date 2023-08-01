@@ -69,6 +69,10 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply border-icons-02;
 }
 
+.playback-wrapper > .btn.btn-round.on > .btn-content {
+    @apply bg-round-focus;
+}
+
 .narrow-panel.narrow .recorder-wrapper .recorder-icon,
 .wide .recorder-wrapper .recorder-icon {
     @apply h-7 w-7;
@@ -95,11 +99,6 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .chat-audio-panel .btn.btn-round .btn-content {
     @apply min-h-12 max-h-12 min-w-12 max-w-12;
 }
-.narrow .chat-audio-panel .language-button,
-.narrow .chat-audio-panel .playback-wrapper,
-.narrow .chat-audio-panel .recorder-wrapper {
-    @apply drop-shadow-lg shadow-gradient-stop-02;
-}
 .narrow .chat-audio-panel .language-button:active,
 .narrow .chat-audio-panel .playback-wrapper:active,
 .narrow .chat-audio-panel .recorder-button:active {
@@ -110,10 +109,13 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 .narrow .chat-audio-panel .btn.btn-round.chat-language-toggle .btn-content,
 .narrow .chat-audio-panel .playback-wrapper {
-    background: linear-gradient(to bottom, var(--gradient-stop-02) 0%, var(--gradient-stop-01) 71.35%);
+    @apply bg-03;
 }
 .narrow .chat-audio-panel .playback-wrapper .btn.btn-round .btn-content {
     @apply bg-transparent;
+}
+.narrow .chat-audio-panel .playback-wrapper .btn.btn-round.on .btn-content {
+    @apply bg-round-focus;
 }
 .narrow .chat-audio-panel .recorder-wrapper {
     @apply flex;
