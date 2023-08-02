@@ -1,0 +1,21 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<div class="options-item">
+    <div class="c-left">
+        @Left
+    </div>
+    <div class="c-title">
+        @Title
+    </div>
+    <div class="c-right">
+        @Right
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Left { get; set; }
+    [Parameter] public RenderFragment? Title { get; set; }
+    [Parameter] public RenderFragment? Right { get; set; }
+}

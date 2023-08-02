@@ -1,0 +1,37 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Events
+@implements IModalView<TranscriptionOptionsModal.Model>
+
+<DialogFrame Title="Transcription options" Class="modal-sm" HasCloseButton="true">
+    <Body>
+    <LanguageButtonGroup Chat="@ModalModel.Chat"/>
+    <OptionsItem Chat="@ModalModel.Chat">
+        <Left>
+            <i class="icon-transcription text-2xl"></i>
+        </Left>
+        <Title>
+            Transcription voice to text
+        </Title>
+        <Right>
+            <Toggle IsChecked="true" Class="toggle-sm"/>
+        </Right>
+    </OptionsItem>
+    </Body>
+</DialogFrame>
+
+@code {
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private async Task OnClick() {
+        Modal.Close();
+        await History.WhenNavigationCompleted();
+        _ = UIEventHub.Publish(new ShowSettingsEvent());
+    }
+
+    public sealed record Model(Chat Chat);
+}

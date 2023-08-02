@@ -367,3 +367,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply absolute -bottom-1 bg-01 w-[8px] h-[8px] rotate-45;
 }
 
+.options-item {
+    @apply flex-x items-center;
+    @apply h-12;
+}
