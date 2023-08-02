@@ -113,7 +113,7 @@ body.hoverable .tile:hover {
     @apply hover:bg-transparent;
 }
 .tile-item-icon {
-    @apply flex-none justify-center;
+    @apply flex-none flex justify-center;
     @apply min-w-10 max-w-10;
     @apply text-icons-01;
 }
