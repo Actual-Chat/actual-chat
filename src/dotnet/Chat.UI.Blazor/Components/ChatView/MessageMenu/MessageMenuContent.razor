@@ -63,6 +63,13 @@
             </MenuEntry>
         </CopyTrigger>
     }
+    @if (!IsSystem) {
+        <MenuEntry
+            Icon="icon-share"
+            Text="Forward"
+            Click="@(() => Forward(entry))">
+        </MenuEntry>
+    }
     @if (canEditOrDelete) {
         <MenuEntrySeparator />
         <MenuEntry
@@ -78,7 +85,10 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public string? ClickedLinkUrl { get; set; }
@@ -94,4 +104,27 @@
 
     private Task Edit(ChatEntry chatEntry)
         => ChatEditorUI.Edit(chatEntry);
+
+    private async Task Forward(ChatEntry chatEntry) {
+        IReadOnlyCollection<ChatId> selectedChats = Array.Empty<ChatId>();
+        var modal = await ModalUI.Show(new ForwardMessageModal.Model(
+            new []{ chatEntry.ChatId },
+            chats => {
+                selectedChats = chats;
+            }));
+        await modal.WhenClosed;
+
+        if (!selectedChats.Any())
+            return;
+
+        var cmd = new Chats_ForwardTextEntries(
+            Session,
+            chatEntry.ChatId,
+            new ApiArray<ChatEntryId>(chatEntry.Id),
+            new ApiArray<ChatId>(selectedChats));
+        await UICommander.Run(cmd, CancellationToken.None);
+
+        if (selectedChats.Count == 1)
+            _ = History.NavigateTo(Links.Chat(selectedChats.First()));
+    }
 }

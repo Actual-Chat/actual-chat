@@ -249,6 +249,8 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     AuthorId = author.Id,
                     Content = text,
                     RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
+                    ForwardedAuthorId = command.ForwardedAuthorId,
+                    ForwardedChatEntryId = command.ForwardedChatEntryId,
                 },
                 command.Attachments.Count > 0);
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
@@ -440,6 +442,53 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         await Commander.Run(createAuthorCommand, cancellationToken).ConfigureAwait(false);
 
         return cloned;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<Unit> OnForwardTextEntries(Chats_ForwardTextEntries command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId, chatEntryIds, destinationChatIds) = command;
+        await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Read);
+
+        var chatEntries = await chatEntryIds
+            .Select(async chatEntryId => await this
+                .GetEntry(session, chatEntryId, cancellationToken)
+                .Require(ChatEntry.MustNotBeRemoved)
+                .ConfigureAwait(false))
+            .Collect()
+            .ConfigureAwait(false);
+
+        foreach (var destinationChatId in destinationChatIds) {
+            var destinationChat = await Get(session, destinationChatId, cancellationToken).Require().ConfigureAwait(false);
+            await Authors.EnsureJoined(session, destinationChatId, cancellationToken).ConfigureAwait(false);
+            destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
+
+            foreach (var chatEntry in chatEntries) {
+                var forwardedAuthorId = chatEntry.ForwardedAuthorId.IsNone
+                    ? chatEntry.AuthorId
+                    : chatEntry.ForwardedAuthorId;
+                var forwardedChatEntryId = chatEntry.ForwardedChatEntryId.IsNone
+                    ? chatEntry.ChatId.IsPeerChat(out _)
+                        ? ChatEntryId.None
+                        : chatEntry.Id
+                    : chatEntry.ForwardedChatEntryId.ChatId.IsPeerChat(out _)
+                        ? ChatEntryId.None
+                        : chatEntry.ForwardedChatEntryId;
+                var cmd = new Chats_UpsertTextEntry(session, destinationChatId, null, chatEntry.Content) {
+                    ForwardedAuthorId = forwardedAuthorId,
+                    ForwardedChatEntryId = forwardedChatEntryId,
+                    Attachments = chatEntry.Attachments.Select(x => x.MediaId).ToApiArray(),
+                };
+                await Commander.Run(cmd, CancellationToken.None).ConfigureAwait(false);
+            }
+        }
+
+        return default;
     }
 
     // Private methods

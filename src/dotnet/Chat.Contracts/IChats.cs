@@ -70,6 +70,9 @@ public interface IChats : IComputeService
 
     [CommandHandler]
     Task<Chat> OnGetOrCreateFromTemplate(Chats_GetOrCreateFromTemplate command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task<Unit> OnForwardTextEntries(Chats_ForwardTextEntries command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -98,6 +101,8 @@ public sealed partial record Chats_UpsertTextEntry(
 ) : ISessionCommand<ChatEntry>
 {
     [DataMember, MemoryPackOrder(5)] public ApiArray<MediaId> Attachments { get; set; } = ApiArray<MediaId>.Empty;
+    [DataMember, MemoryPackOrder(6)] public ChatEntryId ForwardedChatEntryId { get; set; }
+    [DataMember, MemoryPackOrder(7)] public AuthorId ForwardedAuthorId { get; set; }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -108,3 +113,12 @@ public sealed partial record Chats_Change(
     [property: DataMember, MemoryPackOrder(2)] long? ExpectedVersion,
     [property: DataMember, MemoryPackOrder(3)] Change<ChatDiff> Change
 ) : ISessionCommand<Chat>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chats_ForwardTextEntries(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2)] ApiArray<ChatEntryId> ChatEntries,
+    [property: DataMember, MemoryPackOrder(3)] ApiArray<ChatId> DestinationChatIds
+) : ISessionCommand<Unit>;

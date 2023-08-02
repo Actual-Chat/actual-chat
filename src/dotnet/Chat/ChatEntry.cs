@@ -39,6 +39,8 @@ public sealed partial record ChatEntry(
     [DataMember, MemoryPackOrder(21)] public long? VideoEntryId { get; init; }
     [DataMember, MemoryPackOrder(22)] public LinearMap TimeMap { get; init; }
     [DataMember, MemoryPackOrder(23)] public long? RepliedEntryLocalId { get; init; }
+    [DataMember, MemoryPackOrder(24)] public ChatEntryId ForwardedChatEntryId { get; init; }
+    [DataMember, MemoryPackOrder(25)] public AuthorId ForwardedAuthorId { get; init; }
     [DataMember, MemoryPackOrder(50)] public ApiArray<TextEntryAttachment> Attachments { get; init; }
 
     // Computed

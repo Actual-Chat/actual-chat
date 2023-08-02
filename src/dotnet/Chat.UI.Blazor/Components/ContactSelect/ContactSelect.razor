@@ -25,6 +25,7 @@
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public SearchPhrase SearchPhrase { get; set; } = null!;
+    [Parameter] public IReadOnlyCollection<ChatId> ContactsToExclude { get; set; } = Array.Empty<ChatId>();
     [Parameter] public EventCallback<IReadOnlyCollection<ChatId>> SelectionChanged { get; set; }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -40,7 +41,10 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var allUnordered = await ChatListUI.ListAllUnordered(ChatListFilter.None, cancellationToken);
-        var chats = allUnordered.Values.OrderBy(ChatListOrder.ByLastEventTime).ToList();
+        var chats = allUnordered.Values
+            .ExceptBy(ContactsToExclude, x => x.Id)
+            .OrderBy(ChatListOrder.ByLastEventTime)
+            .ToList();
 
         FilterChats(chats);
 

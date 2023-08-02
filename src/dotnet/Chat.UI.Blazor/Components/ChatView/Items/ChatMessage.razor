@@ -12,8 +12,9 @@
     // Flags
     var isSystem = entry.IsSystemEntry;
     var isReply = m.RepliedEntry != null;
+    var isForward = !entry.ForwardedAuthorId.IsNone;
     var isReplyToOwnMessage = m.RepliedEntry?.AuthorId == entry.AuthorId;
-    var showAuthor = !isSystem && (message.IsBlockStart || isReply);
+    var showAuthor = !isSystem && (message.IsBlockStart || isReply || isForward);
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
@@ -80,6 +81,20 @@
                     <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
                     @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
                 </div>
+                @if (isForward) {
+                    <div class="forwarded-author-header">
+                        <i class="icon-share forwarded-author-header-icon"></i>
+                        <span class="forwarded-author-header-title">Forwarded from </span>
+                        @if (m.ForwardedChat != null) {
+                            <span class="forwarded-author-header-author-name"
+                                  @onclick="() => OnForwardedMessageHeaderClick(entry.ForwardedChatEntryId)">
+                                @m.ForwardedChat.Title
+                            </span>
+                        } else {
+                            <AuthorName AuthorSid="@entry.ForwardedAuthorId" Class="forwarded-author-header-author-name"/>
+                        }
+                    </div>
+                }
             }
             <div class="message-content">
                 @if (isReply) {
@@ -126,6 +141,7 @@
     private ChatMessageModel? _lastMessage;
 
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
@@ -201,12 +217,16 @@
         var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken);
+        var forwardedChat = !entry.ForwardedChatEntryId.IsNone
+            ? await Chats.Get(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken)
+            : null;
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
             IsHighlighted = isHighlighted,
             IsReplyTarget = isReplyTarget,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
+            ForwardedChat = forwardedChat,
         };
         return result.Equals(_rendered) ? _rendered! : result;
     }
@@ -224,6 +244,9 @@
 
     private void OnQuoteClick()
         => ChatUI.HighlightEntry(Message.Entry.Id, navigate: true);
+
+    private void OnForwardedMessageHeaderClick(ChatEntryId entryId)
+        => _ = History.NavigateTo(Links.Chat(entryId));
 
     private bool HasAnyMentions(Markup markup)
         => MarkupValidator.ContainsAnyMention.IsValid(markup);
@@ -264,5 +287,6 @@
         public bool IsReplyTarget { get; init; }
         public bool IsOwnAuthorMentioned { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
+        public Chat? ForwardedChat { get; set; }
     }
 }
