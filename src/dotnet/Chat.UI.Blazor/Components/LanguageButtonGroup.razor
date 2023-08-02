@@ -1,0 +1,36 @@
+@inherits ComputedStateComponent<Language>
+@{
+    var m = State.Value;
+}
+
+<div class="language-btn-group two-btn-group">
+    <button class="active">English</button>
+    <button class="">Russian</button>
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Language>.Options GetStateOptions()
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Language> ComputeState(CancellationToken cancellationToken)
+        => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
+
+    protected async Task OnClick(CancellationToken cancellationToken = default) {
+        var languages = await LanguageUI.Settings.Use(cancellationToken);
+        if (languages.Secondary != null)
+            await LanguageUI.ChangeChatLanguage(Chat.Id);
+        else
+            _ = ModalUI.Show(new NoSecondaryLanguageModal.Model());
+    }
+}

@@ -77,6 +77,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddTypeMap<IModalView>(map => map
             .Add<AvatarSelectModal.Model, AvatarSelectModal>()
             .Add<NoSecondaryLanguageModal.Model, NoSecondaryLanguageModal>()
+            .Add<TranscriptionOptionsModal.Model, TranscriptionOptionsModal>()
             .Add<ChatSettingsModal.Model, ChatSettingsModal>()
             .Add<AddMemberModal.Model, AddMemberModal>()
             .Add<NewChatModal.Model, NewChatModal>()
