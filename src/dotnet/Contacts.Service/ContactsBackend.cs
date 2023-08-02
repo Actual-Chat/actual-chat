@@ -81,7 +81,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invIndex = context.Operation().Items.GetOrDefault(int.MinValue);
+            var invIndex = context.Operation().Items.GetOrDefault<long>(int.MinValue);
             if (invIndex != int.MinValue) {
                 _ = Get(ownerId, id, default);
                 if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
@@ -156,7 +156,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var ownerId = id.OwnerId;
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            var invIndex = context.Operation().Items.GetOrDefault(int.MinValue);
+            var invIndex = context.Operation().Items.GetOrDefault<long>(int.MinValue);
             if (invIndex != int.MinValue) {
                 _ = Get(ownerId, id, default);
                 if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
