@@ -1,4 +1,4 @@
-﻿@namespace ActualChat.UI.Blazor.Components
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Search
 @implements IModalView<ShareModalModel>
 
@@ -59,7 +59,6 @@
     private ElementReference _copyTextSourceRef;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private ILogger<ShareModal> Log { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -97,13 +96,11 @@
         foreach (var chatId in _selectedChats) {
             if (!comment.IsNullOrEmpty()) {
                 var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
-                var _2 = await uiCommander.Run(cmd2, CancellationToken.None);
-                Log.LogInformation("Text entry created: '{ChatEntry}'", _2.Value);
+                _ = await uiCommander.Run(cmd2, CancellationToken.None);
             }
 
             var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
-            var _1 = await uiCommander.Run(cmd, CancellationToken.None);
-            Log.LogInformation("Text entry 2 created: '{ChatEntry}'", _1.Value);
+            _ = await uiCommander.Run(cmd, CancellationToken.None);
         }
 
         Modal.Close(true);
