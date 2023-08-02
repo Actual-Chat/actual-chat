@@ -88,6 +88,7 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public string? ClickedLinkUrl { get; set; }
@@ -111,7 +112,7 @@
             chats => {
                 selectedChats = chats;
             }));
-        await modal.WhenClosed.ConfigureAwait(false);
+        await modal.WhenClosed;
 
         if (!selectedChats.Any())
             return;
@@ -124,6 +125,6 @@
         await UICommander.Run(cmd, CancellationToken.None);
 
         if (selectedChats.Count == 1)
-            ChatUI.SelectChat(selectedChats.First());
+            _ = History.NavigateTo(Links.Chat(selectedChats.First()));
     }
 }
