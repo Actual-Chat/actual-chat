@@ -330,6 +330,9 @@ body.hoverable .btn.btn-x:active .btn-content {
 body.hoverable .btn-h:hover {
     @apply text-03;
 }
+body.hoverable .btn-h.inactive:hover {
+    @apply text-icons-01;
+}
 .btn-h > .c-content {
     @apply relative z-20;
     @apply flex items-center;
@@ -340,6 +343,9 @@ body.hoverable .btn-h:hover {
     @apply invisible;
     @apply bg-header-btn-active;
     @apply w-10 h-10;
+}
+.btn-h.inactive > .c-ground {
+    @apply bg-transparent;
 }
 .btn-h:active > .c-ground {
     @apply visible;

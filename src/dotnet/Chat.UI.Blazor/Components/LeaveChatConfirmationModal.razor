@@ -1,14 +1,12 @@
 @implements IModalView<LeaveChatConfirmationModal.Model>
 
-<DialogFrame Title="Leave chat">
+<DialogFrame Title="Leave chat" Class="modal-xs">
     <Body>
         <p>Are you sure you want to leave this chat?</p>
     </Body>
     <Buttons>
-        <div class="btn-group">
-            <Button Class="btn-cancel" Click="OnCancel">Cancel</Button>
-            <Button Class="btn-error" Click="OnLeave">Leave</Button>
-        </div>
+        <Button Class="btn-modal btn-cancel" Click="OnCancel">Cancel</Button>
+        <Button Class="btn-modal danger" Click="OnLeave">Leave</Button>
     </Buttons>
 </DialogFrame>
 

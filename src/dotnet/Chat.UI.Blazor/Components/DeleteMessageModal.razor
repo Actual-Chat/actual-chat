@@ -9,31 +9,25 @@
             Are you sure you want to delete this message?
         </div>
         <div class="c-wrapper">
-            <div class="c-message">
-                <div class="chat-message group px-1">
-                    <div class="flex-1 flex-y gap-y-2 p-2 pb-1">
-                        <div class="flex-none flex-x gap-x-2">
-                            <div class="flex-none">
-                                <ChatMessageAuthorCircle AuthorSid="@m.Entry.AuthorId"/>
-                            </div>
-                            <div class="flex-1 flex-y overflow-hidden">
-                                <AuthorName AuthorSid="@m.Entry.AuthorId" Class="font-bold text-03"/>
-                                <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.Entry.BeginsAt"/>
-                            </div>
-                        </div>
-                        <div class="message-content">
-                            @if (FirstAttachment != null) {
-                                @if (FirstAttachment.IsVisualMedia()) {
-                                    <VisualMediaAttachment Attachment="@FirstAttachment"/>
-                                } else {
-                                    <FileAttachment Attachment="@FirstAttachment"/>
-                                }
-                            }
-                            <CascadingValue Value="@m.Entry">
-                                <MarkupView Markup="Markup"/>
-                            </CascadingValue>
-                        </div>
+            <div class="chat-message group">
+                <div class="c-author">
+                    <ChatMessageAuthorCircle AuthorSid="@m.Entry.AuthorId"/>
+                    <div class="c-info">
+                        <AuthorName AuthorSid="@m.Entry.AuthorId" Class="font-bold text-03"/>
+                        <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.Entry.BeginsAt"/>
                     </div>
+                </div>
+                <div class="message-content">
+                    @if (FirstAttachment != null) {
+                        @if (FirstAttachment.IsVisualMedia()) {
+                            <VisualMediaAttachment Attachment="@FirstAttachment"/>
+                        } else {
+                            <FileAttachment Attachment="@FirstAttachment"/>
+                        }
+                    }
+                    <CascadingValue Value="@m.Entry">
+                        <MarkupView Markup="Markup"/>
+                    </CascadingValue>
                 </div>
             </div>
         </div>

@@ -14,7 +14,7 @@
     @apply p-4;
 }
 .right-panel-chat-info-item {
-    @apply flex-x;
+    @apply flex-none flex-x;
     @apply overflow-hidden;
     @apply rounded-lg;
 }

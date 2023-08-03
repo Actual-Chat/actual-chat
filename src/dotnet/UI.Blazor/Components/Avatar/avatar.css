@@ -3,6 +3,7 @@
 }
 .avatar-badge > .c-name {
     @apply flex-y;
+    @apply overflow-hidden;
 }
 .avatar-name {
     @apply whitespace-nowrap;

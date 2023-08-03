@@ -154,17 +154,15 @@ body.hoverable .chat-header-title:hover {
     @apply mt-0.5;
 }
 .system-entry .chat-message-markup {
-    @apply flex items-center gap-x-0.5;
-    @apply h-6 md:h-5;
+    @apply flex flex-wrap items-center justify-center gap-x-0.5;
     @apply mt-0.5;
 }
 .system-entry * {
     @apply text-xs font-medium;
 }
 .system-entry .message-content {
-    @apply flex-x justify-center items-center gap-x-2;
+    @apply flex-x flex-wrap justify-center items-center gap-x-2;
     @apply bg-02;
-    @apply rounded-full;
     @apply px-2;
 }
 .system-entry .message-content .avatar-name {

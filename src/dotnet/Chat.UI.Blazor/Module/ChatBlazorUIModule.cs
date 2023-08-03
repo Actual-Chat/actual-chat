@@ -77,7 +77,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
             .Add<AvatarSelectModal.Model, AvatarSelectModal>()
             .Add<NoSecondaryLanguageModal.Model, NoSecondaryLanguageModal>()
             .Add<ChatSettingsModal.Model, ChatSettingsModal>()
-            .Add<InviteAuthorModal.Model, InviteAuthorModal>()
+            .Add<AddMemberModal.Model, AddMemberModal>()
             .Add<NewChatModal.Model, NewChatModal>()
             .Add<OnboardingModal.Model, OnboardingModal>()
             .Add<SettingsModal.Model, SettingsModal>()

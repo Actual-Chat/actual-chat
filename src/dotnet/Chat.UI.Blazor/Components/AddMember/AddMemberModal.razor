@@ -1,26 +1,32 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Contacts
 @using ActualChat.Search
-@implements IModalView<InviteAuthorModal.Model>
+@implements IModalView<AddMemberModal.Model>
 @implements IDisposable
 
-<DialogFrame Class="invite-author-modal" Title="Invite users" HasCloseButton="true">
+@{
+    _viewSettings.CanSubmit = CanInvite;
+}
+
+<DialogFrame
+    Class="add-member-modal"
+    Title="Add members"
+    HasCloseButton="true"
+    NarrowViewSettings="_viewSettings">
     <Body>
     <SearchBox
         @ref="_searchBoxRef"
         Placeholder="Find contacts..."
         MaxLength="@Constants.Chat.MaxSearchFilterLength"
         TextChanged="@OnFilter"/>
-    <div class="invite-author-modal-contact-list">
+    <div class="c-contact-list">
         @foreach (var contact in FilteredContacts) {
-            <div class="invite-author-modal-contact-list-item"
+            <div class="c-item"
                  @key="@contact.Account.Id.Value"
                  @onclick="@(_ => OnContactClick(contact))">
                 <AccountCircle UserSid="@contact.Account.Id" ShowPresence="true"/>
-                <div class="flex-y grow gap-y-1 overflow-hidden">
-                    <span class="text-headline-1 text-02 truncate">
-                        <SearchMatchHighlighter Match="@GetMatch(contact.Account.Avatar.Name)"/>
-                    </span>
+                <div class="avatar-name">
+                    <SearchMatchHighlighter Match="@GetMatch(contact.Account.Avatar.Name)"/>
                 </div>
                 @if (contact.IsExisting) {
                     <Checkbox
@@ -38,25 +44,24 @@
     </div>
     </Body>
     <Buttons>
-        <div class="btn-group">
-            <Button
-                Click="OnCancel"
-                Class="btn-cancel">
-                Cancel
-            </Button>
-            <Button
-                Click="OnInvite"
-                Type="@ButtonType.Submit"
-                IsDisabled="@(!CanInvite)"
-                Class="btn-primary">
-                Invite
-            </Button>
-        </div>
+        <Button
+            Click="OnCancel"
+            Class="btn-cancel btn-modal">
+            Cancel
+        </Button>
+        <Button
+            Click="OnAdd"
+            Type="@ButtonType.Submit"
+            IsDisabled="@(!CanInvite)"
+            Class="btn-primary btn-modal">
+            Add
+        </Button>
     </Buttons>
 </DialogFrame>
 
 @code {
     private SearchBox _searchBoxRef = null!;
+    private DialogFrameNarrowViewSettings _viewSettings = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
@@ -75,13 +80,14 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public InviteAuthorModal()
+    public AddMemberModal()
     {
         DisposeTokenSource = new();
         DisposeToken = DisposeTokenSource.Token;
     }
 
     protected override async Task OnInitializedAsync() {
+        _viewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnAdd, "Add");
         var existingUserIds = new HashSet<UserId>(
             await Authors.ListUserIds(Session, Chat.Id, DisposeToken));
 
@@ -140,7 +146,7 @@
         CanInvite = AllContacts.Any(x => !x.IsExisting && x.IsChecked);
     }
 
-    private async Task OnInvite() {
+    private async Task OnAdd() {
         CanInvite = false;
 
         var userIds = AllContacts
