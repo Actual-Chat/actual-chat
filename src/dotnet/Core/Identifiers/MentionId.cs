@@ -87,12 +87,7 @@ public readonly partial struct MentionId : ISymbolIdentifier<MentionId>
     public static MentionId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<MentionId>(s);
     public static MentionId ParseOrNone(string? s)
-    {
-        if (TryParse(s, out var result))
-            return result;
-        else
-            return StandardError.Format<MentionId>(s).LogWarning(DefaultLog, None);
-    }
+        => TryParse(s, out var result) ? result : None;
 
     public static bool TryParse(string? s, out MentionId result)
     {
