@@ -104,12 +104,12 @@ export class VirtualList {
         this._identity = identity;
         this._isDisposed = false;
         this._abortController = new AbortController();
-        this._spacerRef = this._ref.querySelector(':scope > .spacer-start');
-        this._endSpacerRef = this._ref.querySelector(':scope > .spacer-end');
-        this._containerRef = this._ref.querySelector(':scope > .virtual-container');
+        this._spacerRef = this._ref.querySelector(':scope > .c-spacer-start');
+        this._endSpacerRef = this._ref.querySelector(':scope > .c-spacer-end');
+        this._containerRef = this._ref.querySelector(':scope > .c-virtual-container');
         this._renderStateRef = this._ref.querySelector(':scope > .data.render-state');
         this._renderIndexRef = this._ref.querySelector(':scope > .data.render-index');
-        this._endAnchorRef = this._ref.querySelector(':scope > .end-anchor');
+        this._endAnchorRef = this._ref.querySelector(':scope > .c-end-anchor');
         this._inertialScroll = new InertialScroll(this._ref);
 
         // Events & observers
@@ -184,6 +184,12 @@ export class VirtualList {
             scrollToKey: null,
         };
 
+        // set isRendering as soon as possible
+        const origSetAttribute = this._renderIndexRef.setAttribute;
+        this._renderIndexRef.setAttribute = (qualifiedName: string, value: string) => {
+            origSetAttribute.call(this._renderIndexRef, qualifiedName, value);
+            this._isRendering = true;
+        };
         this.maybeOnRenderEnd([], this._renderEndObserver);
     };
 
@@ -516,6 +522,9 @@ export class VirtualList {
                 // - or skeletons are visible (because browsers can start scrolling automatically to the latest visible element after adding new child elements to the list)
                 // - or we are cleaning up old items removing items before the viewport
                 await this.restoreScrollPosition();
+
+                // ensure scroll position and size are recalculated
+                await fastWriteRaf();
             }
         } finally {
             this._isRendering = false;
@@ -668,7 +677,7 @@ export class VirtualList {
             fastRaf(() => {
                 // double-check as pivots might be recalculated already
                 const pivots = new Array<Pivot>();
-                if (this._pivots.length <= 2) {
+                if (this._pivots.length <= 2 && !this._isRendering) {
                     for (let pivot of this._pivots) {
                         const pivotRef = this.getItemRef(pivot.itemKey);
                         if (pivotRef) {
@@ -816,8 +825,7 @@ export class VirtualList {
     private scrollToEnd(
         useSmoothScroll: boolean = false) {
         debugLog?.log('scrollTo end');
-        const endAnchor = document.getElementsByClassName('end-anchor')[0] as HTMLElement;
-        this.scrollTo(endAnchor, useSmoothScroll, 'end');
+        this.scrollTo(this._endAnchorRef, useSmoothScroll, 'end');
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
@@ -839,36 +847,50 @@ export class VirtualList {
 
             let scrollTop: number | null = null;
             let shouldResync = false;
-            fastRaf({
-                read: () => {
-                    const pivotOffset = pivot.offset;
-                    const itemRect = pivotRef.getBoundingClientRect();
-                    const currentPivotOffset = itemRect.top;
-                    const dPivotOffset = pivotOffset - currentPivotOffset;
-                    scrollTop = this._ref.scrollTop
-                    if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
-                        debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`, pivot);
-                        scrollTop -= dPivotOffset;
-                        shouldResync = true;
-                    }
-                },
-                write: () => {
-                    if (shouldResync) {
-                        // debug helper
-                        // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
-                        // if (DeviceInfo.isIos) {
-                        //     this._ref.style.overflow = 'hidden';
-                        // }
-                        this._ref.scrollTop = scrollTop;
-                        debugLog?.log(`restoreScrollPosition: scroll set`);
-                        // if (DeviceInfo.isIos) {
-                        //     this._ref.style.overflow = '';
-                        // }
-                    } else {
-                        debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
-                    }
-                }
-            });
+
+            // measure scroll position
+            await fastReadRaf();
+            const pivotOffset = pivot.offset;
+            const itemRect = pivotRef.getBoundingClientRect();
+            const currentPivotOffset = itemRect.top;
+            const dPivotOffset = pivotOffset - currentPivotOffset;
+            scrollTop = this._ref.scrollTop
+            if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
+                debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`, pivot);
+                scrollTop -= dPivotOffset;
+                shouldResync = true;
+            }
+
+            // update scroll position if needed
+            if (shouldResync) {
+                // debug helper
+                // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+                // if (DeviceInfo.isIos) {
+                //     this._ref.style.overflow = 'hidden';
+                // }
+                this._ref.scrollTop = scrollTop;
+                debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
+                // if (DeviceInfo.isIos) {
+                //     this._ref.style.overflow = '';
+                // }
+            }
+            else if (this._isNearSkeleton && Math.abs(scrollTop) < PivotSyncEpsilon) {
+                debugLog?.log(`restoreScrollPosition: scrollTop ~= 0`, this._isRendering);
+                // wait for the next frame and remeasure
+                await fastReadRaf();
+                const itemRect = pivotRef.getBoundingClientRect();
+                const currentPivotOffset = itemRect.top;
+                const dPivotOffset = pivotOffset - currentPivotOffset;
+                scrollTop -= dPivotOffset;
+                this._ref.scrollTop = scrollTop;
+                debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
+
+                this.updateViewportThrottled();
+                break;
+            }
+            else
+                debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
+
             break;
         }
     }

@@ -3,10 +3,6 @@
 @using ActualChat.UI.Blazor.Components.Internal
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
-    const string flexBase = "flex flex-nowrap items-stretch content-start justify-start";
-    const string flexClass = $"{flexBase} flex-col";
-    const string invFlexClass = $"{flexBase} flex-col-reverse";
-
     var renderIndex = RenderIndex++;
     var spacerSize = Data.HasVeryFirstItem
         ? 0
@@ -40,32 +36,32 @@
 }
 
 <div @ref="Ref"
-     class="@invFlexClass @Class virtual-list"
+     class="@Class virtual-list"
      style="@Style">
 
     <div @key="VirtualListSpecialKeys.RenderIndex"
          data-render-index="@renderIndex"
-         class="@flexClass flex-none data render-index hidden">
+         class="data render-index">
     </div>
 
     <div @key="VirtualListSpecialKeys.RenderState"
-         class="@flexClass flex-none data render-state hidden">
+         class="data render-state">
         @SystemJsonSerializer.Default.Write(renderState)
     </div>
 
     <div @key="VirtualListSpecialKeys.EndAnchor"
-         class="@flexClass min-h-22 md:min-h-1 end-anchor">
+         class="c-end-anchor">
         &nbsp;
     </div>
 
     <div @key="VirtualListSpecialKeys.EndSpacer"
-         class="@flexClass flex-none spacer spacer-end overflow-y-hidden"
+         class="c-spacer-end"
          style="height: @(endSpacerSize)px">
         <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <ul @key="VirtualListSpecialKeys.Container"
-        class="@flexClass virtual-container">
+        class="c-virtual-container">
         @foreach (var item in items) {
             @if (item.CountAs != 1) {
                 <li id="@item.Key"
@@ -88,7 +84,7 @@
     </ul>
 
     <div @key="VirtualListSpecialKeys.Spacer"
-         class="@invFlexClass flex-none spacer spacer-start overflow-y-hidden"
+         class="c-spacer-start"
          style="height: @(spacerSize)px">
         <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>

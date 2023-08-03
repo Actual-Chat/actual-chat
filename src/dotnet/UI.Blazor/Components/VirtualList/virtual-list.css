@@ -8,18 +8,57 @@
     /*animation-name: scroller-overflow-hack;*/
     animation-fill-mode: forwards;
     animation-duration: 1ms;
+    overflow-anchor: none;
+    @apply flex flex-nowrap flex-col-reverse items-stretch content-start justify-start;
+}
+
+.virtual-list > .data.render-index {
+    @apply flex-none hidden;
+    overflow-anchor: none;
+}
+
+.virtual-list > .data.render-state {
+    @apply flex-none hidden;
+    overflow-anchor: none;
+}
+
+.virtual-list > .c-end-anchor {
+    @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
+    @apply min-h-22 md:min-h-1;
+    overflow-anchor: none;
+}
+
+.virtual-list > .c-end-anchor {
+    @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
+    @apply min-h-22 md:min-h-1;
+    overflow-anchor: none;
+}
+
+.virtual-list > .c-spacer-end {
+    @apply flex flex-nowrap flex-col flex-none items-stretch content-start justify-start;
+    @apply overflow-y-hidden;
+    overflow-anchor: none;
+}
+
+.virtual-list > .c-spacer-start {
+    @apply flex flex-nowrap flex-col-reverse flex-none items-stretch content-start justify-start;
+    @apply overflow-y-hidden;
+    overflow-anchor: none;
 }
 
 .virtual-list::-webkit-scrollbar {
     display: none;
 }
 
-.virtual-list ul.virtual-container {
+.virtual-list > ul.c-virtual-container {
+    @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     list-style-type: none;
+    overflow-anchor: none;
 }
 
-.virtual-list ul.virtual-container li.item {
+.virtual-list > ul.c-virtual-container > li.item {
     @apply flex flex-y;
+    overflow-anchor: auto;
 }
 
 /* TODO: remove if everything is OK */
