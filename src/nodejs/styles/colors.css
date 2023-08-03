@@ -76,6 +76,7 @@
     --selected: #C5D8FF;
     --hover: #F2F6FF;
     --online: #0AA489;
+    --success: #2FCB80;
     --background-banner-success: #E7FFED;
     --text-banner-success: #2FCB5B;
     --background-banner-info: #007AFF1A;
@@ -152,13 +153,6 @@
     --text-04: #d0d2d6;
 
     /* Buttons */
-    --success: #0ea5e9;
-    --success-hover: #0284c7;
-    --success-title: #edf0f3;
-    --success-ring: #94d2fc;
-    --success-outline-hover: #2F3136;
-    --success-outline-title: #0ea5e9;
-
     --cancel: #64748b;
     --cancel-hover: #546174;
     --cancel-title: #edf0f3;

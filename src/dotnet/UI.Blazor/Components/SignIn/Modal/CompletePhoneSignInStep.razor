@@ -1,0 +1,45 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Services
+@using TaskExt = Stl.Async.TaskExt
+@inherits Step;
+
+@{
+    var phone = PhoneSignInModel.Phone;
+    @if (CurrentStep != this || phone is null)
+        return;
+}
+
+<div class="sign-in-step verify-phone-step" @onclick="@TryFocusTotpInput">
+    <div class="c-title">Phone number verification</div>
+    <TotpVerifier @ref="_totpVerifier" Purpose="TotpPurpose.SignIn" Phone="@phone.Value" Verified="OnTotpVerified"/>
+</div>
+
+@code {
+    private TotpVerifier? _totpVerifier;
+
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
+
+    [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
+
+    public override bool IsCompleted { get; } = false;
+
+    protected override Task<bool> Save() {
+        var url = UrlMapper.ToAbsolute(Constants.Auth.Phone.CallbackPath);
+        Nav.NavigateTo(url, true);
+        return TaskExt.TrueTask;
+    }
+
+    protected override void MarkCompleted()
+    { }
+
+    protected override Task<bool> Validate()
+        => TaskExt.TrueTask;
+
+    private Task TryFocusTotpInput()
+        => _totpVerifier?.Focus().AsTask() ?? Task.CompletedTask;
+
+    private Task OnTotpVerified()
+        => Stepper.TryMoveForward().AsTask();
+}

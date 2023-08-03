@@ -20,6 +20,8 @@
 @import './Components/Modal/modal.css';
 @import './Components/Overlays/loading-overlay.css';
 @import './Components/Overlays/reconnect-overlay.css';
+@import './Components/Phone/phone-verifier.css';
+@import './Components/Phone/totp-verifier.css';
 @import './Components/Pic/pic.css';
 @import './Components/PicUpload/pic-upload.css';
 @import './Components/Radio/radio.css';

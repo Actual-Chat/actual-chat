@@ -1,0 +1,9 @@
+.phone-verifier .c-verify {
+    @apply flex-x gap-x-4 items-center;
+}
+.phone-verifier .c-description {
+    @apply text-sm text-icons-01;
+}
+.phone-verifier .c-verify .c-verify-btn {
+    @apply text-sm;
+}

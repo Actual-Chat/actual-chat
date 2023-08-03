@@ -1,0 +1,36 @@
+@using ActualChat.Users
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="phone-verifier @Class">
+    @if (_showTotp) {
+        <TotpVerifier @ref="_totpVerifier" Purpose="TotpPurpose.VerifyPhone" Phone="@Phone" Class="c-totp-verifier" Verified="Verified"/>
+    } else {
+        <div class="c-verify">
+            <Button Class="btn-outline c-verify-btn" Click="OnVerifyPhoneClick">Verify by SMS</Button>
+            <p class="c-description">Please verify your phone number for security reason</p>
+        </div>
+    }
+</div>
+
+@code {
+    private TotpVerifier? _totpVerifier;
+    private bool _showTotp;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string Phone { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback Verified { get; set; }
+
+
+    private Task OnVerifyPhoneClick() {
+        _showTotp = true;
+        return _totpVerifier?.Focus().AsTask() ?? Task.CompletedTask;
+    }
+}

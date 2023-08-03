@@ -38,14 +38,8 @@
 
 /* Sign-in step - header block */
 
-.sign-in-step .c-header {
-    @apply flex-y gap-y-4;
-}
-.sign-in-step .c-header > .c-title {
+.sign-in-step .c-title {
     @apply text-lg font-semibold text-02;
-}
-.sign-in-step .c-header > .c-description {
-    @apply text-lg text-icons-01;
 }
 
 /* Sign-in step - auth providers block */
@@ -64,15 +58,8 @@
 }
 
 /* Sign-in step - verify code step */
-
-.sign-in-step .totp-input {
-    @apply flex-y gap-y-6 justify-center items-center;
-}
-.sign-in-step .totp-input:not(.invalid) > .c-error {
-    @apply hidden;
-}
-.sign-in-step .c-resend-code {
-    @apply flex-x justify-center gap-x-1;
+.verify-phone-step .c-description {
+    @apply text-base;
 }
 
 /* Sign-in step - separator */

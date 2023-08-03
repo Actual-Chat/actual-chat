@@ -48,9 +48,8 @@ public class PhoneAuthHandler : RemoteAuthenticationHandler<PhoneAuthOptions>
         if (user?.IsAuthenticated() != true)
             return HandleRequestResult.NoResult();
 
-        var claims = user.Claims.Select(x => new Claim(x.Key, x.Value)).ToList();
-        var phoneIdentity = user.Identities.Single(x => OrdinalEquals(x.Key.Schema, Constants.Auth.Phone.SchemeName));
-        claims.Add(new Claim(ClaimTypes.NameIdentifier, phoneIdentity.Key.SchemaBoundId));
+        user = user.WithClaim(ClaimTypes.NameIdentifier, user.GetPhoneIdentity().SchemaBoundId);
+        var claims = user.Claims.Select(x => new Claim(x.Key, x.Value));
         var authenticationType = Options.ClaimsIssuer.NullIfEmpty() ?? Constants.Auth.Phone.SchemeName;
         var identity = new ClaimsIdentity(claims, authenticationType);
         return HandleRequestResult.Success(

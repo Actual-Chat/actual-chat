@@ -21,7 +21,7 @@ public record DialogFrameNarrowViewSettings
         => new() {
             Position = DialogFramePosition.Stretch,
             SubmitButtonType = ButtonType.Submit,
-            SubmitButtonText = submitButtonText
+            SubmitButtonText = submitButtonText,
         };
 
     public static DialogFrameNarrowViewSettings SubmitButton(Action callback, string submitButtonText = "")
