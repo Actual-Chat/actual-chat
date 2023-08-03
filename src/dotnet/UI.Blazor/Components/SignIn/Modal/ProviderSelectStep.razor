@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Users
+@using TaskExt = Stl.Async.TaskExt
 @inherits Step;
 @if (CurrentStep != this) {
     return;
@@ -55,7 +56,7 @@
                         id="@_stepModel.CodeFieldId"
                         @bind-Value="_stepModel.Code"
                         list="phoneCodes"
-                        pattern="@StepModel.CountryCodePattern"
+                        pattern="@PhoneValidation.CountryCodePattern"
                         onfocus="this.select()"/>
                     <datalist id="phoneCodes">
                         @foreach (var phoneCode in PhoneCodes.List) {
@@ -75,7 +76,7 @@
                         @bind-Value="_stepModel.Number"
                         autocomplete="tel-national"
                         type="tel"
-                        pattern="@StepModel.NumberPattern"
+                        pattern="@PhoneValidation.NumberPattern"
                         inputmode="tel"/>
                 </FormSection>
             </div>
@@ -127,16 +128,10 @@
         return Task.FromResult(isValid);
     }
 
-    protected override async Task<bool> Save() {
+    protected override Task<bool> Save() {
         var phone = new Phone(_stepModel.Code, _stepModel.Number);
-        var cmd = new PhoneAuth_SendTotp(Session, phone);
-        var (expiresAt, error) = await UICommander.Run(cmd);
-        if (error != null)
-            return false;
-
         PhoneSignInModel.Phone = phone;
-        PhoneSignInModel.TotpExpiresAt = expiresAt;
-        return true;
+        return TaskExt.TrueTask;
     }
 
     protected override void MarkCompleted()
@@ -159,14 +154,11 @@
     }
 
     public sealed class StepModel : FormModel<StepModel> {
-        public const string CountryCodePattern = @"\+[\d\s]+";
-        public const string NumberPattern = @"[\d\s\(\-]+";
-        public const int MinNumberLength = 7;
 
-        [Required, RegularExpression(CountryCodePattern, ErrorMessage = "Country code is incorrect"), CustomValidation(typeof(StepModel), nameof(ValidateCode))]
+        [Required, CountryCode]
         public string Code { get; set; } = PhoneCodes.Default.DisplayCode;
         public string CodeFieldId { get; set; } = "";
-        [Required, RegularExpression(NumberPattern, ErrorMessage = "Phone number is incorrect"), CustomValidation(typeof(StepModel), nameof(ValidateNumber))]
+        [Required, PhoneNumber]
         public string Number { get; set; } = "";
         public string NumberFieldId { get; set; } = "";
 
@@ -174,16 +166,5 @@
             : base("phone-signin", componentIdGenerator) {
         }
 
-        public static ValidationResult? ValidateCode(string value, ValidationContext context) {
-            return PhoneCodes.GetByCode(value) is null
-                ? context.Error("Non-existent country code")
-                : ValidationResult.Success;
-        }
-
-        public static ValidationResult? ValidateNumber(string value, ValidationContext context) {
-            return value.Count(char.IsDigit) < MinNumberLength
-                ? context.Error($"At least {MinNumberLength} digits must be in a phone number")
-                : ValidationResult.Success;
-        }
     }
 }

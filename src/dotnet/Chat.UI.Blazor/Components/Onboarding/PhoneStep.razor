@@ -43,6 +43,7 @@
                 <InputText
                     id="phoneCode"
                     @bind-Value="_stepModel.Code"
+                    pattern="@PhoneValidation.CountryCodePattern"
                     autocomplete="tel-country-code"
                     disabled="@_hasPhoneIdentity"/>
             </FormSection>
@@ -57,9 +58,9 @@
                     id="phoneNumber"
                     @bind-Value="_stepModel.Number"
                     autocomplete="tel-national"
-                    type="number"
-                    pattern="[0-9]*"
-                    inputmode="numeric"
+                    type="tel"
+                    pattern="@PhoneValidation.NumberPattern"
+                    inputmode="tel"
                     disabled="@_hasPhoneIdentity"/>
             </FormSection>
         </div>
@@ -142,15 +143,8 @@
             }
         }
 
-        [Required]
-        public string Code { get; set; } = PhoneCodes.Default.DisplayCode;
-
-        [Required]
-        [Phone]
-        public string Number { get; set; } = "";
-
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; } = "";
+        [Required, CountryCode] public string Code { get; set; } = PhoneCodes.Default.DisplayCode;
+        [Required, PhoneNumber] public string Number { get; set; } = "";
+        [Required, EmailAddress] public string Email { get; set; } = "";
     }
 }

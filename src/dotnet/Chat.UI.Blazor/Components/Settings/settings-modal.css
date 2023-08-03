@@ -14,3 +14,12 @@
     @apply underline;
     @apply cursor-pointer;
 }
+
+.phone-verification-status {
+    @apply flex-x items-center;
+    @apply h-7 px-3 rounded-lg border-none;
+    @apply text-sm;
+}
+.phone-verification-status > i {
+    @apply text-base mr-2;
+}

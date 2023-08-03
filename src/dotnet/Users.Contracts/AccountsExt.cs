@@ -32,7 +32,7 @@ public static class AccountsExt
         else {
             // User updates its own profile
             if (ownAccount.Phone != updatedAccount.Phone) {
-                if (ownAccount.User.HasPhoneIdentity())
+                if (ownAccount.IsPhoneVerified())
                     throw StandardError.Unauthorized("You can't change your phone number.");
                 if (!updatedAccount.Phone.IsValid)
                     throw StandardError.Constraint<Phone>("Incorrect phone number format.");
@@ -43,4 +43,10 @@ public static class AccountsExt
                 throw StandardError.Unauthorized("You can't change your own status.");
         }
     }
+
+    public static bool IsPhoneVerified(this AccountFull account)
+        => account.User.IsPhoneVerified(account.Phone);
+
+    public static bool IsEmailVerified(this AccountFull account)
+        => OrdinalIgnoreCaseEquals(account.User.GetEmail(), account.Email);
 }

@@ -1,5 +1,5 @@
 .modal-frame.own-account-editor-modal {
-    @apply max-w-full md:max-w-90;
+    @apply max-w-full md:max-w-90 md:min-h-160;
 }
 .modal-frame.own-account-editor-modal .dialog-body {
     @apply overflow-y-auto custom-scrollbar;

@@ -1,0 +1,12 @@
+.totp-verifier {
+    @apply flex-y gap-y-4;
+}
+.totp-verifier .c-description {
+    @apply text-sm text-icons-01;
+}
+.totp-verifier .c-resend-code {
+    @apply flex-x justify-center gap-x-1;
+}
+.totp-verifier .totp-input:not(.invalid) > .c-error {
+    @apply hidden;
+}

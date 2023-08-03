@@ -39,6 +39,7 @@
         </Caption>
         <Right>
             <CopyToClipboard ButtonClass="btn-sm transparent tile-hidden-btn" Text="@account.Email"/>
+            <VerificationStatus IsVerified="account.IsEmailVerified()" Class="w-8 h-8"/>
         </Right>
     </TileItem>
 
@@ -48,6 +49,7 @@
         </Icon>
         <Right>
             <CopyToClipboard ButtonClass="btn-sm transparent tile-hidden-btn" Text="@account.Phone.ToReadable()"/>
+            <VerificationStatus IsVerified="account.IsPhoneVerified()" Class="w-8 h-8"/>
         </Right>
         <Content>
             @account.Phone.ToReadable()
