@@ -32,15 +32,6 @@ public partial class MarkupParser : IMarkupParser
 
     // Character classes
 
-    private static readonly Parser<char, char> FirstUrlChar =
-        Token(c => c is 'h' // for http:// and https://
-            or 'f' // for ftp://
-            or 'm' // for mailto:
-            or 't' // for tel:
-            or 'w' // for www.
-            ).Labelled("First URL character");
-    private static readonly Parser<char, char> UrlChar =
-        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%_.,\\-~'".OrdinalContains(c)).Labelled("URL character");
     private static readonly Parser<char, char> WhitespaceChar =
         Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c)).Labelled("whitespace");
     private static readonly Parser<char, char> EndOfLineChar =
@@ -73,6 +64,48 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, string> QuotedName =
         PreToken.Then(NotPreToken.Or(DoublePreToken).ManyString()).Before(PreToken);
 
+    // Regex: Image
+    [GeneratedRegex("\\.(jpg|jpeg|png|gif|png|webp)$", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)]
+    private static partial Regex ImageUrlRegexFactory();
+    private static readonly Regex ImageUrlRegex = ImageUrlRegexFactory();
+
+    // Regex: Url
+
+    private static readonly UInt128 FirstUrlCharBits;
+    private static readonly Parser<char, char> FirstUrlChar =
+        Token(c => FirstUrlCharBits.IsBitSet(c)).Labelled("First URL character");
+    private static readonly Parser<char, char> UrlChar =
+        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%$_.,\\-~'".OrdinalContains(c)).Labelled("URL character");
+
+    private const string UrlProtoRe = @"(http|ftp)s?\:\/\/";
+    private const string UrlHostRe = @"[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*";
+    private const string UrlPortRe = @":(0-9)*";
+    private const string UrlPathRe = @"\/[a-zA-Z0-9\-\.\?\,\'\/\\\+&%\$#_]*";
+    private const string FullUrlRe = $"{UrlProtoRe}{UrlHostRe}({UrlPortRe})?({UrlPathRe})?";
+    private const string ShortUrlRe = $@"www\.{UrlHostRe}({UrlPortRe})?({UrlPathRe})?";
+    private const string UrlRe = $"^({FullUrlRe})|({ShortUrlRe})$";
+
+    [GeneratedRegex(UrlRe, RegexOptions.ExplicitCapture)]
+    private static partial Regex UrlRegexFactory();
+    private static readonly Regex UrlRegex = UrlRegexFactory();
+
+    // Regex: Email
+
+    private static readonly UInt128 FirstEmailCharBits;
+    private static readonly Parser<char, char> FirstEmailChar =
+        Token(c => FirstEmailCharBits.IsBitSet(c)).Labelled("First e-mail character");
+    private static readonly Parser<char, char> EmailChar =
+        Token(c => char.IsLetterOrDigit(c) || ":;/?&#+=%$_.,\\-~'@".OrdinalContains(c)).Labelled("E-mail character");
+
+    private const string EmailNameRe = @"[A-Za-z0-9!#$%&'*+\-\/=?\^_`{|}~][A-Za-z0-9!#$%&'*+\-\/=?\^_`{|}~.]*";
+    private const string ShortEmailRe = $"{EmailNameRe}@{UrlHostRe}";
+    private const string FullEmailRe = $"mailto:{ShortEmailRe}";
+    private const string EmailRe = $"^({FullEmailRe})|({ShortEmailRe})$";
+
+    [GeneratedRegex(EmailRe, RegexOptions.ExplicitCapture)]
+    private static partial Regex EmailRegexFactory();
+    private static readonly Regex EmailRegex = EmailRegexFactory();
+
     // Markup parsers
 
     // Word text & delimiter
@@ -98,33 +131,28 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, Markup> Mention =
         SafeTryOneOf(NamedMention, UnnamedMention);
 
-    // Url
-    private const string ProtoRe = @"((mailto|tel):)|((http|ftp)s?\:\/\/)";
-    private const string HostRe = @"[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*";
-    private const string MaybePortRe = @"(:(0-9)*)?";
-    private const string MaybePathRe = @"(\/[a-zA-Z0-9\-\.\?\,\'\/\\\+&%\$#_]*)?";
-    private const string FullUrlRe = $@"{ProtoRe}{HostRe}{MaybePortRe}{MaybePathRe}";
-    private const string ShortUrlRe = $@"www\.{HostRe}{MaybePortRe}{MaybePathRe}";
-
-    [GeneratedRegex($@"^({FullUrlRe})|({ShortUrlRe})$", RegexOptions.ExplicitCapture)]
-    private static partial Regex UrlRegexFactory();
-
-    private static readonly Regex UrlRegex = UrlRegexFactory();
-
-    private static readonly Parser<char, Markup> Url = (
-        from head in FirstUrlChar
-        from tail in UrlChar.AtLeastOnceString()
-        select head + tail)
-        .Where(s => UrlRegex.IsMatch(s))
-        .Select(s => (Markup)new UrlMarkup(s))
-        .Debug("Url");
-
     // Preformatted text
     private static readonly Parser<char, Markup> PreformattedText =
         Lookahead(Not(CodeBlockToken.Before(NotPreToken.OrEnd())))
             .Then(NotPreToken.Or(DoublePreToken).ManyString().Between(PreToken))
             .Select(s => (Markup)new PreformattedTextMarkup(s))
             .Debug("`");
+
+    // Url
+    private static Parser<char, Markup> WwwUrl => (
+        from head in FirstUrlChar
+        from tail in UrlChar.AtLeastOnceString()
+        select head + tail)
+        .Where(s => UrlRegex.IsMatch(s))
+        .Select(s => (Markup)new UrlMarkup(s, ImageUrlRegex.IsMatch(s) ? UrlMarkupKind.Image : UrlMarkupKind.Www));
+    private static Parser<char, Markup> Email => (
+        from head in FirstEmailChar
+        from tail in EmailChar.AtLeastOnceString()
+        select head + tail)
+        .Where(s => EmailRegex.IsMatch(s))
+        .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Email));
+    private static readonly Parser<char, Markup> Url =
+        SafeTryOneOf(WwwUrl, Email).Debug("Url");
 
     // Mention | PreformattedText | Url | WordText
     private static readonly Parser<char, Markup> NonStylizedMarkup =
@@ -196,4 +224,18 @@ public partial class MarkupParser : IMarkupParser
         SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextBlock).ManyMarkup();
     private static readonly Parser<char, Markup> FullMarkup =
         SafeTryOneOf(WhitespaceBlock, TextBlock, CodeBlock, UnparsedTextAsPlainTextBlock).ManyMarkup();
+
+    // Type initializer
+    static MarkupParser()
+    {
+        for (var c = (char)0; c < 256; c++) {
+            if (char.IsAsciiLetterOrDigit(c) || "!#$%&'*+-/=?^_`{|}~".OrdinalContains(c))
+                FirstEmailCharBits.SetBit(c);
+            if (c is 'h' // for http:// and https://
+                or 'f' // for ftp://
+                or 'w' // for www.
+               )
+                FirstUrlCharBits.SetBit(c);
+        }
+    }
 }

@@ -1,39 +1,45 @@
-@using System.Diagnostics.CodeAnalysis
 @inherits MarkupViewBase<UrlMarkup>
 @{
-    var cls = "url-markup url-markup-" + _urlKind.ToString().ToLower();
+    var cls = Classes.GetValueOrDefault(Markup.Kind) ?? "url-markup url-markup-unknown";
+    var url = Markup.Url;
 }
 
-@switch (_urlKind) {
-case MarkupUrlKind.Local:
+@if (_localUrl is { } localUrl) {
     <a class="@cls"
        href="@(_localUrl!.Value)"
-       @onclick="@(() => OnSpecialUrlClick(MarkupUrlKind.Local, _localUrl.Value))"
+       @onclick="@(() => _ = History.NavigateTo(localUrl))"
        @onclick:preventDefault="true"
        data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, Markup.Url, ""))">
-        @Markup.Url
+        @url
     </a>
-    break;
-case MarkupUrlKind.Image:
-    <a class="@cls"
-       href="@Markup.Url"
-       role="button"
-       @onclick="@(() => OnSpecialUrlClick(MarkupUrlKind.Image, Markup.Url))"
-       @onclick:preventDefault="true">
-        <img draggable="false" src="@Markup.Url" alt="@Markup.Url"/>
-    </a>
-    break;
-default:
-    <a class="@cls" href="@Markup.Url" target="_blank"
-       data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, Markup.Url, ""))">
-        @Markup.Url
-    </a>
-    break;
+    return;
 }
 
+@if (Markup.Kind == UrlMarkupKind.Image) {
+    <a class="@cls"
+       href="@_hrefUrl"
+       role="button"
+       @onclick="() => VisualMediaViewerUI.Show(_hrefUrl)"
+       @onclick:preventDefault="true">
+        <img draggable="false" src="@_hrefUrl" alt="@url"/>
+    </a>
+    return;
+}
+
+<a class="@cls" href="@_hrefUrl" target="_blank"
+   data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, url, ""))">
+    @url
+</a>
+
 @code {
-    private MarkupUrlKind _urlKind;
+    private static readonly Dictionary<UrlMarkupKind, string> Classes = new[] {
+        UrlMarkupKind.Www,
+        UrlMarkupKind.Image,
+        UrlMarkupKind.Email,
+    }.ToDictionary(x => x, x => $"url-markup url-markup-{x.ToString().ToLowerInvariant()}");
+
     private LocalUrl? _localUrl;
+    private string _hrefUrl = "";
     private ChatMessageModel _message = null!;
 
     [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
@@ -41,43 +47,19 @@ default:
 
     protected override void OnParametersSet() {
         _message = new ChatMessageModel(Entry);
-        _urlKind = Markup.IsImage
-            ? MarkupUrlKind.Image
-            : IsLocalUrl(Markup.Url, out _localUrl)
-                ? MarkupUrlKind.Local
-                : MarkupUrlKind.Other;
-    }
-
-    private bool IsLocalUrl(string url, [NotNullWhen(true)] out LocalUrl? localUrl)
-    {
-        if (Markup.Url.StartsWith(History.Nav.BaseUri)) {
-            localUrl = new LocalUrl(History.Nav.ToBaseRelativePath(url));
-            return true;
-        }
-        if (Markup.Url.StartsWith(History.UrlMapper.BaseUrl)) {
-            localUrl = new LocalUrl(History.UrlMapper.ToBaseRelativePath(url));
-            return true;
-        }
-        localUrl = null;
-        return false;
-    }
-
-    private async Task OnSpecialUrlClick(MarkupUrlKind urlKind, string url) {
-        switch (urlKind) {
-        case MarkupUrlKind.Image:
-            await VisualMediaViewerUI.Show(url);
+        var url = Markup.Url;
+        _hrefUrl = url;
+        _localUrl = null;
+        switch (Markup.Kind) {
+        case UrlMarkupKind.Www:
+            if (url.OrdinalStartsWith(History.Nav.BaseUri))
+                _localUrl = new LocalUrl(History.Nav.ToBaseRelativePath(url));
+            else if (url.OrdinalStartsWith(History.UrlMapper.BaseUrl))
+                _localUrl = new LocalUrl(History.UrlMapper.ToBaseRelativePath(url));
             break;
-        case MarkupUrlKind.Local:
-            _ = History.NavigateTo(url);
+        case UrlMarkupKind.Email:
+            _hrefUrl = url.OrdinalStartsWith("mailto:") ? url : "mailto:" + url;
             break;
-        default:
-            throw new ArgumentOutOfRangeException(nameof(urlKind));
         }
-    }
-
-    private enum MarkupUrlKind {
-        Other,
-        Local,
-        Image,
     }
 }

@@ -33,11 +33,11 @@ public class MarkupParserTest : TestBase
     {
         var m = Parse<UrlMarkup>("https://habr.com/ru/all/", out var text);
         m.Url.Should().Be(text);
-        m.IsImage.Should().BeFalse();
+        m.Kind.Should().Be(UrlMarkupKind.Www);
 
         m = Parse<UrlMarkup>("https://console.cloud.google.com/logs/query;query=resource.labels.container_name%3D%22actual-chat-app%22;timeRange=PT1H;summaryFields=:false:32:beginning:false;cursorTimestamp=2022-05-23T10:19:37.057723681Z?referrer=search&project=actual-chat-app-prod", out text);
         m.Url.Should().Be(text);
-        m.IsImage.Should().BeFalse();
+        m.Kind.Should().Be(UrlMarkupKind.Www);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class MarkupParserTest : TestBase
     {
         var m = Parse<UrlMarkup>("https://habr.com/ru/all/?q=1", out var text);
         m.Url.Should().Be(text);
-        m.IsImage.Should().BeFalse();
+        m.Kind.Should().Be(UrlMarkupKind.Www);
     }
 
     [Fact]
@@ -116,7 +116,24 @@ public class MarkupParserTest : TestBase
     {
         var m = Parse<UrlMarkup>("https://pravlife.org/sites/field/image/13_48.jpg", out var text);
         m.Url.Should().Be(text);
-        m.IsImage.Should().BeTrue();
+        m.Kind.Should().Be(UrlMarkupKind.Image);
+
+        m = Parse<UrlMarkup>("www.pravlife.org/sites/field/image/13_48.jpg", out text);
+        m.Url.Should().Be(text);
+        m.Kind.Should().Be(UrlMarkupKind.Image);
+    }
+
+
+    [Fact]
+    public void EmailTest()
+    {
+        var m = Parse<UrlMarkup>("whatever@gmail.com", out var text);
+        m.Url.Should().Be(text);
+        m.Kind.Should().Be(UrlMarkupKind.Email);
+
+        m = Parse<UrlMarkup>("mailto:whatever@gmail.com", out text);
+        m.Url.Should().Be(text);
+        m.Kind.Should().Be(UrlMarkupKind.Email);
     }
 
     [Fact]
