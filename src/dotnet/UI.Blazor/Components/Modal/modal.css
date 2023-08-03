@@ -101,7 +101,7 @@ body.narrow .modal-frame.modal-xs .c-text {
     @apply max-h-screen;
 }
 
-.modal-frame:not(:has(.modal-header)) .dialog-body {
+.modal-frame:not(:has(.modal-header)):not(:has(.modal-header-interactive)) .dialog-body {
     @apply pt-4;
 }
 
