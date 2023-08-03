@@ -9,22 +9,30 @@
     var applyingChangesClass = m.IsApplyingChanges || (isRecordingInTheChat && !m.IsConnected) ? "applying-changes" : "";
     var isMicrophoneCaptured = m.IsMicrophoneCaptured;
     var isConnected = m.IsConnected;
-    var (forceDisplay, tooltip) = (isRecordingInTheChat, isMicrophoneCaptured, isConnected) switch {
-        (false, _, _) => (false, ""),
-        (_, false, _) => (true, "Starting recording..."),
-        (_, _, false) => (true, "Reconnecting..."),
-        _ => (false, "Recording..."),
+    var (forceDisplay, tooltip, left) = (isRecordingInTheChat, isMicrophoneCaptured, isConnected) switch {
+        (false, _, _) => (false, "", ""),
+        (_, false, _) => (true, "Starting recording...", "4.6rem"),
+        (_, _, false) => (true, "Reconnecting...", "4rem"),
+        _ => (false, "Recording...", "3.5rem"),
     };
+    var tooltipPosition = forceDisplay ? FloatingPosition.None : FloatingPosition.Top;
+    var dynamicTooltip = forceDisplay ? null : tooltip;
 }
 
 @if (m.HasMicrophonePermission != false) {
     <div class="recorder-wrapper @animatorClass @applyingChangesClass">
+        @if (forceDisplay) {
+            <div class="c-tooltip">
+                <div class="c-tooltip-text">@tooltip</div>
+                <div class="c-tooltip-arrow" style="left:@left"></div>
+            </div>
+        }
         <ButtonRound
             Class="record-off-btn"
             Click="@OnClick"
             MustKeepAwake="true"
-            Tooltip="@tooltip"
-            TooltipPosition="FloatingPosition.Top"
+            Tooltip="@dynamicTooltip"
+            TooltipPosition="@tooltipPosition"
             @onpointerup="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
@@ -33,8 +41,8 @@
         <ButtonRound
             Class="record-on-btn"
             Click="@OnClick"
-            Tooltip="@tooltip"
-            TooltipPosition="FloatingPosition.Top"
+            Tooltip="@dynamicTooltip"
+            TooltipPosition="@tooltipPosition"
             @onpointerup="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">

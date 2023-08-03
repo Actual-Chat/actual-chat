@@ -43,7 +43,6 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 }
 .chat-audio-panel .language-button,
 .chat-audio-panel .playback-wrapper,
-.chat-audio-panel .recorder-wrapper,
 .chat-audio-panel .recorder-button {
     @apply rounded-full;
     @apply transition-all ease-linear duration-100;
@@ -51,12 +50,9 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .chat-audio-panel .recorder-wrapper {
     @apply border;
 }
-.chat-audio-panel .recorder-wrapper.applying-changes {
+.chat-audio-panel .recorder-wrapper.applying-changes .record-off-btn.btn,
+.chat-audio-panel .recorder-wrapper.applying-changes .record-on-btn.btn {
     @apply opacity-50;
-}
-.chat-audio-panel .recorder-wrapper.disconnected .record-on-btn.btn .btn-content,
-body.hoverable .chat-audio-panel .recorder-wrapper.disconnected .record-on-btn.btn:hover .btn-content {
-    @apply bg-05;
 }
 .recorder-wrapper .recorder-icon {
     @apply h-10 w-10;
@@ -278,6 +274,9 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply scale-100;
     @apply opacity-100;
 }
+.chat-audio-panel .recorder-wrapper.record-off.applying-changes .record-off-btn.btn {
+    @apply opacity-50;
+}
 .chat-audio-panel .recorder-wrapper.record-off-to-on .record-off-btn.btn {
     @apply scale-0;
     @apply opacity-0;
@@ -285,6 +284,9 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .chat-audio-panel .recorder-wrapper.record-off-to-on .record-on-btn.btn {
     @apply scale-100;
     @apply opacity-100;
+}
+.chat-audio-panel .recorder-wrapper.record-off-to-on.applying-changes .record-on-btn.btn {
+    @apply opacity-50;
 }
 
 /* From "on" state */
@@ -296,6 +298,9 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply scale-100;
     @apply opacity-100;
 }
+.chat-audio-panel .recorder-wrapper.record-on.applying-changes .record-on-btn.btn {
+    @apply opacity-50;
+}
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-on-btn.btn {
     @apply scale-0;
     @apply opacity-0;
@@ -303,6 +308,9 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .chat-audio-panel .recorder-wrapper.record-on-to-off .record-off-btn.btn {
     @apply scale-100;
     @apply opacity-100;
+}
+.chat-audio-panel .recorder-wrapper.record-on-to-off.applying-changes .record-off-btn.btn {
+    @apply opacity-50;
 }
 
 .modal-frame.menu-styled-modal {
@@ -320,3 +328,13 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .modal-frame.menu-styled-modal .dialog-body {
     @apply gap-y-4;
 }
+
+.recorder-wrapper > .c-tooltip {
+    @apply relative bg-01 -top-11 h-10 left-0 text-base text-02 px-[12px] py-[7px] pointer-events-none rounded-lg whitespace-nowrap z-tooltip;
+    filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
+}
+
+.recorder-wrapper > .c-tooltip > .c-tooltip-arrow {
+    @apply absolute -bottom-1 bg-01 w-[8px] h-[8px] rotate-45;
+}
+
