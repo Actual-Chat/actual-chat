@@ -1,6 +1,5 @@
 .message-reactions {
-    @apply flex-x gap-1 items-center;
-    @apply h-6 md:h-5;
+    @apply flex-x flex-wrap gap-0.5 md:gap-1 items-center;
     @apply mt-0.5;
     @apply select-none;
 }
@@ -28,6 +27,9 @@
     @apply invisible;
     @apply cursor-pointer rounded-full;
     @apply hover:bg-round-focus text-icons-03;
+}
+body.hoverable .message-reactions-add {
+    @apply hidden;
 }
 .message-reactions-add-icon {
     @apply w-5 h-5;

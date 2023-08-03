@@ -1,0 +1,30 @@
+.add-member-modal.modal-frame {
+    @apply md:min-w-90 md:max-w-90 md:h-160 md:max-h-160;
+}
+.add-member-modal .dialog-body {
+    @apply flex-y gap-y-2;
+}
+.add-member-modal .dialog-buttons {
+    @apply md:pt-2;
+}
+.add-member-modal .c-contact-list {
+    @apply flex-y grow;
+    @apply overflow-y-scroll custom-scrollbar-outside;
+}
+.add-member-modal .c-contact-list > .c-item {
+    @apply flex-x items-center gap-x-2;
+    @apply h-12;
+    @apply rounded-md;
+}
+.add-member-modal .c-contact-list > .c-item,
+.add-member-modal .c-contact-list > .c-item * {
+    @apply cursor-pointer;
+}
+.add-member-modal .c-contact-list > .c-item > .avatar-name {
+    @apply grow;
+    @apply truncate;
+    @apply text-headline-1 text-02;
+}
+.add-member-modal .c-contact-list > .c-item:hover > .avatar-name {
+    @apply text-01;
+}

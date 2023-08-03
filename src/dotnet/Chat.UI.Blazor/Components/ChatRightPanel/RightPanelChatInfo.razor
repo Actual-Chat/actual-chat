@@ -151,7 +151,7 @@
         });
 
     private Task OnInviteClick()
-        => ModalUI.Show(new InviteAuthorModal.Model(Chat));
+        => ModalUI.Show(new AddMemberModal.Model(Chat));
 
     private void OnShareClick(string link)
         => ShareUI.ShareLink(link, "Share chat", $"\"{Chat.Title}\" on Actual Chat");

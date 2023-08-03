@@ -170,6 +170,7 @@ input.input-underlined {
 }
 .list-view-layout > .layout-header > .c-content {
     @apply gap-x-2;
+    @apply md:pl-2.5;
 }
 .list-view-layout .layout-body {
     @apply justify-between;

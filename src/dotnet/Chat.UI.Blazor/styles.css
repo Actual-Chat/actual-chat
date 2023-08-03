@@ -15,7 +15,7 @@
 @import './Components/ChatMessageEditor/chat-message-editor.css';
 @import './Components/ChatSearchBox/chat-search-box.css';
 @import './Components/ForwardMessage/forward-message-modal.css';
-@import './Components/InviteAuthor/invite-author-modal.css';
+@import './Components/AddMember/add-member-modal.css';
 @import './Components/MarkupEditor/markup-editor.css';
 @import './Components/MarkupParts/markup-parts.css';
 @import './Components/Navbar/navbar.css';

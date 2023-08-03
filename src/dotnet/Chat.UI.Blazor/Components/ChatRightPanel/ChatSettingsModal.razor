@@ -164,13 +164,11 @@
         }
         </Body>
         <Buttons>
-            <div class="btn-group">
-                @{
-                    var submitClass = $"btn-primary {_formRef.IsValid.ToEnabledClass()}";
-                }
-                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
-                <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
-            </div>
+            @{
+                var submitClass = $"btn-primary btn-modal {_formRef.IsValid.ToEnabledClass()}";
+            }
+            <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
         </Buttons>
     </DialogFrame>
 </Form>

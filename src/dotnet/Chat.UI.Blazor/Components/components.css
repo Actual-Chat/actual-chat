@@ -9,11 +9,19 @@
     @apply overflow-y-scroll;
     @apply custom-scrollbar-outside;
 }
-.delete-message-modal .c-message {
-    @apply flex-initial flex-y;
+.delete-message-modal .chat-message {
+    @apply flex-1 flex-y gap-y-2;
+    @apply p-2;
     @apply overflow-hidden;
     @apply rounded-lg;
     @apply border-2 border-bg-04;
+}
+.delete-message-modal .chat-message .c-author {
+    @apply flex-none flex-x gap-x-2;
+}
+.delete-message-modal .chat-message .c-author .c-info {
+    @apply flex-1 flex-y;
+    @apply overflow-hidden;
 }
 .delete-message-modal .message-content {
     @apply min-h-fit;
