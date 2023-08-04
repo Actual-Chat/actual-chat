@@ -60,11 +60,11 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply min-w-0;
 }
 .chat-message .forwarded-author-header-icon {
-    @apply font-medium text-primary;
+    @apply font-normal text-primary;
 }
 .chat-message .forwarded-author-header-title {
     @apply max-h-6 overflow-hidden truncate;
-    @apply font-medium text-primary;
+    @apply font-normal text-primary;
 }
 .chat-message .forwarded-author-header-author-name {
     @apply max-h-6 overflow-hidden truncate;
