@@ -146,15 +146,6 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply text-title-1 text-02;
 }
 
-.modal-header-interactive .btn-submit {
-    @apply text-headline-1;
-    @apply text-accent;
-}
-
-.modal-header-interactive .btn-submit:disabled {
-    @apply text-icons-02;
-}
-
 .dialog-body {
     @apply flex-1 flex-y items-stretch;
     @apply px-4;

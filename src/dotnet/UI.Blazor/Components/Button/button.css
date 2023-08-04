@@ -371,3 +371,11 @@ body.hoverable .btn-h.inverted:hover {
 body.narrow .btn-h.inverted {
     @apply text-04;
 }
+
+.btn-submit {
+    @apply text-headline-1;
+    @apply text-accent;
+}
+.btn-submit:disabled {
+    @apply text-icons-02;
+}
