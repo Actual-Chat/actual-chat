@@ -1,8 +1,18 @@
 @using ActualChat.Contacts
-@inherits FusionComponentBase
+@inherits ComputedStateComponent<bool>
 @{
     var chat = Chat;
+    var hasSelection = State.Value;
 }
+
+@if (hasSelection) {
+    <div class="c-content">
+        <SelectionHeader />
+    </div>
+
+    return;
+}
+
 <div class="c-content">
     @if (IsLeftNavigateButtonVisible) {
         <HeaderButton Click="OnOpenLeftPanelClick" Class="md:hidden">
@@ -36,10 +46,20 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
+        => await SelectionUI.HasSelection.Use(cancellationToken);
 
     private void OnSwitchRightPanelClick()
         => PanelsUI.Right.Toggle();
