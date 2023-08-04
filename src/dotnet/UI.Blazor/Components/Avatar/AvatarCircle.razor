@@ -10,10 +10,10 @@
 <div class="avatar-circle">
     <div class="c-content">
         @if (ReferenceEquals(Avatar, Avatar.Loading)) {
-            <div class="c-skeleton @_avatarClass"></div>
+            <div class="c-skeleton @_class"></div>
         } else {
-            <img draggable="false" class="@_avatarClass @Class c-avatar"
-                 src="@_avatarPictureUrl" alt="avatar" title="@title"
+            <img draggable="false" class="c-avatar @_class"
+                 src="@_pictureUrl" alt="avatar" title="@title"
                  @onclick="@Click"/>
         }
 
@@ -22,23 +22,22 @@
 </div>
 
 @code {
-    private string _avatarClass = "";
-    private string _avatarPictureUrl = "";
+    private string _class = "";
+    private string _pictureUrl = "";
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
     [Parameter] public Presence Presence { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
-    [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool HasTooltip { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
-        _avatarClass = GetSizeClass();
+        _class = GetSizeClass();
         if (Click.HasDelegate)
-            _avatarClass += " cursor-pointer";
-        _avatarPictureUrl = UrlMapper.AvatarPicturePreview128Url(Avatar);
+            _class += " cursor-pointer";
+        _pictureUrl = UrlMapper.AvatarPicturePreview128Url(Avatar);
     }
 
     private string GetSizeClass() {

@@ -2,7 +2,6 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Media
 @namespace ActualChat.UI.Blazor.Components
-
 @{
     var sizeClass = $"pic-size-{(int)Size}";
     var cursorClass = EnableImagePreview || Click.HasDelegate ? "pic-show-cursor" : "";
@@ -41,13 +40,17 @@
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
-        if (Picture != null)
+        if (Picture != null) {
             _pictureUrl = UrlMapper.ImagePreview128Url(UrlMapper.PictureUrl(Picture));
-        else
-            _picStyle = $"background-color: {GenerateColor()}";
+            _picStyle = "";
+        }
+        else {
+            _pictureUrl = "";
+            _picStyle = $"background-color: {GetBackgroundColor()}";
+        }
     }
 
-    private string GenerateColor() {
+    private string GetBackgroundColor() {
         var hash = Title.GetDjb2HashCode();
         var h = hash % 360;
         return $"hsl({h}, 30%, 80%)";
