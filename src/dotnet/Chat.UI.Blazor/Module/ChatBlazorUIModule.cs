@@ -46,6 +46,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new PlayableTextPaletteProvider());
         services.AddScoped(c => new ActiveChatsUI(c));
+        services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c));
@@ -88,6 +89,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
             .Add<LeaveChatConfirmationModal.Model, LeaveChatConfirmationModal>()
             .Add<ForwardMessageModal.Model, ForwardMessageModal>()
             .Add<ShareModalModel, ShareModal>()
+            .Add<IncomingShareModal.Model, IncomingShareModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map

@@ -33,5 +33,6 @@
 @import './Components/Settings/settings-modal.css';
 @import './Components/Selection/selection-header.css';
 @import './Components/Share/share-modal.css';
+@import './Components/IncomingShare/incoming-share-modal.css';
 
 @import './Pages/user-page.css';

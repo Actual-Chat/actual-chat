@@ -1,4 +1,5 @@
 using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Chat.UI.Blazor.Components;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
@@ -34,6 +35,9 @@ public static partial class MauiProgram
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddAndroid(android => {
             var livenessProbeAdapter = new AndroidWebViewLivenessProbeAdapter();
+            var incomingShare = new IncomingShareHandler();
+            android.OnPostCreate(incomingShare.OnPostCreate);
+            android.OnNewIntent(incomingShare.OnNewIntent);
             android.OnResume(livenessProbeAdapter.OnResume);
             android.OnPause(livenessProbeAdapter.OnPause);
             android.OnActivityResult(OnActivityResult);

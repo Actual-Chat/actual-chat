@@ -1,0 +1,100 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Search
+@implements IModalView<IncomingShareModal.Model>
+
+@{
+    var shareButtonClass = _selectedChats.Count == 0 ? "hidden" : "";
+    shareButtonClass += " btn-modal share-button";
+    var canShare = _selectedChats.Count > 0;
+}
+
+<DialogFrame
+    Class="share-incoming-modal"
+    HasCloseButton="true"
+    Title="Choose Contact"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
+    <Body>
+        <SearchBoxNew
+            Placeholder="Who would you like to share with"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <ContactSelect
+            SearchPhrase="_searchPhrase"
+            SelectionChanged="OnSelectionChanged" />
+    </Body>
+    <Footer>
+        @if (canShare) {
+            <EmbeddedMessageEditor
+                Text="@_comment"
+                Placeholder="Add your comment (optional)"
+                TextChanged="OnCommentChanged"/>
+        }
+    </Footer>
+    <Buttons>
+        <Button Class="@shareButtonClass" IsDisabled="@(!canShare)" Click="OnSendClicked">
+            <i class="icon-arrow-right text-2xl"></i>
+            <span>Send to selected contacts</span>
+        </Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
+    private IReadOnlyCollection<ChatId> _selectedChats = Array.Empty<ChatId>();
+    private string _comment = "";
+
+    [Inject] private IServiceProvider Services { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnFilter(string filter) {
+        _searchPhrase = filter.ToSearchPhrase(true, false);
+        StateHasChanged();
+    }
+
+    private void OnSelectionChanged(IReadOnlyCollection<ChatId> selectedChats) {
+        _selectedChats = selectedChats;
+    }
+
+    private Task OnSendClicked()
+        => ShareWithContacts(_comment);
+
+    private async Task ShareWithContacts(string comment)
+    {
+        var text = ModalModel.Text;
+
+        var session = Services.Session();
+        var uiCommander = Services.UICommander();
+        foreach (var chatId in _selectedChats) {
+            if (!comment.IsNullOrEmpty()) {
+                var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
+                _ = await uiCommander.Run(cmd2, CancellationToken.None);
+            }
+
+            var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
+            _ = await uiCommander.Run(cmd, CancellationToken.None);
+        }
+
+        Modal.Close(true);
+
+        var history = Services.GetRequiredService<History>();
+        await history.NavigateTo(Links.Chat(_selectedChats.First()));
+    }
+
+    private Task OnCommentChanged(string text) {
+        _comment = text;
+        return Task.CompletedTask;
+    }
+
+    public record Model {
+        public Model(string plainText) {
+            MimeType = System.Net.Mime.MediaTypeNames.Text.Plain;
+            Text = plainText;
+        }
+
+        public IncomingShareFile[] Files { get; } = Array.Empty<IncomingShareFile>();
+        public string MimeType { get; } = "";
+        public string Text { get; } = "";
+    }
+}
