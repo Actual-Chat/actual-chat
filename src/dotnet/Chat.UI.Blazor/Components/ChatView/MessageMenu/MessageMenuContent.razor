@@ -3,10 +3,22 @@
 
 @{
     var entry = ChatEntry;
-    var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null;
+    var hasSelection = SelectionUI.HasSelection.Value;
+    var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null && !hasSelection;
     var canEditOrDelete = this is { CanWrite: true, IsOwnEntry: true }
-                          && ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false };
+                          && ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false }
+                          && !hasSelection;
     var messageLink = Links.Chat(entry.Id).ToAbsolute(UrlMapper);
+    var isSelected = SelectionUI.IsSelected(entry.Id);
+    var canReply = CanWrite && !IsSystem && !isSelected;
+    var canSelect = !IsSystem && !isSelected;
+    var canUnselect = !IsSystem && isSelected;
+    var canCopyText = entry.Kind == ChatEntryKind.Text && !entry.Content.IsNullOrEmpty();
+    var canCopyLink = !ClickedLinkUrl.IsNullOrEmpty();
+    var canCopyCode = !ClickedCode.IsNullOrEmpty();
+    var canCopyMessageLink = !IsSystem;
+    var canForward = !IsSystem && !hasSelection;
+    var canForwardSelection = !IsSystem && isSelected && hasSelection;
 }
 
 <div class="message-menu">
@@ -23,7 +35,7 @@
             Click="@(() => Edit(entry))">
         </MenuEntry>
     }
-    @if (CanWrite && !IsSystem) {
+    @if (canReply) {
         <MenuEntry
             Icon="icon-reply"
             FocusOnEditor="true"
@@ -31,7 +43,21 @@
             Click="@(() => Reply(entry))">
         </MenuEntry>
     }
-    @if (entry.Kind == ChatEntryKind.Text && !entry.Content.IsNullOrEmpty()) {
+    @if (canSelect) {
+        <MenuEntry
+            Icon="icon-select"
+            Text="Select"
+            Click="@(() => Select(entry))">
+        </MenuEntry>
+    }
+    @if (canUnselect) {
+        <MenuEntry
+            Icon="icon-select"
+            Text="Unselect"
+            Click="@(() => Unselect(entry))">
+        </MenuEntry>
+    }
+    @if (canCopyText) {
         <CopyTrigger Tooltip="" CopyText="@entry.Content" Class="ac-menu-item !p-0">
             <MenuEntry
                 Icon="icon-copy"
@@ -39,7 +65,7 @@
             </MenuEntry>
         </CopyTrigger>
     }
-    @if (!ClickedLinkUrl.IsNullOrEmpty()) {
+    @if (canCopyLink) {
         <CopyTrigger Tooltip="" CopyText="@ClickedLinkUrl" Class="ac-menu-item !p-0">
             <MenuEntry
                 Icon="icon-copy"
@@ -47,15 +73,15 @@
             </MenuEntry>
         </CopyTrigger>
     }
-    @if (!ClickedCode.IsNullOrEmpty()) {
-        <CopyTrigger Tooltip="" CopyText="@ClickedCode.Trim()" Class="ac-menu-item !p-0">
+    @if (canCopyCode) {
+        <CopyTrigger Tooltip="" CopyText="@ClickedCode?.Trim()" Class="ac-menu-item !p-0">
             <MenuEntry
                 Icon="icon-copy"
                 Text="Copy code">
             </MenuEntry>
         </CopyTrigger>
     }
-    @if (!IsSystem) {
+    @if (canCopyMessageLink) {
         <CopyTrigger Tooltip="" CopyText="@messageLink" Class="ac-menu-item !p-0">
             <MenuEntry
                 Icon="icon-link-2"
@@ -63,11 +89,18 @@
             </MenuEntry>
         </CopyTrigger>
     }
-    @if (!IsSystem) {
+    @if (canForward) {
         <MenuEntry
             Icon="icon-share"
             Text="Forward"
             Click="@(() => Forward(entry))">
+        </MenuEntry>
+    }
+    @if (canForwardSelection) {
+        <MenuEntry
+            Icon="icon-share"
+            Text="Forward selection"
+            Click="@(() => ForwardSelection())">
         </MenuEntry>
     }
     @if (canEditOrDelete) {
@@ -86,6 +119,7 @@
     [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
@@ -105,26 +139,59 @@
     private Task Edit(ChatEntry chatEntry)
         => ChatEditorUI.Edit(chatEntry);
 
-    private async Task Forward(ChatEntry chatEntry) {
-        IReadOnlyCollection<ChatId> selectedChats = Array.Empty<ChatId>();
-        var modal = await ModalUI.Show(new ForwardMessageModal.Model(
-            new []{ chatEntry.ChatId },
-            chats => {
-                selectedChats = chats;
-            }));
-        await modal.WhenClosed;
+    private async Task Select(ChatEntry chatEntry)
+        => await SelectionUI.Select(chatEntry.Id);
 
+    private void Unselect(ChatEntry chatEntry)
+        => SelectionUI.Unselect(chatEntry.Id);
+
+    private async Task Forward(ChatEntry chatEntry) {
+        var chatId = chatEntry.ChatId;
+        var selectedChats = await SelectChats(chatId);
         if (!selectedChats.Any())
             return;
 
         var cmd = new Chats_ForwardTextEntries(
             Session,
-            chatEntry.ChatId,
+            chatId,
             new ApiArray<ChatEntryId>(chatEntry.Id),
             new ApiArray<ChatId>(selectedChats));
         await UICommander.Run(cmd, CancellationToken.None);
 
         if (selectedChats.Count == 1)
             _ = History.NavigateTo(Links.Chat(selectedChats.First()));
+    }
+
+    private async Task ForwardSelection() {
+        var selection = SelectionUI.Selection.Value;
+        var chatId = selection.First().ChatId;
+        var selectedChats = await SelectChats(chatId);
+        if (!selectedChats.Any()) {
+            return;
+        }
+
+        var cmd = new Chats_ForwardTextEntries(
+            Session,
+            chatId,
+            new ApiArray<ChatEntryId>(selection),
+            new ApiArray<ChatId>(selectedChats));
+        await UICommander.Run(cmd, CancellationToken.None);
+
+        SelectionUI.Clear();
+
+        if (selectedChats.Count == 1)
+            _ = History.NavigateTo(Links.Chat(selectedChats.First()));
+    }
+
+    private async Task<IReadOnlyCollection<ChatId>> SelectChats(ChatId chatId)
+    {
+        IReadOnlyCollection<ChatId> selectedChats = Array.Empty<ChatId>();
+        var modal = await ModalUI.Show(new ForwardMessageModal.Model(
+            new [] { chatId },
+            chats => {
+                selectedChats = chats;
+            }));
+        await modal.WhenClosed;
+        return selectedChats;
     }
 }
