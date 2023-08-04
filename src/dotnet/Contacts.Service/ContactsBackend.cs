@@ -81,8 +81,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invIndex = context.Operation().Items.GetOrDefault<long>(int.MinValue);
-            if (invIndex != int.MinValue) {
+            var invIndex = context.Operation().Items.GetOrDefault(long.MinValue);
+            if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
                 if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
                     _ = ListIds(ownerId, default); // Create, Delete or move into MinLoadLimit
@@ -144,7 +144,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1);
+        context.Operation().Items.Set(change.Update.HasValue ? oldContactIds.IndexOf(id) : -1L);
         contact = dbContact.ToModel();
         return contact;
     }
@@ -156,8 +156,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         var ownerId = id.OwnerId;
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            var invIndex = context.Operation().Items.GetOrDefault<long>(int.MinValue);
-            if (invIndex != int.MinValue) {
+            var invIndex = context.Operation().Items.GetOrDefault(long.MinValue);
+            if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
                 if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
                     _ = ListIds(ownerId, default); // Create, Delete or move into MinLoadLimit
@@ -184,7 +184,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         dbContact.UpdateFrom(contact);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(contactIds.IndexOf(id));
+        context.Operation().Items.Set((long)contactIds.IndexOf(id));
     }
 
     // Events
