@@ -1,4 +1,3 @@
-using ActualChat.Comparison;
 using MemoryPack;
 using Stl.Versioning;
 
@@ -10,8 +9,6 @@ public partial record Account(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
 ) : IHasId<UserId>, IHasVersion<long>, IRequirementTarget
 {
-    public static IdAndVersionEqualityComparer<Account, UserId> EqualityComparer { get; } = new();
-
     public static Account None => AccountFull.None;
     public static Account Loading => AccountFull.Loading;
 
@@ -33,7 +30,7 @@ public partial record Account(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public bool IsGuestOrNone => Id.IsGuestOrNone;
 
-    // This record relies on version-based equality
-    public virtual bool Equals(Account? other) => EqualityComparer.Equals(this, other);
-    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
+    // This record relies on referential equality
+    public virtual bool Equals(Account? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

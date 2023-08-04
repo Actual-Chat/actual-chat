@@ -1,4 +1,3 @@
-using ActualChat.Comparison;
 using ActualChat.Users;
 using MemoryPack;
 using Stl.Versioning;
@@ -11,10 +10,8 @@ public partial record Author(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ): IHasId<AuthorId>, IHasVersion<long>, IRequirementTarget
 {
-    public static IdAndVersionEqualityComparer<Author, AuthorId> EqualityComparer { get; } = new();
-
-    public static Author None { get; } = new() { Avatar = Avatar.None };
-    public static Author Loading { get; } = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
+    public static readonly Author None = new() { Avatar = Avatar.None };
+    public static readonly Author Loading = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
     public static Requirement<Author> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Author>()),
@@ -45,7 +42,7 @@ public partial record Author(
         Avatar = avatar;
     }
 
-    // This record relies on version-based equality
-    public virtual bool Equals(Author? other) => EqualityComparer.Equals(this, other);
-    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
+    // This record relies on referential equality
+    public virtual bool Equals(Author? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

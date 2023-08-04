@@ -1,6 +1,6 @@
 namespace ActualChat.Chat.UI.Blazor.Testing;
 
-[ParameterComparer(typeof(ByValueParameterComparer))]
+[ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed class TestListItemRef : IVirtualListItem
 {
     public int Id { get; }

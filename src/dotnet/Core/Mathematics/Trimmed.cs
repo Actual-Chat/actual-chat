@@ -4,8 +4,8 @@ using Stl.Fusion.Blazor;
 
 namespace ActualChat.Mathematics;
 
-[ParameterComparer(typeof(ByValueParameterComparer))]
 [StructLayout(LayoutKind.Auto)]
+[ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public readonly partial record struct Trimmed<T>
     : IAdditionOperators<Trimmed<T>, Trimmed<T>, Trimmed<T>>,

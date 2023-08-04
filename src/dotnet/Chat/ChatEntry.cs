@@ -12,8 +12,8 @@ public sealed partial record ChatEntry(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<ChatEntryId>, IHasVersion<long>, IRequirementTarget
 {
-    public static IdAndVersionEqualityComparer<ChatEntry, ChatEntryId> EqualityComparer { get; } = new();
-    public static ChatEntry Loading { get; } = new(default, -1); // Should differ by Id & Version from None
+    public static readonly VersionEqualityComparer<ChatEntry, ChatEntryId> VersionEqualityComparer = new();
+    public static readonly ChatEntry Loading = new(default, -1); // Should differ by Id & Version from None
 
     public static Requirement<ChatEntry> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<ChatEntry>()),
@@ -69,7 +69,8 @@ public sealed partial record ChatEntry(
     [MemoryPackConstructor]
     public ChatEntry() : this(ChatEntryId.None) { }
 
-    // This record relies on version-based equality
-    public bool Equals(ChatEntry? other) => EqualityComparer.Equals(this, other);
-    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
+    // This record relies on referential equality
+    public bool Equals(ChatEntry? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    public bool VersionEquals(ChatEntry? other) => VersionEqualityComparer.Equals(this, other);
 }

@@ -9,8 +9,7 @@ public sealed record BannerDef(
     public void Dismiss()
         => DismissHandler?.Invoke(this);
 
-    // This record relies on reference-based equality
-
+    // This record relies on referential equality
     public bool Equals(BannerDef? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

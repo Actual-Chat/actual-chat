@@ -48,7 +48,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         if (ReferenceEquals(this, other))
             return true;
 
-        return Entry.Equals(other.Entry)
+        return Entry.VersionEquals(other.Entry)
             && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
             && IsBlockEnd == other.IsBlockEnd

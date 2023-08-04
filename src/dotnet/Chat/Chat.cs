@@ -1,4 +1,3 @@
-using ActualChat.Comparison;
 using MemoryPack;
 using Stl.Fusion.Blazor;
 using Stl.Versioning;
@@ -14,8 +13,6 @@ public sealed partial record Chat(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
-    public static IdAndVersionEqualityComparer<Chat, ChatId> EqualityComparer { get; } = new();
-
     public static Requirement<Chat> MustExist { get; } = Requirement.New(
         new(() => StandardError.NotFound<Chat>()),
         (Chat? c) => c is { Id.IsNone: false });
@@ -42,9 +39,9 @@ public sealed partial record Chat(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public ChatKind Kind => Id.Kind;
 
-    // This record relies on version-based equality
-    public bool Equals(Chat? other) => EqualityComparer.Equals(this, other);
-    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
+    // This record relies on referential equality
+    public bool Equals(Chat? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

@@ -34,7 +34,7 @@ public sealed partial record AvatarFull(
     public new AvatarFull WithPicture(Picture? picture)
         => (AvatarFull) base.WithPicture(picture);
 
-    // This record relies on version-based equality
-    public bool Equals(AvatarFull? other) => EqualityComparer.Equals(this, other);
-    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
+    // This record relies on referential equality
+    public bool Equals(AvatarFull? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

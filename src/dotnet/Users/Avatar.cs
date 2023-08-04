@@ -1,5 +1,4 @@
-﻿using ActualChat.Comparison;
-using ActualChat.Media;
+﻿using ActualChat.Media;
 using MemoryPack;
 using Stl.Fusion.Blazor;
 using Stl.Versioning;
@@ -13,8 +12,6 @@ public partial record Avatar(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
-    public static IdAndVersionEqualityComparer<Avatar, Symbol> EqualityComparer { get; } = new();
-
     public const string GuestName = "Guest";
     public static Avatar None { get; } = new(Symbol.Empty, 0);
     public static Avatar Loading { get; } = new(Symbol.Empty, -1); // Should differ by ref. from None
@@ -63,7 +60,7 @@ public partial record Avatar(
         };
     }
 
-    // This record relies on version-based equality
-    public virtual bool Equals(Avatar? other) => EqualityComparer.Equals(this, other);
-    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
+    // This record relies on referential equality
+    public virtual bool Equals(Avatar? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

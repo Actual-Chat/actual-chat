@@ -22,9 +22,9 @@ public sealed partial record AuthorFull(AuthorId Id, long Version = 0) : Author(
     public AuthorFull(UserId userId, AuthorId id, long version = 0) : this(id, version)
         => UserId = userId;
 
-    // This record relies on version-based equality
-    public bool Equals(AuthorFull? other) => EqualityComparer.Equals(this, other);
-    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
+    // This record relies on referential equality
+    public bool Equals(AuthorFull? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

@@ -41,9 +41,9 @@ public sealed partial record AccountFull(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
     public string FullName => $"{Name} {LastName}".Trim();
 
-    // This record relies on version-based equality
-    public bool Equals(AccountFull? other) => EqualityComparer.Equals(this, other);
-    public override int GetHashCode() => EqualityComparer.GetHashCode(this);
+    // This record relies on referential equality
+    public bool Equals(AccountFull? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 
     // Deserialization handlers
 

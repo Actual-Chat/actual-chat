@@ -68,6 +68,10 @@ public sealed partial record Media : IHasId<MediaId>, IRequirementTarget
         MetadataJson = metadataJson;
     }
 
+    // This record relies on referential equality
+    public bool Equals(Media? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+
     // Private methods
 
     private T GetMetadataValue<T>(T @default = default!, [CallerMemberName] string symbol = "")

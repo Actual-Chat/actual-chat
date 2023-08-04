@@ -47,16 +47,10 @@ public partial class AccountUI
 
     private bool TrySetOwnAccount(AccountFull account, out AccountFull oldAccount)
     {
-        // NOTE(AY): Set(_ => ...) below ensures equality comparison doesn't happen,
-        // and we want to avoid it here, coz Account changes when its Avatar changes,
-        // but this change happens w/o its Version change (avatars are stored in
-        // account settings - see Avatars_SetDefault command handler), thus
-        // Account.EqualityComparer won't see such changes.
-
         oldAccount = _ownAccount.Value;
         var isChanged = !ReferenceEquals(oldAccount, account);
         if (isChanged)
-            _ownAccount.Set(_ => account);
+            _ownAccount.Value = account;
         _whenLoadedSource.TrySetResult();
         return isChanged;
     }
