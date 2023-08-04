@@ -3,6 +3,7 @@ import { delayAsync, serialize } from 'promises';
 import { DeviceInfo } from 'device-info';
 import { Disposable, DisposableBag, fromSubscription } from 'disposable';
 import { DocumentEvents, tryPreventDefaultForEvent } from 'event-handling';
+import { fromEvent } from 'rxjs';
 import { Gesture, Gestures } from 'gestures';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { Log } from 'logging';
@@ -11,11 +12,12 @@ import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 const { debugLog } = Log.get('SideNav');
 
 const Deceleration = 2; // 1 = full width/second^2
-const PullBoundary = 0.35; // 35% of the screen width
-const PrePullDistance1 = 5; // Normal pre-pull distance in CSS pixels
+const PullBoundary = 0.333; // 33% of the screen width
+const PrePullDistance1 = 10; // Normal pre-pull distance in CSS pixels
 const PrePullDistance2 = 20; // Pre-pull distance over control
 const PrePullDurationMs = 20;
 const MinPullDurationMs = 20;
+const MaxChatViewScroll = 40;
 const MaxSetVisibilityWaitDurationMs = 1000;
 
 enum SideNavSide {
@@ -230,7 +232,8 @@ class SideNavPullDetectGesture extends Gesture {
             const isOpenSign = sideNav.isOpen ? 1 : -1;
             const openDirectionSign = isLeft ? 1 : -1;
             const allowedDirectionSign = openDirectionSign * -isOpenSign;
-            if (!offset.isHorizontal() || Math.abs(Math.sign(offset.x) - allowedDirectionSign) > 0.1) {
+            const isHorizontal = offset.isHorizontal(1.732); // 1/tan(30deg) = 1.732
+            if (!isHorizontal || Math.abs(Math.sign(offset.x) - allowedDirectionSign) > 0.1) {
                 // Wrong direction
                 debugLog?.log(`SideNavPullDetectGesture[${sideNav.side}].touchMove: wrong direction`);
                 this.dispose();
@@ -251,6 +254,7 @@ class SideNavPullDetectGesture extends Gesture {
             this.dispose();
         }
 
+        const chatViewDiv = document.querySelector('.chat-view.virtual-list');
         this.addDisposables(
             DocumentEvents.capturedPassive.touchCancel$.subscribe(_ => this.dispose()),
             DocumentEvents.capturedPassive.touchEnd$.subscribe(e => {
@@ -258,6 +262,9 @@ class SideNavPullDetectGesture extends Gesture {
                 this.dispose();
             }),
             DocumentEvents.capturedPassive.touchMove$.subscribe(e => move(e)),
+            chatViewDiv
+                ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => this.dispose()))
+                : null,
         );
     }
 }
@@ -278,16 +285,18 @@ class SideNavPullGesture extends Gesture {
         const isOpenSign = sideNav.isOpen ? 1 : -1;
         const openDirectionSign = isLeft ? 1 : -1;
         const allowedDirectionSign = openDirectionSign * -isOpenSign;
+        const chatViewDiv = document.querySelector('.chat-view.virtual-list');
+        const initialChatViewScrollTop = chatViewDiv?.scrollTop;
         this.state = initialState;
 
-        const endMove = (event: TouchEvent, isCancelled: boolean) => {
+        const endMove = (event: TouchEvent | null, isCancelled: boolean) => {
             if (this.state === null)
                 return;
 
             debugLog?.log(`SideNavPullGesture[${sideNav.side}].endMove:`, event, ', isCancelled:', isCancelled, ', state:', this.state);
 
             const moveDuration = Date.now() - this.state.startedAt;
-            if (event.type === 'touchstart' || moveDuration < MinPullDurationMs)
+            if (event === null || event.type === 'touchstart' || moveDuration < MinPullDurationMs)
                 isCancelled = true;
 
             const coords = getCoords(event);
@@ -340,8 +349,7 @@ class SideNavPullGesture extends Gesture {
 
             const coords = getCoords(event);
             const offset = coords.sub(origin);
-            if (!offset.isHorizontal()) {
-                // Wrong direction
+            if (!offset.isHorizontal()) { // >45 deg. vertical
                 endMove(event, true);
                 return;
             }
@@ -371,6 +379,14 @@ class SideNavPullGesture extends Gesture {
                 DocumentEvents.active.touchCancel$.subscribe(e => endMove(e, true)),
                 DocumentEvents.active.touchStart$.subscribe(e => endMove(e, true)), // Just in case
                 DocumentEvents.active.touchMove$.subscribe(move),
+                chatViewDiv
+                    ? fromSubscription(fromEvent(chatViewDiv, 'scroll').subscribe(_ => {
+                        // This doesn't work on Safari - i.e. it still drags the chat view while you move:
+                        // chatViewDiv.scrollTop = initialChatViewScrollTop;
+                        if (Math.abs(chatViewDiv.scrollTop - initialChatViewScrollTop) > MaxChatViewScroll)
+                            endMove(null, true);
+                    }))
+                    : null,
             );
         }
     }
