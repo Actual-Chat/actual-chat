@@ -20,6 +20,12 @@
 }
 
 @if (m.HasMicrophonePermission != false) {
+    @if (forceDisplay) {
+        <div class="narrow-recorder-tooltip">
+            <div class="c-tooltip-text">@tooltip</div>
+            <div class="c-tooltip-arrow" style="left:@left"></div>
+        </div>
+    }
     <div class="recorder-wrapper @animatorClass @applyingChangesClass">
         @if (forceDisplay) {
             <div class="c-tooltip">
