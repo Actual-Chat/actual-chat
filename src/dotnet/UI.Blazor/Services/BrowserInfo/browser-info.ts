@@ -96,7 +96,7 @@ export class BrowserInfo {
         if (DeviceInfo.isEdge)
             classList.add('device-edge');
         if (DeviceInfo.isWebKit)
-            classList.add('device-safari');
+            classList.add('device-webkit');
 
         if (DeviceInfo.isTouchCapable)
             classList.add('touch-capable');
