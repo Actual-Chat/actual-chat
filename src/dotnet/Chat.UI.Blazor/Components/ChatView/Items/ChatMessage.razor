@@ -22,8 +22,9 @@
     var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
+    var selectedClass = m.IsSelected ? "replied-message" : "";
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
-    var cls = $"{systemClass} {ownMessageClass} {mentionClass} {marginClass} {highlightClass} {repliedClass} message-wrapper";
+    var cls = $"{systemClass} {ownMessageClass} {mentionClass} {marginClass} {highlightClass} {repliedClass} {selectedClass} message-wrapper";
 }
 
 @if (message.DateLine.HasValue) {
@@ -147,6 +148,7 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
+    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
@@ -220,11 +222,15 @@
         var forwardedChat = !entry.ForwardedChatEntryId.IsNone
             ? await Chats.Get(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken)
             : null;
+        var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken);
+        var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
             IsHighlighted = isHighlighted,
             IsReplyTarget = isReplyTarget,
+            IsSelected = selectedChatEntries.Contains(entry.Id),
+            HasSelection = hasSelection,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
         };
@@ -286,6 +292,8 @@
         public bool IsHighlighted { get; init; }
         public bool IsReplyTarget { get; init; }
         public bool IsOwnAuthorMentioned { get; init; }
+        public bool IsSelected { get; init; }
+        public bool HasSelection { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; set; }
     }
