@@ -42,6 +42,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddService<ChatListUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
+        fusion.AddService<SelectionUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new PlayableTextPaletteProvider());
         services.AddScoped(c => new ActiveChatsUI(c));
