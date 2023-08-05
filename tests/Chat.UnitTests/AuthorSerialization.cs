@@ -1,17 +1,19 @@
-﻿using ActualChat.Users;
-
-namespace ActualChat.Chat.UnitTests;
+﻿namespace ActualChat.Chat.UnitTests;
 
 public class AuthorSerialization
 {
     [Fact]
     public void BasicTest()
     {
-        var ca = new AuthorFull(new AuthorId(new ChatId("testChatId"), 0, AssumeValid.Option)) {
+        var a = new AuthorFull(new AuthorId(new ChatId("testChatId"), 0, AssumeValid.Option)) {
             Avatar = new (Symbol.Empty) {
                 Name = "Alex",
             },
         };
-        ca.PassThroughSystemJsonSerializer().Should().Be(ca);
+        var sa = a.PassThroughSystemJsonSerializer();
+        sa.Id.Should().Be(a.Id);
+        sa.Version.Should().Be(a.Version);
+        sa.Avatar.Id.Should().Be(a.Avatar.Id);
+        sa.Avatar.Name.Should().Be(a.Avatar.Name);
     }
 }

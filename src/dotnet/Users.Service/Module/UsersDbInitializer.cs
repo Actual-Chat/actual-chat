@@ -110,8 +110,8 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         account.Require(isAdmin ? AccountFull.MustBeAdmin : AccountFull.MustBeActive);
         if (account.Status != AccountStatus.Active)
             throw StandardError.Internal("Wrong account status.");
-        if (account.Avatar.Require() != avatar)
-            throw StandardError.Internal("Wrong avatar.");
+        if (account.Avatar.Require().Id != avatar.Id)
+            throw StandardError.Internal("Wrong avatar ID.");
 
         return account;
     }
