@@ -1,0 +1,36 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Module
+@implements IAsyncDisposable
+
+@code {
+    private IJSObjectReference _jsRef = null!;
+    private DotNetObjectReference<SelectionHost> _blazorRef = null!;
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string Selected { get; set; } = ChatEntryId.None;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            _blazorRef = DotNetObjectReference.Create(this);
+            var jsCreate = $"{ChatBlazorUIModule.ImportName}.SelectionHost.create";
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(jsCreate, _blazorRef, Selected);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnSelect(ChatEntryId chatEntryId)
+        => await SelectionUI.Select(chatEntryId);
+
+    [JSInvokable]
+    public void OnUnselect(ChatEntryId chatEntryId)
+        => SelectionUI.Unselect(chatEntryId);
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose");
+        _jsRef = null!;
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
+    }
+}
