@@ -8,7 +8,6 @@
     /*animation-name: scroller-overflow-hack;*/
     animation-fill-mode: forwards;
     animation-duration: 1ms;
-    overflow-anchor: none;
     @apply flex flex-nowrap flex-col-reverse items-stretch content-start justify-start;
 }
 
@@ -53,12 +52,15 @@
 .virtual-list > ul.c-virtual-container {
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     list-style-type: none;
-    overflow-anchor: none;
 }
 
 .virtual-list > ul.c-virtual-container > li.item {
     @apply flex flex-y;
     overflow-anchor: auto;
+}
+
+.virtual-list > ul.c-virtual-container > li.item.new {
+    overflow-anchor: none;
 }
 
 /* TODO: remove if everything is OK */
