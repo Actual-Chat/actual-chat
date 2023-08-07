@@ -3,7 +3,7 @@
 @using Stl.CommandR.Internal
 
 <ButtonRound
-    Class="chat-language-toggle" Click="@OnClick">
+    Class="options-btn" Click="@OnClick">
     <i class="icon-options-2 text-2xl font-thin"></i>
 </ButtonRound>
 
@@ -12,7 +12,6 @@
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
-    private void OnClick() {
-        _ = ModalUI.Show(new TranscriptionOptionsModal.Model(Chat));
-    }
+    private void OnClick()
+        => ModalUI.Show(new TranscriptionOptionsModal.Model(Chat));
 }

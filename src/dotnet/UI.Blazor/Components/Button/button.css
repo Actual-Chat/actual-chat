@@ -387,8 +387,8 @@ body.narrow .btn-h.inverted {
     @apply bg-03;
 }
 .two-btn-group > button {
-    @apply flex items-center justify-center;
-    @apply w-1/2 h-8;
+    @apply flex-1 flex items-center justify-center;
+    @apply h-8;
     @apply rounded-lg;
     @apply bg-transparent;
     @apply text-02;

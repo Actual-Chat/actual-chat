@@ -2,10 +2,10 @@
 @using ActualChat.UI.Blazor.Events
 @implements IModalView<TranscriptionOptionsModal.Model>
 
-<DialogFrame Title="Transcription options" Class="modal-sm" HasCloseButton="true">
+<DialogFrame Title="Transcription options" Class="transcription-options-modal modal-sm" HasCloseButton="true">
     <Body>
     <LanguageButtonGroup Chat="@ModalModel.Chat"/>
-    <OptionsItem Chat="@ModalModel.Chat">
+    <OptionsItem Chat="@ModalModel.Chat" IsOn="true">
         <Left>
             <i class="icon-transcription text-2xl"></i>
         </Left>
@@ -16,6 +16,31 @@
             <Toggle IsChecked="true" Class="toggle-sm"/>
         </Right>
     </OptionsItem>
+
+    <OptionsItem Chat="@ModalModel.Chat" IsOn="false">
+        <Left>
+            <i class="icon-radio-button-on-fill text-2xl"></i>
+        </Left>
+        <Title>
+            Record voice
+        </Title>
+        <Right>
+            <Toggle IsChecked="false" Class="toggle-sm"/>
+        </Right>
+    </OptionsItem>
+
+    <OptionsItem Chat="@ModalModel.Chat" IsOn="true">
+        <Left>
+            <i class="icon-volume-up text-2xl"></i>
+        </Left>
+        <Title>
+            Speaker
+        </Title>
+        <Right>
+            <Toggle IsChecked="true" Class="toggle-sm"/>
+        </Right>
+    </OptionsItem>
+
     </Body>
 </DialogFrame>
 

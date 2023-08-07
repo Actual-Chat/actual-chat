@@ -48,10 +48,9 @@ body.narrow .modal-frame.modal-sm {
 }
 body.narrow .modal-frame.modal-xs {
     @apply absolute;
-    @apply left-4 right-4;
+    @apply left-4 right-4 bottom-10;
     @apply min-h-fit max-w-none;
     @apply rounded-xl;
-    bottom: 4vh;
 }
 .modal-frame.modal-xs .c-text {
     @apply flex-y gap-y-2;
