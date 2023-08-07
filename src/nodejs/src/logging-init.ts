@@ -77,6 +77,7 @@ export type LogScope =
     | 'MarkupEditor'
     | 'MessageEditor'
     | 'SideNav'
+    | 'SelectionHost'
     | 'TextBox'
     | 'TooltipHost'
     | 'VisualMediaViewer';

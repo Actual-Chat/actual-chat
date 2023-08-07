@@ -5,8 +5,14 @@
     if (ReferenceEquals(m, Model.None))
         return;
 
+    if (!m.Selection.Any())
+        return;
+
     var messageCount = m.Selection.Count;
+    var firstSelected = m.Selection.First();
 }
+
+<SelectionHost Selected="@firstSelected" />
 
 @if (ScreenSize.IsNarrow()) {
     <div class="selection-header">

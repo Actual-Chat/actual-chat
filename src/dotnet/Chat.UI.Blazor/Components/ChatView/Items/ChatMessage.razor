@@ -59,6 +59,7 @@
 }
 
 <div class="@cls"
+     data-chat-entry-id="@(Message.Entry.Id)"
      data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.FalseString))"
      data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.FalseString, "", ""))"
      data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
