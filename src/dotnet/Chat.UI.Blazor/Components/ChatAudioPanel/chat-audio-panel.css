@@ -367,7 +367,16 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply absolute -bottom-1 bg-01 w-[8px] h-[8px] rotate-45;
 }
 
+.transcription-options-modal > .dialog-body {
+    @apply gap-y-1;
+}
+.transcription-options-modal .language-btn-group {
+    @apply mb-2;
+}
 .options-item {
-    @apply flex-x items-center;
+    @apply flex-x items-center gap-x-4;
     @apply h-12;
+}
+.options-item > .c-title {
+    @apply flex-1 flex-y;
 }
