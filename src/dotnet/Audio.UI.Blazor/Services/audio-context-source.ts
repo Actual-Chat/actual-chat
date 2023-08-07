@@ -158,7 +158,14 @@ export class AudioContextSource {
                     // Let's try to test whether AudioContext is broken and fix
                     try {
                         lastTestAt = Date.now();
-                        if (BrowserInfo.appKind !== 'MauiApp') {
+                        if (BrowserInfo.appKind === 'MauiApp') {
+                            if (context.state === 'closed')
+                                // noinspection ExceptionCaughtLocallyJS
+                                throw new Error(`${logScope}.test: AudioContext is closed.`);
+                            else if (context.state === 'suspended')
+                                await this.interactiveResume(context);
+                        }
+                        else {
                             // Skip test() call for MAUI as it doesn't exclusively use audio output or microphone;
                             // note that it will be called as part of `fix` call anyway.
                             await this.test(context, true);
