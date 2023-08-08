@@ -6,7 +6,7 @@ using Stl.Versioning;
 
 namespace ActualChat.Chat;
 
-[ParameterComparer(typeof(ByRefParameterComparer))]
+[ParameterComparer(typeof(ByIdAndVersionParameterComparer<ChatId, long>))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Chat(
     [property: DataMember, MemoryPackOrder(0)] ChatId Id,
