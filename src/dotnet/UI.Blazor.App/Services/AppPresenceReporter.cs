@@ -1,6 +1,8 @@
 using ActualChat.Chat.UI.Blazor.Services;
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using Stl.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -10,6 +12,7 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     private UserActivityUI? _userActivityUI;
     private ChatAudioUI? _chatAudioUI;
     private ICommander? _commander;
+    private RpcHub? _rpcHub;
     private MomentClockSet? _clocks;
     private ILogger? _log;
     private IMutableState<Moment> _lastCheckInAt;
@@ -19,8 +22,9 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
     private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
     private ICommander Commander => _commander ??= Services.Commander();
+    private RpcHub RpcHub => _rpcHub ??= Services.RpcHub();
     private MomentClockSet Clocks => _clocks ??= Services.Clocks();
-    private Moment Now => Clocks.SystemClock.Now;
+    private Moment Now => Clocks.CpuClock.Now;
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public AppPresenceReporter(IServiceProvider services)
@@ -91,8 +95,16 @@ public class AppPresenceReporter : WorkerBase, IComputeService
     private async Task CheckIn(bool isActive, CancellationToken cancellationToken)
     {
         try {
+            await RpcHub
+                .WhenClientPeerConnected(cancellationToken)
+                .WaitAsync(Constants.Presence.CheckInClientConnectTimeout, cancellationToken)
+                .ConfigureAwait(false);
             await Commander.Call(new UserPresences_CheckIn(Session, isActive), cancellationToken).ConfigureAwait(false);
             _lastCheckInAt.Value = Now;
+        }
+        catch (TimeoutException) {
+            Log.LogInformation("CheckIn postponed (disconnected)");
+            _lastCheckInAt.Value += Constants.Presence.CheckInRetryDelay;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "CheckIn failed");

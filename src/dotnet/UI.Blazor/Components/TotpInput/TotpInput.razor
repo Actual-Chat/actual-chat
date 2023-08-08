@@ -24,6 +24,8 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.{nameof(TotpInput)}.create";
+
     private const int Length = Constants.Auth.Phone.TotpLength;
     private ElementReference[] _inputRefs = new ElementReference[Length];
     private int?[] _digits = new int?[Length];
@@ -43,11 +45,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.{nameof(TotpInput)}.create",
-                _ref,
-                _inputRefs,
-                _blazorRef);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _ref, _inputRefs, _blazorRef);
         }
     }
 

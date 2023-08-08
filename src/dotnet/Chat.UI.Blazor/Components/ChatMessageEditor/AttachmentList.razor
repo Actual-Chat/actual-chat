@@ -59,6 +59,8 @@
 }
 
 @code {
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.AttachmentList.create";
+
     private readonly object _lock = new();
     private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
     private ImmutableList<Attachment> _attachments = ImmutableList<Attachment>.Empty;
@@ -83,9 +85,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IAttachmentListBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>($"{ChatBlazorUIModule.ImportName}.AttachmentList.create",
-                BlazorRef,
-                FilePickerRef);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, BlazorRef, FilePickerRef);
             _whenReadySource.TrySetResult();
         }
     }

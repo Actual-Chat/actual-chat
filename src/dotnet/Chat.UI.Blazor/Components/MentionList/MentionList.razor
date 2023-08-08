@@ -28,6 +28,8 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.MentionList.create";
+
     private string? _lastFilter;
     private MentionSearchResult? _selection;
     private DotNetObjectReference<MentionList> BlazorRef { get; set; } = null!;
@@ -62,10 +64,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{ChatBlazorUIModule.ImportName}.MentionList.create",
-                Ref, BlazorRef
-                );
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
         }
         await base.OnAfterRenderAsync(firstRender);
     }

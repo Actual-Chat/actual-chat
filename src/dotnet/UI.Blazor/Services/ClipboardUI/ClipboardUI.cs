@@ -4,14 +4,16 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class ClipboardUI
 {
-    private readonly IJSRuntime _js;
+    private static readonly string JSSelectAndGetMethod = $"{BlazorUICoreModule.ImportName}.selectAndGet";
+
+    private IJSRuntime JS { get; }
 
     public ClipboardUI(IJSRuntime js)
-        => _js = js;
+        => JS = js;
 
     public virtual ValueTask<string> ReadText()
-        => _js.InvokeAsync<string>("navigator.clipboard.readText");
+        => JS.InvokeAsync<string>("navigator.clipboard.readText");
 
     protected virtual ValueTask<string> GetTextFrom(ElementReference inputRef)
-        => _js.InvokeAsync<string>($"{BlazorUICoreModule.ImportName}.selectAndGet", inputRef);
+        => JS.InvokeAsync<string>(JSSelectAndGetMethod, inputRef);
 }

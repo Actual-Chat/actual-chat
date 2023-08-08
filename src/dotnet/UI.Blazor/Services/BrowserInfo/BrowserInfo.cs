@@ -5,6 +5,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class BrowserInfo : IBrowserInfoBackend, IDisposable
 {
+    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.BrowserInfo.init";
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
     private readonly IMutableState<bool> _isVisible;
@@ -56,17 +57,16 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
 
     public virtual ValueTask Initialize(List<object?>? initCalls = null)
     {
-        var jsMethod = $"{BlazorUICoreModule.ImportName}.BrowserInfo.init";
         BackendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         if (initCalls != null) {
-            initCalls.Add(jsMethod);
+            initCalls.Add(JSInitMethod);
             initCalls.Add(2);
             initCalls.Add(BackendRef);
             initCalls.Add(AppKind.ToString());
             return default;
         }
 
-        return JS.InvokeVoidAsync(jsMethod, BackendRef, AppKind.ToString());
+        return JS.InvokeVoidAsync(JSInitMethod, BackendRef, AppKind.ToString());
     }
 
     [JSInvokable]

@@ -33,6 +33,8 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.MenuHost.create";
+
     private MenuModel? _menu;
     private string? _jsMenuId;
     private IJSObjectReference _jsRef = null!;
@@ -137,8 +139,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
-            var identifier = $"{BlazorUICoreModule.ImportName}.MenuHost.create";
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(identifier, _blazorRef);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef);
         }
     }
 

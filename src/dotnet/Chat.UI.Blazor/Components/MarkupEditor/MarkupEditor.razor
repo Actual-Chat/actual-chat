@@ -10,6 +10,8 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.MarkupEditor.create";
+
     private TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
     private MentionListManager? _lastMentionListManager;
     private Action<MentionSearchResult> _onMentionSelected;
@@ -63,11 +65,7 @@
             return;
 
         BlazorRef = DotNetObjectReference.Create<IMarkupEditorBackend>(this);
-        JSRef = await JS.InvokeAsync<IJSObjectReference>(
-            $"{ChatBlazorUIModule.ImportName}.MarkupEditor.create",
-            Ref,
-            BlazorRef,
-            Autofocus);
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef, Autofocus);
         _whenReadySource.TrySetResult();
     }
 

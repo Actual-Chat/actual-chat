@@ -4,6 +4,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class UserActivityUI : IUserActivityUIBackend, IDisposable
 {
+    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.UserActivityUI.init";
+
     private readonly IMutableState<Moment> _activeUntil;
     private readonly DotNetObjectReference<IUserActivityUIBackend> _blazorRef;
 
@@ -21,9 +23,7 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
             Now + Constants.Presence.CheckPeriod,
             nameof(ActiveUntil));
         _blazorRef = DotNetObjectReference.Create<IUserActivityUIBackend>(this);
-        _ = JS.InvokeAsync<IJSObjectReference>(
-            $"{BlazorUICoreModule.ImportName}.UserActivityUI.init",
-            _blazorRef,
+        _ = JS.InvokeAsync<IJSObjectReference>(JSInitMethod, _blazorRef,
             Constants.Presence.ActivityPeriod.TotalMilliseconds,
             Constants.Presence.CheckPeriod.TotalMilliseconds);
     }

@@ -3,6 +3,8 @@
 @implements IAsyncDisposable
 
 @code {
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.SelectionHost.create";
+
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<SelectionHost> _blazorRef = null!;
 
@@ -14,8 +16,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
-            var jsCreate = $"{ChatBlazorUIModule.ImportName}.SelectionHost.create";
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(jsCreate, _blazorRef, Selected);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef, Selected);
         }
     }
 

@@ -20,6 +20,7 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
     private static RandomStringGenerator IdGenerator { get; } = new(3, Alphabet.AlphaNumeric);
 
     private BubbleModel? _bubble;
@@ -84,11 +85,10 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             _blazorRef = DotNetObjectReference.Create(this);
-            var jsCreate = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
             await BrowserInfo.WhenReady;
             await BubbleUI.WhenReadyToShowBubbles();
             var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(jsCreate, _blazorRef, readBubbles);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef, readBubbles);
         }
     }
 

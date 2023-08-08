@@ -6,6 +6,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class SessionTokens : WorkerBase, IComputeService
 {
+    private static readonly string JSSetCurrentMethod = $"{BlazorUICoreModule.ImportName}.SessionTokens.setCurrent";
+
     private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.Unchecked);
     private volatile SecureToken? _current;
 
@@ -68,10 +70,9 @@ public sealed class SessionTokens : WorkerBase, IComputeService
     private async Task AutoRefresh(CancellationToken cancellationToken)
     {
         var minLifespan = MinLifespan + RefreshReserve;
-        var jsSetMethodName = $"{BlazorUICoreModule.ImportName}.SessionTokens.setCurrent";
         while (!cancellationToken.IsCancellationRequested) {
             var current = await Get(minLifespan, cancellationToken);
-            await JS.InvokeVoidAsync(jsSetMethodName, cancellationToken, current.Token).ConfigureAwait(false);
+            await JS.InvokeVoidAsync(JSSetCurrentMethod, cancellationToken, current.Token).ConfigureAwait(false);
             var refreshAt = current.ExpiresAt - minLifespan;
             await Clock.Delay(refreshAt, cancellationToken).ConfigureAwait(false);
         }

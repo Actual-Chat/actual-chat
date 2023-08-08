@@ -3,9 +3,15 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Components;
 
+public static class VirtualList
+{
+    public static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VirtualList.create";
+}
+
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
     where TItem : IVirtualListItem
 {
+
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private ILogger<VirtualList<TItem>> Log { get; init; } = null!;
@@ -84,11 +90,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.VirtualList.create",
-                Ref,
-                BlazorRef,
-                Identity);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(VirtualList.JSCreateMethod, Ref, BlazorRef, Identity);
         }
     }
 

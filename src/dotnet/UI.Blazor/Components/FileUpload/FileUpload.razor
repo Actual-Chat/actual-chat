@@ -7,6 +7,8 @@
 <input @ref="InputRef" type="file" @attributes="InputAttributes"/>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.FileUpload.create";
+
     private ElementReference InputRef { get; set; }
     private DotNetObjectReference<FileUpload> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -32,12 +34,7 @@
             MaxSize = MaxSize,
             UploadUrl = UploadUrl,
         };
-        JSRef = await JS
-            .InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.FileUpload.create",
-                InputRef,
-                BlazorRef,
-                options);
+        JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, InputRef, BlazorRef, options);
     }
 
     public async ValueTask DisposeAsync() {

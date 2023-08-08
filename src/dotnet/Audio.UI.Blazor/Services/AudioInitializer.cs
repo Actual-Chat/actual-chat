@@ -7,9 +7,10 @@ namespace ActualChat.Audio.UI.Blazor.Services;
 
 public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
 {
+    private static readonly string JSInitMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.init";
+
     [GeneratedRegex(@"^(?<type>mac|iPhone|iPad)(?:(?<version>\d+),\d*)?$")]
     private static partial Regex IOSDeviceRegexFactory();
-
     private static readonly Regex IOSDeviceRegex = IOSDeviceRegexFactory();
 
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
@@ -44,11 +45,7 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
                 // ReSharper disable once InconsistentNaming
                 var canUseNNVad = HostInfo.ClientKind != ClientKind.Ios || IsIOSDeviceFastEnoughToRunNNVad(deviceModel);
                 var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
-                await JS.InvokeVoidAsync($"{AudioBlazorUIModule.ImportName}.AudioInitializer.init",
-                    ct,
-                    backendRef,
-                    UrlMapper.BaseUrl,
-                    canUseNNVad);
+                await JS.InvokeVoidAsync(JSInitMethod, ct, backendRef, UrlMapper.BaseUrl, canUseNNVad);
             })
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)

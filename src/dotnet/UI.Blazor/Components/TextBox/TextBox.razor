@@ -23,6 +23,8 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.TextBox.create";
+
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -37,9 +39,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.TextBox.create", Ref
-                );
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref);
             if (Autofocus)
                 await Focus();
         }

@@ -5,6 +5,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class InteractiveUI : IInteractiveUIBackend, IDisposable
 {
+    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.InteractiveUI.init";
+
     private readonly DotNetObjectReference<IInteractiveUIBackend>? _backendRef;
     private readonly IMutableState<bool> _isInteractive;
     private readonly IMutableState<ActiveDemandModel?> _activeDemand;
@@ -36,10 +38,7 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
         _isInteractive = services.StateFactory().NewMutable(false);
         _activeDemand = services.StateFactory().NewMutable((ActiveDemandModel?)null);
-        WhenReady = JS.InvokeVoidAsync(
-            $"{BlazorUICoreModule.ImportName}.InteractiveUI.init",
-            _backendRef
-            ).AsTask();
+        WhenReady = JS.InvokeVoidAsync(JSInitMethod, _backendRef).AsTask();
     }
 
     public void Dispose()

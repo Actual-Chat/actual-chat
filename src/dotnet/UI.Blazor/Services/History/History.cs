@@ -8,8 +8,10 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class History : IHasServices, IDisposable
 {
-    public const int MaxItemCount = 200;
+    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.History.init";
+
     public static readonly TimeSpan MaxNavigationDuration = TimeSpan.FromSeconds(1.5);
+    public const int MaxItemCount = 200;
 
     private Session? _session;
     private Dispatcher? _dispatcher;
@@ -83,9 +85,8 @@ public partial class History : IHasServices, IDisposable
     {
         Log.LogInformation("Initialize @ {AutoNavigationUrl}", autoNavigationUrl);
         _backendRef = DotNetObjectReference.Create(this);
-        _ = JS.InvokeVoidAsync(
-            $"{BlazorUICoreModule.ImportName}.History.init",
-            _backendRef, autoNavigationUrl.Value, ItemIdFormatter.Format(_currentItem.Id));
+        var sCurrentItemId = ItemIdFormatter.Format(_currentItem.Id);
+        _ = JS.InvokeVoidAsync(JSInitMethod, _backendRef, autoNavigationUrl.Value, sCurrentItemId);
         return WhenReady;
     }
 

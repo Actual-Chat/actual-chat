@@ -7,6 +7,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class DebugUI : IDisposable
 {
+    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DebugUI.init";
+
     private DotNetObjectReference<DebugUI>? _backendRef;
 
     private IServiceProvider Services { get; }
@@ -31,9 +33,7 @@ public sealed class DebugUI : IDisposable
     private async Task Initialize()
     {
         _backendRef = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync(
-            $"{BlazorUICoreModule.ImportName}.DebugUI.init",
-            _backendRef);
+        await JS.InvokeVoidAsync(JSInitMethod, _backendRef);
     }
 
     [JSInvokable]

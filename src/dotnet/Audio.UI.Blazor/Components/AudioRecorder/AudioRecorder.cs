@@ -8,6 +8,7 @@ namespace ActualChat.Audio.UI.Blazor.Components;
 
 public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 {
+    private static readonly string JSCreateMethod = $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create";
     private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
 
@@ -46,9 +47,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         async Task Initialize() {
             _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                    $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create",
-                    _blazorRef)
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef)
                 .ConfigureAwait(false);
         }
     }

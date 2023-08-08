@@ -6,6 +6,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class DeviceAwakeUI : ISleepDurationProvider, IDeviceAwakeUIBackend, IDisposable
 {
+    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DeviceAwakeUI.init";
+
     private readonly DotNetObjectReference<IDeviceAwakeUIBackend> _backendRef;
     private readonly IMutableState<TimeSpan> _totalSleepDuration;
 
@@ -35,8 +37,7 @@ public class DeviceAwakeUI : ISleepDurationProvider, IDeviceAwakeUIBackend, IDis
             return;
 
         try {
-            await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.{nameof(DeviceAwakeUI)}.init", _backendRef)
-                .ConfigureAwait(false);
+            await JS.InvokeVoidAsync(JSInitMethod, _backendRef);
             // Debug logic
             // _ = Task.Run(async () => {
             //     while (true) {

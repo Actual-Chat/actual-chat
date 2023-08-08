@@ -4,6 +4,8 @@ namespace ActualChat.UI.Blazor.Services;
 
 public class EscapistSubscription : IAsyncDisposable
 {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.EscapistSubscription.create";
+
     private Action? _action;
     private bool _once;
     private DotNetObjectReference<EscapistSubscription>? _blazorRef;
@@ -21,7 +23,7 @@ public class EscapistSubscription : IAsyncDisposable
         };
         subscription._blazorRef = DotNetObjectReference.Create(subscription);
         subscription._jsRef = await js.InvokeAsync<IJSObjectReference>(
-            $"{BlazorUICoreModule.ImportName}.EscapistSubscription.create",
+            JSCreateMethod,
             cancellationToken,
             subscription._blazorRef
             ).ConfigureAwait(false);

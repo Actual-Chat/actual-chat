@@ -152,10 +152,9 @@ public class AppServiceStarter
             Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client
             if (HostInfo.AppKind.IsClient()) {
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
                 await StartHostedServices().ConfigureAwait(false);
             }
-
             if (!HostInfo.IsProductionInstance)
                 Services.GetRequiredService<DebugUI>();
         }

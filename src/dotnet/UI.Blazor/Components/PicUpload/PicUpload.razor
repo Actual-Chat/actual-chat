@@ -48,7 +48,9 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.{nameof(PicUpload)}.create";
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+
     private string _inputId = "";
     private ElementReference _dropZoneRef;
     private IJSObjectReference _jsRef = null!;
@@ -78,7 +80,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender)
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.{nameof(PicUpload)}.create",
+                JSCreateMethod,
                 _dropZoneRef,
                 _inputId);
     }

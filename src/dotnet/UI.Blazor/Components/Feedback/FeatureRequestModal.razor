@@ -44,6 +44,8 @@
 </DialogFrame>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.Feedback.create";
+
     private int _rating;
     private string _comment = "";
 
@@ -83,10 +85,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IFeatureBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.Feedback.create",
-                Ref, BlazorRef
-                );
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
         }
     }
 

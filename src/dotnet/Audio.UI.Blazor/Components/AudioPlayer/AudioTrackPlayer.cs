@@ -7,6 +7,8 @@ namespace ActualChat.Audio.UI.Blazor.Components;
 
 public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 {
+    private static readonly string JSCreateMethod = $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create";
+
     private ILogger? DebugLog => DebugMode ? Log : null;
     private bool DebugMode => Constants.DebugMode.AudioPlayback;
 
@@ -68,11 +70,9 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                     _blazorRef = DotNetObjectReference.Create<IAudioPlayerBackend>(this);
 
                     DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] Creating audio player in JS", _id);
-                    _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                        $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create",
+                    _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod,
                         CancellationToken.None,
-                        _blazorRef,
-                        _id);
+                        _blazorRef, _id);
                     break;
                 case PauseCommand:
                     if (_jsRef == null)

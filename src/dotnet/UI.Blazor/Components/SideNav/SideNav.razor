@@ -7,6 +7,8 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.SideNav.create";
+
     private string _class = "";
     private string _attribute = "";
 
@@ -34,15 +36,10 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
-            var identifier = $"{BlazorUICoreModule.ImportName}.SideNav.create";
             var options = new SideNavOptions {
                 Side = Side,
             };
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                identifier,
-                ElementRef,
-                BlazorRef,
-                options);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, ElementRef, BlazorRef, options);
         }
     }
 

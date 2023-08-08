@@ -5,6 +5,8 @@ namespace ActualChat.UI.Blazor.Components;
 
 public class WebShareInfo : IDisposable, IWebShareInfoBackend
 {
+    private static readonly string JSInitWebShareInfoMethod = $"{BlazorUICoreModule.ImportName}.Share.initWebShareInfo";
+
     private bool _canShareText;
     private bool _canShareLink;
 
@@ -50,8 +52,7 @@ public class WebShareInfo : IDisposable, IWebShareInfoBackend
 
     private ValueTask Initialize()
     {
-        var jsMethod = $"{BlazorUICoreModule.ImportName}.Share.initWebShareInfo";
         _backendRef = DotNetObjectReference.Create<IWebShareInfoBackend>(this);
-        return JS.InvokeVoidAsync(jsMethod, _backendRef);
+        return JS.InvokeVoidAsync(JSInitWebShareInfoMethod, _backendRef);
     }
 }

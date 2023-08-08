@@ -21,6 +21,8 @@
 </CascadingValue>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.Dropdown.create";
+
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     private DotNetObjectReference<IDropdownBackend> BlazorRef { get; set; } = null!;
@@ -57,10 +59,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IDropdownBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{BlazorUICoreModule.ImportName}.Dropdown.create",
-                Ref, BlazorRef
-                );
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
         }
     }
 

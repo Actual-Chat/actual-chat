@@ -79,6 +79,8 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create";
+
     private static object MentionListManagerKey { get; } = new();
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
@@ -142,9 +144,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IChatMessageEditorBackend>(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>(
-                $"{ChatBlazorUIModule.ImportName}.ChatMessageEditor.create",
-                Ref, BlazorRef);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
             await Task.WhenAll(MarkupEditorRef.WhenReady, AttachmentListRef.WhenReady);
             await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
             await UpdateChatId();

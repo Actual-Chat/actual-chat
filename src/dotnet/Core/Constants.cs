@@ -78,6 +78,7 @@ public static partial class Constants
         public static TimeSpan ActivityPeriod { get; } = TimeSpan.FromSeconds(30);
         public static TimeSpan CheckPeriod { get; } = TimeSpan.FromSeconds(10);
         public static TimeSpan CheckInPeriod { get; } = TimeSpan.FromSeconds(49);
+        public static TimeSpan CheckInClientConnectTimeout { get; } = TimeSpan.FromSeconds(10);
         public static TimeSpan CheckInRetryDelay { get; } = TimeSpan.FromSeconds(15);
         public static TimeSpan AwayTimeout { get; } = TimeSpan.FromSeconds(60);
         public static TimeSpan OfflineTimeout { get; } = TimeSpan.FromMinutes(10);

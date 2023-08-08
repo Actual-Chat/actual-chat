@@ -1,11 +1,16 @@
 using ActualChat.Hosting;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services;
+using Stl.Rpc;
 
 namespace ActualChat.Notification.UI.Blazor;
 
 public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificationPermissions
 {
+    private static readonly string JSInitMethod = $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init";
+    private static readonly string JSRegisterRequestNotificationHandlerMethod =
+        $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler";
+
     private readonly IMutableState<PermissionState> _permissionState;
     private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();
     private volatile Task<string?>? _registerDeviceTask;
@@ -39,10 +44,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
         async Task Initialize() {
             if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp) {
                 var backendRef = DotNetObjectReference.Create<INotificationUIBackend>(this);
-                await JS.InvokeVoidAsync(
-                    $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init",
-                    backendRef,
-                    HostInfo.AppKind.ToString()).ConfigureAwait(false);
+                await JS.InvokeVoidAsync(JSInitMethod, backendRef, HostInfo.AppKind.ToString()).ConfigureAwait(false);
             }
             else if (HostInfo.AppKind == AppKind.MauiApp) {
                 // There should be no cycle reference as we implement INotificationPermissions for MAUI platform separately
@@ -57,10 +59,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     public async ValueTask RegisterRequestNotificationHandler(ElementReference reference)
     {
         if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp)
-            await JS.InvokeVoidAsync(
-                $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler",
-                reference
-            ).ConfigureAwait(false);
+            await JS.InvokeVoidAsync(JSRegisterRequestNotificationHandlerMethod, reference).ConfigureAwait(false);
     }
 
     public async Task<PermissionState> GetPermissionState(CancellationToken cancellationToken)
@@ -130,9 +129,10 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
                     var cancellationToken = cts.Token;
                     try {
                         deviceId ??= await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
+                        await Services.RpcHub().WhenClientPeerConnected(cancellationToken).ConfigureAwait(false);
                         if (deviceId != null) {
                             var command = new Notifications_RegisterDevice(Session, deviceId, DeviceType.WebBrowser);
-                            await Services.Commander().Run(command, cancellationToken).ConfigureAwait(false);
+                            await Services.Commander().Call(command, cancellationToken).ConfigureAwait(false);
                         }
                         return deviceId;
                     }
