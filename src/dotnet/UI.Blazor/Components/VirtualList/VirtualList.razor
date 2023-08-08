@@ -42,28 +42,28 @@
      class="@Class virtual-list"
      style="@Style">
 
-    <div @key="VirtualListSpecialKeys.RenderIndex"
+    <div @key="@VirtualListSpecialKeys.RenderIndex"
          data-render-index="@renderIndex"
          class="data render-index">
     </div>
 
-    <div @key="VirtualListSpecialKeys.RenderState"
+    <div @key="@VirtualListSpecialKeys.RenderState"
          class="data render-state">
         @SystemJsonSerializer.Default.Write(renderState)
     </div>
 
-    <div @key="VirtualListSpecialKeys.EndAnchor"
+    <div @key="@VirtualListSpecialKeys.EndAnchor"
          class="c-end-anchor">
         &nbsp;
     </div>
 
-    <div @key="VirtualListSpecialKeys.EndSpacer"
+    <div @key="@VirtualListSpecialKeys.EndSpacer"
          class="c-spacer-end"
          style="height: @(endSpacerSize)px">
         <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
-    <ul @key="VirtualListSpecialKeys.Container"
+    <ul @key="@VirtualListSpecialKeys.Container"
         class="c-virtual-container">
         @foreach (var item in items) {
             var itemClass = item.IsFirstTimeRendered
@@ -90,7 +90,7 @@
         }
     </ul>
 
-    <div @key="VirtualListSpecialKeys.Spacer"
+    <div @key="@VirtualListSpecialKeys.Spacer"
          class="c-spacer-start"
          style="height: @(spacerSize)px">
         <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>

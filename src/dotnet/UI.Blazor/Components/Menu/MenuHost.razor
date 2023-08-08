@@ -7,7 +7,7 @@
     RenderFragment RenderMenu(MenuModel menu) =>
         @<div
              id="@menu.Id"
-             @key="menu.Id"
+             @key="@menu.Id"
              class="@(GetMenuCssClass(menu))">
             <ul class="ac-menu-list">
                 <DynamicComponent Type="@menu.Ref.MenuType" Parameters="@menu.Parameters"/>

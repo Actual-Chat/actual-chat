@@ -26,13 +26,13 @@
                 <div class="c-title">@chat.Title</div>
             </div>
             <div class="c-activities-container">
-                <ChatActivities @key="@chat" Chat="@chat"/>
+                <ChatActivities @key="@chat.Id.Value" Chat="@chat"/>
             </div>
         }
     </div>
     @if (!chat.Id.IsNone) {
         <div class="chat-header-control-panel">
-            <ChatSearch @key="@chat" Chat="@chat"/>
+            <ChatSearch @key="@chat.Id.Value" Chat="@chat"/>
             @if (IsRightNavigateButtonVisible) {
                 <ChatHeaderRightPanelToggle Click="OnSwitchRightPanelClick"/>
             }

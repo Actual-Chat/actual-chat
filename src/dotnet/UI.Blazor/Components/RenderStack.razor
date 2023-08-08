@@ -18,7 +18,7 @@
         if (!knownKeys.Add(item.Key))
             continue;  // It seems sometimes Blazor disposes the component way too late
 
-        <NoComponent @key="item.Key">
+        <NoComponent @key="@item.Key">
             @(Item?.Invoke(item.ChildContent) ?? item.ChildContent)
         </NoComponent>
     } else {

@@ -14,7 +14,7 @@
 }
 
 <RenderIntoSlot Name="MainHeader">
-    <ChatHeader @key="@chat" Chat="@chat" />
+    <ChatHeader @key="@chat.Id.Value" Chat="@chat" />
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
@@ -23,7 +23,7 @@
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
     @if (hasChat) {
-        <Banners @key="@chat" Chat="@chat"/>
+        <Banners @key="@chat.Id.Value" Chat="@chat"/>
     } else {
         <AlwaysVisibleBanners/>
     }
@@ -31,7 +31,7 @@
 
 <RenderIntoSlot Name="MainRightDrawer">
     @if (hasChat) {
-        <ChatRightPanel @key="@chat" Chat="@chat"/>
+        <ChatRightPanel @key="@chat.Id.Value" Chat="@chat"/>
     }
 </RenderIntoSlot>
 

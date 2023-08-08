@@ -13,7 +13,7 @@
         <ReadOnlyChatFooter FooterText="" />
     } else {
         @if (m.CanPost) {
-            <ChatMessageEditor @key="@chat" Chat="@chat" />
+            <ChatMessageEditor @key="@chat.Id.Value" Chat="@chat" />
         } else if (m.CanJoin) {
             <div class="chat-footer">
                 @if (!m.IsGuest) {

@@ -13,11 +13,11 @@
         <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
             <div class="list-view-layout">
                 <div class="layout-header">
-                    <ChatHeader @key="@chat" Chat="@chat" IsLeftNavigateButtonVisible="@false" IsRightNavigateButtonVisible="@false" />
+                    <ChatHeader @key="@chat.Id.Value" Chat="@chat" IsLeftNavigateButtonVisible="@false" IsRightNavigateButtonVisible="@false" />
                 </div>
                 <div class="layout-subheader">
                     @if (hasChat) {
-                        <Banners @key="@chat" Chat="@chat"/>
+                        <Banners @key="@chat.Id.Value" Chat="@chat"/>
                     }
                 </div>
                 <div class="layout-body-wrapper">
@@ -36,7 +36,7 @@
                             } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
                                 <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
                             } else {
-                                <ChatView @ref="ChatViewRef" @key="@chat" Chat="@chat"/>
+                                <ChatView @ref="ChatViewRef" @key="@chat.Id.Value" Chat="@chat"/>
                             }
                         </div>
                     </div>

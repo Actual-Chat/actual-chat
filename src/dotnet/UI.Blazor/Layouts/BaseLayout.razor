@@ -14,7 +14,7 @@
                 <div class="error-container custom-scrollbar">
                     <div class="c-content">
                         @foreach (var failure in failures) {
-                            <Error @key="failure"
+                            <Error @key="@failure"
                                    Title="Action failed!"
                                    Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
                                 @failure.Error!.Message
@@ -23,7 +23,7 @@
                     </div>
                 </div>
             }
-            <NoComponent @key="BodyKey">
+            <NoComponent @key="@BodyKey">
                 <ErrorBarrier>@Body</ErrorBarrier>
             </NoComponent>
         </div>
