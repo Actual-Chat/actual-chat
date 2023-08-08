@@ -153,6 +153,7 @@
     <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
     <!-- true: -150ms -->
     <AndroidEnablePreloadAssemblies>true</AndroidEnablePreloadAssemblies>
+    <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
@@ -216,7 +217,7 @@
     <UseShortFileNames>True</UseShortFileNames>
     <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
     <!-- Performance-related -->
-    <EnableSGenConc>True</EnableSGenConc>
+    <EnableSGenConc>False</EnableSGenConc>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
