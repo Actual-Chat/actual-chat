@@ -72,12 +72,12 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
         // Chats
         fusion.AddService<IChats, Chats>();
         fusion.AddService<IChatsBackend, ChatsBackend>();
-        commander.AddCommandService<IChatsUpgradeBackend, ChatsUpgradeBackend>();
+        commander.AddService<IChatsUpgradeBackend, ChatsUpgradeBackend>();
 
         // Authors
         fusion.AddService<IAuthors, Authors>();
         fusion.AddService<IAuthorsBackend, AuthorsBackend>();
-        commander.AddCommandService<IAuthorsUpgradeBackend, AuthorsUpgradeBackend>();
+        commander.AddService<IAuthorsUpgradeBackend, AuthorsUpgradeBackend>();
 
         // Roles
         fusion.AddService<IRoles, Roles>();
@@ -93,7 +93,7 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
 
         // ContentSaver
         services.AddResponseCaching();
-        commander.AddCommandService<IContentSaverBackend, ContentSaverBackend>();
+        commander.AddService<IContentSaverBackend, ContentSaverBackend>();
         services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
         services.AddSingleton<IUploadProcessor, VideoUploadProcessor>();
 

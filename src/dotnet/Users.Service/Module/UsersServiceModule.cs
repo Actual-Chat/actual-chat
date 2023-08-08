@@ -157,7 +157,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             SessionInfoUpdatePeriod = Constants.Session.SessionInfoUpdatePeriod,
         });
 
-        commander.AddCommandService<AuthCommandFilters>();
+        commander.AddService<AuthCommandFilters>();
         services.AddSingleton<ClaimMapper>();
         services.Replace(ServiceDescriptor.Singleton<IDbUserRepo<UsersDbContext, DbUser, string>, DbUserRepo>());
         services.AddTransient(c => (DbUserRepo)c.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>());
@@ -180,7 +180,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddService<IServerKvas, ServerKvas>();
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddService<IPhoneAuth, PhoneAuth>();
-        commander.AddCommandService<IUsersUpgradeBackend, UsersUpgradeBackend>();
+        commander.AddService<IUsersUpgradeBackend, UsersUpgradeBackend>();
         services.AddTransient<Rfc6238AuthenticationService>();
         services.AddSingleton<TotpRandomSecrets>();
         services.AddSingleton<ITwilioRestClient>(_ => {
