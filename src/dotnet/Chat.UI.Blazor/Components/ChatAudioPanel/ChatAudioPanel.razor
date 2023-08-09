@@ -30,12 +30,6 @@
          data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
         <LanguageToggle Chat="@Chat" />
     </div>
-    <div class="hidden"
-         data-bubble="@(BubbleRef.New<TranscriptionLanguageButtonBubble>())"
-         data-bubble-priority="120"
-         data-bubble-placement="@(FloatingPosition.TopStart.ToPositionString())">
-        <OptionsButton Chat="@Chat" />
-    </div>
 </div>
 
 @code {
