@@ -10,10 +10,11 @@
 }
 
 <div class="recording-sub-header @recordingElsewhereCls">
+    <div class="c-round-container">
+        <div class="c-round"></div>
+    </div>
+
     <div class="c-line-1">
-        <div class="c-round-container">
-            <div class="c-round"></div>
-        </div>
         @if (m.RecordingChat != null) {
             <div class="c-text">
                 Recording in
@@ -25,7 +26,7 @@
 
     @if (m.StopRecordingAt != null) {
         <div class="c-line-2">
-            <div class="c-text">Recording is stopping in </div>
+            <div class="c-text">Stop in </div>
             <Countdown EndsAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
         </div>
     }
