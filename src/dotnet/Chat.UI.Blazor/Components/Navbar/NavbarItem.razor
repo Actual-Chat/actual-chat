@@ -5,39 +5,24 @@
     var isCurrent = History.LocalUrl.Value == Url;
 }
 
-@if (Url.IsNullOrEmpty()) {
-    <div class="@Class @activeClass navbar-item group" @attributes="@Attributes">
+<div class="@Class @activeClass navbar-item group" @attributes="@Attributes">
+    @if (Url.IsNullOrEmpty()) { /* IsSelected is needed to make sure click events work on iOS */
         <div class="navbar-item-content">
             @ChildContent
         </div>
-        <div class="navbar-item-ending">
-            @Ending
-        </div>
-    </div>
-} else if (isCurrent) {
-    <div class="@Class @activeClass navbar-item group" @attributes="@Attributes" @onclick="@OnCurrentClick">
-        <div class="navbar-item-content">
+    } else if (isCurrent) {
+        <div class="navbar-item-content" @onclick="@OnCurrentClick">
             @ChildContent
         </div>
-        <div class="navbar-item-ending">
-            @Ending
-        </div>
-    </div>
-} else {
-    <div
-     class="@Class @activeClass navbar-item group"
-     @attributes="@Attributes"
-     data-href="@Url"
-     data-href-tune="select-navbar-item"
-     data-replace-on-prefix="@ReplaceOnPrefix">
-        <div class="navbar-item-content">
+    } else {
+        <div class="navbar-item-content" data-href="@Url" data-replace-on-prefix="@ReplaceOnPrefix" data-href-tune="select-navbar-item">
             @ChildContent
         </div>
-        <div class="navbar-item-ending">
-            @Ending
-        </div>
+    }
+    <div class="navbar-item-ending">
+        @Ending
     </div>
-}
+</div>
 
 @code {
     [Inject] private IServiceProvider Services { get; init; } = null!;

@@ -1,23 +1,44 @@
 .recording-sub-header {
     @apply relative;
-    @apply flex-x items-center justify-center;
-    @apply p-0.25;
-    @apply bg-recording-countdown text-error shadow-lg;
+    @apply flex-y items-center justify-center;
+    @apply min-h-10;
+    @apply px-5;
+    @apply bg-recording-countdown text-banner-error shadow-lg;
     @apply animate-opacity-from-0;
 }
 .recording-sub-header.recording-elsewhere {
-    @apply bg-error-hover;
+    @apply bg-banner-error;
 }
-.recording-sub-header > .c-content {
-    @apply flex-1 flex-x flex-wrap md:flex-nowrap;
-    @apply gap-x-1 items-center justify-start;
-    @apply h-8;
-    @apply px-2;
+.recording-sub-header > .c-line-1 {
+    @apply flex-1 flex-x flex-nowrap;
+    @apply gap-x-1 items-center;
+    @apply max-w-full min-h-6;
+    @apply overflow-x-hidden;
 }
-.recording-sub-header > .c-content a {
+.recording-sub-header > .c-line-1 > .c-round-container {
+    @apply flex justify-center;
+    @apply mr-2;
+}
+.recording-sub-header > .c-line-1 > .c-round-container > .c-round {
+    @apply w-4 h-4;
+    @apply rounded-full;
+    @apply bg-08;
+    @apply animate-pulse;
+}
+.recording-sub-header > .c-line-1 a {
     text-decoration: none;
 }
-.recording-sub-header > .c-content .highlight.c-text,
-.recording-sub-header > .c-content a.c-text {
-    @apply font-semibold;
+.recording-sub-header > .c-line-2 {
+    @apply flex-x gap-x-1;
+    @apply min-h-6;
+}
+.recording-sub-header > .c-line-1 .c-text,
+.recording-sub-header > .c-line-2 .c-text {
+    @apply shrink-0;
+    @apply text-caption-4;
+}
+.recording-sub-header > .c-line-1 .c-text.highlight {
+    @apply shrink;
+    @apply truncate;
+    @apply text-caption-1;
 }

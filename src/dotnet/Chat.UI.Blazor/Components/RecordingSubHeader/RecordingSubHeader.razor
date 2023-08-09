@@ -10,23 +10,25 @@
 }
 
 <div class="recording-sub-header @recordingElsewhereCls">
-    <div class="c-content">
-        <div class="flex justify-center w-11">
-            <div class="w-4 h-4 rounded-full bg-error animate-pulse"></div>
+    <div class="c-line-1">
+        <div class="c-round-container">
+            <div class="c-round"></div>
         </div>
         @if (m.RecordingChat != null) {
-            <div class="c-text shrink-0">
+            <div class="c-text">
                 Recording in
             </div>
-            <a class="inline-block c-text truncate" href="@m.RecordingChatUrl">@(m.RecordingChat.Title)</a>
+            <a class="c-text highlight" href="@m.RecordingChatUrl">@(m.RecordingChat.Title)</a>
             <div class="c-text">chat!</div>
         }
+    </div>
 
-        @if (m.StopRecordingAt != null) {
+    @if (m.StopRecordingAt != null) {
+        <div class="c-line-2">
             <div class="c-text">Recording is stopping in </div>
             <Countdown EndsAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
-        }
-    </div>
+        </div>
+    }
 </div>
 
 @code {

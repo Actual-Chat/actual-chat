@@ -102,8 +102,7 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
 }
 
 .chat-list .navbar-item .btn {
-    /* @apply w-8 h-12; */
-    @apply w-6 h-6;
+    @apply w-8 h-full;
     @apply bg-transparent;
 }
 body.hoverable .chat-list .navbar-item .btn.on:hover .btn-content {

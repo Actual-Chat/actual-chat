@@ -1,10 +1,24 @@
 .banner.reconnect-banner  {
+    @apply gap-x-2;
+    @apply h-10;
     @apply bg-banner-error;
     @apply animate-opacity-from-0;
 }
+.banner.reconnect-banner i {
+    @apply text-2xl text-icons-04;
+}
 .banner.reconnect-banner .banner-body {
-    @apply flex-1 flex-x items-center gap-x-1;
+    @apply flex-1 flex-x items-center gap-x-2;
+}
+.banner.reconnect-banner .banner-body > .c-main-text {
+    @apply text-caption-1;
+}
+.banner.reconnect-banner .banner-body > .c-secondary-text {
+    @apply text-caption-4;
 }
 .banner.reconnect-banner .banner-body .reconnect-countdown {
-    @apply font-semibold text-primary;
+    @apply text-caption-4;
+}
+.banner.reconnect-banner .btn.btn-transparent {
+    @apply text-caption-1;
 }

@@ -3,13 +3,14 @@
 @using ActualChat.Search
 @{
     var canSend = _selectedChats?.Any() == true;
+    _viewSettings.CanSubmit = canSend;
 }
 
 <DialogFrame
     Class="forward-message-modal"
     Title="Forward message"
     HasCloseButton="true"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnSend, "Send")">
+    NarrowViewSettings="_viewSettings">
     <Body>
         <SearchBoxNew
             Placeholder="Who would you like to share with"
@@ -21,27 +22,26 @@
             SelectionChanged="OnSelectionChanged" />
     </Body>
     <Buttons>
-        <div class="btn-group">
-            <Button
-                Type="@ButtonType.Button"
-                Class="btn-cancel"
-                Click="OnCancel">
-                Cancel
-            </Button>
-            <Button
-                Type="@ButtonType.Submit"
-                Class="btn-primary"
-                IsDisabled="@(!canSend)"
-                Click="OnSend">
-                Send
-            </Button>
-        </div>
+        <Button
+            Type="@ButtonType.Button"
+            Class="btn-cancel"
+            Click="OnCancel">
+            Cancel
+        </Button>
+        <Button
+            Type="@ButtonType.Submit"
+            Class="btn-primary"
+            IsDisabled="@(!canSend)"
+            Click="OnSend">
+            Send
+        </Button>
     </Buttons>
 </DialogFrame>
 
 @code {
     private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
     private IReadOnlyCollection<ChatId>? _selectedChats;
+    private DialogFrameNarrowViewSettings _viewSettings = null!;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
@@ -51,6 +51,9 @@
     public sealed record Model(
         IReadOnlyCollection<ChatId> ContactsToExclude,
         Action<IReadOnlyCollection<ChatId>> ChatsSelected);
+
+    protected override void OnInitialized()
+        => _viewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnSend, "Send");
 
     private void OnCancel() {
         Modal.Close();

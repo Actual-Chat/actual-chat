@@ -9,25 +9,23 @@
 
 <Banner Class="reconnect-banner" IsVisible="@m.IsDisconnected">
     <Icon>
-        <i class="icon-cloud-disconnected text-2xl text-icons-04"></i>
+        <i class="icon-cloud-disconnected"></i>
     </Icon>
     <Body>
-        <div class="flex-1 flex-y">
-            <div class="font-semibold">Connection lost.</div>
-            @if (isReconnecting) {
-                <div>Reconnecting...</div>
-            } else {
-                <div>
-                    Will reconnect in
-                    <Countdown Class="reconnect-countdown" EndsAt="@m.ReconnectsAt" Format="{0:mm\:ss}"/>
-                </div>
+        <div class="c-main-text">Connection lost.</div>
+        @if (isReconnecting) {
+            <div>Reconnecting...</div>
+        } else {
+            <div class="c-secondary-text">
+                Will reconnect in
+                <Countdown Class="reconnect-countdown" EndsAt="@m.ReconnectsAt" Format="{0:mm\:ss}"/>
+            </div>
 
-            }
-        </div>
+        }
     </Body>
     <Buttons>
         @if (!isReconnecting) {
-            <Button Class="btn-transparent on" Click="@Reconnect">Reconnect</Button>
+            <Button Class="btn-transparent on" Click="@Reconnect">Retry</Button>
         }
     </Buttons>
 </Banner>
