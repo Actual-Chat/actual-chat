@@ -79,29 +79,33 @@ body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
 .navbar-item {
     @apply relative;
     @apply flex-x justify-start items-center gap-x-1;
-    @apply p-1;
+    @apply h-12;
     @apply rounded-lg;
 }
 .navbar-item .navbar-item-content {
     @apply flex-1 flex-x;
+    @apply pl-1;
+    @apply h-full;
     @apply overflow-hidden;
     @apply text-02;
 }
 .navbar-item .navbar-item-ending {
     @apply flex-none justify-self-end;
     @apply flex-x justify-end items-center gap-x-2;
+    @apply h-full;
     @apply overflow-hidden;
 }
 .navbar-item .navbar-item-ending .slot {
-    @apply flex-none flex-x items-center gap-x-2;
-    @apply h-8 overflow-hidden;
+    @apply flex-none flex-x items-center;
+    @apply h-full;
+    @apply overflow-hidden;
 }
 
 body.hoverable .navbar-item:hover {
     @apply bg-round-hover;
     @apply cursor-pointer;
 }
-.navbar-item:active {
+.navbar-item:has(.navbar-item-content:active) {
     @apply bg-transparent border-x border-transparent;
 }
 .navbar-item.active {

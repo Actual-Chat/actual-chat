@@ -18,7 +18,6 @@
 
 .edit-chat-settings-modal .dialog-buttons {
     @apply -flex-x;
-    @apply px-4;
     @apply pt-4;
 }
 .edit-chat-settings-modal .dialog-buttons .btn-group {

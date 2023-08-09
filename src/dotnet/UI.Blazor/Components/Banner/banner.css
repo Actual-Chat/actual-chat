@@ -2,20 +2,26 @@
     @apply flex-x gap-x-1 items-center justify-between;
     @apply w-full h-14;
     @apply pl-4 pr-4;
-    @apply bg-01 border-bg-04 border;
+    @apply bg-01;
 }
 .banner-body {
     @apply ml-1;
 }
 .banner-buttons {
-    @apply flex-x ml-auto items-center gap-x-2;
+    @apply flex-x items-center gap-x-2;
+    @apply ml-auto;
 }
 .banner-buttons-close {
-    @apply flex w-6 h-6 ml-3 rounded-full items-center justify-center;
+    @apply flex items-center justify-center;
+    @apply w-6 h-6;
+    @apply ml-3;
+    @apply rounded-full;
 }
 body.hoverable .banner-buttons-close:hover i {
     @apply text-03;
 }
 .severity-icon {
-    @apply flex items-center justify-center rounded-full w-10 h-10 min-w-10 min-h-10;
+    @apply flex items-center justify-center;
+    @apply w-10 h-10 min-w-10 min-h-10;
+    @apply rounded-full;
 }
