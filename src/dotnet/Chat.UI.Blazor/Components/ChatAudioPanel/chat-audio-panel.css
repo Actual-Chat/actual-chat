@@ -367,6 +367,9 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply absolute -bottom-1 bg-01 w-[8px] h-[8px] rotate-45;
 }
 
+.btn.btn-round.transcription-options-btn i {
+    @apply text-2xl font-thin;
+}
 .transcription-options-modal > .dialog-body {
     @apply gap-y-1;
 }
