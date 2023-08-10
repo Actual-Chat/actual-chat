@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFrameworks>net7.0-android;net7.0-ios;net7.0-maccatalyst</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net7.0-windows10.0.22000.0</TargetFrameworks>
+    <TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.22000.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <OutputPath>$(RepoRoot)artifacts\app\</OutputPath>
     <AssemblyName>$(BaseName)</AssemblyName>
@@ -40,6 +40,8 @@
     <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
     <IsPublishable>true</IsPublishable>
     <Configurations>Release;Debug</Configurations>
+    <UseMauiNuGets>false</UseMauiNuGets>
+    <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
   </PropertyGroup>
 
   <!-- Here we can alter either app is build to connect to dev or prod environment -->
@@ -79,6 +81,8 @@
   <!-- Package references -->
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" />
+    <PackageReference Include="Microsoft.Maui.Controls.Compatibility" />
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="banditoth.MAUI.DeviceId" />
@@ -222,7 +226,7 @@
     <EnableSGenConc>False</EnableSGenConc>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net8.0-ios|AnyCPU'">
     <CreatePackage>false</CreatePackage>
     <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
     <CodesignKey>iPhone Developer</CodesignKey>
@@ -230,7 +234,7 @@
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-ios|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0-ios|AnyCPU'">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>

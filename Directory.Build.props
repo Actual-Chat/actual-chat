@@ -2,7 +2,7 @@
   <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props"/>
 
   <PropertyGroup>
-    <TargetFramework Condition="!$(MSBuildProjectName.Contains('.Maui'))">net7.0</TargetFramework>
+    <TargetFramework Condition="!$(MSBuildProjectName.Contains('.Maui'))">net8.0</TargetFramework>
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
     <ImplicitUsings>enable</ImplicitUsings>

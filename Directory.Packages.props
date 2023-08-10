@@ -5,14 +5,14 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
-    <AspNetCoreVersion>7.0.13</AspNetCoreVersion>
+    <AspNetCoreVersion>8.0.0-preview.7.23375.9</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>7.0.13</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>7.0.11</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>7.0.2</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>7.0.1</MicrosoftExtensionsVersion>
-    <MicrosoftExtensionsBaseVersion>7.0.0</MicrosoftExtensionsBaseVersion>
+    <MicrosoftExtensionsVersion>8.0.0-preview.7.23375.6</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsBaseVersion>8.0.0-preview.7.23375.6</MicrosoftExtensionsBaseVersion>
     <NpgsqlVersion>7.0.6</NpgsqlVersion>
     <RedisVersion>2.6.122</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>

@@ -21,6 +21,7 @@ Use:
     <!--<RunAOTCompilation>true</RunAOTCompilation>-->
     <InvariantGlobalization>true</InvariantGlobalization>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+    <WasmEnableWebcil>true</WasmEnableWebcil>
   </PropertyGroup>
 
   <ItemGroup>

@@ -115,7 +115,9 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
         */
 
         // Response compression
+#if !DEBUG // disabled during debugging for development
         app.UseResponseCompression();
+#endif
 
         // API controllers
         app.UseRouting();
