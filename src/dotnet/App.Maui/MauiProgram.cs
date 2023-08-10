@@ -88,9 +88,9 @@ public static partial class MauiProgram
 
         // Core MAUI services
         services.AddMauiBlazorWebView();
-#if DEBUG
+// #if DEBUG
         services.AddBlazorWebViewDeveloperTools();
-#endif
+// #endif
 
         services.AddSingleton(c => new MauiNavigationInterceptor(c));
         services.AddTransient(c => new MainPage(c));
