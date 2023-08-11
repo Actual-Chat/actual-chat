@@ -117,6 +117,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -155,14 +156,8 @@
     private async Task OnPhoneVerified()
         => _account = await Accounts.GetOwn(Session, default);
 
-    private async Task OnDeleteAccountClick() {
-        // var command = new Avatars_Change(Session, ModalModel.AvatarId, null, new() {
-        //     Remove = true,
-        // });
-        // await UICommander.Run(command);
-        // Modal.Close();
-    }
-
+    private Task OnDeleteAccountClick()
+        => ModalUI.Show(new DeleteAccountModal.Model());
 
     public sealed class FormModel : FormModel<FormModel> {
 

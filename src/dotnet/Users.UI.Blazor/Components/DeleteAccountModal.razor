@@ -1,0 +1,79 @@
+﻿@using System.ComponentModel.DataAnnotations
+@implements IModalView<DeleteAccountModal.Model>
+@{
+    var m = ModalModel;
+}
+
+<Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnDelete">
+    <DialogFrame Title="Delete your account" Class="delete-account-modal modal-sm">
+        <Body>
+        <FormBlock>
+            <DataAnnotationsValidator/>
+            <ValidationSummary/>
+            <div class="c-question">
+                Are you sure you want to <span>delete your account</span>?
+            </div>
+            <div class="c-description">
+                We will <span>remove all</span> your <span>chats</span>, text and voice <span>messages</span> with all attachments.
+            </div>
+        </FormBlock>
+        <FormBlock>
+            <div class="c-proposal">
+                Please type <span>DELETE</span> below to confirm that you wish to close your account and delete all related information.
+            </div>
+            <FormSection For="() => _form.Delete" IsRequired="true" InputId="@_form.DeleteFieldId" Label="Confirm delete" IsLabelInsideInput="true">
+                <TextBox @bind-Value="@_form.Delete" Id="@_form.DeleteFieldId" Autofocus="false"/>
+            </FormSection>
+        </FormBlock>
+        </Body>
+        <Buttons>
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel" IsAutofocused="true">Cancel</Button>
+            <Button Type="@ButtonType.Submit" Class="btn-modal danger" Click="OnDelete" IsDisabled="@(!_formRef.IsValid)">Delete</Button>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override Task OnInitializedAsync() {
+        _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
+        _form.CopyToBase();
+
+        return Task.CompletedTask;
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender)
+             _formRef?.EditContext?.Validate();
+    }
+
+    private void OnCancel()
+        => Modal.Close();
+
+    private async Task OnDelete() {
+        Modal.Close();
+    }
+
+    public sealed class FormModel : FormModel<FormModel> {
+        [Required, RegularExpression("^DELETE$")]
+        public string Delete { get; set; } = "";
+        public string DeleteFieldId { get; set; } = "";
+
+        public FormModel(ComponentIdGenerator? componentIdGenerator)
+            : base("delete-account", componentIdGenerator)
+        { }
+    }
+
+
+    public sealed record Model();
+}

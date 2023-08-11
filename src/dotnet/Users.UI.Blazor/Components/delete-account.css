@@ -1,0 +1,9 @@
+﻿.delete-account-modal .c-question span {
+    @apply font-semibold;
+}
+.delete-account-modal .c-description span {
+    @apply font-semibold;
+}
+.delete-account-modal .c-proposal span {
+    @apply font-semibold;
+}

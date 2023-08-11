@@ -1298,7 +1298,7 @@ module.exports = {
       max: 'max-content',
       fit: 'fit-content',
       prose: '65ch',
-      modal: '480px',
+      modal: '22.5rem',
       ...breakpoints(theme('screens')),
     }),
     minHeight: ({ theme }) => ({
@@ -1318,7 +1318,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
-      'modal': '480px',
+      modal: '22.5rem',
     }),
     objectPosition: {
       bottom: 'bottom',
@@ -1584,7 +1584,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
-      'modal': '480px',
+      modal: '22.5rem',
     }),
     willChange: {
       auto: 'auto',

@@ -22,6 +22,7 @@ public partial class UsersBlazorUIModule : HostModule, IBlazorUIModule
         services.AddTypeMap<IModalView>(map => map
             .Add<OwnAccountEditorModal.Model, OwnAccountEditorModal>()
             .Add<OwnAvatarEditorModal.Model, OwnAvatarEditorModal>()
+            .Add<DeleteAccountModal.Model, DeleteAccountModal>()
         );
     }
 }

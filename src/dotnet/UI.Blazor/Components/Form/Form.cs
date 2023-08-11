@@ -37,6 +37,17 @@ public class Form : EditForm
         StateHasChanged();
     }
 
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        if (EditContext is not { } editContext)
+            return;
+
+        IsValid = editContext.Validate();
+    }
+
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         var editContext = EditContext;
