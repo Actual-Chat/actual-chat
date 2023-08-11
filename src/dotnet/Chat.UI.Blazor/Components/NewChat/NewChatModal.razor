@@ -5,80 +5,82 @@
 
 <DialogFrame Class="new-chat-modal" Title="New chat" HasCloseButton="true" NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
-        <DataAnnotationsValidator/>
-        <div class="new-chat-modal-form-section">
-            <div class="flex">
-                @if (_form.Title.IsNullOrEmpty()) {
-                    <AnonymousIcon Class="w-24 h-24"></AnonymousIcon>
-                } else {
-                    <Pic Title="@_form.Title" Size="SquareSize.Size24"/>
+    <FormBlock>
+        <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
+            <DataAnnotationsValidator/>
+            <div class="new-chat-modal-form-section">
+                <div class="flex">
+                    @if (_form.Title.IsNullOrEmpty()) {
+                        <AnonymousIcon Class="w-24 h-24"></AnonymousIcon>
+                    } else {
+                        <Pic Title="@_form.Title" Size="SquareSize.Size24"/>
+                    }
+                </div>
+                <div class="flex-y grow">
+                    <FormSection
+                        For="() => _form.Title"
+                        Label="Name"
+                        InputId="@_form.TitleId"
+                        IsLabelInsideInput="true"
+                        Class="!mt-0 grow"
+                        IsRequired="true">
+                        <TextBox
+                            @bind-Value="@_form.Title"
+                            Id="@_form.TitleId"
+                            Autofocus="true"
+                            Autocomplete="false"/>
+                    </FormSection>
+                    <FormSection
+                        For="() => _form.IsPublic">
+                        <ToggleEdit Id="@_form.IsPublicId"
+                                    Label="Public chat &ndash; anyone can join"
+                                    @bind-Value="_form.IsPublic"/>
+                    </FormSection>
+                </div>
+            </div>
+        </Form>
+        @if (_selectedContacts.Any()) {
+            <div class="new-chat-modal-selected-contacts">
+                @foreach (var contact in _selectedContacts) {
+                    <div class="new-chat-modal-selected-contact"
+                         @onclick="() => OnContactClick(contact)">
+                        <div class="new-chat-modal-remove-contact-icon">
+                            <i class="icon-close text-04 text-2xl pl-1"></i>
+                        </div>
+                        <AvatarCircle Size="SquareSize.Size6" Avatar="@contact.Contact.Account?.Avatar"/>
+                        <div class="px-1 max-w-32 truncate">
+                            @contact.Contact.Account?.Avatar.Name
+                        </div>
+                    </div>
                 }
             </div>
-            <div class="flex-y grow">
-                <FormSection
-                    For="() => _form.Title"
-                    Label="Name"
-                    InputId="@_form.TitleId"
-                    IsLabelInsideInput="true"
-                    Class="!mt-0 grow"
-                    IsRequired="true">
-                    <TextBox
-                        @bind-Value="@_form.Title"
-                        Id="@_form.TitleId"
-                        Autofocus="true"
-                        Autocomplete="false"/>
-                </FormSection>
-                <FormSection
-                    For="() => _form.IsPublic">
-                    <ToggleEdit Id="@_form.IsPublicId"
-                                Label="Public chat &ndash; anyone can join"
-                                @bind-Value="_form.IsPublic"/>
-                </FormSection>
-            </div>
-        </div>
-    </Form>
-    @if (_selectedContacts.Any()) {
-        <div class="new-chat-modal-selected-contacts">
-            @foreach (var contact in _selectedContacts) {
-                <div class="new-chat-modal-selected-contact"
+        }
+        <SearchBox
+            Placeholder="Type the username"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <div class="new-chat-modal-contact-list">
+            @foreach (var contact in _filteredContacts) {
+                var isSelected = _selectedContacts.Contains(contact);
+                <div class="new-chat-modal-contact-list-item"
                      @onclick="() => OnContactClick(contact)">
-                    <div class="new-chat-modal-remove-contact-icon">
-                        <i class="icon-close text-04 text-2xl pl-1"></i>
+                    <AccountCircle UserSid="@contact.Contact.Account!.Id" ShowPresence="true"/>
+                    <div class="flex-y grow gap-y-1 overflow-hidden">
+                        <span class="text-headline-1 text-02 truncate">
+                            <SearchMatchHighlighter Match="@GetMatch(contact.Contact.Account.Avatar.Name)"/>
+                        </span>
+                        <span class="text-xs text-03 truncate">
+                            @contact.LastChatMessage
+                        </span>
                     </div>
-                    <AvatarCircle Size="SquareSize.Size6" Avatar="@contact.Contact.Account?.Avatar"/>
-                    <div class="px-1 max-w-32 truncate">
-                        @contact.Contact.Account?.Avatar.Name
-                    </div>
+                    <Checkbox
+                        IsChecked="@isSelected"
+                        Class="!flex-none"
+                        Change="() => OnContactClick(contact)"/>
                 </div>
             }
         </div>
-    }
-    <SearchBox
-        Placeholder="Type the username"
-        MaxLength="@Constants.Chat.MaxSearchFilterLength"
-        TextChanged="@OnFilter"/>
-    <div class="new-chat-modal-contact-list">
-        @foreach (var contact in _filteredContacts) {
-            var isSelected = _selectedContacts.Contains(contact);
-            <div class="new-chat-modal-contact-list-item"
-                 @onclick="() => OnContactClick(contact)">
-                <AccountCircle UserSid="@contact.Contact.Account!.Id" ShowPresence="true"/>
-                <div class="flex-y grow gap-y-1 overflow-hidden">
-                    <span class="text-headline-1 text-02 truncate">
-                        <SearchMatchHighlighter Match="@GetMatch(contact.Contact.Account.Avatar.Name)"/>
-                    </span>
-                    <span class="text-xs text-03 truncate">
-                        @contact.LastChatMessage
-                    </span>
-                </div>
-                <Checkbox
-                    IsChecked="@isSelected"
-                    Class="!flex-none"
-                    Change="() => OnContactClick(contact)"/>
-            </div>
-        }
-    </div>
+    </FormBlock>
     </Body>
     <Buttons>
         <Button

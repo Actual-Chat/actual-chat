@@ -29,27 +29,29 @@
     NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnOkClick, "OK")">
     <Body>
 
-    @switch (device) {
-        case GuideType.MobileSafariIos:
-            <MobileSafariIosGuideContent/>
-            break;
-        case GuideType.WebEdge:
-            <WebEdgeGuideContent/>
-            break;
-        case GuideType.WebSafari:
-            <WebSafariGuideContent/>
-            break;
-        case GuideType.MobileChromeAndroid:
-            <MobileChromeAndroidGuideContent/>
-            break;
-        case GuideType.MobileEdgeAndroid:
-            <MobileEdgeAndroidGuideContent/>
-            break;
-        default:
-            <WebChromeGuideContent/>
-            break;
-    }
+    <FormBlock>
+        @switch (device) {
+            case GuideType.MobileSafariIos:
+                <MobileSafariIosGuideContent/>
+                break;
+            case GuideType.WebEdge:
+                <WebEdgeGuideContent/>
+                break;
+            case GuideType.WebSafari:
+                <WebSafariGuideContent/>
+                break;
+            case GuideType.MobileChromeAndroid:
+                <MobileChromeAndroidGuideContent/>
+                break;
+            case GuideType.MobileEdgeAndroid:
+                <MobileEdgeAndroidGuideContent/>
+                break;
+            default:
+                <WebChromeGuideContent/>
+                break;
+        }
 
+    </FormBlock>
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="OnOkClick">

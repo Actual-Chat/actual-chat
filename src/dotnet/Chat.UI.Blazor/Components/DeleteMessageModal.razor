@@ -5,6 +5,7 @@
 
 <DialogFrame Title="Delete message" Class="delete-message-modal modal-sm">
     <Body>
+        <FormBlock>
         <div class="c-question">
             Are you sure you want to delete this message?
         </div>
@@ -30,7 +31,8 @@
                     </CascadingValue>
                 </div>
             </div>
-        </div>
+            </div>
+    </FormBlock>
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="OnCancel" IsAutofocused="true">Cancel</Button>

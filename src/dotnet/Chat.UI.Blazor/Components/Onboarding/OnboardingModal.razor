@@ -7,69 +7,70 @@
     HasHeader="false">
 
     <Body>
+    <FormBlock>
 
-    <Stepper Context="stepper">
-        <Steps>
-            <PhoneStep/>
-            <AvatarStep/>
-        </Steps>
-        <Header>
-            @if (stepper.CanMoveBack) {
-                <HeaderButton Click="stepper.MoveBack">
-                    <i class="icon-arrow-left text-2xl"></i>
-                </HeaderButton>
-                <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
-            }
-            <div class="grow"></div>
-
-            @if (ModalModel.CanBeClosed) {
-                <HeaderButton Click="() => Modal.Close()">
-                    <i class="icon-close"></i>
-                </HeaderButton>
-            }
-        </Header>
-        <Footer>
-            <Button
-                Class="btn-primary btn-w-full"
-                Click="() => OnMoveForwardClick(stepper)">
-
-                @if (stepper.CurrentStepIndex == stepper.LastStepIndex) {
-                    <span>Start messaging</span>
-                } else if (stepper.CanMoveForward) {
-                    <span>Next</span>
+        <Stepper Context="stepper">
+            <Steps>
+                <PhoneStep/>
+                <AvatarStep/>
+            </Steps>
+            <Header>
+                @if (stepper.CanMoveBack) {
+                    <HeaderButton Click="stepper.MoveBack">
+                        <i class="icon-arrow-left text-2xl"></i>
+                    </HeaderButton>
+                    <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
                 }
-            </Button>
-            <div class="flex w-full justify-center mt-6">
-                <LineProgress
-                    StepCount="stepper.StepCount"
-                    CurrentStepIndex="stepper.CurrentStepIndex"
-                    Decoration="LineProgress.LineProgressDecoration.Blue">
-                </LineProgress>
-            </div>
-            @* RoundProgress example *@
-            @* <div class="flex w-full justify-center mt-6"> *@
-            @*     <RoundProgress *@
-            @*         TotalSteps="stepper.TotalSteps" *@
-            @*         CurrentStep="stepper.CurrentStepIndex"> *@
-            @*         @if (stepper.IsLast) { *@
-            @*             <ButtonRound *@
-            @*                 Class="absolute text-xl" *@
-            @*                 ContentClass="!bg-08" *@
-            @*                 Click="() => OnLastStepComplete(stepper)"> *@
-            @*                 <i class="icon-arrow-right text-2xl text-04"></i> *@
-            @*             </ButtonRound> *@
-            @*         } else if (stepper.CanMoveForward) { *@
-            @*             <ButtonRound *@
-            @*                 Class="transparent absolute text-xl" *@
-            @*                 Click="stepper.MoveForward"> *@
-            @*                 <i class="icon-arrow-right text-2xl text-primary"></i> *@
-            @*             </ButtonRound> *@
-            @*         } *@
-            @*     </RoundProgress> *@
-            @* </div> *@
-        </Footer>
-    </Stepper>
+                <div class="grow"></div>
 
+                @if (ModalModel.CanBeClosed) {
+                    <HeaderButton Click="() => Modal.Close()">
+                        <i class="icon-close"></i>
+                    </HeaderButton>
+                }
+            </Header>
+            <Footer>
+                <Button
+                    Class="btn-primary btn-w-full"
+                    Click="() => OnMoveForwardClick(stepper)">
+
+                    @if (stepper.CurrentStepIndex == stepper.LastStepIndex) {
+                        <span>Start messaging</span>
+                    } else if (stepper.CanMoveForward) {
+                        <span>Next</span>
+                    }
+                </Button>
+                <div class="flex w-full justify-center mt-6">
+                    <LineProgress
+                        StepCount="stepper.StepCount"
+                        CurrentStepIndex="stepper.CurrentStepIndex"
+                        Decoration="LineProgress.LineProgressDecoration.Blue">
+                    </LineProgress>
+                </div>
+                @* RoundProgress example *@
+                @* <div class="flex w-full justify-center mt-6"> *@
+                @*     <RoundProgress *@
+                @*         TotalSteps="stepper.TotalSteps" *@
+                @*         CurrentStep="stepper.CurrentStepIndex"> *@
+                @*         @if (stepper.IsLast) { *@
+                @*             <ButtonRound *@
+                @*                 Class="absolute text-xl" *@
+                @*                 ContentClass="!bg-08" *@
+                @*                 Click="() => OnLastStepComplete(stepper)"> *@
+                @*                 <i class="icon-arrow-right text-2xl text-04"></i> *@
+                @*             </ButtonRound> *@
+                @*         } else if (stepper.CanMoveForward) { *@
+                @*             <ButtonRound *@
+                @*                 Class="transparent absolute text-xl" *@
+                @*                 Click="stepper.MoveForward"> *@
+                @*                 <i class="icon-arrow-right text-2xl text-primary"></i> *@
+                @*             </ButtonRound> *@
+                @*         } *@
+                @*     </RoundProgress> *@
+                @* </div> *@
+            </Footer>
+        </Stepper>
+    </FormBlock>
     </Body>
 </DialogFrame>
 

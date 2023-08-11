@@ -14,34 +14,36 @@
     HasCloseButton="true"
     NarrowViewSettings="_viewSettings">
     <Body>
-    <SearchBox
-        @ref="_searchBoxRef"
-        Placeholder="Find contacts..."
-        MaxLength="@Constants.Chat.MaxSearchFilterLength"
-        TextChanged="@OnFilter"/>
-    <div class="c-contact-list">
-        @foreach (var contact in FilteredContacts) {
-            <div class="c-item"
-                 @key="@contact.Account.Id.Value"
-                 @onclick="@(_ => OnContactClick(contact))">
-                <AccountCircle UserSid="@contact.Account.Id" ShowPresence="true"/>
-                <div class="avatar-name">
-                    <SearchMatchHighlighter Match="@GetMatch(contact.Account.Avatar.Name)"/>
+    <FormBlock>
+        <SearchBox
+            @ref="_searchBoxRef"
+            Placeholder="Find contacts..."
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <div class="c-contact-list">
+            @foreach (var contact in FilteredContacts) {
+                <div class="c-item"
+                     @key="@contact.Account.Id.Value"
+                     @onclick="@(_ => OnContactClick(contact))">
+                    <AccountCircle UserSid="@contact.Account.Id" ShowPresence="true"/>
+                    <div class="avatar-name">
+                        <SearchMatchHighlighter Match="@GetMatch(contact.Account.Avatar.Name)"/>
+                    </div>
+                    @if (contact.IsExisting) {
+                        <Checkbox
+                            IsChecked="true"
+                            IsDisabled="true"
+                            Class="!flex-none"/>
+                    } else {
+                        <Checkbox
+                            IsChecked="@contact.IsChecked"
+                            Class="!flex-none"
+                            Change="@(_ => OnContactClick(contact))"/>
+                    }
                 </div>
-                @if (contact.IsExisting) {
-                    <Checkbox
-                        IsChecked="true"
-                        IsDisabled="true"
-                        Class="!flex-none"/>
-                } else {
-                    <Checkbox
-                        IsChecked="@contact.IsChecked"
-                        Class="!flex-none"
-                        Change="@(_ => OnContactClick(contact))"/>
-                }
-            </div>
-        }
-    </div>
+            }
+        </div>
+    </FormBlock>
     </Body>
     <Buttons>
         <Button

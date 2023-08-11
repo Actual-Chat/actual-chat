@@ -12,7 +12,9 @@
 
 <DialogFrame Title="@title" Class="author-modal modal-sm" HasCloseButton="true">
     <Body>
+    <FormBlock>
         <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn"/>
+    </FormBlock>
     </Body>
     <Buttons>
         @if (m.IsOwn) {

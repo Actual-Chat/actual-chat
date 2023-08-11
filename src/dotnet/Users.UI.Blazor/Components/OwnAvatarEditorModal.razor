@@ -13,58 +13,62 @@
         NarrowViewSettings="@DialogFrameNarrowViewSettings.FormSubmitButton()"
         ButtonsClass="full-width">
         <Body>
-        <DataAnnotationsValidator/>
-        <ValidationSummary/>
-        <PicUpload
-            UploadUrl="@UploadUrl"
-            Picked="OnImagePicked"
-            Size="SquareSize.Size24"
-            Title="@_form.Bio"
-            Picture="_form.Picture"
-            GenerateAvatar="OnGenerateAvatarClick">
-            <NoPicture>
-                <AnonymousIcon Class="w-24 h-24"/>
-            </NoPicture>
-        </PicUpload>
+        <FormBlock>
+            <DataAnnotationsValidator/>
+            <ValidationSummary/>
+            <PicUpload
+                UploadUrl="@UploadUrl"
+                Picked="OnImagePicked"
+                Size="SquareSize.Size24"
+                Title="@_form.Bio"
+                Picture="_form.Picture"
+                GenerateAvatar="OnGenerateAvatarClick">
+                <NoPicture>
+                    <AnonymousIcon Class="w-24 h-24"/>
+                </NoPicture>
+            </PicUpload>
 
-        <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
-            <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
-        </FormSection>
-
-        <FormSection For="() => _form.Bio" InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
-            <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId"/>
-        </FormSection>
-
-        <FormSection For="() => _form.IsDefault" InputId="@_form.IsDefaultFieldId" Class="is-default-avatar">
-            <button
-                type="button"
-                class="default-avatar-btn"
-                @onclick="@ChangeDefaultAvatar">
-                <div>
-                    <i class="icon-star text-xl hover:text-primary @(_form.IsDefault ? "text-primary" : "text-icons-01")"></i>
-                </div>
-                <div class="flex w-full px-8 text-02">
-                    Make default
-                </div>
-                <ToggleEdit @bind-Value="@_form.IsDefault" Id="@_form.IsDefaultFieldId"/>
-            </button>
-        </FormSection>
-
-        <button type="button" class="delete-avatar-btn" @onclick="@OnDeleteAvatarClick">
-            <div>
-                <i class="icon-trash03 text-xl text-error"></i>
-            </div>
-            <div class="flex w-full px-8 text-error">
-                Delete avatar
-            </div>
-        </button>
-
-        @if (!ModalModel.ChatId.IsNone) {
-            <FormSection For="() => _form.IsActive" InputId="@_form.IsActiveFieldId">
-                <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
-                            Label="Used in this chat (otherwise the default one is used)"/>
+            <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
+                <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
             </FormSection>
-        }
+
+            <FormSection For="() => _form.Bio" InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
+                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId"/>
+            </FormSection>
+        </FormBlock>
+
+        <FormBlock>
+            <FormSection For="() => _form.IsDefault" InputId="@_form.IsDefaultFieldId" Class="is-default-avatar">
+                <button
+                    type="button"
+                    class="default-avatar-btn"
+                    @onclick="@ChangeDefaultAvatar">
+                    <div>
+                        <i class="icon-star text-xl hover:text-primary @(_form.IsDefault ? "text-primary" : "text-icons-01")"></i>
+                    </div>
+                    <div class="flex w-full px-8 text-02">
+                        Make default
+                    </div>
+                    <ToggleEdit @bind-Value="@_form.IsDefault" Id="@_form.IsDefaultFieldId"/>
+                </button>
+            </FormSection>
+
+            <button type="button" class="delete-avatar-btn" @onclick="@OnDeleteAvatarClick">
+                <div>
+                    <i class="icon-trash03 text-xl text-error"></i>
+                </div>
+                <div class="flex w-full px-8 text-error">
+                    Delete avatar
+                </div>
+            </button>
+
+            @if (!ModalModel.ChatId.IsNone) {
+                <FormSection For="() => _form.IsActive" InputId="@_form.IsActiveFieldId">
+                    <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
+                                Label="Used in this chat (otherwise the default one is used)"/>
+                </FormSection>
+            }
+        </FormBlock>
         </Body>
         <Buttons>
             <FormButtons>

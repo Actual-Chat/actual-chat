@@ -142,7 +142,7 @@
 
 .form-block {
     @apply flex-y;
-    @apply py-4;
+    @apply p-4;
     @apply gap-y-2;
 }
 

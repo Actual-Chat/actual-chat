@@ -6,6 +6,7 @@
 
 <DialogFrame Title="Sorry, this feature is not implemented yet">
     <Body>
+    <FormBlock>
         @{
             var title = ModalModel.FeatureTitle;
             var featureTitle = title.IsNullOrEmpty() ? "This" : title;
@@ -34,6 +35,7 @@
             <label>Comment:</label>
             <textarea class="feedback-textarea border border-bg-03 w-full" rows="5" @bind="_comment" @bind:event="oninput"></textarea>
         </div>
+    </FormBlock>
     </Body>
     <Buttons>
         <div class="btn-group">
