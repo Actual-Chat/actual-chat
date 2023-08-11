@@ -1,5 +1,9 @@
 /* DeleteMessageModal */
 
+.delete-message-modal {
+    @apply max-w-full md:max-w-120 md:min-w-120;
+}
+
 .delete-message-modal .c-question {
     @apply flex-none;
     @apply mb-4;
