@@ -16,77 +16,88 @@
         NarrowViewSettings="@DialogFrameNarrowViewSettings.FormSubmitButton()"
         ButtonsClass="full-width">
         <Body>
-        <DataAnnotationsValidator/>
-        <ValidationSummary/>
+        <FormBlock>
+            <DataAnnotationsValidator/>
+            <ValidationSummary/>
 
-        <FormSection For="() => _form.Name" IsRequired="true" InputId="@_form.NameFieldId" Label="First name" IsLabelInsideInput="true">
-            <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true"/>
-        </FormSection>
-
-        <FormSection For="() => _form.LastName" InputId="@_form.LastNameFieldId" Label="Last name" IsLabelInsideInput="true">
-            <TextBox @bind-Value="@_form.LastName" Id="@_form.LastNameFieldId" Autofocus="true"/>
-        </FormSection>
-
-        <div class="flex-x gap-x-4 items-center">
-            <FormSection
-                For="() => _form.Code"
-                InputId="@_form.CodeFieldId"
-                Label="Code"
-                Class="w-20"
-                IsLabelInsideInput="true"
-                IsRequired="true">
-                @* TODO: seems like we need custom country code control *@
-                <InputText
-                    id="@_form.CodeFieldId"
-                    @bind-Value="_form.Code"
-                    list="phoneCodes"
-                    pattern="@PhoneValidation.CountryCodePattern"
-                    onfocus="this.select()"
-                    disabled="@_account.IsPhoneVerified()"/>
-                <datalist id="phoneCodes">
-                    @foreach (var phoneCode in PhoneCodes.List) {
-                        <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
-                    }
-                </datalist>
+            <FormSection For="() => _form.Name" IsRequired="true" InputId="@_form.NameFieldId" Label="First name" IsLabelInsideInput="true">
+                <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true"/>
             </FormSection>
-            <FormSection
-                For="() => _form.Number"
-                InputId="@_form.NumberFieldId"
-                Label="Phone number"
-                Class="grow"
-                IsLabelInsideInput="true"
-                IsRequired="true">
-                <ChildContent>
+
+            <FormSection For="() => _form.LastName" InputId="@_form.LastNameFieldId" Label="Last name" IsLabelInsideInput="true">
+                <TextBox @bind-Value="@_form.LastName" Id="@_form.LastNameFieldId" Autofocus="true"/>
+            </FormSection>
+
+            <div class="flex-x gap-x-4 items-center">
+                <FormSection
+                    For="() => _form.Code"
+                    InputId="@_form.CodeFieldId"
+                    Label="Code"
+                    Class="w-20"
+                    IsLabelInsideInput="true"
+                    IsRequired="true">
+                    @* TODO: seems like we need custom country code control *@
                     <InputText
-                        id="@_form.NumberFieldId"
-                        @bind-Value="_form.Number"
-                        autocomplete="tel-national"
-                        type="tel"
-                        pattern="@PhoneValidation.NumberPattern"
-                        inputmode="tel"
-                        disabled="@isPhoneVerified"/>
+                        id="@_form.CodeFieldId"
+                        @bind-Value="_form.Code"
+                        list="phoneCodes"
+                        pattern="@PhoneValidation.CountryCodePattern"
+                        onfocus="this.select()"
+                        disabled="@_account.IsPhoneVerified()"/>
+                    <datalist id="phoneCodes">
+                        @foreach (var phoneCode in PhoneCodes.List) {
+                            <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
+                        }
+                    </datalist>
+                </FormSection>
+                <FormSection
+                    For="() => _form.Number"
+                    InputId="@_form.NumberFieldId"
+                    Label="Phone number"
+                    Class="grow"
+                    IsLabelInsideInput="true"
+                    IsRequired="true">
+                    <ChildContent>
+                        <InputText
+                            id="@_form.NumberFieldId"
+                            @bind-Value="_form.Number"
+                            autocomplete="tel-national"
+                            type="tel"
+                            pattern="@PhoneValidation.NumberPattern"
+                            inputmode="tel"
+                            disabled="@isPhoneVerified"/>
+                    </ChildContent>
+                    <Right>
+                        @if (isPhoneValid) {
+                            <VerificationStatus IsVerified="isPhoneVerified"/>
+                        }
+                    </Right>
+                </FormSection>
+            </div>
+
+            @if (isPhoneValid && !isPhoneVerified) {
+                <PhoneVerifier Phone="@phone.Value" Class="my-3" Verified="OnPhoneVerified"/>
+            }
+
+            <FormSection For="() => _form.Email" InputId="@_form.EmailFieldId" Label="Email" IsLabelInsideInput="true">
+                <ChildContent>
+                    <TextBox @bind-Value="@_form.Email" Id="@_form.EmailFieldId" Autofocus="true" disabled/>
                 </ChildContent>
                 <Right>
-                    @if (isPhoneValid) {
-                        <VerificationStatus IsVerified="isPhoneVerified"/>
-                    }
+                    <VerificationStatus IsVerified="@_account.IsEmailVerified()"/>
                 </Right>
             </FormSection>
-        </div>
-
-        @if (isPhoneValid && !isPhoneVerified) {
-            <PhoneVerifier Phone="@phone.Value" Class="my-3" Verified="OnPhoneVerified"/>
-        }
-
-        <FormSection For="() => _form.Email" InputId="@_form.EmailFieldId" Label="Email" IsLabelInsideInput="true">
-            <ChildContent>
-                <TextBox @bind-Value="@_form.Email" Id="@_form.EmailFieldId" Autofocus="true" disabled/>
-            </ChildContent>
-            <Right>
-                <VerificationStatus IsVerified="@_account.IsEmailVerified()"/>
-            </Right>
-        </FormSection>
-
+        </FormBlock>
+        <FormBlock>
+            <button type="button" class="delete-avatar-btn" @onclick="@OnDeleteAccountClick">
+                <div>
+                    <i class="icon-trash03 text-xl text-error"></i>
+                </div>
+                <div class="flex w-full px-8 text-error">
+                    Delete account
+                </div>
+            </button>
+        </FormBlock>
         </Body>
         <Buttons>
             <FormButtons>
@@ -143,6 +154,15 @@
 
     private async Task OnPhoneVerified()
         => _account = await Accounts.GetOwn(Session, default);
+
+    private async Task OnDeleteAccountClick() {
+        // var command = new Avatars_Change(Session, ModalModel.AvatarId, null, new() {
+        //     Remove = true,
+        // });
+        // await UICommander.Run(command);
+        // Modal.Close();
+    }
+
 
     public sealed class FormModel : FormModel<FormModel> {
 

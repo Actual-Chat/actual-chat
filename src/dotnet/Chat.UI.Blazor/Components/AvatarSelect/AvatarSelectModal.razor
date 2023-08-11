@@ -15,37 +15,15 @@
     @if (m == ViewModel.None) {
         return;
     }
-
-    <div class="avatar-select">
-        @if (mode == Mode.Change) {
-            <div class="flex-x gap-x-1 text-sm font-normal">
-                You can change your avatar in the current chat here.
-            </div>
-        }
-        @foreach (var avatar in m.Avatars) {
-            <Tile Click="_ => OnAvatarSelected(avatar)" Class="avatar-select-item">
-                <TileItem>
-                    <Icon>
-                        <AvatarCard Avatar="@avatar"/>
-                    </Icon>
-                    <Content>
-                        @avatar.Name
-                    </Content>
-                    <Right>
-                        @if (m.SelectedAvatarId == avatar.Id) {
-                            <i class="icon-star text-xl text-primary"></i>
-                        }
-                    </Right>
-                </TileItem>
-            </Tile>
-        }
-        @if (m.Anonymous != null) {
-            var avatar = m.Anonymous;
-            <div class="flex-y">
-                <div class="flex-x text-sm font-normal border-t-2 py-1">
-                    You can use anonymous avatar:
+    <FormBlock>
+        <div class="avatar-select">
+            @if (mode == Mode.Change) {
+                <div class="flex-x gap-x-1 text-sm font-normal">
+                    You can change your avatar in the current chat here.
                 </div>
-                <Tile Click="_ => OnAnonymousSelected(avatar)" Class="avatar-select-item">
+            }
+            @foreach (var avatar in m.Avatars) {
+                <Tile Click="_ => OnAvatarSelected(avatar)" Class="avatar-select-item">
                     <TileItem>
                         <Icon>
                             <AvatarCard Avatar="@avatar"/>
@@ -54,16 +32,39 @@
                             @avatar.Name
                         </Content>
                         <Right>
-                            <AnonymousIcon Class="w-5 h-5"/>
+                            @if (m.SelectedAvatarId == avatar.Id) {
+                                <i class="icon-star text-xl text-primary"></i>
+                            }
                         </Right>
                     </TileItem>
                 </Tile>
-                <div class="flex-x text-sm font-normal">
-                    <button class="underline mt-2" @onclick="@RegenerateAnonymousAvatar">Regenerate anonymous avatar</button>
+            }
+            @if (m.Anonymous != null) {
+                var avatar = m.Anonymous;
+                <div class="flex-y">
+                    <div class="flex-x text-sm font-normal border-t-2 py-1">
+                        You can use anonymous avatar:
+                    </div>
+                    <Tile Click="_ => OnAnonymousSelected(avatar)" Class="avatar-select-item">
+                        <TileItem>
+                            <Icon>
+                                <AvatarCard Avatar="@avatar"/>
+                            </Icon>
+                            <Content>
+                                @avatar.Name
+                            </Content>
+                            <Right>
+                                <AnonymousIcon Class="w-5 h-5"/>
+                            </Right>
+                        </TileItem>
+                    </Tile>
+                    <div class="flex-x text-sm font-normal">
+                        <button class="underline mt-2" @onclick="@RegenerateAnonymousAvatar">Regenerate anonymous avatar</button>
+                    </div>
                 </div>
-            </div>
-        }
-    </div>
+            }
+        </div>
+    </FormBlock>
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="@OnCancel">Close</Button>

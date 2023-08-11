@@ -147,7 +147,6 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .dialog-body {
     @apply flex-1 flex-y items-stretch;
-    @apply px-4;
     @apply overflow-y-auto custom-scrollbar;
 }
 
@@ -197,9 +196,6 @@ body.narrow .dialog-buttons {
     @apply w-full h-full;
     @apply p-0;
     @apply rounded-none;
-}
-.modal-overlay-fullscreen .dialog-body {
-    @apply p-0;
 }
 .modal-overlay-fullscreen .btn-x {
     @apply absolute right-4 top-4;

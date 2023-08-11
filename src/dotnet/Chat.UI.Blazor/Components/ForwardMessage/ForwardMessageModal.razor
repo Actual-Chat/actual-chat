@@ -12,6 +12,7 @@
     HasCloseButton="true"
     NarrowViewSettings="_viewSettings">
     <Body>
+    <FormBlock>
         <SearchBoxNew
             Placeholder="Who would you like to share with"
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
@@ -19,7 +20,8 @@
         <ContactSelect
             ContactsToExclude="@ModalModel.ContactsToExclude"
             SearchPhrase="_searchPhrase"
-            SelectionChanged="OnSelectionChanged" />
+            SelectionChanged="OnSelectionChanged"/>
+    </FormBlock>
     </Body>
     <Buttons>
         <Button

@@ -3,11 +3,13 @@
 
 <DialogFrame Class="discard-modal modal-sm" Title="Discard changes">
     <Body>
-    <div class="c-text">
-        <p>
-            Are you sure you want to discard all changes?
-        </p>
-    </div>
+    <FormBlock>
+        <div class="c-text">
+            <p>
+                Are you sure you want to discard all changes?
+            </p>
+        </div>
+    </FormBlock>
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>

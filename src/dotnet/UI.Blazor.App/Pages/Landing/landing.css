@@ -814,9 +814,6 @@ body.narrow .landing-video-modal {
     @apply p-0;
     @apply rounded-none;
 }
-body.narrow .landing-video-modal .dialog-body {
-    @apply p-0;
-}
 body.narrow .landing-video-modal video,
 body.narrow .landing-video-modal .c-video-plug {
     @apply h-screen;

@@ -18,9 +18,9 @@
         <Body>
         @if (m.Rules != null) {
             @if (m.Rules.CanEditProperties()) {
-                <DataAnnotationsValidator/>
-
                 <FormBlock>
+                    <DataAnnotationsValidator/>
+
                     <PicUpload
                         UploadUrl="@_form.ImageUploadUrl"
                         Picked="OnImagePicked"

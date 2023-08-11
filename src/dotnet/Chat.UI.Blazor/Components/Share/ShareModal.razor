@@ -15,13 +15,15 @@
     Title="@(ModalModel.Title.NullIfEmpty() ?? "Share")"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>
+    <FormBlock>
         <SearchBoxNew
             Placeholder="Who would you like to share with"
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
             TextChanged="@OnFilter"/>
         <ContactSelect
             SearchPhrase="_searchPhrase"
-            SelectionChanged="OnSelectionChanged" />
+            SelectionChanged="OnSelectionChanged"/>
+    </FormBlock>
     </Body>
     <Footer>
         <EmbeddedMessageEditor

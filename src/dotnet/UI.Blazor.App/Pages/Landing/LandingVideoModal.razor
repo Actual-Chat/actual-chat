@@ -4,39 +4,41 @@
 
 <DialogFrame HasHeader="false" Class="landing-video-modal">
     <Body>
-    <div @ref="Ref" class="modal-wrapper">
-        <div class="video-wrapper">
-            <video hidden muted playsinline class="c-video">
-                <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
-            </video>
-            <img draggable="false" src="/dist/images/landing/landing-tutorial-plug.png" alt="plug" class="c-video-plug flex">
-        </div>
+    <FormBlock>
+        <div @ref="Ref" class="modal-wrapper">
+            <div class="video-wrapper">
+                <video hidden muted playsinline class="c-video">
+                    <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
+                </video>
+                <img draggable="false" src="/dist/images/landing/landing-tutorial-plug.png" alt="plug" class="c-video-plug flex">
+            </div>
 
-        <div class="control-wrapper">
-            <div class="c-header">
-                <button onclick="@OnClick" class="w-14 h-14 flex-none">
-                    <i class="icon-close text-2xl"></i>
-                </button>
-                <div>Demo video</div>
-            </div>
-            <div class="c-body">
-                <div class="pause-btn">
-                    <i class="icon-pause-fill play-btn-icon"></i>
+            <div class="control-wrapper">
+                <div class="c-header">
+                    <button onclick="@OnClick" class="w-14 h-14 flex-none">
+                        <i class="icon-close text-2xl"></i>
+                    </button>
+                    <div>Demo video</div>
                 </div>
-                <div class="play-btn">
-                    <i class="icon-play-fill play-btn-icon"></i>
+                <div class="c-body">
+                    <div class="pause-btn">
+                        <i class="icon-pause-fill play-btn-icon"></i>
+                    </div>
+                    <div class="play-btn">
+                        <i class="icon-play-fill play-btn-icon"></i>
+                    </div>
                 </div>
-            </div>
-            <div class="c-footer">
-                <progress class="c-progress-bar" min="0" max="100" value="0">0% progress</progress>
-                <div class="c-timeline">
-                    <div class="c-current"></div>
-                    <div>/</div>
-                    <div class="c-duration"></div>
+                <div class="c-footer">
+                    <progress class="c-progress-bar" min="0" max="100" value="0">0% progress</progress>
+                    <div class="c-timeline">
+                        <div class="c-current"></div>
+                        <div>/</div>
+                        <div class="c-duration"></div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </FormBlock>
     </Body>
 </DialogFrame>
 
