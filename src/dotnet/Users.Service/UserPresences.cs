@@ -36,8 +36,5 @@ public class UserPresences : IUserPresences
 
         var backendCommand = new UserPresencesBackend_CheckIn(account.Id, Now, isActive);
         _ = Commander.Run(backendCommand, true, CancellationToken.None);
-
-        // we should await this call as it uses DBContext and we can face concurrent issues with single connection
-        await Auth.UpdatePresence(session, cancellationToken).ConfigureAwait(false);
     }
 }
