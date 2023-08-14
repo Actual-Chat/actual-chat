@@ -62,4 +62,16 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         await Commander.Call(new AccountsBackend_Update(account, expectedVersion), cancellationToken)
             .ConfigureAwait(false);
     }
+
+    // [CommandHandler]
+    public virtual async Task OnDeleteOwn(Accounts_DeleteOwn command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        ownAccount.Require(AccountFull.MustBeActive);
+
+
+    }
 }

@@ -87,6 +87,48 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
+    public virtual async Task OnDelete(
+        AccountsBackend_Delete command,
+        CancellationToken cancellationToken)
+    {
+        var userId = command.UserId;
+        if (Computed.IsInvalidating()) {
+            _ = Get(userId, default);
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        await dbContext.UserPresences
+            .Where(a => a.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        await dbContext.Avatars
+            .Where(a => a.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        await dbContext.UserIdentities
+            .Where(a => a.Id == userId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        await dbContext.Users
+            .Where(a => a.Id == userId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        await dbContext.Accounts
+            .Where(a => a.Id == userId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     // Private methods
 
     internal static bool IsAdmin(User user)

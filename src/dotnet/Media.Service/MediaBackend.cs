@@ -6,9 +6,13 @@ namespace ActualChat.Media;
 internal class MediaBackend : DbServiceBase<MediaDbContext>, IMediaBackend
 {
     private IDbEntityResolver<string, DbMedia> DbMediaResolver { get; }
+    private IContentSaver ContentSaver { get; }
 
     public MediaBackend(IServiceProvider services) : base(services)
-        => DbMediaResolver = services.GetRequiredService<IDbEntityResolver<string, DbMedia>>();
+    {
+        DbMediaResolver = services.GetRequiredService<IDbEntityResolver<string, DbMedia>>();
+        ContentSaver = services.GetRequiredService<IContentSaver>();
+    }
 
     // [ComputeMethod]
     public virtual async Task<Media?> Get(MediaId mediaId, CancellationToken cancellationToken)
@@ -44,12 +48,16 @@ internal class MediaBackend : DbServiceBase<MediaDbContext>, IMediaBackend
                 .Get(mediaId, cancellationToken)
                 .ConfigureAwait(false);
             media = dbMedia?.ToModel();
-            if (dbMedia != null)
+            if (dbMedia != null) {
+                if (!dbMedia.ContentId.IsNullOrEmpty())
+                    await ContentSaver.Remove(dbMedia.ContentId, cancellationToken)
+                        .ConfigureAwait(false);
+
                 dbContext.Remove(dbMedia);
+            }
         }
-        else {
+        else
             throw new NotSupportedException("Update is not supported.");
-        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

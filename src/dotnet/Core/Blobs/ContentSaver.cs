@@ -9,4 +9,7 @@ internal class ContentSaver : IContentSaver
 
     public Task Save(Content content, CancellationToken cancellationToken)
         => _blobStorage.Write(content.ContentId, content.Stream, content.ContentType, cancellationToken);
+
+    public Task Remove(string contentId, CancellationToken cancellationToken)
+        => _blobStorage.Delete(contentId, cancellationToken);
 }

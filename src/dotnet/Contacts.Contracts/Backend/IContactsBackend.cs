@@ -13,6 +13,9 @@ public interface IContactsBackend : IComputeService
     public Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     public Task OnTouch(ContactsBackend_Touch command, CancellationToken cancellationToken);
+    [CommandHandler]
+    public Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken);
+
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -27,4 +30,10 @@ public sealed partial record ContactsBackend_Change(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Touch(
     [property: DataMember, MemoryPackOrder(0)] ContactId Id
+) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_RemoveAccount(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand;
