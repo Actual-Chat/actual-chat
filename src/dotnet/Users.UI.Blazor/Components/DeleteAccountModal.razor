@@ -53,8 +53,12 @@
     }
 
     protected override void OnAfterRender(bool firstRender) {
-        if (firstRender)
-             _formRef?.EditContext?.Validate();
+        if (!firstRender)
+            return;
+
+        var isValid = _formRef?.EditContext?.Validate() ?? false;
+        if (!isValid)
+            StateHasChanged();
     }
 
     private void OnCancel()
@@ -65,7 +69,7 @@
     }
 
     public sealed class FormModel : FormModel<FormModel> {
-        [Required, RegularExpression("^DELETE$")]
+        [Required(ErrorMessage = "Delete confirmation is required"), RegularExpression("^DELETE$", ErrorMessage = "Please enter DELETE to confirm")]
         public string Delete { get; set; } = "";
         public string DeleteFieldId { get; set; } = "";
 
