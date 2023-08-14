@@ -22,6 +22,9 @@ public interface INotificationsBackend : IComputeService
     Task OnUpsert(NotificationsBackend_Upsert notification, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveDevices(NotificationsBackend_RemoveDevices removeDevicesCommand, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnRemoveAccount(NotificationsBackend_RemoveAccount command, CancellationToken cancellationToken);
+
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -40,4 +43,10 @@ public sealed partial record NotificationsBackend_Upsert(
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_RemoveDevices(
     [property: DataMember, MemoryPackOrder(0)] ApiArray<Symbol> DeviceIds
+) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record NotificationsBackend_RemoveAccount(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand;

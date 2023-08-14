@@ -213,6 +213,30 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
         context.Operation().Items.Set(affectedUserIds);
     }
 
+    // [CommandHandler]
+    public virtual async Task OnRemoveAccount(NotificationsBackend_RemoveAccount command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
+
+        var userId = command.UserId;
+        var dbContext = CreateDbContext(readWrite: true);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var removedDevicesCount = await dbContext.Devices
+            .Where(a => a.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+        await dbContext.Notifications
+            .Where(a => a.UserId == userId)
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Removed {Count} devices", removedDevicesCount);
+    }
+
     // Event handlers
 
     [EventHandler]

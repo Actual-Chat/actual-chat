@@ -384,15 +384,75 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             chat = ApplyDiff(dbChat.ToModel(), update);
             dbChat.UpdateFrom(chat);
         }
-        else
-            throw StandardError.NotSupported("Chat removal is not supported yet.");
+        else if (change.IsRemove() && dbChat != null) {
+
+            if (!dbChat.MediaId.IsNullOrEmpty()) {
+                var removeMediaCommand = new MediaBackend_Change(
+                    new MediaId(dbChat.MediaId),
+                    new Change<Media.Media> { Remove = true });
+                await Commander.Call(removeMediaCommand, cancellationToken).ConfigureAwait(false);
+            }
+            var attachmentMediaIds = await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.HasAttachments)
+                .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea.MediaId)
+                .Distinct()
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var mediaId in attachmentMediaIds) {
+                var removeMediaCommand = new MediaBackend_Change(
+                    new MediaId(mediaId),
+                    new Change<Media.Media> { Remove = true });
+                await Commander.Call(removeMediaCommand, cancellationToken).ConfigureAwait(false);
+            }
+            // remove attachments
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.HasAttachments)
+                .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // remove reaction summaries
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId)
+                .Join(dbContext.ReactionSummaries, ce => ce.Id, rs => rs.EntryId, (_, rs) => rs)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // remove reactions
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId)
+                .Join(dbContext.Reactions, ce => ce.Id, rs => rs.EntryId, (_, rs) => rs)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // mentions
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId)
+                .Join(dbContext.Mentions.Where(m => m.ChatId == chatId), ce => ce.LocalId, rs => rs.EntryId, (_, rs) => rs)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // entries
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // roles
+            await dbContext.Roles
+                .Where(r => r.ChatId == chatId)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            dbContext.Remove(dbChat);
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         chat = dbChat.ToModel();
         context.Operation().Items.Set(chat);
 
         // Raise events
-        new ChatChangedEvent(chat, oldChat)
+        new ChatChangedEvent(chat, oldChat, change.Kind)
             .EnqueueOnCompletion();
         return chat;
 

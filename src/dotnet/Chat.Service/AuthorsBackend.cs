@@ -133,7 +133,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     }
 
     // [CommandHandler]
-    public virtual async Task<AuthorFull> Upsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken)
+    public virtual async Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId, expectedVersion, diff, doNotNotify) = command;
         if (chatId.IsNone)
@@ -261,6 +261,50 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .EnqueueOnCompletion();
             return author;
         }
+    }
+
+        // [CommandHandler]
+    public virtual async Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken)
+    {
+        var (chatId, authorId, userId) = command;
+        if (chatId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+        if (!authorId.IsNone && authorId.ChatId != chatId)
+            throw new ArgumentOutOfRangeException(nameof(command), "Invalid AuthorId.");
+        if (userId.IsNone && authorId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(command), "Either AuthorId or UserId must be provided.");
+
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating()) {
+            var (invAuthor, invOldAuthor) = context.Operation().Items.GetOrDefault<(AuthorFull, AuthorFull?)>();
+            if (!invAuthor.Id.IsNone) {
+                _ = Get(chatId, invAuthor.Id, default);
+                _ = GetByUserId(chatId, invAuthor.UserId, default);
+                var invOldHadLeft = invOldAuthor?.HasLeft ?? true;
+                if (invAuthor.HasLeft != invOldHadLeft) {
+                    _ = ListAuthorIds(chatId, default);
+                    _ = ListUserIds(chatId, default);
+                }
+            }
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbAuthors = dbContext.Authors.ForUpdate().Include(a => a.Roles);
+        var dbAuthor = await (authorId.IsNone
+            ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
+            : dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
+            ).ConfigureAwait(false);
+        var existingAuthor = dbAuthor?.ToModel();
+
+        if (dbAuthor != null)
+            dbContext.Remove(dbAuthor);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        context.Operation().Items.Set((existingAuthor, existingAuthor));
     }
 
     [EventHandler]

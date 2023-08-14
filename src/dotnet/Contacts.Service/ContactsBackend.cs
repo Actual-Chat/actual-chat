@@ -187,6 +187,39 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         context.Operation().Items.Set((long)contactIds.IndexOf(id));
     }
 
+    // [CommandHandler]
+    public virtual async Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken)
+    {
+        var userId = command.UserId;
+        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating())
+            return; // spawns commands to remove contacts for other owners, we can skip invalidation for own contacts
+
+        // var contactIds = await ListIds(userId, cancellationToken).ConfigureAwait(false);
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = userId.Value + ' ';
+        await dbContext.Contacts
+            .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var contactIds = await dbContext.Contacts
+            .Where(a => a.UserId == userId)
+            .Select(c => c.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var contactId in contactIds) {
+            var removeCommand = new ContactsBackend_Change(new ContactId(contactId), null, new Change<Contact> { Remove = true });
+            await Commander.Call(removeCommand, cancellationToken).ConfigureAwait(false);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     // Events
 
     [EventHandler]
