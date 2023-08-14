@@ -63,6 +63,7 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply font-normal text-primary;
 }
 .chat-message .forwarded-author-header-title {
+    @apply flex-none;
     @apply max-h-6 overflow-hidden truncate;
     @apply font-normal text-primary;
 }
