@@ -40,31 +40,58 @@
 
 <div class="selection-header">
     <div>
+        <HeaderButton
+            Class="c-close-btn"
+            Click="OnCancel">
+            <i class="icon-close-fill text-2xl"></i>
+        </HeaderButton>
+    </div>
+
+    <div class="selection-header-title">
+        @(messageCount) @(messageCount == 1 ? "message" : "messages")
+    </div>
+
+    <div class="c-button-group">
+        @if (_enableIncompleteUI) {
+            <HeaderButton>
+                <i class="icon-play-fill text-accent"></i>
+            </HeaderButton>
+
+            <HeaderButton>
+                <i class="icon-star"></i>
+            </HeaderButton>
+
+            <HeaderButton>
+                <i class="icon-copy !text-lg"></i>
+            </HeaderButton>
+
+            <HeaderButton>
+                <i class="icon-trash03"></i>
+            </HeaderButton>
+
+            <HeaderButton>
+                <span class="text-accent">Reply</span>
+            </HeaderButton>
+        }
+
         <Button
             Class="btn-primary btn-sm"
             Click="() => OnForward(m.Selection)">
             Forward
         </Button>
     </div>
-    <div class="selection-header-title">
-        @(messageCount) @(messageCount == 1 ? "message" : "messages")
-    </div>
-    <div>
-        <ButtonRound
-            Class="transparent btn-sm"
-            Click="OnCancel">
-            <i class="icon-close-fill text-2xl"></i>
-        </ButtonRound>
-    </div>
 </div>
 
 @code {
+    private bool _enableIncompleteUI;
+
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private SelectionUI SelectionUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -77,6 +104,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var selection = await SelectionUI.Selection.Use(cancellationToken);
+        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
         return new Model {
             Selection = selection.OrderBy(x => x.LocalId).ToList(),

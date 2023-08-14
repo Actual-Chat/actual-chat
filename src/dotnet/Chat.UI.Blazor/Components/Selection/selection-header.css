@@ -5,3 +5,12 @@
 .selection-header .selection-header-title {
     @apply flex-grow;
 }
+.selection-header .btn-h.c-close-btn {
+    @apply w-10;
+}
+.selection-header > .c-button-group {
+    @apply flex-x gap-x-4;
+}
+.selection-header > .c-button-group > .btn-h span {
+    @apply text-headline-1;
+}
