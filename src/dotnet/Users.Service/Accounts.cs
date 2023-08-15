@@ -72,6 +72,13 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
 
+        // delete owned chats
 
+
+        // delete own messages
+
+        // delete account
+        var deleteOwnAccountCommand = new AccountsBackend_Delete(ownAccount.Id);
+        await Commander.Call(deleteOwnAccountCommand, cancellationToken).ConfigureAwait(false);
     }
 }

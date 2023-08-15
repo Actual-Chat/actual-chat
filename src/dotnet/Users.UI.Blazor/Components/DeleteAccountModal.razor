@@ -40,6 +40,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
 
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -65,6 +66,11 @@
         => Modal.Close();
 
     private async Task OnDelete() {
+        var deleteOwnAccountCommand = new Accounts_DeleteOwn(Session);
+        await UICommander.Call(deleteOwnAccountCommand);
+
+        //TODO(AK): add deleting in progress indicator
+        await AccountUI.ClientAuth.SignOut();
         Modal.Close();
     }
 
