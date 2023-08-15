@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.Components;
 
 public static partial class PhoneValidation
 {
-    public const string CountryCodePattern = @"\+[\d\s]+";
+    public const string CountryCodePattern = @"\+?[\d\s]+";
     public const string NumberPattern = @"[\d\s\(\-]+";
     public const int MinNumberLength = 7;
 
