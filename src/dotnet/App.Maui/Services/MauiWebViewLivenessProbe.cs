@@ -16,11 +16,12 @@ public class MauiWebViewLivenessProbe
 
     public async Task StartCheck()
     {
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 4; i++) {
+            if (i > 0)
+                await Task.Delay(300, CancellationToken).ConfigureAwait(false);
             var isAlive = await IsAlive(CancellationToken).ConfigureAwait(false);
             if (isAlive)
                 return;
-            await Task.Delay(1000, CancellationToken).ConfigureAwait(false);
         }
         if (CancellationToken.IsCancellationRequested)
             return;
@@ -33,7 +34,7 @@ public class MauiWebViewLivenessProbe
     private async Task<bool> IsAlive(CancellationToken cancellationToken)
     {
         var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(TimeSpan.FromMilliseconds(1000));
+        cts.CancelAfter(TimeSpan.FromMilliseconds(300));
         try {
             var services = await ScopedServicesTask.WaitAsync(cts.Token).ConfigureAwait(false);
             var jsRuntime = services.GetRequiredService<IJSRuntime>();
@@ -46,7 +47,7 @@ public class MauiWebViewLivenessProbe
                 e is TimeoutException ||
                 e is JSDisconnectedException;
             if (!silent) {
-                Services!.LogFor<MauiWebViewLivenessProbe>()
+                Services.LogFor<MauiWebViewLivenessProbe>()
                     .LogWarning(e, "An exception occurred during maui web view aliveness check");
             }
         }
