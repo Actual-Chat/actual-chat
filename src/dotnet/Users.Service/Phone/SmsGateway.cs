@@ -1,5 +1,4 @@
 using ActualChat.Users.Module;
-using Twilio;
 using Twilio.Clients;
 using Twilio.Rest.Api.V2010.Account;
 
@@ -21,16 +20,12 @@ public class TwilioSmsGateway : ISmsGateway
         Settings = settings;
     }
 
-    public async Task Send(Phone phone, string text)
-    {
-        TwilioClient.GetRestClient();
-        await MessageResource
+    public Task Send(Phone phone, string text)
+        => MessageResource
             .CreateAsync(new Twilio.Types.PhoneNumber(phone.ToInternational()),
                 from: Settings.TwilioSmsFrom,
                 body: text,
-                client: Client)
-            .ConfigureAwait(false);
-    }
+                client: Client);
 }
 
 public class LocalSmsGateway : ISmsGateway
