@@ -184,7 +184,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         services.AddTransient<Rfc6238AuthenticationService>();
         services.AddSingleton<TotpRandomSecrets>();
         services.AddSingleton<ITwilioRestClient>(_ => {
-            TwilioClient.Init(Settings.TwilioAccountSid, Settings.TwilioAuthToken);
+            TwilioClient.Init(Settings.TwilioApiKey, Settings.TwilioApiSecret, Settings.TwilioAccountSid);
             return TwilioClient.GetRestClient();
         });
         if (IsDevelopmentInstance && !Settings.IsTwilioEnabled)
