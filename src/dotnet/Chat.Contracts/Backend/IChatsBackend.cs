@@ -53,6 +53,11 @@ public interface IChatsBackend : IComputeService
     Task<ChatEntry> OnUpsertEntry(ChatsBackend_UpsertEntry command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<TextEntryAttachment> OnCreateAttachment(ChatsBackend_CreateAttachment command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnRemoveOwnChats(ChatsBackend_RemoveOwnChats command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnRemoveOwnEntries(ChatsBackend_RemoveOwnEntries command, CancellationToken cancellationToken);
+
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -76,3 +81,16 @@ public sealed partial record ChatsBackend_UpsertEntry(
     [property: DataMember, MemoryPackOrder(0)] ChatEntry Entry,
     [property: DataMember, MemoryPackOrder(1)] bool HasAttachments = false
 ) : ICommand<ChatEntry>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_RemoveOwnChats(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+) : ICommand<ChatEntry>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_RemoveOwnEntries(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+) : ICommand<ChatEntry>, IBackendCommand;
+

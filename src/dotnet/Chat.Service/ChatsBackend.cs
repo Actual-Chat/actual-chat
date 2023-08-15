@@ -579,6 +579,66 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         return attachment;
     }
 
+    // [CommandHandler]
+    public virtual async Task OnRemoveOwnChats(
+        ChatsBackend_RemoveOwnChats command,
+        CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var userId = command.UserId;
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var chatIdsToDelete = new List<string>();
+        var ownChatIds = await dbContext.Chats
+            .Join(dbContext.Roles, c => c.Id, r => r.ChatId, (c, r) => new { c, r })
+            .Join(dbContext.AuthorRoles, x => x.r.Id, r => r.DbRoleId, (x, r) => new { x.c, x.r, ar = r })
+            .Join(dbContext.Authors, x => x.ar.DbAuthorId, a => a.Id, (x, a) => new { x.c, x.r, x.ar, a })
+            .Where(x => x.a.UserId == userId && x.r.SystemRole == SystemRole.Owner)
+            .Select(x => x.c.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        foreach (var chatId in ownChatIds) {
+            var hasOtherOwners = await dbContext.Chats
+                .Join(dbContext.Roles, c => c.Id, r => r.ChatId, (c, r) => new { c, r })
+                .Join(dbContext.AuthorRoles, x => x.r.Id, r => r.DbRoleId, (x, r) => new { x.c, x.r, ar = r })
+                .Join(dbContext.Authors, x => x.ar.DbAuthorId, a => a.Id, (x, a) => new { x.c, x.r, x.ar, a })
+                .Where(x => x.a.UserId != userId && x.r.SystemRole == SystemRole.Owner)
+                .AnyAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!hasOtherOwners)
+                chatIdsToDelete.Add(chatId);
+        }
+        foreach (var chatId in chatIdsToDelete) {
+            var deleteChatCommand = new ChatsBackend_Change(
+                new ChatId(chatId),
+                null,
+                new Change<ChatDiff> { Remove = true });
+
+            await Commander.Call(deleteChatCommand, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnRemoveOwnEntries(
+        ChatsBackend_RemoveOwnEntries command,
+        CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating()) {
+            return;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+
+
+    }
+
     // Event handlers
 
     [EventHandler]
