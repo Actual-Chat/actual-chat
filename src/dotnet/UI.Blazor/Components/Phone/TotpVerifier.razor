@@ -60,6 +60,9 @@
         var (isValid, error) = await UICommander.Run(cmd);
         if (error != null) {
             ErrorUI.ShowError(error);
+            if (_totpInput != null)
+                await _totpInput.Clear();
+
             return;
         }
 
