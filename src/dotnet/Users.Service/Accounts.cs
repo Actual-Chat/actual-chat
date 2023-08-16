@@ -1,3 +1,4 @@
+using ActualChat.Chat;
 using ActualChat.Users.Db;
 using Stl.Fusion.EntityFramework;
 
@@ -72,13 +73,13 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
 
-        // delete owned chats
+        var deleteOwnChatsCommand = new ChatsBackend_RemoveOwnChats(ownAccount.Id);
+        await Commander.Call(deleteOwnChatsCommand, true, cancellationToken).ConfigureAwait(false);
 
+        var deleteOwnMessagesCommand = new ChatsBackend_RemoveOwnEntries(ownAccount.Id);
+        await Commander.Call(deleteOwnMessagesCommand, true, cancellationToken).ConfigureAwait(false);
 
-        // delete own messages
-
-        // delete account
         var deleteOwnAccountCommand = new AccountsBackend_Delete(ownAccount.Id);
-        await Commander.Call(deleteOwnAccountCommand, cancellationToken).ConfigureAwait(false);
+        await Commander.Call(deleteOwnAccountCommand, false, cancellationToken).ConfigureAwait(false);
     }
 }
