@@ -10,7 +10,7 @@
     @apply flex-1 flex-x items-center overflow-hidden;
 }
 .toggle > .c-label > .c-text {
-    @apply flex-1 overflow-hidden truncate;
+    @apply flex-1 truncate;
 }
 
 /* "Dash" and "O" styling */

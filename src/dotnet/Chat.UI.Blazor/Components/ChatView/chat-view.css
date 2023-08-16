@@ -49,33 +49,47 @@ body.hoverable .system-entry.message-wrapper:hover {
 }
 
 .chat-message-author-name {
-    @apply max-h-6 overflow-hidden truncate;
+    @apply max-h-6 truncate;
     @apply font-bold text-03;
     @apply hover:opacity-80;
     @apply cursor-pointer;
 }
 
-.chat-message .forwarded-author-header {
+.chat-message .forwarded-header {
     @apply flex-x items-center gap-x-1;
     @apply min-w-0;
 }
-.chat-message .forwarded-author-header-icon {
+.chat-message .forwarded-header .c-icon {
     @apply font-normal text-primary;
 }
-.chat-message .forwarded-author-header-title {
-    @apply flex-none;
-    @apply max-h-6 overflow-hidden truncate;
-    @apply font-normal text-primary;
+.chat-message .forwarded-header .c-chat-title {
+    @apply max-h-6 truncate;
+    @apply text-caption-6 text-accent;
+    @apply hover:opacity-80;
+    @apply cursor-pointer;
 }
-.chat-message .forwarded-author-header-author-name {
-    @apply max-h-6 overflow-hidden truncate;
-    @apply font-medium text-primary;
+.chat-message .forwarded-subheader {
+    @apply flex-x items-end gap-x-2;
+}
+.chat-message .forwarded-subheader .c-author-name {
+    @apply max-h-6 truncate;
+    @apply text-headline-1 text-accent;
     @apply hover:opacity-80;
     @apply cursor-pointer;
 }
 
+.chat-message .forwarded-subheader .c-author-name,
+.forwarded-message .chat-message .message-content {
+    @apply pl-2;
+    @apply border-l border-accent;
+    @apply rounded-none;
+}
+
 .message-wrapper.own-message .author-name {
     @apply text-06;
+}
+.message-wrapper.forwarded-message .chat-message {
+    @apply p-0;
 }
 
 .chat-message-highlighted {
@@ -98,6 +112,9 @@ body.hoverable .message-wrapper.mention.replied-message:hover {
 .chat-message-timestamp,
 .chat-message-timestamp-on-hover {
     @apply text-03 text-xs;
+}
+.chat-message-timestamp {
+    @apply min-w-fit;
 }
 .chat-message-timestamp-on-hover {
     @apply invisible;
@@ -198,11 +215,11 @@ body.hoverable .chat-header-title:hover {
     @apply overflow-hidden;
 }
 .chat-message-quote > .c-content > .c-author {
-    @apply max-h-6 overflow-hidden truncate;
+    @apply max-h-6 truncate;
     @apply opacity-90;
 }
 .chat-message-quote > .c-content > .c-text {
-    @apply max-h-6 overflow-hidden truncate;
+    @apply max-h-6 truncate;
     @apply font-medium text-base text-03;
     @apply pointer-events-none;
 }

@@ -162,7 +162,6 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 
 .chat-header-center {
     @apply flex-auto flex-x justify-between items-center grow gap-x-2;
-    @apply overflow-hidden;
     @apply truncate;
 }
 .chat-header-center > .chat-header-title {
