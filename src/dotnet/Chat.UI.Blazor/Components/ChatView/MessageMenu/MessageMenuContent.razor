@@ -163,7 +163,9 @@
     }
 
     private async Task ForwardSelection() {
-        var selection = SelectionUI.Selection.Value;
+        var selection = SelectionUI.Selection.Value
+            .OrderBy(x => x.LocalId)
+            .ToApiArray();
         var chatId = selection.First().ChatId;
         var selectedChats = await SelectChats(chatId);
         if (!selectedChats.Any()) {
@@ -173,7 +175,7 @@
         var cmd = new Chats_ForwardTextEntries(
             Session,
             chatId,
-            new ApiArray<ChatEntryId>(selection),
+            selection,
             new ApiArray<ChatId>(selectedChats));
         await UICommander.Run(cmd, CancellationToken.None);
 
