@@ -453,7 +453,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        chat = dbChat.ToModel();
+        chat = dbChat.Require().ToModel();
         context.Operation().Items.Set(chat);
 
         // Raise events

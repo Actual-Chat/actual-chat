@@ -310,7 +310,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             if (dbAuthors.Count > 0) {
                 await dbContext.Authors
                     .Where(a => a.ChatId == chatId)
-                    .ExecuteDeleteAsync(cancellationToken);
+                    .ExecuteDeleteAsync(cancellationToken)
+                    .ConfigureAwait(false);
                 authors.AddRange(dbAuthors.Select(a => a.ToModel()));
             }
         }
@@ -322,7 +323,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             if (dbAuthors.Count > 0) {
                 await dbContext.Authors
                     .Where(a => a.UserId == userId)
-                    .ExecuteDeleteAsync(cancellationToken);
+                    .ExecuteDeleteAsync(cancellationToken)
+                    .ConfigureAwait(false);
                 authors.AddRange(dbAuthors.Select(a => a.ToModel()));
             }
         }
