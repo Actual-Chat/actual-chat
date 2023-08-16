@@ -402,7 +402,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 var removeMediaCommand = new MediaBackend_Change(
                     new MediaId(mediaId),
                     new Change<Media.Media> { Remove = true });
-                await Commander.Call(removeMediaCommand, cancellationToken).ConfigureAwait(false);
+                await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }
             // remove attachments
             await dbContext.ChatEntries
@@ -628,15 +628,81 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         ChatsBackend_RemoveOwnEntries command,
         CancellationToken cancellationToken)
     {
+        var context = CommandContext.GetCurrent();
+
         if (Computed.IsInvalidating()) {
+            var invChats = context.Operation().Items.Get<string[]>();
+            if (invChats != null) {
+                // TODO(AK): invalidate latest tiles and getNews
+            }
             return;
         }
 
+        var userId = command.UserId;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var chatAuthors = await dbContext.Authors
+            .Where(a => a.UserId == userId)
+            .Select(a => new { a.ChatId, a.Id })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 
+        foreach (var chatAuthor in chatAuthors) {
+            var chatId = chatAuthor.ChatId;
+            var authorId = chatAuthor.Id;
+            var attachmentMediaIds = await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId && ce.HasAttachments)
+                .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea.MediaId)
+                .Distinct()
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var mediaId in attachmentMediaIds) {
+                var removeMediaCommand = new MediaBackend_Change(
+                    new MediaId(mediaId),
+                    new Change<Media.Media> { Remove = true });
+                await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
+            }
 
+            // remove attachments
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId && ce.HasAttachments)
+                .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // remove reaction summaries
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
+                .Join(dbContext.ReactionSummaries, ce => ce.Id, rs => rs.EntryId, (_, rs) => rs)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // remove reactions
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
+                .Join(dbContext.Reactions, ce => ce.Id, rs => rs.EntryId, (_, rs) => rs)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // mentions
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
+                .Join(dbContext.Mentions.Where(m => m.ChatId == chatId), ce => ce.LocalId, rs => rs.EntryId, (_, rs) => rs)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // entries
+            await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var chatIdsToInvalidate = chatAuthors
+            .Select(ca => ca.ChatId)
+            .ToArray();
+        context.Operation().Items.Set(chatIdsToInvalidate);
     }
 
     // Event handlers
