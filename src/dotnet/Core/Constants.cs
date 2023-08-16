@@ -55,7 +55,7 @@ public static partial class Constants
 
     public static class Attachments
     {
-        public const int FileSizeLimit = 100 * 1024 * 1024; // 25MB
+        public const int FileSizeLimit = 100 * 1024 * 1024;
         public const int FileCountLimit = 10;
     }
 
