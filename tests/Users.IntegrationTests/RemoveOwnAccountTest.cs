@@ -1,52 +1,18 @@
-﻿using ActualChat.Testing.Host;
+﻿using ActualChat.Chat;
+using ActualChat.Testing.Host;
 using Stl.Mathematics;
 
-namespace ActualChat.Chat.IntegrationTests;
+namespace ActualChat.Users.IntegrationTests;
 
-public class RemoveAccountTest : AppHostTestBase
+public class RemoveOwnAccountTest : AppHostTestBase
 {
     private ChatId TestChatId { get; } = new("the-actual-one");
 
-    public RemoveAccountTest(ITestOutputHelper @out) : base(@out)
+    public RemoveOwnAccountTest(ITestOutputHelper @out) : base(@out)
     { }
 
     [Fact]
-    public async Task RemoveOwnEntriesTest()
-    {
-        using var appHost = await NewAppHost();
-        await using var tester = appHost.NewWebClientTester();
-        var services = tester.AppServices;
-        var bob = await tester.SignIn(new User("Bob"));
-        var session = tester.Session;
-
-        var chats = services.GetRequiredService<IChats>();
-        var chat = await chats.Get(session, TestChatId, CancellationToken.None);
-        chat.Should().NotBeNull();
-
-        var entries = await CreateChatEntries(chats, session, TestChatId, 3);
-
-        var removeEntriesCommand = new ChatsBackend_RemoveOwnEntries(bob.Id);
-        await services.Commander().Call(removeEntriesCommand);
-
-        var ids = new HashSet<long>();
-        var idTileStack = Constants.Chat.IdTileStack;
-        var newEntryRange = new Range<long>(entries.Min(e => e.LocalId), entries.Max(e => e.LocalId) + 1);
-        var idTiles = idTileStack.GetOptimalCoveringTiles(newEntryRange);
-        foreach (var idTile in idTiles) {
-            var tile = await chats.GetTile(session,
-                TestChatId,
-                ChatEntryKind.Text,
-                idTile.Range,
-                CancellationToken.None);
-            ids.AddRange(tile.Entries.Select(e => e.LocalId));
-        }
-
-        foreach (var entry in entries)
-            ids.Should().NotContain(entry.LocalId);
-    }
-
-    [Fact]
-    public async Task RemoveOwnChatsTest()
+    public async Task DeleteOwnAccountTest()
     {
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewWebClientTester();
@@ -71,8 +37,9 @@ public class RemoveAccountTest : AppHostTestBase
         chat.Should().NotBeNull();
 
         var entries = await CreateChatEntries(chats, session, chat.Id, 3);
-        var removeEntriesCommand = new ChatsBackend_RemoveOwnChats(bob.Id);
-        await services.Commander().Call(removeEntriesCommand);
+        var entriesActual = await CreateChatEntries(chats, session, TestChatId, 3);
+        var deleteOwnAccountCommand = new Accounts_DeleteOwn(session);
+        await services.Commander().Call(deleteOwnAccountCommand);
 
         var chat1 = await chats.Get(session, chat.Id, CancellationToken.None);
         chat1.Should().BeNull();
@@ -87,8 +54,17 @@ public class RemoveAccountTest : AppHostTestBase
                 CancellationToken.None))
             .Should()
             .ThrowAsync<NotFoundException>();
-    }
 
+        var lastActualEntryId = entriesActual[^1].Id.LocalId;
+        var idTileActual = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastActualEntryId, lastActualEntryId))[^1];
+        await FluentActions.Awaiting(() => chats.GetTile(session,
+                TestChatId,
+                ChatEntryKind.Text,
+                idTileActual.Range,
+                CancellationToken.None))
+            .Should()
+            .ThrowAsync<NotFoundException>();
+    }
 
     private async Task<ChatEntry[]> CreateChatEntries(
         IChats chats,

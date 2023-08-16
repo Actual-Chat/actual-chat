@@ -57,7 +57,6 @@ public interface IChatsBackend : IComputeService
     Task OnRemoveOwnChats(ChatsBackend_RemoveOwnChats command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveOwnEntries(ChatsBackend_RemoveOwnEntries command, CancellationToken cancellationToken);
-
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -93,4 +92,3 @@ public sealed partial record ChatsBackend_RemoveOwnChats(
 public sealed partial record ChatsBackend_RemoveOwnEntries(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<ChatEntry>, IBackendCommand;
-

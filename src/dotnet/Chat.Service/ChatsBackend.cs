@@ -446,10 +446,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .ConfigureAwait(false);
 
             // authors
-            await dbContext.Authors
-                .Where(a => a.ChatId == chatId)
-                .ExecuteDeleteAsync(cancellationToken)
-                .ConfigureAwait(false);
+            var removeAuthorsCommand = new AuthorsBackend_Remove(chatId, AuthorId.None, UserId.None);
+            await Commander.Call(removeAuthorsCommand, false, cancellationToken).ConfigureAwait(false);
 
             dbContext.Remove(dbChat);
         }

@@ -1,4 +1,5 @@
 using System.Net.Mail;
+using ActualChat.Chat;
 using ActualChat.Users.Db;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
@@ -127,6 +128,10 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
             .ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // authors
+        var removeAuthorsCommand = new AuthorsBackend_Remove(ChatId.None, AuthorId.None, userId);
+        await Commander.Call(removeAuthorsCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
