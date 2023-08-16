@@ -384,7 +384,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             chat = ApplyDiff(dbChat.ToModel(), update);
             dbChat.UpdateFrom(chat);
         }
-        else if (change.IsRemove() && dbChat != null) {
+        else if (change.IsRemove()) {
+            dbChat.Require();
 
             if (!dbChat.MediaId.IsNullOrEmpty()) {
                 var removeMediaCommand = new MediaBackend_Change(
@@ -441,6 +442,12 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             // roles
             await dbContext.Roles
                 .Where(r => r.ChatId == chatId)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            // authors
+            await dbContext.Authors
+                .Where(a => a.ChatId == chatId)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -606,7 +613,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .Join(dbContext.Roles, c => c.Id, r => r.ChatId, (c, r) => new { c, r })
                 .Join(dbContext.AuthorRoles, x => x.r.Id, r => r.DbRoleId, (x, r) => new { x.c, x.r, ar = r })
                 .Join(dbContext.Authors, x => x.ar.DbAuthorId, a => a.Id, (x, a) => new { x.c, x.r, x.ar, a })
-                .Where(x => x.a.UserId != userId && x.r.SystemRole == SystemRole.Owner)
+                .Where(x => x.c.Id == chatId && x.a.UserId != userId && x.r.SystemRole == SystemRole.Owner)
                 .AnyAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -631,13 +638,24 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invChats = context.Operation().Items.Get<string[]>();
-            if (invChats != null) {
-                // TODO(AK): invalidate latest tiles and getNews
+            var invChats = context.Operation().Items.Get<Dictionary<string,long>>();
+            if (invChats == null)
+                return;
+
+            var tileSize = Constants.Chat.IdTileStack.MinTileSize;
+            foreach (var chatEntryPair in invChats) {
+                var chatId = new ChatId(chatEntryPair.Key);
+                var entryId = chatEntryPair.Value;
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId, ChangeKind.Remove);
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize, ChangeKind.Remove);
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*2, ChangeKind.Remove);
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*3, ChangeKind.Remove);
+                InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*4, ChangeKind.Remove);
             }
             return;
         }
 
+        var chatEntriesToInvalidate = new Dictionary<string, long>();
         var userId = command.UserId;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -692,6 +710,15 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
 
+            var lastAuthorEntryId = await dbContext.ChatEntries
+                .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
+                .OrderByDescending(ce => ce.LocalId)
+                .Select(ce => ce.LocalId)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            chatEntriesToInvalidate.Add(chatId, lastAuthorEntryId);
+
             // entries
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
@@ -699,10 +726,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .ConfigureAwait(false);
         }
 
-        var chatIdsToInvalidate = chatAuthors
-            .Select(ca => ca.ChatId)
-            .ToArray();
-        context.Operation().Items.Set(chatIdsToInvalidate);
+        context.Operation().Items.Set(chatEntriesToInvalidate);
     }
 
     // Event handlers
