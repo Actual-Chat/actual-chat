@@ -97,7 +97,7 @@
                     </div>
                 }
                 <div class="forwarded-subheader">
-                    @if (m.IsSameForwardedAuthor || m.IsFirstForwarded) {
+                    @if (!m.IsSameForwardedAuthor || m.IsFirstForwarded) {
                         <AuthorName AuthorSid="@entry.ForwardedAuthorId" Class="c-author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.ForwardedMoment"/>
                     }
