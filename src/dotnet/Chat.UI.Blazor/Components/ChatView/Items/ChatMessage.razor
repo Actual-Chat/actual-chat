@@ -99,7 +99,7 @@
                 <div class="forwarded-subheader">
                     @if (!m.IsSameForwardedAuthor || m.IsFirstForwarded) {
                         <AuthorName AuthorSid="@entry.ForwardedAuthorId" Class="c-author-name"/>
-                        <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.ForwardedMoment"/>
+                        <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.ForwardedEntryBeginsAt"/>
                     }
                 </div>
                 <div class="message-content">
@@ -207,7 +207,6 @@
     private ValueTask<Markup> _markupTask;
     private Markup _markup = Markup.Empty;
     private ChatMessageModel? _lastMessage;
-    private ChatMessageModel? _previousMessage;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
@@ -295,11 +294,11 @@
         var isSameForwardedChat = false;
         var isSameForwardedAuthor = false;
         var isSameAuthor = false;
-        var forwardedMoment = entry.BeginsAt;
+        var forwardedEntryBeginsAt = entry.BeginsAt;
 
         if (!entry.ForwardedAuthorId.IsNone) {
             var forwardedEntry = await Chats.GetEntry(Session, entry.ForwardedChatEntryId, cancellationToken);
-            forwardedMoment = forwardedEntry?.BeginsAt ?? entry.BeginsAt;
+            forwardedEntryBeginsAt = forwardedEntry?.BeginsAt ?? entry.BeginsAt;
             var splitEntryId = entry.Id.ToString().Split(":");
             var success = int.TryParse(splitEntryId[2], out var parseResult);
             var previousLastPart = success ? (parseResult - 1).ToString() : "";
@@ -328,7 +327,7 @@
             ForwardedChat = forwardedChat,
             IsFirstForwarded = !isSameAuthor || !isSameForwardedChat,
             IsSameForwardedAuthor = isSameForwardedAuthor,
-            ForwardedMoment = forwardedMoment,
+            ForwardedEntryBeginsAt = forwardedEntryBeginsAt,
         };
         return result.Equals(_rendered) ? _rendered! : result;
     }
@@ -392,7 +391,7 @@
         public bool HasSelection { get; init; }
         public bool IsFirstForwarded { get; init; }
         public bool IsSameForwardedAuthor { get; init; }
-        public Moment ForwardedMoment { get; init; }
+        public Moment ForwardedEntryBeginsAt { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; set; }
     }
