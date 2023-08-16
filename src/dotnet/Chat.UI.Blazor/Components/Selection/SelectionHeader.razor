@@ -60,6 +60,7 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private SelectionUI SelectionUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
@@ -117,6 +118,6 @@
         SelectionUI.Clear();
 
         if (selectedChats.Count == 1)
-            ChatUI.SelectChat(selectedChats.First());
+            _ = History.NavigateTo(Links.Chat(selectedChats.First()));
     }
 }
