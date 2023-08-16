@@ -14,7 +14,7 @@
     var isReply = m.RepliedEntry != null;
     var isForward = !entry.ForwardedAuthorId.IsNone;
     var isReplyToOwnMessage = m.RepliedEntry?.AuthorId == entry.AuthorId;
-    var showAuthor = !isSystem && (message.IsBlockStart || isReply || isForward);
+    var showAuthor = !isSystem && (message.IsBlockStart || isReply);
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
@@ -58,80 +58,146 @@
     return;
 }
 
-<div class="@cls"
-     data-chat-entry-id="@(Message.Entry.Id)"
-     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.FalseString))"
-     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.FalseString, "", ""))"
-     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-    <div class="chat-message group">
-        <div class="c-author-badge">
-            @if (showAuthor) {
-                <ChatMessageAuthorCircle
-                    AuthorSid="@entry.AuthorId"
-                    Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
-            } else {
-                var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
-                <div class="c-empty">
-                    <span class="chat-message-timestamp-on-hover">@timestamp</span>
-                </div>
-            }
-        </div>
-        <div class="c-content">
-            @if (showAuthor) {
-                <div class="c-author-header">
-                    <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name"/>
-                    <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.BeginsAt"/>
-                    @* <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div> *@
-                </div>
-                @if (isForward) {
-                    <div class="forwarded-author-header">
-                        <i class="icon-share forwarded-author-header-icon"></i>
-                        <span class="forwarded-author-header-title">Forwarded from </span>
+@if (isForward) {
+    <div class="@cls forwarded-message"
+         data-chat-entry-id="@(Message.Entry.Id)"
+         data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.FalseString))"
+         data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.FalseString, "", ""))"
+         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+        <div class="chat-message group">
+            <div class="c-author-badge">
+                @if (m.IsFirstForwarded) {
+                    <ChatMessageAuthorCircle
+                        AuthorSid="@entry.AuthorId"
+                        Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
+                } else {
+                    var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
+                    <div class="c-empty">
+                        <span class="chat-message-timestamp-on-hover">@timestamp</span>
+                    </div>
+                }
+            </div>
+            <div class="c-content">
+                @if (m.IsFirstForwarded) {
+                    <div class="c-author-header">
+                        <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name"/>
+                        <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
+                    </div>
+                }
+                @if (m.IsFirstForwarded) {
+                    <div class="forwarded-header">
+                        <i class="icon-share c-icon"></i>
+                        <span class="c-chat-title">Forwarded from </span>
                         @if (m.ForwardedChat != null) {
-                            <span class="forwarded-author-header-author-name"
+                            <span class="c-chat-title"
                                   @onclick="() => OnForwardedMessageHeaderClick(entry.ForwardedChatEntryId)">
                                 @m.ForwardedChat.Title
                             </span>
-                        } else {
-                            <AuthorName AuthorSid="@entry.ForwardedAuthorId" Class="forwarded-author-header-author-name"/>
                         }
                     </div>
                 }
-            }
-            <div class="message-content">
-                @if (isReply) {
-                    <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
+                <div class="forwarded-subheader">
+                    @if (m.IsSameForwardedAuthor || m.IsFirstForwarded) {
+                        <AuthorName AuthorSid="@entry.ForwardedAuthorId" Class="c-author-name"/>
+                        <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.ForwardedMoment"/>
+                    }
+                </div>
+                <div class="message-content">
+                    @if (isReply) {
+                        <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
+                    }
+                    @if (entry.IsStreaming) {
+                        <ChatMessageTranscript Model="@message" ShowEntryKind="@Message.ShowEntryKind"/>
+                    } else {
+                        <p class="chat-message-markup">
+                            @if (message.ShowEntryKind) {
+                                <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
+                            }
+                            <CascadingValue Value="@entry" IsFixed="true">
+                                <MarkupView Markup="@_markup"/>
+                            </CascadingValue>
+                        </p>
+                    }
+                </div>
+                @if (entry.Attachments.Count > 0) {
+                    var (mediaList, fileList) = GetOrderedAttachmentList(entry);
+                    <div class="message-attachments">
+                        <VisualMediaAttachmentList ImageList="@mediaList" ChatEntry="@entry"/>
+                        <div class="message-file-attachments">
+                            @foreach (var attachment in fileList) {
+                                <FileAttachment Attachment="@attachment"/>
+                            }
+                        </div>
+                    </div>
                 }
-                @if (entry.IsStreaming) {
-                    <ChatMessageTranscript Model="@message" ShowEntryKind="@Message.ShowEntryKind"/>
-                } else {
-                    <p class="chat-message-markup">
-                        @if (message.ShowEntryKind) {
-                            <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
-                        }
-                        <CascadingValue Value="@entry" IsFixed="true">
-                            <MarkupView Markup="@_markup"/>
-                        </CascadingValue>
-                    </p>
+                @if (entry.HasReactions) {
+                    <MessageReactions Entry="@entry"/>
                 }
             </div>
-            @if (entry.Attachments.Count > 0) {
-                var (mediaList, fileList) = GetOrderedAttachmentList(entry);
-                <div class="message-attachments">
-                    <VisualMediaAttachmentList ImageList="@mediaList" ChatEntry="@entry"/>
-                    <div class="message-file-attachments">
-                        @foreach (var attachment in fileList) {
-                            <FileAttachment Attachment="@attachment"/>
-                        }
-                    </div>
-                </div>
-            }
-            @if (entry.HasReactions) {
-                <MessageReactions Entry="@entry"/>
-            }
         </div>
     </div>
-</div>
+} else {
+    <div class="@cls"
+         data-chat-entry-id="@(Message.Entry.Id)"
+         data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.FalseString))"
+         data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.FalseString, "", ""))"
+         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+        <div class="chat-message group">
+            <div class="c-author-badge">
+                @if (showAuthor) {
+                    <ChatMessageAuthorCircle
+                        AuthorSid="@entry.AuthorId"
+                        Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
+                } else {
+                    var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
+                    <div class="c-empty">
+                        <span class="chat-message-timestamp-on-hover">@timestamp</span>
+                    </div>
+                }
+            </div>
+            <div class="c-content">
+                @if (showAuthor) {
+                    <div class="c-author-header">
+                        <AuthorName AuthorSid="@entry.AuthorId" Class="chat-message-author-name"/>
+                        <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@entry.BeginsAt"/>
+                        <div class="text-02 opacity-20 text-xxs">id=@entry.Id</div>
+                    </div>
+                }
+                <div class="message-content">
+                    @if (isReply) {
+                        <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
+                    }
+                    @if (entry.IsStreaming) {
+                        <ChatMessageTranscript Model="@message" ShowEntryKind="@Message.ShowEntryKind"/>
+                    } else {
+                        <p class="chat-message-markup">
+                            @if (message.ShowEntryKind) {
+                                <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
+                            }
+                            <CascadingValue Value="@entry" IsFixed="true">
+                                <MarkupView Markup="@_markup"/>
+                            </CascadingValue>
+                        </p>
+                    }
+                </div>
+                @if (entry.Attachments.Count > 0) {
+                    var (mediaList, fileList) = GetOrderedAttachmentList(entry);
+                    <div class="message-attachments">
+                        <VisualMediaAttachmentList ImageList="@mediaList" ChatEntry="@entry"/>
+                        <div class="message-file-attachments">
+                            @foreach (var attachment in fileList) {
+                                <FileAttachment Attachment="@attachment"/>
+                            }
+                        </div>
+                    </div>
+                }
+                @if (entry.HasReactions) {
+                    <MessageReactions Entry="@entry"/>
+                }
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private Model? _rendered;
@@ -141,6 +207,7 @@
     private ValueTask<Markup> _markupTask;
     private Markup _markup = Markup.Empty;
     private ChatMessageModel? _lastMessage;
+    private ChatMessageModel? _previousMessage;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
@@ -162,8 +229,7 @@
 
     [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
 
-    protected override async Task OnParametersSetAsync()
-    {
+    protected override async Task OnParametersSetAsync() {
         var mustReset = _chatMarkupHub == null!;
         mustReset |= Message != _lastMessage;
         /*
@@ -225,6 +291,32 @@
             : null;
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken);
         var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken);
+
+        var isSameForwardedChat = false;
+        var isSameForwardedAuthor = false;
+        var isSameAuthor = false;
+        var forwardedMoment = entry.BeginsAt;
+
+        if (!entry.ForwardedAuthorId.IsNone) {
+            var forwardedEntry = await Chats.GetEntry(Session, entry.ForwardedChatEntryId, cancellationToken);
+            forwardedMoment = forwardedEntry?.BeginsAt ?? entry.BeginsAt;
+            var splitEntryId = entry.Id.ToString().Split(":");
+            var success = int.TryParse(splitEntryId[2], out var parseResult);
+            var previousLastPart = success ? (parseResult - 1).ToString() : "";
+
+            var previousEntryId = $"{splitEntryId[0]}:{splitEntryId[1]}:{previousLastPart}";
+
+            var previousEntry = await Chats.GetEntry(Session, ChatEntryId.Parse(previousEntryId), cancellationToken);
+            if (previousEntry != null) {
+                var previousEntryChat = !previousEntry.ForwardedChatEntryId.IsNone
+                    ? await Chats.Get(Session, previousEntry.ForwardedChatEntryId.ChatId, cancellationToken)
+                    : null;
+                isSameForwardedChat = previousEntryChat == forwardedChat;
+                isSameForwardedAuthor = previousEntry.ForwardedAuthorId == entry.ForwardedAuthorId;
+                isSameAuthor = previousEntry.AuthorId == entry.AuthorId;
+            }
+        }
+
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
@@ -234,6 +326,9 @@
             HasSelection = hasSelection,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
+            IsFirstForwarded = !isSameAuthor || !isSameForwardedChat,
+            IsSameForwardedAuthor = isSameForwardedAuthor,
+            ForwardedMoment = forwardedMoment,
         };
         return result.Equals(_rendered) ? _rendered! : result;
     }
@@ -295,6 +390,9 @@
         public bool IsOwnAuthorMentioned { get; init; }
         public bool IsSelected { get; init; }
         public bool HasSelection { get; init; }
+        public bool IsFirstForwarded { get; init; }
+        public bool IsSameForwardedAuthor { get; init; }
+        public Moment ForwardedMoment { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; set; }
     }
