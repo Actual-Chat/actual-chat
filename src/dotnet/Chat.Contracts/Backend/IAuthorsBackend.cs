@@ -17,7 +17,6 @@ public interface IAuthorsBackend : IComputeService
     Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken);
-
 }
 
 // Commands
@@ -36,7 +35,7 @@ public sealed partial record AuthorsBackend_Upsert(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AuthorsBackend_Remove(
-    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId,
-    [property: DataMember, MemoryPackOrder(2)] UserId UserId
+    [property: DataMember, MemoryPackOrder(0)] ChatId ByChatId,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId ByAuthorId,
+    [property: DataMember, MemoryPackOrder(2)] UserId ByUserId
 ) : ICommand<AuthorFull>, IBackendCommand;

@@ -267,24 +267,24 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     public virtual async Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId) = command;
-        if (chatId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
-        if (!authorId.IsNone && authorId.ChatId != chatId)
-            throw new ArgumentOutOfRangeException(nameof(command), "Invalid AuthorId.");
-        if (userId.IsNone && authorId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(command), "Either AuthorId or UserId must be provided.");
+        switch (authorId.IsNone, chatId.IsNone, userId.IsNone) {
+            case (true, true, true):
+                throw new ArgumentOutOfRangeException(nameof(command), "Either AuthorId or UserId or ChatId must be provided.");
+            case (false, false, false):
+            case (false, false, true):
+            case (false, true, false):
+            case (true, false, false):
+                throw new ArgumentOutOfRangeException(nameof(command), "Only one property of AuthorId or UserId or ChatId must be provided.");
+        }
 
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            var (invAuthor, invOldAuthor) = context.Operation().Items.GetOrDefault<(AuthorFull, AuthorFull?)>();
-            if (!invAuthor.Id.IsNone) {
+            var invAuthors = context.Operation().Items.GetOrDefault<AuthorFull[]>();
+            foreach (var invAuthor in invAuthors) {
                 _ = Get(chatId, invAuthor.Id, default);
                 _ = GetByUserId(chatId, invAuthor.UserId, default);
-                var invOldHadLeft = invOldAuthor?.HasLeft ?? true;
-                if (invAuthor.HasLeft != invOldHadLeft) {
-                    _ = ListAuthorIds(chatId, default);
-                    _ = ListUserIds(chatId, default);
-                }
+                _ = ListAuthorIds(chatId, default);
+                _ = ListUserIds(chatId, default);
             }
             return;
         }
@@ -292,19 +292,44 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbAuthors = dbContext.Authors.ForUpdate().Include(a => a.Roles);
-        var dbAuthor = await (authorId.IsNone
-            ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
-            : dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId && a.Id == authorId, cancellationToken)
-            ).ConfigureAwait(false);
-        var existingAuthor = dbAuthor?.ToModel();
-
-        if (dbAuthor != null)
-            dbContext.Remove(dbAuthor);
+        var authors = new List<AuthorFull>();
+        if (!authorId.IsNone) {
+            var dbAuthor = await dbContext.Authors
+                .FirstOrDefaultAsync(a => a.Id == authorId, cancellationToken)
+                .ConfigureAwait(false);
+            if (dbAuthor != null) {
+                dbContext.Remove(dbAuthor);
+                authors.Add(dbAuthor.ToModel());
+            }
+        }
+        else if (!chatId.IsNone) {
+            var dbAuthors = await dbContext.Authors
+                .Where(a => a.ChatId == chatId)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (dbAuthors.Count > 0) {
+                await dbContext.Authors
+                    .Where(a => a.ChatId == chatId)
+                    .ExecuteDeleteAsync(cancellationToken);
+                authors.AddRange(dbAuthors.Select(a => a.ToModel()));
+            }
+        }
+        else {
+            var dbAuthors = await dbContext.Authors
+                .Where(a => a.UserId == userId)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (dbAuthors.Count > 0) {
+                await dbContext.Authors
+                    .Where(a => a.UserId == userId)
+                    .ExecuteDeleteAsync(cancellationToken);
+                authors.AddRange(dbAuthors.Select(a => a.ToModel()));
+            }
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        context.Operation().Items.Set((existingAuthor, existingAuthor));
+        context.Operation().Items.Set(authors.ToArray());
     }
 
     [EventHandler]
