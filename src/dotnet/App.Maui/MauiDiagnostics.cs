@@ -8,6 +8,7 @@ using Sentry;
 using Sentry.Maui.Internal;
 using Sentry.Serilog;
 using Serilog;
+using Serilog.Events;
 using Serilog.Extensions.Logging;
 using Stl.IO;
 using ILogger = Serilog.ILogger;
@@ -114,6 +115,8 @@ public static class MauiDiagnostics
 
         // Global Mode makes sense for client apps
         options.IsGlobalModeEnabled = true;
+
+        options.MinimumEventLevel = LogEventLevel.Warning;
 
         // We'll use an event processor to set things like SDK name
         options.AddEventProcessor(new SentryMauiEventProcessor2(options));
