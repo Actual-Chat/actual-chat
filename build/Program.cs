@@ -130,11 +130,17 @@ internal static class Program
         });
 
         Target(Targets.CleanDist, () => {
-            FileExt.Remove("src/dotnet/*/wwwroot/dist");
+            FileExt.Remove("src/dotnet/*/wwwroot/dist/");
         });
 
         Target(Targets.Clean, DependsOn(Targets.CleanDist, Targets.CleanTests), () => {
-            FileExt.Remove("artifacts", "src/nodejs/node_modules", "**/obj/");
+            FileExt.Remove("artifacts/app/",
+                "artifacts/bin/",
+                "artifacts/obj/",
+                "artifacts/out/",
+                "artifacts/tests/",
+                "src/nodejs/node_modules/",
+                "src/dotnet/**/obj/");
         });
 
         Target(Targets.NpmInstall, async () => {
@@ -217,9 +223,9 @@ internal static class Program
             sb.AppendLine("  </PropertyGroup>");
             var props = sb.ToString();
             var tasks = new[] {
-                File.WriteAllTextAsync("Nerdbank.GitVersioning.targets", $"<Project>\n<Target Name=\"GetBuildVersion\">\n{props}</Target>\n</Project>"),
+                File.WriteAllTextAsync("Nerdbank.GitVersioning.targets", $"<Project>\n<Target Name=\"GetBuildVersion\">\n{props}</Target>\n</Project>", cancellationToken),
                 // we need GitCommitId and other before *.targets is loaded
-                File.WriteAllTextAsync("Nerdbank.GitVersioning.props", $"<Project>\n{props}</Project>"),
+                File.WriteAllTextAsync("Nerdbank.GitVersioning.props", $"<Project>\n{props}</Project>", cancellationToken),
             };
             await Task.WhenAll(tasks).ConfigureAwait(false);
             Console.WriteLine($"Generated version is {Bold(Yellow(nbgv.NuGetPackageVersion ?? nbgv.SemVer2 ?? "0.0.0.0"))}");
@@ -227,7 +233,7 @@ internal static class Program
             if (!File.Exists(".dockerignore"))
                 return;
 
-            var dockerIgnore = await File.ReadAllTextAsync(".dockerignore").ConfigureAwait(false);
+            var dockerIgnore = await File.ReadAllTextAsync(".dockerignore", cancellationToken).ConfigureAwait(false);
             if (!dockerIgnore.Contains(".git")) {
                 dockerIgnore = ".git\n" + dockerIgnore;
             }
@@ -236,7 +242,7 @@ internal static class Program
                 const RegexOptions regexOptions = RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.IgnoreCase;
                 dockerIgnore = Regex.Replace(dockerIgnore, "^[^#]*[#]+(.*\\.git.*)$", "$1", regexOptions, TimeSpan.FromSeconds(5));
             }
-            await File.WriteAllTextAsync(".dockerignore", dockerIgnore).ConfigureAwait(false);
+            await File.WriteAllTextAsync(".dockerignore", dockerIgnore, cancellationToken).ConfigureAwait(false);
         });
 
         Target(Targets.IntegrationTests, async () => {
