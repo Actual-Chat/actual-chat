@@ -57,13 +57,12 @@ public class RemoveOwnAccountTest : AppHostTestBase
 
         var lastActualEntryId = entriesActual[^1].Id.LocalId;
         var idTileActual = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastActualEntryId, lastActualEntryId))[^1];
-        await FluentActions.Awaiting(() => chats.GetTile(session,
+        var tile = await chats.GetTile(session,
                 TestChatId,
                 ChatEntryKind.Text,
                 idTileActual.Range,
-                CancellationToken.None))
-            .Should()
-            .ThrowAsync<NotFoundException>();
+                CancellationToken.None);
+        tile.Entries.Should().NotContain(e => e.LocalId == lastActualEntryId);
     }
 
     private async Task<ChatEntry[]> CreateChatEntries(
