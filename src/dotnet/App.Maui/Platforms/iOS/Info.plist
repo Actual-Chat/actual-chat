@@ -57,10 +57,10 @@
 		<string>remote-notification</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-    <string>This app needs access to the camera to take photos.</string>
+    <string>Need access to your camera to take photos and share them with other users.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>This app needs access to the photo gallery for picking photos and videos.</string>
+    <string>Share photos and videos from your photo gallery.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>This app needs access to photos gallery for picking photos and videos.</string>
+    <string>Upload photos to share with other users or to change your avatar.</string>
 </dict>
 </plist>
