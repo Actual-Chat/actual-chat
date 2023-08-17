@@ -73,6 +73,10 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
 
+        // sign out to prevent unexpected UI invalidations
+        var signOutCommand = new Auth_SignOut(command.Session, null, false, false);
+        await Commander.Call(signOutCommand, cancellationToken).ConfigureAwait(false);
+
         var deleteOwnChatsCommand = new ChatsBackend_RemoveOwnChats(ownAccount.Id);
         await Commander.Call(deleteOwnChatsCommand, true, cancellationToken).ConfigureAwait(false);
 
