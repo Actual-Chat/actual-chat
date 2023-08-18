@@ -58,7 +58,8 @@ public partial class MainPage
     private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
     {
         var webView = PlatformWebView = e.WebView;
-        webView.Inspectable = true;
+        if (DeviceInfo.Version >= new Version("16.4"))
+            webView.Inspectable = true;
     }
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e)
