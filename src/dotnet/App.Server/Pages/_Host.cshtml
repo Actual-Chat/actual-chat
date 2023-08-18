@@ -18,7 +18,7 @@
     var session = await HttpContext.Authenticate(ServerAuthHelper, cancellationToken);
     SessionResolver.Session = session;
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
-    var isServerSideBlazor = BlazorSwitchEndpoint.IsServerSideBlazor(HttpContext);
+    var isBlazorServer = BlazorModeEndpoint.IsBlazorServer(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = 10_000_000;
     var blazorScriptsHash = GetBlazorScriptsHash();
@@ -89,14 +89,14 @@
         });
     </script>
     <script async src="/dist/bundle.js" asp-append-version="true"></script>
-    @if (isServerSideBlazor) {
+    @if (isBlazorServer) {
         <component type="typeof(Microsoft.AspNetCore.Components.Web.HeadOutlet)" render-mode="ServerPrerendered"/>
     }
 </head>
 
-<body class="app-web @(isServerSideBlazor ? "app-server" : "app-wasm")">
+<body class="app-web @(isBlazorServer ? "app-server" : "app-wasm")">
 
-@if (!isServerSideBlazor && !isCloseWindowRequest) {
+@if (!isBlazorServer && !isCloseWindowRequest) {
     <div id="until-ui-is-ready" class="loading-overlay hidden">
         <div class="c-box">
             <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="loading">
@@ -129,7 +129,7 @@
             var appComponentType = typeof(WasmApp);
             var renderMode = RenderMode.WebAssembly;
             var sessionToken = "";
-            if (isServerSideBlazor) {
+            if (isBlazorServer) {
                 appComponentType = typeof(ServerApp);
                 renderMode = RenderMode.Server;
                 sessionToken = (await SecureTokens.CreateForSession(session, cancellationToken)).Token;
@@ -151,7 +151,7 @@
         </div>
     </div>
 
-    @if (isServerSideBlazor) {
+    @if (isBlazorServer) {
         <script src="_framework/blazor.server@(blazorScriptsHash).js" autostart="false"></script>
         <script>
             Blazor.start({

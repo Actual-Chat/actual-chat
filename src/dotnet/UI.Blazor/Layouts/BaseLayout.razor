@@ -46,7 +46,7 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        if (BlazorModeHelper.IsServerSideBlazor)
+        if (BlazorModeHelper.IsBlazorServer)
             await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
     }
 
