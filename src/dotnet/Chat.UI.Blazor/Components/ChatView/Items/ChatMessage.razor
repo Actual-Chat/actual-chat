@@ -96,12 +96,12 @@
                         }
                     </div>
                 }
-                <div class="forwarded-subheader">
-                    @if (!m.IsSameForwardedAuthor || m.IsFirstForwarded) {
+                @if (!m.IsSameForwardedAuthor || m.IsFirstForwarded) {
+                    <div class="forwarded-subheader @(!m.IsFirstForwarded ? "pt-1" : "")">
                         <AuthorName AuthorSid="@entry.ForwardedAuthorId" Class="c-author-name"/>
                         <LiveTimeDeltaText Class="chat-message-timestamp" Moment="@m.ForwardedEntryBeginsAt"/>
-                    }
-                </div>
+                    </div>
+                }
                 <div class="message-content">
                     @if (isReply) {
                         <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>

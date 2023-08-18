@@ -78,10 +78,14 @@ body.hoverable .system-entry.message-wrapper:hover {
     @apply cursor-pointer;
 }
 
-.chat-message .forwarded-subheader .c-author-name,
+.forwarded-message .chat-message .forwarded-subheader,
 .forwarded-message .chat-message .message-content {
     @apply pl-2;
-    @apply border-l border-accent;
+    @apply border-l-2 border-accent;
+}
+
+.chat-message .forwarded-subheader .c-author-name,
+.forwarded-message .chat-message .message-content {
     @apply rounded-none;
 }
 

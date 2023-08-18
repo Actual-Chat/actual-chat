@@ -4,8 +4,7 @@
 .markup-editor .editor-content {
     @apply relative inline-block overflow-auto;
     @apply text-base;
-    @apply truncate;
-    @apply whitespace-pre-wrap;
+    @apply whitespace-pre-wrap text-ellipsis;
     word-wrap: break-word;
     /*
     Super important to keep select-text here, otherwise contenteditable simply doesn't work on iOS.

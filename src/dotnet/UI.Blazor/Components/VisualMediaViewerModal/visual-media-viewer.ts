@@ -76,7 +76,7 @@ export class VisualMediaViewer {
         this.minHeight = this.round(this.image.getBoundingClientRect().height);
         this.minWidth = this.round(this.image.getBoundingClientRect().width);
 
-        fromEvent(window, 'wheel')
+        fromEvent(this.overlay, 'wheel')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: WheelEvent) => this.onWheel(event));
 
