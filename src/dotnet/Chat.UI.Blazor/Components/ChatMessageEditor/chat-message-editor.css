@@ -5,10 +5,14 @@
 .chat-message-editor.narrow {
     background: transparent;
 }
+.chat-message-editor > .c-content {
+    @apply flex-none flex-x justify-items-stretch items-stretch gap-x-2.5;
+    @apply p-0 md:px-3 md:py-2;
+}
 .post-panel-wrapper {
     @apply flex-1 -flex-y;
     @apply overflow-x-hidden;
-    @apply bg-transparent;
+    @apply bg-07 md:bg-01;
 }
 .narrow .post-panel-wrapper {
     background: linear-gradient(to bottom, rgba(255,255,255,0) 45%, rgba(68,68,68,1) 30%);
@@ -25,9 +29,9 @@
     background: linear-gradient(to bottom, rgba(255,255,255,0) 50%, rgba(68,68,68,1) 0%);
 }
 .post-panel {
-    @apply flex-x;
+    @apply flex-auto flex-x justify-between items-center;
     @apply min-h-12;
-    @apply justify-between items-center;
+    @apply py-1 md:py-0;
     @apply border-bg-01  md:rounded-3xl outline-none;
     @apply bg-07 md:bg-03;
     @apply overflow-hidden;
@@ -292,7 +296,9 @@ body.hoverable .add-attachment.btn:hover .btn-content {
     @apply bg-03;
 }
 body.narrow .related-chat-entry-panel {
-    @apply mt-2 mx-1;
+    @apply h-auto;
+    /*@apply mt-2 mx-1;*/
+    @apply p-1 -mb-0.5;
     @apply overflow-hidden;
     @apply bg-07;
 }
@@ -304,6 +310,7 @@ body.narrow .related-chat-entry-panel * {
     @apply max-w-full max-h-10 md:max-h-8;
 }
 body.narrow .related-chat-entry-panel .related-chat-entry {
+    @apply min-h-10;
     @apply px-1;
     @apply rounded-lg;
     @apply overflow-hidden;
