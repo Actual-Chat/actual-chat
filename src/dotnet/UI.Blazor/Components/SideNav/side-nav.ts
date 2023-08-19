@@ -11,7 +11,7 @@ import { BrowserInfo } from '../../Services/BrowserInfo/browser-info';
 
 const { debugLog } = Log.get('SideNav');
 
-const Deceleration = 2; // 1 = full width/second^2
+const Deceleration = 0.1; // 1 = full width/second^2
 const PullBoundary = 0.333; // 33% of the screen width
 const PrePullDistance1 = 10; // Normal pre-pull distance in CSS pixels
 const PrePullDistance2 = 20; // Pre-pull distance over control
@@ -410,7 +410,7 @@ class MoveState {
         this.startedAt = prevMoveState?.startedAt ?? now;
         this.velocity = 0;
         this.terminalOpenRatio = openRatio;
-        const s = prevMoveState?.prevMoveState;
+        const s = prevMoveState?.prevMoveState ?? prevMoveState;
         if (!s)
             return;
 
