@@ -19,8 +19,8 @@ public sealed class SessionTokens : WorkerBase, IComputeService
     private Moment Now => Clock.Now;
 
     public TimeSpan AsGoodAsNewLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(1);
-    public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(5);
-    public TimeSpan RefreshReserve { get; init; } = TimeSpan.FromMinutes(1);
+    public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(10);
+    public TimeSpan RefreshReserve { get; init; } = TimeSpan.FromSeconds(30);
     public SecureToken? Current => _current;
 
     public SessionTokens(IServiceProvider services)
