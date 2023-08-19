@@ -1,13 +1,13 @@
 @using ActualChat.UI.Blazor.Module
 @using Stl.Rpc
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<ReconnectBanner.Model>
+@inherits ComputedStateComponent<RpcPeerState?>
 @{
-    var m = State.Value;
-    var isReconnecting = m.IsDisconnected && (m.ReconnectsAt == default || (m.ReconnectsAt - Clock.Now).TotalSeconds < 1);
+    var m = State.Value ?? DefaultState;
+    var isReconnecting = !m.IsConnected && m.ReconnectsAt <= Clock.Now;
 }
 
-<Banner Class="reconnect-banner" IsVisible="@m.IsDisconnected">
+<Banner Class="reconnect-banner" IsVisible="@(!m.IsConnected)">
     <Icon>
         <i class="icon-cloud-disconnected"></i>
     </Icon>
@@ -18,21 +18,22 @@
         } else {
             <div class="c-secondary-text">
                 Will reconnect in
-                <Countdown Class="reconnect-countdown" EndsAt="@m.ReconnectsAt" Format="{0:mm\:ss}"/>
+                <Countdown Class="reconnect-countdown" EndsAt="@(m.ReconnectsAt + TimeSpan.FromSeconds(1))" Format="{0:mm\:ss}"/>
             </div>
 
         }
     </Body>
     <Buttons>
         @if (!isReconnecting) {
-            <Button Class="btn-transparent on" Click="@Reconnect">Retry</Button>
+            <Button Class="btn-transparent on" Click="@(_ => ReconnectDelayer.CancelDelays())">Retry</Button>
         }
     </Buttons>
 </Banner>
 
 @code {
+    private static readonly RpcPeerState DefaultState = new(true);
+
     private RpcPeerStateMonitor? _monitor;
-    private Moment _lastCancelledReconnectAt;
 
     [Inject] private RpcClientPeerReconnectDelayer ReconnectDelayer { get; init; } = null!;
     private IMomentClock Clock => ReconnectDelayer.Clock;
@@ -43,52 +44,20 @@
         base.OnInitialized();
     }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<RpcPeerState?>.Options GetStateOptions()
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    protected override async Task<RpcPeerState?> ComputeState(CancellationToken cancellationToken)
     {
-        if (_monitor == null)
-            return default;
-
         try {
-            var state = await _monitor.State.Use(cancellationToken);
-            if (state == null || state.IsConnected)
-                return default;
-
-            if (state.ReconnectsAt is not { } reconnectsAt || reconnectsAt == _lastCancelledReconnectAt)
-                return new(true, default);
-
-            var delay = (reconnectsAt - Clock.Now).Positive();
-            if (delay < TimeSpan.FromSeconds(1))
-                return new(true, default);
-
-            Computed.GetCurrent()!.Invalidate(delay - TimeSpan.FromSeconds(0.5));
-            return new(true, reconnectsAt);
+            return _monitor == null ? null
+                : await _monitor.State.Use(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            return default;
+            return null;
         }
     }
-
-    // Private methods
-
-    private void Reconnect() {
-        var m = State.Value;
-        if (m == default || m.ReconnectsAt == default)
-            return;
-
-        _lastCancelledReconnectAt = m.ReconnectsAt;
-        State.Invalidate();
-        ReconnectDelayer.CancelDelays();
-    }
-
-    // Nested types
-
-    public readonly record struct Model(
-        bool IsDisconnected,
-        Moment ReconnectsAt);
 }
