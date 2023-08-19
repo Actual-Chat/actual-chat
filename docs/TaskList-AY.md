@@ -1,6 +1,7 @@
 Near-term:
-- Android AOT fine-tuning
-- Text editor - fix extra blank lines 
+- Fix manual reconnect
+- Fix panel swipes
+- Fix SessionToken refresh
 
 Mid-term (team):
 - Record how we use background audio playback for Apple review
