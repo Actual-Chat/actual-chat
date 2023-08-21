@@ -36,6 +36,9 @@ public abstract class AutoNavigationUI : IHasServices
 
     public Task<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken = default)
         => Dispatcher.InvokeAsync(async () => {
+#if IOS
+            retrun await GetDefaultAutoNavigationUrl();
+#else
             if (_autoNavigationCandidates == null)
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
 
@@ -50,6 +53,8 @@ public abstract class AutoNavigationUI : IHasServices
                 : defaultUrl;
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{AutoNavigationUrl}}", url);
             return url;
+#endif
+
         });
 
     public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
@@ -67,6 +72,10 @@ public abstract class AutoNavigationUI : IHasServices
 
     public Task NavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
+#if IOS
+        Log.LogInformation("* NavigateTo({Url}, {Reason})", url, reason);
+        return History.NavigateTo(url);
+#else
         Dispatcher.AssertAccess();
         if (_autoNavigationCandidates == null) {
             // Initial navigation already happened
@@ -78,6 +87,7 @@ public abstract class AutoNavigationUI : IHasServices
         Log.LogInformation("+ NavigateTo({Url}, {Reason})", url, reason);
         _autoNavigationCandidates.Add((url, reason));
         return Task.CompletedTask;
+#endif
     }
 
     // Protected methods
