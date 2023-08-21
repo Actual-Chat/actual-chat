@@ -159,6 +159,8 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
             var invIndex = context.Operation().Items.GetOrDefault(long.MinValue);
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
+                // Contacts are sorted by TouchedAt and we load contacts in 2 stages: the 1st is limited by MinLoadLimit,
+                // hence we need to invalidate ListIds for Update only in case it was not in MinLoadList before the change.
                 if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
                     _ = ListIds(ownerId, default); // Create, Delete or move into MinLoadLimit
             }
