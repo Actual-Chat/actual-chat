@@ -14,9 +14,11 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
 {
     private NotificationUI? _notificationUI;
     private LoadingUI? _loadingUI;
+    private History? _history;
 
     public IServiceProvider Services { get; }
     private IFirebaseCloudMessaging Messaging { get; }
+    private History History  => _history ??= Services.GetRequiredService<History>();
     private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     private NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
     private UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
@@ -92,8 +94,10 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
             return;
         }
 
-        _ = ForegroundTask.Run(
-            () => NotificationUI.HandleNotificationNavigation(url),
-            Log, "Failed to handle notification tap");
+        _ = History.NavigateTo(url);
+
+        // _ = ForegroundTask.Run(
+        //     () => NotificationUI.HandleNotificationNavigation(url),
+        //     Log, "Failed to handle notification tap");
     }
 }

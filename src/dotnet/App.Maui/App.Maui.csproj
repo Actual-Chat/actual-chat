@@ -238,6 +238,11 @@
     <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,Stl.Interception</MTouchInterpreter>-->
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(TargetFramework)'=='net7.0-ios'">
+    <CodesignKey>Apple Development: Alexey Kochetov (3WV5NB4MDR)</CodesignKey>
+    <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
+  </PropertyGroup>
+
   <!-- Resources -->
 
   <ItemGroup>
