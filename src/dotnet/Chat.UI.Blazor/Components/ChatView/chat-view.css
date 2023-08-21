@@ -88,7 +88,9 @@ body.hoverable .system-entry.message-wrapper:hover {
 .forwarded-message .chat-message .message-content {
     @apply rounded-none;
 }
-
+.forwarded-message .chat-message .message-content {
+    @apply min-h-6.5;
+}
 .message-wrapper.own-message .author-name {
     @apply text-06;
 }
