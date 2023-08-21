@@ -1,7 +1,9 @@
 using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.Services.Internal;
 using Foundation;
+using Microsoft.AspNetCore.Components;
 using Plugin.Firebase.CloudMessaging;
 using Plugin.Firebase.CloudMessaging.EventArgs;
 using UIKit;
@@ -15,10 +17,15 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
     private NotificationUI? _notificationUI;
     private LoadingUI? _loadingUI;
     private History? _history;
+    private NavigationManager? _nav;
+    private HistoryItemIdFormatter? _itemIdFormatter;
 
     public IServiceProvider Services { get; }
     private IFirebaseCloudMessaging Messaging { get; }
     private History History  => _history ??= Services.GetRequiredService<History>();
+    private UrlMapper UrlMapper => History.UrlMapper;
+    private NavigationManager Nav => _nav ??= Services.GetRequiredService<NavigationManager>();
+    private HistoryItemIdFormatter ItemIdFormatter => _itemIdFormatter ??= Services.GetRequiredService<HistoryItemIdFormatter>();
     private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     private NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
     private UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
@@ -94,7 +101,14 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
             return;
         }
 
-        _ = History.NavigateTo(url);
+        if (LocalUrl.FromAbsolute(url, UrlMapper) is not { } localUrl)
+            return;
+        // _ = History.NavigateTo(localUrl);
+        Nav.NavigateTo(localUrl, new NavigationOptions() {
+            ForceLoad = false,
+            ReplaceHistoryEntry = false,
+            HistoryEntryState = ItemIdFormatter.Format(100500),
+        });
 
         // _ = ForegroundTask.Run(
         //     () => NotificationUI.HandleNotificationNavigation(url),
