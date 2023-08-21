@@ -103,6 +103,9 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
 
         if (LocalUrl.FromAbsolute(url, UrlMapper) is not { } localUrl)
             return;
+
+        // Dirty hack as we have BaseUrl - https://actual.chat/ but local url should be app://0.0.0.0/
+        localUrl = localUrl.Value.Replace(UrlMapper.BaseUrl, "");
         // _ = History.NavigateTo(localUrl);
         Nav.NavigateTo(localUrl, new NavigationOptions() {
             ForceLoad = false,
