@@ -17,13 +17,15 @@ public static class UserExt
         => user.Identities.Select(x => x.Key.Schema).Any(Constants.Auth.EmailSchemes.Contains);
 
     public static User WithPhone(this User user, Phone phone)
-        => user.WithoutIdentity(user.GetPhoneIdentity())
-            .WithIdentity(new UserIdentity(Constants.Auth.Phone.SchemeName, phone.Value))
+    {
+        var phoneIdentity = user.GetPhoneIdentity();
+        if (phoneIdentity != UserIdentity.None)
+            throw StandardError.Constraint("Phone identity already set for this user.");
+
+        return user.WithIdentity(new UserIdentity(Constants.Auth.Phone.SchemeName, phone.Value))
             .WithClaim(ClaimTypes.MobilePhone, phone);
+    }
 
     public static UserIdentity GetPhoneIdentity(this User user)
         => user.Identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, Constants.Auth.Phone.SchemeName)).Key;
-
-    public static User WithoutIdentity(this User user, UserIdentity toRemove)
-        => user with { Identities = user.Identities.Remove(toRemove) };
 }
