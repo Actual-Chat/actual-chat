@@ -15,18 +15,25 @@ public partial class MauiBlazorWebViewHandler
         // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
         platformView.AddJavascriptInterface(jsInterface, "Android");
         platformView.SetWebViewClient(
-            new WebViewClientOverride(platformView.WebViewClient, AppServices.LogFor<WebViewClientOverride>()));
+            new WebViewClientOverride(
+                platformView.WebViewClient,
+                AppServices.LogFor<WebViewClientOverride>(),
+                AppServices.GetRequiredService<AndroidContentDownloader>()));
     }
 
     private class WebViewClientOverride : WebViewClient
     {
+        private const string AppHostAddress = "0.0.0.0";
+
         private WebViewClient Original { get; }
         private ILogger Log { get; }
+        private AndroidContentDownloader ContentDownloader { get; }
 
-        public WebViewClientOverride(WebViewClient original, ILogger log)
+        public WebViewClientOverride(WebViewClient original, ILogger log, AndroidContentDownloader contentDownloader)
         {
             Original = original;
             Log = log;
+            ContentDownloader = contentDownloader;
         }
 
         public override bool ShouldOverrideUrlLoading(WebView? view, IWebResourceRequest? request)
@@ -34,16 +41,27 @@ public partial class MauiBlazorWebViewHandler
 
         public override WebResourceResponse? ShouldInterceptRequest(WebView? view, IWebResourceRequest? request)
         {
+            const string contentTypeKey = "Content-Type";
+            const string cacheControlKey = "Cache-Control";
+
+            if (request?.Url?.Host == AppHostAddress && ContentDownloader.CanHandlePath(request.Url.EncodedPath!)) {
+                var (stream, mimeType) = ContentDownloader.OpenInputStream(request.Url.EncodedPath!);
+                if (stream == null)
+                    return null;
+                // Prevent response caching by WebView
+                var headers = new Dictionary<string, string>(StringComparer.Ordinal) {
+                    { cacheControlKey, "no-store, no-cache, max-age=0" }
+                };
+                return new WebResourceResponse(mimeType, null, 200, "OK", headers, stream);
+            }
+
             var resourceResponse = Original.ShouldInterceptRequest(view, request);
             if (resourceResponse == null)
                 return null;
 
-            var url = request?.Url?.ToString();
-            if (url is "https://0.0.0.0/" or "https://0.0.0.0")
+            if (request?.Url?.Host == AppHostAddress)
                 return resourceResponse;
 
-            const string contentTypeKey = "Content-Type";
-            const string cacheControlKey = "Cache-Control";
             resourceResponse.ResponseHeaders?.Remove(cacheControlKey);
             resourceResponse.ResponseHeaders?.Add(cacheControlKey, "public, max-age=604800");
             // We see duplicate Content-Type headers at Android

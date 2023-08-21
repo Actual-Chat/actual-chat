@@ -47,6 +47,8 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped(_ => new PlayableTextPaletteProvider());
         services.AddScoped(c => new ActiveChatsUI(c));
         services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));
+        services.AddScoped(_ => new SentAttachmentsStorage());
+        services.AddScoped<FileUploader>();
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c));

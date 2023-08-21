@@ -31,18 +31,13 @@ public class IncomingShareHandler
 
         var mimeType = intent.Type ?? "";
         if (OrdinalEquals(action, Intent.ActionSend)) {
-            if (OrdinalEquals(mimeType, System.Net.Mime.MediaTypeNames.Text.Plain)) {
-                _ = HandleTextSend(mimeType, intent.GetStringExtra(Intent.ExtraText));
-            }
+            if (OrdinalEquals(mimeType, System.Net.Mime.MediaTypeNames.Text.Plain))
+                _ = HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText));
             else if (mimeType.OrdinalStartsWith("image/")) {
-                object? stream;
-                if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu) {
-                    var uriTypeClass = Java.Lang.Class.FromType(typeof(Android.Net.Uri));
-                    stream = intent.GetParcelableExtra(Intent.ExtraStream, uriTypeClass);
-                }
-                else
-                    stream = intent.GetParcelableExtra(Intent.ExtraStream);
-                if (stream is Android.Net.Uri uri)
+                 var stream = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
+                    ? intent.GetParcelableExtra(Intent.ExtraStream, Java.Lang.Class.FromType(typeof(Uri)))
+                    : intent.GetParcelableExtra(Intent.ExtraStream);
+                if (stream is Uri uri)
                     _ = HandleFilesSend(mimeType, new []{ uri });
                 else
                     Log.LogWarning("Unsupported stream type: '{StreamType}'", stream?.ToString() ?? "<null>");
@@ -52,24 +47,14 @@ public class IncomingShareHandler
         }
         else {
             if (mimeType.OrdinalStartsWith("image/")) {
-                IList? streams;
-                if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu) {
-                    var uriTypeClass = Java.Lang.Class.FromType(typeof(Android.Net.Uri));
-                    streams = intent.GetParcelableArrayListExtra(Intent.ExtraStream, uriTypeClass);
-                }
-                else
-                    streams = intent.GetParcelableArrayListExtra(Intent.ExtraStream);
+                var streams = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
+                    ? intent.GetParcelableArrayListExtra(Intent.ExtraStream, Java.Lang.Class.FromType(typeof(Uri)))
+                    : intent.GetParcelableArrayListExtra(Intent.ExtraStream);
                 if (streams == null)
                     Log.LogWarning("No file streams provided");
                 else {
-                    var uris = new List<Android.Net.Uri>();
-                    foreach (var stream in streams) {
-                        if (stream is Android.Net.Uri uri)
-                            uris.Add(uri);
-                        else
-                            Log.LogWarning("Unsupported stream type: '{StreamType}'", stream?.ToString() ?? "<null>");
-                    }
-                    if (uris.Count > 0)
+                    var uris = streams.OfType<Uri>().ToArray();
+                    if (uris.Length > 0)
                         _ = HandleFilesSend(mimeType, uris);
                     else
                         Log.LogWarning("No supported image files provided");
@@ -81,7 +66,7 @@ public class IncomingShareHandler
         }
     }
 
-    private async Task HandleTextSend(string mimeType, string? text)
+    private async Task HandlePlainTextSend(string? text)
     {
         if (text.IsNullOrEmpty()) {
             Log.LogWarning("No text to send");
@@ -90,21 +75,26 @@ public class IncomingShareHandler
         Log.LogInformation("About to send text: '{Text}'", text);
         await InvokeAsync(services => {
             var incomingShareUI = services.GetRequiredService<IncomingShareUI>();
-            incomingShareUI.ShareText(text ?? "");
+            incomingShareUI.ShareText(text);
         }).ConfigureAwait(false);
     }
 
-    private async Task HandleFilesSend(string mimeType, ICollection<Android.Net.Uri> uris)
+    private async Task HandleFilesSend(string mimeType, ICollection<Uri> uris)
     {
-        if (uris.Count == 0) {
-            Log.LogWarning("No files to send");
-            return;
-        }
         Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Count, mimeType);
         await InvokeAsync(services => {
             var incomingShareUI = services.GetRequiredService<IncomingShareUI>();
-            var fileInfos = uris.Select(c => new AndroidFileInfo(c)).ToArray<IncomingShareFile>();
-            incomingShareUI.ShareFiles(mimeType, fileInfos);
+            var fileInfos = uris
+                .Select(c => {
+                    var url = c.ToString()!;
+                    if (AndroidContentDownloader.TryCreateAppHostRelativeUrl(url, out var relativeUrl))
+                        return new IncomingShareFile(relativeUrl);
+                    Log.LogWarning("Unsupported sent file url: '{Url}'", url);
+                    return null;
+                })
+                .SkipNullItems()
+                .ToArray();
+            incomingShareUI.ShareFiles(fileInfos);
         }).ConfigureAwait(false);
     }
 
@@ -116,13 +106,4 @@ public class IncomingShareHandler
         var historyUI = services.GetRequiredService<History>();
         await historyUI.Dispatcher.InvokeAsync(() => workItem(services)).ConfigureAwait(false);
     }
-}
-
-public class AndroidFileInfo : IncomingShareFile
-{
-    public AndroidFileInfo(Uri uri)
-        => Uri = uri;
-
-    public Android.Net.Uri Uri { get; }
-    public override string Url => Uri.ToString();
 }

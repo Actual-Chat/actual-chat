@@ -5,11 +5,13 @@ import { fromEvent, Subject, takeUntil } from 'rxjs';
 import {BrowserInit} from "../../../UI.Blazor/Services/BrowserInit/browser-init";
 import {SessionTokens} from "../../../UI.Blazor/Services/Security/session-tokens";
 
-const { errorLog } = Log.get('Attachments');
+const { debugLog, errorLog } = Log.get('Attachments');
 
 interface Attachment {
-    file: File;
+    fileBlob: Blob;
+    fileName: string;
     url: string;
+    tempUrl: string;
     id: number;
     mediaId: string;
 }
@@ -45,31 +47,58 @@ export class AttachmentList {
         this.disposed$.complete();
     }
 
+    public async addBlobs(urls: string[]): Promise<number> {
+        let addedBlobs = 0;
+        for (const url of urls) {
+            await fetch(url)
+                .then(r => r.blob())
+                .then(blob => this.addBlob(this.chatId, url, blob, "", true))
+                .then(isAdded => {
+                    if (isAdded) {
+                        addedBlobs++;
+                        debugLog.log(`added a blob: ${url}`);
+                    }
+                })
+                .catch(e => errorLog.log('failed to add a blob', e))
+        }
+        this.changed();
+        return addedBlobs;
+    }
+
     public async add(chatId: string, file: File): Promise<boolean> {
+        return this.addBlob(chatId, '', file, file.name, false);
+    }
+
+    public async addBlob(chatId: string, url: string, blob: Blob, fileName: string, silent : boolean): Promise<boolean> {
         const attachment: Attachment = {
             id: this.attachmentsIdSeed,
-            file: file,
-            url: '',
+            fileBlob: blob,
+            fileName: fileName,
+            url : url,
+            tempUrl: '',
             mediaId: '',
         };
-        if (file.type.startsWith('image') || file.type.startsWith('video'))
-            attachment.url = URL.createObjectURL(file);
-        const isAdded = await this.invokeAttachmentAdded(attachment, file);
+        if (!url && (blob.type.startsWith('image') || blob.type.startsWith('video')))
+            attachment.url = attachment.tempUrl = URL.createObjectURL(blob);
+        const isAdded = await this.invokeAttachmentAdded(attachment, blob, fileName);
         if (!isAdded) {
-            if (attachment.url)
-                URL.revokeObjectURL(attachment.url);
+            if (attachment.tempUrl)
+                URL.revokeObjectURL(attachment.tempUrl);
         }
         else {
             this.attachmentsIdSeed++;
             this.attachments.set(attachment.id, attachment);
-            TuneUI.play('change-attachments');
-            const upload = new FileUpload(chatId, file, pct => this.invokeUploadProgress(attachment.id, pct))
+            if (!silent)
+                TuneUI.play('change-attachments');
+            const upload = new FileUpload(chatId, blob, fileName, pct => this.invokeUploadProgress(attachment.id, pct))
             upload.whenCompleted.then(x => {
                 attachment.mediaId = x.mediaId;
                 this.invokeUploadSucceed(attachment.id, x.mediaId);
             }).catch(e => {
-                if (!(e instanceof OperationCancelledError))
+                if (!(e instanceof OperationCancelledError)) {
                     errorLog?.log('Failed to upload file', e);
+                    this.invokeUploadFailed(attachment.id);
+                }
             });
             upload.start();
             this.uploads.set(attachment.id, upload);
@@ -92,8 +121,8 @@ export class AttachmentList {
 
         const attachment = this.attachments.get(id);
         this.attachments.delete(id);
-        if (attachment?.url)
-            URL.revokeObjectURL(attachment.url);
+        if (attachment?.tempUrl)
+            URL.revokeObjectURL(attachment.tempUrl);
 
         this.changed();
     }
@@ -109,8 +138,8 @@ export class AttachmentList {
         if (this.attachments.size != 0)
             TuneUI.play('change-attachments');
         for (const attachment of this.attachments.values()) {
-            if (attachment?.url)
-                URL.revokeObjectURL(attachment.url);
+            if (attachment?.tempUrl)
+                URL.revokeObjectURL(attachment.tempUrl);
         }
         this.attachments.clear();
         this.attachmentsIdSeed = 0;
@@ -134,9 +163,9 @@ export class AttachmentList {
         this.filePickerElement.value = '';
     });
 
-    private async invokeAttachmentAdded(attachment: Attachment, file: File) {
+    private async invokeAttachmentAdded(attachment: Attachment, blob: Blob, fileName: string) {
         return this.blazorRef.invokeMethodAsync<boolean>(
-            'OnAttachmentAdded', attachment.id, attachment.url, file.name, file.type, file.size);
+            'OnAttachmentAdded', attachment.id, attachment.url, fileName, blob.type, blob.size);
     }
 
     private async invokeUploadProgress(id: number, progressPercent: number) {
@@ -145,6 +174,10 @@ export class AttachmentList {
 
     private async invokeUploadSucceed(id: number, mediaId: string) {
         return  this.blazorRef.invokeMethodAsync('OnUploadSucceed', id, mediaId);
+    }
+
+    private async invokeUploadFailed(id: number) {
+        return  this.blazorRef.invokeMethodAsync('OnUploadFailed', id);
     }
 }
 
@@ -155,9 +188,12 @@ class FileUpload {
 
     constructor(
         private readonly chatId: string,
-        private readonly file: File,
+        private readonly blob: Blob,
+        private readonly fileName: string,
         private readonly progressReporter: ProgressReporter) {
         this.xhr = new XMLHttpRequest();
+        if (!this.fileName)
+            this.fileName = "upload";
     }
 
     public get whenCompleted(): Promise<MediaContent> {
@@ -166,7 +202,7 @@ class FileUpload {
 
     public start() {
         const formData = new FormData();
-        formData.append('file', this.file, this.file.name);
+        formData.append('file', this.blob, this.fileName);
         this.xhr.upload.onprogress = (e) => {
             const progress = Math.floor(e.loaded / e.total * 1000) / 10;
             this.progressReporter(progress);
@@ -178,7 +214,7 @@ class FileUpload {
                 } else if (this.isCancelled)
                     this.whenCompletedSource.reject(new OperationCancelledError('File upload cancelled: ' + this.xhr.statusText));
                 else
-                    this.whenCompletedSource.reject(this.xhr.statusText);
+                    this.whenCompletedSource.reject(this.xhr.responseText);
             }
         };
         const url = this.getUrl(`api/chat-media/${this.chatId}/upload`);

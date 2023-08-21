@@ -12,6 +12,6 @@ public class IncomingShareUI
     public void ShareText(string plainText)
         => _ = _modalUI.Show(new IncomingShareModal.Model(plainText));
 
-    public void ShareFiles(string mimiType, IncomingShareFile[] files)
-        => throw new NotImplementedException();
+    public void ShareFiles(IncomingShareFile[] files)
+        => _ = _modalUI.Show(new IncomingShareModal.Model(files));
 }

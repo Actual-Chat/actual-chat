@@ -17,11 +17,16 @@
         </div>
         <ul class="attachment-list custom-scrollbar-x">
             @foreach (var attachment in _attachments) {
-                var uploadStyle = $"width: {attachment.Progress}%;";
+                var progress = attachment.Progress;
                 var uploadProgressClass = "attachment-upload-progress";
-                if (attachment.Uploaded) {
+                if (attachment.Failed) {
+                    progress = Math.Max(progress, 30);
+                    uploadProgressClass += " attachment-upload-failed";
+                }
+                else if (attachment.Uploaded) {
                     uploadProgressClass += " attachment-upload-completed";
                 }
+                var uploadStyle = $"width: {progress}%;";
                 <li class="attachment-wrapper">
                     <div class="flex-y relative">
                         <div class="attachment-item">
@@ -41,7 +46,11 @@
                             }
                         </div>
                         <div class="attachment-filename" title="@attachment.FileName">
-                            @attachment.FileName
+                            @if (attachment.FileName.Length > 0) {
+                                <span>@attachment.FileName</span>
+                            } else {
+                                <span>&nbsp;</span>
+                            }
                         </div>
                         <div class="@uploadProgressClass" style="@uploadStyle"></div>
                     </div>
@@ -97,6 +106,9 @@
         await InvokeClear();
         StateHasChanged();
     }
+
+    public async Task SetSentAttachments(string[] urls)
+        => _ = await JSRef.InvokeAsync<int>("addBlobs", new object[] { urls });
 
     public ResetIntent PopSnapshot() {
         var attachments = PopAttachments();
@@ -157,6 +169,12 @@
         StateHasChanged();
     }
 
+    [JSInvokable]
+    public void OnUploadFailed(int id) {
+        UpdateAttachment(id, x => x with { Failed = true });
+        StateHasChanged();
+    }
+
     private Task OnAddClick()
         => JSRef.InvokeVoidAsync("showFilePicker").AsTask();
 
@@ -206,6 +224,7 @@
     {
         public bool IsImage => FileType?.OrdinalIgnoreCaseStartsWith("image") ?? false;
         public bool IsVideo => FileType?.OrdinalIgnoreCaseStartsWith("video") ?? false;
+        public bool Failed { get; init; }
         public bool Uploaded => Progress == 100 && !MediaId.IsNone;
     }
 }
