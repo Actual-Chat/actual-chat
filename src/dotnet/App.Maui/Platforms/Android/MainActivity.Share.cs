@@ -9,11 +9,11 @@ namespace ActualChat.App.Maui;
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 [IntentFilter(
     new [] { Intent.ActionSend },
-    DataMimeTypes = new [] { "image/*" },
+    DataMimeTypes = new [] { "*/*" },
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 [IntentFilter(
     new [] { Intent.ActionSendMultiple },
-    DataMimeTypes = new [] { "image/*" },
+    DataMimeTypes = new [] { "*/*" },
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 public partial class MainActivity
 {

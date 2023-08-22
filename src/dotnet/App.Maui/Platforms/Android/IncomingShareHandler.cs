@@ -30,10 +30,11 @@ public class IncomingShareHandler
             return;
 
         var mimeType = intent.Type ?? "";
+        var hasExtraStream = intent.Extras?.ContainsKey(Intent.ExtraStream) ?? false;
         if (OrdinalEquals(action, Intent.ActionSend)) {
             if (OrdinalEquals(mimeType, System.Net.Mime.MediaTypeNames.Text.Plain))
                 _ = HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText));
-            else if (mimeType.OrdinalStartsWith("image/")) {
+            else if (hasExtraStream) {
                  var stream = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
                     ? intent.GetParcelableExtra(Intent.ExtraStream, Java.Lang.Class.FromType(typeof(Uri)))
                     : intent.GetParcelableExtra(Intent.ExtraStream);
@@ -46,7 +47,7 @@ public class IncomingShareHandler
                 Log.LogWarning("Unsupported send mime type: '{MimiType}'", mimeType);
         }
         else {
-            if (mimeType.OrdinalStartsWith("image/")) {
+            if (hasExtraStream) {
                 var streams = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
                     ? intent.GetParcelableArrayListExtra(Intent.ExtraStream, Java.Lang.Class.FromType(typeof(Uri)))
                     : intent.GetParcelableArrayListExtra(Intent.ExtraStream);
