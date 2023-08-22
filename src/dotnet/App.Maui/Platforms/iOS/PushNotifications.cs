@@ -105,6 +105,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         if (url.IsNullOrEmpty())
             return;
 
+        // TODO(AK): resolve notification hang issue when code below is used
         // var autoNavigationTasks = AppServices.GetRequiredService<AutoNavigationTasks>();
         // autoNavigationTasks.Add(ForegroundTask.Run(async () => {
         //     var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
@@ -112,23 +113,17 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         //     await notificationUI.HandleNotificationNavigation(url).ConfigureAwait(false);
         // }, Log, "Failed to handle notification tap"));
 
-        // if (LocalUrl.FromAbsolute(url, UrlMapper) is not { } localUrl)
-            // return;
-
         // Dirty hack as we have BaseUrl - https://actual.chat/ but local url should be app://0.0.0.0/
         var localUrl = url
             .Replace(UrlMapper.BaseUrl, "")
             .Replace("app://0.0.0.0/", "");
-        // _ = History.NavigateTo(localUrl);
+
         Log.LogInformation("OnNotificationTapped: navigating to {LocalUrl}", localUrl);
+
         Nav.NavigateTo(localUrl, new NavigationOptions() {
             ForceLoad = false,
             ReplaceHistoryEntry = false,
             HistoryEntryState = ItemIdFormatter.Format(100500),
         });
-
-        // _ = ForegroundTask.Run(
-        //     () => NotificationUI.HandleNotificationNavigation(localUrl),
-        //     Log, "Failed to handle notification tap");
     }
 }
