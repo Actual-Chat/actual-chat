@@ -100,28 +100,32 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
             Log.LogWarning("No message link received within notification");
             return;
         }
+        Log.LogInformation("OnNotificationTapped: {Url}", url);
 
         if (url.IsNullOrEmpty())
             return;
 
-        var autoNavigationTasks = AppServices.GetRequiredService<AutoNavigationTasks>();
-        autoNavigationTasks.Add(ForegroundTask.Run(async () => {
-            var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
-            var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
-            await notificationUI.HandleNotificationNavigation(url).ConfigureAwait(false);
-        }, Log, "Failed to handle notification tap"));
+        // var autoNavigationTasks = AppServices.GetRequiredService<AutoNavigationTasks>();
+        // autoNavigationTasks.Add(ForegroundTask.Run(async () => {
+        //     var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
+        //     var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
+        //     await notificationUI.HandleNotificationNavigation(url).ConfigureAwait(false);
+        // }, Log, "Failed to handle notification tap"));
 
         // if (LocalUrl.FromAbsolute(url, UrlMapper) is not { } localUrl)
-        //     return;
+            // return;
 
         // Dirty hack as we have BaseUrl - https://actual.chat/ but local url should be app://0.0.0.0/
-        // localUrl = localUrl.Value.Replace(UrlMapper.BaseUrl, "");
+        var localUrl = url
+            .Replace(UrlMapper.BaseUrl, "")
+            .Replace("app://0.0.0.0/", "");
         // _ = History.NavigateTo(localUrl);
-        // Nav.NavigateTo(localUrl, new NavigationOptions() {
-        //     ForceLoad = false,
-        //     ReplaceHistoryEntry = false,
-        //     HistoryEntryState = ItemIdFormatter.Format(100500),
-        // });
+        Log.LogInformation("OnNotificationTapped: navigating to {LocalUrl}", localUrl);
+        Nav.NavigateTo(localUrl, new NavigationOptions() {
+            ForceLoad = false,
+            ReplaceHistoryEntry = false,
+            HistoryEntryState = ItemIdFormatter.Format(100500),
+        });
 
         // _ = ForegroundTask.Run(
         //     () => NotificationUI.HandleNotificationNavigation(localUrl),
