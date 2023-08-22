@@ -128,7 +128,8 @@
                 Services.LogFor<IncomingShareModal>().LogWarning("Failed to open input stream for {Url}", file.Url);
                 continue;
             }
-            var fileUpload = uploader.Upload(chatId, stream, mediaType, "Upload");
+            filesDownloader.TryExtractFileName(file.Url, out var fileName);
+            var fileUpload = uploader.Upload(chatId, stream, mediaType, fileName);
             fileUploads.Add(fileUpload);
         }
         return fileUploads;

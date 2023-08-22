@@ -25,6 +25,24 @@ public class AndroidContentDownloader : IIncomingShareFileDownloader
         return true;
     }
 
+    public bool TryExtractFileName(string url, out string fileName)
+    {
+        fileName = "";
+        try {
+            var uri = Uri.Parse(url);
+            if (uri?.Path == null)
+                return false;
+            var index = uri.Path.LastIndexOf('/');
+            if (index == -1)
+                return false;
+            fileName = uri.Path.Substring(index + 1);
+            return true;
+        }
+        catch {
+            return false;
+        }
+    }
+
     public (Stream?, string?) OpenInputStream(string url)
     {
         if (!url.OrdinalStartsWith(Prefix))

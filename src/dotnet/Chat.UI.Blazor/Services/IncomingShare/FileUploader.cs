@@ -15,7 +15,7 @@ public class FileUploader
         var streamContent = new StreamContent(file);
         if (contentType != null)
             streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
-        formData.Add(streamContent, "file", fileName ?? "Upload");
+        formData.Add(streamContent, "file", fileName.NullIfEmpty() ?? "Upload");
         var httpClient = _httpClientFactory.CreateClient("UploadFile.Client");
         httpClient.DefaultRequestHeaders.Add(SessionTokens.HeaderName, _sessionTokens.Current!.Token);
         var url = _urlMapper.ApiBaseUrl + "chat-media/"+ chatId + "/upload";

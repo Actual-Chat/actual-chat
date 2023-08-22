@@ -47,12 +47,14 @@ export class AttachmentList {
         this.disposed$.complete();
     }
 
-    public async addBlobs(urls: string[]): Promise<number> {
+    public async addBlobs(urls: string[], fileNames: string[]): Promise<number> {
         let addedBlobs = 0;
-        for (const url of urls) {
+        for (let i = 0; i < urls.length; i++){
+            const url = urls[i];
+            const fileName = fileNames[i];
             await fetch(url)
                 .then(r => r.blob())
-                .then(blob => this.addBlob(this.chatId, url, blob, "", true))
+                .then(blob => this.addBlob(this.chatId, url, blob, fileName, true))
                 .then(isAdded => {
                     if (isAdded) {
                         addedBlobs++;

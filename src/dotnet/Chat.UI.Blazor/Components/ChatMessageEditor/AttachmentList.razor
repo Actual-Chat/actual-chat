@@ -78,6 +78,7 @@
 
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
 
     public IJSObjectReference JSRef { get; private set; } = null!;
     public Task WhenReady => _whenReadySource.Task;
@@ -107,8 +108,16 @@
         StateHasChanged();
     }
 
-    public async Task SetSentAttachments(string[] urls)
-        => _ = await JSRef.InvokeAsync<int>("addBlobs", new object[] { urls });
+    public async Task SetSentAttachments(string[] urls) {
+        var downloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
+        var fileNames = urls
+            .Select(c => {
+                downloader.TryExtractFileName(c, out var fileName);
+                return fileName;
+            })
+            .ToArray();
+        _ = await JSRef.InvokeAsync<int>("addBlobs", new object[] { urls, fileNames });
+    }
 
     public ResetIntent PopSnapshot() {
         var attachments = PopAttachments();
