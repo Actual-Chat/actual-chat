@@ -10,7 +10,7 @@
         null => "",
         _ => throw StandardError.Internal("Invalid Model.Color value."),
         };
-    var playOnClickIsEnabled = !ScreenSize.IsNarrow();
+    var playOnClickIsEnabled = !ScreenSize.IsNarrow() && !m.HasSelection;
     var containerCls = "playable-text-markup" + (playOnClickIsEnabled ? " cursor-pointer" : "");
 }
 <span class="@containerCls @colorCls">
@@ -35,6 +35,7 @@
 
     [Inject] private ActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
     [Inject] private PlayableTextPaletteProvider PaletteProvider { get; init; } = null!;
+    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
@@ -45,9 +46,12 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken);
         var model = await InnerComputeState(cancellationToken);
         if (_rendered is not { Map: { } })
-            return model; // Never rendered
+            return model with { // Never rendered
+                HasSelection = hasSelection
+            };
 
         var colorLease = ActualizeColorLease(model, _rendered);
         var map = EnrichMapWithPlayedStatus(model.Map, _rendered.Map);
@@ -55,6 +59,7 @@
             Map = map,
             ColorLease = colorLease,
             Color = colorLease?.Color ?? _rendered.Color,
+            HasSelection = hasSelection,
         };
     }
 
@@ -232,5 +237,6 @@
         public PlayableTextColor? Color { get; init; }
         public IPlayableTextColorLease? ColorLease { get; init; }
         public bool HasActivePlaying => Map?.Any(c => c.HasFlag(WordPlayback.Playing)) ?? false;
+        public bool HasSelection { get; init; }
     }
 }
