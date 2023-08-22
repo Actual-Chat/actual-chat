@@ -16,20 +16,6 @@ public partial class History
             uri = fixedUri;
         }
 
-// #if IOS
-//         if (!force && OrdinalEquals(uri, _uri)) {
-//             DebugLog?.LogDebug("{Entry} - skipped (same URI + no force option)", title);
-//             return null;
-//         }
-//
-//         var itemId = mustReplace ? _currentItem.Id : NewItemId();
-//         Nav.NavigateTo(uri, new NavigationOptions() {
-//             ForceLoad = force,
-//             ReplaceHistoryEntry = mustReplace,
-//             HistoryEntryState = ItemIdFormatter.Format(itemId),
-//         });
-//         return Task.CompletedTask;
-// #else
         var title = $"NavigateTo: {(mustReplace ? "*>" : "->")} {uri}{(force ? " + force" : "")}";
         var entry = NavigationQueue.Enqueue(addInFront, title, () => {
             if (!force && OrdinalEquals(uri, _uri)) {
@@ -47,7 +33,6 @@ public partial class History
             return itemId;
         });
         return entry.WhenCompleted;
-// #endif
     }
 
     public ValueTask ForceReload(string eventName, string url, bool mustReplace = true)

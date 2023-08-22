@@ -79,6 +79,7 @@ public sealed class NavigationQueue
             _queue.Remove(head);
             var entry = _lastProcessedEntry = head.Value;
             _completedItemIds.Clear();
+            // TODO(AK): I'm not sure that action is invoked at the dispatcher thread there - check!
             entry.Invoke();
             if (entry.ExpectedId is not { } vExpectedId)
                 continue; // Invocation failed or no-op
