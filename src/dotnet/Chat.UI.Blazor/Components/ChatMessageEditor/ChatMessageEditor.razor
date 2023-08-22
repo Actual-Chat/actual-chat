@@ -93,6 +93,7 @@
     private NotifyCallPanel NotifyCallPanelRef { get; set; } = null!;
     private IChatMarkupHub ChatMarkupHub { get; set; } = null!;
     private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
+    private SentAttachmentsStorage? AttachmentsStorage { get; set; } = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
@@ -114,6 +115,9 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     public async ValueTask DisposeAsync() {
+        if (AttachmentsStorage != null)
+            AttachmentsStorage.AttachmentsStored -= OnAttachmentsStored;
+        AttachmentsStorage = null;
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -148,11 +152,10 @@
             await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
             await UpdateChatId();
             await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
-            var attachmentsStorage = Services.GetRequiredService<SentAttachmentsStorage>();
-            if (attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.Urls.Length > 0) {
-                await AttachmentListRef.SetSentAttachments(attachmentsStorage.Urls);
-                attachmentsStorage.Clear();
-            }
+            AttachmentsStorage = Services.GetRequiredService<SentAttachmentsStorage>();
+            if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.Urls.Length > 0)
+                await SetAttachments(AttachmentsStorage);
+            AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
         }
     }
 
@@ -230,6 +233,23 @@
     {
         await ChatEditorUI.HideRelatedEntry();
         await MarkupEditorRef.Clear(mustFocus: true);
+    }
+
+    private void OnAttachmentsStored(object? sender, EventArgs e) {
+        var attachmentsStorage = AttachmentsStorage;
+        if (attachmentsStorage != null && attachmentsStorage.ChatId == Chat.Id && attachmentsStorage.Urls.Length > 0)
+            _ = Handle();
+
+        async Task Handle() {
+            await SetAttachments(attachmentsStorage);
+            Services.GetRequiredService<PanelsUI>().HidePanels();
+        }
+    }
+
+    private async Task SetAttachments(SentAttachmentsStorage attachmentsStorage)
+    {
+        await AttachmentListRef.SetSentAttachments(attachmentsStorage.Urls);
+        attachmentsStorage.Clear();
     }
 
     // UIEventHub event handlers

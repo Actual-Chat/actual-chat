@@ -5,6 +5,8 @@ public class SentAttachmentsStorage
     public ChatId ChatId { get; private set; }
     public string[] Urls { get; private set; } = Array.Empty<string>();
 
+    public event EventHandler<EventArgs>? AttachmentsStored;
+
     public void Clear()
     {
         ChatId = ChatId.None;
@@ -15,5 +17,7 @@ public class SentAttachmentsStorage
     {
         ChatId = chatId;
         Urls = urls;
+
+        AttachmentsStored?.Invoke(this, EventArgs.Empty);
     }
 }

@@ -5,7 +5,7 @@
 @{
     var destinationSelected = _selectedChats.Count > 0;
     var shareButtonClass = !destinationSelected ? "hidden" : "";
-    shareButtonClass += " btn-modal share-button";
+    shareButtonClass += " btn-modal btn-primary share-button";
     var shareFilesWithPreview = _selectedChats.Count == 1 && ModalModel.Files.Length <= Constants.Attachments.FileCountLimit;
     var showCommentEditor = destinationSelected && (!ModalModel.IsFilesShare || !shareFilesWithPreview);
 }
@@ -13,7 +13,7 @@
 <DialogFrame
     Class="share-incoming-modal"
     HasCloseButton="true"
-    Title="Choose Contact"
+    Title="Share to"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>
         <SearchBoxNew
@@ -60,9 +60,8 @@
         StateHasChanged();
     }
 
-    private void OnSelectionChanged(IReadOnlyCollection<ChatId> selectedChats) {
-        _selectedChats = selectedChats;
-    }
+    private void OnSelectionChanged(IReadOnlyCollection<ChatId> selectedChats)
+        => _selectedChats = selectedChats;
 
     private Task OnCommentChanged(string text) {
         _comment = text;

@@ -22,8 +22,4 @@
     <Using Include="ActualChat.Chat.UI.Blazor.Components" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Remove="Components\IncomingShare\IncomingShareFiles.razor" />
-  </ItemGroup>
-
 </Project>
