@@ -48,6 +48,10 @@ export class SelectionHost implements Disposable {
         if (!triggerElement || !chatEntryId)
             return;
 
+        const transcriptionInProgress = triggerElement.getElementsByClassName('chat-message-transcript').length > 0;
+        if (transcriptionInProgress)
+            return;
+
         preventDefaultForEvent(event);
 
         if (this.selection.has(chatEntryId)) {
