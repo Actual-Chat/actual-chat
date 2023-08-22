@@ -101,11 +101,21 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
             return;
         }
 
-        if (LocalUrl.FromAbsolute(url, UrlMapper) is not { } localUrl)
+        if (url.IsNullOrEmpty())
             return;
 
+        var autoNavigationTasks = AppServices.GetRequiredService<AutoNavigationTasks>();
+        autoNavigationTasks.Add(ForegroundTask.Run(async () => {
+            var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
+            var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
+            await notificationUI.HandleNotificationNavigation(url).ConfigureAwait(false);
+        }, Log, "Failed to handle notification tap"));
+
+        // if (LocalUrl.FromAbsolute(url, UrlMapper) is not { } localUrl)
+        //     return;
+
         // Dirty hack as we have BaseUrl - https://actual.chat/ but local url should be app://0.0.0.0/
-        localUrl = localUrl.Value.Replace(UrlMapper.BaseUrl, "");
+        // localUrl = localUrl.Value.Replace(UrlMapper.BaseUrl, "");
         // _ = History.NavigateTo(localUrl);
         // Nav.NavigateTo(localUrl, new NavigationOptions() {
         //     ForceLoad = false,
@@ -113,8 +123,8 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         //     HistoryEntryState = ItemIdFormatter.Format(100500),
         // });
 
-        _ = ForegroundTask.Run(
-            () => NotificationUI.HandleNotificationNavigation(localUrl),
-            Log, "Failed to handle notification tap");
+        // _ = ForegroundTask.Run(
+        //     () => NotificationUI.HandleNotificationNavigation(localUrl),
+        //     Log, "Failed to handle notification tap");
     }
 }
