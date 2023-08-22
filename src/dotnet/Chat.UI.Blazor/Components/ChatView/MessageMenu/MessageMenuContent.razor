@@ -10,15 +10,15 @@
                           && !hasSelection;
     var messageLink = Links.Chat(entry.Id).ToAbsolute(UrlMapper);
     var isSelected = SelectionUI.IsSelected(entry.Id);
-    var canReply = CanWrite && !IsSystem && !isSelected;
-    var canSelect = !IsSystem && !isSelected;
+    var canReply = !entry.IsStreaming && CanWrite && !IsSystem && !isSelected;
+    var canSelect = !entry.IsStreaming && !IsSystem && !isSelected;
     var canUnselect = !IsSystem && isSelected;
     var canCopyText = entry.Kind == ChatEntryKind.Text && !entry.Content.IsNullOrEmpty();
     var canCopyLink = !ClickedLinkUrl.IsNullOrEmpty();
     var canCopyCode = !ClickedCode.IsNullOrEmpty();
     var canCopyMessageLink = !IsSystem;
-    var canForward = !IsSystem && !hasSelection;
-    var canForwardSelection = !IsSystem && isSelected && hasSelection;
+    var canForward = !entry.IsStreaming && !IsSystem && !hasSelection;
+    var canForwardSelection = !entry.IsStreaming && !IsSystem && isSelected && hasSelection;
 }
 
 <div class="message-menu">
