@@ -12,7 +12,6 @@
     @apply mx-4 p-0;
 }
 .forward-message-modal .dialog-buttons {
-    @apply -flex-x;
     @apply pt-4;
 }
 .forward-message-modal .form-block {
