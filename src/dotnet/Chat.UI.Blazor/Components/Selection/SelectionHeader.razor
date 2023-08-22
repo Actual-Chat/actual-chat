@@ -107,7 +107,7 @@
         _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
         return new Model {
-            Selection = selection.OrderBy(x => x.LocalId).ToList(),
+            Selection = selection.ToList(),
         };
     }
 
@@ -139,8 +139,8 @@
         var cmd = new Chats_ForwardTextEntries(
             Session,
             chatId,
-            new ApiArray<ChatEntryId>(selection),
-            new ApiArray<ChatId>(selectedChats));
+            selection.ToApiArray(),
+            selectedChats.ToApiArray());
         await UICommander.Run(cmd, CancellationToken.None);
 
         SelectionUI.Clear();
