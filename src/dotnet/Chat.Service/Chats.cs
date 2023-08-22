@@ -456,6 +456,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         chat.Rules.Permissions.Require(ChatPermissions.Read);
 
         var chatEntries = await chatEntryIds
+            .OrderBy(x => x.LocalId)
             .Select(chatEntryId => this.GetEntry(session, chatEntryId, cancellationToken)
                 .Require(ChatEntry.MustNotBeRemoved)
                 .AsTask())
