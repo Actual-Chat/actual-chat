@@ -66,6 +66,7 @@ public static class MauiDiagnostics
     private static ILogger CreateAppLogger()
     {
         var logging = new LoggerConfiguration()
+            .MinimumLevel.Debug()
             .Enrich.With(new ThreadIdEnricher())
             .Enrich.FromLogContext()
             .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");

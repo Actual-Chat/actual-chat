@@ -37,6 +37,7 @@ public partial class History
                 return null;
             }
 
+            DebugLog?.LogDebug("{Entry}", title);
             var itemId = mustReplace ? _currentItem.Id : NewItemId();
             Nav.NavigateTo(uri, new NavigationOptions() {
                 ForceLoad = force,
@@ -60,10 +61,16 @@ public partial class History
     // Internal and private methods
 
     private Task NavigateBack(bool addInFront = false)
-        => NavigationQueue.Enqueue(addInFront, "NavigateBack", () => {
-            _ = JS.EvalVoid("window.history.back()");
-            return 0; // "Fits" any itemId
-        }).WhenCompleted;
+    {
+        DebugLog?.LogDebug("NavigateBack: {AddInFront}", addInFront);
+        return NavigationQueue.Enqueue(addInFront,
+                "NavigateBack",
+                () => {
+                    _ = JS.EvalVoid("window.history.back()");
+                    return 0; // "Fits" any itemId
+                })
+            .WhenCompleted;
+    }
 
     private Task AddHistoryEntry(HistoryItem item, bool addInFront = false)
         => NavigationQueue.Enqueue(addInFront,  $"AddHistoryEntry: {item}", () => {
