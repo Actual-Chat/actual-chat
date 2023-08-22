@@ -107,14 +107,14 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         // Dirty hack as we have BaseUrl - https://actual.chat/ but local url should be app://0.0.0.0/
         localUrl = localUrl.Value.Replace(UrlMapper.BaseUrl, "");
         // _ = History.NavigateTo(localUrl);
-        Nav.NavigateTo(localUrl, new NavigationOptions() {
-            ForceLoad = false,
-            ReplaceHistoryEntry = false,
-            HistoryEntryState = ItemIdFormatter.Format(100500),
-        });
+        // Nav.NavigateTo(localUrl, new NavigationOptions() {
+        //     ForceLoad = false,
+        //     ReplaceHistoryEntry = false,
+        //     HistoryEntryState = ItemIdFormatter.Format(100500),
+        // });
 
-        // _ = ForegroundTask.Run(
-        //     () => NotificationUI.HandleNotificationNavigation(url),
-        //     Log, "Failed to handle notification tap");
+        _ = ForegroundTask.Run(
+            () => NotificationUI.HandleNotificationNavigation(localUrl),
+            Log, "Failed to handle notification tap");
     }
 }
