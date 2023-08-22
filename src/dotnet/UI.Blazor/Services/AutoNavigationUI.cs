@@ -43,10 +43,13 @@ public abstract class AutoNavigationUI : IHasServices
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
 
             var defaultUrl = await GetDefaultAutoNavigationUrl();
+            Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{DefaultUrl}}", defaultUrl);
             await Services.GetRequiredService<AutoNavigationTasks>().Complete().WaitAsync(cancellationToken);
+            Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: AutoNavigationTasks are completed");
             var candidates = Interlocked.Exchange(ref _autoNavigationCandidates, null);
             if (candidates == null)
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
+            Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: navigation candidates are reset");
 
             var url = candidates.Count > 0
                 ? candidates.MaxBy(t => (int)t.Reason).Url
