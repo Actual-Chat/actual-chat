@@ -1,0 +1,174 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Search
+@implements IModalView<IncomingShareModal.Model>
+
+@{
+    var destinationSelected = _selectedChats.Count > 0;
+    var shareButtonClass = !destinationSelected ? "hidden" : "";
+    shareButtonClass += " btn-modal btn-primary share-button";
+    var shareFilesWithPreview = _selectedChats.Count == 1 && ModalModel.Files.Length <= Constants.Attachments.FileCountLimit;
+    var showCommentEditor = destinationSelected && (!ModalModel.IsFilesShare || !shareFilesWithPreview);
+}
+
+<DialogFrame
+    Class="share-incoming-modal"
+    HasCloseButton="true"
+    Title="Share to"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
+    <Body>
+        <SearchBoxNew
+            Placeholder="Who would you like to share with"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <ContactSelect
+            SearchPhrase="_searchPhrase"
+            SelectionChanged="OnSelectionChanged"/>
+    </Body>
+    <Footer>
+        @if (showCommentEditor) {
+            <EmbeddedMessageEditor
+                Text="@_comment"
+                Placeholder="Add your comment (optional)"
+                TextChanged="OnCommentChanged"/>
+        }
+    </Footer>
+    <Buttons>
+        @if (ModalModel.IsFilesShare) {
+            <Button Class="@shareButtonClass" IsDisabled="@(!destinationSelected)" Click="@(() => ShareFiles(shareFilesWithPreview))">
+                <span>@(shareFilesWithPreview ? "Next" : "Send")</span>
+            </Button>
+        } else {
+            <Button Class="@shareButtonClass" IsDisabled="@(!destinationSelected)" Click="@(() => ShareText(_comment))">
+                <span>Send</span>
+            </Button>
+        }
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
+    private IReadOnlyCollection<ChatId> _selectedChats = Array.Empty<ChatId>();
+    private string _comment = "";
+    private ILogger? _log;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    [Inject] private IServiceProvider Services { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnFilter(string filter) {
+        _searchPhrase = filter.ToSearchPhrase(true, false);
+        StateHasChanged();
+    }
+
+    private void OnSelectionChanged(IReadOnlyCollection<ChatId> selectedChats)
+        => _selectedChats = selectedChats;
+
+    private Task OnCommentChanged(string text) {
+        _comment = text;
+        return Task.CompletedTask;
+    }
+
+    private async Task ShareText(string comment)
+    {
+        var text = ModalModel.Text;
+
+        var session = Services.Session();
+        var uiCommander = Services.UICommander();
+        foreach (var chatId in _selectedChats) {
+            if (!comment.IsNullOrEmpty()) {
+                var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
+                _ = await uiCommander.Run(cmd2, CancellationToken.None);
+            }
+
+            var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
+            _ = await uiCommander.Run(cmd, CancellationToken.None);
+        }
+
+        Modal.Close(true);
+        await Services.GetRequiredService<History>()
+            .NavigateTo(Links.Chat(_selectedChats.First()));
+    }
+
+    private async Task ShareFiles(bool handleWithPreview)
+    {
+        if (handleWithPreview) {
+            var chatId = _selectedChats.First();
+            Services.GetRequiredService<SentAttachmentsStorage>()
+                .Store(chatId, ModalModel.Files.Select(c => c.Url).ToArray());
+
+            Modal.Close(true);
+            await Services.GetRequiredService<History>()
+                .NavigateTo(Links.Chat(chatId));
+        } else {
+            Modal.Close(true);
+
+            var fileDownloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
+            var uploader = Services.GetRequiredService<FileUploader>();
+            var postTasks = new List<Task<ChatEntry?>>();
+            foreach (var chatId in _selectedChats) {
+                var comment = _comment;
+                foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
+                    var fileUploads = UploadFiles(fileDownloader, uploader, chatId, filesChunk);
+                    var chatEntry = PostMessage(chatId, comment, fileUploads);
+                    comment = "";
+                    postTasks.Add(chatEntry);
+                }
+            }
+            await Task.WhenAll(postTasks);
+            // TODO: report files uploaded status
+        }
+    }
+
+    private IReadOnlyCollection<Task<MediaContent>> UploadFiles(IIncomingShareFileDownloader filesDownloader, FileUploader uploader, ChatId chatId, IEnumerable<IncomingShareFile> files) {
+        Exception? fileSizeLimitError = null;
+        var fileUploads = new List<Task<MediaContent>>();
+        foreach (var file in files) {
+            var (stream, mediaType) = filesDownloader.OpenInputStream(file.Url);
+            if (stream == null) {
+                Log.LogWarning("Failed to open input stream for '{Url}'", file.Url);
+                continue;
+            }
+            if (stream.Length > Constants.Attachments.FileSizeLimit) {
+                Log.LogWarning("File size limit exceeded for '{Url}'. Actual size is {FileSize}", file.Url, stream.Length);
+                fileSizeLimitError ??= AttachmentList.FileToBigError();
+                continue;
+            }
+            filesDownloader.TryExtractFileName(file.Url, out var fileName);
+            var fileUpload = uploader.Upload(chatId, stream, mediaType, fileName);
+            fileUploads.Add(fileUpload);
+        }
+        if (fileSizeLimitError != null)
+            Services.GetRequiredService<ErrorUI>().ShowError(fileSizeLimitError);
+        return fileUploads;
+    }
+
+    private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IReadOnlyCollection<Task<MediaContent>> fileUploads)
+    {
+        await Task.WhenAll(fileUploads);
+        var mediaContent = fileUploads
+            .Where(c => c.IsCompletedSuccessfully)
+            .Select(c => c.Result)
+            .ToArray();
+        if (mediaContent.Length == 0 && _comment.IsNullOrEmpty())
+            return null;
+        var cmd = new Chats_UpsertTextEntry(Services.Session(), chatId, null, comment) {
+            RepliedChatEntryId = null,
+            Attachments = mediaContent.Select(c => c.MediaId).ToApiArray(),
+        };
+        return await Services.UICommander().Call(cmd).ConfigureAwait(false);
+    }
+
+    public record Model {
+        public Model(string plainText)
+            => Text = plainText;
+
+        public Model(IncomingShareFile[] files)
+            => Files = files;
+
+        public IncomingShareFile[] Files { get; } = Array.Empty<IncomingShareFile>();
+        public string Text { get; } = "";
+        public bool IsFilesShare => Files.Length > 0;
+    }
+}

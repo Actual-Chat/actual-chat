@@ -37,7 +37,7 @@ namespace ActualChat.App.Maui;
     DataPathPrefixes = new [] { "/chat/", "/join/", "/u/", "/user/invite/" },
     AutoVerify = true,
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
-public class MainActivity : MauiAppCompatActivity
+public partial class MainActivity : MauiAppCompatActivity
 {
     internal static readonly int NotificationId = 101;
     internal static readonly int NotificationPermissionId = 832;

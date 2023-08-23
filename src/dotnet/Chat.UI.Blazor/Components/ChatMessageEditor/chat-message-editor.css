@@ -274,6 +274,9 @@ body.hoverable .remove-attachment-btn.btn:hover .btn-content {
 .attachment-upload-completed {
     @apply bg-[#2FCB5B];
 }
+.attachment-upload-failed {
+    @apply bg-[#ED0000];
+}
 .add-attachment.btn .btn-content {
     @apply bg-04;
 }

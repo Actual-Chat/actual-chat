@@ -1,4 +1,5 @@
 using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
@@ -15,6 +16,9 @@ public static partial class MauiProgram
     {
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
+
+        services.AddSingleton<AndroidContentDownloader>();
+        services.AddAlias<IIncomingShareFileDownloader, AndroidContentDownloader>();
 
         services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
         // Temporarily disabled switch between loud speaker and earpiece
@@ -34,6 +38,9 @@ public static partial class MauiProgram
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddAndroid(android => {
             var livenessProbeAdapter = new AndroidWebViewLivenessProbeAdapter();
+            var incomingShare = new IncomingShareHandler();
+            android.OnPostCreate(incomingShare.OnPostCreate);
+            android.OnNewIntent(incomingShare.OnNewIntent);
             android.OnResume(livenessProbeAdapter.OnResume);
             android.OnPause(livenessProbeAdapter.OnPause);
             android.OnActivityResult(OnActivityResult);

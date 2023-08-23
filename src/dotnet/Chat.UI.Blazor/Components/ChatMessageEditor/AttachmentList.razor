@@ -17,11 +17,16 @@
         </div>
         <ul class="attachment-list custom-scrollbar-x">
             @foreach (var attachment in _attachments) {
-                var uploadStyle = $"width: {attachment.Progress}%;";
+                var progress = attachment.Progress;
                 var uploadProgressClass = "attachment-upload-progress";
-                if (attachment.Uploaded) {
+                if (attachment.Failed) {
+                    progress = Math.Max(progress, 30);
+                    uploadProgressClass += " attachment-upload-failed";
+                }
+                else if (attachment.Uploaded) {
                     uploadProgressClass += " attachment-upload-completed";
                 }
+                var uploadStyle = $"width: {progress}%;";
                 <li class="attachment-wrapper">
                     <div class="flex-y relative">
                         <div class="attachment-item">
@@ -41,7 +46,11 @@
                             }
                         </div>
                         <div class="attachment-filename" title="@attachment.FileName">
-                            @attachment.FileName
+                            @if (attachment.FileName.Length > 0) {
+                                <span>@attachment.FileName</span>
+                            } else {
+                                <span>&nbsp;</span>
+                            }
                         </div>
                         <div class="@uploadProgressClass" style="@uploadStyle"></div>
                     </div>
@@ -69,6 +78,7 @@
 
     [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
 
     public IJSObjectReference JSRef { get; private set; } = null!;
     public Task WhenReady => _whenReadySource.Task;
@@ -96,6 +106,17 @@
 
         await InvokeClear();
         StateHasChanged();
+    }
+
+    public async Task SetSentAttachments(string[] urls) {
+        var downloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
+        var fileNames = urls
+            .Select(c => {
+                downloader.TryExtractFileName(c, out var fileName);
+                return fileName;
+            })
+            .ToArray();
+        _ = await JSRef.InvokeAsync<int>("addBlobs", new object[] { urls, fileNames });
     }
 
     public ResetIntent PopSnapshot() {
@@ -135,7 +156,7 @@
 
         Exception? TryAdd() {
             if (length > Constants.Attachments.FileSizeLimit)
-                return StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
+                return FileToBigError();
 
             if (_attachments.Count >= Constants.Attachments.FileCountLimit)
                 return StandardError.Constraint("Too many files. Max allowed number is 10.");
@@ -144,6 +165,9 @@
             return null;
         }
     }
+
+    public static Exception FileToBigError()
+        => StandardError.Constraint($"File is too big. Max file size: {Constants.Attachments.FileSizeLimit / 1024 / 1024}Mb.");
 
     [JSInvokable]
     public void OnUploadProgress(int id, int progress) {
@@ -154,6 +178,12 @@
     [JSInvokable]
     public void OnUploadSucceed(int id, MediaId mediaId) {
         UpdateAttachment(id, x => x with { MediaId = mediaId });
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnUploadFailed(int id) {
+        UpdateAttachment(id, x => x with { Failed = true });
         StateHasChanged();
     }
 
@@ -206,6 +236,7 @@
     {
         public bool IsImage => FileType?.OrdinalIgnoreCaseStartsWith("image") ?? false;
         public bool IsVideo => FileType?.OrdinalIgnoreCaseStartsWith("video") ?? false;
+        public bool Failed { get; init; }
         public bool Uploaded => Progress == 100 && !MediaId.IsNone;
     }
 }
