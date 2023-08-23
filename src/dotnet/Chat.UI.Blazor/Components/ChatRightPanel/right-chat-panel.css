@@ -38,7 +38,7 @@
 .right-panel-chat-info-item > .c-content > .c-hint {
     @apply text-03 text-caption-2;
 }
-.right-panel-chat-info-item > .c-content > .c-right {
+.right-panel-chat-info-item > .c-right {
     @apply flex-x self-center;
 }
 .right-chat-panel > .c-panel-content > .c-panel-tabs {
