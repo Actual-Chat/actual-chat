@@ -19,10 +19,19 @@ public static class ChatsExt
         if (entryId.IsNone)
             return null;
 
-        var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(entryId.LocalId);
-        var tile = await chats.GetTile(session, entryId.ChatId, entryId.Kind, idTile.Range, cancellationToken)
-            .ConfigureAwait(false);
-        var entry = tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
-        return entry;
+        try {
+            var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(entryId.LocalId);
+            var tile = await chats.GetTile(session,
+                    entryId.ChatId,
+                    entryId.Kind,
+                    idTile.Range,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            var entry = tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
+            return entry;
+        }
+        catch (NotFoundException) {
+            return null;
+        }
     }
 }
