@@ -15,6 +15,7 @@
 @import './Components/Form/form.css';
 @import './Components/Form/toggle.css';
 @import './Components/InviteList/invite-list.css';
+@import './Components/InfoToast/info-toast.css';
 @import './Components/Lines/lines.css';
 @import './Components/Menu/menu.css';
 @import './Components/Modal/modal.css';

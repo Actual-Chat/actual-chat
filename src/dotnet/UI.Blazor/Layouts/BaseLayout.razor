@@ -1,10 +1,10 @@
 @inherits LayoutComponentBase
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
-@using ActualChat.Hosting
 @implements IDisposable
 @{
     var failures = UIActionFailureTracker.Items;
+    var toasts = ToastUI.Items.Items;
 }
 
 <div class="base-layout">
@@ -23,6 +23,21 @@
                     </div>
                 </div>
             }
+            @if (toasts.Count > 0) {
+                <div class="info-container custom-scrollbar">
+                    <div class="c-content">
+                        @foreach (var toast in toasts) {
+                            <InfoToast @key="toast"
+                                Icon="@toast.Icon"
+                                Text="@toast.Info"
+                                ActionClick="@toast.Action"
+                                ActionText="@toast.ActionText"
+                                AutoDismissDelay="@toast.AutoDismissDelay"
+                                Dismissed="@(() => ToastUI.Dismiss(toast))" />
+                        }
+                    </div>
+                </div>
+            }
             <NoComponent @key="@BodyKey">
                 <ErrorBarrier>@Body</ErrorBarrier>
             </NoComponent>
@@ -34,15 +49,16 @@
     private static readonly object BodyKey = new();
 
     [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
+    [Inject] private ToastUI ToastUI { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override void OnInitialized() {
         Nav.LocationChanged += OnLocationChanged;
         UIActionFailureTracker.Changed += OnCommandFailureListChanged;
+        ToastUI.Items.Changed += OnToastListChanged;
     }
 
     protected override async Task OnInitializedAsync() {
@@ -53,6 +69,7 @@
     public void Dispose() {
         Nav.LocationChanged -= OnLocationChanged;
         UIActionFailureTracker.Changed -= OnCommandFailureListChanged;
+        ToastUI.Items.Changed -= OnToastListChanged;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
@@ -61,5 +78,8 @@
     }
 
     private void OnCommandFailureListChanged()
+        => InvokeAsync(StateHasChanged);
+
+    private void OnToastListChanged()
         => InvokeAsync(StateHasChanged);
 }

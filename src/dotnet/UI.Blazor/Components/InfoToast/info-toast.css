@@ -1,0 +1,42 @@
+﻿/* Info container */
+
+.info-container {
+    @apply fixed z-error-container;
+    @apply inset-x-0 md:inset-x-auto md:right-0;
+    @apply bottom-0;
+    @apply h-auto;
+    @apply overflow-y-auto;
+}
+.info-container > .c-content {
+    @apply relative;
+    @apply flex-y gap-y-4;
+    @apply h-full;
+    @apply p-4;
+    @apply overflow-y-auto custom-scrollbar;
+}
+
+/* Info toast */
+
+.info-toast {
+    @apply flex-x items-center z-50;
+    @apply py-1 px-4 gap-x-4 overflow-hidden;
+    @apply min-h-10 md:w-110;
+    @apply rounded;
+    @apply text-info-toast-text;
+    @apply bg-info-toast-body;
+}
+.info-toast i {
+    @apply text-info-toast-text;
+}
+.info-toast .toast-content {
+    @apply flex grow;
+    @apply text-base font-normal;
+    @apply break-all;
+}
+.info-toast .toast-action {
+    @apply -mr-4;
+    @apply text-info-toast-action;
+}
+.info-toast .toast-action .btn {
+    @apply min-w-20;
+}
