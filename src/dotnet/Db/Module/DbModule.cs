@@ -88,7 +88,8 @@ public sealed class DbModule : HostModule<DbSettings>
         });
         services.AddDbContextServices<TDbContext>(db => {
             services.AddSingleton(new CompletionProducer.Options {
-                LogLevel = LogLevel.Information,
+                // Let's not waste log with successful completed command
+                LogLevel = LogLevel.Debug,
             });
             /*
             services.AddTransient(c => new DbOperationScope<TDbContext>(c) {
