@@ -1,5 +1,6 @@
-﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Search
+@using ActualChat.Media
 @implements IModalView<IncomingShareModal.Model>
 
 @{
@@ -111,19 +112,41 @@
                 var comment = _comment;
                 foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
                     var fileUploads = UploadFiles(fileDownloader, uploader, chatId, filesChunk);
-                    var chatEntry = PostMessage(chatId, comment, fileUploads);
+                    var postTask = PostMessage(chatId, comment, fileUploads);
                     comment = "";
-                    postTasks.Add(chatEntry);
+                    postTasks.Add(postTask);
                 }
             }
             await Task.WhenAll(postTasks);
-            // TODO: report files uploaded status
+            var expectedUploadedFilesNumber = ModalModel.Files.Length * _selectedChats.Count;
+            var attachments = postTasks
+                .Where(c => c.IsCompletedSuccessfully)
+                .Select(c => c.Result)
+                .SkipNullItems()
+                .SelectMany(c => c.Attachments)
+                .ToArray();
+            var toastUI = Services.GetRequiredService<ToastUI>();
+            if (attachments.Length == 0) {
+                var info = $"Failed to share {expectedUploadedFilesNumber} files";
+                toastUI.Show(info, "icon-alert-circle", 3);
+            } else {
+                var info = expectedUploadedFilesNumber == attachments.Length
+                    ? attachments.Length.ToString()
+                    : $"{attachments.Length} of {expectedUploadedFilesNumber}";
+                var isImage = attachments.All(c => c.IsImage());
+                var isVideo = attachments.All(c => c.IsVideo());
+                var fileText = isImage ? "image" : isVideo ? "video" : "file";
+                if (expectedUploadedFilesNumber > 1)
+                    fileText += "s";
+                info = info + " " + fileText + " shared";
+                toastUI.Show(info, "icon-checkmark-circle", 3);
+            }
         }
     }
 
-    private IReadOnlyCollection<Task<MediaContent>> UploadFiles(IIncomingShareFileDownloader filesDownloader, FileUploader uploader, ChatId chatId, IEnumerable<IncomingShareFile> files) {
+    private IReadOnlyCollection<(Task<MediaContent>, string?)> UploadFiles(IIncomingShareFileDownloader filesDownloader, FileUploader uploader, ChatId chatId, IEnumerable<IncomingShareFile> files) {
         Exception? fileSizeLimitError = null;
-        var fileUploads = new List<Task<MediaContent>>();
+        var fileUploads = new List<(Task<MediaContent>, string?)>();
         foreach (var file in files) {
             var (stream, mediaType) = filesDownloader.OpenInputStream(file.Url);
             if (stream == null) {
@@ -137,27 +160,45 @@
             }
             filesDownloader.TryExtractFileName(file.Url, out var fileName);
             var fileUpload = uploader.Upload(chatId, stream, mediaType, fileName);
-            fileUploads.Add(fileUpload);
+            fileUploads.Add((fileUpload, mediaType));
         }
         if (fileSizeLimitError != null)
             Services.GetRequiredService<ErrorUI>().ShowError(fileSizeLimitError);
         return fileUploads;
     }
 
-    private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IReadOnlyCollection<Task<MediaContent>> fileUploads)
+    private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IReadOnlyCollection<(Task<MediaContent>, string?)> fileUploads)
     {
-        await Task.WhenAll(fileUploads);
-        var mediaContent = fileUploads
-            .Where(c => c.IsCompletedSuccessfully)
-            .Select(c => c.Result)
+        await Task.WhenAll(fileUploads.Select(c => c.Item1));
+        var media = fileUploads
+            .Where(c => c.Item1.IsCompletedSuccessfully)
+            .Select(c => new { MediaContent = c.Item1.Result, ContentType = c.Item2})
+            .Select(c => new Media {
+                Id = c.MediaContent.MediaId,
+                ContentId = c.MediaContent.ContentId,
+                ContentType = c.ContentType ?? ""
+            })
             .ToArray();
-        if (mediaContent.Length == 0 && _comment.IsNullOrEmpty())
+        if (media.Length == 0 && _comment.IsNullOrEmpty())
             return null;
         var cmd = new Chats_UpsertTextEntry(Services.Session(), chatId, null, comment) {
             RepliedChatEntryId = null,
-            Attachments = mediaContent.Select(c => c.MediaId).ToApiArray(),
+            Attachments = media.Select(c => c.Id).ToApiArray(),
         };
-        return await Services.UICommander().Call(cmd).ConfigureAwait(false);
+        var chatEntry = await Services.UICommander().Call(cmd).ConfigureAwait(false);
+        var textEntryId = new TextEntryId(chatEntry.ChatId, chatEntry.LocalId, AssumeValid.Option);
+        // Add pseudo attachments to evaluate file type later
+        chatEntry = chatEntry with {
+            Attachments = media
+                .Select(c => new TextEntryAttachment {
+                    EntryId = textEntryId,
+                    MediaId = c.Id,
+                    Media = new Media {
+                        ContentType = c.ContentType
+                    }
+                }).ToApiArray()
+            };
+        return chatEntry;
     }
 
     public record Model {
