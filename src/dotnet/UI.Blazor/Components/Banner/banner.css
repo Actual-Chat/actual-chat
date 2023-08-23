@@ -1,7 +1,7 @@
 .banner {
     @apply flex-x gap-x-1 items-center justify-between;
     @apply w-full h-14;
-    @apply pl-4 pr-4;
+    @apply pl-2.5 pr-2.5;
     @apply bg-01 border-bg-04 border-b;
 }
 .banner-body {
