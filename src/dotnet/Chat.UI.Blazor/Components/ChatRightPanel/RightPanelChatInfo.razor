@@ -24,7 +24,7 @@
                 Content="@owner.AvatarName"
                 Hint="Owner">
                 <Icon>
-                    <i class="text-2xl icon-person"></i>
+                    <i class="text-2xl text-icons-03 icon-person"></i>
                 </Icon>
             </RightPanelChatInfoItem>
         }
@@ -35,7 +35,7 @@
         Content="Notifications"
         Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
         <Icon>
-            <i class="text-2xl icon-bell"></i>
+            <i class="text-2xl text-icons-03 icon-bell"></i>
         </Icon>
         <Right>
             <Toggle Class="mr-2" IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)"/>
