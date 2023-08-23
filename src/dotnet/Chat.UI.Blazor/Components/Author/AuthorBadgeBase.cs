@@ -33,7 +33,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     }
 
     protected override async Task OnParametersSetAsync() {
-        if (ShowRecording)
+        if (ShowRecording && !ChatId.IsNone)
             ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
