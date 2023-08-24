@@ -4,13 +4,19 @@
     @apply bg-04;
 }
 .left-panel-buttons {
-    @apply flex md:w-30 h-full flex-x bg-04 z-10 px-1 md:px-3
+    @apply z-10;
+    @apply flex-x;
+    @apply lg:w-30 h-full;
+    @apply px-1 lg:px-3;
+    @apply bg-04;
 }
 .left-panel-buttons > .c-spacer {
-    @apply flex grow h-full;
+    @apply hidden md:flex grow;
+    @apply h-full;
 }
 .left-panel-buttons > .c-content {
-    @apply flex h-full flex-y;
+    @apply flex-y;
+    @apply h-full;
 }
 .left-panel-buttons > .c-content > .c-logo {
     @apply flex justify-center;
@@ -29,7 +35,7 @@
 }
 .left-panel-content {
     @apply -flex-y md:flex-y;
-    @apply w-full md:w-80 h-full;
+    @apply w-full lg:w-80 h-full;
     @apply bg-03 border-r border-bg-04;
     @apply overflow-hidden;
 }

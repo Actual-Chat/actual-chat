@@ -24,7 +24,7 @@
 
 /* Left SideNav */
 .side-nav.side-nav-left {
-    @apply md:w-110;
+    @apply md:w-1/2 lg:w-110;
 }
 body.wide .side-nav.side-nav-left[data-side-nav="closed"] {
     @apply hidden;
@@ -35,7 +35,7 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
 
 /* Right SideNav */
 .side-nav.side-nav-right {
-    @apply md:w-80;
+    @apply md:w-1/2 lg:w-80;
 }
 body.wide .side-nav.side-nav-right[data-side-nav="closed"] {
     @apply hidden;

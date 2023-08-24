@@ -255,3 +255,7 @@ input.input-underlined {
 .page-with-header-and-footer .layout-body .test-page-btn-group {
     @apply flex-x flex-wrap gap-4;
 }
+
+.page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .list-view-layout {
+    @apply md:hidden;
+}

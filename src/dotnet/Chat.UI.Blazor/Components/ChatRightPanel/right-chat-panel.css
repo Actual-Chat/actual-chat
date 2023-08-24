@@ -1,6 +1,6 @@
 .right-chat-panel {
     @apply flex-y;
-    @apply md:w-80 h-full;
+    @apply lg:w-80 h-full;
     @apply border-l border-bg-04;
     @apply bg-02;
 }
