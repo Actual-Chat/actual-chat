@@ -18,24 +18,22 @@
     <div class="page-1-wrapper overflow-hidden">
         <div class="flex-x justify-center h-full overflow-hidden md:px-16">
             <div class="main-text">
-                <div class="md:text-4xl font-normal text-04 pt-12">
-                    <div class="flex-y gap-y-2 title-text main">
-                        <Checkmark Checked="true">efficiency of texting</Checkmark>
-                        <Checkmark Checked="true">focus of calls</Checkmark>
-                        <Checkmark>drawbacks of either</Checkmark>
-                    </div>
-                    <p class="!pt-8">
-                        Actual Chat is built with a single goal:
-                        <span class="font-semibold">to make your communication more efficient.</span>
-                        Even if it means shaking up the established paradigms.
-                    </p>
-                    <p class="!pt-8">
-                        We are here to redefine the meaning of "Chat".
-                    </p>
+                <div class="flex-y gap-y-2 title-text main">
+                    <Checkmark Checked="true">efficiency of texting</Checkmark>
+                    <Checkmark Checked="true">focus of calls</Checkmark>
+                    <Checkmark>drawbacks of either</Checkmark>
                 </div>
+                <p class="c-description">
+                    Actual Chat is built with a single goal:
+                    <span class="font-semibold">to make your communication more efficient.</span>
+                    Even if it means shaking up the established paradigms.
+                </p>
+                <p class="c-description">
+                    We are here to redefine the meaning of "Chat".
+                </p>
                 <div class="flex-y md:flex-x gap-y-4 gap-x-4 py-8 md:py-4">
                     @if (isGuest) {
-                        <button class="btn-download web-signin" onclick="@SignIn">
+                        <button class="btn-download web-signin text-01" onclick="@SignIn">
                             <span class="text-base font-medium">Sign-in to web app</span>
                             <i class="icon-monitor text-2xl font-thin"></i>
                         </button>
@@ -90,7 +88,7 @@
     ExtraContentClass="flex-y md:flex-x items-start justify-between gap-y-4 md:gap-x-8 py-4 pb-8">
 
     <ChildContent>
-        <LandingItemTitle Class="flex md:hidden">
+        <LandingItemTitle Class="flex md:hidden !text-headline-5">
             We reimagine calls, texts and voice messages
         </LandingItemTitle>
         <LandingItemImage>
@@ -130,7 +128,7 @@
 <LandingCarousel
     CarouselOrder="1"
     CarouselLength="6"
-    Class="landing-carousel-01"
+    Class="landing-carousel-1"
     WrapperClass="mt-4 px-4 text-headline-5 md:text-3xl md:font-semibold"
     WrapperTitle="We believe communication must be...">
     @* Page 4 *@
@@ -173,7 +171,7 @@
     <LandingItem
         ImagePositionMobile="ImagePosition.Top"
         ImagePositionDesktop="ImagePosition.Right"
-        Class="carousel-page"
+        Class="carousel-page slide-2"
         SlideOrder="2">
 
         <HeaderContent>
@@ -181,20 +179,20 @@
         </HeaderContent>
         <ChildContent>
             <LandingItemImage>
-                <div class="flex-y gap-y-4 justify-center w-full h-full">
-                    <div class="flex-x gap-x-8 justify-center">
-                        <div class="flex overflow-hidden justify-center items-center">
+                <div class="c-tiles">
+                    <div class="c-row">
+                        <div class="c-image">
                             <img draggable="false" src="/dist/images/landing/person-01.svg" alt="body">
                         </div>
-                        <div class="flex overflow-hidden justify-center items-center">
+                        <div class="c-image">
                             <img draggable="false" src="/dist/images/landing/person-02.svg" alt="body">
                         </div>
                     </div>
-                    <div class="flex-x gap-x-8 justify-center">
-                        <div class="flex overflow-hidden justify-center items-center">
+                    <div class="c-row">
+                        <div class="c-image">
                             <img draggable="false" src="/dist/images/landing/person-03.svg" alt="body">
                         </div>
-                        <div class="flex overflow-hidden justify-center items-center">
+                        <div class="c-image">
                             <img draggable="false" src="/dist/images/landing/person-04.svg" alt="body">
                         </div>
                     </div>
@@ -327,7 +325,7 @@
     <LandingItem
         ImagePositionMobile="ImagePosition.Top"
         ImagePositionDesktop="ImagePosition.Bottom"
-        Class="no-auto-scroll carousel-page"
+        Class="no-auto-scroll carousel-page slide-6"
         SlideOrder="6">
 
         <HeaderContent>
@@ -338,30 +336,30 @@
                 <LandingItemDescription
                     Title="Enjoyable and Fun"/>
             }
-            <LandingItemImage Class="flex-col gap-y-4 md:gap-y-12 md:flex-row items-center">
+            <LandingItemImage Class="flex-col gap-y-4 md:gap-y-12 md:flex-row items-center !max-h-none">
                 <div class="flex-x md:flex-y gap-y-4 items-center">
-                    <div class="flex w-1/2 md:w-auto h-40 items-center justify-center">
+                    <div class="flex w-1/2 md:w-auto h-32 md:h-48 items-center justify-center">
                         <img draggable="false" src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
                     </div>
-                    <div class="w-1/2 md:w-auto px-8 text-center">
+                    <div class="w-1/2 md:w-auto px-1 md:px-8 text-center">
                         Many people prefer hearing your voice rather than reading your texts
                     </div>
                 </div>
 
                 <div class="flex-x md:flex-y gap-y-4 items-center">
-                    <div class="flex w-1/2 md:w-auto h-40 items-center justify-center">
+                    <div class="flex w-1/2 md:w-auto h-32 md:h-48 items-center justify-center">
                         <img draggable="false" src="/dist/images/landing/enjoyable-02.svg" alt="enjoyable" class="">
                     </div>
-                    <div class="w-1/2 md:w-auto px-8 text-center">
+                    <div class="w-1/2 md:w-auto px-1 md:px-8 text-center">
                         For some, speaking is a stronger communication tool than writing
                     </div>
                 </div>
 
                 <div class="flex-x md:flex-y gap-y-4 items-center">
-                    <div class="flex w-1/2 md:w-auto h-40 items-center justify-center">
+                    <div class="flex w-1/2 md:w-auto h-32 md:h-48 items-center justify-center">
                         <img draggable="false" src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
                     </div>
-                    <div class="w-1/2 md:w-auto px-8 text-center">
+                    <div class="w-1/2 md:w-auto px-1 md:px-8 text-center">
                         Jokes are almost always more fun when delivered verbally
                     </div>
                 </div>
@@ -369,13 +367,14 @@
             @if (ScreenSize.IsNarrow()) {
                 <LandingItemDescription
                     Title="Enjoyable and Fun"
-                    Class="self-center mt-2"/>
+                    Class="flex-1 self-center mt-2"
+                    TitleClass="!font-medium"/>
             }
         </ChildContent>
     </LandingItem>
 </LandingCarousel>
 
-<FeaturesCarousel/>
+@* <FeaturesCarousel/> *@
 
 @* Page 9 *@
 @* <LandingItem *@
@@ -428,13 +427,12 @@
     Class="scrollable">
 
     <ChildContent>
-        <LandingItemImage Class="flex-col gap-y-12">
-            <div class="hidden md:flex-1"></div>
-            <div class="flex-y md:flex-x gap-y-2">
+        <LandingItemImage Class="flex-col gap-y-12 !max-h-none">
+            <div class="flex-y md:flex-x gap-y-2 gap-x-8">
                 <div class="flex-x flex-wrap items-start md:w-1/2 text-headline-4 md:text-headline-2">
                     <span>Are there any fees?</span>
                 </div>
-                <div class="flex-y items-start md:w-1/2 text-text-1 md:text-2xl md:leading-7" style="font-size: calc(0.5rem + 1vw);">
+                <div class="flex-y items-start md:w-1/2 text-text-1 md:text-2xl md:leading-7">
                     <p>At the moment, Actual Chat is <strong>entirely free</strong> for personal use, and we intend to keep it that way.
                         However, we do plan to generate revenue from commercial usage and a small subset of advanced features
                         we plan to add in near future.</p>
@@ -454,7 +452,7 @@
                 </div>
             }
         </LandingItemImage>
-        <LandingItemDescription Class="hidden"/>
+        <LandingItemDescription Class="!hidden"/>
     </ChildContent>
     <ExtraContent>
         <LandingLinks EnableIncompleteUI="@m.EnableIncompleteUI"/>
