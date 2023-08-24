@@ -27,7 +27,7 @@ public class TwilioSmsGateway(IServiceProvider services) : ISmsGateway
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to send sms");
-            throw StandardError.External("Failed to deliver sms.", e);
+            throw StandardError.External("Failed to deliver sms.");
         }
     }
 }
