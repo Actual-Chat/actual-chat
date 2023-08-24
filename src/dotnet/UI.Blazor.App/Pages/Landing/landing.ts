@@ -258,11 +258,10 @@ export class Landing {
 
     private updateHeader(): void {
         const page0 = this.pages[0] as HTMLElement;
-        const downloadPage = this.downloadLinksPage;
-        let condition1 = page0.getBoundingClientRect().bottom <= 0;
-        let condition2 = downloadPage.classList.contains('hidden');
-        let condition3 = Math.round(downloadPage.getBoundingClientRect().top) > 0;
-        if (condition1 && ((!condition2 && condition3) || condition2)) {
+        let isNotFirstPage = page0.getBoundingClientRect().bottom <= 0;
+        let isLinksPageHidden = this.downloadLinksPage.classList.contains('hidden');
+        let isNotLinksPage = Math.round(this.downloadLinksPage.getBoundingClientRect().top) > 0;
+        if (isNotFirstPage && ((!isLinksPageHidden && isNotLinksPage) || isLinksPageHidden)) {
             this.header.classList.add('filled');
         } else {
             this.header.classList.remove('filled');
@@ -286,7 +285,7 @@ export class Landing {
         let mainPageBtn = this.header.querySelector('.btn-to-main-page');
         if (downloadBtn == null || mainPageBtn == null)
             return;
-        if (!condition2 && !condition3) {
+        if (!isLinksPageHidden && !isNotLinksPage) {
             downloadBtn.classList.add('!hidden');
             mainPageBtn.classList.remove('!hidden');
         } else {
@@ -296,17 +295,17 @@ export class Landing {
     }
 
     private autoScroll(isScrollDown: boolean, event?: Event, isScrolling = false) {
-        let condition1 = this.downloadLinksPage.classList.contains('hidden');
-        let condition2 = Math.round(this.downloadLinksPage.getBoundingClientRect().bottom) == window.innerHeight;
+        let isLinksPageHidden = this.downloadLinksPage.classList.contains('hidden');
+        let isLinksPageEnd = Math.round(this.downloadLinksPage.getBoundingClientRect().bottom) == window.innerHeight;
 
         if (DeviceInfo.isIos) {
-            if (!condition1 && condition2) {
+            if (!isLinksPageHidden && isLinksPageEnd) {
                 preventDefaultForEvent(event);
             }
             return; // The auto-scroll doesn't work on iOS devices (yet)
         }
 
-        if (!condition1 && condition2) {
+        if (!isLinksPageHidden && isLinksPageEnd) {
             preventDefaultForEvent(event);
             return;
         }
