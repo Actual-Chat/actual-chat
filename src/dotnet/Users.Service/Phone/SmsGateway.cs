@@ -9,31 +9,32 @@ public interface ISmsGateway
     Task Send(Phone phone, string text);
 }
 
-public class TwilioSmsGateway : ISmsGateway
+public class TwilioSmsGateway(IServiceProvider services) : ISmsGateway
 {
-    private ITwilioRestClient Client { get; }
-    private UsersSettings Settings { get; }
+    private ITwilioRestClient Client { get; } = services.GetRequiredService<ITwilioRestClient>();
+    private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
+    private ILogger Log { get; } = services.LogFor<TwilioSmsGateway>();
 
-    public TwilioSmsGateway(ITwilioRestClient client, UsersSettings settings)
+    public async Task Send(Phone phone, string text)
     {
-        Client = client;
-        Settings = settings;
+        try {
+            await MessageResource
+                .CreateAsync(new Twilio.Types.PhoneNumber(phone.ToInternational()),
+                    from: Settings.TwilioSmsFrom,
+                    body: text,
+                    client: Client)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to send sms");
+            throw StandardError.External("Failed to deliver sms.", e);
+        }
     }
-
-    public Task Send(Phone phone, string text)
-        => MessageResource
-            .CreateAsync(new Twilio.Types.PhoneNumber(phone.ToInternational()),
-                from: Settings.TwilioSmsFrom,
-                body: text,
-                client: Client);
 }
 
-public class LocalSmsGateway : ISmsGateway
+public class LocalSmsGateway(IServiceProvider services) : ISmsGateway
 {
-    public ILogger<LocalSmsGateway> Log { get; }
-
-    public LocalSmsGateway(ILogger<LocalSmsGateway> log)
-        => Log = log;
+    private ILogger Log { get; } = services.LogFor<LocalSmsGateway>();
 
     public Task Send(Phone phone, string text)
     {

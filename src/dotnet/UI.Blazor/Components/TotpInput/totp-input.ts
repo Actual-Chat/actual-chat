@@ -86,25 +86,6 @@ export class TotpInput implements Disposable {
         this.element.classList.remove('invalid');
     }
 
-    private async onInput(e: InputEvent) {
-        const [i, input] = this.getEventCtx(e);
-        this.hideError();
-
-        const digit = +e.data;
-        if (isNaN(digit)) {
-            // keep current digit or clear
-            input.value = this.digits[i]?.toString();
-            return;
-        }
-
-        this.setDigit(i, digit);
-        if (i > 0) {
-            this.inputs[i - 1].focus();
-        } else {
-            await this.reportIfCompleted();
-        }
-    }
-
     private onKeyUp(e: KeyboardEvent) {
         if (hasModifierKey(e)){
             return;
@@ -138,29 +119,38 @@ export class TotpInput implements Disposable {
         e.stopPropagation();
     }
 
+    private async onInput(e: InputEvent) {
+        const [i, input] = this.getEventCtx(e);
+        const text = e.data;
+        await this.setFromText(text, i, input);
+    }
+
     private async onPaste(e: ClipboardEvent) {
-        const [i] = this.getEventCtx(e);
-        let text = e.clipboardData.getData('Text').replace(/\D/g, '').substring(0, this.length);
+        const [i, input] = this.getEventCtx(e);
+        let text = e.clipboardData.getData('Text');
+        await this.setFromText(text, i, input);
+    }
+
+    private  async setFromText(text: string, i: number, input: HTMLInputElement) {
+        text = text.replace(/\D/g, '').substring(0, this.length);
         if (!text.length)
+        {
+            // keep current digit or clear
+            input.value = this.digits[i]?.toString() ?? '';
             return;
+        }
 
         this.hideError();
-        if (text.length === this.length) {
-            for (let j = 0; j < this.length; j++) {
-                this.setDigit(this.length - j - 1, +text[j]);
-            }
-            this.focus(0);
-            await this.reportIfCompleted();
-        } else {
-            text = text.substring(i + 1);
-            for (let j = 0; j < text.length; j++) {
-                this.setDigit(i - j, +text[j]);
-            }
-            const focusedDigitIndex = i + 1 - text.length;
-            this.focus(focusedDigitIndex);
-            if (focusedDigitIndex === 0)
-                await this.reportIfCompleted();
+
+        const startIdx = text.length === this.length ? this.length - 1 : i;
+        text = text.substring(0, startIdx + 1);
+        for (let j = 0; j < text.length; j++) {
+            this.setDigit(startIdx - j, +text[j]);
         }
+        const focusedDigitIndex = Math.max(0, startIdx - text.length);
+        this.focus(focusedDigitIndex);
+        if (focusedDigitIndex === 0)
+            await this.reportIfCompleted();
     }
 
     private setDigit(i: number, value: number | null) {
