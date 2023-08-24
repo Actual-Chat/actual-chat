@@ -39,7 +39,7 @@ class ChatViewFooterSkeleton extends LitElement {
     .panel-editor {
         min-height: 3.5rem;
     }
-    @media (min-width: 1024px) {
+    @media (min-width: 820px) {
         .footer-container {
             display: flex;
             flex: 1 1 auto;
