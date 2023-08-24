@@ -259,7 +259,10 @@ export class Landing {
     private updateHeader(): void {
         const page0 = this.pages[0] as HTMLElement;
         const downloadPage = this.downloadLinksPage;
-        if (page0.getBoundingClientRect().bottom <= 0 && Math.round(downloadPage.getBoundingClientRect().top) > 0) {
+        let condition1 = page0.getBoundingClientRect().bottom <= 0;
+        let condition2 = downloadPage.classList.contains('hidden');
+        let condition3 = Math.round(downloadPage.getBoundingClientRect().top) > 0;
+        if (condition1 && ((!condition2 && condition3) || condition2)) {
             this.header.classList.add('filled');
         } else {
             this.header.classList.remove('filled');
@@ -283,7 +286,7 @@ export class Landing {
         let mainPageBtn = this.header.querySelector('.btn-to-main-page');
         if (downloadBtn == null || mainPageBtn == null)
             return;
-        if (downloadPage.getBoundingClientRect().top <= 0) {
+        if (!condition2 && !condition3) {
             downloadBtn.classList.add('!hidden');
             mainPageBtn.classList.remove('!hidden');
         } else {
@@ -293,10 +296,17 @@ export class Landing {
     }
 
     private autoScroll(isScrollDown: boolean, event?: Event, isScrolling = false) {
-        if (DeviceInfo.isIos)
-            return; // The auto-scroll doesn't work on iOS devices (yet)
+        let condition1 = this.downloadLinksPage.classList.contains('hidden');
+        let condition2 = Math.round(this.downloadLinksPage.getBoundingClientRect().bottom) == window.innerHeight;
 
-        if (Math.round(this.downloadLinksPage.getBoundingClientRect().top) <= 0) {
+        if (DeviceInfo.isIos) {
+            if (!condition1 && condition2) {
+                preventDefaultForEvent(event);
+            }
+            return; // The auto-scroll doesn't work on iOS devices (yet)
+        }
+
+        if (!condition1 && condition2) {
             preventDefaultForEvent(event);
             return;
         }
@@ -353,7 +363,6 @@ export class Landing {
         const h = window.innerHeight;
         const w = window.innerWidth;
         const hwRatio = h / w;
-        document.documentElement.style.setProperty('--wh', `${h}px`);
         let useFullScreenPages = ScreenSize.isNarrow() ? (hwRatio >= 1.8 && hwRatio <= 2.5) : (h >= 700);
         if (useFullScreenPages)
             this.landing.classList.remove('no-full-screen-pages');
@@ -425,6 +434,7 @@ export class Landing {
     }
 
     private onDownloadButtonClick(event: PointerEvent) : void {
+        this.downloadLinksToggle();
         this.currentPage = this.getCurrentPage();
         let top = this.downloadLinksPage.getBoundingClientRect().top;
         let landingTop = this.landing.getBoundingClientRect().top;
@@ -436,6 +446,7 @@ export class Landing {
     }
 
     private onToMainPageButtonClick(event: PointerEvent) : void {
+        this.downloadLinksToggle();
         let top = Math.round(this.currentPage.getBoundingClientRect().top);
         let landingTop = this.landing.getBoundingClientRect().top;
         const options = {
@@ -443,6 +454,15 @@ export class Landing {
             top: (top - landingTop),
         } as ScrollToOptions;
         this.scrollContainer.scrollTo(options);
+    }
+
+    private downloadLinksToggle() {
+        let page = this.downloadLinksPage;
+        if (page.classList.contains('hidden')) {
+            page.classList.remove('hidden');
+        } else {
+            page.classList.add('hidden');
+        }
     }
 }
 
