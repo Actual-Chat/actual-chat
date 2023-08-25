@@ -79,8 +79,12 @@ export class Interactive {
 
     // Private methods
 
-    private static onInteractionEvent =
-        (event: Event) => this.interactionEvents.triggerSilently(event)
+    private static onInteractionEvent = (event: Event) => {
+        if (!event.isTrusted)
+            return; // not an user action - e.g., triggered by JS dispatchEvent
+
+        this.interactionEvents.triggerSilently(event)
+    };
 }
 
 Interactive.init();

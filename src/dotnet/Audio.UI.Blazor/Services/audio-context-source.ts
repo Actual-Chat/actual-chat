@@ -40,6 +40,7 @@ export class AudioContextSource {
     private _isInteractiveWasReset = false;
     private _resumeCount = 0;
     private _interactiveResumeCount = 0;
+    private _whenInitializedInteractively: Promise<void> | null = null;
     private _refCount = 0;
     private readonly _refCounts: Map<string, number> = new Map<string, number>();
     private _whenReady = new PromiseSource<AudioContext | null>();
@@ -60,7 +61,7 @@ export class AudioContextSource {
         void this.maintain();
     }
 
-    public getRef(operationName: string, options: AudioContextRefOptions) {
+    public getRef(operationName: string, options: AudioContextRefOptions): AudioContextRef {
         this.incrementRefCount(operationName);
         const result = new AudioContextRef(this, operationName, options);
         void result.whenDisposed().then(() => this.decrementRefCount(operationName));
@@ -76,6 +77,28 @@ export class AudioContextSource {
             return ResolvedPromise.Void;
 
         return waitAsync(this._whenNotReady, cancel);
+    }
+
+    public async initContextInteractively(): Promise<void> {
+        if (this._context && this._context.state === 'running') {
+            debugLog?.log(`initContextInteractively: already running`);
+            return; // Already ready
+        }
+
+        if (this._whenInitializedInteractively)
+            return; // Already being initialized
+
+        const whenInitializedInteractively = new PromiseSource<void>();
+        try {
+            this._whenInitializedInteractively = whenInitializedInteractively;
+            const context = await this.create(true);
+            // skip warmup as we need the context ASAP - e.g. after clicking on the recording button
+            this.markReady(context);
+        }
+        finally {
+            whenInitializedInteractively.resolve(undefined);
+            this._whenInitializedInteractively = null;
+        }
     }
 
     // Must be private, but good to keep it near markNotReady
@@ -139,9 +162,26 @@ export class AudioContextSource {
         for (;;) { // Renew loop
             let context: AudioContext = null;
             try {
-                context = await this.create();
-                await this.warmup(context);
-                this.markReady(context);
+                let whenInitializedInteractively = this._whenInitializedInteractively as PromiseSource<void>;
+                if (!whenInitializedInteractively) {
+                    whenInitializedInteractively = new PromiseSource<void>();
+                    try {
+                        this._whenInitializedInteractively = whenInitializedInteractively;
+                        context = await this.create();
+                        await this.warmup(context);
+                        this.markReady(context);
+                    }
+                    finally {
+                        whenInitializedInteractively.resolve(undefined);
+                        this._whenInitializedInteractively = null;
+                    }
+                }
+                else {
+                    await whenInitializedInteractively;
+                    context = this._context;
+                    if (!context)
+                        continue;
+                }
                 let lastTestAt = Date.now();
 
                 // noinspection InfiniteLoopJS
@@ -205,8 +245,8 @@ export class AudioContextSource {
         }
     }
 
-    protected async create(): Promise<AudioContext> {
-        debugLog?.log(`create`);
+    protected async create(isAlreadyInteractiveToResume = false): Promise<AudioContext> {
+        debugLog?.log(`create`, isAlreadyInteractiveToResume);
 
         this._resumeCount = 0;
         this._interactiveResumeCount = 0;
@@ -218,7 +258,14 @@ export class AudioContextSource {
         });
         this._contextCreated$.next(context);
         try {
-            await this.interactiveResume(context);
+            if (isAlreadyInteractiveToResume) {
+                debugLog?.log(`create: isAlreadyInteractiveToResume == true`);
+                await this.resume(context, true);
+                Interactive.isInteractive = true;
+            }
+            else {
+                await this.interactiveResume(context);
+            }
 
             debugLog?.log(`create: loading modules`);
             const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
@@ -339,8 +386,9 @@ export class AudioContextSource {
         debugLog?.log(`interactiveResume: waiting for interaction`);
         const resumeTask = new PromiseSource<boolean>();
         // Keep user gesture stack without async!!!
-        const handler = Interactive.interactionEvents.add( () => {
+        const handler = Interactive.interactionEvents.add( (e) => {
             // this resume should be called without async in the same sync stack as user gesture!!!
+            debugLog?.log(`interactiveResume: Interactive.interactionEvents triggered`, e);
             this.resume(context, true)
                 .then(
                     () => resumeTask.resolve(true),
@@ -363,7 +411,7 @@ export class AudioContextSource {
     }
 
     private async resume(context: AudioContext, isInteractive: boolean): Promise<void> {
-        debugLog?.log(`resume:`, Log.ref(context));
+        debugLog?.log(`resume:`, Log.ref(context), isInteractive);
 
         this._resumeCount++;
         if (isInteractive)

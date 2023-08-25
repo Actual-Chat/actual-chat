@@ -256,7 +256,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             attach: attach,
             detach: _ => retry(2, () => detach()),
         }
-        const contextRef = await audioContextSource.getRef('recording', options);
+        const contextRef = audioContextSource.getRef('recording', options);
         try {
             debugLog?.log(`start(): awaiting whenFirstTimeReady...`);
             await contextRef.whenFirstTimeReady();

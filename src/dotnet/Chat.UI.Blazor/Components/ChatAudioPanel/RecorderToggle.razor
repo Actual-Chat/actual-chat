@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Audio.UI.Blazor.Components
+@using ActualChat.Chat.UI.Blazor.Module
 @inherits ComputedStateComponent<RecorderToggle.Model>
 @{
     var m = State.Value;
@@ -66,11 +67,13 @@
 }
 
 @code {
+    private static readonly string JSInitMethod = $"{ChatBlazorUIModule.ImportName}.RecorderToggle.init";
     private OnOffAnimator _animator = null!;
 
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     private bool IsChatChanging => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsRecording => !IsChatChanging && State.Value.IsRecording;
@@ -81,6 +84,13 @@
     protected override void OnInitialized() {
         _animator = new OnOffAnimator(this, TimeSpan.FromMilliseconds(300));
         base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        await JS.InvokeVoidAsync(JSInitMethod);
     }
 
     public override ValueTask DisposeAsync() {
