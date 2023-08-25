@@ -1,16 +1,12 @@
 @namespace ActualChat.UI.Blazor.Components
 
 <RenderIntoSlot Name="MainHeader">
-    <div class="flex-none flex-y w-full overflow-hidden bg-02 z-50">
         <div class="c-content">
-            <div class="flex-none self-start">
-                <NavbarPullerButton/>
-            </div>
-            <div class="flex-auto flex-x self-center text-03 font-semibold">
+            <NavbarPullerButton/>
+            <div class="c-title">
                 @ChildContent
             </div>
         </div>
-    </div>
 </RenderIntoSlot>
 
 @code {

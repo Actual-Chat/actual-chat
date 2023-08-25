@@ -1,8 +1,13 @@
 .guide-modal .modal-header-interactive {
     @apply bg-bubble;
-    @apply pr-1; /* indent to OK button */
+    @apply text-04;
 }
-
+.guide-modal .form-block {
+    @apply gap-y-6;
+}
+.guide-modal .modal-header-interactive * {
+    @apply text-04;
+}
 .guide-modal .modal-header-interactive .modal-title {
     @apply text-04;
     @apply text-headline-1;

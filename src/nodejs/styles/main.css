@@ -183,8 +183,19 @@ input.input-underlined {
 }
 .default-layout .layout-header {
     @apply ordinary-header;
+    @apply px-0;
     @apply bg-02;
     @apply border-b border-bg-04;
+}
+.default-layout .layout-header .c-content {
+    @apply flex-1 flex-x gap-x-4;
+    @apply overflow-hidden;
+    @apply bg-02;
+}
+.default-layout .layout-header .c-content .c-title {
+    @apply flex-1;
+    @apply text-01 font-medium;
+    @apply truncate;
 }
 .default-layout .layout-body {
     @apply justify-start gap-y-4;
@@ -253,9 +264,11 @@ input.input-underlined {
     @apply text-lg;
 }
 .page-with-header-and-footer .layout-body .test-page-btn-group {
-    @apply flex-x flex-wrap gap-4;
+    @apply flex-x flex-wrap justify-center gap-1;
 }
-
+.page-with-header-and-footer .layout-body .test-page-btn-group > .btn {
+    @apply min-w-full md:min-w-40;
+}
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .list-view-layout {
     @apply sm:flex md:hidden lg:flex;
 }
