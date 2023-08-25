@@ -257,5 +257,5 @@ input.input-underlined {
 }
 
 .page-with-header-and-footer:has(.side-nav.side-nav-right[data-side-nav="open"]) > .list-view-layout {
-    @apply md:hidden;
+    @apply sm:flex md:hidden lg:flex;
 }
