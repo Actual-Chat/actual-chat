@@ -63,7 +63,10 @@ public partial class MainPage
 
         // settings.SetGeolocationEnabled(true);
         // settings.SetGeolocationDatabasePath(webView.Context?.FilesDir?.Path);
-        webView.SetWebChromeClient(new AndroidWebChromeClient(webView.WebChromeClient!, activity));
+        webView.SetWebChromeClient(new AndroidWebChromeClient(
+            webView.WebChromeClient!,
+            activity,
+            new AndroidFileChooser(AppServices.LogFor<AndroidFileChooser>())));
         webView.SetRendererPriorityPolicy(RendererPriority.Important, true);
     }
 

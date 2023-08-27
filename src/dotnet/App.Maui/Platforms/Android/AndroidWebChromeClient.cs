@@ -51,11 +51,13 @@ internal class AndroidWebChromeClient : WebChromeClient
     private static Action<bool>? _pendingPermissionRequestCallback;
 
     private readonly WebChromeClient _client;
+    private readonly AndroidFileChooser _fileChooser;
 
-    public AndroidWebChromeClient(WebChromeClient client, ComponentActivity activity)
+    public AndroidWebChromeClient(WebChromeClient client, ComponentActivity activity, AndroidFileChooser fileChooser)
     {
         TryInitialize(activity);
         _client = client;
+        _fileChooser = fileChooser;
     }
 
     public static void TryInitialize(ComponentActivity activity)
@@ -164,6 +166,13 @@ internal class AndroidWebChromeClient : WebChromeClient
         _requestPermissionLauncher.Launch(permission);
     }
 
+    public override bool OnShowFileChooser(WebView? webView, IValueCallback? filePathCallback, FileChooserParams? fileChooserParams)
+    {
+        if (filePathCallback == null)
+            return _client.OnShowFileChooser(webView, filePathCallback, fileChooserParams);
+        return _fileChooser.OnShowFileChooser(_activity, filePathCallback);
+    }
+
     #region Unremarkable overrides
     // See: https://github.com/dotnet/maui/issues/6565
     public override JniPeerMembers JniPeerMembers => _client.JniPeerMembers;
@@ -203,8 +212,6 @@ internal class AndroidWebChromeClient : WebChromeClient
         => _client.OnRequestFocus(view);
     public override void OnShowCustomView(View? view, ICustomViewCallback? callback)
         => _client.OnShowCustomView(view, callback);
-    public override bool OnShowFileChooser(WebView? webView, IValueCallback? filePathCallback, FileChooserParams? fileChooserParams)
-        => _client.OnShowFileChooser(webView, filePathCallback, fileChooserParams);
     #endregion
 
     // Nested types
