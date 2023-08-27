@@ -41,7 +41,10 @@
     "typescript"
   ],
   "eslint.packageManager": "npm",
-  "csharp.unitTestDebuggingOptions": {
+  "cSpell.enableFiletypes": [
+    "aspnetcorerazor"
+  ],
+  "dotnet.unitTestDebuggingOptions": {
     "allowFastEvaluate": true,
     "enableStepFiltering": true,
     "logging": {
