@@ -1,6 +1,5 @@
 using ActualChat.Audio;
 using ActualChat.Audio.UI.Blazor.Components;
-using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 using Stl.Interception;
 
@@ -21,6 +20,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private InteractiveUI? _interactiveUI;
     private DeviceAwakeUI? _deviceAwakeUI;
     private ChatEditorUI? _chatEditorUI;
+    private UserActivityUI? _userActivityUI;
     private UICommander? _uiCommander;
 
     private IServiceProvider Services { get; }
@@ -38,6 +38,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private InteractiveUI InteractiveUI => _interactiveUI ??= Services.GetRequiredService<InteractiveUI>();
     private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
     private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
+    private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
     private UICommander UICommander => _uiCommander ??= Services.UICommander();
     private MomentClockSet Clocks { get; }
 

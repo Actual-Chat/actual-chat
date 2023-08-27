@@ -29,6 +29,7 @@ public partial class ChatAudioUI
             new(nameof(StopListeningWhenIdle), StopListeningWhenIdle),
             new(nameof(StopRecordingOnAwake), StopRecordingOnAwake),
             new(nameof(ReconnectOnRpcReconnect), ReconnectOnRpcReconnect),
+            new(nameof(PlayRecordingBeep), PlayRecordingBeep),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (
@@ -314,6 +315,59 @@ public partial class ChatAudioUI
         }
     }
 
+    private async Task PlayRecordingBeep(CancellationToken cancellationToken)
+    {
+        var cBeepState = await Computed.Capture(() => GetRecordingBeepState(cancellationToken)).ConfigureAwait(false);
+        var lastBeepAt = UserActivityUI.ActiveUntil.Value;
+
+        while (!cancellationToken.IsCancellationRequested) {
+            var (isRecording, isActive) = cBeepState.Value;
+            if (isRecording && !isActive && IsBeepDue(lastBeepAt)) {
+                await TuneUI.Play(Tune.RemindOfRecording, cancellationToken);
+                lastBeepAt = Now;
+            }
+
+            cBeepState = await Delay(cBeepState, lastBeepAt);
+        }
+        return;
+
+        async Task<Computed<RecordingBeepState>> Delay(Computed<RecordingBeepState> cBeepState1, Moment lastBeepAt1)
+        {
+            using var cts = cancellationToken.CreateLinkedTokenSource();
+            try {
+                var state = cBeepState1.Value;
+                if (state.IsRecording && !IsBeepDue(lastBeepAt1))
+                    cts.CancelAfter(NextBeepIn(lastBeepAt1));
+                return await cBeepState1.When(x => IsDelayOver(state, x, lastBeepAt1), cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested) {
+                return cBeepState1;
+            }
+        }
+
+        bool IsBeepDue(Moment lastBeepAt1)
+            => NextBeepIn(lastBeepAt1) <= TimeSpan.Zero;
+
+        TimeSpan NextBeepIn(Moment lastBeepAt1)
+            => (lastBeepAt1 + AudioSettings.RecordingReminderInterval - Now).Positive();
+
+        bool IsDelayOver(RecordingBeepState previous, RecordingBeepState current, Moment lastBeepAt1)
+        {
+            var isRemainingStopped = !previous.IsRecording && !current.IsRecording;
+            if (isRemainingStopped)
+                return false;
+
+            var isStartedOrStopped = !current.IsRecording || !current.IsRecording;
+            if (isStartedOrStopped)
+                return true;
+
+            if (!previous.IsActive && current.IsActive)
+                return true;
+
+            return IsBeepDue(lastBeepAt1);
+        }
+    }
+
     // Helpers
 
     [ComputeMethod]
@@ -322,6 +376,17 @@ public partial class ChatAudioUI
         var chatId = await GetRecordingChatId().ConfigureAwait(false);
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
         return new(chatId, chatId.IsNone ? Language.None : language);
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<RecordingBeepState> GetRecordingBeepState(CancellationToken cancellationToken)
+    {
+        var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
+        var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false);
+        var isActive = activeUntil > Now;
+        if (isActive)
+            Computed.GetCurrent()!.Invalidate(activeUntil - Now + TimeSpan.FromMilliseconds(1));
+        return new(!recordingChatId.IsNone, isActive);
     }
 
     private async IAsyncEnumerable<Moment?> WatchIdleAudioBoundaries(
@@ -403,6 +468,12 @@ public partial class ChatAudioUI
     public readonly record struct RecordingState(ChatId ChatId, Language Language)
     {
         public static readonly RecordingState None = default;
+    }
+
+    [StructLayout(LayoutKind.Auto)]
+    public readonly record struct RecordingBeepState(bool IsRecording, bool IsActive)
+    {
+        public static readonly RecordingBeepState None = default;
     }
 
     [StructLayout(LayoutKind.Auto)]

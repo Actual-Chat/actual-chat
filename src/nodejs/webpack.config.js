@@ -124,11 +124,8 @@ module.exports = (env, args) => {
             new CopyPlugin({
                 patterns: [
                     { from: _('../../firebase.config.json'), to: 'config/firebase.config.js', noErrorOnMissing: true },
-                ],
-            }),
-            new CopyPlugin({
-                patterns: [
                     { from: 'images', to: 'images' },
+                    { from: './../dotnet/UI.Blazor/Services/TuneUI/sounds', to: 'sounds' },
                 ],
             }),
             // @ts-ignore
