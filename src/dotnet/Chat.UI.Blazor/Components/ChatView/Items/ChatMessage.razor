@@ -98,7 +98,9 @@
                         </span>
                     } else {
                         <span class="forwarded-chat-header-name">
-                            @entry.ForwardedChatTitle
+                            @(!entry.ForwardedChatTitle.IsNullOrEmpty()
+                                ? entry.ForwardedChatTitle
+                                : "Unknown chat")
                         </span>
                     }
                 </div>
@@ -112,7 +114,9 @@
                         </span>
                     } else {
                         <span class="forwarded-author-header-name">
-                            @entry.ForwardedAuthorName
+                            @(!entry.ForwardedAuthorName.IsNullOrEmpty()
+                                ? entry.ForwardedAuthorName
+                                : "Unknown author")
                         </span>
                     }
                     <LiveTimeDeltaText Class="chat-message-timestamp min-w-fit" Moment="@entry.ForwardedChatEntryBeginsAt"/>
