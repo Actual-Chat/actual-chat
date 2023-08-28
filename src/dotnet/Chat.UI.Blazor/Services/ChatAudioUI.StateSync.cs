@@ -323,11 +323,11 @@ public partial class ChatAudioUI
         while (!cancellationToken.IsCancellationRequested) {
             var (isRecording, isActive) = cBeepState.Value;
             if (isRecording && !isActive && IsBeepDue(lastBeepAt)) {
-                await TuneUI.Play(Tune.RemindOfRecording, cancellationToken);
+                await TuneUI.Play(Tune.RemindOfRecording, cancellationToken).ConfigureAwait(false);
                 lastBeepAt = Now;
             }
 
-            cBeepState = await Delay(cBeepState, lastBeepAt);
+            cBeepState = await Delay(cBeepState, lastBeepAt).ConfigureAwait(false);
         }
         return;
 
