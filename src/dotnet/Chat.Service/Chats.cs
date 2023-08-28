@@ -249,8 +249,11 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     AuthorId = author.Id,
                     Content = text,
                     RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
+                    ForwardedChatTitle = command.ForwardedChatTitle,
                     ForwardedAuthorId = command.ForwardedAuthorId,
+                    ForwardedAuthorName = command.ForwardedAuthorName,
                     ForwardedChatEntryId = command.ForwardedChatEntryId,
+                    ForwardedChatEntryBeginsAt = command.ForwardedChatEntryBeginsAt,
                 },
                 command.Attachments.Count > 0);
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
@@ -469,9 +472,9 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
             destinationChat.Rules.Permissions.Require(ChatPermissions.Write);
 
             foreach (var chatEntry in chatEntries) {
-                var forwardedAuthorId = chatEntry.ForwardedAuthorId.IsNone
-                    ? chatEntry.AuthorId
-                    : chatEntry.ForwardedAuthorId;
+                var forwardedChatTitle = chatEntry.ForwardedChatTitle.IsNullOrEmpty()
+                    ? chat.Title
+                    : chatEntry.ForwardedChatTitle;
                 var forwardedChatEntryId = chatEntry.ForwardedChatEntryId.IsNone
                     ? chatEntry.ChatId.IsPeerChat(out _)
                         ? ChatEntryId.None
@@ -479,9 +482,24 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
                     : chatEntry.ForwardedChatEntryId.ChatId.IsPeerChat(out _)
                         ? ChatEntryId.None
                         : chatEntry.ForwardedChatEntryId;
+                var forwardedChatEntryBeginsAt = chatEntry.ForwardedChatEntryBeginsAt ?? chatEntry.BeginsAt;
+                var forwardedAuthorId = chatEntry.ForwardedAuthorId.IsNone
+                    ? chatEntry.AuthorId
+                    : chatEntry.ForwardedAuthorId;
+                string? forwardedAuthorName = chatEntry.ForwardedAuthorName;
+                if (forwardedAuthorName.IsNullOrEmpty()) {
+                    var forwardedAuthor = await AuthorsBackend
+                        .Get(forwardedAuthorId.ChatId, forwardedAuthorId, cancellationToken)
+                        .ConfigureAwait(false);
+                    forwardedAuthorName = forwardedAuthor!.Avatar.Name;
+                }
+
                 var cmd = new Chats_UpsertTextEntry(session, destinationChatId, null, chatEntry.Content) {
                     ForwardedAuthorId = forwardedAuthorId,
                     ForwardedChatEntryId = forwardedChatEntryId,
+                    ForwardedAuthorName = forwardedAuthorName,
+                    ForwardedChatEntryBeginsAt = forwardedChatEntryBeginsAt,
+                    ForwardedChatTitle = forwardedChatTitle,
                     Attachments = chatEntry.Attachments.Select(x => x.MediaId).ToApiArray(),
                 };
                 await Commander.Run(cmd, CancellationToken.None).ConfigureAwait(false);

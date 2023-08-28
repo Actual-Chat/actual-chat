@@ -34,8 +34,11 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public long? RepliedChatEntryId { get; set; }
     public bool IsSystemEntry { get; set; }
 
-    public string? ForwardedChatEntryId { get; set; }
+    public string? ForwardedChatTitle { get; set; }
     public string? ForwardedAuthorId { get; set; }
+    public string? ForwardedAuthorName { get; set; }
+    public string? ForwardedChatEntryId { get; set; }
+    public DateTime? ForwardedChatEntryBeginsAt { get; set; }
 
     public DateTime BeginsAt {
         get => _beginsAt.DefaultKind(DateTimeKind.Utc);
@@ -87,8 +90,11 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AudioEntryId = AudioEntryId,
             VideoEntryId = VideoEntryId,
             RepliedEntryLocalId = RepliedChatEntryId!,
+            ForwardedChatTitle = ForwardedChatTitle,
             ForwardedAuthorId = new AuthorId(ForwardedAuthorId),
+            ForwardedAuthorName = ForwardedAuthorName,
             ForwardedChatEntryId = new ChatEntryId(ForwardedChatEntryId),
+            ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt,
             Attachments = attachments?.ToApiArray() ?? ApiArray<TextEntryAttachment>.Empty,
 #pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text
@@ -124,8 +130,11 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         AudioEntryId = model.AudioEntryId;
         VideoEntryId = model.VideoEntryId;
         RepliedChatEntryId = model.RepliedEntryLocalId;
+        ForwardedChatTitle = model.ForwardedChatTitle;
         ForwardedAuthorId = model.ForwardedAuthorId;
+        ForwardedAuthorName = model.ForwardedAuthorName;
         ForwardedChatEntryId = model.ForwardedChatEntryId;
+        ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         IsSystemEntry = model.SystemEntry != null;
 #pragma warning disable IL2026
