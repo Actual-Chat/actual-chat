@@ -1,10 +1,12 @@
+@using System.Collections.ObjectModel
 @namespace ActualChat.UI.Blazor.Components
 
 @{
     var unselectedCls = IsHoverable ? "" : "unselected";
+    var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
 }
-<div class="tile-item @unselectedCls group @Class"
-     @attributes="@AdditionalAttributes">
+<div class="tile-item @unselectedCls @extraClass group @Class"
+     @attributes="@_resolvedAdditionalAttributes">
     <div class="tile-item-icon">
         @Icon
     </div>
@@ -24,12 +26,22 @@
 </div>
 
 @code {
+    private IReadOnlyDictionary<string, object>? _resolvedAdditionalAttributes;
+
     [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public RenderFragment? Right { get; set; }
     [Parameter] public RenderFragment? Content { get; set; }
     [Parameter] public RenderFragment? Caption { get; set; }
     [Parameter] public bool IsHoverable { get; set; } = true;
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback Click { get; set; }
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override void OnParametersSet() {
+        _resolvedAdditionalAttributes = BlazorAttributesBuilder
+            .Create(AdditionalAttributes)
+            .AddOnClick(this, Click)
+            .GetResult();
+    }
 }
