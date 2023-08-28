@@ -41,6 +41,9 @@ public sealed partial record ChatEntry(
     [DataMember, MemoryPackOrder(23)] public long? RepliedEntryLocalId { get; init; }
     [DataMember, MemoryPackOrder(24)] public ChatEntryId ForwardedChatEntryId { get; init; }
     [DataMember, MemoryPackOrder(25)] public AuthorId ForwardedAuthorId { get; init; }
+    [DataMember, MemoryPackOrder(26)] public Moment? ForwardedChatEntryBeginsAt { get; init; }
+    [DataMember, MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
+    [DataMember, MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
     [DataMember, MemoryPackOrder(50)] public ApiArray<TextEntryAttachment> Attachments { get; init; }
 
     // Computed
