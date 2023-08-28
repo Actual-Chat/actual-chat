@@ -14,6 +14,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
+    public bool IsForwardBlockStart { get; init; }
     public bool IsFirstTimeRendered { get; init; }
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnreadSeparator { get; init; }
@@ -82,6 +83,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         var lastDate = default(DateOnly);
         var isPrevUnread = true;
         var isPrevAudio = (bool?)false;
+        var isPrevForward = false;
+        var prevForwardChatId = ChatId.None;
         for (var index = 0; index < chatEntries.Count; index++) {
             var entry = chatEntries[index];
             var isLastEntry = index == chatEntries.Count - 1;
@@ -90,6 +93,9 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
             var hasDateLine = date != lastDate && (hasVeryFirstItem || index != 0);
             var isBlockEnd = ShouldSplit(entry, nextEntry);
+            var isForward = !entry.ForwardedAuthorId.IsNone;
+            var forwardFromOtherChat = prevForwardChatId != entry.ForwardedChatEntryId.ChatId;
+            var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || forwardFromOtherChat));
             var isUnread = entry.LocalId > (lastReadEntryId ?? 0);
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
             var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
@@ -110,12 +116,15 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
                 IsBlockEnd = isBlockEnd,
                 ShowEntryKind = isEntryKindChanged || (isBlockStart && isAudio),
                 IsFirstTimeRendered = isFirstTimeRendered,
+                IsForwardBlockStart = isForwardBlockStart,
             });
 
             isPrevUnread = isUnread;
             isBlockStart = isBlockEnd;
             lastDate = date;
             isPrevAudio = isAudio;
+            isPrevForward = isForward;
+            prevForwardChatId = entry.ForwardedChatEntryId.ChatId;
         }
 
         return result;

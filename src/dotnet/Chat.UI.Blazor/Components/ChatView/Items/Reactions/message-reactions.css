@@ -1,6 +1,6 @@
 .message-reactions {
     @apply flex-x flex-wrap gap-0.5 md:gap-1 items-center;
-    @apply mt-0.5;
+    @apply py-0.5;
     @apply select-none;
 }
 .message-reactions-reaction {
