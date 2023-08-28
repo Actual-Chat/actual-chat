@@ -2,9 +2,7 @@ import { delayAsync, PromiseSourceWithTimeout } from 'promises';
 import { VibrationUI } from '../VibrationUI/vibration-ui';
 import { Log } from 'logging';
 import { Disposable } from 'disposable';
-import { BrowserInit } from '../BrowserInit/browser-init';
 import { Interactive } from 'interactive';
-import { BrowserInfo } from '../BrowserInfo/browser-info';
 import { DeviceInfo } from 'device-info';
 
 const { logScope, debugLog, warnLog } = Log.get('TuneUI');
