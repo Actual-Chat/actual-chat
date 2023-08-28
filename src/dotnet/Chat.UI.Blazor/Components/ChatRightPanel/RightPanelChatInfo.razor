@@ -17,19 +17,6 @@
         </Icon>
     </RightPanelChatInfoItem>
 
-    @if (m.Owners is not null) {
-        @foreach (var owner in m.Owners) {
-            <RightPanelChatInfoItem
-                Click="@(_ => OnOwnerClick(owner.AuthorId))"
-                Content="@owner.AvatarName"
-                Hint="Owner">
-                <Icon>
-                    <i class="text-2xl text-icons-03 icon-person"></i>
-                </Icon>
-            </RightPanelChatInfoItem>
-        }
-    }
-
     <RightPanelChatInfoItem
         Click="@(_ => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted))"
         Content="Notifications"
@@ -77,7 +64,6 @@
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
 
     private ModalUI ModalUI => Services.GetRequiredService<ModalUI>();
     private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
@@ -92,39 +78,14 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        List<OwnerModel>? owners = null;
-        if (!Chat.Id.IsPeerChat(out _)) {
-            var authorIds = await Roles.ListOwnerIds(Session, Chat.Id, cancellationToken);
-            var accounts = await authorIds
-                .Select(async authorId => {
-                    var account = await Authors.GetAccount(Session, Chat.Id, authorId, cancellationToken);
-                    if (account == null)
-                        return null;
-
-                    return new OwnerModel {
-                        AuthorId = authorId,
-                        AvatarName = account.Avatar.Name,
-                        Link = Links.User(account.Id).ToDisplayUrl(UrlMapper),
-                    };
-                })
-                .Collect()
-                .ConfigureAwait(false);
-
-            owners = accounts
-                .SkipNullItems()
-                .ToList();
-        }
-
         var rules = await Chats.GetRules(Session, Chat.Id, default);
         var link = await GetLink(cancellationToken);
         var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
         return new() {
             Title = Chat.Title,
             Link = link?.ToDisplayUrl(UrlMapper),
-            Owners = owners,
             NotificationMode = userChatSettings.NotificationMode,
             Rules = rules,
-            EnableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken),
         };
     }
 
@@ -137,9 +98,6 @@
 
         return Chat.IsPublic ? Links.Chat(Chat.Id) : (LocalUrl?)null;
     }
-
-    private Task OnOwnerClick(AuthorId id)
-        => AuthorUI.Show(id);
 
     private Task OnValueChanged(bool isMuted)
         => UICommander.RunLocal(async cancellationToken => {
@@ -162,14 +120,6 @@
         public string? Title { get; init; }
         public DisplayUrl? Link { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
-        public List<OwnerModel>? Owners { get; init; }
         public AuthorRules Rules { get; init; } = null!;
-        public bool EnableIncompleteUI { get; init; }
-    }
-
-    public sealed record OwnerModel {
-        public DisplayUrl Link { get; init; }
-        public AuthorId AuthorId { get; init; }
-        public string AvatarName { get; init; } = "";
     }
 }

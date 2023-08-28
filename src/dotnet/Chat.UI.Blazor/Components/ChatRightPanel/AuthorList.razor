@@ -4,31 +4,33 @@
 @inherits ComputedStateComponent<AuthorList.Model>
 @{
     var m = State.Value;
+    var groups = new List<(string,IReadOnlyCollection<AuthorId>)> {
+        ("Owners", m.OwnerAuthorIds),
+        ("Online", m.OnlineAuthorIds),
+        ("Offline", m.OfflineAuthorIds)
+    };
 }
 
 <div class="author-list-tab">
     <div class="c-content">
-        <div class="c-group-title">Online — @m.OnlineAuthorIds.Count</div>
-        @foreach (var authorId in m.OnlineAuthorIds) {
-            <AuthorBadge
-                @key="@authorId"
-                AuthorSid="@authorId"
-                ShowPresence="true"
-                Click="@(_ => AuthorUI.Show(authorId))"/>
-        }
-        <div class="c-group-title">Offline — @m.OfflineAuthorIds.Count</div>
-        @foreach (var authorId in m.OfflineAuthorIds) {
-            <AuthorBadge
-                @key="@authorId"
-                AuthorSid="@authorId"
-                ShowPresence="true"
-                Click="@(_ => AuthorUI.Show(authorId))"/>
+        @foreach(var group in groups) {
+            <div>
+                <div class="c-group-title">@group.Item1 — @group.Item2.Count</div>
+                @foreach (var authorId in group.Item2) {
+                    <AuthorBadge
+                        @key="@authorId"
+                        AuthorSid="@authorId"
+                        ShowPresence="true"
+                        Click="@(_ => AuthorUI.Show(authorId))"/>;
+                }
+            </div>
         }
     </div>
 </div>
 
 @code {
     [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IRoles Roles { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
@@ -43,6 +45,10 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
+        var ownerIds = !Chat.Id.IsPeerChat(out _)
+            ? await Roles.ListOwnerIds(Session, Chat.Id, cancellationToken)
+            : ApiArray<AuthorId>.Empty;
+        var ownerAuthors = new List<(AuthorId,string)>();
         var onlineAuthors = new List<(AuthorId,string)>();
         var offlineAuthors = new List<(AuthorId,string)>();
         var presences = await allAuthorIds
@@ -56,19 +62,22 @@
             })
             .Collect(); // Add concurrency
         foreach (var (authorId, presence, authorName) in presences) {
-            if (presence is Presence.Online or Presence.Recording or Presence.Away) {
-                onlineAuthors.Add((authorId, authorName));
-            } else {
-                offlineAuthors.Add((authorId, authorName));
-            }
+            var collection = ownerIds.Contains(authorId)
+                ? ownerAuthors
+                : presence is Presence.Online or Presence.Recording or Presence.Away
+                    ? onlineAuthors
+                    : offlineAuthors;
+            collection.Add((authorId, authorName));
         }
 
         Comparison<(AuthorId, string)> comparison = (info1, info2)
             => String.Compare(info1.Item2, info2.Item2, StringComparison.Ordinal);
+        ownerAuthors.Sort(comparison);
         onlineAuthors.Sort(comparison);
         offlineAuthors.Sort(comparison);
 
         return new() {
+            OwnerAuthorIds = ownerAuthors.Select(c => c.Item1).ToApiArray(),
             OnlineAuthorIds = onlineAuthors.Select(c => c.Item1).ToApiArray(),
             OfflineAuthorIds = offlineAuthors.Select(c => c.Item1).ToApiArray(),
         };
@@ -76,6 +85,7 @@
 
     public sealed class Model {
         public static Model None { get; } = new();
+        public ApiArray<AuthorId> OwnerAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
         public ApiArray<AuthorId> OnlineAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
         public ApiArray<AuthorId> OfflineAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
     }
