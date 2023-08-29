@@ -9,4 +9,5 @@ public enum GuideType {
     WebSafari,
     IosApp,
     AndroidApp,
+    Unknown,
 }

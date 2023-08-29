@@ -28,3 +28,12 @@
 .guide-modal .c-text {
     @apply text-02;
 }
+
+.guide-modal .c-button-wrapper {
+    @apply flex justify-center;
+}
+
+.guide-modal .c-button-wrapper i.icon-refresh {
+    @apply text-xl font-medium pr-2;
+}
+

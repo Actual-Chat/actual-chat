@@ -1,0 +1,33 @@
+@using ActualChat.UI.Blazor.Services
+@using Stl.Rpc
+@namespace ActualChat.Audio.UI.Blazor.Components
+
+<img draggable="false" src="/dist/images/guide/mic-access.png" alt="mic access">
+<div class="c-text text-title-1">
+    We are still trying to start recording of your voice messages and you can help us
+</div>
+<div class="c-text text-headline-1">
+    1. Please try to reload the app pressing the button below and try start recording again.
+</div>
+
+<div class="c-button-wrapper">
+    <Button Click="@OnReloadClick"><i class="icon-refresh"></i> Reload</Button>
+</div>
+
+<div class="c-text text-headline-1">
+    2. Close the app, reopen it and start recording.
+</div>
+
+<div class="c-text text-headline-1">
+    Thanks for cooperation!
+</div>
+
+@code {
+
+    [Inject] private ReloadUI ReloadUI { get; init; } = null!;
+
+    private Task OnReloadClick() {
+        ReloadUI.Reload();
+        return Task.CompletedTask;
+    }
+}
