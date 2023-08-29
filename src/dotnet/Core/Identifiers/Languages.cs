@@ -9,6 +9,7 @@ public static class Languages
     public static readonly Language Spanish = new Language("es-ES", "ES", "Spanish", AssumeValid.Option);
     public static readonly Language Ukrainian = new Language("uk-UA", "UA", "Ukrainian", AssumeValid.Option);
     public static readonly Language Main = English;
+    public static readonly Language Loading = new("Loading", "Loading", "Loading", AssumeValid.Option);
 
     public static readonly ApiArray<Language> All = ApiArray.New(
         English,

@@ -1,12 +1,17 @@
 @inherits ComputedStateComponent<Language>
 @{
-    var m = State.Value.Or(Languages.Main);
+    var m = State.Value;
+    var isLoading = m == Languages.Loading;
+    var loadingCls = isLoading ? "animate-pulse" : "";
+    var cls = $"chat-language-toggle {loadingCls}";
 }
 
 <ButtonRound
-    Class="chat-language-toggle" Click="@(_ => OnClick())">
+    Class="@cls" Click="@(_ => OnClick())">
     <span class="w-8 h-8 m-1">
-        @m.Code
+        @if (!isLoading) {
+            @m.Code
+        }
     </span>
 </ButtonRound>
 
@@ -23,10 +28,13 @@
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
+            InitialValue = Languages.Loading,
         };
 
-    protected override async Task<Language> ComputeState(CancellationToken cancellationToken)
-        => await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
+    protected override async Task<Language> ComputeState(CancellationToken cancellationToken) {
+        var language = await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
+        return language.Or(Languages.Main);
+    }
 
     protected async Task OnClick(CancellationToken cancellationToken = default) {
         var languages = await LanguageUI.Settings.Use(cancellationToken);
