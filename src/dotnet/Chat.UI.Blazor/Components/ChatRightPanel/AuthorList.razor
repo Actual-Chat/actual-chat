@@ -13,9 +13,9 @@
 
 <div class="author-list-tab">
     <div class="c-content">
-        @foreach(var group in groups) {
-            <div>
-                <div class="c-group-title">@group.Item1 — @group.Item2.Count</div>
+        @foreach (var group in groups) {
+            var title = $"{group.Item1} — {group.Item2.Count}";
+            <Collapsed Title="@title">
                 @foreach (var authorId in group.Item2) {
                     <AuthorBadge
                         @key="@authorId"
@@ -23,7 +23,7 @@
                         ShowPresence="true"
                         Click="@(_ => AuthorUI.Show(authorId))"/>
                 }
-            </div>
+            </Collapsed>
         }
     </div>
 </div>
