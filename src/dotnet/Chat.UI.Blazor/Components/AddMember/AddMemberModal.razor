@@ -71,7 +71,7 @@
     [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    private Chat Chat => ModalModel.Chat; // Shortcut
+    private ChatId ChatId => ModalModel.ChatId; // Shortcut
     private string Filter { get; set; } = "";
     private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
@@ -91,7 +91,7 @@
     protected override async Task OnInitializedAsync() {
         _viewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnAdd, "Add");
         var existingUserIds = new HashSet<UserId>(
-            await Authors.ListUserIds(Session, Chat.Id, DisposeToken));
+            await Authors.ListUserIds(Session, ChatId, DisposeToken));
 
         var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
         var contacts = await userContacts
@@ -155,7 +155,7 @@
             .Where(x => !x.IsExisting && x.IsChecked)
             .Select(x => x.Account.Id)
             .ToArray();
-        var createAuthorsCommand = new Authors_Invite(Session, Chat.Id, userIds);
+        var createAuthorsCommand = new Authors_Invite(Session, ChatId, userIds);
         var (_, error) = await UICommander.Run(createAuthorsCommand, DisposeToken);
         if (error != null)
             return;
@@ -168,7 +168,7 @@
 
     // Nested types
 
-    public sealed record Model(Chat Chat);
+    public sealed record Model(ChatId ChatId);
 
     private sealed class Contact {
         public Account Account { get; init; } = null!;
