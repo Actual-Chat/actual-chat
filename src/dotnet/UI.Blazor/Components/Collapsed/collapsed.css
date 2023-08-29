@@ -1,0 +1,23 @@
+details > summary {
+    list-style-type: none;
+}
+details.main-collapsed > summary.c-summary {
+    @apply flex-x items-center gap-x-2;
+}
+details.main-collapsed > summary.c-summary > i {
+    @apply text-xl text-icons-01;
+}
+details.main-collapsed > summary.c-summary > i.closed {
+    @apply rotate-180;
+}
+details > summary > i.open,
+details[open] > summary > i.closed {
+    @apply hidden;
+}
+details > summary > i.closed,
+details[open] > summary > i.open {
+    @apply flex;
+}
+details > summary > .c-group-title {
+    @apply text-caption-1 text-02;
+}
