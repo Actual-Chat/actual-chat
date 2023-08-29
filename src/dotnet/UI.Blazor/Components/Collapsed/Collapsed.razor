@@ -1,0 +1,16 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<details class="main-collapsed">
+    <summary class="c-summary">
+        <i class="icon-chevron-up closed"></i>
+        <i class="icon-chevron-up open"></i>
+        <span class="@TitleClass">@Title</span>
+    </summary>
+    @ChildContent
+</details>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string TitleClass { get; set; } = "c-group-title";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
