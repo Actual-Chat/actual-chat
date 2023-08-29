@@ -1,3 +1,4 @@
+@using System.Text
 @inherits ComputedStateComponent<SelectionHeader.Model>
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
@@ -52,13 +53,13 @@
     </div>
 
     <div class="c-button-group">
-        @* <HeaderButton> *@
-        @*     <i class="icon-copy !text-lg"></i> *@
-        @* </HeaderButton> *@
-        @* <HeaderButton> *@
-        @*     <i class="icon-trash03"></i> *@
-        @* </HeaderButton> *@
-        @* *@
+        <HeaderButton
+            Click="() => OnCopy(m.Selection)"
+            Tooltip="Copy selection text"
+            TooltipPosition="FloatingPosition.Bottom">
+            <i class="icon-copy !text-lg"></i>
+        </HeaderButton>
+
         @if (messageCount == 1) {
             <HeaderButton
                 Click="() => OnReply(m.Selection.Single())">
@@ -82,6 +83,8 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -109,6 +112,21 @@
 
     private void OnCancel()
         => SelectionUI.Clear();
+
+    private async Task OnCopy(IReadOnlyCollection<ChatEntryId> selection) {
+        var sb = new StringBuilder();
+        foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
+            var chatEntry = await Chats.GetEntry(Session, chatEntryId);
+            if (chatEntry == null)
+                continue;
+            if (chatEntry.Content.IsNullOrEmpty())
+                continue;
+            sb.AppendLine(chatEntry.Content);
+        }
+
+        await ClipboardUI.WriteText(sb.ToString());
+        SelectionUI.Clear();
+    }
 
     private async Task OnReply(ChatEntryId chatEntryId) {
         await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntryId, focusOnEditor: true);
