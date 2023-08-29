@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Events
+@using System.Text
 
 @{
     var entry = ChatEntry;
@@ -13,7 +14,8 @@
     var canReply = !entry.IsStreaming && CanWrite && !IsSystem && !isSelected;
     var canSelect = !entry.IsStreaming && !IsSystem && !isSelected;
     var canUnselect = !IsSystem && isSelected;
-    var canCopyText = entry.Kind == ChatEntryKind.Text && !entry.Content.IsNullOrEmpty();
+    var canCopyText = !hasSelection && entry.Kind == ChatEntryKind.Text && !entry.Content.IsNullOrEmpty();
+    var canCopySelectionText = hasSelection && isSelected;
     var canCopyLink = !ClickedLinkUrl.IsNullOrEmpty();
     var canCopyCode = !ClickedCode.IsNullOrEmpty();
     var canCopyMessageLink = !IsSystem;
@@ -65,6 +67,13 @@
             </MenuEntry>
         </CopyTrigger>
     }
+    @if (canCopySelectionText) {
+        <MenuEntry
+            Icon="icon-copy"
+            Text="Copy selection text"
+            Click="@CopySelectionText">
+        </MenuEntry>
+    }
     @if (canCopyLink) {
         <CopyTrigger Tooltip="" CopyText="@ClickedLinkUrl" Class="ac-menu-item !p-0">
             <MenuEntry
@@ -100,7 +109,7 @@
         <MenuEntry
             Icon="icon-share"
             Text="Forward selection"
-            Click="@(() => ForwardSelection())">
+            Click="@ForwardSelection">
         </MenuEntry>
     }
     @if (canEditOrDelete) {
@@ -123,6 +132,8 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public string? ClickedLinkUrl { get; set; }
@@ -144,6 +155,21 @@
 
     private void Unselect(ChatEntry chatEntry)
         => SelectionUI.Unselect(chatEntry.Id);
+
+    private async Task CopySelectionText() {
+        var sb = new StringBuilder();
+        foreach (var chatEntryId in SelectionUI.Selection.Value.OrderBy(x => x.LocalId)) {
+            var chatEntry = await Chats.GetEntry(Session, chatEntryId);
+            if (chatEntry == null)
+                continue;
+            if (chatEntry.Content.IsNullOrEmpty())
+                continue;
+            sb.AppendLine(chatEntry.Content);
+        }
+
+        await ClipboardUI.WriteText(sb.ToString());
+        SelectionUI.Clear();
+    }
 
     private async Task Forward(ChatEntry chatEntry) {
         var chatId = chatEntry.ChatId;
@@ -183,8 +209,7 @@
             _ = History.NavigateTo(Links.Chat(selectedChats.First()));
     }
 
-    private async Task<IReadOnlyCollection<ChatId>> SelectChats(ChatId chatId)
-    {
+    private async Task<IReadOnlyCollection<ChatId>> SelectChats(ChatId chatId) {
         IReadOnlyCollection<ChatId> selectedChats = Array.Empty<ChatId>();
         var modal = await ModalUI.Show(new ForwardMessageModal.Model(
             new [] { chatId },
