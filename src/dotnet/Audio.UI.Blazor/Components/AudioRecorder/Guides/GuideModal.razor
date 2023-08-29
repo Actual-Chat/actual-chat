@@ -5,46 +5,52 @@
 @implements IModalView<GuideModal.Model>
 
 @{
-    GuideType device;
+    GuideType type;
     @if (!IsTestPage) {
-        if (HostInfo.AppKind.IsMauiApp()) {
-            device = HostInfo.ClientKind switch
+        if (GuideType == GuideType.Unknown) {
+            type = GuideType.Unknown;
+        }
+        else if (HostInfo.AppKind.IsMauiApp()) {
+            type = HostInfo.ClientKind switch
             {
                 ClientKind.Ios => GuideType.IosApp,
                 ClientKind.Android => GuideType.AndroidApp,
                 _ => GuideType.WebChrome,
-                };
+            };
         } else {
             if (ScreenSize.IsNarrow()) {
                 if (BrowserInfo.IsEdge)
-                    device = GuideType.MobileEdgeAndroid;
+                    type = GuideType.MobileEdgeAndroid;
                 else if (BrowserInfo.IsWebKit)
-                    device = GuideType.MobileSafariIos;
+                    type = GuideType.MobileSafariIos;
                 else
-                    device = GuideType.MobileChromeAndroid;
+                    type = GuideType.MobileChromeAndroid;
             } else {
                 if (BrowserInfo.IsEdge)
-                    device = GuideType.WebEdge;
+                    type = GuideType.WebEdge;
                 else if (BrowserInfo.IsWebKit)
-                    device = GuideType.WebSafari;
+                    type = GuideType.WebSafari;
                 else
-                    device = GuideType.WebChrome;
+                    type = GuideType.WebChrome;
             }
         }
     } else {
-        device = GuideType;
+        type = GuideType;
     }
+    var title = type == GuideType.Unknown
+        ? "Troubleshoot recording issues"
+        : "Microphone access guide";
 }
 
 <DialogFrame
     Class="guide-modal"
-    Title="Microphone access guide"
+    Title=@title
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnOkClick, "OK")">
     <Body>
 
     <FormBlock>
-        @switch (device) {
+        @switch (type) {
             case GuideType.MobileSafariIos:
                 <MobileSafariIosGuideContent/>
                 break;
@@ -65,6 +71,9 @@
                 break;
             case GuideType.IosApp:
                 <IosAppGuideContent/>
+                break;
+            case GuideType.Unknown:
+                <UnknownGuideContent/>
                 break;
             default:
                 <WebChromeGuideContent/>

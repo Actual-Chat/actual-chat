@@ -1,6 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Audio.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
+@using System.Diagnostics.CodeAnalysis
 @inherits ComputedStateComponent<RecorderToggle.Model>
 @{
     var m = State.Value;
@@ -18,6 +19,14 @@
     };
     var tooltipPosition = forceDisplay ? FloatingPosition.None : FloatingPosition.Top;
     var dynamicTooltip = forceDisplay ? null : tooltip;
+    if (forceDisplay && m.StartRecordingAt.HasValue) {
+        if (!_isTroubleshootGuideTriggered) {
+            _isTroubleshootGuideTriggered = true;
+            Clocks.CoarseSystemClock
+                .Delay(2000)
+                .ContinueWith(_ => DisplayTroubleshootGuide());
+        }
+    }
 }
 
 @if (m.HasMicrophonePermission != false) {
@@ -69,11 +78,13 @@
 @code {
     private static readonly string JSInitMethod = $"{ChatBlazorUIModule.ImportName}.RecorderToggle.init";
     private OnOffAnimator _animator = null!;
+    private bool _isTroubleshootGuideTriggered;
 
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     private bool IsChatChanging => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsRecording => !IsChatChanging && State.Value.IsRecording;
@@ -105,12 +116,20 @@
             Category = GetStateCategory(),
         };
 
+    [SuppressMessage("ReSharper", "InvertIf")]
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var currentState = State.LastNonErrorValue;
         var recordingChatId = await ChatAudioUI.GetRecordingChatId();
         var recorderState = await AudioRecorder.State.Use(cancellationToken);
         var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken);
         var isRecording = recordingChatId == Chat.Id;
         var isApplyingChanges = recorderState.ChatId == Chat.Id && recorderState.IsRecording != isRecording;
+        var startRecordingAt = currentState.StartRecordingAt;
+        if (isApplyingChanges || !recorderState.IsConnected) {
+            startRecordingAt ??= Clocks.CoarseSystemClock.Now;
+        } else {
+            startRecordingAt = null;
+        }
         return new(
             Chat,
             isRecording,
@@ -118,7 +137,8 @@
             recorderState.IsRecording,
             recorderState.IsConnected,
             recorderState.IsVoiceActive,
-            hasMicrophonePermission);
+            hasMicrophonePermission,
+            startRecordingAt);
     }
 
     private async Task OnClick() {
@@ -154,7 +174,30 @@
         _ = ChatAudioUI.SetRecordingChatId(default);
     }
 
+    private async Task DisplayTroubleshootGuide() {
+        await InvokeAsync(async () => {
+            var state = State.LastNonErrorValue;
+            if (!state.StartRecordingAt.HasValue) {
+                _isTroubleshootGuideTriggered = false;
+                return;
+            }
+
+            var model = new GuideModal.Model(false, GuideType.Unknown);
+            var modalRef = await ModalUI.Show(model);
+            try {
+                await modalRef.WhenClosed.WaitAsync(CancellationToken.None);
+            }
+            catch (OperationCanceledException) {
+                modalRef.Close(true);
+            }
+            finally {
+                _isTroubleshootGuideTriggered = false;
+            }
+        }).ConfigureAwait(false);
+    }
+
     // Nested types
+
 
     public sealed record Model(
         Chat Chat,
@@ -163,8 +206,10 @@
         bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
         bool IsVoiceActive = false,
-        bool? HasMicrophonePermission = null
+        bool? HasMicrophonePermission = null,
+        Moment? StartRecordingAt = null
     ) {
         public static Model Loading { get; } = new(SpecialChat.Loading, false, true);
     }
+
 }
