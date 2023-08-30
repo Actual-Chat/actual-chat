@@ -10,12 +10,19 @@
 <ul class="message-reactions @Class">
     @foreach (var reaction in m.Reactions) {
         var ownReactionClass = m.OwnReaction?.Emoji == reaction.Emoji ? "message-reactions-reaction-own" : "";
-        <li class="message-reactions-reaction @ownReactionClass"
+        var showIcons = reaction.Count == 1;
+        var authorIconsClass = showIcons ? "icons" : "";
+        <li class="message-reactions-reaction @ownReactionClass @authorIconsClass"
             data-menu="@(MenuRef.New<ReactionAuthorsMenu>(Entry.Id, reaction.Emoji))"
             data-menu-placement="@(FloatingPosition.Right.ToPositionString())"
             @onclick="@(_ => ToggleReaction(reaction.Emoji))">
             <EmojiIcon Id="@reaction.Emoji.Id" Class="message-reactions-reaction-emoji"/>
-            <span class="message-reactions-reaction-count">@reaction.Count</span>
+            @if (showIcons) {
+                var authorCircleSize = ScreenSize.IsNarrow() ? SquareSize.Size5 : SquareSize.Size4;
+                <AuthorCircle AuthorSid="@reaction.FirstAuthorIds[0]" Size="authorCircleSize" />
+            } else {
+                <span class="message-reactions-reaction-count">@reaction.Count</span>
+            }
         </li>
     }
 
@@ -36,6 +43,7 @@
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
