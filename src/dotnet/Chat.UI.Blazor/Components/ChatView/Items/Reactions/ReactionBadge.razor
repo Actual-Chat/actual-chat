@@ -1,0 +1,35 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var ownReactionClass = OwnReaction?.Emoji == Reaction.Emoji ? "own" : "";
+    var showIcons = Reaction.Count <= 1;
+    var showIconsClass = showIcons ? "icons" : "";
+}
+<li class="reaction-badge @ownReactionClass @showIconsClass"
+    data-menu="@(MenuRef.New<ReactionAuthorsMenu>(Entry.Id, Reaction.Emoji))"
+    data-menu-placement="@(FloatingPosition.Right.ToPositionString())"
+    @onclick="@(_ => ToggleReaction(Reaction.Emoji))">
+    <EmojiIcon Id="@Reaction.Emoji.Id" Class="c-emoji"/>
+    @if (showIcons) {
+        var authorCircleSize = ScreenSize.IsNarrow() ? SquareSize.Size5 : SquareSize.Size4;
+        <AuthorCircle AuthorSid="@Reaction.FirstAuthorIds[0]" Size="authorCircleSize" />
+    } else {
+        <span class="c-count">@Reaction.Count</span>
+    }
+</li>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter, EditorRequired] public Reaction? OwnReaction { get; set; }
+    [Parameter, EditorRequired] public ReactionSummary Reaction { get; set; } = null!;
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    private Task ToggleReaction(Symbol emojiId) {
+        return UICommander.Run(new Reactions_React(Session, new Reaction {
+            EntryId = Entry.Id.ToTextEntryId(),
+            EmojiId = emojiId,
+        }));
+    }
+}
