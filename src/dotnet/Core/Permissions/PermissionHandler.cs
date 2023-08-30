@@ -41,9 +41,9 @@ public abstract class PermissionHandler : WorkerBase
             return true;
 
         Log.LogDebug("Check");
-        var isGranted = await Check(cancellationToken).ConfigureAwait(false);
+        var isGranted = await Get(cancellationToken).ConfigureAwait(false);
         SetUnsafe(isGranted);
-        if (isGranted)
+        if (isGranted ?? false)
             return true;
 
         if (!mustRequest)
@@ -52,21 +52,39 @@ public abstract class PermissionHandler : WorkerBase
         Log.LogDebug("Request");
         var wasRequested = await Request(cancellationToken).ConfigureAwait(false);
         if (!wasRequested)
-            return false;
+            await Troubleshoot(cancellationToken).ConfigureAwait(false);
 
         Log.LogDebug("Post-request check");
-        isGranted = await Check(cancellationToken).ConfigureAwait(false);
+        isGranted = await Get(cancellationToken).ConfigureAwait(false);
         SetUnsafe(isGranted);
-        return isGranted;
+
+        return isGranted ?? false;
     }
 
     public void Reset()
         => _cached.Value = null;
 
+    public async Task<bool?> Check(CancellationToken cancellationToken)
+    {
+        if (_cached.Value == true)
+            return true;
+
+        using var _ = await AsyncLock.Lock(cancellationToken).ConfigureAwait(false);
+
+        if (_cached.Value == true)
+            return true;
+
+        Log.LogDebug("Check");
+        var isGranted = await Get(cancellationToken).ConfigureAwait(false);
+        SetUnsafe(isGranted);
+        return isGranted;
+    }
+
     // Protected methods
 
-    protected abstract Task<bool> Check(CancellationToken cancellationToken);
+    protected abstract Task<bool?> Get(CancellationToken cancellationToken);
     protected abstract Task<bool> Request(CancellationToken cancellationToken);
+    protected abstract Task<bool> Troubleshoot(CancellationToken cancellationToken);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {

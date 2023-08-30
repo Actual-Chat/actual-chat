@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 
-public class MicrophonePermissionHandler : PermissionHandler
+public class WebMicrophonePermissionHandler : MicrophonePermissionHandler
 {
     private AudioRecorder? _audioRecorder;
     private Dispatcher? _dispatcher;
@@ -13,14 +13,17 @@ public class MicrophonePermissionHandler : PermissionHandler
     protected Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     protected ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
 
-    public MicrophonePermissionHandler(IServiceProvider services, bool mustStart = true)
+    public WebMicrophonePermissionHandler(IServiceProvider services, bool mustStart = true)
         : base(services, mustStart)
         => ExpirationPeriod = null; // We don't need expiration period - AudioRecorder is able to reset cached permission in case of recording failure
 
-    protected override Task<bool> Check(CancellationToken cancellationToken)
-        => AudioRecorder.RequestPermission(cancellationToken);
+    protected override Task<bool?> Get(CancellationToken cancellationToken)
+        => AudioRecorder.CheckPermission(cancellationToken);
 
-    protected override Task<bool> Request(CancellationToken cancellationToken)
+    protected override async Task<bool> Request(CancellationToken cancellationToken)
+        => await AudioRecorder.RequestPermission(cancellationToken);
+
+    protected override Task<bool> Troubleshoot(CancellationToken cancellationToken)
         => Dispatcher.InvokeAsync(async () => {
             var model = new GuideModal.Model(false, GuideType.WebChrome);
             var modalRef = await ModalUI.Show(model);

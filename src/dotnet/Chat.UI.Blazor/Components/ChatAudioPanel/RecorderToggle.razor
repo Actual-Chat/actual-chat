@@ -97,6 +97,10 @@
         base.OnInitialized();
     }
 
+    protected override async Task OnInitializedAsync() {
+        await AudioRecorder.MicrophonePermission.Check(CancellationToken.None);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
             return;

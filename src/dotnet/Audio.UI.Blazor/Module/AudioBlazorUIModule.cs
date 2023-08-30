@@ -3,6 +3,7 @@ using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.MediaPlayback;
+using ActualChat.Permissions;
 
 namespace ActualChat.Audio.UI.Blazor.Module;
 
@@ -23,7 +24,8 @@ public class AudioBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
         services.AddScoped<AudioInitializer>(c => new AudioInitializer(c));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
-        services.AddScoped(c => new MicrophonePermissionHandler(c));
+        if (HostInfo.AppKind != AppKind.MauiApp)
+            services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c));
         services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
 
         // IModalViews

@@ -53,6 +53,40 @@ export class AudioRecorder {
     }
 
     /** Called from Blazor  */
+    public async checkPermission(): Promise<PermissionState> {
+        debugLog?.log(`-> checkPermission()`);
+        try {
+            await AudioRecorder.whenInitialized;
+
+            const isMaui = BrowserInfo.appKind == 'MauiApp';
+            const hasMicrophone = DetectRTC.isAudioContextSupported
+                && DetectRTC.hasMicrophone
+                && DetectRTC.isGetUserMediaSupported
+                && (DetectRTC.isWebsiteHasMicrophonePermissions || isMaui);
+
+            debugLog?.log(`checkPermission(): hasMicrophone=`,
+                hasMicrophone,
+                DetectRTC.isAudioContextSupported,
+                DetectRTC.hasMicrophone,
+                DetectRTC.isGetUserMediaSupported,
+                DetectRTC.isWebsiteHasMicrophonePermissions);
+
+            if ('permissions' in navigator) {
+                // @ts-ignore
+                const status = await navigator.permissions.query({ name: 'microphone' });
+                return status.state;
+            }
+
+            return hasMicrophone
+                ? 'prompt'
+                : 'denied';
+        }
+        finally {
+            debugLog?.log(`<- checkPermission()`);
+        }
+    }
+
+    /** Called from Blazor  */
     public async requestPermission(): Promise<boolean> {
         debugLog?.log(`-> requestPermission()`);
         try {
@@ -124,7 +158,16 @@ export class AudioRecorder {
             }
             debugLog?.log(`startRecording(), after hasMicrophone`);
 
-            if (!DetectRTC.isWebsiteHasMicrophonePermissions && !isMaui) {
+            let hasMicrophonePermission = false;
+            if ('permissions' in navigator) {
+                // @ts-ignore
+                const status = await navigator.permissions.query({ name: 'microphone' });
+                hasMicrophonePermission = status.state !== 'denied';
+            }
+            else
+                hasMicrophonePermission = DetectRTC.isWebsiteHasMicrophonePermissions;
+
+            if (!hasMicrophonePermission && !isMaui) {
                 if (DeviceInfo.isFirefox) {
                     // Firefox doesn't support microphone permissions query
                     const hasMicrophonePromise = new PromiseSource<boolean>();

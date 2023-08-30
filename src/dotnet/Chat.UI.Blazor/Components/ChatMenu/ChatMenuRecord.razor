@@ -28,7 +28,9 @@
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
     private async Task OnStartRecordingClick() {
-        await AudioRecorder.MicrophonePermission.CheckOrRequest();
+        if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
+            return;
+
         await ChatAudioUI.SetRecordingChatId(ChatState.Id);
     }
 }
