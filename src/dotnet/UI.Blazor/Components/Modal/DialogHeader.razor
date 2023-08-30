@@ -3,8 +3,13 @@
 
 @if (ScreenSize.IsWide()) {
     <div class="modal-header">
+        @if (IsMultiStep) {
+            <HeaderButton Click="OnCloseClick">
+                <i class="icon-arrow-left"></i>
+            </HeaderButton>
+        }
         <h3 class="modal-title">@Title</h3>
-        @if (HasCloseButton) {
+        @if (HasCloseButton && !IsMultiStep) {
             <HeaderButton Click="OnCloseClick">
                 <i class="icon-close"></i>
             </HeaderButton>
@@ -19,6 +24,7 @@
             submitText = "Save";
         <DialogInteractiveHeader
             Title="@Title"
+            IsMultiStep="@IsMultiStep"
             CloseClick="OnCloseClick"
             SubmitButtonType="@settings.SubmitButtonType"
             SubmitButtonText="@submitText"

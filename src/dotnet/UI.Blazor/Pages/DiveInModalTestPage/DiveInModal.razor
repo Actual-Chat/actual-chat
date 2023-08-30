@@ -1,0 +1,60 @@
+﻿@using ActualChat.UI.Blazor.Services
+@implements IModalView<DiveInModal.Model>
+
+<DialogFrame
+    HasHeader="true"
+    HasCloseButton="true"
+    Title="Dive-in modal"
+    IsMultiStep="@(!_isRoot)"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnSubmit)">
+    <Body>
+        <div class="grow flex-y justify-center items-center">
+            @if (_isRoot) {
+                <DiveInModalRoot MoveInsideClick="OnMoveInsideClick"/>
+            } else {
+                <DiveInModalInner/>
+            }
+        </div>
+    </Body>
+    <Buttons>
+        @if (_isRoot) {
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
+            <Button Type="@ButtonType.Button" Class="btn-primary btn-modal" Click="OnSubmit">Save</Button>
+        } else {
+            <Button Type="@ButtonType.Button" Class="btn-primary btn-modal" Click="OnBack">Back</Button>
+        }
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private bool _isRoot = true;
+
+    [Inject] private ToastUI ToastUI { get; set; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnMoveInsideClick() {
+        _isRoot = false;
+        Modal.StepIn("dive-in").WhenClosed.ContinueWith(t => {
+            if (t.IsCompletedSuccessfully && t.Result) {
+                // is step back
+                _isRoot = true;
+                InvokeAsync(StateHasChanged);
+            }
+        }, TaskScheduler.Current);
+    }
+
+    private void OnCancel()
+        => Modal.Close();
+
+    private void OnBack()
+        => Modal.StepBack();
+
+    private void OnSubmit() {
+        Modal.Close();
+        ToastUI.Show("DiveInModal submitted", "icon-checkmark-circle", 3);
+    }
+
+    public record Model;
+}

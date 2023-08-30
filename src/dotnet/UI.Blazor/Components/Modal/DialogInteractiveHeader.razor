@@ -2,12 +2,16 @@
 
 <div class="modal-header-interactive no-padding-header-decorator">
     <HeaderButton Click="CloseClick">
-        <i class="icon-close"></i>
+        @if (IsMultiStep) {
+            <i class="icon-arrow-left"></i>
+        } else {
+            <i class="icon-close"></i>
+        }
     </HeaderButton>
     <div class="modal-title">
         @Title
     </div>
-    @if (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button) {
+    @if (!IsMultiStep && (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button)) {
         <HeaderButton Class="btn-submit" Type="SubmitButtonType" IsDisabled="@(!CanSubmit)" Click="SubmitClick">
             <span>@SubmitButtonText</span>
         </HeaderButton>
@@ -16,6 +20,7 @@
 
 @code {
     [Parameter] public string Title { set; get; } = "";
+    [Parameter] public bool IsMultiStep { get; set; }
     [Parameter] public string SubmitButtonText { set; get; } = "";
     [Parameter] public ButtonType SubmitButtonType { set; get; } = ButtonType.Button;
     [Parameter] public bool CanSubmit { set; get; } = true;

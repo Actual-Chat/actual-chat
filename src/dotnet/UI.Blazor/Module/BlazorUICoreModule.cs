@@ -4,6 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
+using ActualChat.UI.Blazor.Pages.DiveInModalTestPage;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -87,6 +88,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new InteractiveUI(c));
         services.AddScoped(c => new ErrorUI(c.GetRequiredService<UIActionTracker>()));
         services.AddScoped(c => new History(c));
+        services.AddScoped(c => new HistoryStepper(c));
         services.AddScoped(c => new BackButtonHandler());
         services.AddScoped(_ => new HistoryItemIdFormatter());
         services.AddScoped(c => new ModalUI(c));
@@ -122,6 +124,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             .Add<FeatureRequestModal.Model, FeatureRequestModal>()
             .Add<VisualMediaViewerModal.Model, VisualMediaViewerModal>()
             .Add<DemandUserInteractionModal.Model, DemandUserInteractionModal>()
+            .Add<DiveInModal.Model, DiveInModal>()
             .Add<DiscardModal.Model, DiscardModal>()
         );
         // IBannerViews
