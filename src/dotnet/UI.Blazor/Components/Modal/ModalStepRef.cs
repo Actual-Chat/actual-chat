@@ -28,7 +28,8 @@ public class ModalStepRef : IHasId<Symbol>
     {
         _stepRef = stepRef;
         _ = _stepRef.WhenClosed
-            .ContinueWith(_ => _whenClosedSource.TrySetResult(!_isModalClosing), TaskScheduler.Default);
+            .ContinueWith(_ => _whenClosedSource.TrySetResult(!_isModalClosing),
+                TaskContinuationOptions.ExecuteSynchronously);
         ModalRef = modalRef;
         ParentStepRef = parentStepRef;
     }

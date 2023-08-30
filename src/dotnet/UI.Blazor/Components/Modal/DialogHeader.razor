@@ -1,52 +1,38 @@
 ﻿@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var isInnerStep = Modal.Ref.StepRef != null;
+    var settings = DialogFrame.NarrowViewSettings;
+    var useInteractiveHeader = ScreenSize.IsNarrow() && settings.IsSubmitDefined;
+}
 
-@if (ScreenSize.IsWide()) {
+@if (!useInteractiveHeader) {
     <div class="modal-header">
-        @if (IsMultiStep) {
-            <HeaderButton Click="OnCloseClick">
+        @if (isInnerStep) {
+            <HeaderButton Click="OnBackClick">
                 <i class="icon-arrow-left"></i>
             </HeaderButton>
         }
         <h3 class="modal-title">@Title</h3>
-        @if (HasCloseButton && !IsMultiStep) {
+        @if (HasCloseButton && !isInnerStep) {
             <HeaderButton Click="OnCloseClick">
                 <i class="icon-close"></i>
             </HeaderButton>
         }
     </div>
 } else {
-    var settings = DialogFrame.NarrowViewSettings;
-    var useInteractiveHeader = DialogFrame.NarrowViewSettings.IsSubmitDefined;
-    if (useInteractiveHeader) {
-        var submitText = settings.SubmitButtonText;
-        if (submitText.IsNullOrEmpty())
-            submitText = "Save";
-        <DialogInteractiveHeader
-            Title="@Title"
-            IsMultiStep="@IsMultiStep"
-            CloseClick="OnCloseClick"
-            SubmitButtonType="@settings.SubmitButtonType"
-            SubmitButtonText="@submitText"
-            CanSubmit="@settings.CanSubmit"
-            SubmitClick="@settings.SubmitClick" />
-    } else {
-        <div class="modal-header">
-            @if (IsMultiStep) {
-                <HeaderButton Click="OnCloseClick">
-                    <i class="icon-arrow-left"></i>
-                </HeaderButton>
-            }
-            <div class="modal-title">
-                @Title
-            </div>
-            @if (HasCloseButton) {
-                <HeaderButton Click="OnCloseClick">
-                    <i class="icon-close"></i>
-                </HeaderButton>
-            }
-        </div>
-    }
+    var submitText = settings.SubmitButtonText;
+    if (submitText.IsNullOrEmpty())
+        submitText = "Save";
+    <DialogInteractiveHeader
+        Title="@Title"
+        Modal="@Modal"
+        CloseClick="OnCloseClick"
+        BackClick="OnBackClick"
+        SubmitButtonType="@settings.SubmitButtonType"
+        SubmitButtonText="@submitText"
+        CanSubmit="@settings.CanSubmit"
+        SubmitClick="@settings.SubmitClick" />
 }
 
 @code {
@@ -57,9 +43,11 @@
     // ReSharper disable once RedundantNameQualifier
     [Parameter] public ActualChat.UI.Blazor.Components.DialogFrame DialogFrame { get; set; } = null!;
     [Parameter] public bool HasCloseButton { get; set; }
-    [Parameter] public bool IsMultiStep { get; set; }
     [Parameter] public string Title { get; set; } = "";
 
     private void OnCloseClick()
         => _ = Modal.Close();
+
+    private void OnBackClick()
+        => _ = Modal.StepBack();
 }

@@ -1,17 +1,23 @@
 @namespace ActualChat.UI.Blazor.Components
 
+@{
+    var isInnerStep = Modal.Ref.StepRef != null;
+}
+
 <div class="modal-header-interactive no-padding-header-decorator">
-    <HeaderButton Click="CloseClick">
-        @if (IsMultiStep) {
+    @if (isInnerStep) {
+        <HeaderButton Click="BackClick">
             <i class="icon-arrow-left"></i>
-        } else {
+        </HeaderButton>
+    } else {
+        <HeaderButton Click="CloseClick">
             <i class="icon-close"></i>
-        }
-    </HeaderButton>
+        </HeaderButton>
+    }
     <div class="modal-title">
         @Title
     </div>
-    @if (!IsMultiStep && (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button)) {
+    @if (!isInnerStep && (SubmitClick.HasDelegate || SubmitButtonType != ButtonType.Button)) {
         <HeaderButton Class="btn-submit" Type="SubmitButtonType" IsDisabled="@(!CanSubmit)" Click="SubmitClick">
             <span>@SubmitButtonText</span>
         </HeaderButton>
@@ -20,10 +26,11 @@
 
 @code {
     [Parameter] public string Title { set; get; } = "";
-    [Parameter] public bool IsMultiStep { get; set; }
+    [Parameter] public Modal Modal { get; set; } = null!;
     [Parameter] public string SubmitButtonText { set; get; } = "";
     [Parameter] public ButtonType SubmitButtonType { set; get; } = ButtonType.Button;
     [Parameter] public bool CanSubmit { set; get; } = true;
     [Parameter] public EventCallback SubmitClick { set; get; }
     [Parameter] public EventCallback CloseClick { set; get; }
+    [Parameter] public EventCallback BackClick { set; get; }
 }
