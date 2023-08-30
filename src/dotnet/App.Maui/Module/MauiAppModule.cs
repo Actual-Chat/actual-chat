@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
+using ActualChat.Permissions;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
@@ -28,6 +29,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
 
         // Misc.
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
+        services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c));
 
         // ClientComputedCache
         var appCacheDir = new FilePath(FileSystem.CacheDirectory);

@@ -1,6 +1,7 @@
 ﻿using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
+using ActualChat.Permissions;
 using ActualChat.UI.Blazor.Services;
 using Stl.Locking;
 
@@ -176,6 +177,18 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         }
         MarkStopped();
         return true;
+    }
+
+    internal async Task<bool?> CheckPermission(CancellationToken cancellationToken = default)
+    {
+        await WhenInitialized.ConfigureAwait(false);
+        var state = await _jsRef.InvokeAsync<string>("checkPermission", cancellationToken).ConfigureAwait(false);
+        return state switch {
+            "prompt" => null,
+            "denied" => false,
+            "granted" => true,
+            _ => null,
+        };
     }
 
     internal async Task<bool> RequestPermission(CancellationToken cancellationToken = default)

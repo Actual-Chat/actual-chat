@@ -91,7 +91,7 @@
 
 @code {
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] public IRecordingPermissionRequester RecordingPermissionRequester { get; init; } = null!;
+    [Inject] private IRecordingPermissionRequester RecordingPermissionRequester { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     private bool IsTestPage => ModalModel.IsTestPage;
