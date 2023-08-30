@@ -1,0 +1,21 @@
+.reaction-badge {
+    @apply flex-x justify-center items-center gap-1.5 md:gap-1;
+    @apply h-6 md:h-5;
+    @apply px-2.5 md:px-2;
+    @apply rounded-xl md:rounded-xl;
+    @apply bg-04 text-primary text-base md:text-sm;
+    @apply cursor-pointer;
+}
+.reaction-badge.icons {
+    @apply pr-0.75 md:pr-0.5;
+}
+.reaction-badge .c-emoji {
+    @apply w-5 md:w-4.5 h-5 md:h-4.5;
+}
+.reaction-badge.own {
+    @apply bg-reaction-own;
+    @apply text-primary-title;
+}
+.reaction-badge .c-count {
+    @apply font-semibold;
+}

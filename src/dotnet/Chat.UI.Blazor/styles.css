@@ -10,6 +10,7 @@
 @import './Components/ChatSettings/chat-settings-modal.css';
 @import './Components/ChatView/EmptyChatContent/empty-chat-content.css';
 @import './Components/ChatView/Items/Attachment/attachment.css';
+@import './Components/ChatView/Items/Reactions/reaction-badge.css';
 @import './Components/ChatView/Items/Reactions/message-reactions.css';
 @import './Components/ChatView/chat-view.css';
 @import './Components/ChatMessageEditor/chat-message-editor.css';
