@@ -30,7 +30,15 @@
 }
 
 .guide-modal .c-button-wrapper {
-    @apply flex justify-center;
+    @apply flex;
+}
+
+.guide-modal .c-button-wrapper .btn-content {
+    @apply px-4;
+}
+
+.guide-modal .c-button-wrapper > .c-description {
+    @apply flex ml-4;
 }
 
 .guide-modal .c-button-wrapper i.icon-refresh {

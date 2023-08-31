@@ -23,7 +23,7 @@
         if (!_isTroubleshootGuideTriggered) {
             _isTroubleshootGuideTriggered = true;
             Clocks.CoarseSystemClock
-                .Delay(2000)
+                .Delay(2500)
                 .ContinueWith(_ => DisplayTroubleshootGuide());
         }
     }
