@@ -97,9 +97,8 @@
         base.OnInitialized();
     }
 
-    protected override async Task OnInitializedAsync() {
-        await AudioRecorder.MicrophonePermission.Check(CancellationToken.None);
-    }
+    protected override Task OnInitializedAsync()
+        => AudioRecorder.MicrophonePermission.Check(CancellationToken.None);
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)
@@ -190,9 +189,6 @@
             var modalRef = await ModalUI.Show(model);
             try {
                 await modalRef.WhenClosed.WaitAsync(CancellationToken.None);
-            }
-            catch (OperationCanceledException) {
-                modalRef.Close(true);
             }
             finally {
                 _isTroubleshootGuideTriggered = false;
