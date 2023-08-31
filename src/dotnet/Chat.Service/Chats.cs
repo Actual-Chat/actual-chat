@@ -285,32 +285,40 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
-        var textEntry = await this
-            .GetEntry(session, textEntryId, cancellationToken)
-            .Require(ChatEntry.MustNotBeRemoved)
-            .ConfigureAwait(false);
+        await RemoveTextEntry(session, chatId, textEntryId, author, cancellationToken);
+    }
 
-        // Check constraints
-        if (textEntry.AuthorId != author.Id)
-            throw StandardError.Unauthorized("You can remove only your own messages.");
-        if (textEntry.IsStreaming)
-            throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
+    // [CommandHandler]
+    public virtual async Task OnRemoveTextEntries(Chats_RemoveTextEntries command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
 
-        await Remove(textEntryId).ConfigureAwait(false);
-        if (textEntry.AudioEntryId is { } localAudioEntryId) {
-            var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
-            await Remove(audioEntryId).ConfigureAwait(false);
+        var (session, chatId, localIds) = command;
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
+
+        foreach (var localId in localIds) {
+            var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
+            await RemoveTextEntry(session, chatId, textEntryId, author, cancellationToken);
         }
+    }
 
-        async Task Remove(ChatEntryId entryId1)
-        {
-            var entry1 = await this.GetEntry(session, entryId1, cancellationToken).ConfigureAwait(false);
-            if (entry1 == null || entry1.IsRemoved)
-                return;
+    // [CommandHandler]
+    public virtual async Task OnRestoreTextEntries(Chats_RestoreTextEntries command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
 
-            entry1 = entry1 with { IsRemoved = true };
-            var upsertCommand = new ChatsBackend_UpsertEntry(entry1);
-            await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        var (session, chatId, localIds) = command;
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
+
+        foreach (var localId in localIds) {
+            var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
+            await RestoreTextEntry(session, chatId, textEntryId, author, cancellationToken);
         }
     }
 
@@ -521,5 +529,78 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         return new PrincipalId(account.Id, AssumeValid.Option);
+    }
+
+    private async Task RemoveTextEntry(
+        Session session,
+        ChatId chatId,
+        TextEntryId textEntryId,
+        Author author,
+        CancellationToken cancellationToken)
+    {
+        var textEntry = await this
+            .GetEntry(session, textEntryId, cancellationToken)
+            .Require(ChatEntry.MustNotBeRemoved)
+            .ConfigureAwait(false);
+
+        // Check constraints
+        if (textEntry.AuthorId != author.Id)
+            throw StandardError.Unauthorized("You can remove only your own messages.");
+        if (textEntry.IsStreaming)
+            throw StandardError.Constraint("This entry is still recording, you'll be able to remove it later.");
+
+        await Remove(textEntryId).ConfigureAwait(false);
+        if (textEntry.AudioEntryId is { } localAudioEntryId) {
+            var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
+            await Remove(audioEntryId).ConfigureAwait(false);
+        }
+
+        async Task Remove(ChatEntryId entryId1) {
+            var entry1 = await this.GetEntry(session, entryId1, cancellationToken).ConfigureAwait(false);
+            if (entry1 == null || entry1.IsRemoved)
+                return;
+
+            entry1 = entry1 with { IsRemoved = true };
+            var upsertCommand = new ChatsBackend_UpsertEntry(entry1);
+            await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task RestoreTextEntry(
+        Session session,
+        ChatId chatId,
+        TextEntryId textEntryId,
+        Author author,
+        CancellationToken cancellationToken)
+    {
+        var textEntry = await GetRemovedEntry(textEntryId).ConfigureAwait(false);
+
+        // Check constraints
+        if (textEntry == null)
+            return;
+
+        if (textEntry.AuthorId != author.Id)
+            throw StandardError.Unauthorized("You can restore only your own messages.");
+
+        await Restore(textEntryId).ConfigureAwait(false);
+        if (textEntry.AudioEntryId is { } localAudioEntryId) {
+            var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
+            await Restore(audioEntryId).ConfigureAwait(false);
+        }
+
+        async Task Restore(ChatEntryId entryId1) {
+            var entry1 = await GetRemovedEntry(entryId1).ConfigureAwait(false);
+            if (entry1 == null || !entry1.IsRemoved)
+                return;
+
+            entry1 = entry1 with { IsRemoved = false };
+            var upsertCommand = new ChatsBackend_UpsertEntry(entry1);
+            await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        async ValueTask<ChatEntry?> GetRemovedEntry(ChatEntryId entryId) {
+            await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
+            return await Backend.GetRemovedEntry(entryId, cancellationToken).ConfigureAwait(false);
+        }
     }
 }

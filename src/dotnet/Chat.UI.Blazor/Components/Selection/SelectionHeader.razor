@@ -1,4 +1,5 @@
 @using System.Text
+@using ActualChat.UI.Blazor.Services.Internal
 @inherits ComputedStateComponent<SelectionHeader.Model>
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
@@ -60,6 +61,13 @@
             <i class="icon-copy !text-lg"></i>
         </HeaderButton>
 
+        <HeaderButton
+            Click="() => OnDelete(m.Selection)"
+            Tooltip="Delete selected messages"
+            TooltipPosition="FloatingPosition.Bottom">
+            <i class="icon-trash03"></i>
+        </HeaderButton>
+
         @if (messageCount == 1) {
             <HeaderButton
                 Click="() => OnReply(m.Selection.Single())">
@@ -85,6 +93,7 @@
     [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
+    [Inject] private ToastUI ToastUI { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -126,6 +135,21 @@
 
         await ClipboardUI.WriteText(sb.ToString());
         SelectionUI.Clear();
+    }
+
+    private async Task OnDelete(IReadOnlyCollection<ChatEntryId> selection) {
+        var chatId = selection.Select(x => x.ChatId).First();
+        var localIds = selection.Select(x => x.LocalId).ToApiArray();
+        var removeCommand = new Chats_RemoveTextEntries(Session, chatId, localIds);
+        await UICommander.Run(removeCommand);
+
+        ToastUI.Show("Messages deleted", Restore, "Undo", 5);
+        SelectionUI.Clear();
+
+        void Restore() {
+            var restoreCommand = new Chats_RestoreTextEntries(Session, chatId, localIds);
+            _ = UICommander.Run(restoreCommand);
+        }
     }
 
     private async Task OnReply(ChatEntryId chatEntryId) {
