@@ -20,7 +20,7 @@
         if (Owner == null)
             throw StandardError.Constraint("<DiveInDialogFramePage> component must be nested into <DiveInDialogFrame> component.");
         Owner.RegisterPage(this);
-        _pageContext = new DiveInModalPageContext(Owner, Title);
+        _pageContext = new DiveInModalPageContext(Owner, Title, NarrowViewSettings);
         _renderBody = builder => Body(_pageContext).Invoke(builder);
         if (Buttons != null)
             _renderButtons = builder => Buttons(_pageContext).Invoke(builder);
@@ -33,5 +33,5 @@
     internal string? GetTitle()
         => _pageContext.Title;
     internal DialogFrameNarrowViewSettings? GetNarrowViewSettings()
-        => NarrowViewSettings;
+        => _pageContext.NarrowViewSettings;
 }

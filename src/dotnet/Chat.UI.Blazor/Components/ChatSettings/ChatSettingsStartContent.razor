@@ -6,9 +6,13 @@
 
 @{
     var m = State.Value;
+    if (m.Rules == null)
+        return;
+    if (_form == null)
+        return;
 }
 
-@if (m.Rules != null) {
+<Form Class="h-full" @ref="@_formRef" Model="@_form">
     @if (m.Rules.CanEditProperties()) {
         <FormBlock>
             <DataAnnotationsValidator/>
@@ -133,7 +137,7 @@
                 </Right>
             </TileItem>
         </FormBlock>
-        @if (m.AllowEditIsTemplate) {
+        @if (m.AllowEditIsTemplate && _form.IsPublic) {
             <FormBlock>
                 <TileItem class="field-is-template">
                     <Icon>
@@ -154,7 +158,7 @@
     }
     @if (m.Rules.CanManageMembers()) {
         <FormBlock>
-            <TileItem Class="item-manage-members" Click="ManageMembersClick">
+            <TileItem Class="item-manage-members" Click="OnManageMembersClick">
                 <Icon>
                     <i class="icon-people"></i>
                 </Icon>
@@ -167,11 +171,19 @@
             </TileItem>
         </FormBlock>
     }
-}
+    @* Render buttons inside Form component with using RenderIntoSlot to get appropriate updates when Form.IsValid changed *@
+    <RenderIntoSlot Name="@ChatSettingsStartPage.ButtonsSlotName">
+        <Button Type="@ButtonType.Button" IsDisabled="@(!(_formRef?.IsValid ?? false))" Class="btn-primary btn-modal" Click="OnSubmit">Save</Button>
+        <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
+    </RenderIntoSlot>
+</Form>
+
+
 
 @code {
     private const int MaxInvitesCount = 5;
-    private FormModel _form = null!;
+    private Form?_formRef;
+    private FormModel? _form = null!;
     private Symbol _newInviteId = Symbol.Empty;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -185,17 +197,33 @@
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
-    [Parameter, EditorRequired] public FormModel Model { get; set; } = null!;
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
-    [Parameter, EditorRequired] public EventCallback ManageMembersClick { get; set; }
+    [Parameter, EditorRequired] public DiveInModalPageContext Context { get; set; } = null!;
 
-    protected ChatId ChatId { get; private set; }
+    private ChatId ChatId { get; set; }
 
-    protected override void OnParametersSet()
-    {
+    protected override void OnInitialized() {
+        base.OnInitialized();
         ChatId = new ChatId(ChatSid);
-        _form = Model;
-        base.OnParametersSet();
+        Context.NarrowViewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnSubmit);
+    }
+
+    protected override async Task OnInitializedAsync() {
+        const string formBagKey = "form";
+        _form = Context.Bag.Get<FormModel>(formBagKey);
+        if (_form != null)
+            return;
+        var chat = await Chats.Get(Session, ChatId, default).Require();
+        _form = new FormModel(ComponentIdGenerator) {
+            Title = chat.Title,
+            Picture = chat.Picture?.ToPicture(),
+            IsPublic = chat.IsPublic,
+            IsTemplate = chat.IsTemplate,
+            AllowGuestAuthors = chat.AllowGuestAuthors,
+            AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
+            ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
+        };
+        Context.Bag.Set(formBagKey, _form);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
@@ -221,12 +249,39 @@
             Rules = rules,
             Link = link,
             Invites = invites,
-            AllowEditIsTemplate = allowEditIsTemplateChat && _form.IsPublic,
+            AllowEditIsTemplate = allowEditIsTemplateChat,
             MembersCount = allAuthorIds.Count,
         };
     }
 
-    public async Task Save() {
+    private void OnImagePicked(MediaContent mediaContent) {
+        _form!.Picture = new (mediaContent);
+        StateHasChanged();
+    }
+
+    private async Task OnNewInviteClick() {
+        // TODO: make it configurable
+        var invite = Invite.New(10000, new ChatInviteOption(ChatId));
+        invite = await UICommander.Run(new Invites_Generate(Session, invite));
+        _newInviteId = invite.Id;
+    }
+
+    private void OnManageMembersClick()
+        => Context.StepIn(ChatSettingsModal.PageIds.Members);
+
+    private void OnCancel()
+        => Context.Close();
+
+    private async Task OnSubmit() {
+        if (_formRef == null)
+            return;
+        if (!_formRef.IsValid)
+            return;
+        await Save();
+        Context.Close();
+    }
+
+    private async Task Save() {
         var chat = await Chats.Get(Session, ChatId, default).Require();
         var newChat = chat with {
             Title = _form.Title,
@@ -240,18 +295,6 @@
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
         await UICommander.Run(command);
-    }
-
-    private void OnImagePicked(MediaContent mediaContent) {
-        _form.Picture = new (mediaContent);
-        StateHasChanged();
-    }
-
-    private async Task OnNewInviteClick() {
-        // TODO: make it configurable
-        var invite = Invite.New(10000, new ChatInviteOption(ChatId));
-        invite = await UICommander.Run(new Invites_Generate(Session, invite));
-        _newInviteId = invite.Id;
     }
 
     public sealed class FormModel {

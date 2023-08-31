@@ -3,65 +3,17 @@
 
 <DiveInDialogFramePage
     Id="@ChatSettingsModal.PageIds.Start"
-    IsStartPage="true"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnSubmit)">
+    IsStartPage="true">
     <Body Context="pageContext">
-        <Form Class="h-full" @ref="@_formRef" EditContext="_formEditContext">
-            <ChatSettingsStartContent
-                @ref="_pageContent"
-                Model="@_form"
-                ChatSid="@ChatSid"
-                ManageMembersClick="@(() => pageContext.StepIn(ChatSettingsModal.PageIds.Members))" />
-            @* Render buttons inside Form component with using RenderIntoSlot to get appropriate updates when Form.IsValid changed *@
-            <RenderIntoSlot Name="ChatSettingsModal-PageButtons">
-                <Button Type="@ButtonType.Button" IsDisabled="@(!(_formRef?.IsValid ?? false))" Class="btn-primary btn-modal" Click="OnSubmit">Save</Button>
-                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
-            </RenderIntoSlot>
-        </Form>
+        <ChatSettingsStartContent ChatSid="@ChatSid" Context="@pageContext" />
     </Body>
     <Buttons>
-        <RenderSlot Name="ChatSettingsModal-PageButtons" />
+        <RenderSlot Name="@ButtonsSlotName" />
     </Buttons>
 </DiveInDialogFramePage>
 
 @code {
-    private Form?_formRef;
-    private ChatSettingsStartContent.FormModel? _form;
-    private EditContext? _formEditContext;
-    private ChatSettingsStartContent? _pageContent;
+    public const string ButtonsSlotName = "ChatSettingsModal-PageButtons";
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-
-    [CascadingParameter] public DiveInDialogFrame Owner { get; set; } = null!;
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
-
-    protected override async Task OnParametersSetAsync() {
-        var chatId = new ChatId(ChatSid);
-        var chat = await Chats.Get(Session, chatId, default).Require();
-        _form ??= new ChatSettingsStartContent.FormModel(ComponentIdGenerator);
-        _form.Title = chat.Title;
-        _form.Picture = chat.Picture?.ToPicture();
-        _form.IsPublic = chat.IsPublic;
-        _form.IsTemplate = chat.IsTemplate;
-        _form.AllowGuestAuthors = chat.AllowGuestAuthors;
-        _form.AllowAnonymousAuthors = chat.AllowAnonymousAuthors;
-        _form.ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload";
-        _formEditContext ??= new EditContext(_form);
-    }
-
-    private void OnCancel()
-        => Modal.Close();
-
-    private async Task OnSubmit() {
-        if (_pageContent == null || _formEditContext == null)
-            return;
-        if (!_formEditContext.Validate())
-            return;
-        if (_pageContent != null)
-            await _pageContent.Save();
-        Modal.Close();
-    }
 }
