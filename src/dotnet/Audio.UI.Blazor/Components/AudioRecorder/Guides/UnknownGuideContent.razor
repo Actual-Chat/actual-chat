@@ -4,22 +4,25 @@
 
 <img draggable="false" src="/dist/images/guide/mic-access.png" alt="mic access">
 <div class="c-text text-title-1">
-    We are still trying to start recording of your voice messages and you can help us
+    It appears that Actual Chat is unable to start audio recording.
+    The most likely cause is that the microphone access permission isn't granted,
+    although it could also be due to an issue on our end.
 </div>
 <div class="c-text text-headline-1">
-    1. Please try to reload the app pressing the button below and try start recording again.
+    To address this problem:
 </div>
 
 <div class="c-button-wrapper">
-    <Button Click="@OnReloadClick"><i class="icon-refresh"></i> Reload</Button>
+    <Button Click="@OnReloadClick"><i class="icon-refresh"></i> Click here</Button>
+    <div class="c-description">to perform a hot restart of the app.</div>
 </div>
 
 <div class="c-text text-headline-1">
-    2. Close the app, reopen it and start recording.
+    If that doesn't help, try closing and reopening the app.
 </div>
 
 <div class="c-text text-headline-1">
-    Thanks for cooperation!
+    If the above steps are not effective, please verify whether the app has microphone access permission.
 </div>
 
 @code {
