@@ -24,9 +24,10 @@ public class AudioBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
         services.AddScoped<AudioInitializer>(c => new AudioInitializer(c));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
-        if (HostInfo.AppKind != AppKind.MauiApp)
+        if (HostInfo.AppKind != AppKind.MauiApp) {
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c));
-        services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
+            services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
+        }
 
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
