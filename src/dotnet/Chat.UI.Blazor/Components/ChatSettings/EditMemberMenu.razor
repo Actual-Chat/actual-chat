@@ -1,0 +1,19 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits MenuBase
+
+<h3>EditMemberMenu</h3>
+<AuthorBadge AuthorSid="@AuthorId" />
+
+@code {
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    private AuthorId AuthorId { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sAuthorId ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        AuthorId = new AuthorId(sAuthorId);
+    }
+}

@@ -1,0 +1,111 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Search
+@inherits ComputedStateComponent<ManageMembersContent.ComputedModel>
+
+@{
+    var m = State.Value;
+    Context.Title = $"{m.MembersCount} members";
+}
+
+<TileItem Click="@OnInviteClick">
+    <Icon><i class="text-2xl icon-person text-accent"></i></Icon>
+    <Content><span class="text-accent">Add members</span></Content>
+</TileItem>
+
+<SearchBoxNew
+    Placeholder="Search"
+    MaxLength="@Constants.Chat.MaxSearchFilterLength"
+    TextChanged="@OnFilter"/>
+
+<div>
+    @foreach (var authorId in m.AuthorIds) {
+        <div class="flex-x"
+             data-menu="@(MenuRef.New<EditMemberMenu>(authorId).ToString())"
+             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            <div class="grow">
+                <AuthorBadge
+                    @key="@authorId"
+                    AuthorSid="@authorId"/>
+            </div>
+            <div
+                class="menu"
+                data-menu="@(MenuRef.New<EditMemberMenu>(authorId).ToString())"
+                data-menu-trigger="@MenuTrigger.Primary"
+                data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+
+                <ButtonRound Class="blackout" ContentClass="!bg-transparent">
+                    <i class="icon-more-vertical text-2xl"></i>
+                </ButtonRound>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
+    private ChatId ChatId { get; set; }
+
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = null!;
+    [Parameter, EditorRequired] public DiveInModalPageContext Context { get; set; } = null!;
+
+    private ModalUI ModalUI => Services.GetRequiredService<ModalUI>();
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+        ChatId = new ChatId(ChatSid);
+    }
+
+    private void OnFilter(string filter) {
+        _searchPhrase = filter.ToSearchPhrase(true, false);
+        _ = State.Recompute();
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.None,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var allAuthorIds = await Authors.ListAuthorIds(Session, ChatId, cancellationToken);
+        var authors = (await allAuthorIds
+            .Select(async authorId => {
+                var authorTask = Authors.Get(Session, ChatId, authorId, cancellationToken);
+                var author = await authorTask.ConfigureAwait(false);
+                var authorName = author?.Avatar.Name ?? "";
+                return (authorId, authorName);
+            })
+            .Collect()) // Add concurrency
+            .ToList();
+
+        if (_searchPhrase.IsEmpty) {
+            Comparison<(AuthorId, string)> comparison = (info1, info2)
+                => OrdinalCompare(info1.Item2, info2.Item2);
+            authors.Sort(comparison);
+        } else {
+            authors = authors
+                .WithSearchMatchRank(_searchPhrase, c => c.authorName)
+                .FilterBySearchMatchRank()
+                .OrderBySearchMatchRank()
+                .WithoutSearchMatchRank()
+                .ToList();
+        }
+
+        return new() {
+            MembersCount = allAuthorIds.Count,
+            AuthorIds = authors.Select(c => c.Item1).ToApiArray(),
+        };
+    }
+
+    private Task OnInviteClick()
+        => ModalUI.Show(new AddMemberModal.Model(ChatId));
+
+    public sealed record ComputedModel {
+        public static ComputedModel None { get; } = new();
+        public int? MembersCount { get; init; }
+        public ApiArray<AuthorId> AuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
+    }
+}

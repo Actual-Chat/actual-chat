@@ -34,11 +34,7 @@ public static class ChatListExt
     public static IEnumerable<(ChatInfo ChatInfo, double Rank)> WithSearchMatchRank(
         this IEnumerable<ChatInfo> chats,
         SearchPhrase searchPhrase)
-        => chats.Select(c => (ChatInfo: c, Rank: searchPhrase.GetMatchRank(c.Chat.Title)));
-
-    public static IEnumerable<ChatInfo> WithoutSearchMatchRank(
-        this IEnumerable<(ChatInfo ChatInfo, double Rank)> rankedChats)
-        => rankedChats.Select(c => c.ChatInfo);
+        => chats.WithSearchMatchRank(searchPhrase, c => c.Chat.Title);
 
     public static IEnumerable<(ChatInfo ChatInfo, double Rank)> FilterBySearchMatchRank(
         this IEnumerable<(ChatInfo ChatInfo, double Rank)> rankedChats,
@@ -46,10 +42,6 @@ public static class ChatListExt
         => selectedChatId.IsNone
             ? rankedChats.Where(x => x.Rank > 0)
             : rankedChats.Where(x => x.ChatInfo.Id == selectedChatId || x.Rank > 0);
-
-    public static IEnumerable<(ChatInfo ChatInfo, double Rank)> OrderBySearchMatchRank(
-        this IEnumerable<(ChatInfo ChatInfo, double Rank)> rankedChats)
-        => rankedChats.OrderByDescending(x => x.Rank);
 
     public static IEnumerable<ChatInfo> OrderBy(
         this IEnumerable<ChatInfo> chats,

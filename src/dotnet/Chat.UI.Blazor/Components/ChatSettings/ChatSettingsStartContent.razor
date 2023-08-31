@@ -1,0 +1,303 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.Invite
+@using ActualChat.Media
+@inherits ComputedStateComponent<ChatSettingsStartContent.ComputedModel>
+
+@{
+    var m = State.Value;
+}
+
+@if (m.Rules != null) {
+    @if (m.Rules.CanEditProperties()) {
+        <FormBlock>
+            <DataAnnotationsValidator/>
+
+            <PicUpload
+                UploadUrl="@_form.ImageUploadUrl"
+                Picked="OnImagePicked"
+                Size="SquareSize.Size24"
+                Title="@_form.Title"
+                Picture="@_form.Picture">
+            </PicUpload>
+
+            <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
+                <TextBox
+                    @bind-Value="@_form.Title"
+                    Id="@_form.TitleId"
+                    Placeholder="Chat title*"
+                    ClearButton="true"/>
+            </FormSection>
+        </FormBlock>
+
+        <FormBlock Title="Chat type">
+            <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
+                <TileItem>
+                    <Icon>
+                        <InputRadio id="@_form.IsPublicTrueFormId" Value="@true"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
+                    </Content>
+                    <Caption>
+                        <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this chat by navigating to its URL"></Label>
+                    </Caption>
+                </TileItem>
+                <TileItem>
+                    <Icon>
+                        <InputRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>
+                    </Content>
+                    <Caption>
+                        <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
+                    </Caption>
+                </TileItem>
+            </InputRadioGroup>
+        </FormBlock>
+
+
+        @if (_form.IsPublic) {
+            @if (m.Link is { } publicUrl) {
+                _form.PublicUrl = publicUrl.ShortLocalUrl;
+                <FormBlock>
+                    <TileItem Class="field-chat-public-url">
+                        <Icon>
+                            <i class="icon-link-2"></i>
+                        </Icon>
+                        <Content>
+                            <FormSection For="() => _form.PublicUrl" InputId="@_form.PublicUrlFormId"
+                                         Label="Public link" IsLabelInsideInput="true">
+                                <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
+                            </FormSection>
+                        </Content>
+                        <Right>
+                            <CopyToClipboard Text="@publicUrl.AbsoluteUrl"/>
+                        </Right>
+                    </TileItem>
+                </FormBlock>
+            }
+        } else {
+            var canInvite = m.Rules.CanInvite();
+            var displayLinks = canInvite || m.Invites.Count > 0;
+            var title = canInvite ? "Manage links" : "Private links";
+            @if (displayLinks) {
+                <FormBlock Title="@title">
+                    @if (m.Invites.Count > 0) {
+                        <InviteList
+                            Invites="m.Invites"
+                            LinkFormat="join/{0}"
+                            NewInviteId="@_newInviteId"
+                            AllowRevoke="true" />
+                    }
+                    @if (canInvite) {
+                        <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
+                            <i class="icon-plus text-xl"></i>
+                            New private join link
+                        </Button>
+                    }
+                </FormBlock>
+            }
+        }
+
+        <FormBlock>
+            @if (_form.IsPublic) {
+                <TileItem class="field-allow-guest">
+                    <Icon>
+                        <i class="icon-guest"></i>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
+                    </Content>
+                    <Caption>
+                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
+                    </Caption>
+                    <Right>
+                        <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
+                    </Right>
+                </TileItem>
+            }
+            <TileItem class="field-allow-anonym">
+                <Icon>
+                    <i class="icon-anonym"></i>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+                </Caption>
+                <Right>
+                    <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
+                </Right>
+            </TileItem>
+        </FormBlock>
+        @if (m.AllowEditIsTemplate) {
+            <FormBlock>
+                <TileItem class="field-is-template">
+                    <Icon>
+                        <i class="icon-file-text"></i>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_form.IsTemplateFormId" Text="Use chat as a template"></Label>
+                    </Content>
+                    <Caption>
+                        <Label InputId="@_form.IsTemplateFormId" Text="Template for embedded chats"></Label>
+                    </Caption>
+                    <Right>
+                        <ToggleEdit Id="@_form.IsTemplateFormId" @bind-Value="_form.IsTemplate"/>
+                    </Right>
+                </TileItem>
+            </FormBlock>
+        }
+    }
+    @if (m.Rules.CanManageMembers()) {
+        <FormBlock>
+            <TileItem Class="item-manage-members" Click="ManageMembersClick">
+                <Icon>
+                    <i class="icon-people"></i>
+                </Icon>
+                <Content>
+                    @m.MembersCount Members
+                </Content>
+                <Right>
+                    <i class="icon-chevron-right text-3xl"></i>
+                </Right>
+            </TileItem>
+        </FormBlock>
+    }
+}
+
+@code {
+    private const int MaxInvitesCount = 5;
+    private FormModel _form = null!;
+    private Symbol _newInviteId = Symbol.Empty;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
+    [Inject] private IInvites Invites { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+
+    [Parameter, EditorRequired] public FormModel Model { get; set; } = null!;
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
+    [Parameter, EditorRequired] public EventCallback ManageMembersClick { get; set; }
+
+    protected ChatId ChatId { get; private set; }
+
+    protected override void OnParametersSet()
+    {
+        ChatId = new ChatId(ChatSid);
+        _form = Model;
+        base.OnParametersSet();
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.None,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        var rules = await Chats.GetRules(Session, chatId, cancellationToken);
+        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
+        var invites = await Invites.ListChatInvites(Session, chatId, cancellationToken);
+        var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
+        invites = invites
+            .Where(c => c.ExpiresOn > threshold)
+            .OrderByDescending(c => c.ExpiresOn)
+            .ToApiArray();
+        var link = Links.Chat(chatId).ToDisplayUrl(UrlMapper);
+        var allowEditIsTemplateChat = await Features.Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
+        return new() {
+            Rules = rules,
+            Link = link,
+            Invites = invites,
+            AllowEditIsTemplate = allowEditIsTemplateChat && _form.IsPublic,
+            MembersCount = allAuthorIds.Count,
+        };
+    }
+
+    public async Task Save() {
+        var chat = await Chats.Get(Session, ChatId, default).Require();
+        var newChat = chat with {
+            Title = _form.Title,
+            IsPublic = _form.IsPublic,
+            IsTemplate = _form.IsTemplate,
+            AllowGuestAuthors = _form.AllowGuestAuthors,
+            AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
+            MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
+            };
+        var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
+            Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
+        });
+        await UICommander.Run(command);
+    }
+
+    private void OnImagePicked(MediaContent mediaContent) {
+        _form.Picture = new (mediaContent);
+        StateHasChanged();
+    }
+
+    private async Task OnNewInviteClick() {
+        // TODO: make it configurable
+        var invite = Invite.New(10000, new ChatInviteOption(ChatId));
+        invite = await UICommander.Run(new Invites_Generate(Session, invite));
+        _newInviteId = invite.Id;
+    }
+
+    public sealed class FormModel {
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+
+        public string PublicUrl { get; set; } = "";
+        public Picture? Picture { get; set; }
+        public bool IsPublic { get; set; }
+        public bool IsTemplate { get; set; }
+        public bool AllowGuestAuthors { get; set; }
+        public bool AllowAnonymousAuthors { get; set; }
+        public string ImageUploadUrl { get; set; } = "";
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string PictureFormId { get; }
+        public string PublicUrlFormId { get; }
+        public string IsPublicFormId { get; }
+        public string IsPublicTrueFormId { get; }
+        public string IsPublicFalseFormId { get; }
+        public string IsTemplateFormId { get; }
+        public string AllowGuestAuthorsFormId { get; }
+        public string AllowAnonymousAuthorsFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            TitleId = $"{FormId}-title";
+            PictureFormId = $"{FormId}-picture";
+            PublicUrlFormId = $"{FormId}-public-url";
+            IsPublicFormId = $"{FormId}-is-public";
+            IsPublicTrueFormId = IsPublicFormId + "-true";
+            IsPublicFalseFormId = IsPublicFormId + "-false";
+            IsTemplateFormId = $"{FormId}-is-template";
+            AllowGuestAuthorsFormId = $"{FormId}-allows-guests";
+            AllowAnonymousAuthorsFormId = $"{FormId}-allows-anonymous";
+        }
+    }
+
+    public sealed record ComputedModel {
+        public static ComputedModel None { get; } = new();
+
+        public AuthorRules? Rules { get; init; }
+        public DisplayUrl? Link { get; init; }
+        public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
+        public bool AllowEditIsTemplate { get; init; }
+        public int MembersCount { get; init; }
+    }
+}

@@ -1,18 +1,35 @@
 ﻿namespace ActualChat.UI.Blazor.Components;
 
-public class DiveInModalPageContext(IDiveInModalContext modalContext, string? title)
+public class DiveInModalPageContext
 {
-    public string? Title { get; set; } = title;
+    private string? _title;
+    private readonly IDiveInModalContext _modalContext;
+
+    public string? Title {
+        get => _title;
+        set {
+            if (OrdinalEquals(_title, value))
+                return;
+            _title = value;
+            StateHasChanged();
+        }
+    }
+
+    public DiveInModalPageContext(IDiveInModalContext modalContext, string? title)
+    {
+        _modalContext = modalContext;
+        _title = title;
+    }
 
     public void StepIn(string pageId)
-        => modalContext.StepIn(pageId);
+        => _modalContext.StepIn(pageId);
 
     public void Back()
-        => modalContext.Back();
+        => _modalContext.Back();
 
     public void Close()
-        => modalContext.Close();
+        => _modalContext.Close();
 
     public void StateHasChanged()
-        => modalContext.StateHasChanged();
+        => _modalContext.StateHasChanged();
 }

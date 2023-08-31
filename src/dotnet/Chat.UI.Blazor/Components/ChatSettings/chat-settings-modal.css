@@ -1,6 +1,6 @@
 ﻿.edit-chat-settings-modal {
     @apply text-03;
-    @apply md:w-90;
+    @apply h-full md:w-90;
 }
 
 .edit-chat-settings-modal.modal-frame {
@@ -53,4 +53,16 @@
 
 .wide .field-chat-title input {
     @apply h-10;
+}
+
+.edit-chat-settings-modal .tile-item-icon i {
+    @apply text-2xl;
+}
+
+.tile-item.item-manage-members .tile-item-right {
+    @apply min-w-8 justify-start;
+    @apply text-icons-01;
+}
+.tile-item.item-manage-members .tile-item-right i {
+    @apply -ml-2;
 }

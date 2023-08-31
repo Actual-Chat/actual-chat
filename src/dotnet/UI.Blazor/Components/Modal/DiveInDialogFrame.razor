@@ -1,5 +1,4 @@
-﻿@using ActualChat.UI.Blazor.Pages.DiveInModalTestPage
-@namespace ActualChat.UI.Blazor.Components
+﻿@namespace ActualChat.UI.Blazor.Components
 @implements IDiveInModalContext;
 
 <CascadingValue IsFixed="true" Value="@this">
@@ -34,6 +33,7 @@
 @code {
     private readonly List<DiveInDialogFramePage> _pages = new();
     private DiveInDialogFramePage? _currentPage;
+    private DiveInDialogFramePage? _lastRenderedPage;
     private DiveInDialogFramePage? _startPage;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
