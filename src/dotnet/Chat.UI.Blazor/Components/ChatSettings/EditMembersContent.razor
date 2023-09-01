@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Search
-@inherits ComputedStateComponent<ManageMembersContent.ComputedModel>
+@inherits ComputedStateComponent<EditMembersContent.ComputedModel>
 
 @{
     var m = State.Value;
@@ -22,7 +22,7 @@
 <div class="list">
     @foreach (var authorId in m.AuthorIds) {
         <li class="flex-x"
-             data-menu="@(MenuRef.New<EditMembersMenu>(authorId).ToString())"
+             data-menu="@(MenuRef.New<EditMemberMenu>(authorId).ToString())"
              data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="grow">
                 <AuthorBadge
@@ -31,7 +31,7 @@
             </div>
             <div
                 class="menu"
-                data-menu="@(MenuRef.New<EditMembersMenu>(authorId).ToString())"
+                data-menu="@(MenuRef.New<EditMemberMenu>(authorId).ToString())"
                 data-menu-trigger="@MenuTrigger.Primary"
                 data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
 
