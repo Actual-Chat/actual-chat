@@ -13,6 +13,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     private IAvatars? _avatars;
     private IChats? _chats;
     private IChatsBackend? _chatsBackend;
+    private IRoles? _roles;
 
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
@@ -22,6 +23,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     private IServerKvas ServerKvas { get; }
     private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
+    private IRoles Roles => _roles ??= Services.GetRequiredService<IRoles>();
 
     public Authors(IServiceProvider services) : base(services)
     {
@@ -252,7 +254,12 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             return;
 
         if (chat.Rules.Account.Id == author.UserId)
-            throw StandardError.Constraint("You can not remove yourself from chat members");
+            throw StandardError.Constraint("You can not remove yourself from the chat members.");
+
+        var ownerIds = await Roles.ListOwnerIds(session, chatId, cancellationToken).ConfigureAwait(false);
+        var isOwner = ownerIds.Contains(authorId);
+        if (isOwner)
+            throw StandardError.Constraint("You can not remove an owner from the chat members.");
 
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,

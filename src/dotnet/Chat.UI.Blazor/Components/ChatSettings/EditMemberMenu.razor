@@ -5,24 +5,33 @@
     var m = State.Value;
     if (m == null)
         return;
+    var statusText = m.IsOwner ? "Owner" : null;
 }
 
-<h3>EditMembersMenu</h3>
-<AuthorBadge AuthorSid="@AuthorId" />
+<div class="edit-member-menu">
 
-@if (!m.IsOwn) {
-    <MenuEntrySeparator/>
-    <MenuEntry
-        Class="warning-item"
-        Icon="icon-minus-circle"
-        Text="Remove from group"
-        Click="@(() => OnRemoveFromGroupClick(m))">
-    </MenuEntry>
-}
+    <AuthorBadge
+        AuthorSid="@AuthorId"
+        ShowPresence="true"
+        ShowStatusText="@(statusText != null)"
+        StatusText="@statusText"/>
+
+    @if (!m.IsOwn) {
+        <MenuEntrySeparator/>
+        <MenuEntry
+            Class="warning-item"
+            Icon="icon-minus-circle"
+            Text="Remove from group"
+            Click="@(() => OnRemoveFromGroupClick(m))">
+        </MenuEntry>
+    }
+
+</div>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuthors Author { get; init; } = null!;
+    [Inject] private IRoles Roles { get; init; } = null!;
     [Inject] private UICommander Commander { get; init; } = null!;
 
     private ToastUI ToastUI => Services.GetRequiredService<ToastUI>();
@@ -38,12 +47,15 @@
     }
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var author = await Author.Get(Session, AuthorId.ChatId, AuthorId, default);
+        var chatId = AuthorId.ChatId;
+        var author = await Author.Get(Session, chatId, AuthorId, default);
         if (author == null)
             return null;
-        var ownAuthor = await Author.GetOwn(Session, AuthorId.ChatId, cancellationToken);
+        var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken);
+        var ownAuthor = await Author.GetOwn(Session, chatId, cancellationToken);
         var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
-        return new Model(author, isOwn);
+        var isOwner = ownerIds.Contains(author.Id);
+        return new Model(author, isOwner, isOwn);
     }
 
     private async Task OnRemoveFromGroupClick(Model m) {
@@ -59,5 +71,5 @@
         }
     }
 
-    public record Model(Author Author, bool IsOwn);
+    public record Model(Author Author, bool IsOwner, bool IsOwn);
 }

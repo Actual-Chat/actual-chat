@@ -23,11 +23,12 @@
     [Parameter] public string NameClass { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowStatusText { get; set; }
+    [Parameter] public string? StatusText { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
-        _statusText = GetStatusText();
-        _statusTextClass = GetStatusTextClass();
+        _statusText = StatusText ?? GetStatusText();
+        _statusTextClass = "c-status " + GetStatusTextClass();
     }
 
     private string GetContentClass()
@@ -41,5 +42,5 @@
         };
 
     private string GetStatusTextClass()
-        => (int)Size < 12 ? "text-xxs leading-3" : "";
+        => (int)Size < 12 ? "c-status-small" : "";
 }

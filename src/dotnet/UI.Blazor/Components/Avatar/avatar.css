@@ -12,6 +12,9 @@
 .avatar-name > .c-anonymous {
     @apply sup;
 }
+.avatar-badge .c-status.c-status-small {
+    @apply text-xxs leading-3;
+}
 
 .avatar-text {
     @apply flex-x justify-center items-center;

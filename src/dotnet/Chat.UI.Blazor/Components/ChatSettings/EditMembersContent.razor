@@ -21,24 +21,33 @@
 
 <div class="list">
     @foreach (var authorId in m.AuthorIds) {
-        <li class="flex-x"
-             data-menu="@(MenuRef.New<EditMemberMenu>(authorId).ToString())"
-             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+        var isOwn = m.IsOwn(authorId);
+        var isOwner = m.IsOwner(authorId);
+        var statusText = FormatStatusText(isOwner, isOwn);
+        /* At the moment there is no available actions for owners and own membership hence do not show menu  */
+        var showMenu = !(isOwn || isOwner);
+        var dataMenuAttr = showMenu ? MenuRef.New<EditMemberMenu>(authorId).ToString() : null;
+        <li data-menu="@dataMenuAttr"
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="grow">
                 <AuthorBadge
                     @key="@authorId"
-                    AuthorSid="@authorId"/>
+                    AuthorSid="@authorId"
+                    ShowPresence="true"
+                    ShowStatusText="@(statusText != null)"
+                    StatusText="@statusText" />
             </div>
-            <div
-                class="menu"
-                data-menu="@(MenuRef.New<EditMemberMenu>(authorId).ToString())"
-                data-menu-trigger="@MenuTrigger.Primary"
-                data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+            @if (dataMenuAttr != null) {
+                <div class="menu"
+                     data-menu="@dataMenuAttr"
+                     data-menu-trigger="@MenuTrigger.Primary"
+                     data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
 
-                <ButtonRound Class="blackout" ContentClass="!bg-transparent">
-                    <i class="icon-more-vertical text-2xl"></i>
-                </ButtonRound>
-            </div>
+                    <ButtonRound Class="blackout" ContentClass="!bg-transparent">
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </ButtonRound>
+                </div>
+            }
         </li>
     }
 </div>
@@ -48,6 +57,7 @@
     private ChatId ChatId { get; set; }
 
     [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IRoles Roles { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = null!;
@@ -58,6 +68,8 @@
     protected override void OnInitialized() {
         base.OnInitialized();
         ChatId = new ChatId(ChatSid);
+        if (ChatId.IsPeerChat(out _))
+            throw StandardError.NotSupported("Peer chat id should not be provided.");
         // Workaround: fake submit command to have interactive dialog header.
         // TODO(DF): improve header.
         Context.NarrowViewSettings = DialogFrameNarrowViewSettings.SubmitButton(() => {});
@@ -79,6 +91,8 @@
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var allAuthorIds = await Authors.ListAuthorIds(Session, ChatId, cancellationToken);
+        var ownerIds = await Roles.ListOwnerIds(Session, ChatId, cancellationToken);
+        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken);
         var authors = (await allAuthorIds
             .Select(async authorId => {
                 var authorTask = Authors.Get(Session, ChatId, authorId, cancellationToken);
@@ -105,14 +119,34 @@
         return new() {
             MembersCount = allAuthorIds.Count,
             AuthorIds = authors.Select(c => c.Item1).ToApiArray(),
+            OwnerIds = ownerIds,
+            OwnAuthorId = ownAuthor!.Id,
         };
     }
 
     private Task OnInviteClick()
         => ModalUI.Show(new AddMemberModal.Model(ChatId));
 
+    private static string? FormatStatusText(bool isOwner, bool isOwn) {
+        var statusText = isOwner ? "Owner" : null;
+        if (isOwn) {
+            if (statusText != null)
+                statusText += ", your profile";
+            else
+                statusText = "Your profile";
+        }
+        return statusText;
+    }
+
     public sealed record ComputedModel {
         public int MembersCount { get; init; }
         public ApiArray<AuthorId> AuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
+        public ApiArray<AuthorId> OwnerIds { get; init; } = ApiArray<AuthorId>.Empty;
+        public AuthorId OwnAuthorId { get; init; }
+
+        public bool IsOwner(AuthorId authorId)
+            => OwnerIds.Contains(authorId);
+        public bool IsOwn(AuthorId authorId)
+            => OwnAuthorId.Equals(authorId);
     }
 }
