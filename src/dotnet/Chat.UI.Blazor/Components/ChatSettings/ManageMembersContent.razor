@@ -5,6 +5,7 @@
 @{
     var m = State.Value;
     Context.Title = $"{m.MembersCount} members";
+    Context.ModalDataBag.Set(nameof(ChatSettingsStartContent.ComputedModel.MembersCount), m.MembersCount);
 }
 
 <TileItem Click="@OnInviteClick">
@@ -12,14 +13,15 @@
     <Content><span class="text-accent">Add members</span></Content>
 </TileItem>
 
-<SearchBoxNew
+<SearchBox
+    Class="icon-alight-right"
     Placeholder="Search"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
 
-<div>
+<div class="list">
     @foreach (var authorId in m.AuthorIds) {
-        <div class="flex-x"
+        <li class="flex-x"
              data-menu="@(MenuRef.New<EditMembersMenu>(authorId).ToString())"
              data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="grow">
@@ -37,7 +39,7 @@
                     <i class="icon-more-vertical text-2xl"></i>
                 </ButtonRound>
             </div>
-        </div>
+        </li>
     }
 </div>
 
@@ -53,9 +55,12 @@
 
     private ModalUI ModalUI => Services.GetRequiredService<ModalUI>();
 
-    protected override void OnParametersSet() {
-        base.OnParametersSet();
+    protected override void OnInitialized() {
+        base.OnInitialized();
         ChatId = new ChatId(ChatSid);
+        // Workaround: fake submit command to have interactive dialog header.
+        // TODO(DF): improve header.
+        Context.NarrowViewSettings = DialogFrameNarrowViewSettings.SubmitButton(() => {});
     }
 
     private void OnFilter(string filter) {
@@ -65,7 +70,10 @@
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
-            InitialValue = ComputedModel.None,
+            InitialValue = new ComputedModel {
+                // Try to use stored members count to avoid header title blinking.
+                MembersCount = Context.ModalDataBag.Get(nameof(ChatSettingsStartContent.ComputedModel.MembersCount), 1)
+            },
             Category = GetStateCategory(),
         };
 
@@ -104,8 +112,7 @@
         => ModalUI.Show(new AddMemberModal.Model(ChatId));
 
     public sealed record ComputedModel {
-        public static ComputedModel None { get; } = new();
-        public int? MembersCount { get; init; }
+        public int MembersCount { get; init; }
         public ApiArray<AuthorId> AuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
     }
 }

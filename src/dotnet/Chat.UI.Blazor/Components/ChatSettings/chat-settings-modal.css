@@ -66,3 +66,19 @@
 .tile-item.item-manage-members .tile-item-right i {
     @apply -ml-2;
 }
+
+.edit-chat-settings-modal.manage-members .dialog-body {
+    @apply overflow-hidden;
+    @apply px-4;
+}
+.edit-chat-settings-modal.manage-members .dialog-body > * {
+    @apply mt-3;
+}
+.edit-chat-settings-modal.manage-members .list {
+    @apply -mr-4 pr-1.75;
+    @apply overflow-y-auto custom-scrollbar;
+}
+
+.edit-chat-settings-modal.manage-members .tile-item {
+    @apply shrink-0; /* prevents shrinking tile item when list overflows */
+}

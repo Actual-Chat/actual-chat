@@ -8,6 +8,8 @@
         if (_currentPage == null)
             return;
         var title = _currentPage.GetTitle() ?? Title;
+        var pageClass = _currentPage.Class;
+        var cls = Class + " " + pageClass;
         var narrowViewSettings = _currentPage.GetNarrowViewSettings() ?? NarrowViewSettings;
     }
     <DialogFrame
@@ -15,7 +17,7 @@
         HasCloseButton="@HasCloseButton"
         Title="@title"
         ButtonsClass="@ButtonsClass"
-        Class="@Class"
+        Class="@cls"
         NarrowViewSettings="@narrowViewSettings">
         <Body>
             @_currentPage.RenderBody
@@ -88,6 +90,8 @@
         _startPage = startPages[0];
         _currentPage = _startPage;
     }
+
+    DataBag IDiveInModalContext.DataBag { get; } = new ();
 
     void IDiveInModalContext.Back()
         => OnBack();

@@ -26,7 +26,8 @@ public class DiveInModalPageContext
         }
     }
 
-    public DiveInModalPageBag Bag { get; } = new ();
+    public DataBag PageDataBag { get; } = new ();
+    public DataBag ModalDataBag => _modalContext.DataBag;
 
     public DiveInModalPageContext(
         IDiveInModalContext modalContext,
@@ -49,34 +50,4 @@ public class DiveInModalPageContext
 
     public void StateHasChanged()
         => _modalContext.StateHasChanged();
-}
-
-public class DiveInModalPageBag
-{
-    private readonly Dictionary<string, object> _items = new (StringComparer.Ordinal);
-
-    public IEnumerable<string> Keys
-        => _items.Keys;
-    public IEnumerable<object> Values
-        => _items.Values;
-    public int Count
-        => _items.Count;
-
-    public object? Get(string key)
-    {
-        if (!_items.TryGetValue(key, out var value))
-            return null;
-        return value;
-    }
-
-    public TItem? Get<TItem>(string key)
-        where TItem : class
-    {
-        if (!_items.TryGetValue(key, out var value))
-            return null;
-        return (TItem)value;
-    }
-
-    public void Set(string key, object value)
-        => _items[key] = value;
 }

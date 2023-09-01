@@ -20,3 +20,11 @@
 .search-box input::placeholder {
     @apply text-left;
 }
+
+.search-box.icon-alight-right i {
+    @apply right-0;
+}
+
+.search-box.icon-alight-right input {
+    @apply pr-10 pl-4;
+}

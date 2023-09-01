@@ -10,6 +10,7 @@
         return;
     if (_form == null)
         return;
+    Context.ModalDataBag.Set(nameof(ChatSettingsStartContent.ComputedModel.MembersCount), m.MembersCount);
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -210,7 +211,7 @@
 
     protected override async Task OnInitializedAsync() {
         const string formBagKey = "form";
-        _form = Context.Bag.Get<FormModel>(formBagKey);
+        _form = Context.PageDataBag.Get<FormModel>(formBagKey);
         if (_form != null)
             return;
         var chat = await Chats.Get(Session, ChatId, default).Require();
@@ -223,7 +224,7 @@
             AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
             ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
         };
-        Context.Bag.Set(formBagKey, _form);
+        Context.PageDataBag.Set(formBagKey, _form);
     }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
