@@ -56,13 +56,13 @@ public class AudioStreamProxy : IAudioStreamServer
         var readReplicaCount = addresses.Count.Clamp(0, ReadReplicaCount);
 
         DebugLog?.LogInformation("Read({Stream}): hitting [{Addresses}]", streamName, addresses.ToDelimitedString());
-        for (var i = 0; i < readReplicaCount; i++) {
-            var address = addresses.GetRandom();
+        var randomizedAddresses = addresses.Shuffle().Take(readReplicaCount);
+        foreach (var address in randomizedAddresses) {
             DebugLog?.LogInformation("Read({Stream}): trying {Address}", streamName, address);
-
             var client = await GetAudioStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
             var stream = await client.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-            var result = await stream.IsNonEmpty(Clocks.CpuClock, ReadStreamWaitTimeout, cancellationToken).ConfigureAwait(false);
+            var result = await stream.IsNonEmpty(Clocks.CpuClock, ReadStreamWaitTimeout, cancellationToken)
+                .ConfigureAwait(false);
             if (result.IsSome(out var s)) {
                 DebugLog?.LogInformation("Read({Stream}): found the stream on {Address}", streamName, address);
                 return s;

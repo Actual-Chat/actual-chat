@@ -72,4 +72,21 @@ public static class EnumerableExt
         sb.Append(prev);
         return sb.ToString();
     }
+
+    public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)
+        => source.Shuffle(Random.Shared);
+
+    public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source, Random random)
+        => source.ShuffleIterator(random);
+
+    private static IEnumerable<T> ShuffleIterator<T>(this IEnumerable<T> source, Random random)
+    {
+        var buffer = source.ToList();
+        for (var i = 0; i < buffer.Count; i++) {
+            int j = random.Next(i, buffer.Count);
+            yield return buffer[j];
+
+            buffer[j] = buffer[i];
+        }
+    }
 }

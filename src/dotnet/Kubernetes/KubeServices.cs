@@ -47,7 +47,7 @@ public class KubeServices : IKubeInfo
             KubeServiceEndpoints,
             KubeService,
             IMutableState<KubeServiceEndpoints>,
-            EndpointDiscoveryWorker>(lease, w => w.State);
+            EndpointDiscoveryWorker>(lease, w => w._state);
     }
 
     // Private methods
@@ -65,7 +65,10 @@ public class KubeServices : IKubeInfo
 
     private sealed class EndpointDiscoveryWorker : WorkerBase
     {
-        public IMutableState<KubeServiceEndpoints> State { get; }
+        // ReSharper disable once InconsistentNaming
+        internal readonly IMutableState<KubeServiceEndpoints> _state;
+
+        public IState<KubeServiceEndpoints> State => _state;
 
         private IServiceProvider Services { get; }
         private Kube Kube { get; }
@@ -84,7 +87,7 @@ public class KubeServices : IKubeInfo
                 ApiArray<KubeEndpoint>.Empty,
                 ApiArray<KubeEndpoint>.Empty,
                 ApiArray<KubePort>.Empty);
-            State = services.StateFactory().NewMutable(initialValue);
+            _state = services.StateFactory().NewMutable(initialValue);
             this.Start();
         }
 
@@ -181,7 +184,11 @@ public class KubeServices : IKubeInfo
                 var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, readyEndpoints, ports);
 
                 cancellationToken.ThrowIfCancellationRequested();
-                State.Value = serviceEndpoints;
+                // delay update until we get some endpoints in ready state
+                if (_state.Snapshot.IsInitial && serviceEndpoints.ReadyEndpoints.IsEmpty)
+                    continue;
+
+                _state.Value = serviceEndpoints;
                 Log.LogInformation("UpdateState: service endpoints updated: {Endpoints}", serviceEndpoints);
             }
         }
@@ -197,7 +204,7 @@ public class KubeServices : IKubeInfo
             var endpoints = ApiArray.New(new KubeEndpoint(addresses, true));
             var serviceEndpoints = new KubeServiceEndpoints(KubeService, endpoints, endpoints, ports);
 
-            State.Value = serviceEndpoints;
+            _state.Value = serviceEndpoints;
             Log.LogInformation("UpdateState: service endpoints updated: {Endpoints}", serviceEndpoints);
 
             using var dTask = cancellationToken.ToTask();

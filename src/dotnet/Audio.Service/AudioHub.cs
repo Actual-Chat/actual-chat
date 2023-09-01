@@ -5,33 +5,67 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace ActualChat.Audio;
 
-public class AudioHub : Hub
+public class AudioHub(IServiceProvider services) : Hub
 {
-    private IServiceProvider Services { get; }
-    private IAudioProcessor AudioProcessor { get; }
-    private IAudioStreamServer AudioStreamServer { get; }
-    private ITranscriptStreamServer TranscriptStreamServer { get; }
-    private ISecureTokensBackend SecureTokensBackend { get; }
-    private OtelMetrics Metrics { get; }
+    private IServiceProvider Services { get; } = services;
+    private IAudioProcessor AudioProcessor { get; } = services.GetRequiredService<IAudioProcessor>();
+    private IAudioStreamServer AudioStreamServer { get; } = services.GetRequiredService<IAudioStreamServer>();
+    private ITranscriptStreamServer TranscriptStreamServer { get; } = services.GetRequiredService<ITranscriptStreamServer>();
+    private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
+    private OtelMetrics Metrics { get; } = services.GetRequiredService<OtelMetrics>();
+    private ILogger Log { get; } = services.LogFor<AudioHub>();
 
-    public AudioHub(IServiceProvider services)
-    {
-        Services = services;
-        Metrics = services.GetRequiredService<OtelMetrics>();
-        AudioProcessor = services.GetRequiredService<IAudioProcessor>();
-        AudioStreamServer = services.GetRequiredService<IAudioStreamServer>();
-        TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
-        SecureTokensBackend = services.GetRequiredService<ISecureTokensBackend>();
-    }
-
-    public async IAsyncEnumerable<byte[]> GetAudioStream(
+    public IAsyncEnumerable<byte[]> GetAudioStream(
         string streamId,
         TimeSpan skipTo,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
-        var stream = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
-        await foreach (var chunk in stream.ConfigureAwait(false))
-            yield return chunk;
+        // We're doing this fairly complex processing via tasks & channels only
+        // because "async IAsyncEnumerable<..>" methods can't contain
+        // "yield return" inside "catch" blocks, and we need this here.
+        var target = Channel.CreateBounded<byte[]>(
+            new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {
+                SingleWriter = true,
+                SingleReader = true,
+                AllowSynchronousContinuations = true,
+                FullMode = BoundedChannelFullMode.Wait,
+            });
+
+        _ = BackgroundTask.Run(async () => {
+            var counter = 0;
+            var currentSkipTo = skipTo;
+            try {
+                while (!cancellationToken.IsCancellationRequested)
+                    try {
+                        var stream = await AudioStreamServer.Read(streamId, currentSkipTo, cancellationToken)
+                            .ConfigureAwait(false);
+                        await foreach (var chunk in stream.ConfigureAwait(false)) {
+                            counter++;
+                            await target.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
+                        }
+                        return;
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                        currentSkipTo = skipTo.Add(TimeSpan.FromMilliseconds(20 * counter));
+                        Log.LogWarning("Retry reading audio stream {StreamId} with offset {SkipTo}", streamId, currentSkipTo);
+                    }
+                    catch (OperationCanceledException e) {
+                        target.Writer.TryComplete(e);
+                        throw;
+                    }
+                    catch (Exception e) {
+                        Log.LogError(e, "Error reading audio stream");
+                        target.Writer.TryComplete(e);
+                        throw;
+                    }
+            }
+            finally {
+                target.Writer.TryComplete();
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+        }, cancellationToken);
+
+        return target.Reader.ReadAllAsync(cancellationToken);
     }
 
     public Task ReportLatency(TimeSpan latency, CancellationToken cancellationToken)
@@ -111,5 +145,15 @@ public class AudioHub : Hub
             return new Session(recorderToken).RequireValid();
 
         return SecureTokensBackend.ParseSessionToken(recorderToken);
+    }
+
+    private sealed class ReadCounter
+    {
+        private volatile int _count;
+
+        public int Count => _count;
+
+        public int Increment()
+            => Interlocked.Increment(ref _count);
     }
 }
