@@ -49,20 +49,20 @@ public class AudioHub(IServiceProvider services) : Hub
                         currentSkipTo = skipTo.Add(TimeSpan.FromMilliseconds(20 * counter));
                         Log.LogWarning("Retry reading audio stream {StreamId} with offset {SkipTo}", streamId, currentSkipTo);
                     }
-                    catch (OperationCanceledException e) {
-                        target.Writer.TryComplete(e);
-                        throw;
-                    }
-                    catch (Exception e) {
-                        Log.LogError(e, "Error reading audio stream");
-                        target.Writer.TryComplete(e);
-                        throw;
-                    }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException e) {
+                target.Writer.TryComplete(e);
+                throw;
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Error reading audio stream");
+                target.Writer.TryComplete(e);
+                throw;
             }
             finally {
                 target.Writer.TryComplete();
             }
-            cancellationToken.ThrowIfCancellationRequested();
         }, cancellationToken);
 
         return target.Reader.ReadAllAsync(cancellationToken);
@@ -74,13 +74,52 @@ public class AudioHub(IServiceProvider services) : Hub
         return Task.CompletedTask;
     }
 
-    public async IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(
+    public IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(
         string streamId,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
-        var stream = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
-        await foreach (var chunk in stream.ConfigureAwait(false))
-            yield return chunk;
+        // We're doing this fairly complex processing via tasks & channels only
+        // because "async IAsyncEnumerable<..>" methods can't contain
+        // "yield return" inside "catch" blocks, and we need this here.
+        var target = Channel.CreateBounded<TranscriptDiff>(
+            new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {
+                SingleWriter = true,
+                SingleReader = true,
+                AllowSynchronousContinuations = true,
+                FullMode = BoundedChannelFullMode.Wait,
+            });
+
+        _ = BackgroundTask.Run(async () => {
+            try {
+                while (!cancellationToken.IsCancellationRequested)
+                    try {
+                        var stream = await TranscriptStreamServer.Read(streamId, cancellationToken)
+                            .ConfigureAwait(false);
+                        await foreach (var chunk in stream.ConfigureAwait(false)) {
+                            await target.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
+                        }
+                        return;
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                        Log.LogWarning("Retry reading transcript stream {StreamId}", streamId);
+                    }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException e) {
+                target.Writer.TryComplete(e);
+                throw;
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Error reading transcript stream");
+                target.Writer.TryComplete(e);
+                throw;
+            }
+            finally {
+                target.Writer.TryComplete();
+            }
+        }, cancellationToken);
+
+        return target.Reader.ReadAllAsync(cancellationToken);
     }
 
     public Task ProcessAudioChunks(
@@ -145,15 +184,5 @@ public class AudioHub(IServiceProvider services) : Hub
             return new Session(recorderToken).RequireValid();
 
         return SecureTokensBackend.ParseSessionToken(recorderToken);
-    }
-
-    private sealed class ReadCounter
-    {
-        private volatile int _count;
-
-        public int Count => _count;
-
-        public int Increment()
-            => Interlocked.Increment(ref _count);
     }
 }
