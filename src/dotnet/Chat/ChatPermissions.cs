@@ -16,6 +16,7 @@ public enum ChatPermissions
 
     EditProperties = 0x1000,
     EditRoles      = 0x2000,
+    EditMembers    = 0x4000,
 
     Owner          = 0x10_000, // Implies EditProperties, EditRoles, Invite (-> Join, Read), Write (-> Read)
 }

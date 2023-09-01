@@ -228,8 +228,55 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Require(ChatPermissions.Invite);
 
-        foreach (var userId in userIds)
-            await Backend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
+        foreach (var userId in userIds) {
+            var author = await Backend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
+            if (author.HasLeft)
+                await RestoreAuthorMembership(cancellationToken, author).ConfigureAwait(false);
+        }
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnExclude(Authors_Exclude command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, authorId) = command;
+        var chatId = authorId.ChatId;
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Require();
+        chat.Rules.Require(ChatPermissions.EditMembers);
+
+        var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        if (author == null || author.HasLeft)
+            return;
+
+        if (chat.Rules.Account.Id == author.UserId)
+            throw StandardError.Constraint("You can not remove yourself from chat members");
+
+        var upsertCommand = new AuthorsBackend_Upsert(
+            chatId, author.Id, default, author.Version,
+            new AuthorDiff() { HasLeft = true });
+        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnRestore(Authors_Restore command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, authorId) = command;
+        var chatId = authorId.ChatId;
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Require();
+        chat.Rules.Require(ChatPermissions.EditMembers);
+
+        var author = await Get(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
+        if (author == null || !author.HasLeft)
+            return;
+
+        await RestoreAuthorMembership(cancellationToken, author).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -248,6 +295,17 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,
             new AuthorDiff() { AvatarId = avatarId });
+        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RestoreAuthorMembership(CancellationToken cancellationToken, Author author)
+    {
+        var upsertCommand = new AuthorsBackend_Upsert(
+            author.ChatId,
+            author.Id,
+            default,
+            author.Version,
+            new AuthorDiff() { HasLeft = false });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

@@ -20,7 +20,7 @@
 <div>
     @foreach (var authorId in m.AuthorIds) {
         <div class="flex-x"
-             data-menu="@(MenuRef.New<EditMemberMenu>(authorId).ToString())"
+             data-menu="@(MenuRef.New<EditMembersMenu>(authorId).ToString())"
              data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="grow">
                 <AuthorBadge
@@ -29,7 +29,7 @@
             </div>
             <div
                 class="menu"
-                data-menu="@(MenuRef.New<EditMemberMenu>(authorId).ToString())"
+                data-menu="@(MenuRef.New<EditMembersMenu>(authorId).ToString())"
                 data-menu-trigger="@MenuTrigger.Primary"
                 data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
 
