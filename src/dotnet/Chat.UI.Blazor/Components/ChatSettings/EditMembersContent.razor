@@ -70,9 +70,7 @@
         ChatId = new ChatId(ChatSid);
         if (ChatId.IsPeerChat(out _))
             throw StandardError.NotSupported("Peer chat id should not be provided.");
-        // Workaround: fake submit command to have interactive dialog header.
-        // TODO(DF): improve header.
-        Context.NarrowViewSettings = DialogFrameNarrowViewSettings.SubmitButton(() => {});
+        Context.NarrowViewSettings = DialogFrameNarrowViewSettings.Stretch with { UseInteractiveHeader = true };
     }
 
     private void OnFilter(string filter) {
@@ -124,8 +122,10 @@
         };
     }
 
-    private Task OnInviteClick()
-        => ModalUI.Show(new AddMemberModal.Model(ChatId));
+    // private Task OnInviteClick()
+    //   => ModalUI.Show(new AddMemberModal.Model(ChatId));
+    private void OnInviteClick()
+        => Context.StepIn(ChatSettingsModal.PageIds.AddMember);
 
     private static string? FormatStatusText(bool isOwner, bool isOwn) {
         var statusText = isOwner ? "Owner" : null;

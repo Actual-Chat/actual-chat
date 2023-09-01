@@ -14,6 +14,13 @@
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
+    @{
+        var isValid = _formRef?.IsValid ?? false;
+        _narrowViewSettings.CanSubmit = isValid;
+        if (_lastIsValid != isValid)
+            Context.StateHasChanged();
+        _lastIsValid = isValid;
+    }
     @if (m.Rules.CanEditProperties()) {
         <FormBlock>
             <DataAnnotationsValidator/>
@@ -94,7 +101,7 @@
                             Invites="m.Invites"
                             LinkFormat="join/{0}"
                             NewInviteId="@_newInviteId"
-                            AllowRevoke="true" />
+                            AllowRevoke="true"/>
                     }
                     @if (canInvite) {
                         <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
@@ -174,8 +181,8 @@
     }
     @* Render buttons inside Form component with using RenderIntoSlot to get appropriate updates when Form.IsValid changed *@
     <RenderIntoSlot Name="@ChatSettingsStartPage.ButtonsSlotName">
-        <Button Type="@ButtonType.Button" IsDisabled="@(!(_formRef?.IsValid ?? false))" Class="btn-primary btn-modal" Click="OnSubmit">Save</Button>
         <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
+        <Button Type="@ButtonType.Button" IsDisabled="@(!isValid)" Class="btn-primary btn-modal" Click="OnSubmit">Save</Button>
     </RenderIntoSlot>
 </Form>
 
@@ -186,6 +193,8 @@
     private Form?_formRef;
     private FormModel? _form = null!;
     private Symbol _newInviteId = Symbol.Empty;
+    private bool _lastIsValid;
+    private DialogFrameNarrowViewSettings _narrowViewSettings = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
@@ -206,7 +215,8 @@
     protected override void OnInitialized() {
         base.OnInitialized();
         ChatId = new ChatId(ChatSid);
-        Context.NarrowViewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnSubmit);
+        _narrowViewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnSubmit);
+        Context.NarrowViewSettings = _narrowViewSettings;
     }
 
     protected override async Task OnInitializedAsync() {

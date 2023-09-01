@@ -14,7 +14,6 @@
 
 
 .edit-chat-settings-modal .dialog-buttons {
-    @apply -flex-x;
     @apply pt-4;
 }
 .edit-chat-settings-modal .dialog-buttons .btn-group {
@@ -59,6 +58,8 @@
     @apply text-2xl;
 }
 
+/* Edit members page */
+
 .tile-item.item-manage-members .tile-item-right {
     @apply min-w-8 justify-start;
     @apply text-icons-01;
@@ -89,6 +90,8 @@
 .edit-chat-settings-modal.edit-members .tile-item {
     @apply shrink-0; /* prevents shrinking tile item when list overflows */
 }
+
+/* Edit member menu */
 
 .edit-member-menu .avatar-badge {
     @apply p-[6px];

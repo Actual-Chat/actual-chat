@@ -8,6 +8,7 @@
     NarrowViewSettings="@(DialogFrameNarrowViewSettings.Stretch with{ShouldHideButtons = true})">
     <ChatSettingsStartPage ChatSid="@ModalModel.Chat.Id" />
     <EditMembersPage ChatSid="@ModalModel.Chat.Id" />
+    <AddMemberPage ChatSid="@ModalModel.Chat.Id" />
 </DiveInDialogFrame>
 
 @code {
@@ -16,6 +17,7 @@
     public static class PageIds {
         public const string Start = "start";
         public const string Members = "members";
+        public const string AddMember = "add-member";
     }
 
     public sealed record Model(Chat Chat);

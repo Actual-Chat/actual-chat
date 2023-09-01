@@ -3,7 +3,7 @@
 
 @{
     var settings = NarrowViewSettings;
-    var hideButtonsInNarrowView = settings.ShouldHideButtons.GetValueOrDefault(settings.IsSubmitDefined);
+    var hideButtonsInNarrowView = settings.ShouldHideButtons.GetValueOrDefault(settings.ShouldUseInteractiveHeader);
     var showButtons = ScreenSize.IsWide() || !hideButtonsInNarrowView;
     var positionClass = settings.Position == DialogFramePosition.Bottom
         ? "narrow-view__modal__position-bottom"

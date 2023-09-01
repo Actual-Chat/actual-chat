@@ -3,7 +3,7 @@
 @{
     var isInnerStep = Modal.Ref.StepRef != null;
     var settings = DialogFrame.NarrowViewSettings;
-    var useInteractiveHeader = ScreenSize.IsNarrow() && settings.IsSubmitDefined;
+    var useInteractiveHeader = ScreenSize.IsNarrow() && settings.ShouldUseInteractiveHeader;
 }
 
 @if (!useInteractiveHeader) {

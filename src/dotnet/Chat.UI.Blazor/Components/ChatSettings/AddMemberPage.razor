@@ -1,0 +1,20 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+
+<DiveInDialogFramePage
+    Id="@ChatSettingsModal.PageIds.AddMember"
+    Title="Add members"
+    Class="add-member-modal-content">
+    <Body>
+        <AddMemberContent
+            ChatSid="@ChatSid"
+            Close="@(() => context.Back())"
+            Context="context" />
+    </Body>
+    <Buttons>
+        <RenderSlot Name="@AddMemberContent.ButtonsSlotName" />
+    </Buttons>
+</DiveInDialogFramePage>
+
+@code {
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
+}

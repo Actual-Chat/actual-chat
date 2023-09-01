@@ -13,9 +13,12 @@ public record DialogFrameNarrowViewSettings
     public EventCallback SubmitClick { get; init; }
     public string SubmitButtonText { get; init; } = "";
     public bool CanSubmit { get; set; } = true;
+    public bool? UseInteractiveHeader { get; init; }
 
     public bool IsSubmitDefined
         => SubmitButtonType != ButtonType.Button || SubmitClick.HasDelegate;
+    internal bool ShouldUseInteractiveHeader
+        => UseInteractiveHeader ?? IsSubmitDefined;
 
     public static DialogFrameNarrowViewSettings FormSubmitButton(string submitButtonText = "")
         => new() {
