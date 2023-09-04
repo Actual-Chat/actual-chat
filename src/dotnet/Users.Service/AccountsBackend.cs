@@ -7,25 +7,15 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
+public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccountsBackend
 {
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
 
-    private IAuth Auth { get; }
-    private IAuthBackend AuthBackend { get; }
-    private IAvatarsBackend AvatarsBackend { get; }
-    private IServerKvasBackend ServerKvasBackend { get; }
-    private IDbEntityResolver<string, DbAccount> DbAccountResolver { get; }
-
-    public AccountsBackend(IServiceProvider services) : base(services)
-    {
-        Auth = services.GetRequiredService<IAuth>();
-        AuthBackend = services.GetRequiredService<IAuthBackend>();
-        AvatarsBackend = services.GetRequiredService<IAvatarsBackend>();
-        ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
-        DbAccountResolver = services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
-    }
+    private IAuthBackend AuthBackend { get; } = services.GetRequiredService<IAuthBackend>();
+    private IAvatarsBackend AvatarsBackend { get; } = services.GetRequiredService<IAvatarsBackend>();
+    private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
+    private IDbEntityResolver<string, DbAccount> DbAccountResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
 
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
@@ -65,6 +55,14 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         account = account with { Avatar = avatar };
         return account;
     }
+
+    // [ComputeMethod]
+    public virtual Task<UserId> GetIdByPhone(Phone phone, CancellationToken cancellationToken)
+        => GetIdByIdentity(phone.ToIdentity().Id.Value, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual Task<UserId> GetIdByEmail(string email, CancellationToken cancellationToken)
+        => GetIdByIdentity(UserExt.ToEmailIdentity(email), cancellationToken);
 
     // [CommandHandler]
     public virtual async Task OnUpdate(
@@ -151,6 +149,18 @@ public class AccountsBackend : DbServiceBase<UsersDbContext>, IAccountsBackend
         if (HasGoogleIdentity(user) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
             return true; // actual.chat email
         return false;
+    }
+
+    private async Task<UserId> GetIdByIdentity(UserIdentity identity, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sid = identity.Id.Value;
+        var dbUserIdentity = await dbContext.UserIdentities
+            .FirstOrDefaultAsync(x => x.Id == sid, cancellationToken)
+            .ConfigureAwait(false);
+        return new UserId(dbUserIdentity?.DbUserId);
     }
 
     private static bool HasGoogleIdentity(User user)

@@ -281,6 +281,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\create-release-branch.yml = .github\workflows\create-release-branch.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.UI.Blazor", "src\dotnet\Contacts.UI.Blazor\Contacts.UI.Blazor.csproj", "{7C92432E-7ED8-436B-974B-7F077C7E4A86}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.IntegrationTests", "tests\Contacts.IntegrationTests\Contacts.IntegrationTests.csproj", "{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -545,6 +549,14 @@ Global
 		{532D6C2F-CFC3-4637-93D8-14463CCF5211}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{532D6C2F-CFC3-4637-93D8-14463CCF5211}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{532D6C2F-CFC3-4637-93D8-14463CCF5211}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C92432E-7ED8-436B-974B-7F077C7E4A86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C92432E-7ED8-436B-974B-7F077C7E4A86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C92432E-7ED8-436B-974B-7F077C7E4A86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C92432E-7ED8-436B-974B-7F077C7E4A86}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -636,6 +648,8 @@ Global
 		{A1F100F7-92DF-4B51-BF55-A90700BD9423} = {9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}
 		{16126688-A04E-44A8-9EA3-A6A45A1D2CE8} = {9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}
 		{4C3BF424-4983-404C-A62B-F2D286EBCB4E} = {16126688-A04E-44A8-9EA3-A6A45A1D2CE8}
+		{7C92432E-7ED8-436B-974B-7F077C7E4A86} = {9B3B0EB4-0694-4955-B89F-581771BF3A07}
+		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

@@ -1,19 +1,15 @@
 using ActualChat.Chat;
+using ActualChat.Contacts;
+using ActualChat.Notification.Backend;
 using ActualChat.Users.Db;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
+public class Accounts(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccounts
 {
-    private IAuth Auth { get; }
-    private IAccountsBackend Backend { get; }
-
-    public Accounts(IServiceProvider services) : base(services)
-    {
-        Auth = services.GetRequiredService<IAuth>();
-        Backend = services.GetRequiredService<IAccountsBackend>();
-    }
+    private IAuth Auth { get; } = services.GetRequiredService<IAuth>();
+    private IAccountsBackend Backend { get; } = services.GetRequiredService<IAccountsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<AccountFull> GetOwn(Session session, CancellationToken cancellationToken)
@@ -82,6 +78,15 @@ public class Accounts : DbServiceBase<UsersDbContext>, IAccounts
 
         var deleteOwnMessagesCommand = new ChatsBackend_RemoveOwnEntries(ownAccount.Id);
         await Commander.Call(deleteOwnMessagesCommand, true, cancellationToken).ConfigureAwait(false);
+
+        var deleteNotificationsCommand = new NotificationsBackend_RemoveAccount(ownAccount.Id);
+        await Commander.Call(deleteNotificationsCommand, true, cancellationToken).ConfigureAwait(false);
+
+        var deleteContactsCommand = new ContactsBackend_RemoveAccount(ownAccount.Id);
+        await Commander.Call(deleteContactsCommand, true, cancellationToken).ConfigureAwait(false);
+
+        var deleteExternalContactsCommand = new ExternalContactsBackend_RemoveAccount(ownAccount.Id);
+        await Commander.Call(deleteExternalContactsCommand, true, cancellationToken).ConfigureAwait(false);
 
         var deleteOwnAccountCommand = new AccountsBackend_Delete(ownAccount.Id);
         await Commander.Call(deleteOwnAccountCommand, false, cancellationToken).ConfigureAwait(false);

@@ -80,6 +80,7 @@
   <ItemGroup>
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
+    <PackageReference Include="banditoth.MAUI.DeviceId" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
     <PackageReference Include="Sentry.Serilog" />
     <PackageReference Include="Sentry.Extensions.Logging" />

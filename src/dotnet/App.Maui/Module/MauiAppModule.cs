@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
+using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Permissions;
 using ActualChat.UI.Blazor;
@@ -49,5 +50,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
                 ReadBatchConcurrencyLevel = HardwareInfo.ProcessorCount.Clamp(1, 16),
             };
         });
+
+        services.AddScoped<DeviceContacts>(c => new MauiDeviceContacts(c));
     }
 }

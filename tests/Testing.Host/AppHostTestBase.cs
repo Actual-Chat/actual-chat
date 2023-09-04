@@ -5,10 +5,8 @@ using Microsoft.Extensions.Configuration;
 namespace ActualChat.Testing.Host;
 
 [Collection(nameof(AppHostTests)), Trait("Category", nameof(AppHostTests))]
-public class AppHostTestBase : TestBase
+public class AppHostTestBase(ITestOutputHelper @out) : TestBase(@out)
 {
-    public AppHostTestBase(ITestOutputHelper @out) : base(@out) { }
-
     protected Task<AppHost> NewAppHost(
         Action<IConfigurationBuilder>? configureAppSettings = null,
         Action<IServiceCollection>? configureServices = null,

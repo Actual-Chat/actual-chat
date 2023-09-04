@@ -8,23 +8,13 @@ using Stl.Fusion.EntityFramework.Internal;
 
 namespace ActualChat.Users;
 
-public class AuthCommandFilters : DbServiceBase<UsersDbContext>, ICommandService
+public class AuthCommandFilters(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), ICommandService
 {
-    protected IAuthBackend AuthBackend { get; }
-    protected IAccountsBackend AccountsBackend { get; }
-    protected UserNamer UserNamer { get; }
-    protected IUserPresences UserPresences { get; }
-    protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
-
-    public AuthCommandFilters(IServiceProvider services)
-        : base(services)
-    {
-        AuthBackend = services.GetRequiredService<IAuthBackend>();
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        UserNamer = services.GetRequiredService<UserNamer>();
-        UserPresences = services.GetRequiredService<IUserPresences>();
-        DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
-    }
+    protected IAuthBackend AuthBackend { get; } = services.GetRequiredService<IAuthBackend>();
+    protected IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
+    protected UserNamer UserNamer { get; } = services.GetRequiredService<UserNamer>();
+    protected IUserPresences UserPresences { get; } = services.GetRequiredService<IUserPresences>();
+    protected IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
 
     [CommandFilter(Priority = 1)]
     public virtual async Task OnSignIn(AuthBackend_SignIn command, CancellationToken cancellationToken)

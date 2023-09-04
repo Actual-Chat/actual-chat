@@ -15,5 +15,6 @@ public sealed class ContactsClientModule : HostModule
 
         var fusion = services.AddFusion();
         fusion.AddClient<IContacts>();
+        fusion.AddClient<IExternalContacts>();
     }
 }

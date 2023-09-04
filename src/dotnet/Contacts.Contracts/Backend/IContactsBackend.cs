@@ -5,17 +5,17 @@ namespace ActualChat.Contacts;
 public interface IContactsBackend : IComputeService
 {
     [ComputeMethod]
-    public Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
+    Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
     [ComputeMethod]
-    public Task<ApiArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken);
-
+    Task<ApiArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken);
     [CommandHandler]
-    public Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);
+    Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
-    public Task OnTouch(ContactsBackend_Touch command, CancellationToken cancellationToken);
+    Task OnTouch(ContactsBackend_Touch command, CancellationToken cancellationToken);
     [CommandHandler]
-    public Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken);
-
+    Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnGreet(ContactsBackend_Greet command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -35,5 +35,11 @@ public sealed partial record ContactsBackend_Touch(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_RemoveAccount(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_Greet(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand;

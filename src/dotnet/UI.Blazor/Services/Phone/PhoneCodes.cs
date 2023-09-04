@@ -8,7 +8,6 @@ public sealed record PhoneCode(string Country, string DisplayCode)
 public static class PhoneCodes
 {
     public static readonly PhoneCode Default = new ("United States of America", "+1");
-
     public static readonly List<PhoneCode> List = new () {
         new PhoneCode("Afghanistan", "+93"),
         new PhoneCode("Albania", "+355"),
@@ -248,6 +247,7 @@ public static class PhoneCodes
         new PhoneCode("Zambia", "+260"),
         new PhoneCode("Zimbabwe", "+263"),
     };
+    public static readonly int MaxCodeLength = List.Max(x => x.Code.Length);
 
     private static readonly Dictionary<string, PhoneCode> _byCode =
         // distinct cause some codes duplicate

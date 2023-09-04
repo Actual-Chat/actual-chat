@@ -62,5 +62,7 @@
     <string>Share photos and videos from your photo gallery.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Upload photos to share with other users or to change your avatar.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>Find friends, relatives, colleagues, etc.</string>
 </dict>
 </plist>

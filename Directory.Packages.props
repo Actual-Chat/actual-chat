@@ -146,6 +146,8 @@
     <PackageVersion Include="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Ulid" Version="1.2.6" />
     <PackageVersion Include="ZString" Version="2.5.0" />
+    <!-- MAUI  -->
+    <PackageVersion Include="banditoth.MAUI.DeviceId" Version="1.0.0" />
     <!-- MAUI - Android -->
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.4.0.1" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="117.0.1" />

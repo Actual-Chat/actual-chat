@@ -100,6 +100,10 @@ public static partial class Constants
             public const string CallbackPath = "/signin/phone/callback";
             public const int TotpLength = 6;
         }
+        public static class Email
+        {
+            public const string SchemeName = "email"; // used only as identity name for now
+        }
         public static class Google
         {
             public const string SchemeName = "Google";

@@ -23,4 +23,9 @@ public static class AsyncChainExt
                 tasks.Add(chain.Run(cancellationToken));
         return Task.WhenAll(tasks);
     }
+
+    public static AsyncChain From(
+        Func<CancellationToken, Task> start,
+        [CallerArgumentExpression(nameof(start))] string name = "")
+        => new (name, start);
 }
