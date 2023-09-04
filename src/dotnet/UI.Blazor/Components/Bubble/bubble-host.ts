@@ -19,7 +19,7 @@ const { debugLog } = Log.get('BubbleHost');
 
 export class BubbleHost {
     private readonly mutationObserver: MutationObserver;
-    private readonly skipped: Subject<void> = new Subject<void>();
+    private readonly disposed$: Subject<void> = new Subject<void>();
 
     private _bubbles: BubbleModel[] = [];
     private _clearAutoUpdate: () => void;
@@ -47,7 +47,7 @@ export class BubbleHost {
             .pipe(
                 startWith(undefined),
                 debounceTime(500),
-                takeUntil(this.skipped),
+                takeUntil(this.disposed$),
             )
             .subscribe(() => {
                 this.updateBubbles();
@@ -67,6 +67,12 @@ export class BubbleHost {
     }
 
     public dispose() {
+        if (this.disposed$.isStopped)
+            return;
+
+        this.disposed$.next();
+        this.disposed$.complete();
+
         this.mutationObserver.disconnect();
     }
 
