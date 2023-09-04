@@ -3,7 +3,6 @@ using ActualChat.Chat.Events;
 using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Commands;
-using ActualChat.Contacts;
 using ActualChat.Media;
 using ActualChat.Users;
 using ActualChat.Users.Events;
@@ -12,38 +11,20 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
+public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
-    private IAccountsBackend AccountsBackend { get; }
-    private IAuthorsBackend AuthorsBackend { get; }
-    private IRolesBackend RolesBackend { get; }
-    private IContactsBackend ContactsBackend { get; }
-    private IMediaBackend MediaBackend { get; }
-    private IMarkupParser MarkupParser { get; }
-    private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
-    private IDbEntityResolver<string, DbChat> DbChatResolver { get; }
-    private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; }
-    private DiffEngine DiffEngine { get; }
-    private HostInfo HostInfo { get; }
-    private OtelMetrics Metrics { get; }
-
-    public ChatsBackend(IServiceProvider services) : base(services)
-    {
-        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
-        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
-        RolesBackend = services.GetRequiredService<IRolesBackend>();
-        ContactsBackend = services.GetRequiredService<IContactsBackend>();
-        MediaBackend = services.GetRequiredService<IMediaBackend>();
-        MarkupParser = services.GetRequiredService<IMarkupParser>();
-        ChatMarkupHubFactory = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
-        DbChatResolver = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-        DbChatEntryIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
-        DiffEngine = services.GetRequiredService<DiffEngine>();
-        HostInfo = services.GetRequiredService<HostInfo>();
-        Metrics = services.GetRequiredService<OtelMetrics>();
-    }
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
+    private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
+    private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
+    private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
+    private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
+    private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
+    private HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
+    private OtelMetrics Metrics { get; } = services.GetRequiredService<OtelMetrics>();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -653,7 +634,7 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
             return;
         }
 
-        var chatEntriesToInvalidate = new Dictionary<string, long>();
+        var chatEntriesToInvalidate = new Dictionary<string, long>(StringComparer.Ordinal);
         var userId = command.UserId;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

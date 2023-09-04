@@ -9,30 +9,17 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class Chats : DbServiceBase<ChatDbContext>, IChats
+public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChats
 {
-    private IAccounts Accounts { get; }
-    private IAuthors Authors { get; }
-    private IAuthorsBackend AuthorsBackend { get; }
-    private IAvatars Avatars { get; }
-    private IContactsBackend ContactsBackend { get; }
-    private IInvitesBackend InvitesBackend { get; }
-    private IServerKvas ServerKvas { get; }
-    private IChatsBackend Backend { get; }
-    private IRolesBackend RolesBackend { get; }
-
-    public Chats(IServiceProvider services) : base(services)
-    {
-        Accounts = services.GetRequiredService<IAccounts>();
-        Authors = services.GetRequiredService<IAuthors>();
-        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
-        Avatars = services.GetRequiredService<IAvatars>();
-        ContactsBackend = services.GetRequiredService<IContactsBackend>();
-        InvitesBackend = services.GetRequiredService<IInvitesBackend>();
-        ServerKvas = services.ServerKvas();
-        Backend = services.GetRequiredService<IChatsBackend>();
-        RolesBackend = services.GetRequiredService<IRolesBackend>();
-    }
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
+    private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
+    private IInvitesBackend InvitesBackend { get; } = services.GetRequiredService<IInvitesBackend>();
+    private IServerKvas ServerKvas { get; } = services.ServerKvas();
+    private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
@@ -285,7 +272,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
         chat.Rules.Permissions.Require(ChatPermissions.Write);
 
         var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
-        await RemoveTextEntry(session, chatId, textEntryId, author, cancellationToken);
+        await RemoveTextEntry(session, chatId, textEntryId, author, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -301,7 +288,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         foreach (var localId in localIds) {
             var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
-            await RemoveTextEntry(session, chatId, textEntryId, author, cancellationToken);
+            await RemoveTextEntry(session, chatId, textEntryId, author, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -318,7 +305,7 @@ public class Chats : DbServiceBase<ChatDbContext>, IChats
 
         foreach (var localId in localIds) {
             var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
-            await RestoreTextEntry(session, chatId, textEntryId, author, cancellationToken);
+            await RestoreTextEntry(session, chatId, textEntryId, author, cancellationToken).ConfigureAwait(false);
         }
     }
 
