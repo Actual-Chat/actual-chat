@@ -879,6 +879,8 @@ public class ChatsBackend : DbServiceBase<ChatDbContext>, IChatsBackend
                 .RequireVersion(entry.Version)
                 .ConfigureAwait(false)
                 ?? throw StandardError.NotFound<ChatEntry>();
+            if (dbEntry.IsRemoved && entry.IsRemoved)
+                throw StandardError.Constraint("Removed chat entries cannot be modified.");
             entry = entry with {
                 Version = VersionGenerator.NextVersion(dbEntry.Version),
             };
