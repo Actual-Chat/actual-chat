@@ -1,11 +1,11 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Search
-@inherits ComputedStateComponent<EditMembersContent.ComputedModel>
+@inherits ComputedStateComponent<EditMembersModalPage.ComputedModel>
 
 @{
     var m = State.Value;
     Context.SetTitle($"{m.MembersCount} members");
-    Context.ModalDataBag.Set(nameof(ChatSettingsStartContent.ComputedModel.MembersCount), m.MembersCount);
+    Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
 }
 
 <TileItem Click="@OnInviteClick">
@@ -80,7 +80,7 @@
         => new() {
             InitialValue = new ComputedModel {
                 // Try to use stored members count to avoid header title blinking.
-                MembersCount = Context.ModalDataBag.Get(nameof(ChatSettingsStartContent.ComputedModel.MembersCount), 1)
+                MembersCount = Context.ModalDataBag.Get(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), 1)
             },
             Category = GetStateCategory(),
         };
@@ -121,7 +121,7 @@
     }
 
     private void OnInviteClick()
-        => Context.StepIn(DiveInDialogPage.New<AddMemberContent>(ChatId));
+        => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(ChatId));
 
     private static string? FormatStatusText(bool isOwner, bool isOwn) {
         var statusText = isOwner ? "Owner" : null;

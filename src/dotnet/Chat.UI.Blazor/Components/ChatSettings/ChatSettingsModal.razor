@@ -4,7 +4,7 @@
 <DiveInDialogFrame
     HasCloseButton="true"
     Class="edit-chat-settings-modal"
-    StartPage="@(DiveInDialogPage.New<ChatSettingsStartContent>(ModalModel.ChatId))" />
+    StartPage="@(DiveInDialogPage.New<ChatSettingsStartModalPage>(ModalModel.ChatId))" />
 
 @code {
     [Parameter] public Model ModalModel { get; set; } = null!;

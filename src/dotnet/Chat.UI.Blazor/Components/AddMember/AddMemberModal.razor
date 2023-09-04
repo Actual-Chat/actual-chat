@@ -4,7 +4,7 @@
 <DiveInDialogFrame
     HasCloseButton="true"
     Class="add-member-modal"
-    StartPage="@(DiveInDialogPage.New<AddMemberContent>(ModalModel.ChatId))" />
+    StartPage="@(DiveInDialogPage.New<AddMemberModalPage>(ModalModel.ChatId))" />
 
 @code {
     [Parameter] public Model ModalModel { get; set; } = null!;

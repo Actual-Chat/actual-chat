@@ -2,7 +2,7 @@
 @using System.ComponentModel.DataAnnotations
 @using ActualChat.Invite
 @using ActualChat.Media
-@inherits ComputedStateComponent<ChatSettingsStartContent.ComputedModel>
+@inherits ComputedStateComponent<ChatSettingsStartModalPage.ComputedModel>
 
 @{
     var m = State.Value;
@@ -10,7 +10,7 @@
         return;
     if (_form == null)
         return;
-    Context.ModalDataBag.Set(nameof(ChatSettingsStartContent.ComputedModel.MembersCount), m.MembersCount);
+    Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -268,7 +268,7 @@
     }
 
     private void OnManageMembersClick()
-        => Context.StepIn(DiveInDialogPage.New<EditMembersContent>(ChatId));
+        => Context.StepIn(DiveInDialogPage.New<EditMembersModalPage>(ChatId));
 
     private async Task OnSubmit() {
         if (_formRef == null)
