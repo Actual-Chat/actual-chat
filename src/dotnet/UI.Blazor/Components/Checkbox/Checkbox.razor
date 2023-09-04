@@ -5,7 +5,12 @@
        data-input-disabled="@IsDisabled">
     <div class="x">&nbsp;</div>
     <input type="checkbox"
-           id="@Id" name="@Name" disabled="@IsDisabled" checked="@IsChecked"
+           id="@Id"
+           name="@Name"
+           disabled="@IsDisabled"
+           checked="@IsChecked"
+           @onclick:stopPropagation="true"
+           @onclick:preventDefault="true"
            @onchange="@Change">
     @if (LabelContent != null) {
         <div class="c-label">@LabelContent</div>
