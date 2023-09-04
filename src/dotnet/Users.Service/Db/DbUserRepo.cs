@@ -4,13 +4,10 @@ using Stl.Fusion.Authentication.Services;
 
 namespace ActualChat.Users.Db;
 
-public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
+public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceProvider services)
+    : DbUserRepo<UsersDbContext, DbUser, string>(options, services)
 {
-    private UsersSettings UsersSettings { get; }
-
-    public DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceProvider services)
-        : base(options, services)
-        => UsersSettings = services.GetRequiredService<UsersSettings>();
+    private UsersSettings UsersSettings { get; } = services.GetRequiredService<UsersSettings>();
 
     public override async Task<DbUser> Create(
         UsersDbContext dbContext,
@@ -31,6 +28,11 @@ public class DbUserRepo : DbUserRepo<UsersDbContext, DbUser, string>
             Phone = user.Claims.TryGetValue(ClaimTypes.MobilePhone, out var phone) ? phone : "",
         };
         dbContext.Accounts.Add(dbAccount);
+
+        if (!email.IsNullOrEmpty()) {
+            user = user.WithIdentity(new UserIdentity(Constants.Auth.Email.SchemeName, email.ToLowerInvariant()));
+            UserConverter.UpdateEntity(user, dbUser);
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbUser;

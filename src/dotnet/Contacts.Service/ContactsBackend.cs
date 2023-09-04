@@ -2,20 +2,17 @@ using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Users;
+using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Contacts;
 
-public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBackend
+public class ContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services), IContactsBackend
 {
-    private IAccountsBackend? _accountsBackend;
-
-    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-    private IDbEntityResolver<string, DbContact> DbContactResolver { get; }
-
-    public ContactsBackend(IServiceProvider services) : base(services)
-        => DbContactResolver = services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
+    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
+    private IExternalContactsBackend ExternalContactsBackend { get; } = services.GetRequiredService<IExternalContactsBackend>();
+    private IDbEntityResolver<string, DbContact> DbContactResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
 
     // [ComputeMethod]
     public virtual async Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken)
@@ -104,7 +101,7 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         if (change.IsCreate(out var contact)) {
             if (dbContact != null)
-                return dbContact.ToModel(); // Already exist, so we don't recreate one
+                return dbContact.ToModel(); // Already exists, so we don't recreate one
 
             // Original UserId is ignored here - it's set based on Id
             var userId = id.ChatId.IsPeerChat(out var peerChatId)
@@ -222,6 +219,31 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public virtual async Task OnGreet(ContactsBackend_Greet command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var userToGreetId = command.UserId;
+        var account = await AccountsBackend.Get(userToGreetId, cancellationToken).ConfigureAwait(false);
+        if (account is null || account.IsGreetingCompleted)
+            return;
+
+        var referencingUserIds = await ExternalContactsBackend.ListReferencingUserIds(userToGreetId, cancellationToken)
+            .ConfigureAwait(false);
+        await referencingUserIds.Select(CreateContact).Collect().ConfigureAwait(false);
+
+        var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);
+        await Commander.Call(completeCmd, true, cancellationToken).ConfigureAwait(false);
+
+        Task<Contact?> CreateContact(UserId ownerId)
+        {
+            var contact = new Contact(ContactId.Peer(ownerId, userToGreetId));
+            var cmd = new ContactsBackend_Change(contact.Id, null, Change.Create(contact));
+            return Commander.Call(cmd, true, cancellationToken);
+        }
+    }
+
     // Events
 
     [EventHandler]
@@ -280,5 +302,14 @@ public class ContactsBackend : DbServiceBase<ContactsDbContext>, IContactsBacken
 
         var command = new ContactsBackend_Touch(contact.Id);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    [EventHandler]
+    public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        await Commander.Call(new ContactsBackend_Greet(eventCommand.UserId), cancellationToken).ConfigureAwait(false);
     }
 }

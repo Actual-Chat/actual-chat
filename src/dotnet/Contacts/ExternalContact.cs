@@ -1,0 +1,49 @@
+﻿using MemoryPack;
+using Stl.Fusion.Blazor;
+using Stl.Versioning;
+
+namespace ActualChat.Contacts;
+
+[ParameterComparer(typeof(ByRefParameterComparer))]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record ExternalContact(
+    [property: DataMember, MemoryPackOrder(0)] ExternalContactId Id,
+    [property: DataMember, MemoryPackOrder(1)] long Version = 0) : IHasId<ExternalContactId>, IHasVersion<long>, IRequirementTarget
+{
+    [DataMember, MemoryPackOrder(2)] public string DisplayName { get; init; } = "";
+    [DataMember, MemoryPackOrder(3)] public string GivenName { get; init; } = "";
+    [DataMember, MemoryPackOrder(4)] public string FamilyName { get; init; } = "";
+    [DataMember, MemoryPackOrder(5)] public string MiddleName { get; init; } = "";
+    [DataMember, MemoryPackOrder(6)] public string NamePrefix { get; init; } = "";
+    [DataMember, MemoryPackOrder(7)] public string NameSuffix { get; init; } = "";
+    [DataMember, MemoryPackOrder(8)] public ApiSet<Phone> Phones { get; init; } = ApiSet<Phone>.Empty;
+    [DataMember, MemoryPackOrder(9)] public ApiSet<string> Emails { get; init; } = ApiSet<string>.Empty;
+    [DataMember, MemoryPackOrder(10)] public Moment CreatedAt { get; init; }
+    [DataMember, MemoryPackOrder(11)] public Moment ModifiedAt { get; init; }
+
+    public ExternalContact WithoutPhone(Phone phone)
+        => this with { Phones = Phones.Without(phone) };
+
+    public ExternalContact WithPhone(Phone phone)
+        => this with { Phones = Phones.With(phone) };
+
+    public ExternalContact WithoutEmail(string email)
+        => this with { Emails = Emails.Without(email) };
+
+    public ExternalContact WithEmail(string email)
+        => this with { Emails = Emails.With(email) };
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public sealed partial record ExternalContactDiff : RecordDiff
+{
+    public static readonly ExternalContactDiff Empty = new ();
+    [DataMember, MemoryPackOrder(0)] public string? DisplayName { get; init; }
+    [DataMember, MemoryPackOrder(1)] public string? GivenName { get; init; }
+    [DataMember, MemoryPackOrder(2)] public string? FamilyName { get; init; }
+    [DataMember, MemoryPackOrder(3)] public string? MiddleName { get; init; }
+    [DataMember, MemoryPackOrder(4)] public string? NamePrefix { get; init; }
+    [DataMember, MemoryPackOrder(5)] public string? NameSuffix { get; init; }
+    [DataMember, MemoryPackOrder(6)] public SetDiff<ApiSet<Phone>, Phone> Phones { get; init; } = SetDiff<ApiSet<Phone>, Phone>.Unchanged;
+    [DataMember, MemoryPackOrder(7)] public SetDiff<ApiSet<string>, string> Emails { get; init; } = SetDiff<ApiSet<string>, string>.Unchanged;
+}

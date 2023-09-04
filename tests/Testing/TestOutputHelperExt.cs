@@ -1,6 +1,6 @@
-using System.Reflection;
+using ActualChat.Performance;
 
-namespace ActualChat.Testing.Host;
+namespace ActualChat.Testing;
 
 public static class TestOutputHelperExt
 {
@@ -9,4 +9,7 @@ public static class TestOutputHelperExt
                 .GetField("test", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?.GetValue(output)
             ?? throw StandardError.Internal("Failed to extract test name."));
+
+    public static Tracer NewTracer(this ITestOutputHelper output, [CallerMemberName] string name = "")
+        => new (name, x => output.WriteLine(x.Format()));
 }

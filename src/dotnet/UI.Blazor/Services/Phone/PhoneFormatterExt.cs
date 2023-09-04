@@ -38,4 +38,20 @@ public static class PhoneFormatterExt
             }
         }
     }
+
+    public static Phone FromReadable(string s)
+    {
+        s = Phone.Normalize(s);
+        var code = s.Truncate(PhoneCodes.MaxCodeLength);
+        PhoneCode? phoneCode = null;
+        while (phoneCode is null && !code.IsNullOrEmpty()) {
+            phoneCode = PhoneCodes.GetByCode(code);
+            code = code[..^1];
+        }
+        if (phoneCode is null)
+            return Phone.None;
+
+        var number = s[phoneCode.Code.Length..];
+        return !PhoneValidation.IsNumberValid(number) ? Phone.None : new Phone(phoneCode.Code, number);
+    }
 }

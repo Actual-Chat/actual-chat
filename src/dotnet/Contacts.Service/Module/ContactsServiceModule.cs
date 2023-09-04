@@ -3,6 +3,8 @@ using ActualChat.Contacts.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
+using ActualChat.Users.Events;
+using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Contacts.Module;
@@ -27,6 +29,11 @@ public sealed class ContactsServiceModule : HostModule<ContactsSettings>
         dbModule.AddDbContextServices<ContactsDbContext>(services, Settings.Db, db => {
             // Overriding / adding extra DbAuthentication services
             db.AddEntityResolver<string, DbContact>();
+
+            // DbExternalContact
+            db.AddEntityResolver<string, DbExternalContact>(_ => new() {
+                QueryTransformer = query => query.Include(a => a.ExternalPhones),
+            });
         });
 
         // Commander & Fusion
@@ -39,15 +46,16 @@ public sealed class ContactsServiceModule : HostModule<ContactsSettings>
                 return true;
             // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
             var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(IContacts).Assembly) // Contacts.Contracts assembly
-                return true;
-            return false;
+            return commandAssembly == typeof(IContacts).Assembly // Contacts.Contracts assembly
+                || commandType == typeof(NewUserEvent); // NewUserEvent is handled by ExternalContacts service
         });
         var fusion = services.AddFusion();
 
         // Module's own services
         fusion.AddService<IContacts, Contacts>();
         fusion.AddService<IContactsBackend, ContactsBackend>();
+        fusion.AddService<IExternalContacts, ExternalContacts>();
+        fusion.AddService<IExternalContactsBackend, ExternalContactsBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

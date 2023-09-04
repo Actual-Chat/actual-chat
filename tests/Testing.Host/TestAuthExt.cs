@@ -23,7 +23,7 @@ public static class TestAuthExt
         CancellationToken cancellationToken = default)
     {
         if (!user.Identities.Any())
-            user = user.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()));
+            user = user.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
         var userIdentity = user.Identities.Keys.First();
 
         var services = appHost.Services;
@@ -43,7 +43,7 @@ public static class TestAuthExt
         var account = cAccount.Value;
 
         // Just in case
-        await Task.Delay(TimeSpan.FromSeconds(0.1)).ConfigureAwait(false);
+        await Task.Delay(TimeSpan.FromSeconds(0.1), cancellationToken).ConfigureAwait(false);
         return account;
     }
 

@@ -20,6 +20,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string LastName { get; set; } = "";
     public string Username { get; set; } = "";
     public string? UsernameNormalized { get; set; }
+    public bool IsGreetingCompleted { get; set; }
 
     public AccountFull ToModel(User user)
     {
@@ -34,6 +35,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Name = Name,
             LastName = LastName,
             Username = Username,
+            IsGreetingCompleted = IsGreetingCompleted,
         };
     }
 
@@ -52,6 +54,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Name = model.Name;
         LastName = model.LastName;
         Username = model.Username;
+        IsGreetingCompleted = model.IsGreetingCompleted;
         if (!model.Username.IsNullOrEmpty())
             UsernameNormalized = model.Username.ToUpper(CultureInfo.InvariantCulture);
     }

@@ -4,6 +4,7 @@ using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Contacts.Module;
+using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Db.Module;
 using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
@@ -132,6 +133,7 @@ public class Startup
                 new BlazorUICoreModule(moduleServices),
                 new AudioBlazorUIModule(moduleServices),
                 new UsersBlazorUIModule(moduleServices),
+                new ContactsBlazorUIModule(moduleServices),
                 new ChatBlazorUIModule(moduleServices),
                 new NotificationBlazorUIModule(moduleServices),
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section

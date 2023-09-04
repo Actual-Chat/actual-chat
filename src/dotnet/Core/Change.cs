@@ -62,3 +62,21 @@ public partial record Change<TCreate, TUpdate> : IChange
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record Change<T> : Change<T, T>;
+
+public static class Change
+{
+    public static Change<T> Create<T>(T item)
+        => new() {
+            Create = item,
+        };
+
+    public static Change<T> Update<T>(T item)
+        => new() {
+            Update = item,
+        };
+
+    public static Change<T> Remove<T>(T item = default!)
+        => new() {
+            Remove = true,
+        };
+}

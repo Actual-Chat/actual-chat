@@ -64,6 +64,9 @@ public readonly partial struct ContactId : ISymbolIdentifier<ContactId>
         ChatId = chatId;
     }
 
+    public static ContactId Peer(UserId ownerId, UserId otherUserId)
+        => new (ownerId, new PeerChatId(ownerId, otherUserId));
+
     // Conversion
 
     public override string ToString() => Value;

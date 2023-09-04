@@ -5,20 +5,12 @@ namespace ActualChat.Contacts;
 
 #pragma warning disable MA0049
 
-public class Contacts : IContacts
+public class Contacts(IServiceProvider services) : IContacts
 {
-    private IAccounts Accounts { get; }
-    private IChats Chats { get; }
-    private IContactsBackend Backend { get; }
-    private ICommander Commander { get; }
-
-    public Contacts(IServiceProvider services)
-    {
-        Accounts = services.GetRequiredService<IAccounts>();
-        Chats = services.GetRequiredService<IChats>();
-        Backend = services.GetRequiredService<IContactsBackend>();
-        Commander = services.Commander();
-    }
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IContactsBackend Backend { get; } = services.GetRequiredService<IContactsBackend>();
+    private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
     public virtual async Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken)
@@ -98,6 +90,22 @@ public class Contacts : IContacts
         await Commander
             .Call(new ContactsBackend_Touch(id), cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnGreet(Contacts_Greet command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return;
+
+        if (account.IsGreetingCompleted)
+            return;
+
+        await Commander.Call(new ContactsBackend_Greet(account.Id), cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

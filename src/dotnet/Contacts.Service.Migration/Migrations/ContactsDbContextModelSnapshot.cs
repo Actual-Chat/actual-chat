@@ -17,7 +17,7 @@ namespace ActualChat.Contacts.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.0")
+                .HasAnnotation("ProductVersion", "7.0.10")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -63,6 +63,105 @@ namespace ActualChat.Contacts.Migrations
                     b.ToTable("contacts");
                 });
 
+            modelBuilder.Entity("ActualChat.Contacts.Db.DbExternalContact", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("display_name");
+
+                    b.Property<string>("FamilyName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("family_name");
+
+                    b.Property<string>("GivenName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("given_name");
+
+                    b.Property<string>("MiddleName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("middle_name");
+
+                    b.Property<DateTime>("ModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("modified_at");
+
+                    b.Property<string>("NamePrefix")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name_prefix");
+
+                    b.Property<string>("NameSuffix")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name_suffix");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_external_contacts");
+
+                    b.ToTable("external_contacts");
+                });
+
+            modelBuilder.Entity("ActualChat.Contacts.Db.DbExternalEmail", b =>
+                {
+                    b.Property<string>("DbExternalContactId")
+                        .HasColumnType("text")
+                        .HasColumnName("external_contact_id");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.HasKey("DbExternalContactId", "Email")
+                        .HasName("pk_external_emails");
+
+                    b.HasIndex("DbExternalContactId")
+                        .HasDatabaseName("ix_external_emails_external_contact_id");
+
+                    b.HasIndex("Email")
+                        .HasDatabaseName("ix_external_emails_email");
+
+                    b.ToTable("external_emails");
+                });
+
+            modelBuilder.Entity("ActualChat.Contacts.Db.DbExternalPhone", b =>
+                {
+                    b.Property<string>("DbExternalContactId")
+                        .HasColumnType("text")
+                        .HasColumnName("external_contact_id");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text")
+                        .HasColumnName("phone");
+
+                    b.HasKey("DbExternalContactId", "Phone")
+                        .HasName("pk_external_phones");
+
+                    b.HasIndex("DbExternalContactId")
+                        .HasDatabaseName("ix_external_phones_external_contact_id");
+
+                    b.HasIndex("Phone")
+                        .HasDatabaseName("ix_external_phones_phone");
+
+                    b.ToTable("external_phones");
+                });
+
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<string>("Id")
@@ -102,6 +201,33 @@ namespace ActualChat.Contacts.Migrations
                         .HasDatabaseName("ix_start_time");
 
                     b.ToTable("_operations");
+                });
+
+            modelBuilder.Entity("ActualChat.Contacts.Db.DbExternalEmail", b =>
+                {
+                    b.HasOne("ActualChat.Contacts.Db.DbExternalContact", null)
+                        .WithMany("ExternalEmails")
+                        .HasForeignKey("DbExternalContactId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_emails_external_contacts_external_contact_id");
+                });
+
+            modelBuilder.Entity("ActualChat.Contacts.Db.DbExternalPhone", b =>
+                {
+                    b.HasOne("ActualChat.Contacts.Db.DbExternalContact", null)
+                        .WithMany("ExternalPhones")
+                        .HasForeignKey("DbExternalContactId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_external_phones_external_contacts_external_contact_id");
+                });
+
+            modelBuilder.Entity("ActualChat.Contacts.Db.DbExternalContact", b =>
+                {
+                    b.Navigation("ExternalEmails");
+
+                    b.Navigation("ExternalPhones");
                 });
 #pragma warning restore 612, 618
         }

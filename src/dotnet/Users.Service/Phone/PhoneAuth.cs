@@ -7,31 +7,18 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
+public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IPhoneAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Phone.TotpLength);
-    private UsersSettings Settings { get; }
-    private HostInfo HostInfo { get; }
-    private IAccounts Accounts { get; }
-    private ISmsGateway Sms { get; }
-    private Rfc6238AuthenticationService Totps { get; }
-    private TotpRandomSecrets RandomSecrets { get; }
-    private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; }
-    private IDbEntityConverter<DbUser, User> UserConverter { get; }
-    private IAuthBackend AuthBackend { get; }
-
-    public PhoneAuth(IServiceProvider services) : base(services)
-    {
-        Settings = services.GetRequiredService<UsersSettings>();
-        HostInfo = services.GetRequiredService<HostInfo>();
-        Accounts = services.GetRequiredService<IAccounts>();
-        Sms = services.GetRequiredService<ISmsGateway>();
-        Totps = services.GetRequiredService<Rfc6238AuthenticationService>();
-        RandomSecrets = services.GetRequiredService<TotpRandomSecrets>();
-        DbUsers = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
-        UserConverter = services.DbEntityConverter<DbUser, User>();
-        AuthBackend = services.GetRequiredService<IAuthBackend>();
-    }
+    private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
+    private HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private ISmsGateway Sms { get; } = services.GetRequiredService<ISmsGateway>();
+    private Rfc6238AuthenticationService Totps { get; } = services.GetRequiredService<Rfc6238AuthenticationService>();
+    private TotpRandomSecrets RandomSecrets { get; } = services.GetRequiredService<TotpRandomSecrets>();
+    private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
+    private IDbEntityConverter<DbUser, User> UserConverter { get; } = services.DbEntityConverter<DbUser, User>();
+    private IAuthBackend AuthBackend { get; } = services.GetRequiredService<IAuthBackend>();
 
     // [ComputeMethod]
     // TODO: move to Features_EnablePhoneAuth
@@ -95,7 +82,7 @@ public class PhoneAuth : DbServiceBase<UsersDbContext>, IPhoneAuth
 
         // save phone to account
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        account = account with { Phone = phone };
+        account = account with { Phone = phone, IsGreetingCompleted = false };
         await Accounts.AssertCanUpdate(session, account, cancellationToken).ConfigureAwait(false);
 
         var cmd = new AccountsBackend_Update(account, account.Version);

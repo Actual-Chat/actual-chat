@@ -7,6 +7,7 @@ namespace ActualChat.Collections;
 [DataContract, MemoryPackable(GenerateType.Collection)]
 public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
 {
+    public static readonly ApiSet<T> Empty = new(Array.Empty<T>());
     public ApiSet() { }
     public ApiSet(IEnumerable<T> collection) : base(collection) { }
     public ApiSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer) : base(collection, comparer) { }
@@ -40,5 +41,23 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
         }
         sb.Append(" }");
         return sb.ToString();
+    }
+}
+
+public static class ApiSetExt
+{
+    public static ApiSet<T> With<T>(this ApiSet<T> set, params T[] item)
+    {
+        var newItems = set.ToApiSet(set.Comparer);
+        newItems.AddRange(item);
+        return newItems;
+    }
+
+    public static ApiSet<T> Without<T>(this ApiSet<T> set, params T[] items)
+    {
+        var newItems = set.ToApiSet(set.Comparer);
+        foreach (var item in items)
+            newItems.Remove(item);
+        return newItems;
     }
 }

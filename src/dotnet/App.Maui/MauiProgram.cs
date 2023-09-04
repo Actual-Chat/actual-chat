@@ -8,7 +8,7 @@ using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor.App.Services;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using banditoth.MAUI.DeviceId;
 using Serilog;
 
 namespace ActualChat.App.Maui;
@@ -76,6 +76,7 @@ public static partial class MauiProgram
             .ConfigureFonts(fonts => {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
             })
+            .ConfigureDeviceIdProvider()
             .ConfigureLifecycleEvents(ConfigurePlatformLifecycleEvents)
             .UseAppLinks();
 

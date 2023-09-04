@@ -5,6 +5,7 @@ using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Contacts.Module;
+using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
@@ -127,6 +128,7 @@ namespace ActualChat.UI.Blazor.App
                     new BlazorUICoreModule(moduleServices),
                     new AudioBlazorUIModule(moduleServices),
                     new UsersBlazorUIModule(moduleServices),
+                    new ContactsBlazorUIModule(moduleServices),
                     new ChatBlazorUIModule(moduleServices),
                     new NotificationBlazorUIModule(moduleServices),
                     // This module should be the last one

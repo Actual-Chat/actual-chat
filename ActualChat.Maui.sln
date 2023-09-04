@@ -81,6 +81,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		dotnet-watch.cmd = dotnet-watch.cmd
 		ef-migrations.cmd = ef-migrations.cmd
 		git-prevent-tracking.cmd = git-prevent-tracking.cmd
+		global.json = global.json
 		icons-to-font.cmd = icons-to-font.cmd
 		monitor.Dockerfile = monitor.Dockerfile
 		npm-build.cmd = npm-build.cmd
@@ -95,7 +96,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		run-watch.cmd = run-watch.cmd
 		run.cmd = run.cmd
 		version.json = version.json
-		global.json = global.json
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -134,8 +134,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nodejs", "nodejs", "{609C47
 	ProjectSection(SolutionItems) = preProject
 		src\nodejs\index.ts = src\nodejs\index.ts
 		src\nodejs\package.json = src\nodejs\package.json
-		src\nodejs\tailwind.config.js = src\nodejs\tailwind.config.js
 		src\nodejs\postcss.config.js = src\nodejs\postcss.config.js
+		src\nodejs\tailwind.config.js = src\nodejs\tailwind.config.js
 		src\nodejs\tsconfig.json = src\nodejs\tsconfig.json
 		src\nodejs\webpack.config.js = src\nodejs\webpack.config.js
 	EndProjectSection
@@ -144,11 +144,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "styles", "styles", "{747A6C
 	ProjectSection(SolutionItems) = preProject
 		src\nodejs\styles\colors.css = src\nodejs\styles\colors.css
 		src\nodejs\styles\index.css = src\nodejs\styles\index.css
+		src\nodejs\styles\keyframes.css = src\nodejs\styles\keyframes.css
 		src\nodejs\styles\main.css = src\nodejs\styles\main.css
 		src\nodejs\styles\scrollbars.css = src\nodejs\styles\scrollbars.css
 		src\nodejs\styles\spinkit.css = src\nodejs\styles\spinkit.css
 		src\nodejs\styles\tailwind.css = src\nodejs\styles\tailwind.css
-		src\nodejs\styles\keyframes.css = src\nodejs\styles\keyframes.css
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Notification.Contracts", "src\dotnet\Notification.Contracts\Notification.Contracts.csproj", "{18F78214-B24B-42A9-85AC-84F14AEBD6C4}"
@@ -180,6 +180,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\disposable.ts = src\nodejs\src\disposable.ts
 		src\nodejs\src\dom-helpers.ts = src\nodejs\src\dom-helpers.ts
 		src\nodejs\src\event-handling.ts = src\nodejs\src\event-handling.ts
+		src\nodejs\src\fast-raf.ts = src\nodejs\src\fast-raf.ts
 		src\nodejs\src\gestures.ts = src\nodejs\src\gestures.ts
 		src\nodejs\src\init.ts = src\nodejs\src\init.ts
 		src\nodejs\src\interactive.ts = src\nodejs\src\interactive.ts
@@ -196,7 +197,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\timeout.ts = src\nodejs\src\timeout.ts
 		src\nodejs\src\timerQueue.ts = src\nodejs\src\timerQueue.ts
 		src\nodejs\src\versioning.ts = src\nodejs\src\versioning.ts
-		src\nodejs\src\fast-raf.ts = src\nodejs\src\fast-raf.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"
@@ -264,6 +264,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Media", "Media", "{70EB21AB-4388-4C55-BA19-D1E1769B0886}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Media.Service.Migration", "src\dotnet\Media.Service.Migration\Media.Service.Migration.csproj", "{532D6C2F-CFC3-4637-93D8-14463CCF5211}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.UI.Blazor", "src\dotnet\Contacts.UI.Blazor\Contacts.UI.Blazor.csproj", "{A506D144-0826-4A03-A960-8457A959DD10}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -472,11 +474,11 @@ Global
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.Deploy.0 = Release|Any CPU
-		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -533,6 +535,10 @@ Global
 		{532D6C2F-CFC3-4637-93D8-14463CCF5211}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{532D6C2F-CFC3-4637-93D8-14463CCF5211}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{532D6C2F-CFC3-4637-93D8-14463CCF5211}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A506D144-0826-4A03-A960-8457A959DD10}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A506D144-0826-4A03-A960-8457A959DD10}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A506D144-0826-4A03-A960-8457A959DD10}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A506D144-0826-4A03-A960-8457A959DD10}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -621,6 +627,7 @@ Global
 		{F2BFF944-0E26-4F45-91EF-DD5055D8B1B1} = {70EB21AB-4388-4C55-BA19-D1E1769B0886}
 		{70EB21AB-4388-4C55-BA19-D1E1769B0886} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 		{532D6C2F-CFC3-4637-93D8-14463CCF5211} = {70EB21AB-4388-4C55-BA19-D1E1769B0886}
+		{A506D144-0826-4A03-A960-8457A959DD10} = {9B3B0EB4-0694-4955-B89F-581771BF3A07}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
