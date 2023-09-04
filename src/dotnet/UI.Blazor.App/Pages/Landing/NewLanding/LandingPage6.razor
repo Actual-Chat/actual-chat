@@ -1,0 +1,43 @@
+@namespace ActualChat.UI.Blazor
+@using ActualChat.UI.Blazor.App.Pages.Landing
+
+<div class="c-content">
+    <div class="c-top">
+        <div class="main-image">
+            <img draggable="false" src="/dist/images/landing/person-03.svg" alt="premium tier">
+        </div>
+        <div class="main-text">
+            <span class="title-text">
+                Get free lifetime access
+                <br/>
+                to our Premium Tier!
+            </span>
+            <p>
+                Become an Early Adopter now
+            </p>
+            <button class="btn-download web-signin">
+                <span class="text-base font-medium">Learn more</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="c-bottom">
+        <div class="c-btn-group">
+            <DownloadButton Title="Get mobile/desktop app" Class="download-app"/>
+            @if (IsGuest) {
+                <button class="btn-download web-signin" onclick="@SignInClick">
+                    <span class="text-base font-medium">Sign-in to web app</span>
+                    <i class="icon-monitor text-2xl font-thin"></i>
+                </button>
+            }
+        </div>
+        <LandingLinks/>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter] public bool IsGuest { get; set; }
+    [Parameter] public EventCallback SignInClick { get; set; }
+}

@@ -1,0 +1,117 @@
+@using ActualChat.UI.Blazor.App.Pages.Landing
+@using ActualChat.Hosting
+@inherits LandingApp
+@namespace ActualChat.UI.Blazor
+
+@{
+    var account = State.Value;
+    var isGuest = account is not {IsGuestOrNone: false };
+    var avatar = account.Avatar;
+}
+
+@* Header *@
+<div class="landing-header blur-bg">
+    @if (ScreenSize.IsNarrow()) {
+        <ButtonRound Class="menu-button flex-none" Click="@Click">
+            <i class="icon-menu text-2xl"></i>
+        </ButtonRound>
+        <div class="flex-x flex-1">
+            <div class="min-w-fit">
+                <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
+                <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+            </div>
+            <div class="flex-x flex-1">
+                <div class="px-2 self-center -mt-1.5 max-w-40">
+                    <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
+                    <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+                </div>
+                <div class="max-w-9 -mt-0.5 -ml-1">
+                    <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
+                    <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
+                </div>
+            </div>
+            <div class="header-text"></div>
+        </div>
+        <div class="flex-none justify-end">
+            @if (isGuest) {
+                <ButtonRound Class="signin-button" Click="@(SignIn)">
+                    <i class="icon-log-in text-xl"></i>
+                </ButtonRound>
+            } else {
+                <button
+                    class="context-menu-btn md:mx-4"
+                    data-menu="@(MenuRef.New<LandingDocsMenu>().ToString())"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+                    <AvatarCircle
+                        Avatar="@avatar"
+                        Size="SquareSize.Size9"/>
+                </button>
+            }
+        </div>
+    } else {
+        <div class="c-content">
+            <div class="min-w-fit">
+                <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
+                <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
+            </div>
+            <div class="flex-x flex-1">
+                <div class="px-2 self-center -mt-1.5 min-w-fit">
+                    <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
+                    <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
+                </div>
+                <div class="max-w-9 -mt-0.5 -ml-1">
+                    <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
+                    <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
+                </div>
+                <div class="c-btn-group">
+                    <div class="w-4"></div>
+                    <Button
+                        Class="btn-text btn-transparent">Why us
+                    </Button>
+                    <Button
+                        Class="btn-text btn-transparent">Pricing
+                    </Button>
+                    <Button
+                        Click="@(_ => History.NavigateTo(Links.Docs))"
+                        Class="btn-text btn-transparent">Docs
+                    </Button>
+                </div>
+            </div>
+            <div class="c-btn-group">
+                @if (isGuest) {
+                    <button class="signin-button-group items-center" onclick="@SignIn">
+                        <span class="font-medium">Sign in</span>
+                        <i class="icon-monitor text-2xl font-thin"></i>
+                    </button>
+                    <DownloadButton Title="Get app" Class="download-app new"/>
+                    <button class="btn-download btn-to-main-page !hidden">
+                        Back to Main page
+                    </button>
+                } else {
+                    <div
+                        class="context-menu-btn"
+                        data-menu="@(MenuRef.New<LandingDocsMenu>().ToString())"
+                        data-menu-trigger="@MenuTrigger.Primary"
+                        data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+                        <AvatarCircle
+                            Avatar="@avatar"
+                            Size="SquareSize.Size10"/>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
+
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
+}

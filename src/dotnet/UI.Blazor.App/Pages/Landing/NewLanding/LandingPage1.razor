@@ -1,0 +1,61 @@
+@namespace ActualChat.UI.Blazor
+@using ActualChat.UI.Blazor.App.Pages.Landing
+@using ActualChat.Hosting
+
+@{
+    var isMaui = HostInfo.AppKind.IsMauiApp();
+    var signinText = isMaui ? "Sign in" : "Sign-in to web app";
+}
+
+<div class="bg-wrapper">
+    <div class="c-ground"></div>
+    <div class="c-image"></div>
+</div>
+
+<div class="c-content">
+    <div class="main-text">
+        <p class="c-description">
+            We are here to redefine the meaning of <span>Chat</span>
+        </p>
+        <div class="flex-y gap-y-2 title-text main">
+            <Checkmark Checked="true">efficiency of texting</Checkmark>
+            <Checkmark Checked="true">focus of calls</Checkmark>
+            <Checkmark>drawbacks of either</Checkmark>
+        </div>
+        <div class="c-btn-group">
+            @if (!isMaui) {
+                <DownloadButton Title="Get mobile/desktop app" Class="download-app"/>
+            }
+            @if (IsGuest) {
+                <button class="btn-download web-signin text-01" onclick="@SignInClick">
+                    <span class="text-base font-medium">@signinText</span>
+                    @if (!isMaui) {
+                        <i class="icon-monitor text-2xl font-thin"></i>
+                    }
+                </button>
+            }
+            @if (IsGuest) {
+                <button class="btn-download web-signin transparent md:hidden" onclick="@ShowVideoClick">
+                    <i class="icon-play-fill text-2xl"></i>
+                    <span class="text-headline-1">Watch video how it works</span>
+                </button>
+            }
+        </div>
+    </div>
+    <div class="main-image">
+        <video controls hidden muted playsinline loop class="landing-video">
+            <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
+        </video>
+        <img draggable="false" src="/dist/images/landing/landing-tutorial-plug.png" alt="plug" class="landing-video-plug flex">
+    </div>
+</div>
+
+@code {
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter] public bool IsGuest { get; set; }
+    [Parameter] public EventCallback SignInClick { get; set; }
+    [Parameter] public EventCallback ShowVideoClick { get; set; }
+}

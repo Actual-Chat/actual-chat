@@ -1,0 +1,21 @@
+@namespace ActualChat.UI.Blazor
+
+<div class="landing-card">
+    <div class="landing-card-header">
+        <div class="c-icon">
+            @Icon
+        </div>
+        <div class="c-title">
+            @Title
+        </div>
+    </div>
+    <div class="c-text">
+        @Text
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? Text { get; set; }
+}
