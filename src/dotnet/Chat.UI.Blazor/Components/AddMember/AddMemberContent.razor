@@ -4,13 +4,10 @@
 @inherits FusionComponentBase
 @implements IDisposable
 
-@{
-    _viewSettings.CanSubmit = CanInvite;
-}
-
 <FormBlock>
     <SearchBox
         @ref="_searchBoxRef"
+        Class="icon-alight-right"
         Placeholder="Find contacts..."
         MaxLength="@Constants.Chat.MaxSearchFilterLength"
         TextChanged="@OnFilter"/>
@@ -39,32 +36,13 @@
     </div>
 </FormBlock>
 
-<RenderIntoSlot Name="@ButtonsSlotName">
-    <Button
-        Click="OnCancel"
-        Class="btn-cancel btn-modal">
-        Cancel
-    </Button>
-    <Button
-        Click="OnAdd"
-        Type="@ButtonType.Submit"
-        IsDisabled="@(!CanInvite)"
-        Class="btn-primary btn-modal">
-        Add
-    </Button>
-</RenderIntoSlot>
-
 @code {
-    public const string ButtonsSlotName = "AddMemberContent-PageButtons";
-
     private SearchBox _searchBoxRef = null!;
-    private DialogFrameNarrowViewSettings _viewSettings = null!;
-    private bool _canInvite;
+    private DialogButtonInfo _submitButtonInfo = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IUserPresences UserPresences { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     private ChatId ChatId { get; set; } // Shortcut
@@ -75,51 +53,31 @@
     private CancellationToken DisposeToken => DisposeTokenSource.Token;
 
     private bool CanInvite {
-        get => _canInvite;
-        set {
-            if (_canInvite == value)
-                return;
-            _canInvite = value;
-            InvokeStateHasChanged?.Invoke();
-            Context?.StateHasChanged();
-        }
+        set => _submitButtonInfo.CanExecute = value;
     }
 
-    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
-    [Parameter, EditorRequired] public EventCallback Close { get; set; }
-    [Parameter] public DiveInModalPageContext? Context { get; set; }
-    [Parameter] public Action? InvokeStateHasChanged { get; set; }
-
-    public DialogFrameNarrowViewSettings NarrowViewSettings
-        => _viewSettings;
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
-        ChatId = new ChatId(ChatSid);
-        _viewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnAdd, "Add");
-        if (Context != null)
-            Context.NarrowViewSettings = _viewSettings;
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Add", OnAdd);
+        _submitButtonInfo.CanExecute = false;
+        ChatId = Context.GetTypedModel<ChatId>();
+        Context.SetTitle("Add members");
+        Context.SetClass("add-member-modal-content");
+        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+
         var existingUserIds = new HashSet<UserId>(
             await Authors.ListUserIds(Session, ChatId, DisposeToken));
 
         var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
-        var contacts = await userContacts
-            .Select(async c => {
-                // Fine to use ConfigureAwait(false) here
-                var account = c.Account;
-                if (account == null)
-                    return null;
-
-                var presence = await UserPresences.Get(account.Id, DisposeToken).ConfigureAwait(false);
-                return new Contact() {
-                    Account = account,
-                    Presence = presence,
-                    IsExisting = existingUserIds.Contains(account.Id),
-                };
+        var contacts = userContacts
+            .Select(c => new Contact() {
+                Account = c.Account!,
+                IsExisting = existingUserIds.Contains(c.Account!.Id),
             })
-            .Collect(); // Add concurrency
+            .ToArray();
 
         AllContacts = contacts
-            .SkipNullItems()
             .OrderBy(x => x.Account.Avatar.Name)
             .ToArray();
         FilteredContacts = AllContacts;
@@ -168,17 +126,16 @@
         if (error != null)
             return;
 
-        await Close.InvokeAsync();
+        OnCancel();
     }
 
-    private async Task OnCancel()
-        => await Close.InvokeAsync();
+    private void OnCancel()
+        => Context.Close();
 
     // Nested types
 
     private sealed class Contact {
         public Account Account { get; init; } = null!;
-        public Presence Presence { get; init; }
         public bool IsExisting { get; init; }
         public bool IsChecked { get; set; }
     }

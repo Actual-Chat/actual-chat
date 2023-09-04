@@ -1,45 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<AddMemberModal.Model>
 
-@{
-    var viewSettings = _addMemberContent != null ? _addMemberContent.NarrowViewSettings : _viewSettings;
-}
-
-<DialogFrame
-    Class="add-member-modal add-member-modal-content"
-    Title="Add members"
+<DiveInDialogFrame
     HasCloseButton="true"
-    NarrowViewSettings="viewSettings">
-    <Body>
-        <AddMemberContent
-            @ref="_addMemberContent"
-            ChatSid="@ModalModel.ChatId"
-            Close="@OnClose"
-            InvokeStateHasChanged="InvokeStateHasChanged" />
-    </Body>
-    <Buttons>
-        <RenderSlot Name="@AddMemberContent.ButtonsSlotName"/>
-    </Buttons>
-</DialogFrame>
+    Class="add-member-modal"
+    StartPage="@(DiveInDialogPage.New<AddMemberContent>(ModalModel.ChatId))" />
 
 @code {
-    private readonly DialogFrameNarrowViewSettings _viewSettings =
-        DialogFrameNarrowViewSettings.SubmitButton(() => {}, "Add") with { CanSubmit = false };
-    private AddMemberContent? _addMemberContent;
-
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    private void OnClose()
-        => Modal.Close();
-
-    protected override void OnAfterRender(bool firstRender) {
-        if (firstRender)
-            StateHasChanged(); // Re-evaluate NarrowViewSettings after _addMemberContent is set.
-    }
-
-    private void InvokeStateHasChanged()
-        => InvokeAsync(StateHasChanged);
 
     // Nested types
 

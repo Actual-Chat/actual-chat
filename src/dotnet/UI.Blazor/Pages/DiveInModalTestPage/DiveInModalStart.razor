@@ -1,27 +1,28 @@
 ﻿@using ActualChat.UI.Blazor.Services
-<DiveInDialogFramePage
-    Id="@DiveInModal.PageIds.Start"
-    IsStartPage="true"
-    Title="Dive-in modal (Start)">
-    <Body Context="context">
-        <div class="grow flex-y justify-center items-center">
-            <h3>DiveInModalRoot</h3>
-            <Button class="btn-primary" Click="@(_ => context.StepIn(DiveInModal.PageIds.Inner))">
-                Move INSIDE
-            </Button>
-        </div>
-    </Body>
-    <Buttons Context="context">
-        <Button Type="@ButtonType.Button" Class="btn-modal" Click="@(_ => context.Close())">Cancel</Button>
-        <Button Type="@ButtonType.Button" Class="btn-primary btn-modal" Click="@(_ => OnSubmit(context))">Save</Button>
-    </Buttons>
-</DiveInDialogFramePage>
+
+<div class="grow flex-y justify-center items-center">
+    <h3>DiveInModalRoot</h3>
+    <Button class="btn-primary" Click="@(_ => Context.StepIn(DiveInDialogPage.New<DiveInModalInner>()))">
+        Move INSIDE
+    </Button>
+</div>
 
 @code {
     [Inject] private ToastUI ToastUI { get; set; } = null!;
 
-    private void OnSubmit(DiveInModalPageContext context) {
-        context.Close();
+    [CascadingParameter] public DiveInModalPageContext Context { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        Context.SetTitle("Dive-in modal (Start)");
+        Context.RegisterButtons(
+            DialogButtonInfo.CancelButton,
+            DialogButtonInfo.CreateSubmitButton("Save", OnSubmit)
+        );
+    }
+
+    private void OnSubmit() {
+        Context.Close();
         ToastUI.Show("DiveInModal submitted", "icon-checkmark-circle", 3);
     }
 }

@@ -2,23 +2,12 @@
 @implements IModalView<ChatSettingsModal.Model>
 
 <DiveInDialogFrame
-    Title="Edit chat settings"
-    Class="edit-chat-settings-modal"
     HasCloseButton="true"
-    NarrowViewSettings="@(DialogFrameNarrowViewSettings.Stretch with{ShouldHideButtons = true})">
-    <ChatSettingsStartPage ChatSid="@ModalModel.Chat.Id" />
-    <EditMembersPage ChatSid="@ModalModel.Chat.Id" />
-    <AddMemberPage ChatSid="@ModalModel.Chat.Id" />
-</DiveInDialogFrame>
+    Class="edit-chat-settings-modal"
+    StartPage="@(DiveInDialogPage.New<ChatSettingsStartContent>(ModalModel.ChatId))" />
 
 @code {
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public static class PageIds {
-        public const string Start = "start";
-        public const string Members = "members";
-        public const string AddMember = "add-member";
-    }
-
-    public sealed record Model(Chat Chat);
+    public sealed record Model(ChatId ChatId);
 }

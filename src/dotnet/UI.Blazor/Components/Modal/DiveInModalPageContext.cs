@@ -1,53 +1,52 @@
 ﻿namespace ActualChat.UI.Blazor.Components;
 
-public class DiveInModalPageContext
+public class DiveInModalPageContext(
+    IDiveInModalContext modalContext,
+    DiveInDialogPage page)
 {
-    private readonly IDiveInModalContext _modalContext;
-    private string? _title;
-    private DialogFrameNarrowViewSettings? _narrowViewSettings;
-
-    public string? Title {
-        get => _title;
-        set {
-            if (OrdinalEquals(_title, value))
-                return;
-            _title = value;
-            StateHasChanged();
-        }
-    }
-
-    public DialogFrameNarrowViewSettings? NarrowViewSettings {
-        get => _narrowViewSettings;
-        set {
-            if (_narrowViewSettings == value)
-                return;
-            _narrowViewSettings = value;
-            StateHasChanged();
-        }
-    }
+    public object? Model => page.Model;
 
     public DataBag PageDataBag { get; } = new ();
-    public DataBag ModalDataBag => _modalContext.DataBag;
 
-    public DiveInModalPageContext(
-        IDiveInModalContext modalContext,
-        string? title,
-        DialogFrameNarrowViewSettings? narrowViewSettings)
+    public DataBag ModalDataBag => modalContext.DataBag;
+
+    public string Title { get; private set; } = "";
+
+    public string Class { get; private set; } = "";
+
+    public DialogButtonInfo[]? ButtonInfos { get; private set;  }
+
+    public T GetTypedModel<T>()
+        => (T)Model!;
+
+    public void SetTitle(string title)
     {
-        _modalContext = modalContext;
-        _title = title;
-        _narrowViewSettings = narrowViewSettings;
+        if (OrdinalEquals(Title, title))
+            return;
+        Title = title;
+        StateHasChanged();
     }
 
-    public void StepIn(string pageId)
-        => _modalContext.StepIn(pageId);
+    public void SetClass(string @class)
+    {
+        if (OrdinalEquals(Class, @class))
+            return;
+        Class = @class;
+        StateHasChanged();
+    }
 
-    public void Back()
-        => _modalContext.Back();
+    public void RegisterButtons(params DialogButtonInfo[] buttonInfos)
+    {
+        ButtonInfos = buttonInfos;
+        StateHasChanged();
+    }
 
     public void Close()
-        => _modalContext.Close();
+        => modalContext.Close();
 
-    public void StateHasChanged()
-        => _modalContext.StateHasChanged();
+    public void StepIn(DiveInDialogPage page)
+        => modalContext.StepIn(page);
+
+    private void StateHasChanged()
+        => modalContext.StateHasChanged();
 }

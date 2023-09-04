@@ -1,16 +1,17 @@
-﻿@namespace ActualChat.UI.Blazor.Components
+﻿@using ActualChat.UI.Blazor.Pages.DiveInModalTestPage
+@namespace ActualChat.UI.Blazor.Components
 @implements IDiveInModalContext;
 
+@{
+    var pageContext = _pageInfo.Context;
+}
+
 <CascadingValue IsFixed="true" Value="@this">
-    @ChildContent
+<CascadingValue Value="@pageContext">
     @{
-        EnsurePagesInitialized();
-        if (_currentPage == null)
-            return;
-        var title = _currentPage.GetTitle() ?? Title;
-        var pageClass = _currentPage.Class;
-        var cls = Class + " " + pageClass;
-        var narrowViewSettings = _currentPage.GetNarrowViewSettings() ?? NarrowViewSettings;
+        var title = pageContext.Title;
+        var cls = Class + " " + pageContext.Class;
+        var narrowViewSettings = _narrowViewSettingsBuilder.GetFrom(pageContext.ButtonInfos);
     }
     <DialogFrame
         HasHeader="@HasHeader"
@@ -20,23 +21,20 @@
         Class="@cls"
         NarrowViewSettings="@narrowViewSettings">
         <Body>
-            @_currentPage.RenderBody
+            @_pageInfo.Body
         </Body>
         <Buttons>
-            @if (_currentPage.RenderButtons != null) {
-                @_currentPage.RenderButtons
-            } else if (_currentPage.UseBackButton) {
-                <Button Type="@ButtonType.Button" Class="btn-primary btn-modal" Click="OnBack">Back</Button>
+            @if (pageContext.ButtonInfos != null) {
+                <DialogButtons ButtonInfos="@pageContext.ButtonInfos" Cancel="@OnClose" />
             }
         </Buttons>
     </DialogFrame>
 </CascadingValue>
+</CascadingValue>
 
 @code {
-    private readonly List<DiveInDialogFramePage> _pages = new();
-    private DiveInDialogFramePage? _currentPage;
-    private DiveInDialogFramePage? _lastRenderedPage;
-    private DiveInDialogFramePage? _startPage;
+    private PageInfo _pageInfo = null!;
+    private DialogFrameNarrowViewSettingsBuilder _narrowViewSettingsBuilder = new();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
@@ -44,61 +42,52 @@
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
-    [Parameter] public string Title { get; set; } = "";
-    [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public DialogFrameNarrowViewSettings NarrowViewSettings { get; set; } = DialogFrameNarrowViewSettings.Stretch;
+    [Parameter, EditorRequired] public DiveInDialogPage StartPage { get; set; } = null!;
 
-    internal void RegisterPage(DiveInDialogFramePage page) {
-        if (_startPage != null)
-            throw StandardError.NotSupported("Changing pages after initialization is not supported");
-        _pages.Add(page);
-        StateHasChanged();
+    protected override void OnInitialized()
+        => _pageInfo = CreatePageInfo(StartPage);
+
+    private PageInfo CreatePageInfo(DiveInDialogPage page) {
+        var pageContext = new DiveInModalPageContext(this, page);
+        RenderFragment body = builder => RenderPage(page).Invoke(builder);
+        var pageId = page.ComponentType.ToString();
+        return new PageInfo(pageContext, pageId, body);
     }
 
-    void IDiveInModalContext.StepIn(string pageId) {
-        var page = _pages.FirstOrDefault(c => OrdinalEquals(pageId, c.Id));
-        if (page == null)
-            throw StandardError.Constraint($"No page with '{pageId}' found");
-        var pageToReturn = _currentPage;
-        Modal.StepIn($"page-'{pageId}'")
+    private RenderFragment RenderPage(DiveInDialogPage pageDescriptor)
+        => builder => {
+            builder.OpenComponent(0, pageDescriptor.ComponentType);
+            builder.CloseComponent();
+        };
+
+    void IDiveInModalContext.StepIn(DiveInDialogPage page) {
+        var pageToReturn = _pageInfo;
+        Modal.StepIn($"page-'{_pageInfo.PageId}'")
             .WhenClosed.ContinueWith(t => {
                 if (t.IsCompletedSuccessfully && t.Result) {
                     // is step back
-                    _currentPage = pageToReturn;
+                    _pageInfo = pageToReturn;
                     InvokeAsync(StateHasChanged);
                 }
             }, TaskScheduler.Current);
-        _currentPage = page;
+        _pageInfo = CreatePageInfo(page);
         InvokeAsync(StateHasChanged);
     }
 
-    private void OnBack() {
+    private void OnClose() {
         if (Modal.Ref.StepRef != null)
             Modal.StepBack();
         else
             Modal.Close();
     }
 
-    private void EnsurePagesInitialized() {
-        if (_currentPage != null || _pages.Count <= 0)
-            return;
-        var startPages = _pages.Where(c => c.IsStartPage).ToArray();
-        if (startPages.Length == 0)
-            throw StandardError.Constraint("One page should be marked as Start page");
-        if (startPages.Length > 1)
-            throw StandardError.Constraint("Only one page should be marked as Start page");
-        _startPage = startPages[0];
-        _currentPage = _startPage;
-    }
-
     DataBag IDiveInModalContext.DataBag { get; } = new ();
 
-    void IDiveInModalContext.Back()
-        => OnBack();
-
     void IDiveInModalContext.Close()
-        => Modal.Close();
+        => OnClose();
 
     void IDiveInModalContext.StateHasChanged()
         => InvokeAsync(StateHasChanged);
+
+    private record PageInfo(DiveInModalPageContext Context, string PageId, RenderFragment Body);
 }

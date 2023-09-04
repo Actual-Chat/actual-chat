@@ -15,11 +15,7 @@
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
     @{
-        var isValid = _formRef?.IsValid ?? false;
-        _narrowViewSettings.CanSubmit = isValid;
-        if (_lastIsValid != isValid)
-            Context.StateHasChanged();
-        _lastIsValid = isValid;
+        _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
     @if (m.Rules.CanEditProperties()) {
         <FormBlock>
@@ -179,11 +175,6 @@
             </TileItem>
         </FormBlock>
     }
-    @* Render buttons inside Form component with using RenderIntoSlot to get appropriate updates when Form.IsValid changed *@
-    <RenderIntoSlot Name="@ChatSettingsStartPage.ButtonsSlotName">
-        <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
-        <Button Type="@ButtonType.Button" IsDisabled="@(!isValid)" Class="btn-primary btn-modal" Click="OnSubmit">Save</Button>
-    </RenderIntoSlot>
 </Form>
 
 
@@ -191,10 +182,9 @@
 @code {
     private const int MaxInvitesCount = 5;
     private Form?_formRef;
-    private FormModel? _form = null!;
+    private FormModel? _form;
     private Symbol _newInviteId = Symbol.Empty;
-    private bool _lastIsValid;
-    private DialogFrameNarrowViewSettings _narrowViewSettings = null!;
+    private DialogButtonInfo _submitButtonInfo = null!;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
@@ -207,16 +197,16 @@
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
-    [Parameter, EditorRequired] public DiveInModalPageContext Context { get; set; } = null!;
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     private ChatId ChatId { get; set; }
 
     protected override void OnInitialized() {
         base.OnInitialized();
-        ChatId = new ChatId(ChatSid);
-        _narrowViewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnSubmit);
-        Context.NarrowViewSettings = _narrowViewSettings;
+        ChatId = Context.GetTypedModel<ChatId>();
+        Context.SetTitle("Edit chat settings");
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
+        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
     }
 
     protected override async Task OnInitializedAsync() {
@@ -278,10 +268,7 @@
     }
 
     private void OnManageMembersClick()
-        => Context.StepIn(ChatSettingsModal.PageIds.Members);
-
-    private void OnCancel()
-        => Context.Close();
+        => Context.StepIn(DiveInDialogPage.New<EditMembersContent>(ChatId));
 
     private async Task OnSubmit() {
         if (_formRef == null)
@@ -295,7 +282,7 @@
     private async Task Save() {
         var chat = await Chats.Get(Session, ChatId, default).Require();
         var newChat = chat with {
-            Title = _form.Title,
+            Title = _form!.Title,
             IsPublic = _form.IsPublic,
             IsTemplate = _form.IsTemplate,
             AllowGuestAuthors = _form.AllowGuestAuthors,
@@ -318,7 +305,7 @@
         public bool IsTemplate { get; set; }
         public bool AllowGuestAuthors { get; set; }
         public bool AllowAnonymousAuthors { get; set; }
-        public string ImageUploadUrl { get; set; } = "";
+        public string ImageUploadUrl { get; init; } = "";
 
         public string FormId { get; }
         public string TitleId { get; }

@@ -6,13 +6,29 @@ public record DialogFrameNarrowViewSettings
 {
     public static readonly DialogFrameNarrowViewSettings Bottom = new () { Position = DialogFramePosition.Bottom };
     public static readonly DialogFrameNarrowViewSettings Stretch = new () { Position = DialogFramePosition.Stretch };
+    private bool _canSubmit = true;
 
     public DialogFramePosition Position { get; init; } = DialogFramePosition.Bottom;
     public bool? ShouldHideButtons { get; init; }
     public ButtonType SubmitButtonType { get; init; } = ButtonType.Button;
     public EventCallback SubmitClick { get; init; }
     public string SubmitButtonText { get; init; } = "";
-    public bool CanSubmit { get; set; } = true;
+
+    public bool CanSubmit {
+        get => _canSubmit;
+        set {
+            if (_canSubmit == value)
+                return;
+            _canSubmit = value;
+            RaiseCanSubmitChanged();
+        }
+    }
+
+    public event EventHandler? CanSubmitChanged;
+
+    public void RaiseCanSubmitChanged()
+        => CanSubmitChanged?.Invoke(this, EventArgs.Empty);
+
     public bool? UseInteractiveHeader { get; init; }
 
     public bool IsSubmitDefined

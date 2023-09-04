@@ -1,12 +1,11 @@
 ﻿@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
 @{
     var isInnerStep = Modal.Ref.StepRef != null;
-    var settings = DialogFrame.NarrowViewSettings;
-    var useInteractiveHeader = ScreenSize.IsNarrow() && settings.ShouldUseInteractiveHeader;
 }
 
-@if (!useInteractiveHeader) {
+@if (!_useInteractiveHeader) {
     <div class="modal-header">
         @if (isInnerStep) {
             <HeaderButton Click="OnBackClick">
@@ -21,7 +20,7 @@
         }
     </div>
 } else {
-    var submitText = settings.SubmitButtonText;
+    var submitText = _settings!.SubmitButtonText;
     if (submitText.IsNullOrEmpty())
         submitText = "Save";
     <DialogInteractiveHeader
@@ -29,13 +28,16 @@
         Modal="@Modal"
         CloseClick="OnCloseClick"
         BackClick="OnBackClick"
-        SubmitButtonType="@settings.SubmitButtonType"
+        SubmitButtonType="@_settings.SubmitButtonType"
         SubmitButtonText="@submitText"
-        CanSubmit="@settings.CanSubmit"
-        SubmitClick="@settings.SubmitClick" />
+        CanSubmit="@_settings.CanSubmit"
+        SubmitClick="@_settings.SubmitClick" />
 }
 
 @code {
+    private DialogFrameNarrowViewSettings? _settings;
+    private bool _useInteractiveHeader;
+
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
@@ -45,9 +47,29 @@
     [Parameter] public bool HasCloseButton { get; set; }
     [Parameter] public string Title { get; set; } = "";
 
+    protected override void OnParametersSet() {
+        if (_settings != DialogFrame.NarrowViewSettings) {
+            if (_settings != null)
+                _settings.CanSubmitChanged -= OnCanSubmitChanged;
+            _settings = DialogFrame.NarrowViewSettings;
+            _settings.CanSubmitChanged += OnCanSubmitChanged;
+        }
+        _useInteractiveHeader = ScreenSize.IsNarrow() && _settings.ShouldUseInteractiveHeader;
+    }
+
+    private void OnCanSubmitChanged(object? sender, EventArgs e)
+        => InvokeAsync(StateHasChanged);
+
     private void OnCloseClick()
         => _ = Modal.Close();
 
     private void OnBackClick()
         => _ = Modal.StepBack();
+
+    public void Dispose() {
+        if (_settings != null) {
+            _settings.CanSubmitChanged -= OnCanSubmitChanged;
+            _settings = null;
+        }
+    }
 }

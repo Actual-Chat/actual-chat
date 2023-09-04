@@ -4,7 +4,7 @@
 
 @{
     var m = State.Value;
-    Context.Title = $"{m.MembersCount} members";
+    Context.SetTitle($"{m.MembersCount} members");
     Context.ModalDataBag.Set(nameof(ChatSettingsStartContent.ComputedModel.MembersCount), m.MembersCount);
 }
 
@@ -60,17 +60,15 @@
     [Inject] private IRoles Roles { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatSid { get; set; } = null!;
-    [Parameter, EditorRequired] public DiveInModalPageContext Context { get; set; } = null!;
-
-    private ModalUI ModalUI => Services.GetRequiredService<ModalUI>();
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
         base.OnInitialized();
-        ChatId = new ChatId(ChatSid);
+        ChatId = Context.GetTypedModel<ChatId>();
         if (ChatId.IsPeerChat(out _))
             throw StandardError.NotSupported("Peer chat id should not be provided.");
-        Context.NarrowViewSettings = DialogFrameNarrowViewSettings.Stretch with { UseInteractiveHeader = true };
+        Context.SetClass("edit-members");
+        Context.RegisterButtons(DialogButtonInfo.BackButton);
     }
 
     private void OnFilter(string filter) {
@@ -122,10 +120,8 @@
         };
     }
 
-    // private Task OnInviteClick()
-    //   => ModalUI.Show(new AddMemberModal.Model(ChatId));
     private void OnInviteClick()
-        => Context.StepIn(ChatSettingsModal.PageIds.AddMember);
+        => Context.StepIn(DiveInDialogPage.New<AddMemberContent>(ChatId));
 
     private static string? FormatStatusText(bool isOwner, bool isOwn) {
         var statusText = isOwner ? "Owner" : null;

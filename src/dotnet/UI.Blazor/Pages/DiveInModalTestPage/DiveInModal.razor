@@ -1,20 +1,12 @@
 ﻿@implements IModalView<DiveInModal.Model>
 
-
 <DiveInDialogFrame
-    Title="Dive-in modal"
-    HasCloseButton="true">
-    <DiveInModalStart />
-    <DiveInModalInner />
+    HasCloseButton="true"
+    StartPage="@(DiveInDialogPage.New<DiveInModalStart>())">
 </DiveInDialogFrame>
 
 @code {
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    public static class PageIds {
-        public const string Start = "start";
-        public const string Inner = "inner";
-    }
 
     public record Model;
 }
