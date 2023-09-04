@@ -1,0 +1,48 @@
+@namespace ActualChat.UI.Blazor
+@using ActualChat.UI.Blazor.App.Pages.Landing
+
+<div class="c-content">
+    <div class="c-top">
+        <div class="main-text">
+            <span class="title-text">
+                We reimagine calls, texts and voice messages
+            </span>
+            <p>
+                By blending voice and text into a single medium.
+            </p>
+        </div>
+        <div class="main-image">
+            <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
+        </div>
+    </div>
+
+    <div class="c-bottom">
+        <LandingCard Title="Live transcript">
+            <Icon>
+                <i class="icon-transcription"></i>
+            </Icon>
+            <Text>
+                Watch your words come to life as you talk - anything you say is transcribed and instantly available,
+                word-by-word.
+            </Text>
+        </LandingCard>
+        <LandingCard Title="Talk & Text">
+            <Icon>
+                <i class="icon-mic-fill"></i>
+            </Icon>
+            <Text>
+                And it's not just a transcript - it's voice + text, streamed in real time. Listen to chats like a call,
+                without the need for a call.
+            </Text>
+        </LandingCard>
+        <LandingCard Title="Read & Replay">
+            <Icon>
+                <i class="icon-play-fill"></i>
+            </Icon>
+            <Text>
+                Effortlessly catch up on missed moments - every conversation is captured in text and audio for later
+                playback or reading.
+            </Text>
+        </LandingCard>
+    </div>
+</div>

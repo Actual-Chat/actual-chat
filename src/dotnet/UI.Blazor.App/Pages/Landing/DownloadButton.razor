@@ -1,10 +1,11 @@
 <button class="btn-download @Class">
     <div class="c-content">
-        Get mobile/desktop app
+        @Title
     </div>
     <i class="icon-download text-2xl font-thin text-04 c-icon"></i>
 </button>
 
 @code {
+    [Parameter] public string Title { get; set; } = "Get mobile/desktop app";
     [Parameter] public string Class { get; set; } = "";
 }

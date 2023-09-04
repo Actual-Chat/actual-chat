@@ -136,14 +136,14 @@ body.narrow .landing-header .light-alpha {
     @apply opacity-0;
     @apply transition-all ease-in-out duration-200;
 }
-.landing-header .header-text {
+.landing-header .btn-text {
     @apply flex-x items-center justify-center gap-x-4;
     @apply min-w-fit w-fit;
-    @apply px-4;
-    @apply text-04 font-medium;
+    @apply px-2;
+    @apply text-04 text-headline-1 leading-4.5;
     @apply transition-all ease-in-out duration-100;
 }
-body.narrow .landing-header .header-text {
+body.narrow .landing-header .btn-text {
     @apply hidden;
 }
 

@@ -1,0 +1,14 @@
+@namespace ActualChat.UI.Blazor
+
+<div class="landing-image-card-item">
+    <div class="c-icon">
+        <img draggable="false" src="/dist/images/landing/checkmark-blue.svg" alt="circle checkmark">
+    </div>
+    <div class="c-content">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
