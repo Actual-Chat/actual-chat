@@ -1,3 +1,4 @@
+using System.Net.WebSockets;
 using ActualChat.Kubernetes;
 using Microsoft.Toolkit.HighPerformance;
 
@@ -7,6 +8,7 @@ public class AudioStreamProxy : IAudioStreamServer
 {
     private const int WriteReplicaCount = 2;
     private const int ReadReplicaCount = 2;
+    private const int WriteAttemptCount = 2;
     private TimeSpan ReadStreamWaitTimeout { get; } = TimeSpan.FromSeconds(1);
 
     private AudioSettings Settings { get; }
@@ -59,7 +61,7 @@ public class AudioStreamProxy : IAudioStreamServer
         var randomizedAddresses = addresses.Shuffle().Take(readReplicaCount);
         foreach (var address in randomizedAddresses) {
             DebugLog?.LogInformation("Read({Stream}): trying {Address}", streamName, address);
-            var client = await GetAudioStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
+            using var client = await GetAudioStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
             var stream = await client.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
             var result = await stream.IsNonEmpty(Clocks.CpuClock, ReadStreamWaitTimeout, cancellationToken)
                 .ConfigureAwait(false);
@@ -92,29 +94,80 @@ public class AudioStreamProxy : IAudioStreamServer
             return;
         }
         var port = serviceEndpoints.GetPort()!.Port;
-        var addresses = addressRing.Segment(streamId.Value.GetDjb2HashCode(), WriteReplicaCount);
-
-        DebugLog?.LogInformation("Write({Stream}): hitting [{Addresses}]", streamName, addresses.ToDelimitedString());
         var memoized = stream.Memoize(cancellationToken);
-        var writeTasks = addresses
-            .Select(async address => {
-                DebugLog?.LogInformation("Write({Stream}): writing to {Address} started", streamName, address);
-                var client = await GetAudioStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
-                try {
-                    await client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
-                    DebugLog?.LogInformation("Write({Stream}): done writing to {Address}", streamName, address);
-                }
-                catch (Exception e) when (e is not OperationCanceledException) {
-                    Log.LogError(e, "Write({Stream}): failed writing to {Address}", streamName, address);
-                }
-            })
-            .ToList();
-        await Task.WhenAll(writeTasks).ConfigureAwait(false);
+        var isNotCompletedYet = true;
+        var replicasLeft = WriteReplicaCount;
+        var writeTasks = new HashSet<Task>();
+        var addresses = endpointState.Value
+            .GetAddressHashRing()
+            .Segment(streamId.Value.GetDjb2HashCode(), replicasLeft);
+        DebugLog?.LogInformation("Write({Stream}): hitting [{Addresses}]", streamName, addresses.ToDelimitedString());
+        writeTasks.AddRange(addresses
+            .Select(address => WriteToReplica(streamId,
+                streamName,
+                memoized,
+                kube,
+                address,
+                port,
+                cancellationToken)));
+        var retryCount = 0;
+        while (isNotCompletedYet && retryCount <= WriteAttemptCount) {
+            await Task.WhenAny(writeTasks).ConfigureAwait(false);
+
+            var tasksToRetry = writeTasks
+                .Where(t => t.IsFaulted && (t.Exception?.InnerExceptions.Any(e => e is WebSocketException) ?? false))
+                .ToList();
+            writeTasks.RemoveWhere(t => t.IsCompletedSuccessfully);
+            if (tasksToRetry.Count > 0) {
+                // Get fresh state value
+                addresses = endpointState.Value
+                    .GetAddressHashRing()
+                    .Segment(streamId.Value.GetDjb2HashCode(), tasksToRetry.Count);
+                Log.LogWarning("Write({Stream}): retrying write to [{Addresses}]", streamName, addresses.ToDelimitedString());
+                writeTasks.AddRange(addresses
+                    .Select(address => WriteToReplica(streamId,
+                        streamName,
+                        memoized,
+                        kube,
+                        address,
+                        port,
+                        cancellationToken)));
+                retryCount++;
+            }
+            else
+                isNotCompletedYet = writeTasks.Any(t => !t.IsCompleted);
+        }
+        if (writeTasks.Count > 0)
+            await Task.WhenAll(writeTasks).ConfigureAwait(false);
+    }
+
+    public void Dispose()
+    { }
+
+
+    private async Task WriteToReplica(
+        Symbol streamId,
+        string streamName,
+        AsyncMemoizer<byte[]> memoized,
+        Kube kube,
+        string address,
+        int port,
+        CancellationToken cancellationToken)
+    {
+        DebugLog?.LogInformation("WriteToReplica({Stream}): writing to {Address} started", streamName, address);
+        using var client = await GetAudioStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
+        try {
+            await client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
+            DebugLog?.LogInformation("WriteToReplica({Stream}): done writing to {Address}", streamName, address);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, "WriteToReplica({Stream}): failed writing to {Address}", streamName, address);
+        }
     }
 
     private async Task<IAudioStreamServer> GetAudioStreamClient(
         Kube kube, string address, int port, CancellationToken cancellationToken)
         => OrdinalEquals(address, kube.PodIP) && !kube.IsEmulated
-            ? AudioStreamServer
+            ? AudioStreamServer.SkipDispose()
             : await AudioHubBackendClientFactory.GetAudioStreamClient(address, port, cancellationToken).ConfigureAwait(false);
 }

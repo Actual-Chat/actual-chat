@@ -2,9 +2,10 @@ namespace ActualChat.Audio;
 
 public class AudioStreamServer : StreamServerBase<byte[]>, IAudioStreamServer
 {
-    public AudioStreamServer(IServiceProvider services) : base(services) { }
+    public AudioStreamServer(IServiceProvider services) : base(services)
+    { }
 
-    public async Task<IAsyncEnumerable<byte[]>> Read(
+    public virtual async Task<IAsyncEnumerable<byte[]>> Read(
         Symbol streamId,
         TimeSpan skipTo,
         CancellationToken cancellationToken)
@@ -13,8 +14,11 @@ public class AudioStreamServer : StreamServerBase<byte[]>, IAudioStreamServer
         return SkipTo(stream, skipTo, cancellationToken);
     }
 
-    public new Task Write(Symbol streamId, IAsyncEnumerable<byte[]> stream, CancellationToken cancellationToken)
+    public new virtual Task Write(Symbol streamId, IAsyncEnumerable<byte[]> stream, CancellationToken cancellationToken)
         => base.Write(streamId, stream, cancellationToken);
+
+    public AudioStreamServer SkipDispose()
+        => new SkipDisposeWrapper(this);
 
     // Private methods
 
@@ -33,5 +37,17 @@ public class AudioStreamServer : StreamServerBase<byte[]>, IAudioStreamServer
         return dataStream
             .SkipWhile((_, i) => i < skipToFrameN)
             .Prepend(headerDataTask);
+    }
+
+    private sealed class SkipDisposeWrapper(AudioStreamServer instance) : AudioStreamServer(instance.Services)
+    {
+        public override Task<IAsyncEnumerable<byte[]>> Read(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
+            => instance.Read(streamId, skipTo, cancellationToken);
+
+        public override Task Write(Symbol streamId, IAsyncEnumerable<byte[]> stream, CancellationToken cancellationToken)
+            => instance.Write(streamId, stream, cancellationToken);
+
+        public override void Dispose()
+        { }
     }
 }

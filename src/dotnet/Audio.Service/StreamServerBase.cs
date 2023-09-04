@@ -8,10 +8,10 @@ public abstract class StreamServerBase<TItem> : IDisposable
     private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, TaskCompletionSource<AsyncMemoizer<TItem>>>> _streams = new ();
 
     protected int StreamBufferSize { get; init; } = 64;
-    protected TimeSpan MaxStreamDuration { get; init; } = TimeSpan.FromSeconds(600);
+    protected TimeSpan MaxStreamDuration { get; init; } = TimeSpan.FromSeconds(300);
     protected TimeSpan ReadStreamWaitDuration { get; init; } = TimeSpan.FromSeconds(2);
     protected TimeSpan ReadStreamExpiration { get; init; } = TimeSpan.FromSeconds(5);
-    protected TimeSpan WriteStreamExpiration { get; init; } = TimeSpan.FromSeconds(605);
+    protected TimeSpan WriteStreamExpiration { get; init; } = TimeSpan.FromSeconds(305);
 
     protected IServiceProvider Services { get; }
     protected MomentClockSet Clocks { get; }
@@ -32,7 +32,7 @@ public abstract class StreamServerBase<TItem> : IDisposable
     }
 
 
-    public void Dispose()
+    public virtual void Dispose()
         => _disposeTokenSource.CancelAndDisposeSilently();
 
     protected async Task<IAsyncEnumerable<TItem>> Read(Symbol streamId, CancellationToken cancellationToken)
@@ -55,8 +55,15 @@ public abstract class StreamServerBase<TItem> : IDisposable
     {
         StreamCounter?.Add(1);
         var entry = GetOrAddStream(streamId, WriteStreamExpiration);
+        if (entry.Value.Task.IsCompleted) {
+            Log.LogWarning("Write({Stream}): already exists", streamId);
+            return;
+        }
         var memoizer = stream.Memoize(cancellationToken);
-        entry.Value.SetResult(memoizer);
+        if (!entry.Value.TrySetResult(memoizer)) {
+            Log.LogWarning("Write({Stream}): already exists - unable to set result", streamId);
+            return;
+        }
 
         await memoizer.WriteTask.ConfigureAwait(false);
         _ = Clocks.CpuClock

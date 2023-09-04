@@ -1,6 +1,6 @@
 namespace ActualChat.Audio;
 
-public interface IAudioStreamServer
+public interface IAudioStreamServer : IDisposable
 {
     Task<IAsyncEnumerable<byte[]>> Read(
         Symbol streamId,
