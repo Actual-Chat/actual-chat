@@ -43,11 +43,17 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
     {
         var stepRef = Host.HistoryStepper.StepIn(name);
         var modalStepRef = new ModalStepRef(this, stepRef, this._modalStepRef);
-        _ = modalStepRef.WhenClosed.ContinueWith(_ => {
-                this._modalStepRef = modalStepRef.ParentStepRef;
-            }, TaskContinuationOptions.ExecuteSynchronously);
         this._modalStepRef = modalStepRef;
+        _ = WaitWhenStepClosed(modalStepRef);
         return this._modalStepRef;
+    }
+
+    public bool StepBack()
+    {
+        if (_modalStepRef == null)
+            return false;
+        _modalStepRef.Close(false);
+        return true;
     }
 
     void IModalRefImpl.SetModal(Modal modal)
@@ -65,11 +71,9 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
             _modalStepRef.Close(true);
     }
 
-    public bool StepBack()
+    private async Task WaitWhenStepClosed(ModalStepRef modalStepRef)
     {
-        if (_modalStepRef == null)
-            return false;
-        _modalStepRef.Close(false);
-        return true;
+        await modalStepRef.WhenClosed.ConfigureAwait(true);
+        this._modalStepRef = modalStepRef.ParentStepRef;
     }
 }

@@ -27,10 +27,14 @@ public class ModalStepRef : IHasId<Symbol>
     public ModalStepRef(ModalRef modalRef, HistoryStepRef stepRef, ModalStepRef? parentStepRef)
     {
         _stepRef = stepRef;
-        _ = _stepRef.WhenClosed
-            .ContinueWith(_ => _whenClosedSource.TrySetResult(!_isModalClosing),
-                TaskContinuationOptions.ExecuteSynchronously);
+        _ = WaitWhenStepClosed(stepRef);
         ModalRef = modalRef;
         ParentStepRef = parentStepRef;
+    }
+
+    private async Task WaitWhenStepClosed(HistoryStepRef stepRef)
+    {
+        await stepRef.WhenClosed.ConfigureAwait(true);
+        _whenClosedSource.TrySetResult(!_isModalClosing);
     }
 }

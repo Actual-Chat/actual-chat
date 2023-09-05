@@ -246,7 +246,6 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Require();
         chat.Rules.Require(ChatPermissions.EditMembers);
 
         var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
@@ -276,7 +275,6 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         var (session, authorId) = command;
         var chatId = authorId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Require();
         chat.Rules.Require(ChatPermissions.EditMembers);
 
         var author = await Get(session, chatId, authorId, cancellationToken).ConfigureAwait(false);

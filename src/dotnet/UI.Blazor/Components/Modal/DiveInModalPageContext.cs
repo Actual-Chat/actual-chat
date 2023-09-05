@@ -6,9 +6,9 @@ public class DiveInModalPageContext(
 {
     public object? Model => page.Model;
 
-    public DataBag PageDataBag { get; } = new ();
+    public IDictionary<string, object> PageDataBag { get; } = new Dictionary<string, object>(StringComparer.Ordinal);
 
-    public DataBag ModalDataBag => modalContext.DataBag;
+    public IDictionary<string, object> ModalDataBag => modalContext.DataBag;
 
     public string Title { get; private set; } = "";
 

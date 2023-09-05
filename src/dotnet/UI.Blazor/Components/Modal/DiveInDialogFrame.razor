@@ -49,9 +49,8 @@
 
     private PageInfo CreatePageInfo(DiveInDialogPage page) {
         var pageContext = new DiveInModalPageContext(this, page);
-        RenderFragment body = builder => RenderPage(page).Invoke(builder);
         var pageId = page.ComponentType.ToString();
-        return new PageInfo(pageContext, pageId, body);
+        return new PageInfo(pageContext, pageId, RenderPage(page));
     }
 
     private RenderFragment RenderPage(DiveInDialogPage pageDescriptor)
@@ -81,7 +80,7 @@
             Modal.Close();
     }
 
-    DataBag IDiveInModalContext.DataBag { get; } = new ();
+    IDictionary<string, object> IDiveInModalContext.DataBag { get; } = new Dictionary<string, object>(StringComparer.Ordinal);
 
     void IDiveInModalContext.Close()
         => OnClose();
