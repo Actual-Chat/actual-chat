@@ -21,8 +21,8 @@ permissions:
   statuses: write
 
 env:
-  MONITOR_TAG: "7.1-alpine-amd64"
-  GCSFUSE_GIT_TAG: "v0.41.12"
+  MONITOR_TAG: "7.3.0-alpine-amd64"
+  GCSFUSE_GIT_TAG: "v1.1.0"
   TARGET_IMAGE_NAME: "dotnet-monitor"
 
 jobs:
