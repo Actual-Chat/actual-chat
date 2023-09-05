@@ -28,7 +28,13 @@
         <div class="selection-header-title">
             @(messageCount) @(messageCount == 1 ? "message" : "messages")
         </div>
-        <div>
+        <div class="selection-header-buttons">
+            <HeaderButton Click="() => OnDelete(m.Selection)">
+                <i class="icon-trash03 text-icons-04"></i>
+            </HeaderButton>
+            <HeaderButton Click="() => OnCopy(m.Selection)">
+                <i class="icon-copy !text-lg"></i>
+            </HeaderButton>
             <Button
                 Class="btn-submit btn-transparent"
                 Click="() => OnForward(m.Selection)">
@@ -53,19 +59,18 @@
         @(messageCount) @(messageCount == 1 ? "message" : "messages")
     </div>
 
-    <div class="c-button-group">
+    <div class="selection-header-buttons">
+        <HeaderButton
+            Click="() => OnDelete(m.Selection)"
+            Tooltip="Delete selected messages"
+            TooltipPosition="FloatingPosition.Bottom">
+            <i class="icon-trash03 text-icons-04"></i>
+        </HeaderButton>
         <HeaderButton
             Click="() => OnCopy(m.Selection)"
             Tooltip="Copy selection text"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-copy !text-lg"></i>
-        </HeaderButton>
-
-        <HeaderButton
-            Click="() => OnDelete(m.Selection)"
-            Tooltip="Delete selected messages"
-            TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-trash03"></i>
         </HeaderButton>
 
         @if (messageCount == 1) {
