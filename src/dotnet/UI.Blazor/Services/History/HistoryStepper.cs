@@ -7,6 +7,7 @@ public class HistoryStepper
     private ImmutableList<HistoryStepRef> _refs = ImmutableList<HistoryStepRef>.Empty;
 
     private History History { get; }
+    public Dispatcher Dispatcher => History.Dispatcher;
     public IReadOnlyCollection<HistoryStepRef> Refs => _refs;
 
     public HistoryStepper(IServiceProvider services)
@@ -17,6 +18,7 @@ public class HistoryStepper
 
     public HistoryStepRef StepIn(string owner)
     {
+        Dispatcher.AssertAccess();
         var modalRef = new HistoryStepRef(owner, this);
         _refs = _refs.Add(modalRef);
         History.Save<OwnHistoryState>();
@@ -28,12 +30,11 @@ public class HistoryStepper
 
     public void Close(Symbol id)
     {
+        Dispatcher.AssertAccess();
         var stepRef = FindRef(id);
         if (stepRef == null)
             return;
-
         CloseInternal(stepRef);
-
         History.Save<OwnHistoryState>();
     }
 

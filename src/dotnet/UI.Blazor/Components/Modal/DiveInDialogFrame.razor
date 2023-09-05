@@ -63,12 +63,14 @@
         var pageToReturn = _pageInfo;
         Modal.StepIn($"page-'{_pageInfo.PageId}'")
             .WhenClosed.ContinueWith(t => {
+                // If result is false it means Step is closed due to closing entire modal, hence no need to switch pages.
                 if (t.IsCompletedSuccessfully && t.Result) {
-                    // is step back
-                    _pageInfo = pageToReturn;
-                    InvokeAsync(StateHasChanged);
+                    InvokeAsync(() => {
+                        _pageInfo = pageToReturn;
+                        StateHasChanged();
+                    });
                 }
-            }, TaskScheduler.Current);
+            }, TaskScheduler.Default);
         _pageInfo = CreatePageInfo(page);
         InvokeAsync(StateHasChanged);
     }
