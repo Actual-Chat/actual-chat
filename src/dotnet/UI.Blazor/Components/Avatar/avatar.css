@@ -12,7 +12,7 @@
 .avatar-name > .c-anonymous {
     @apply sup;
 }
-.avatar-badge .c-status.c-status-small {
+.avatar-badge .c-status.c-status-sm {
     @apply text-xxs leading-3;
 }
 
