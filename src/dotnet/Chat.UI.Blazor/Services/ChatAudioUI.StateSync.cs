@@ -331,7 +331,7 @@ public partial class ChatAudioUI
                 if (!await NeedsBeep(cBeepState1))
                     return;
 
-                await TuneUI.Play(Tune.RemindOfRecording, cancellationToken).ConfigureAwait(false);
+                await TuneUI.PlayAndWait(Tune.RemindOfRecording).ConfigureAwait(false);
             }
         }
 

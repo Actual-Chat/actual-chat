@@ -153,7 +153,8 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
                         "app://0.0.0.0",
                         "http://0.0.0.0:7080",
                         "https://0.0.0.0:7080",
-                        "https://0.0.0.0:7081"
+                        "https://0.0.0.0:7081",
+                        "https://cdpn.io"
                     )
                     .AllowAnyMethod()
                     .AllowAnyHeader()

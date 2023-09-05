@@ -58,6 +58,7 @@ export type LogScope =
     | 'OpusDecoderWorker'
     | 'FeederNode'
     | 'FeederProcessor'
+    | 'SoundsPlayer'
     // Audio recording
     | 'AudioRecorder'
     | 'OpusMediaRecorder'
@@ -204,6 +205,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('NoSleep', LogLevel.Debug);
     minLevels.set('NotificationUI', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
+    // minLevels.set('SoundsPlayer', LogLevel.Debug);
 
     // Isolated components
     // minLevels.set('History', LogLevel.Debug);

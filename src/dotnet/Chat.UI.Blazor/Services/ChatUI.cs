@@ -221,7 +221,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
             ? new Change<Contact>() { Update = changedContact }
             : new Change<Contact>() { Create = changedContact };
         var command = new Contacts_Change(Session, contact.Id, contact.Version, change);
-        _ = TuneUI.Play("pin-unpin-chat");
+        _ = TuneUI.Play(Tune.PinUnpinChat);
         await UICommander.Run(command).ConfigureAwait(false);
     }
 

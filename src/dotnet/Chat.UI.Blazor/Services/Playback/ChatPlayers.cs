@@ -1,4 +1,3 @@
-using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
 using Stl.Interception;
 
@@ -131,7 +130,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
         {
             await AudioOutputController.ToggleAudio(state != null).ConfigureAwait(false);
             if (state is HistoricalPlaybackState historical) {
-                _ = TuneUI.Play("start-historical-playback", CancellationToken.None);
+                _ = TuneUI.Play(Tune.StartHistoricalPlayback);
                 var startTask = StartHistoricalPlayback(historical.ChatId, historical.StartAt, ct);
                 _ = BackgroundTask.Run(async () => {
                     var endPlaybackTask = await startTask.ConfigureAwait(false);
@@ -143,7 +142,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
                 await startTask.ConfigureAwait(false);
             }
             if (state is RealtimePlaybackState realtime) {
-                _ = TuneUI.Play("start-realtime-playback", CancellationToken.None);
+                _ = TuneUI.Play(Tune.StartRealtimePlayback);
                 var resumeTask = ResumeRealtimePlayback(realtime.ChatIds, ct);
                 await resumeTask.ConfigureAwait(false);
             }
@@ -152,11 +151,11 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
         async Task ExitState(PlaybackState? state)
         {
             if (state is HistoricalPlaybackState historical) {
-                _ = TuneUI.Play("stop-historical-playback", CancellationToken.None);
+                _ = TuneUI.Play(Tune.StopHistoricalPlayback);
                 await StopPlayer(historical.ChatId, ChatPlayerKind.Historical);
             }
             else if (state is RealtimePlaybackState realtime) {
-                _ = TuneUI.Play("stop-realtime-playback", CancellationToken.None);
+                _ = TuneUI.Play(Tune.StopRealtimePlayback);
                 await StopPlayers(realtime.ChatIds, ChatPlayerKind.Realtime);
             }
         }

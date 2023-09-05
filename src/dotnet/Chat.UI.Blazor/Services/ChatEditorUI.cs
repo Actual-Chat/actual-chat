@@ -59,18 +59,18 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
             _ = UIEventHub.Publish<FocusChatMessageEditorEvent>();
         if (updateUI)
             _ = UICommander.RunNothing();
-        _ = PlayTune();
+        PlayTune();
         await SaveRelatedEntry(relatedChatEntry.Id.ChatId, relatedChatEntry);
 
-        ValueTask PlayTune()
+        void PlayTune()
         {
-            var tuneName = relatedChatEntry.Kind switch
+            var tune = relatedChatEntry.Kind switch
             {
-                RelatedEntryKind.Reply => "reply-message",
-                RelatedEntryKind.Edit => "edit-message",
-                _ => "",
+                RelatedEntryKind.Reply => Tune.ReplyMessage,
+                RelatedEntryKind.Edit => Tune.EditMessage,
+                _ => Tune.None,
             };
-            return !tuneName.IsNullOrEmpty() ? TuneUI.Play(tuneName) : default;
+            _ = TuneUI.Play(tune);
         }
     }
 
@@ -86,7 +86,7 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
         }
         if (updateUI)
             _ = UICommander.RunNothing();
-        _ = TuneUI.Play("cancel");
+        _ = TuneUI.Play(Tune.CancelReply);
         if (old != null)
             await SaveRelatedEntry(old.Value.Id.ChatId, null).ConfigureAwait(false);
     }

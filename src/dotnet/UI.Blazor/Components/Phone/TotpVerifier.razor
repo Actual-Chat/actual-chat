@@ -67,7 +67,7 @@
         }
 
         if (!isValid && _totpInput != null) {
-            _ = TuneUI.Play("input-error");
+            _ = TuneUI.Play(Tune.ShowInputError);
             await _totpInput.Clear();
             await _totpInput.ShowError();
             return;

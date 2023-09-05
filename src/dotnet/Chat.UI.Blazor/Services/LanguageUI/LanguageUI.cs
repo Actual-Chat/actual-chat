@@ -41,38 +41,22 @@ public class LanguageUI : IDisposable
         return await userChatSettings.LanguageOrPrimary(AccountSettings, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<Language> ChangeChatLanguage(ChatId chatId)
+    public async Task<Language> ChangeChatLanguage(ChatId chatId, Language language = default)
     {
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         var settings = Settings.Value;
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default).ConfigureAwait(false);
-        var language = userChatSettings.Language.Or(settings.Primary);
-        language = settings.Next(language);
+        if (language.IsNone) {
+            language = userChatSettings.Language.Or(settings.Primary);
+            language = settings.Next(language);
+        }
         if (language == userChatSettings.Language)
             return language;
 
-        var tuneName = language == settings.Primary
-            ? "select-primary-language"
-            : "select-secondary-language";
-        _ = TuneUI.Play(tuneName);
-
-        userChatSettings = userChatSettings with { Language = language };
-        await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default).ConfigureAwait(false);
-        return language;
-    }
-
-    public async Task<Language> ChangeChatLanguage(ChatId chatId, Language language)
-    {
-        await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        var settings = Settings.Value;
-        var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default).ConfigureAwait(false);
-        if (language == userChatSettings.Language)
-            return language;
-
-        var tuneName = language == settings.Primary
-            ? "select-primary-language"
-            : "select-secondary-language";
-        _ = TuneUI.Play(tuneName);
+        var tune = language == settings.Primary
+            ? Tune.SelectPrimaryLanguage
+            : Tune.SelectSecondaryLanguage;
+        _ = TuneUI.Play(tune);
 
         userChatSettings = userChatSettings with { Language = language };
         await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default).ConfigureAwait(false);
