@@ -1,0 +1,75 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedMenuBase<EditMemberMenu.Model?>
+
+@{
+    var m = State.Value;
+    if (m == null)
+        return;
+    var statusText = m.IsOwner ? "Owner" : null;
+}
+
+<div class="edit-member-menu">
+
+    <AuthorBadge
+        AuthorSid="@AuthorId"
+        ShowPresence="true"
+        ShowStatusText="@(statusText != null)"
+        StatusText="@statusText"/>
+
+    @if (!m.IsOwn) {
+        <MenuEntrySeparator/>
+        <MenuEntry
+            Class="warning-item"
+            Icon="icon-minus-circle"
+            Text="Remove from group"
+            Click="@(() => OnRemoveFromGroupClick(m))">
+        </MenuEntry>
+    }
+
+</div>
+
+@code {
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAuthors Author { get; init; } = null!;
+    [Inject] private IRoles Roles { get; init; } = null!;
+    [Inject] private UICommander Commander { get; init; } = null!;
+
+    private ToastUI ToastUI => Services.GetRequiredService<ToastUI>();
+
+    private AuthorId AuthorId { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sAuthorId ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        AuthorId = new AuthorId(sAuthorId);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chatId = AuthorId.ChatId;
+        var author = await Author.Get(Session, chatId, AuthorId, default);
+        if (author == null)
+            return null;
+        var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken);
+        var ownAuthor = await Author.GetOwn(Session, chatId, cancellationToken);
+        var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
+        var isOwner = ownerIds.Contains(author.Id);
+        return new Model(author, isOwner, isOwn);
+    }
+
+    private async Task OnRemoveFromGroupClick(Model m) {
+        var result = await Commander.Run(new Authors_Exclude(Session, AuthorId));
+        if (result.HasError)
+            return;
+        var authorName = m.Author.Avatar.Name;
+        ToastUI.Show($"{authorName} removed", "icon-minus-circle", Undo, "Undo", autoDismissDelay:4);
+
+        void Undo() {
+            var undoCommand = new Authors_Restore(Session, AuthorId);
+            _ = Commander.Run(undoCommand);
+        }
+    }
+
+    public record Model(Author Author, bool IsOwner, bool IsOwn);
+}

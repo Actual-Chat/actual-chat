@@ -3,7 +3,7 @@
 
 @{
     var settings = NarrowViewSettings;
-    var hideButtonsInNarrowView = settings.ShouldHideButtons.GetValueOrDefault(settings.IsSubmitDefined);
+    var hideButtonsInNarrowView = settings.ShouldHideButtons.GetValueOrDefault(settings.ShouldUseInteractiveHeader);
     var showButtons = ScreenSize.IsWide() || !hideButtonsInNarrowView;
     var positionClass = settings.Position == DialogFramePosition.Bottom
         ? "narrow-view__modal__position-bottom"
@@ -17,8 +17,7 @@
             <DialogHeader
                 DialogFrame="@this"
                 Title="@Title"
-                HasCloseButton="@HasCloseButton"
-                IsMultiStep="@IsMultiStep"/>
+                HasCloseButton="@HasCloseButton" />
         }
     </Header>
     <ChildContent>
@@ -46,11 +45,9 @@
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public bool HasHeader { get; set; } = true;
     [Parameter] public bool HasCloseButton { get; set; }
-    [Parameter] public bool IsMultiStep { get; set; }
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
-    [Parameter] public ElementReference? Ref { get; set; }
     [Parameter] public DialogFrameNarrowViewSettings NarrowViewSettings { get; set; } = DialogFrameNarrowViewSettings.Bottom;
 }

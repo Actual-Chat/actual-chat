@@ -25,12 +25,11 @@ public sealed partial record AuthorRules(
     public bool CanInvite() => Permissions.Has(ChatPermissions.Invite);
     public bool CanEditProperties() => Permissions.Has(ChatPermissions.EditProperties);
     public bool CanEditRoles() => Permissions.Has(ChatPermissions.EditRoles);
+    public bool CanEditMembers() => Permissions.Has(ChatPermissions.EditMembers);
     public bool IsOwner() => Permissions.Has(ChatPermissions.Owner);
 
     public bool Has(ChatPermissions required)
         => Permissions.Has(required);
     public void Require(ChatPermissions required)
         => Permissions.Require(required);
-
-
 }

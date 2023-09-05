@@ -1,0 +1,92 @@
+﻿@using ActualChat.UI.Blazor.Pages.DiveInModalTestPage
+@namespace ActualChat.UI.Blazor.Components
+@implements IDiveInModalContext;
+
+@{
+    var pageContext = _pageInfo.Context;
+}
+
+<CascadingValue IsFixed="true" Value="@this">
+<CascadingValue Value="@pageContext">
+    @{
+        var title = pageContext.Title;
+        var cls = Class + " " + pageContext.Class;
+        var narrowViewSettings = _narrowViewSettingsBuilder.GetFrom(pageContext.ButtonInfos);
+    }
+    <DialogFrame
+        HasHeader="@HasHeader"
+        HasCloseButton="@HasCloseButton"
+        Title="@title"
+        ButtonsClass="@ButtonsClass"
+        Class="@cls"
+        NarrowViewSettings="@narrowViewSettings">
+        <Body>
+            @_pageInfo.Body
+        </Body>
+        <Buttons>
+            @if (pageContext.ButtonInfos != null) {
+                <DialogButtons ButtonInfos="@pageContext.ButtonInfos" Cancel="@OnClose" />
+            }
+        </Buttons>
+    </DialogFrame>
+</CascadingValue>
+</CascadingValue>
+
+@code {
+    private PageInfo _pageInfo = null!;
+    private DialogFrameNarrowViewSettingsBuilder _narrowViewSettingsBuilder = new();
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ButtonsClass { get; set; } = "";
+    [Parameter] public bool HasHeader { get; set; } = true;
+    [Parameter] public bool HasCloseButton { get; set; }
+    [Parameter, EditorRequired] public DiveInDialogPage StartPage { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _pageInfo = CreatePageInfo(StartPage);
+
+    private PageInfo CreatePageInfo(DiveInDialogPage page) {
+        var pageContext = new DiveInModalPageContext(this, page);
+        var pageId = page.ComponentType.ToString();
+        return new PageInfo(pageContext, pageId, RenderPage(page));
+    }
+
+    private RenderFragment RenderPage(DiveInDialogPage pageDescriptor)
+        => builder => {
+            builder.OpenComponent(0, pageDescriptor.ComponentType);
+            builder.CloseComponent();
+        };
+
+    void IDiveInModalContext.StepIn(DiveInDialogPage page) {
+        var pageToReturn = _pageInfo;
+        Modal.StepIn($"page-'{_pageInfo.PageId}'")
+            .WhenClosed.ContinueWith(t => {
+                if (t.IsCompletedSuccessfully && t.Result) {
+                    // is step back
+                    _pageInfo = pageToReturn;
+                    InvokeAsync(StateHasChanged);
+                }
+            }, TaskScheduler.Current);
+        _pageInfo = CreatePageInfo(page);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnClose() {
+        if (Modal.Ref.StepRef != null)
+            Modal.StepBack();
+        else
+            Modal.Close();
+    }
+
+    IDictionary<string, object> IDiveInModalContext.DataBag { get; } = new Dictionary<string, object>(StringComparer.Ordinal);
+
+    void IDiveInModalContext.Close()
+        => OnClose();
+
+    void IDiveInModalContext.StateHasChanged()
+        => InvokeAsync(StateHasChanged);
+
+    private record PageInfo(DiveInModalPageContext Context, string PageId, RenderFragment Body);
+}

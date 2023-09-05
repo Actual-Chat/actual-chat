@@ -1,6 +1,6 @@
 ﻿.edit-chat-settings-modal {
     @apply text-03;
-    @apply md:w-90;
+    @apply h-full md:w-90;
 }
 
 .edit-chat-settings-modal.modal-frame {
@@ -14,7 +14,6 @@
 
 
 .edit-chat-settings-modal .dialog-buttons {
-    @apply -flex-x;
     @apply pt-4;
 }
 .edit-chat-settings-modal .dialog-buttons .btn-group {
@@ -53,4 +52,47 @@
 
 .wide .field-chat-title input {
     @apply h-10;
+}
+
+.edit-chat-settings-modal .tile-item-icon i {
+    @apply text-2xl;
+}
+
+/* Edit members page */
+
+.tile-item.item-manage-members .tile-item-right {
+    @apply min-w-8 justify-start;
+    @apply text-icons-01;
+}
+.tile-item.item-manage-members .tile-item-right i {
+    @apply -ml-2;
+}
+
+.edit-chat-settings-modal.edit-members .dialog-body {
+    @apply overflow-hidden;
+    @apply px-4;
+}
+.edit-chat-settings-modal.edit-members .dialog-body > * {
+    @apply mt-3;
+}
+.edit-chat-settings-modal.edit-members .list {
+    @apply -mr-4 pr-1.75;
+    @apply overflow-y-auto custom-scrollbar;
+}
+.edit-chat-settings-modal.edit-members .list > li {
+    @apply flex-x;
+    @apply min-h-12;
+}
+.edit-chat-settings-modal.edit-members .list .avatar-badge .c-status {
+    @apply text-icons-01 text-xs leading-3.5;
+}
+
+.edit-chat-settings-modal.edit-members .tile-item {
+    @apply shrink-0; /* prevents shrinking tile item when list overflows */
+}
+
+/* Edit member menu */
+
+.edit-member-menu .avatar-badge {
+    @apply p-[6px];
 }

@@ -1,0 +1,12 @@
+﻿@implements IModalView<DiveInModal.Model>
+
+<DiveInDialogFrame
+    HasCloseButton="true"
+    StartPage="@(DiveInDialogPage.New<DiveInModalStart>())">
+</DiveInDialogFrame>
+
+@code {
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public record Model;
+}

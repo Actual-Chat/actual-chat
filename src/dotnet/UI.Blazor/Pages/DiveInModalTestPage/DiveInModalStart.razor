@@ -1,0 +1,28 @@
+﻿@using ActualChat.UI.Blazor.Services
+
+<div class="grow flex-y justify-center items-center">
+    <h3>DiveInModalRoot</h3>
+    <Button class="btn-primary" Click="@(_ => Context.StepIn(DiveInDialogPage.New<DiveInModalInner>()))">
+        Move INSIDE
+    </Button>
+</div>
+
+@code {
+    [Inject] private ToastUI ToastUI { get; set; } = null!;
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        Context.SetTitle("Dive-in modal (Start)");
+        Context.RegisterButtons(
+            DialogButtonInfo.CancelButton,
+            DialogButtonInfo.CreateSubmitButton("Save", OnSubmit)
+        );
+    }
+
+    private void OnSubmit() {
+        Context.Close();
+        ToastUI.Show("DiveInModal submitted", "icon-checkmark-circle", 3);
+    }
+}

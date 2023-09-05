@@ -1,0 +1,142 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Contacts
+@using ActualChat.Search
+@inherits FusionComponentBase
+@implements IDisposable
+
+<FormBlock>
+    <SearchBox
+        @ref="_searchBoxRef"
+        Class="icon-alight-right"
+        Placeholder="Find contacts..."
+        MaxLength="@Constants.Chat.MaxSearchFilterLength"
+        TextChanged="@OnFilter"/>
+    <div class="c-contact-list">
+        @foreach (var contact in FilteredContacts) {
+            <div class="c-item"
+                 @key="@contact.Account.Id.Value"
+                 @onclick="@(_ => OnContactClick(contact))">
+                <AccountCircle UserSid="@contact.Account.Id" ShowPresence="true"/>
+                <div class="avatar-name">
+                    <SearchMatchHighlighter Match="@GetMatch(contact.Account.Avatar.Name)"/>
+                </div>
+                @if (contact.IsExisting) {
+                    <Checkbox
+                        IsChecked="true"
+                        IsDisabled="true"
+                        Class="!flex-none"/>
+                } else {
+                    <Checkbox
+                        IsChecked="@contact.IsChecked"
+                        Class="!flex-none"
+                        Change="@(_ => OnContactClick(contact))"/>
+                }
+            </div>
+        }
+    </div>
+</FormBlock>
+
+@code {
+    private SearchBox _searchBoxRef = null!;
+    private DialogButtonInfo _submitButtonInfo = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    private ChatId ChatId { get; set; } // Shortcut
+    private string Filter { get; set; } = "";
+    private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
+    private CancellationTokenSource DisposeTokenSource { get; } = new ();
+    private CancellationToken DisposeToken => DisposeTokenSource.Token;
+
+    private bool CanInvite {
+        set => _submitButtonInfo.CanExecute = value;
+    }
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync() {
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Add", OnAdd);
+        _submitButtonInfo.CanExecute = false;
+        ChatId = Context.GetTypedModel<ChatId>();
+        Context.SetTitle("Add members");
+        Context.SetClass("add-member-modal-content");
+        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+
+        var existingUserIds = new HashSet<UserId>(
+            await Authors.ListUserIds(Session, ChatId, DisposeToken));
+
+        var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
+        var contacts = userContacts
+            .Select(c => new Contact() {
+                Account = c.Account!,
+                IsExisting = existingUserIds.Contains(c.Account!.Id),
+            })
+            .ToArray();
+
+        AllContacts = contacts
+            .OrderBy(x => x.Account.Avatar.Name)
+            .ToArray();
+        FilteredContacts = AllContacts;
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (firstRender)
+            _ = _searchBoxRef.Focus();
+    }
+
+    public void Dispose()
+        => DisposeTokenSource.Cancel();
+
+    private void OnFilter(string filter) {
+        Filter = filter;
+
+        FilteredContacts = string.IsNullOrWhiteSpace(filter)
+            ? AllContacts.ToArray()
+            : AllContacts
+                .Where(x => x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
+                .ToArray();
+    }
+
+    private SearchMatch GetMatch(string text) {
+        var searchPhrase = Filter.ToSearchPhrase(true, false);
+        return searchPhrase.GetMatch(text);
+    }
+
+    private void OnContactClick(Contact contact) {
+        if (contact.IsExisting)
+            return;
+
+        contact.IsChecked = !contact.IsChecked;
+        CanInvite = AllContacts.Any(x => !x.IsExisting && x.IsChecked);
+    }
+
+    private async Task OnAdd() {
+        CanInvite = false;
+
+        var userIds = AllContacts
+            .Where(x => !x.IsExisting && x.IsChecked)
+            .Select(x => x.Account.Id)
+            .ToArray();
+        var createAuthorsCommand = new Authors_Invite(Session, ChatId, userIds);
+        var (_, error) = await UICommander.Run(createAuthorsCommand, DisposeToken);
+        if (error != null)
+            return;
+
+        OnCancel();
+    }
+
+    private void OnCancel()
+        => Context.Close();
+
+    // Nested types
+
+    private sealed class Contact {
+        public Account Account { get; init; } = null!;
+        public bool IsExisting { get; init; }
+        public bool IsChecked { get; set; }
+    }
+}

@@ -30,6 +30,10 @@ public interface IAuthors : IComputeService
     [CommandHandler]
     Task OnInvite(Authors_Invite command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnExclude(Authors_Exclude command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnRestore(Authors_Restore command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken);
 }
 
@@ -47,6 +51,20 @@ public sealed partial record Authors_Invite(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] UserId[] UserIds
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Authors_Exclude(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Authors_Restore(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
 ) : ISessionCommand<Unit>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

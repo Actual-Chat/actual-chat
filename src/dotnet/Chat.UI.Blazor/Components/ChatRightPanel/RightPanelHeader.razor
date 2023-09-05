@@ -47,5 +47,5 @@
         => PanelsUI.Right.SetIsVisible(false);
 
     private Task OnEditChatSettingsClick()
-        => ModalUI.Show(new ChatSettingsModal.Model(Chat));
+        => ModalUI.Show(new ChatSettingsModal.Model(Chat.Id));
 }

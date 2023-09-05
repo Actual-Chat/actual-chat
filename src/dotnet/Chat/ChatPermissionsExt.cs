@@ -10,9 +10,12 @@ public static class ChatPermissionsExt
             permissions |=
                 ChatPermissions.EditRoles
                 | ChatPermissions.EditProperties
+                | ChatPermissions.EditMembers
                 | ChatPermissions.SeeMembers
                 | ChatPermissions.Invite
                 | ChatPermissions.Write;
+        if (permissions.Has(ChatPermissions.EditMembers))
+            permissions |= ChatPermissions.SeeMembers;
         if (permissions.Has(ChatPermissions.Invite))
             permissions |=
                 ChatPermissions.Join

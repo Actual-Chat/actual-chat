@@ -1,0 +1,16 @@
+﻿@page "/test/dive-in-modal-test"
+@using ActualChat.UI.Blazor.Services
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Dive-in Modal Test Page</MainHeader>
+
+<Button Class="btn-primary" Click="ShowModal">
+    Show Dive-in Modal
+</Button>
+
+@code {
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    private void ShowModal()
+        => ModalUI.Show(new DiveInModal.Model());
+}

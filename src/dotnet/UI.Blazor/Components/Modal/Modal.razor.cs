@@ -30,6 +30,12 @@ public partial class Modal : FusionComponentBase, IDisposable
     public bool Close(bool force = false)
         => Ref.Close(force);
 
+    public ModalStepRef StepIn(string name)
+        => Ref.StepIn(name);
+
+    public bool StepBack()
+        => Ref.StepBack();
+
     // Private methods
 
     private void OnClosed()

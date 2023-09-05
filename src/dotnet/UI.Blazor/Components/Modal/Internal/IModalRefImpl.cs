@@ -7,4 +7,5 @@ public interface IModalRefImpl
     void SetView(RenderFragment view);
     void SetModal(Modal modal);
     void MarkClosed();
+    void CloseSteps();
 }

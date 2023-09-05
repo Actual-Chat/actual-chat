@@ -36,8 +36,8 @@
     [Inject] private TuneUI TuneUI { get; set; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] internal HistoryStepper HistoryStepper { get; init; } = null!;
 
-    public IServiceProvider Services => ModalUI.Services;
     public IReadOnlyCollection<ModalRef> Refs => _refs;
 
     public event Action? OnModalClosed;
@@ -111,8 +111,11 @@
         if (!mustClose)
             return false;
 
+        var modalRefImpl = (IModalRefImpl)modalRef;
+        modalRefImpl.CloseSteps();
+
         _refs = _refs.Remove(modalRef);
-        ((IModalRefImpl)modalRef).MarkClosed();
+        modalRefImpl.MarkClosed();
         return true;
     }
 

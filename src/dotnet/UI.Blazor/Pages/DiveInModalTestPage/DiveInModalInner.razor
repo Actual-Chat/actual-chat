@@ -1,0 +1,12 @@
+﻿<div class="grow flex-y justify-center items-center">
+    <h3>DiveInModalInner</h3>
+</div>
+
+@code {
+    [CascadingParameter] public DiveInModalPageContext Context { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        Context.SetTitle("Dive-in modal (Inner)");
+        Context.RegisterButtons(DialogButtonInfo.BackButton);
+    }
+}

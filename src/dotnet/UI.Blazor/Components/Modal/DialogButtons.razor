@@ -1,0 +1,56 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@implements IDisposable
+
+@foreach (var buttonInfo in ButtonInfos) {
+    var cls = "btn-modal";
+    if (buttonInfo.IsSubmit)
+        cls += " btn-primary";
+    if (buttonInfo.IsDestructive)
+        cls += " danger";
+    var btnTitle = buttonInfo.Title;
+    EventCallback<MouseEventArgs> onClick;
+    if (buttonInfo.Execute != null)
+        onClick = EventCallback.Factory.Create<MouseEventArgs>(this, buttonInfo.Execute);
+    else if (buttonInfo.IsCancel)
+        onClick = EventCallback.Factory.Create<MouseEventArgs>(this, Cancel);
+    else
+        onClick = new EventCallback<MouseEventArgs>(null, null);
+    <Button IsDisabled="@(!buttonInfo.CanExecute)" Type="@ButtonType.Button" Class="@cls" Click="@onClick">@btnTitle</Button>
+}
+
+@code {
+    private DialogButtonInfo[]? _subscribedButtonInfos;
+
+    [Parameter, EditorRequired] public DialogButtonInfo[] ButtonInfos { get; set; } = null!;
+    [Parameter] public Action Cancel { get; set; } = null!;
+
+    protected override void OnParametersSet() {
+        if (_subscribedButtonInfos != ButtonInfos) {
+            Unsubscribe();
+            Subscribe();
+        }
+    }
+
+    public void Dispose()
+        => Unsubscribe();
+
+    private void Subscribe() {
+        if (_subscribedButtonInfos != null)
+            return;
+        foreach (var buttonInfo in ButtonInfos)
+            buttonInfo.CanExecuteChanged += OnCanExecuteChanged;
+        _subscribedButtonInfos = ButtonInfos;
+    }
+
+    private void Unsubscribe()
+    {
+        if (_subscribedButtonInfos == null)
+            return;
+        foreach (var buttonInfo in _subscribedButtonInfos)
+            buttonInfo.CanExecuteChanged -= OnCanExecuteChanged;
+        _subscribedButtonInfos = null;
+    }
+
+    private void OnCanExecuteChanged(object? sender, EventArgs e)
+        => InvokeAsync(StateHasChanged);
+}

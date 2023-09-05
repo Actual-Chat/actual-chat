@@ -1,9 +1,19 @@
 @namespace ActualChat.UI.Blazor.Components
 
+@{
+    var isInnerStep = Modal.Ref.StepRef != null;
+}
+
 <div class="modal-header-interactive no-padding-header-decorator">
-    <HeaderButton Click="CloseClick">
-        <i class="icon-close"></i>
-    </HeaderButton>
+    @if (isInnerStep) {
+        <HeaderButton Click="BackClick">
+            <i class="icon-arrow-left"></i>
+        </HeaderButton>
+    } else {
+        <HeaderButton Click="CloseClick">
+            <i class="icon-close"></i>
+        </HeaderButton>
+    }
     <div class="modal-title">
         @Title
     </div>
@@ -16,9 +26,11 @@
 
 @code {
     [Parameter] public string Title { set; get; } = "";
+    [Parameter] public Modal Modal { get; set; } = null!;
     [Parameter] public string SubmitButtonText { set; get; } = "";
     [Parameter] public ButtonType SubmitButtonType { set; get; } = ButtonType.Button;
     [Parameter] public bool CanSubmit { set; get; } = true;
     [Parameter] public EventCallback SubmitClick { set; get; }
     [Parameter] public EventCallback CloseClick { set; get; }
+    [Parameter] public EventCallback BackClick { set; get; }
 }
