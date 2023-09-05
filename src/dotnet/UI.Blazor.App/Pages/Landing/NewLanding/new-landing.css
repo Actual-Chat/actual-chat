@@ -2,19 +2,15 @@
     @apply flex-y;
     @apply select-text;
 }
-.landing.new .page {
-    @apply flex-y justify-center;
-    @apply min-h-screen;
-    @apply overflow-hidden;
-}
 .landing-video,
 .landing-video-plug {
     @apply h-full;
 }
-.landing.new .page,
-.landing.new .landing-header {
-    @apply px-32;
-    @apply items-center;
+.landing.new .page {
+    @apply flex-y justify-center items-center;
+    @apply min-h-screen;
+    @apply px-16 lg:px-32;
+    @apply overflow-hidden;
 }
 .landing.new .page > .c-content {
     @apply gap-x-12;
@@ -26,8 +22,7 @@ body.narrow .landing.new .page > .c-content {
     @apply gap-y-8;
     @apply pt-24 pb-16;
 }
-body.narrow .landing.new .page,
-body.narrow .landing.new .landing-header {
+body.narrow .landing.new .page {
     @apply px-4;
 }
 
@@ -63,9 +58,6 @@ body.narrow .landing.new .page > .c-content .main-text {
 .landing.new .page > .c-content .main-image {
     @apply flex justify-start items-center;
 }
-.landing.new .page > .c-content .main-image img {
-    width: -webkit-fill-available;
-}
 .landing-auth-btn.btn.btn-round {
     @apply min-w-8 max-w-8 min-h-8 max-h-8;
     @apply text-lg md:text-base;
@@ -99,7 +91,7 @@ body.narrow .landing.new .title-text.main {
     @apply absolute z-20 top-0;
     @apply flex-x items-center justify-center;
     @apply w-full h-16;
-    @apply py-2 px-16;
+    @apply py-2 px-16 lg:px-32;
     @apply bg-transparent;
     @apply opacity-100;
     @apply transition-all duration-300 ease-in-out;
@@ -184,6 +176,9 @@ body.narrow .landing.new .landing-header .light-alpha {
     @apply min-w-fit w-fit;
     @apply text-04 font-medium;
     @apply transition-all ease-in-out duration-100;
+}
+.landing.new .landing-header .c-btn-group .lg-icon i {
+    @apply md:hidden lg:flex;
 }
 body.narrow .landing.new .landing-header .c-btn-group {
     @apply hidden;
@@ -290,10 +285,8 @@ body.app-maui .landing.new .landing-header .btn-download {
 .landing.new .page-1 {
     @apply relative;
 }
-.landing.new .page-1,
-.landing.new .page-links {
-    @apply h-screen;
-    /*background: radial-gradient(at bottom, #FF3880F5, #0036A3 60%);*/
+.landing.new .page-1 {
+    @apply min-h-screen;
 }
 .landing.new .page-1 > .c-content {
     @apply z-10;
@@ -321,7 +314,7 @@ body.narrow .landing.new .page-links .page-links-wrapper {
 }
 .landing.new .page-1 > .c-content .main-text {
     @apply flex-y justify-center self-center gap-y-8;
-    @apply pt-0;
+    @apply py-8;
     @apply md:text-3xl font-normal text-04;
 }
 body.app-maui .landing.new .page-1 .main-text {
@@ -343,26 +336,35 @@ body.narrow .landing.new .page-1 .main-text .c-description {
 .landing.new .page-1 .main-text .c-btn-group {
     @apply flex-y lg:flex-x gap-4;
 }
+.landing.new .page-1 > .c-content .main-image {
+    @apply justify-end;
+    @apply max-w-1/3;
+    max-height: 85vh;
+}
 body.narrow .landing.new .page-1 .main-text .c-btn-group {
     @apply flex-y;
+}
+.landing.new .page-1 .main-text .c-btn-group .lg-icon i {
+    @apply md:hidden lg:flex;
 }
 body.narrow .landing.new .page-1 > .c-content .main-image {
     @apply hidden;
 }
 .landing.new .page-1 .bg-wrapper {
-    @apply absolute inset-0;
+    @apply absolute;
+    @apply w-screen h-full;
     @apply overflow-hidden;
 }
 .landing.new .page-1 .bg-wrapper > .c-ground {
     @apply absolute;
-    @apply h-screen w-screen;
+    @apply h-full w-screen;
     @apply bg-no-repeat;
     background: radial-gradient(circle at 40% 95%, #FF3880F5, #0036A3 50%) 0 60% / 120% 200%;
 }
 .landing.new .page-1 .bg-wrapper > .c-image {
     @apply absolute;
-    @apply h-screen w-screen;
-    @apply bg-no-repeat;
+    @apply h-full w-screen;
+    @apply bg-repeat-y;
     @apply bg-contain;
     @apply bg-[url('/dist/images/ellipses.svg')];
 }
@@ -506,7 +508,7 @@ body.narrow .colored-card.card-2 {
 .colored-card.card-3 {
     @apply flex-y gap-y-2;
     @apply p-4;
-    @apply bg-[#FFFFFFA3];
+    @apply bg-[#FFFFFFD9];
 }
 .colored-card.card-3 > .c-title {
     @apply text-headline-6;

@@ -1306,6 +1306,9 @@ module.exports = {
       fit: 'fit-content',
       prose: '65ch',
       modal: '22.5rem',
+      '1/4': '25%',
+      '1/3': '33%',
+      '1/2': '50%',
       ...breakpoints(theme('screens')),
     }),
     minHeight: ({ theme }) => ({
