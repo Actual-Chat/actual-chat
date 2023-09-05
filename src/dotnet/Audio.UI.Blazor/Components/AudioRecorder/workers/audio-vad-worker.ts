@@ -92,6 +92,14 @@ const serverImpl: AudioVadWorker = {
         webrtcVoiceDetector?.reset();
     },
 
+    conversationSignal: async (_noWait?: RpcNoWait): Promise<void> => {
+        if (!isActive)
+            return;
+
+        nnVoiceDetector?.conversationSignal();
+        webrtcVoiceDetector?.conversationSignal();
+    },
+
     onFrame: async (buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> => {
         if (!isActive)
             return;

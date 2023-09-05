@@ -239,6 +239,12 @@ export class AudioRecorder {
         return opusMediaRecorder.reconnect();
     }
 
+    /** Called from Blazor */
+    public conversationSignal(): Promise<void> {
+        debugLog?.log(`conversationSignal()`);
+        return opusMediaRecorder.conversationSignal();
+    }
+
     private async onRecordingStateChange(isRecording: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void> {
         try {
             await this.blazorRef.invokeMethodAsync('OnRecordingStateChange', isRecording, isConnected, isVoiceActive);

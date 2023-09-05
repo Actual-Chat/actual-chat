@@ -131,6 +131,9 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public ValueTask Reconnect(CancellationToken cancellationToken)
         => _jsRef.InvokeVoidAsync("reconnect", cancellationToken);
 
+    public ValueTask ConversationSignal(CancellationToken cancellationToken)
+        => _jsRef.InvokeVoidAsync("conversationSignal", cancellationToken);
+
     // JS backend callback handlers
     [JSInvokable]
     public void OnRecordingStateChange(bool isRecording, bool isConnected, bool isVoiceActive)

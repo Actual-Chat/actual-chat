@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.MediaPlayback;
 using ActualChat.Messaging;
@@ -8,6 +9,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public sealed class ChatEntryPlayer : ProcessorBase
 {
     private IServiceProvider Services { get; }
+    private AudioRecorder AudioRecorder { get; }
     private MomentClockSet Clocks { get; }
     private UrlMapper UrlMapper { get; }
     private ILogger Log { get; }
@@ -39,6 +41,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         UrlMapper = services.GetRequiredService<UrlMapper>();
         AudioDownloader = services.GetRequiredService<AudioDownloader>();
         AudioStreamer = services.GetRequiredService<IAudioStreamer>();
+        AudioRecorder = services.GetRequiredService<AudioRecorder>();
     }
 
     protected override Task DisposeAsyncCore()
@@ -143,6 +146,9 @@ public sealed class ChatEntryPlayer : ProcessorBase
                 var now = Clocks.SystemClock.Now;
                 var latency = now - audio.CreatedAt;
                 await AudioStreamer.ReportLatency(latency, cancellationToken);
+                var recorderState = AudioRecorder.State.LastNonErrorValue;
+                if (recorderState.IsRecording && recorderState.ChatId == audioEntry.ChatId)
+                    await AudioRecorder.ConversationSignal(cancellationToken).ConfigureAwait(false);
             },
             cancellationToken);
         return Playback.Play(trackInfo, audio, playAt, cancellationToken);

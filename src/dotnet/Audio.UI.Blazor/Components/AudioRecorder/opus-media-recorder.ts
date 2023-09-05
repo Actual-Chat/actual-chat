@@ -304,6 +304,10 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         await this.encoderWorker?.reconnect(rpcNoWait);
     }
 
+    public async conversationSignal(): Promise<void> {
+        await this.vadWorker?.conversationSignal(rpcNoWait);
+    }
+
     // recorder state event handlers
 
     public onConnectionStateChanged(isConnected: boolean, _noWait?: RpcNoWait): Promise<void> {

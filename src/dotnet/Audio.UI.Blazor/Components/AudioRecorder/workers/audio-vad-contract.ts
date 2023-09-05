@@ -11,4 +11,5 @@ export interface VoiceActivityDetector {
     appendChunk(monoPcm: Float32Array): Promise<VoiceActivityChange | number> ;
     init(): Promise<void>;
     reset(): void;
+    conversationSignal(): void;
 }

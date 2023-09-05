@@ -9,12 +9,14 @@ import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract
 import { clamp } from 'math';
 
 const MAX_SILENCE = 1.35; // 1.35 s - max silence period duration during active voice before break
+const MAX_MONOLOGUE_SILENCE = 3; // 3 s - max silence period duration during active voice before break for monologues
 const MIN_SILENCE = 0.20; // 0.2 s - min silence period duration during active voice before break
 const MIN_SPEECH = 0.5; // 500 ms
 const MAX_SPEECH = 60 * 2; // 2 min
+const MONOLOGUE_BOUNDARY = 30; // 30 seconds
 const START_ADJUSTING_MAX_SILENCE_AT = 45; // 45 seconds
 
-function adjustChangeEventsToSeconds(event: VoiceActivityChange, sampleRate): VoiceActivityChange {
+function adjustChangeEventsToSeconds(event: VoiceActivityChange, sampleRate: number): VoiceActivityChange {
     return {
         kind: event.kind,
         offset: event.offset / sampleRate,
@@ -27,8 +29,8 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected readonly movingAverages: ExponentialMovingAverage;
     protected readonly longMovingAverages: ExponentialMovingAverage;
     protected readonly speechBoundaries: StreamedMedian;
-    protected readonly minSpeechSamples;
-    protected readonly maxSpeechSamples;
+    protected readonly minSpeechSamples: number;
+    protected readonly maxSpeechSamples: number;
     // private readonly results =  new Array<number>();
 
     protected sampleCount = 0;
@@ -38,7 +40,8 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected speechProbabilities: StreamedMedian | null = null;
     protected triggeredSpeechProbability: number | null = null;
     protected endResetCounter: number = 0;
-    protected maxSilenceSamples;
+    protected maxSilenceSamples: number;
+    protected lastConversationPhraseAtSample: number | null = null;
 
     protected constructor(protected sampleRate: number, private isHighQuality: boolean) {
         this.movingAverages = new ExponentialMovingAverage(8); // 32ms*8 ~ 250ms
@@ -146,10 +149,15 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
             if (this.speechProbabilities !== null && prob > 0.08) {
                 this.speechProbabilities.push(prob);
             }
-            // adjust max silence for long speech - break more aggressively
+            // adjust max silence for long speech - break more aggressively, for monologues keep longer pauses
+            const isMonologue = !this.lastConversationPhraseAtSample
+                || (this.sampleCount - this.lastConversationPhraseAtSample) > sampleRate * MONOLOGUE_BOUNDARY;
+            const maxSilence = isMonologue
+                ? MAX_MONOLOGUE_SILENCE
+                : MAX_SILENCE;
             const startAdjustingMaxSilenceSamples = sampleRate * START_ADJUSTING_MAX_SILENCE_AT;
             this.maxSilenceSamples = Math.floor(sampleRate
-                * ((MAX_SILENCE - MIN_SILENCE)
+                * ((maxSilence - MIN_SILENCE)
                     * clamp(1 - (currentSpeechSamples - startAdjustingMaxSilenceSamples) / (maxSpeechSamples - startAdjustingMaxSilenceSamples), 0, 1)
                     + MIN_SILENCE));
         }
@@ -174,7 +182,12 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         this.endOffset = null;
         this.speechSteps = 0;
         this.endResetCounter = 0;
+        this.lastConversationPhraseAtSample = null;
         this.resetInternal && this.resetInternal();
+    }
+
+    public conversationSignal(): void {
+        this.lastConversationPhraseAtSample = this.sampleCount;
     }
 
     protected resetInternal?(): void;
