@@ -128,7 +128,7 @@
             var toastUI = Services.GetRequiredService<ToastUI>();
             if (attachments.Length == 0) {
                 var info = $"Failed to share {expectedUploadedFilesNumber} files";
-                toastUI.Show(info, "icon-alert-circle", 3);
+                toastUI.Show(info, "icon-alert-circle", ToastDismissDelay.Short);
             } else {
                 var info = expectedUploadedFilesNumber == attachments.Length
                     ? attachments.Length.ToString()
@@ -139,7 +139,7 @@
                 if (expectedUploadedFilesNumber > 1)
                     fileText += "s";
                 info = info + " " + fileText + " shared";
-                toastUI.Show(info, "icon-checkmark-circle", 3);
+                toastUI.Show(info, "icon-checkmark-circle", ToastDismissDelay.Short);
             }
         }
     }

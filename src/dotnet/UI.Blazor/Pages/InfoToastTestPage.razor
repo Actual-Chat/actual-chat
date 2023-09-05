@@ -40,13 +40,13 @@
 </div>
 
 <div class="test-page-btn-group">
-    <Button Click="@(_ => ToastUI.Show("Toast", "icon-checkmark-circle"))">
+    <Button Click="@(_ => ToastUI.Show("Toast", "icon-checkmark-circle", ToastDismissDelay.Short))">
         Toast with icon
     </Button>
-    <Button Click="@(_ => ToastUI.Show("Middle toast", autoDismissDelay: 5))">
+    <Button Click="@(_ => ToastUI.Show("Middle toast", ToastDismissDelay.Long))">
         Toast with auto dismiss
     </Button>
-    <Button Click="@(_ => ToastUI.Show("Big toast, very big toast", () => {}, "Undo"))">
+    <Button Click="@(_ => ToastUI.Show("Big toast, very big toast", () => {}, "Undo", ToastDismissDelay.Short))">
         Toast with action
     </Button>
 </div>

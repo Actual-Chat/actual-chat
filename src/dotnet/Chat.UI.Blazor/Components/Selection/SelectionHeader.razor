@@ -143,7 +143,7 @@
         var removeCommand = new Chats_RemoveTextEntries(Session, chatId, localIds);
         await UICommander.Run(removeCommand);
 
-        ToastUI.Show("Messages deleted", Restore, "Undo", 5);
+        ToastUI.Show("Messages deleted", Restore, "Undo", ToastDismissDelay.Long);
         SelectionUI.Clear();
 
         void Restore() {

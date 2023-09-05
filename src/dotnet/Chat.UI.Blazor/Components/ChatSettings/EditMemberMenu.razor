@@ -63,7 +63,7 @@
         if (result.HasError)
             return;
         var authorName = m.Author.Avatar.Name;
-        ToastUI.Show($"{authorName} removed", "icon-minus-circle", Undo, "Undo", autoDismissDelay:4);
+        ToastUI.Show($"{authorName} removed", "icon-minus-circle", Undo, "Undo", ToastDismissDelay.Long);
 
         void Undo() {
             var undoCommand = new Authors_Restore(Session, AuthorId);
