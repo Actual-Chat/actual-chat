@@ -21,7 +21,6 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private DeviceAwakeUI? _deviceAwakeUI;
     private ChatEditorUI? _chatEditorUI;
     private UserActivityUI? _userActivityUI;
-    private UICommander? _uiCommander;
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
@@ -39,7 +38,6 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
     private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
     private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
-    private UICommander UICommander => _uiCommander ??= Services.UICommander();
     private MomentClockSet Clocks { get; }
 
     private Moment Now => Clocks.SystemClock.Now;
@@ -129,24 +127,25 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
 
     public ValueTask SetRecordingChatId(ChatId chatId)
         => ActiveChatsUI.UpdateActiveChats(activeChats => {
-            var oldChat = activeChats.FirstOrDefault(c => c.IsRecording);
-            if (oldChat.ChatId == chatId)
-                return activeChats;
+                var oldChat = activeChats.FirstOrDefault(c => c.IsRecording);
+                if (oldChat.ChatId == chatId)
+                    return activeChats;
 
-            if (!oldChat.ChatId.IsNone)
-                activeChats = activeChats.AddOrReplace(oldChat with {
-                    IsRecording = false,
-                    Recency = Now,
-                });
-            if (!chatId.IsNone) {
-                var newChat = new ActiveChat(chatId, true, true, Now);
-                activeChats = activeChats.AddOrReplace(newChat);
-                _ = TuneUI.Play("begin-recording");
-            }
-            else
-                _ = TuneUI.Play("end-recording");
-            return activeChats;
-        });
+                if (!oldChat.ChatId.IsNone)
+                    activeChats = activeChats.AddOrReplace(oldChat with {
+                        IsRecording = false,
+                        Recency = Now,
+                    });
+                if (!chatId.IsNone) {
+                    var newChat = new ActiveChat(chatId, true, true, Now);
+                    activeChats = activeChats.AddOrReplace(newChat);
+                    _ = TuneUI.Play(Tune.BeginRecording);
+                }
+                else
+                    _ = TuneUI.Play(Tune.EndRecording);
+                return activeChats;
+            },
+            StopToken);
 
     [ComputeMethod] // Synced
     public virtual Task<bool> IsAudioOn()

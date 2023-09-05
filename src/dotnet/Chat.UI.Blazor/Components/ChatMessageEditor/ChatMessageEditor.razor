@@ -179,7 +179,7 @@
         if (text.IsNullOrEmpty() && attachmentListSnapshot.Attachments.Count == 0)
             return;
 
-        _ = TuneUI.Play("send-message");
+        _ = TuneUI.Play(Tune.SendMessage);
         try {
             _ = MarkupEditorRef.Clear();
 

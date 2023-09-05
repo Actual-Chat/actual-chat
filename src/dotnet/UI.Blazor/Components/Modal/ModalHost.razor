@@ -14,8 +14,8 @@
         if (hadModals != hasModals)
             JS.InvokeVoidAsync(JSUpdateBodyStyleMethod, hasModals);
         if (hasModals || hadModals) {
-            var tuneName = _refs.Count >= renderedRefs.Count ? "open-modal" : "close-modal";
-            TuneUI.Play(tuneName);
+            var tune = _refs.Count >= renderedRefs.Count ? Tune.OpenModal : Tune.CloseModal;
+            TuneUI.Play(tune);
         }
     }
 }
@@ -37,7 +37,6 @@
     [Inject] private History History { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
-    public IServiceProvider Services => ModalUI.Services;
     public IReadOnlyCollection<ModalRef> Refs => _refs;
 
     public event Action? OnModalClosed;
