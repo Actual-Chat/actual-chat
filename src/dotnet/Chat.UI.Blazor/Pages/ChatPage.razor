@@ -50,6 +50,7 @@
 @code {
     protected static TimeSpan VeryFirstLoadDelay = TimeSpan.FromSeconds(1.5);
     protected static TimeSpan LoadTimeout = TimeSpan.FromSeconds(1);
+    protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);
     private static bool _isVeryFirstLoad = true;
 
     protected Model? Rendered;
@@ -137,6 +138,7 @@
                 return new Model(chat, account, footer);
             }
             catch (TimeoutException) {
+                Computed.GetCurrent()?.Invalidate(LoadTimeoutToReloadDelay);
                 return Model.Loading;
             }
             catch (Exception e) when (e is not OperationCanceledException) {
