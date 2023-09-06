@@ -16,11 +16,11 @@
 .form label {
     @apply font-medium text-03;
 }
-.form input:not([type='checkbox']),
+.form input:not([type='checkbox']):not(.dialog-unstyled),
 .form select {
     @apply border rounded-md outline-none p-1 px-2;
 }
-.form input:not([type='checkbox']).invalid,
+.form input:not([type='checkbox']):not(.dialog-unstyled).invalid,
 .form select.invalid {
     @apply border-error;
     @apply ring-1 ring-error;
@@ -30,7 +30,7 @@
     @apply outline-none border-accent;
     @apply ring-1 ring-accent;
 }
-.form input:not([type='checkbox']).invalid:focus,
+.form input:not([type='checkbox']):not(.dialog-unstyled).invalid:focus,
 .form select.invalid:focus {
     @apply border-error;
     @apply ring-1 ring-error;
@@ -93,11 +93,11 @@
 .form section.invalid .form-section-content.label-inside-input label {
     @apply text-error;
 }
-.form .form-section-content.label-inside-input input:not([type='checkbox']),
+.form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled),
 .form .form-section-content.label-inside-input select {
     @apply border-none rounded-none outline-none p-0;
 }
-.form .form-section-content.label-inside-input input:not([type='checkbox']).invalid,
+.form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled).invalid,
 .form .form-section-content.label-inside-input select.invalid {
     @apply border-error ring-0;
 }
@@ -105,7 +105,7 @@
 .form .form-section-content.label-inside-input select:focus {
     @apply outline-none ring-0;
 }
-.form .form-section-content.label-inside-input input:not([type='checkbox']).invalid:focus,
+.form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled).invalid:focus,
 .form .form-section-content.label-inside-input select.invalid:focus {
     @apply border-error ring-0;
 }

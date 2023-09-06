@@ -5,10 +5,6 @@
     @apply flex-y;
     @apply gap-y-2;
 }
-.new-chat-modal-form-section {
-    @apply flex-x items-center;
-    @apply gap-x-2;
-}
 .new-chat-modal-selected-contacts {
     @apply flex-x flex-wrap;
     @apply gap-x-2;
