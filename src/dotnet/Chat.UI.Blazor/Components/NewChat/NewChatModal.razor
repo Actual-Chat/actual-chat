@@ -44,10 +44,10 @@
                     <i class="icon-people"></i>
                 </Icon>
                 <Content>
-                    Public chat
+                    <Label InputId="@_form.IsPublicId" Text="Public chat"></Label>
                 </Content>
                 <Caption>
-                    Anyone can join
+                    <Label InputId="@_form.IsPublicId" Text="Anyone can join"></Label>
                 </Caption>
                 <Right>
                     <ToggleEdit Id="@_form.IsPublicId" @bind-Value="_form.IsPublic"/>
