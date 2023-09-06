@@ -241,6 +241,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
 
     // Protected methods
 
+    [ComputeMethod]
     protected virtual Task<Unit> PseudoList(ChatId _)
         => Stl.Async.TaskExt.UnitTask;
 }
