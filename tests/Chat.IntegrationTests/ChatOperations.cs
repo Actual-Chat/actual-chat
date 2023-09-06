@@ -7,12 +7,32 @@ namespace ActualChat.Chat.IntegrationTests;
 
 public static class ChatOperations
 {
+    public static async Task SignInAsAlice(this IWebTester tester)
+        => await tester.SignIn(new User("", "Alice"));
+
+    public static async Task SignInAsBob(this IWebTester tester, string identity = "")
+    {
+        var user = new User("", "Bob");
+        if (!identity.IsNullOrEmpty())
+            user = user.WithIdentity(identity);
+        await tester.SignIn(user);
+    }
+
     public static async Task<(ChatId, Symbol)> CreateChat(AppHost appHost, bool isPublicChat)
         => await CreateChat(appHost, c => c with{ IsPublic = isPublicChat});
+
+    public static async Task<(ChatId, Symbol)> CreateChat(IWebTester tester, bool isPublicChat)
+        => await CreateChat(tester, c => c with{ IsPublic = isPublicChat});
 
     public static async Task<(ChatId, Symbol)> CreateChat(AppHost appHost, Func<ChatDiff, ChatDiff> configure)
     {
         await using var tester = appHost.NewBlazorTester();
+        await SignInAsAlice(tester);
+        return await CreateChat(tester, configure);
+    }
+
+    public static async Task<(ChatId, Symbol)> CreateChat(IWebTester tester, Func<ChatDiff, ChatDiff> configure)
+    {
         var session = tester.Session;
         await tester.SignIn(new User("", "Alice"));
         var chatDiff = configure(new ChatDiff() {

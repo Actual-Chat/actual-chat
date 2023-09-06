@@ -157,6 +157,66 @@ public class ChatOperationsTest : AppHostTestBase
         rules.CanLeave().Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PromoteAuthorToOwner(bool isPublicChat)
+    {
+        using var appHost = await NewAppHost();
+        await using var ownerTester = appHost.NewBlazorTester();
+        await ownerTester.SignInAsAlice();
+
+        var (chatId, inviteId) = await ChatOperations.CreateChat(ownerTester, isPublicChat);
+
+        await using var otherTester = appHost.NewBlazorTester();
+        await otherTester.SignInAsBob();
+
+        var author = await ChatOperations.JoinChat(otherTester, chatId, inviteId);
+
+        var roles = otherTester.AppServices.GetRequiredService<IRoles>();
+        var ownerIds = await roles.ListOwnerIds(otherTester.Session, chatId, default);
+        ownerIds.Should().NotContain(author.Id);
+
+        var chats = otherTester.AppServices.GetRequiredService<IChats>();
+        var chat = await chats.Get(otherTester.Session, chatId, default);
+        chat.Should().NotBeNull();
+        chat!.Rules.IsOwner().Should().BeFalse();
+
+        await ownerTester.Commander.Call(new Authors_PromoteToOwner(ownerTester.Session, author.Id));
+
+        ownerIds = await roles.ListOwnerIds(otherTester.Session, chatId, default);
+        ownerIds.Should().Contain(author.Id);
+
+        chat = await chats.Get(otherTester.Session, chatId, default);
+        chat.Should().NotBeNull();
+        chat!.Rules.IsOwner().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task NonOwnerUserShouldNotBeAblePromoteAuthorToOwner()
+    {
+        using var appHost = await NewAppHost();
+        var (chatId, inviteId) = await ChatOperations.CreateChat(appHost, true);
+
+        await using var otherTester = appHost.NewBlazorTester();
+        await otherTester.SignInAsBob();
+
+        var author = await ChatOperations.JoinChat(otherTester, chatId, inviteId);
+
+        var roles = otherTester.AppServices.GetRequiredService<IRoles>();
+        var ownerIds = await roles.ListOwnerIds(otherTester.Session, chatId, default);
+        ownerIds.Should().NotContain(author.Id);
+
+        var chats = otherTester.AppServices.GetRequiredService<IChats>();
+        var chat = await chats.Get(otherTester.Session, chatId, default);
+        chat.Should().NotBeNull();
+        chat!.Rules.IsOwner().Should().BeFalse();
+
+        await Assert.ThrowsAsync<System.Security.SecurityException>(async () => {
+            await otherTester.Commander.Call(new Authors_PromoteToOwner(otherTester.Session, author.Id));
+        });
+    }
+
     private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
     {
         var authors = services.GetRequiredService<IAuthors>();
