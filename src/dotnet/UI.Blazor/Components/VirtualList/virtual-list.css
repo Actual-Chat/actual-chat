@@ -56,15 +56,6 @@
 
 .virtual-list > ul.c-virtual-container > li.item {
     @apply flex flex-y;
-    overflow-anchor: auto;
-}
-
-.virtual-list > ul.c-virtual-container > li.item.new {
     overflow-anchor: none;
 }
 
-/* TODO: remove if everything is OK */
-/*@keyframes scroller-overflow-hack {*/
-/*    0% { opacity: .9999; }*/
-/*    100% { opacity: 1; }*/
-/*}*/

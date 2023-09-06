@@ -367,14 +367,6 @@ export class VirtualList {
 
             this.updateVisibleKeysThrottled();
         }
-
-        // allow scroll anchoring on visible items
-        fastRaf({
-            write: () => {
-                for (const entry of entries)
-                    entry.target.classList.remove('new');
-            },
-        });
     };
 
     private onScrollPivotVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
@@ -772,20 +764,6 @@ export class VirtualList {
         }
         return itemRefs;
     }
-
-    private getNewItemRefs(): HTMLLIElement[] {
-        const itemRefs = new Array<HTMLLIElement>();
-        if (itemRefs.length && itemRefs[0])
-            return itemRefs;
-
-        const itemRefCollection = this._containerRef.getElementsByClassName('item new') as HTMLCollectionOf<HTMLLIElement>;
-        itemRefs.length = itemRefCollection.length;
-        for (let i = 0; i < itemRefCollection.length; i++) {
-            itemRefs[i] = itemRefCollection[i];
-        }
-        return itemRefs;
-    }
-
 
     private getItemRef(key: string): HTMLElement | null {
         if (key == null)

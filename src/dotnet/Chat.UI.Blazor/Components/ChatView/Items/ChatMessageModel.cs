@@ -15,7 +15,6 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
     public bool IsForwardBlockStart { get; init; }
-    public bool IsFirstTimeRendered { get; init; }
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnreadSeparator { get; init; }
     public bool ShowEntryKind { get; init; }
@@ -75,10 +74,6 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
-        var oldBlockStartIds = oldItems?
-            .Where(i => i.IsBlockStart)
-            .Select(i => long.Parse(i.Key, CultureInfo.InvariantCulture))
-            .ToHashSet();
         var isBlockStart = true;
         var lastDate = default(DateOnly);
         var isPrevUnread = true;
@@ -99,23 +94,19 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var isUnread = entry.LocalId > (lastReadEntryId ?? 0);
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
             var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
-            var isFirstTimeRendered = !(oldBlockStartIds?.Contains(entry.LocalId) ?? false);
             if (hasDateLine)
                 result.Add(new (entry) {
                     DateLine = date,
-                    IsFirstTimeRendered = isFirstTimeRendered,
                 });
             if (isUnread && !isPrevUnread)
                 result.Add(new (entry) {
                     IsFirstUnreadSeparator = true,
-                    IsFirstTimeRendered = isFirstTimeRendered,
                 });
 
             result.Add(new (entry) {
                 IsBlockStart = isBlockStart,
                 IsBlockEnd = isBlockEnd,
                 ShowEntryKind = isEntryKindChanged || (isBlockStart && isAudio),
-                IsFirstTimeRendered = isFirstTimeRendered,
                 IsForwardBlockStart = isForwardBlockStart,
             });
 
@@ -136,8 +127,6 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             if (nextEntry == null)
                 return false;
             if (entry.AuthorId != nextEntry.AuthorId)
-                return true;
-            if (oldBlockStartIds != null && oldBlockStartIds.Contains(nextEntry.LocalId))
                 return true;
 
             var prevEndsAt = entry.EndsAt ?? entry.BeginsAt;

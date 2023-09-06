@@ -33,9 +33,6 @@
     };
     var items = Data.Items;
     LastData = Data;
-    var itemClassBase = Data.Query.IsNone
-        ? "item"
-        : "item new";
 }
 
 <div @ref="Ref"
@@ -66,21 +63,17 @@
     <ul @key="@VirtualListSpecialKeys.Container"
         class="c-virtual-container">
         @foreach (var item in items) {
-            var itemClass = item.IsFirstTimeRendered
-                ? itemClassBase
-                : "item";
-
             @if (item.CountAs != 1) {
                 <li id="@item.Key"
                     @key="@item.Key"
-                    class="@itemClass"
+                    class="item"
                     data-count-as="@item.CountAs">
                     @Item(item)
                 </li>
             } else {
                 <li id="@item.Key"
                     @key="@item.Key"
-                    class="@itemClass">
+                    class="@item">
                     @Item(item)
                 </li>
             }
