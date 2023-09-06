@@ -31,31 +31,19 @@
     </TextContent>
 </MenuEntry>
 <MenuEntry
+    Icon="icon-message-ellipse"
+    Text="Go to Chats"
     Click="@(_ => NavigateTo(Links.Chats))">
-    <IconContent>
-        <i class="icon-message-ellipse"></i>
-    </IconContent>
-    <TextContent>
-        Go to Chats
-    </TextContent>
 </MenuEntry>
 <MenuEntry
+    Icon="icon-question-mark-circle"
+    Text="Support"
     Click="@(_ => NavigateTo("mailto:support@actual.chat"))">
-    <IconContent>
-        <i class="icon-question-mark-circle"></i>
-    </IconContent>
-    <TextContent>
-        Support
-    </TextContent>
 </MenuEntry>
 <MenuEntry
+    Icon="icon-log-out"
+    Text="Sign out"
     Click="@(_ => AccountUI.ClientAuth.SignOut())">
-    <IconContent>
-        <i class="icon-log-out"></i>
-    </IconContent>
-    <TextContent>
-        Sign out
-    </TextContent>
 </MenuEntry>
 
 @code {
