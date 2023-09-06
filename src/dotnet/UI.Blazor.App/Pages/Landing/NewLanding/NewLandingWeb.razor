@@ -10,44 +10,44 @@
 }
 
 <div @ref="Ref" class="landing new" xmlns="http://www.w3.org/1999/html">
-<LandingLeftMenu @ref="_landingLeftMenu" />
+    <LandingLeftMenu @ref="_landingLeftMenu" />
 
-<NewLandingHeader Click="OnMenuHandleClick"/>
+    <NewLandingHeader Click="OnMenuHandleClick"/>
 
-@* Page 1 *@
-<LandingPage Class="page-1">
-    <LandingPage1
-        IsGuest="@isGuest"
-        SignInClick="@SignIn"
-        ShowVideoClick="@OnShowVideoClick"/>
-</LandingPage>
+    @* Page 1 *@
+    <LandingPage Class="page-1">
+        <LandingPage1
+            IsGuest="@isGuest"
+            SignInClick="@SignIn"
+            ShowVideoClick="@OnShowVideoClick"/>
+    </LandingPage>
 
-@* Page 2 *@
-<LandingPage Class="page-2">
-    <LandingPage2/>
-</LandingPage>
+    @* Page 2 *@
+    <LandingPage Class="page-2">
+        <LandingPage2/>
+    </LandingPage>
 
-@* Page 3 *@
-<LandingPage Class="page-3">
-    <LandingPage3/>
-</LandingPage>
+    @* Page 3 *@
+    <LandingPage Class="page-3">
+        <LandingPage3/>
+    </LandingPage>
 
-@* Page 4 *@
-<LandingPage Class="page-4">
-    <LandingPage4/>
-</LandingPage>
+    @* Page 4 *@
+    <LandingPage Class="page-4">
+        <LandingPage4/>
+    </LandingPage>
 
-@* Page 5 *@
-<LandingPage Class="page-5">
-    <LandingPage5/>
-</LandingPage>
+    @* Page 5 *@
+    <LandingPage Class="page-5">
+        <LandingPage5/>
+    </LandingPage>
 
-@* Page 6 *@
-<LandingPage Class="page-6">
-    <LandingPage6 IsGuest="@isGuest"/>
-</LandingPage>
+    @* Page 6 *@
+    <LandingPage Class="page-6">
+        <LandingPage6 IsGuest="@isGuest"/>
+    </LandingPage>
 
-<LandingFooter/>
+    <LandingFooter/>
 </div>
 
 @code {

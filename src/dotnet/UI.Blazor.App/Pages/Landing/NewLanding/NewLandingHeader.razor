@@ -15,24 +15,23 @@
         <ButtonRound Class="menu-button flex-none" Click="@Click">
             <i class="icon-menu text-2xl"></i>
         </ButtonRound>
-        <div class="flex-x flex-1">
-            <div class="min-w-fit">
+        <div class="c-content">
+            <div class="c-icon">
                 <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
                 <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
             </div>
-            <div class="flex-x flex-1">
-                <div class="px-2 self-center -mt-1.5 max-w-40">
+            <div class="c-title-wrapper">
+                <div class="c-title">
                     <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
                     <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
                 </div>
-                <div class="max-w-9 -mt-0.5 -ml-1">
+                <div class="c-version">
                     <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
                     <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
                 </div>
             </div>
-            <div class="header-text"></div>
         </div>
-        <div class="flex-none justify-end">
+        <div class="c-right">
             @if (isGuest) {
                 <ButtonRound Class="signin-button" Click="@(SignIn)">
                     <i class="icon-log-in text-xl"></i>
@@ -51,16 +50,16 @@
         </div>
     } else {
         <div class="c-content">
-            <div class="min-w-fit">
+            <div class="c-icon">
                 <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="icon" class="light-icon">
                 <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
             </div>
-            <div class="flex-x flex-1">
-                <div class="px-2 self-center -mt-1.5 min-w-fit">
+            <div class="c-title-wrapper">
+                <div class="c-title">
                     <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="brand" class="light-title">
                     <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
                 </div>
-                <div class="max-w-9 -mt-0.5 -ml-1">
+                <div class="c-version">
                     <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="alpha" class="light-alpha">
                     <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
                 </div>
@@ -84,7 +83,7 @@
                         <span class="font-medium">Sign in</span>
                         <i class="icon-monitor text-2xl font-thin"></i>
                     </button>
-                    <DownloadButton Title="Get app" Class="download-app new lg-icon"/>
+                    <DownloadButton Title="Get app" Class="download-app lg-icon"/>
                 } else {
                     <div
                         class="context-menu-btn"

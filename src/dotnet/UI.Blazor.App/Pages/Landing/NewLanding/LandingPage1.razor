@@ -14,14 +14,25 @@
 
 <div class="c-content">
     <div class="main-text">
-        <p class="c-description">
-            We are here to redefine the meaning of <span>Chat</span>
-        </p>
+        <div class="c-title">Discover Chat 2.0</div>
         <div class="flex-y gap-y-2 title-text main">
             <Checkmark Checked="true">efficiency of texting</Checkmark>
             <Checkmark Checked="true">focus of calls</Checkmark>
             <Checkmark>drawbacks of either</Checkmark>
         </div>
+        <p class="c-description">
+            @if (!ScreenSize.IsNarrow()) {
+                <span>We're building Actual Chat</span>
+                <span>to streamline communication to its utmost efficiency</span>
+                <span>— even if it means disrupting its old rules</span>
+            } else {
+                <span>
+                    We're building Actual Chat to streamline communication to its utmost efficiency
+                    — even if it means disrupting its old rules
+                </span>
+            }
+
+        </p>
         <div class="c-btn-group">
             @if (!isMaui) {
                 <DownloadButton Title="Get mobile/desktop app" Class="download-app lg-icon"/>

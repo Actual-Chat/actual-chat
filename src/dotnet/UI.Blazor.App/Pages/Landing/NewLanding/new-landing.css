@@ -2,9 +2,10 @@
     @apply flex-y;
     @apply select-text;
 }
-.landing-video,
-.landing-video-plug {
+.landing.new .landing-video,
+.landing.new .landing-video-plug {
     @apply h-full;
+    max-height: inherit;
 }
 .landing.new .page {
     @apply flex-y justify-center items-center;
@@ -97,9 +98,33 @@ body.narrow .landing.new .title-text.main {
     @apply transition-all duration-300 ease-in-out;
 }
 .landing.new .landing-header > .c-content {
-    @apply flex-x flex-1;
-    @apply flex-x;
+    @apply flex-1 flex-x;
 }
+.landing.new .landing-header > .c-content {
+    @apply flex-1 flex-x;
+}
+.landing.new .landing-header > .c-content > .c-icon {
+    @apply min-w-fit;
+}
+.landing.new .landing-header > .c-content > .c-title-wrapper {
+    @apply flex-1 flex-x;
+}
+.landing.new .landing-header > .c-content > .c-title-wrapper > .c-title {
+    @apply self-center;
+    @apply min-w-fit;
+    @apply px-2 -mt-1.5;
+}
+body.narrow .landing.new .landing-header > .c-content > .c-title-wrapper > .c-title {
+    @apply max-w-40;
+}
+.landing.new .landing-header > .c-content > .c-title-wrapper > .c-version {
+    @apply max-w-9;
+    @apply -mt-0.5 -ml-1;
+}
+.landing.new .landing-header > .c-right {
+    @apply flex-none justify-end;
+}
+
 .landing.new .landing-header.hide-header {
     @apply opacity-0;
     @apply transition-all duration-300 ease-in-out;
@@ -290,9 +315,9 @@ body.app-maui .landing.new .landing-header .btn-download {
 }
 .landing.new .page-1 > .c-content {
     @apply z-10;
-    @apply flex-x justify-center;
+    @apply flex-1 flex-x justify-center items-end;
     @apply w-full;
-    @apply pb-0;
+    @apply py-0;
 }
 .landing.new .page-1 .page-1-wrapper,
 .landing.new .page-links .page-links-wrapper {
@@ -313,25 +338,30 @@ body.narrow .landing.new .page-links .page-links-wrapper {
     @apply bg-[url('/dist/images/ellipses-mobile.svg')];
 }
 .landing.new .page-1 > .c-content .main-text {
-    @apply flex-y justify-center self-center gap-y-8;
-    @apply py-8;
+    @apply flex-y gap-y-8 ;
+    @apply p-0;
     @apply md:text-3xl font-normal text-04;
 }
-body.app-maui .landing.new .page-1 .main-text {
-    @apply gap-y-8;
-}
 body.narrow .landing.new .page-1 > .c-content .main-text {
-    @apply flex-y justify-center gap-y-8;
+    @apply justify-center gap-y-8;
     @apply w-auto;
 }
+.landing.new .page-1 > .c-content .main-text > .c-title {
+    @apply text-headline-4 lg:text-headline-3;
+}
 .landing.new .page-1 .main-text .c-description {
+    @apply flex-y;
+    @apply pt-0;
     @apply md:leading-9;
 }
-body.narrow .landing.new .page-1 .main-text .c-description {
-    @apply text-3.5xl;
+.landing.new .page-1 > .c-content .main-text > p {
+    @apply lg:text-2xl lg:leading-8;
 }
-.landing.new .page-1 .main-text .c-description > span {
-    @apply italic;
+body.narrow .landing.new .page-1 .main-text .c-description {
+    @apply text-xl;
+}
+.landing.new .page-1 .main-text .c-description > .bolder {
+    @apply font-semibold;
 }
 .landing.new .page-1 .main-text .c-btn-group {
     @apply flex-y lg:flex-x gap-4;
@@ -346,6 +376,9 @@ body.narrow .landing.new .page-1 .main-text .c-btn-group {
 }
 .landing.new .page-1 .main-text .c-btn-group .lg-icon i {
     @apply md:hidden lg:flex;
+}
+.landing.new .page-1 .main-text .c-btn-group .btn-download.web-signin > i {
+    @apply md:text-01;
 }
 body.narrow .landing.new .page-1 > .c-content .main-image {
     @apply hidden;
@@ -639,6 +672,13 @@ body.narrow .landing.new .page-6 > .c-content > .c-bottom > .c-btn-group > .btn-
     @apply bg-transparent;
     @apply text-01;
 }
+body.narrow .landing.new .page-6 > .c-content > .c-bottom > .c-btn-group > .btn-download.web-signin > i {
+    @apply text-01;
+}
+.landing.new .page-6 > .c-content > .c-top > .main-text .btn-download.web-signin > span,
+body.narrow .landing.new .page-6 > .c-content > .c-bottom > .c-btn-group > .btn-download.web-signin > span {
+    @apply text-base font-medium;
+}
 
 /* Buttons */
 
@@ -767,6 +807,9 @@ body.narrow .landing.new .landing-links {
 }
 .landing.new .btn-download {
     @apply max-w-none md:max-w-88;
+}
+.landing.new .btn-download > i {
+    @apply text-2xl font-thin text-04;
 }
 .landing.new .btn-download.web-signin,
 .landing.new .btn-download.ios-disabled {
@@ -925,12 +968,34 @@ body.narrow .side-nav-left:has(.docs-left-panel) {
     @apply bg-03;
     @apply border-r border-bg-04;
 }
+body.narrow .docs-left-panel {
+    @apply hidden;
+}
 .docs-left-panel .c-header {
     @apply flex-x;
     @apply h-14;
     @apply items-center;
     @apply py-2;
 }
+.docs-left-panel .c-header > .c-icon {
+    @apply max-w-fit;
+}
+.docs-left-panel .c-header > .c-title-wrapper {
+    @apply flex-x;
+}
+.docs-left-panel .c-header > .c-title-wrapper > .c-title {
+    @apply self-center;
+    @apply max-w-40;
+    @apply px-2 -mt-1.5;
+}
+.docs-left-panel .c-header > .c-title-wrapper > .c-version {
+    @apply max-w-9;
+    @apply -mt-2 -ml-1;
+}
+.docs-left-panel .c-content {
+    @apply h-full py-2;
+}
+
 .docs-left-panel .navbar-item {
     @apply cursor-pointer;
 }
@@ -1195,7 +1260,7 @@ body.narrow .landing-download-tile .c-content {
     @apply text-3.5xl md:text-3.5xl lg:text-4.5xl font-normal;
 }
 .landing.new .checkmark img {
-    @apply w-11 h-11 md:w-12 md:h-12 lg:w-16 lg:h-16;
+    @apply w-11 h-11 md:w-12 md:h-12;
 }
 
 
