@@ -1,11 +1,11 @@
-.modal-frame.discard-modal {
+.modal-frame.confirm-modal {
     @apply md:gap-x-0;
     @apply w-full md:w-82;
 }
-.modal-frame.discard-modal .c-text {
+.modal-frame.confirm-modal .c-text {
     @apply flex-y gap-y-2;
     @apply text-text-1;
 }
-.narrow .modal-frame.discard-modal .dialog-body {
+.narrow .modal-frame.confirm-modal .dialog-body {
     @apply gap-y-4;
 }

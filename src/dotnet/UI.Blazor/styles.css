@@ -8,7 +8,7 @@
 @import './Components/Checkbox/checkbox.css';
 @import './Components/Clipboard/clipboard.css';
 @import './Components/Collapsed/collapsed.css';
-@import './Components/DiscardModal/discard.css';
+@import './Components/ConfirmModal/confirm.css';
 @import './Components/Dropdown/dropdown.css';
 @import './Components/ErrorBarrier/error-barrier.css';
 @import './Components/EmbeddedMessageEditor/embedded-message-editor.css';

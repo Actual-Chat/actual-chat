@@ -49,6 +49,7 @@
     [Inject] private UICommander Commander { get; init; } = null!;
 
     private ToastUI ToastUI => Services.GetRequiredService<ToastUI>();
+    private ModalUI ModalUI => Services.GetRequiredService<ModalUI>();
 
     private AuthorId AuthorId { get; set; }
 
@@ -88,11 +89,24 @@
     }
 
     private async Task OnPromoteToOwnerClick(Model m) {
+        await WhenClosed;
+        await Host.History.WhenNavigationCompleted();
+
+        var authorName = m.Author.Avatar.Name;
+        _ = await ModalUI.Show(new ConfirmModal.Model(
+            false,
+            $"Are you sure you want to promote '{authorName}' to Owner? This action cannot be undone.",
+            () => _ = OnPromoteToOwnerConfirmed(authorName)) {
+                Title = "Promote to Owner"
+            });
+    }
+
+    private async Task OnPromoteToOwnerConfirmed(string authorName) {
         var result = await Commander.Run(new Authors_PromoteToOwner(Session, AuthorId));
         if (result.HasError)
             return;
-        var authorName = m.Author.Avatar.Name;
-        ToastUI.Show($"{authorName} is promoted to owner", "icon-star", ToastDismissDelay.Short);
+
+        ToastUI.Show($"{authorName} is promoted to Owner", "icon-star", ToastDismissDelay.Short);
     }
 
     public record Model(Author Author, bool IsOwner, bool IsOwn, bool CanPromoteToOwner);
