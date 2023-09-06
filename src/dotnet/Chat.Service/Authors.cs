@@ -14,6 +14,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     private IChats? _chats;
     private IChatsBackend? _chatsBackend;
     private IRoles? _roles;
+    private IRolesBackend? _rolesBackend;
 
     private IAccounts Accounts { get; }
     private IAccountsBackend AccountsBackend { get; }
@@ -24,6 +25,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     private IAuthorsBackend Backend => _backend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IAvatars Avatars => _avatars ??= Services.GetRequiredService<IAvatars>();
     private IRoles Roles => _roles ??= Services.GetRequiredService<IRoles>();
+    private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
 
     public Authors(IServiceProvider services) : base(services)
     {
@@ -301,6 +303,44 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             chatId, author.Id, default, author.Version,
             new AuthorDiff() { AvatarId = avatarId });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnPromoteToOwner(Authors_PromoteToOwner command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, authorId) = command;
+        var chatId = authorId.ChatId;
+        var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Require(ChatPermissions.Owner);
+
+        var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        if (author == null || author.HasLeft)
+            throw StandardError.Constraint("You can not promote the author. Author is not found or left the chat.");
+
+        if (chat.Rules.Account.Id == author.UserId)
+            return;
+
+        var ownerRole = await RolesBackend
+            .GetSystem(chatId, SystemRole.Owner, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+
+        var changeRoleCommand = new RolesBackend_Change(
+            chatId,
+            ownerRole.Id,
+            ownerRole.Version,
+            new Change<RoleDiff> {
+                Update = new RoleDiff {
+                    AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                        AddedItems = new ApiArray<AuthorId>(authorId)
+                    }
+                }
+            });
+
+        await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task RestoreAuthorMembership(CancellationToken cancellationToken, Author author)

@@ -35,6 +35,8 @@ public interface IAuthors : IComputeService
     Task OnRestore(Authors_Restore command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnSetAvatar(Authors_SetAvatar command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnPromoteToOwner(Authors_PromoteToOwner command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -82,3 +84,10 @@ public sealed partial record Authors_Join(
     [property: DataMember, MemoryPackOrder(2)] Symbol AvatarId = default,
     [property: DataMember, MemoryPackOrder(3)] bool? JoinAnonymously = null
 ) : ISessionCommand<AuthorFull>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Authors_PromoteToOwner(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
+) : ISessionCommand<Unit>;

@@ -16,6 +16,14 @@
         ShowStatusText="@(statusText != null)"
         StatusText="@statusText"/>
 
+    @if (m.CanPromoteToOwner && !m.IsOwner) {
+        <MenuEntry
+            Icon="icon-star"
+            Text="Promote to Owner"
+            Click="@(() => OnPromoteToOwnerClick(m))">
+        </MenuEntry>
+    }
+
     @if (!m.IsOwn) {
         <MenuEntrySeparator/>
         <MenuEntry
@@ -30,6 +38,7 @@
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private IAuthors Author { get; init; } = null!;
     [Inject] private IRoles Roles { get; init; } = null!;
     [Inject] private UICommander Commander { get; init; } = null!;
@@ -48,14 +57,16 @@
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chatId = AuthorId.ChatId;
-        var author = await Author.Get(Session, chatId, AuthorId, default);
+        var author = await Author.Get(Session, chatId, AuthorId, cancellationToken);
         if (author == null)
             return null;
+        var chat = await Chats.Get(Session, chatId, cancellationToken);
         var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken);
         var ownAuthor = await Author.GetOwn(Session, chatId, cancellationToken);
         var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
         var isOwner = ownerIds.Contains(author.Id);
-        return new Model(author, isOwner, isOwn);
+        var canPromoteToOwner = chat != null && chat.Rules.IsOwner();
+        return new Model(author, isOwner, isOwn, canPromoteToOwner);
     }
 
     private async Task OnRemoveFromGroupClick(Model m) {
@@ -71,5 +82,13 @@
         }
     }
 
-    public record Model(Author Author, bool IsOwner, bool IsOwn);
+    private async Task OnPromoteToOwnerClick(Model m) {
+        var result = await Commander.Run(new Authors_PromoteToOwner(Session, AuthorId));
+        if (result.HasError)
+            return;
+        var authorName = m.Author.Avatar.Name;
+        ToastUI.Show($"{authorName} is promoted to owner", "icon-star", ToastDismissDelay.Short);
+    }
+
+    public record Model(Author Author, bool IsOwner, bool IsOwn, bool CanPromoteToOwner);
 }
