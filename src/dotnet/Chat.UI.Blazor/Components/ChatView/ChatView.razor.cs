@@ -215,7 +215,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End + 1 >= chatIdRange.End;
 
-        var idTiles = IdTileStack.GetOptimalCoveringTiles(idRangeToLoad);
+        // get tiles from the smallest tile layer
+        var idTiles = IdTileStack.FirstLayer.GetOptimalCoveringTiles(idRangeToLoad);
         var chatTiles = await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
             .Collect();
