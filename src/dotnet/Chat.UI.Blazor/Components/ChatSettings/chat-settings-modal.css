@@ -58,6 +58,11 @@
     @apply text-2xl;
 }
 
+.edit-chat-settings-modal .item-leave-group .tile-item-icon,
+.edit-chat-settings-modal .item-leave-group .tile-item-body-content {
+    @apply text-icons-04;
+}
+
 /* Edit members page */
 
 .tile-item.item-manage-members .tile-item-right {

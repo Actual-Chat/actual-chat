@@ -217,6 +217,71 @@ public class ChatOperationsTest : AppHostTestBase
         });
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TheOnlyOwnerUserShouldNotBeAbleLeaveChat(bool isPublicChat)
+    {
+        using var appHost = await NewAppHost();
+        await using var ownerTester = appHost.NewBlazorTester();
+        await ownerTester.SignInAsAlice();
+
+        var (chatId, _) = await ChatOperations.CreateChat(ownerTester, isPublicChat);
+
+        await Assert.ThrowsAsync<System.InvalidOperationException>(async () => {
+            await ownerTester.Commander.Call(new Authors_Leave(ownerTester.Session, chatId));
+        });
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OwnerUserShouldBeAbleToLeaveChat(bool isPublicChat)
+    {
+        using var appHost = await NewAppHost();
+        await using var ownerTester = appHost.NewBlazorTester();
+        await ownerTester.SignInAsAlice();
+
+        var (chatId, inviteId) = await ChatOperations.CreateChat(ownerTester, isPublicChat);
+
+        await using var otherTester = appHost.NewBlazorTester();
+        await otherTester.SignInAsBob();
+
+        var author = await ChatOperations.JoinChat(otherTester, chatId, inviteId);
+
+        await ownerTester.Commander.Call(new Authors_PromoteToOwner(ownerTester.Session, author.Id));
+
+        await ownerTester.Commander.Call(new Authors_Leave(ownerTester.Session, chatId));
+    }
+
+    [Fact]
+    public async Task ExOwnerUserBecomeRegularMemberAfterRejoining()
+    {
+        using var appHost = await NewAppHost();
+        await using var ownerTester = appHost.NewBlazorTester();
+        await ownerTester.SignInAsAlice();
+
+        var (chatId, inviteId) = await ChatOperations.CreateChat(ownerTester, true);
+
+        await using var otherTester = appHost.NewBlazorTester();
+        await otherTester.SignInAsBob();
+
+        var author = await ChatOperations.JoinChat(otherTester, chatId, inviteId);
+
+        var commander = ownerTester.Commander;
+
+        await commander.Call(new Authors_PromoteToOwner(ownerTester.Session, author.Id));
+
+        await commander.Call(new Authors_Leave(ownerTester.Session, chatId));
+
+        await ChatOperations.JoinChat(ownerTester, chatId, inviteId);
+
+        var chats = ownerTester.AppServices.GetRequiredService<IChats>();
+        var chat = await chats.Get(ownerTester.Session, chatId, default);
+        chat.Should().NotBeNull();
+        chat!.Rules.IsOwner().Should().BeFalse();
+    }
+
     private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
     {
         var authors = services.GetRequiredService<IAuthors>();

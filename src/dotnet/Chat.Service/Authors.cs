@@ -216,6 +216,33 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             return;
         chat.Rules.Require(ChatPermissions.Leave);
 
+        if (chat.Rules.IsOwner()) {
+            var ownerIds = await Roles.ListOwnerIds(session, chatId, default).ConfigureAwait(false);
+            var hasAnotherOwner = ownerIds.Any(c => c.Id != author.Id);
+            if (!hasAnotherOwner)
+                throw StandardError.Constraint("You can not leave the chat because you are the only owner of the chat. Assign another chat owner and try again.");
+
+            var ownerRole = await RolesBackend
+                .GetSystem(chatId, SystemRole.Owner, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
+
+            // Exclude from chat owners.
+            var changeRoleCommand = new RolesBackend_Change(
+                chatId,
+                ownerRole.Id,
+                ownerRole.Version,
+                new Change<RoleDiff> {
+                    Update = new RoleDiff {
+                        AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
+                            RemovedItems = new ApiArray<AuthorId>(author.Id)
+                        }
+                    }
+                });
+
+            await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,
             new AuthorDiff() { HasLeft = true });
