@@ -104,21 +104,6 @@ body.hoverable .btn.btn-error-outline:focus:hover {
     @apply outline-none ring-1 ring-error-ring bg-01 border-error-ring;
 }
 
-.btn.btn-text {
-    @apply bg-transparent border-transparent font-semibold text-02;
-}
-body.hoverable .btn.btn-text:hover,
-body.hoverable .btn.btn-text:focus:hover {
-    @apply bg-04 border-bg-03;
-}
-.btn.btn-text:active,
-.btn.btn-text:focus:active {
-    @apply outline-none ring-2 ring-bg-04 bg-transparent border-bg-03;
-}
-.btn.btn-text:focus {
-    @apply outline-none ring-2 ring-bg-04 bg-transparent border-bg-03;
-}
-
 .btn.btn-transparent {
     @apply flex-x;
     @apply m-0 p-0 min-w-0 h-min;

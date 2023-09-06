@@ -11,19 +11,19 @@
     VisibilityChanged="@(isOpen => PanelsUI.Left.SetIsVisible(isOpen))">
     <div class="docs-left-panel">
         <div class="c-header">
-            <div class="max-w-fit">
+            <div class="c-icon">
                 <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="icon" class="dark-icon">
             </div>
-            <div class="flex-x">
-                <div class="px-2 self-center -mt-1.5 @(!isNarrow ? "min-w-fit" : "max-w-40")">
+            <div class="c-title-wrapper">
+                <div class="c-title">
                     <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="brand" class="dark-title">
                 </div>
-                <div class="max-w-9 -mt-2 -ml-1">
+                <div class="c-version">
                     <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="alpha" class="dark-alpha">
                 </div>
             </div>
         </div>
-        <div class="h-full py-2">
+        <div class="c-content">
             <div class="navbar-item h-9" @onclick="@(_ => History.NavigateTo(Links.Home))">
                 <i class="icon-arrow-left mx-2 text-xl"></i>
                 <div class="mx-2 text-headline-1">Home</div>
