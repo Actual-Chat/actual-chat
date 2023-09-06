@@ -49,3 +49,9 @@ body.hoverable .new-chat-modal-selected-contact:hover .new-chat-modal-remove-con
 body.hoverable .new-chat-modal-selected-contact:hover .avatar-circle {
     @apply hidden;
 }
+.new-chat-modal .tile-item {
+    @apply hover:bg-inherit;
+}
+.new-chat-modal .tile-item-icon i {
+    @apply text-2xl;
+}
