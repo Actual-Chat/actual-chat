@@ -3,84 +3,102 @@
 @using ActualChat.Search
 @implements IModalView<NewChatModal.Model>
 
-<DialogFrame Class="new-chat-modal" Title="New chat" HasCloseButton="true" NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
+<DialogFrame
+    Class="new-chat-modal"
+    Title="New chat"
+    HasCloseButton="true"
+    NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
-    <FormBlock>
-        <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
+    <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
+        <FormBlock>
             <DataAnnotationsValidator/>
-            <div class="new-chat-modal-form-section">
-                <div class="flex">
+            <PicUpload
+                UploadUrl="@UploadUrl"
+                Picked="OnImagePicked"
+                Size="SquareSize.Size24"
+                Title="@_form.Title"
+                Picture="_form.Picture">
+                <NoPicture>
                     @if (_form.Title.IsNullOrEmpty()) {
                         <AnonymousIcon Class="w-24 h-24"></AnonymousIcon>
                     } else {
                         <Pic Title="@_form.Title" Size="SquareSize.Size24"/>
                     }
+                </NoPicture>
+            </PicUpload>
+            <FormSection
+                For="() => _form.Title"
+                Label="Name"
+                InputId="@_form.TitleId"
+                IsLabelInsideInput="true"
+                Class="!mt-0 grow"
+                IsRequired="true">
+                <TextBox
+                    @bind-Value="@_form.Title"
+                    Id="@_form.TitleId"
+                    Autofocus="false"
+                    Autocomplete="false"/>
+            </FormSection>
+            <TileItem>
+                <Icon>
+                    <i class="icon-people"></i>
+                </Icon>
+                <Content>
+                    Public chat
+                </Content>
+                <Caption>
+                    Anyone can join
+                </Caption>
+                <Right>
+                    <ToggleEdit Id="@_form.IsPublicId" @bind-Value="_form.IsPublic"/>
+                </Right>
+            </TileItem>
+        </FormBlock>
+
+        <FormBlock>
+            @if (_selectedContacts.Any()) {
+                <div class="new-chat-modal-selected-contacts">
+                    @foreach (var contact in _selectedContacts) {
+                        <div class="new-chat-modal-selected-contact"
+                             @onclick="() => OnContactClick(contact)">
+                            <div class="new-chat-modal-remove-contact-icon">
+                                <i class="icon-close text-04 text-2xl pl-1"></i>
+                            </div>
+                            <AvatarCircle Size="SquareSize.Size6" Avatar="@contact.Contact.Account?.Avatar"/>
+                            <div class="px-1 max-w-36 truncate">
+                                @contact.Contact.Account?.Avatar.Name
+                            </div>
+                        </div>
+                    }
                 </div>
-                <div class="flex-y grow">
-                    <FormSection
-                        For="() => _form.Title"
-                        Label="Name"
-                        InputId="@_form.TitleId"
-                        IsLabelInsideInput="true"
-                        Class="!mt-0 grow"
-                        IsRequired="true">
-                        <TextBox
-                            @bind-Value="@_form.Title"
-                            Id="@_form.TitleId"
-                            Autofocus="true"
-                            Autocomplete="false"/>
-                    </FormSection>
-                    <FormSection
-                        For="() => _form.IsPublic">
-                        <ToggleEdit Id="@_form.IsPublicId"
-                                    Label="Public chat &ndash; anyone can join"
-                                    @bind-Value="_form.IsPublic"/>
-                    </FormSection>
-                </div>
-            </div>
-        </Form>
-        @if (_selectedContacts.Any()) {
-            <div class="new-chat-modal-selected-contacts">
-                @foreach (var contact in _selectedContacts) {
-                    <div class="new-chat-modal-selected-contact"
+            }
+            <SearchBox
+                Placeholder="Type the username"
+                MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                TextChanged="@OnFilter"/>
+            <div class="new-chat-modal-contact-list">
+                @foreach (var contact in _filteredContacts) {
+                    var isSelected = _selectedContacts.Contains(contact);
+                    <div class="new-chat-modal-contact-list-item"
                          @onclick="() => OnContactClick(contact)">
-                        <div class="new-chat-modal-remove-contact-icon">
-                            <i class="icon-close text-04 text-2xl pl-1"></i>
+                        <AccountCircle UserSid="@contact.Contact.Account!.Id" ShowPresence="true"/>
+                        <div class="flex-y grow gap-y-1 overflow-hidden">
+                            <span class="text-headline-1 text-02 truncate">
+                                <SearchMatchHighlighter Match="@GetMatch(contact.Contact.Account.Avatar.Name)"/>
+                            </span>
+                            <span class="text-xs text-03 truncate">
+                                @contact.LastChatMessage
+                            </span>
                         </div>
-                        <AvatarCircle Size="SquareSize.Size6" Avatar="@contact.Contact.Account?.Avatar"/>
-                        <div class="px-1 max-w-32 truncate">
-                            @contact.Contact.Account?.Avatar.Name
-                        </div>
+                        <Checkbox
+                            IsChecked="@isSelected"
+                            Class="!flex-none"
+                            Change="() => OnContactClick(contact)"/>
                     </div>
                 }
             </div>
-        }
-        <SearchBox
-            Placeholder="Type the username"
-            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@OnFilter"/>
-        <div class="new-chat-modal-contact-list">
-            @foreach (var contact in _filteredContacts) {
-                var isSelected = _selectedContacts.Contains(contact);
-                <div class="new-chat-modal-contact-list-item"
-                     @onclick="() => OnContactClick(contact)">
-                    <AccountCircle UserSid="@contact.Contact.Account!.Id" ShowPresence="true"/>
-                    <div class="flex-y grow gap-y-1 overflow-hidden">
-                        <span class="text-headline-1 text-02 truncate">
-                            <SearchMatchHighlighter Match="@GetMatch(contact.Contact.Account.Avatar.Name)"/>
-                        </span>
-                        <span class="text-xs text-03 truncate">
-                            @contact.LastChatMessage
-                        </span>
-                    </div>
-                    <Checkbox
-                        IsChecked="@isSelected"
-                        Class="!flex-none"
-                        Change="() => OnContactClick(contact)"/>
-                </div>
-            }
-        </div>
-    </FormBlock>
+        </FormBlock>
+    </Form>
     </Body>
     <Buttons>
         <Button
@@ -98,6 +116,8 @@
 </DialogFrame>
 
 @code {
+    private static readonly string UploadUrl = "/api/avatars/upload-picture";
+
     private Form _formRef = null!;
     private FormModel _form = null!;
     private string _filter = null!;
@@ -164,6 +184,11 @@
         StateHasChanged();
     }
 
+    private void OnImagePicked(MediaContent mediaContent) {
+        _form.Picture = new(mediaContent);
+        StateHasChanged();
+    }
+
     private async Task OnCreate() {
         try {
             var command = new Chats_Change(Session, default, null, new() {
@@ -171,6 +196,7 @@
                     Title = _form.Title,
                     Kind = ChatKind.Group,
                     IsPublic = _form.IsPublic,
+                    MediaId = _form.Picture?.MediaContent?.MediaId,
                 },
             });
             var (chat, createChatError) = await UICommander.Run(command, CancellationToken.None);
@@ -208,6 +234,8 @@
 
         public bool IsPublic { get; set; }
         public string IsPublicId { get; }
+
+        public Picture? Picture { get; set; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
