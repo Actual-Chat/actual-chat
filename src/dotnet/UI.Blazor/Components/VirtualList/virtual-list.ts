@@ -378,9 +378,10 @@ export class VirtualList {
             .sort((l, r) => r.time - l.time)
             .map((entry): Pivot => ({
                 itemKey: getItemKey(entry.target as HTMLElement),
-                offset: entry.boundingClientRect.top,
+                offset: Math.ceil(entry.boundingClientRect.top),
                 time: entry.time,
             }));
+
         const matchedJumps = pivots
             .map(p1 => ({p1, p2: this._pivots.find(p2 => p2.itemKey === p1.itemKey)}))
             .filter(x => x.p2)
@@ -393,11 +394,15 @@ export class VirtualList {
                 this._pivots = [];
             });
             return;
-        }
+        } else {
+            // keep 10 pivots to simplify calculation further
+            this._pivots = pivots
+                .filter(p => Math.abs(p.offset) < this._viewport?.size ?? MinViewPortSize) // take pivots close to the viewport
+                .slice(0, 10)
+                .sort((l, r) => r.offset - l.offset);
 
-        // keep 10 pivots to simplify calculation further
-        this._pivots = pivots.slice(0, 10);
-        this.updateViewportThrottled();
+            this.updateViewportThrottled();
+        }
     };
 
     private onSkeletonVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
@@ -877,16 +882,10 @@ export class VirtualList {
             }
             else if (this._isNearSkeleton && Math.abs(scrollTop) < PivotSyncEpsilon) {
                 debugLog?.log(`restoreScrollPosition: scrollTop ~= 0`, this._isRendering);
-                // wait for the next frame and remeasure
-                await fastReadRaf();
-                const itemRect = pivotRef.getBoundingClientRect();
-                const currentPivotOffset = itemRect.top;
-                const dPivotOffset = pivotOffset - currentPivotOffset;
-                scrollTop -= dPivotOffset;
-                this._ref.scrollTop = scrollTop;
-                debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
 
-                this.updateViewportThrottled();
+                // we have lost scroll offset so let's scroll to the last visible pivot
+                this.scrollTo(pivotRef, false, 'center');
+
                 break;
             }
             else
@@ -981,6 +980,28 @@ export class VirtualList {
                 item.isOld = false;
             }
         }
+
+        // refresh pivots
+        fastRaf({
+            read: () => {
+                if (this._isRendering)
+                    return;
+
+                for (let pivot of this._pivots) {
+                    const pivotRef = this.getItemRef(pivot.itemKey);
+                    if (!pivotRef)
+                        continue;
+
+                    // measure scroll position
+                    const itemRect = pivotRef.getBoundingClientRect();
+                    // update offset if closer to the viewport
+                    if (Math.abs(pivot.offset) > Math.abs(itemRect.top)) {
+                        pivot.offset = Math.ceil(itemRect.top);
+                    }
+                }
+            }
+        });
+
         // debug helper
         // await delayAsync(50);
         debugLog?.log(`requestData: query:`, this._query);
