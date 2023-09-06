@@ -12,15 +12,12 @@
 
 @foreach (var schema in unusedAuthSchemas) {
     var title = "Sign in with " + schema.DisplayName;
-    <MenuEntry Click="@(_ => SignIn(schema.Name))">
+    <MenuEntry Click="@(_ => SignIn(schema.Name))" Text="@title">
         <IconContent>
             @if (schema.Icon != null) {
                 <img draggable="false" src="@schema.Icon" alt="@schema.DisplayName" class="h-8 w-8">
             }
         </IconContent>
-        <TextContent>
-            @title
-        </TextContent>
     </MenuEntry>
 }
 
