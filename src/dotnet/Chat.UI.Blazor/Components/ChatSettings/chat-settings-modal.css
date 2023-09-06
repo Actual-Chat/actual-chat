@@ -93,6 +93,28 @@
 
 /* Edit member menu */
 
+.edit-member-menu {
+    @apply md:w-90;
+}
+.edit-member-menu .ac-menu-item {
+    @apply h-auto min-h-10;
+}
 .edit-member-menu .avatar-badge {
     @apply p-[6px];
+}
+.edit-member-menu .ac-menu-content {
+    @apply gap-x-2;
+}
+.edit-member-menu .ac-menu-icon {
+    @apply w-10 min-w-10 max-w-10;
+    @apply flex-x justify-center;
+    @apply self-start;
+}
+.edit-member-menu .ac-menu-text,
+.edit-member-menu .avatar-name {
+    @apply font-medium text-02;
+}
+.edit-member-menu .ac-menu-hint {
+    @apply text-caption-2 font-normal text-03;
+    @apply whitespace-normal;
 }

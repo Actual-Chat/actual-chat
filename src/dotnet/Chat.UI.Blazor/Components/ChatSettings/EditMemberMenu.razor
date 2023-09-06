@@ -19,8 +19,13 @@
     @if (m.CanPromoteToOwner && !m.IsOwner) {
         <MenuEntry
             Icon="icon-star"
-            Text="Promote to Owner"
             Click="@(() => OnPromoteToOwnerClick(m))">
+            <TextContent>
+                <div class="flex-y">
+                    <div>Promote to Owner</div>
+                    <div class="ac-menu-hint">Can appoint new owners, change the community name and URL, delete community</div>
+                </div>
+            </TextContent>
         </MenuEntry>
     }
 
