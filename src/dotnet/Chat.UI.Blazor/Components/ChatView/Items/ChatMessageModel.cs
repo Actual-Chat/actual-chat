@@ -80,6 +80,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         var isPrevAudio = (bool?)false;
         var isPrevForward = false;
         var prevForwardChatId = ChatId.None;
+        var oldItemsMap = oldItems.ToDictionary(i => i.Key, i => i);
         for (var index = 0; index < chatEntries.Count; index++) {
             var entry = chatEntries[index];
             var isLastEntry = index == chatEntries.Count - 1;
@@ -94,21 +95,40 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
             var isUnread = entry.LocalId > (lastReadEntryId ?? 0);
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
             var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
-            if (hasDateLine)
-                result.Add(new (entry) {
+            if (hasDateLine) {
+                var item = new ChatMessageModel(entry) {
                     DateLine = date,
-                });
-            if (isUnread && !isPrevUnread)
-                result.Add(new (entry) {
+                };
+                var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
+                if (oldItem != null && oldItem.Entry.Version == item.Entry.Version)
+                    result.Add(oldItem);
+                else
+                    result.Add(item);
+            }
+            if (isUnread && !isPrevUnread) {
+                var item = new ChatMessageModel(entry) {
                     IsFirstUnreadSeparator = true,
-                });
+                };
+                var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
+                if (oldItem != null && oldItem.Entry.Version == item.Entry.Version)
+                    result.Add(oldItem);
+                else
+                    result.Add(item);
+            }
 
-            result.Add(new (entry) {
-                IsBlockStart = isBlockStart,
-                IsBlockEnd = isBlockEnd,
-                ShowEntryKind = isEntryKindChanged || (isBlockStart && isAudio),
-                IsForwardBlockStart = isForwardBlockStart,
-            });
+            {
+                var item = new ChatMessageModel(entry) {
+                    IsBlockStart = isBlockStart,
+                    IsBlockEnd = isBlockEnd,
+                    ShowEntryKind = isEntryKindChanged || (isBlockStart && isAudio),
+                    IsForwardBlockStart = isForwardBlockStart,
+                };
+                var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
+                if (oldItem != null && oldItem.Equals(item))
+                    result.Add(oldItem);
+                else
+                    result.Add(item);
+            }
 
             isPrevUnread = isUnread;
             isBlockStart = isBlockEnd;
