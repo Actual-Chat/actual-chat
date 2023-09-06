@@ -71,7 +71,7 @@ export class AudioRecorder {
                 DetectRTC.isGetUserMediaSupported,
                 DetectRTC.isWebsiteHasMicrophonePermissions);
 
-            if ('permissions' in navigator) {
+            if ('permissions' in navigator && !DeviceInfo.isFirefox) {
                 // @ts-ignore
                 const status = await navigator.permissions.query({ name: 'microphone' });
                 return status.state;
@@ -159,7 +159,7 @@ export class AudioRecorder {
             debugLog?.log(`startRecording(), after hasMicrophone`);
 
             let hasMicrophonePermission = false;
-            if ('permissions' in navigator) {
+            if ('permissions' in navigator && !DeviceInfo.isFirefox) {
                 // @ts-ignore
                 const status = await navigator.permissions.query({ name: 'microphone' });
                 hasMicrophonePermission = status.state !== 'denied';
