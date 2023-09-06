@@ -8,6 +8,10 @@
     var m = State.Value;
     if (m.Rules == null)
         return;
+    if (!m.Rules.CanEditProperties()) {
+        Context.Close();
+        return;
+    }
     if (_form == null)
         return;
     Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
@@ -17,149 +21,148 @@
     @{
         _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
     }
-    @if (m.Rules.CanEditProperties()) {
-        <FormBlock>
-            <DataAnnotationsValidator/>
+    <FormBlock>
+        <DataAnnotationsValidator/>
 
-            <PicUpload
-                UploadUrl="@_form.ImageUploadUrl"
-                Picked="OnImagePicked"
-                Size="SquareSize.Size24"
-                Title="@_form.Title"
-                Picture="@_form.Picture">
-            </PicUpload>
+        <PicUpload
+            UploadUrl="@_form.ImageUploadUrl"
+            Picked="OnImagePicked"
+            Size="SquareSize.Size24"
+            Title="@_form.Title"
+            Picture="@_form.Picture">
+        </PicUpload>
 
-            <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
-                <TextBox
-                    @bind-Value="@_form.Title"
-                    Id="@_form.TitleId"
-                    Placeholder="Chat title*"
-                    ClearButton="true"/>
-            </FormSection>
-        </FormBlock>
+        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
+            <TextBox
+                @bind-Value="@_form.Title"
+                Id="@_form.TitleId"
+                Placeholder="Chat title*"
+                ClearButton="true"/>
+        </FormSection>
+    </FormBlock>
 
-        <FormBlock Title="Chat type">
-            <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
-                <TileItem>
-                    <Icon>
-                        <InputRadio id="@_form.IsPublicTrueFormId" Value="@true"/>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
-                    </Content>
-                    <Caption>
-                        <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this chat by navigating to its URL"></Label>
-                    </Caption>
-                </TileItem>
-                <TileItem>
-                    <Icon>
-                        <InputRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>
-                    </Content>
-                    <Caption>
-                        <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
-                    </Caption>
-                </TileItem>
-            </InputRadioGroup>
-        </FormBlock>
-
-
-        @if (_form.IsPublic) {
-            @if (m.Link is { } publicUrl) {
-                _form.PublicUrl = publicUrl.ShortLocalUrl;
-                <FormBlock>
-                    <TileItem Class="field-chat-public-url">
-                        <Icon>
-                            <i class="icon-link-2"></i>
-                        </Icon>
-                        <Content>
-                            <FormSection For="() => _form.PublicUrl" InputId="@_form.PublicUrlFormId"
-                                         Label="Public link" IsLabelInsideInput="true">
-                                <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
-                            </FormSection>
-                        </Content>
-                        <Right>
-                            <CopyToClipboard Text="@publicUrl.AbsoluteUrl"/>
-                        </Right>
-                    </TileItem>
-                </FormBlock>
-            }
-        } else {
-            var canInvite = m.Rules.CanInvite();
-            var displayLinks = canInvite || m.Invites.Count > 0;
-            var title = canInvite ? "Manage links" : "Private links";
-            @if (displayLinks) {
-                <FormBlock Title="@title">
-                    @if (m.Invites.Count > 0) {
-                        <InviteList
-                            Invites="m.Invites"
-                            LinkFormat="join/{0}"
-                            NewInviteId="@_newInviteId"
-                            AllowRevoke="true"/>
-                    }
-                    @if (canInvite) {
-                        <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
-                            <i class="icon-plus text-xl"></i>
-                            New private join link
-                        </Button>
-                    }
-                </FormBlock>
-            }
-        }
-
-        <FormBlock>
-            @if (_form.IsPublic) {
-                <TileItem class="field-allow-guest">
-                    <Icon>
-                        <i class="icon-guest"></i>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
-                    </Content>
-                    <Caption>
-                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
-                    </Caption>
-                    <Right>
-                        <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
-                    </Right>
-                </TileItem>
-            }
-            <TileItem class="field-allow-anonym">
+    <FormBlock Title="Chat type">
+        <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
+            <TileItem>
                 <Icon>
-                    <i class="icon-anonym"></i>
+                    <InputRadio id="@_form.IsPublicTrueFormId" Value="@true"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
                 </Content>
                 <Caption>
-                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this chat by navigating to its URL"></Label>
                 </Caption>
-                <Right>
-                    <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
-                </Right>
             </TileItem>
-        </FormBlock>
-        @if (m.AllowEditIsTemplate && _form.IsPublic) {
+            <TileItem>
+                <Icon>
+                    <InputRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
+                </Caption>
+            </TileItem>
+        </InputRadioGroup>
+    </FormBlock>
+
+
+    @if (_form.IsPublic) {
+        @if (m.Link is { } publicUrl) {
+            _form.PublicUrl = publicUrl.ShortLocalUrl;
             <FormBlock>
-                <TileItem class="field-is-template">
+                <TileItem Class="field-chat-public-url">
                     <Icon>
-                        <i class="icon-file-text"></i>
+                        <i class="icon-link-2"></i>
                     </Icon>
                     <Content>
-                        <Label InputId="@_form.IsTemplateFormId" Text="Use chat as a template"></Label>
+                        <FormSection For="() => _form.PublicUrl" InputId="@_form.PublicUrlFormId"
+                                     Label="Public link" IsLabelInsideInput="true">
+                            <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
+                        </FormSection>
                     </Content>
-                    <Caption>
-                        <Label InputId="@_form.IsTemplateFormId" Text="Template for embedded chats"></Label>
-                    </Caption>
                     <Right>
-                        <ToggleEdit Id="@_form.IsTemplateFormId" @bind-Value="_form.IsTemplate"/>
+                        <CopyToClipboard Text="@publicUrl.AbsoluteUrl"/>
                     </Right>
                 </TileItem>
             </FormBlock>
         }
+    } else {
+        var canInvite = m.Rules.CanInvite();
+        var displayLinks = canInvite || m.Invites.Count > 0;
+        var title = canInvite ? "Manage links" : "Private links";
+        @if (displayLinks) {
+            <FormBlock Title="@title">
+                @if (m.Invites.Count > 0) {
+                    <InviteList
+                        Invites="m.Invites"
+                        LinkFormat="join/{0}"
+                        NewInviteId="@_newInviteId"
+                        AllowRevoke="true"/>
+                }
+                @if (canInvite) {
+                    <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
+                        <i class="icon-plus text-xl"></i>
+                        New private join link
+                    </Button>
+                }
+            </FormBlock>
+        }
     }
+
+    <FormBlock>
+        @if (_form.IsPublic) {
+            <TileItem Class="field-allow-guest">
+                <Icon>
+                    <i class="icon-guest"></i>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
+                </Caption>
+                <Right>
+                    <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
+                </Right>
+            </TileItem>
+        }
+        <TileItem Class="field-allow-anonym">
+            <Icon>
+                <i class="icon-anonym"></i>
+            </Icon>
+            <Content>
+                <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+            </Content>
+            <Caption>
+                <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+            </Caption>
+            <Right>
+                <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
+            </Right>
+        </TileItem>
+    </FormBlock>
+    @if (m.AllowEditIsTemplate && _form.IsPublic) {
+        <FormBlock>
+            <TileItem Class="field-is-template">
+                <Icon>
+                    <i class="icon-file-text"></i>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsTemplateFormId" Text="Use chat as a template"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.IsTemplateFormId" Text="Template for embedded chats"></Label>
+                </Caption>
+                <Right>
+                    <ToggleEdit Id="@_form.IsTemplateFormId" @bind-Value="_form.IsTemplate"/>
+                </Right>
+            </TileItem>
+        </FormBlock>
+    }
+
     @if (m.Rules.CanEditMembers()) {
         <FormBlock>
             <TileItem Class="item-manage-members" Click="OnManageMembersClick">
@@ -173,6 +176,13 @@
                     <i class="icon-chevron-right text-3xl"></i>
                 </Right>
             </TileItem>
+
+            @if (m.Rules.IsOwner()) {
+                <TileItem Class="item-leave-group" Click="@(() => OnLeaveGroupClick(m))">
+                    <Icon><i class="icon-log-out"></i></Icon>
+                    <Content>Leave group</Content>
+                </TileItem>
+            }
         </FormBlock>
     }
 </Form>
@@ -237,6 +247,8 @@
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
         var chatId = ChatId;
         var rules = await Chats.GetRules(Session, chatId, cancellationToken);
+        if (!rules.CanEditProperties())
+            return new ComputedModel { Rules = rules };
         var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
         var invites = await Invites.ListChatInvites(Session, chatId, cancellationToken);
         var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
@@ -269,6 +281,21 @@
 
     private void OnManageMembersClick()
         => Context.StepIn(DiveInDialogPage.New<EditMembersModalPage>(ChatId));
+
+    private async void OnLeaveGroupClick(ComputedModel m) {
+        var roles = Services.GetRequiredService<IRoles>();
+        var ownerIds = await roles.ListOwnerIds(Session, ChatId, default);
+        var ownAuthorId = m.Rules!.Author!.Id;
+        var hasAnotherOwner = ownerIds.Any(c => c.Id != ownAuthorId);
+        if (!hasAnotherOwner) {
+            var message = "You can not leave the chat because you are the only owner of the chat. Assign another chat owner and try again.";
+            Services.GetRequiredService<ErrorUI>().ShowError(StandardError.Constraint(message));
+        } else {
+            var chat = await Chats.Get(Session, ChatId, default);
+            var modalUI = Services.GetRequiredService<ModalUI>();
+            _ = modalUI.Show(new LeaveChatConfirmationModal.Model(chat!));
+        }
+    }
 
     private async Task OnSubmit() {
         if (_formRef == null)
