@@ -125,7 +125,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             .Add<VisualMediaViewerModal.Model, VisualMediaViewerModal>()
             .Add<DemandUserInteractionModal.Model, DemandUserInteractionModal>()
             .Add<DiveInModal.Model, DiveInModal>()
-            .Add<DiscardModal.Model, DiscardModal>()
+            .Add<ConfirmModal.Model, ConfirmModal>()
         );
         // IBannerViews
         services.AddTypeMapper<IBannerView>();

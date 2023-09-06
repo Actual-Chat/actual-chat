@@ -1,0 +1,50 @@
+@namespace ActualChat.UI.Blazor.Components
+@implements IModalView<ConfirmModal.Model>
+
+@{
+    var isDestructive = ModalModel.IsDestructive;
+    var title = ModalModel.Title;
+    if (string.IsNullOrEmpty(title))
+        title = isDestructive ? "Discard changes" : "Confirm changes";
+    var text = ModalModel.Text;
+    if (string.IsNullOrEmpty(text))
+        text = isDestructive
+            ? "Are you sure you want to discard all changes?"
+            : "Are you sure you want to confirm all changes?";
+    var btnCls = isDestructive ? "danger" : "btn-primary";
+    btnCls = "btn-modal " + btnCls;
+    var btnText = ModalModel.ConfirmButtonText;
+    if (btnText.IsNullOrEmpty())
+        btnText = isDestructive ? "Discard" : "Confirm";
+}
+
+<DialogFrame Class="confirm-modal modal-sm" Title="@title">
+    <Body>
+    <FormBlock>
+        <div class="c-text">
+            <p>
+                @text
+            </p>
+        </div>
+    </FormBlock>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">Cancel</Button>
+        <Button Class="@btnCls" Click="OnConfirm">@btnText</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnConfirm() {
+        ModalModel.Confirm();
+        Modal.Close();
+    }
+
+    public sealed record Model(bool IsDestructive, string Text, Action Confirm) {
+        public string Title { get; init; } = "";
+        public string ConfirmButtonText { get; init; } = "";
+    }
+}
