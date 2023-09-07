@@ -48,7 +48,7 @@
 	<key>aps-environment</key>
 	<string>development</string>
 	<key>MinimumOSVersion</key>
-	<string>16.4</string>
+	<string>16.1</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
