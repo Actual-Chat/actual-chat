@@ -5,10 +5,12 @@
 @{
     var entry = ChatEntry;
     var hasSelection = SelectionUI.HasSelection.Value;
+    var isForwarder = ChatEntry.ForwardedAuthorId.IsNone;
     var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null && !hasSelection;
-    var canEditOrDelete = this is { CanWrite: true, IsOwnEntry: true }
-                          && ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false }
-                          && !hasSelection;
+    var canDelete = this is { CanWrite: true, IsOwnEntry: true }
+                    && ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false }
+                    && !hasSelection;
+    var canEdit = canDelete && isForwarder;
     var messageLink = Links.Chat(entry.Id).ToAbsolute(UrlMapper);
     var isSelected = SelectionUI.IsSelected(entry.Id);
     var canReply = !entry.IsStreaming && CanWrite && !IsSystem && !isSelected;
@@ -28,7 +30,7 @@
     @if (showPlayButton) {
         <MessageMenuPlay Entry="@entry" IsMenu="true"/>
     }
-    @if (canEditOrDelete) {
+    @if (canEdit) {
         <MenuEntry
             Icon="icon-edit"
             Class="important-item"
@@ -112,7 +114,7 @@
             Click="@ForwardSelection">
         </MenuEntry>
     }
-    @if (canEditOrDelete) {
+    @if (canDelete) {
         <MenuEntrySeparator />
         <MenuEntry
             Class="warning-item"
