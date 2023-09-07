@@ -29,8 +29,13 @@ export class FallbackPlayback {
 
         document.body.addEventListener(
             'click',
-            () => this.warmup(),
-            { capture: true, passive: true, once: true });
+            (e) => {
+                if (!e.isTrusted)
+                    return; // trigger on user action only!
+
+                void this.warmup();
+            },
+            { capture: true, passive: false, once: true });
     }
 
     public async attach(feederNode: FeederAudioWorkletNode, context: AudioContext) {
@@ -92,6 +97,8 @@ export class FallbackPlayback {
         debugLog?.log('-> onContextCreated()');
         try {
             this.dest = context.createMediaStreamDestination();
+            this.dest.channelCountMode = 'max';
+            this.dest.channelCount = 2;
             this.dest.channelInterpretation = 'speakers';
             this.audio.srcObject = this.dest.stream;
         } catch (e) {

@@ -32,10 +32,12 @@ class WarmUpAudioWorkletProcessor extends AudioWorkletProcessor {
             return true;
         }
         const output = outputs[0];
-        const channel = output[0];
+        const channelL = output[0];
+        const channelR = output[1];
 
         // write silence
-        channel.fill(0);
+        channelL.fill(0);
+        channelR.fill(0);
         this.wroteSilence = true;
         return true;
     }

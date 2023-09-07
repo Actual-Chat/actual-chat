@@ -7,8 +7,11 @@ import { PromiseSourceWithTimeout } from 'promises';
 const { debugLog, warnLog } = Log.get('SoundsPlayer');
 
 export class SoundsPlayer implements AsyncDisposable {
-    private context?: AudioContext;
-    private ref?: AudioContextRef;
+    private context?: AudioContext = null;
+    private ref?: AudioContextRef = null;
+    private gainNodeL?: GainNode = null;
+    private gainNodeR?: GainNode = null;
+    private channelMerger?: ChannelMergerNode = null;
 
     constructor() {
         this.ref = audioContextSource.getRef('play-tunes', {
@@ -25,17 +28,18 @@ export class SoundsPlayer implements AsyncDisposable {
 
     public async play(url: string){
         debugLog?.log('-> play', url);
+        const { context, gainNodeL, gainNodeR} = this;
         const buffer = await this.getSound(url);
-
-        if (!this.context) {
+        if (!context) {
             warnLog?.log('play: failed to play sound: audioContext became unavailable')
             return;
         }
 
-        const source = this.context.createBufferSource();
+        const source = context.createBufferSource();
         try {
             source.buffer = buffer;
-            source.connect(this.context.destination);
+            source.connect(gainNodeL);
+            source.connect(gainNodeR);
             source.start();
             const playTask = new PromiseSourceWithTimeout();
             playTask.setTimeout(5000);
@@ -52,9 +56,21 @@ export class SoundsPlayer implements AsyncDisposable {
 
     private async onAttach(context: AudioContext) {
         this.context = context;
+        this.gainNodeL = context.createGain();
+        this.gainNodeR = context.createGain();
+        this.channelMerger = context.createChannelMerger(2);
+        this.gainNodeL.connect(this.channelMerger, 0, 0);
+        this.gainNodeR.connect(this.channelMerger, 0, 1);
+        this.channelMerger.connect(context.destination);
     }
 
     private onDetach(context: AudioContext) {
+        this.gainNodeL?.disconnect();
+        this.gainNodeR?.disconnect();
+        this.channelMerger?.disconnect();
+        this.gainNodeL = null;
+        this.gainNodeR = null;
+        this.channelMerger = null;
         this.context = null;
     }
 

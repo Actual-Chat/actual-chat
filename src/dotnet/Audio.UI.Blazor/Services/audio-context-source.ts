@@ -289,11 +289,11 @@ export class AudioContextSource {
         const warmUpWorkletPath = Versioning.mapPath('/dist/warmUpWorklet.js');
         await context.audioWorklet.addModule(warmUpWorkletPath);
         const nodeOptions: AudioWorkletNodeOptions = {
-            channelCount: 1,
+            channelCount: 2,
             channelCountMode: 'explicit',
             numberOfInputs: 0,
             numberOfOutputs: 1,
-            outputChannelCount: [1],
+            outputChannelCount: [2],
         };
         const node = new AudioWorkletNode(context, 'warmUpWorklet', nodeOptions);
         node.connect(context.destination);

@@ -31,6 +31,10 @@ export class AudioPlayer {
     private playbackState: PlaybackState = 'paused';
     private decoderToFeederWorkletChannel: MessageChannel = null;
     private feederNode?: FeederAudioWorkletNode = null;
+    private gainNodeL?: GainNode = null;
+    private gainNodeR?: GainNode = null;
+    private channelMerger?: ChannelMergerNode = null;
+
 
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
 
@@ -83,8 +87,16 @@ export class AudioPlayer {
 
             if(fallbackPlayback.isRequired)
                 await fallbackPlayback.attach(feederNode, context);
-            else
-                feederNode.connect(context.destination);
+            else {
+                this.gainNodeL = context.createGain();
+                this.gainNodeR = context.createGain();
+                this.channelMerger = context.createChannelMerger(2);
+                this.gainNodeL.connect(this.channelMerger, 0, 0);
+                this.gainNodeR.connect(this.channelMerger, 0, 1);
+                this.channelMerger.connect(context.destination);
+                feederNode.connect(this.gainNodeL);
+                feederNode.connect(this.gainNodeR);
+            }
 
             this.isAttached = true;
         };
@@ -112,7 +124,14 @@ export class AudioPlayer {
             const feederNode = this.feederNode;
             if (feederNode) {
                 fallbackPlayback.detach();
+                this.gainNodeL?.disconnect();
+                this.gainNodeR?.disconnect();
+                this.channelMerger?.disconnect();
+                this.feederNode.disconnect();
                 this.feederNode = null;
+                this.gainNodeL = null;
+                this.gainNodeR = null;
+                this.channelMerger = null;
                 await catchErrors(
                     () => feederNode.disconnect(),
                     e => warnLog?.log(`#${this.id}.start.detach error:`, e));
