@@ -19,3 +19,8 @@
 .reaction-badge .c-count {
     @apply font-semibold;
 }
+
+.reaction-badge .c-author+.c-author {
+    @apply -ml-3;
+    @apply border-l border-white rounded-full;
+}

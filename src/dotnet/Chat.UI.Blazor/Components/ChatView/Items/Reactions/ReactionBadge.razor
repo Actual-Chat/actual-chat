@@ -1,8 +1,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
     var ownReactionClass = OwnReaction?.Emoji == Reaction.Emoji ? "own" : "";
-    var showIcons = Reaction.Count <= 1;
+    var showIcons = Reaction.Count <= 3;
     var showIconsClass = showIcons ? "icons" : "";
+    var authorCircleSize = ScreenSize.IsNarrow() ? SquareSize.Size5 : SquareSize.Size4;
 }
 <li class="reaction-badge @ownReactionClass @showIconsClass"
     data-menu="@(MenuRef.New<ReactionAuthorsMenu>(Entry.Id, Reaction.Emoji))"
@@ -10,8 +11,11 @@
     @onclick="@(_ => ToggleReaction(Reaction.Emoji))">
     <EmojiIcon Id="@Reaction.Emoji.Id" Class="c-emoji"/>
     @if (showIcons) {
-        var authorCircleSize = ScreenSize.IsNarrow() ? SquareSize.Size5 : SquareSize.Size4;
-        <AuthorCircle AuthorSid="@Reaction.FirstAuthorIds[0]" Size="authorCircleSize" />
+        @for (int i = 0; i < Reaction.FirstAuthorIds.Count; i++) {
+            <div class="c-author" style="z-index: @i">
+                <AuthorCircle AuthorSid="@Reaction.FirstAuthorIds[i]" Size="authorCircleSize"/>
+            </div>
+        }
     } else {
         <span class="c-count">@Reaction.Count</span>
     }
