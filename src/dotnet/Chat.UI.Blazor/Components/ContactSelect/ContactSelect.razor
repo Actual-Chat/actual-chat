@@ -43,7 +43,7 @@
         var allUnordered = await ChatListUI.ListAllUnordered(ChatListFilter.None, cancellationToken);
         var chats = allUnordered.Values
             .ExceptBy(ContactsToExclude, x => x.Id)
-            .OrderBy(ChatListOrder.ByLastEventTime)
+            .OrderBy(ChatListOrder.ByOwnUpdateTime)
             .ToList();
 
         FilterChats(chats);
