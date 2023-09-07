@@ -204,15 +204,25 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     private void MarkStarting(ChatId chatId)
     {
-        var currentIsConnected = _state.Value.IsConnected;
-        _state.Value = new AudioRecorderState(chatId) { IsConnected = currentIsConnected };
+        var currentState = _state.Value;
+        var (_, isRecording, isConnected, isVoiceActive) = currentState;
+        _state.Value = new AudioRecorderState(chatId) {
+            IsRecording = isRecording,
+            IsConnected = isConnected,
+            IsVoiceActive = isVoiceActive,
+        };
         DebugLog?.LogDebug("Chat #{ChatId}: recording is starting", chatId);
     }
 
     private void MarkStopped()
     {
-        var currentIsConnected = _state.Value.IsConnected;
-        _state.Value = AudioRecorderState.Idle with { IsConnected = currentIsConnected };
+        var currentState = _state.Value;
+        var (_, isRecording, isConnected, isVoiceActive) = currentState;
+        _state.Value = AudioRecorderState.Idle with {
+            IsRecording = isRecording,
+            IsConnected = isConnected,
+            IsVoiceActive = isVoiceActive,
+        };
         DebugLog?.LogDebug("Recording is stopped");
     }
 }
