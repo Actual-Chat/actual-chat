@@ -1,4 +1,5 @@
 .markup-editor {
+    @apply relative;
     @apply text-xl md:text-base;
 }
 .markup-editor .editor-content {
@@ -31,4 +32,26 @@
 .markup-editor .editor-content:empty:not(:focus):before {
     content: attr(data-placeholder);
     @apply text-counter md:text-05 !opacity-100 truncate;
+}
+
+/* Permanent mobile cursor */
+
+.markup-editor > .c-cursor {
+    @apply absolute;
+    @apply w-px h-5;
+    @apply bg-scrollbar;
+    animation: cursor 1s infinite step-end;
+}
+body.wide .editor-content + .c-cursor,
+body.narrow .editor-content:focus + .c-cursor {
+    @apply hidden;
+}
+body.narrow .editor-content:not(:focus) {
+    @apply ml-0.5;
+}
+body.narrow .editor-content:focus {
+    @apply ml-0;
+}
+@keyframes cursor {
+    50% { background: transparent; }
 }

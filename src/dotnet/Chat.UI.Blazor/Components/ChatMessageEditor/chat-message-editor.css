@@ -40,7 +40,7 @@
 .post-panel .message-input {
     @apply flex-1;
     @apply max-h-48 md:max-h-88;
-    @apply overflow-y-auto overflow-x-hidden;
+    @apply overflow-hidden;
     @apply outline-none;
     @apply text-counter md:text-02;
     @apply bg-07 md:bg-03;
