@@ -23,8 +23,8 @@
         if (!_isTroubleshootGuideTriggered) {
             _isTroubleshootGuideTriggered = true;
             Clocks.CoarseSystemClock
-                .Delay(2500)
-                .ContinueWith(_ => DisplayTroubleshootGuide());
+                .Delay(2500, _cancelTroubleshootGuide?.Token ?? CancellationToken.None)
+                .ContinueWith(_ => DisplayTroubleshootGuide(), TaskContinuationOptions.OnlyOnRanToCompletion);
         }
     }
 }
@@ -79,6 +79,7 @@
     private static readonly string JSInitMethod = $"{ChatBlazorUIModule.ImportName}.RecorderToggle.init";
     private OnOffAnimator _animator = null!;
     private bool _isTroubleshootGuideTriggered;
+    private CancellationTokenSource? _cancelTroubleshootGuide;
 
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
@@ -130,8 +131,11 @@
         var startRecordingAt = currentState.StartRecordingAt;
         if (isApplyingChanges || !recorderState.IsConnected) {
             startRecordingAt ??= Clocks.CoarseSystemClock.Now;
+            _cancelTroubleshootGuide = new();
         } else {
             startRecordingAt = null;
+            _cancelTroubleshootGuide.CancelAndDisposeSilently();
+            _cancelTroubleshootGuide = null;
         }
         return new(
             Chat,
@@ -178,9 +182,10 @@
     }
 
     private async Task DisplayTroubleshootGuide() {
+        var token = _cancelTroubleshootGuide?.Token ?? CancellationToken.None;
         await InvokeAsync(async () => {
             var state = State.LastNonErrorValue;
-            if (!state.StartRecordingAt.HasValue) {
+            if (!state.StartRecordingAt.HasValue || token.IsCancellationRequested) {
                 _isTroubleshootGuideTriggered = false;
                 return;
             }
@@ -188,7 +193,7 @@
             var model = new GuideModal.Model(false, GuideType.Unknown);
             var modalRef = await ModalUI.Show(model);
             try {
-                await modalRef.WhenClosed.WaitAsync(CancellationToken.None);
+                await modalRef.WhenClosed.WaitAsync(token);
             }
             finally {
                 _isTroubleshootGuideTriggered = false;
