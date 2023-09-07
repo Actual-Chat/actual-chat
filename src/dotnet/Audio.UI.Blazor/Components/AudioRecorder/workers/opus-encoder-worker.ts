@@ -221,9 +221,6 @@ const serverImpl: OpusEncoderWorker = {
             if (!lastInitArguments)
                 throw new Error('Unable to resume streaming lastNewStreamMessage is null');
 
-            // start new stream and then set state
-            lastInitArguments.repliedChatEntryId = ""; // We must set it for the first message only
-
             await startRecording();
         }
     }
@@ -257,6 +254,8 @@ async function startRecording(): Promise<void> {
     const isConnected = hubConnection.state === HubConnectionState.Connected;
     if (!isConnected)
         return;
+
+    lastInitArguments.repliedChatEntryId = ""; // We must set it for the first message only
 
     recordingSubject?.complete(); // Just in case
     recordingSubject = new signalR.Subject<Array<Uint8Array>>();
