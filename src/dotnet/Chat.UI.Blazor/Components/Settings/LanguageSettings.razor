@@ -7,52 +7,88 @@
         return;
 
     var languages = m.Languages;
+    _formModel.PrimaryLanguageId = languages.Primary.Id;
+    _formModel.SecondaryLanguageId = languages.Secondary?.Id ?? "";
 }
 
-<Tile>
-    <fieldset class="language-settings" id="language-settings-primary">
-        <legend>Your primary language:</legend>
-        @foreach (var language in Languages.All) {
-            <div class="language-settings-item">
-                <Radio Id="@($"language-settings-primary-{language}")"
-                       Name="language-settings-primary"
-                       Value="@language" IsChecked="@(language == languages.Primary)"
-                       Label="@language.Title"
-                       Change="@(_ => SetPrimary(language))" />
-            </div>
-        }
-    </fieldset>
-</Tile>
+<TileTopic Topic="Languages"/>
 
 <Tile>
-    <fieldset class="language-settings" id="language-settings-secondary">
-        <legend>Your secondary language:</legend>
-        <div class="language-settings-item">
-            <Radio
-                Id="language-settings-secondary-none"
-                Name="language-settings-secondary"
-                Label="None"
-                Value=""
-                IsChecked="@(languages.Secondary == null)"
-                Change="@(_ => SetSecondary(null))"/>
-        </div>
-        @foreach (var language in Languages.All.Where(x => x != languages.Primary)) {
-            <div class="language-settings-item">
-                <Radio
-                    Id="@($"language-settings-secondary-{language}")"
-                    Name="language-settings-secondary"
-                    Label="@language.Title"
-                    Value="@language"
-                    IsChecked="@(language == languages.Secondary)"
-                    Change="@(_ => SetSecondary(language))"/>
-                @* Disabled="@(language == languages.Primary)"/> *@
-            </div>
-        }
-    </fieldset>
+    <Form Model="@_formModel">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+
+        <FormBlock>
+            <FormSection
+                Class="field-transcription-primary-language"
+                For="() => _formModel.PrimaryLanguageId"
+                InputId="@_formModel.PrimaryLanguageFormId"
+                IsLabelInsideInput="true"
+                Label="My primary language">
+                <InputSelect Value="_formModel.PrimaryLanguageId"
+                             ValueExpression="@(() => _formModel.PrimaryLanguageId)"
+                             ValueChanged="@((string languageId) => OnPrimaryChanged(languageId))">
+                    @foreach (var language in Languages.All) {
+                        <option value="@language.Id">@language.Title</option>
+                    }
+                </InputSelect>
+            </FormSection>
+
+            <FormSection
+                Class="field-transcription-secondary-language"
+                For="() => _formModel.SecondaryLanguageId"
+                InputId="@_formModel.SecondaryLanguageFormId"
+                IsLabelInsideInput="true"
+                Label="My secondary language">
+                <InputSelect Value="_formModel.SecondaryLanguageId"
+                             ValueExpression="@(() => _formModel.SecondaryLanguageId)"
+                             ValueChanged="@((string languageId) => OnSecondaryChanged(languageId))">
+                    <option value="">None</option>
+                    @foreach (var language in Languages.All) {
+                        <option value="@language.Id">@language.Title</option>
+                    }
+                </InputSelect>
+            </FormSection>
+        </FormBlock>
+    </Form>
 </Tile>
+
 
 @code {
+    private FormModel _formModel = null!;
+
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _formModel = new FormModel(ComponentIdGenerator);
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var languages = await LanguageUI.Settings.Use(cancellationToken);
+        return new(languages);
+    }
+
+    private Language? GetLanguage(string id)
+        => Languages.All.FirstOrDefault(c => c.Id == id);
+
+    private void OnPrimaryChanged(string languageId) {
+        var language = !languageId.IsNullOrEmpty() ? GetLanguage(languageId) : null;
+        if (language.HasValue)
+            SetPrimary(language.Value);
+    }
+
+    private void OnSecondaryChanged(string languageId) {
+        var language = !languageId.IsNullOrEmpty() ? GetLanguage(languageId) : null;
+        SetSecondary(language);
+    }
 
     private void SetPrimary(Language language) {
         var languages = State.Value.Languages;
@@ -70,15 +106,19 @@
         LanguageUI.UpdateSettings(languages with { Secondary = language });
     }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.Loading,
-            Category = GetStateCategory(),
-        };
+    public sealed class FormModel {
+        public string PrimaryLanguageId { get; set; } = "";
+        public string SecondaryLanguageId { get; set; } = "";
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var languages = await LanguageUI.Settings.Use(cancellationToken);
-        return new(languages);
+        private string FormId { get; }
+        public string PrimaryLanguageFormId { get; }
+        public string SecondaryLanguageFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            PrimaryLanguageFormId = $"{FormId}-primary-language";
+            SecondaryLanguageFormId = $"{FormId}-secondary-language";
+        }
     }
 
     public sealed record Model(UserLanguageSettings Languages) {

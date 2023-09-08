@@ -100,7 +100,7 @@ body.hoverable .tile:hover {
     @apply shadow-lg;
 }
 .tile-topic {
-    @apply p-2 pb-0 -mb-2;
+    @apply pt-2 -mb-2;
     @apply bg-transparent font-medium text-02;
 }
 .tile-item {
@@ -171,6 +171,7 @@ body.hoverable .tile-btn:hover {
 }
 .settings-tab-header {
     @apply ordinary-header;
+    @apply px-2 md:px-0;
     @apply w-full md:w-80;
     @apply border-b border-bg-04 md:border-none;
     @apply text-title-1;

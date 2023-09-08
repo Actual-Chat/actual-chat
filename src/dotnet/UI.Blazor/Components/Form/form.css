@@ -162,3 +162,7 @@
 .form-section-label {
     line-height: 0.875rem;
 }
+
+.form option:checked {
+    @apply text-primary bg-none;
+}

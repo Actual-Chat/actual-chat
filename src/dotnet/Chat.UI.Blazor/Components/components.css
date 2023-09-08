@@ -148,13 +148,6 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply flex-x items-center gap-x-3;
 }
 
-.language-settings {
-    @apply flex-y;
-    @apply mb-2;
-}
-.language-settings legend {
-    @apply text-xl;
-}
 .language-settings-item {
     @apply flex-x items-center;
     @apply my-1;
