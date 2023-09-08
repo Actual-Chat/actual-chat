@@ -424,7 +424,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
                             { googEchoCancellation2: { exact: true } },
                             { googEchoCancellation: { exact: true } },
                             { echoCancellation: { exact: true } },
-                            { echoCancellationType: { exact: "system" } },
+                            // { echoCancellationType: { exact: "browser" } },
                             // 2. Auto gain control
                             { googExperimentalAutoGainControl: { exact: true } },
                             { googAutoGainControl: { exact: true } },

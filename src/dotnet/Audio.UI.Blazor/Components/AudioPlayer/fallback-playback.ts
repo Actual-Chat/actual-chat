@@ -15,6 +15,8 @@ export class FallbackPlayback {
     private attachedCount = 0;
     private whenReady: PromiseSource<void> = new PromiseSource<void>();
 
+    private get audioStream() { return this.aecStream ?? this.destinationNode.stream; }
+
     public get isRequired() { return isWebRtcAecRequired || DeviceInfo.isIos && DeviceInfo.isWebKit; }
 
     constructor() {
@@ -45,19 +47,19 @@ export class FallbackPlayback {
         if (!this.isRequired)
             return;
 
-        debugLog?.log('-> attach(): ', Log.ref(context), Log.ref(feederNode), 'currentCount=', this.attachedCount);
+        debugLog?.log('-> attach(): attachedCount:', this.attachedCount, Log.ref(context), Log.ref(feederNode));
 
         try {
             if (this.attachedCount++ <= 0) {
-                this.audio.srcObject = this.aecStream ?? this.destinationNode.stream;
+                this.audio.srcObject = this.audioStream;
                 this.audio.muted = false;
                 await this.play();
-                debugLog?.log('attach: success, newCount=', this.attachedCount)
+                debugLog?.log('attach(): success')
             }
 
             feederNode.connect(this.destinationNode);
         } catch (e) {
-            errorLog?.log('attach: failed to connect feeder node to fallback output', e);
+            errorLog?.log('attach(): failed to connect feeder node to fallback output:', e);
         }
         debugLog?.log('<- attach()');
     }
@@ -69,13 +71,13 @@ export class FallbackPlayback {
         debugLog?.log('-> detach()');
         try {
             if (--this.attachedCount <= 0) {
-                debugLog?.log('removing audio.srcObject because attachedCount=', this.attachedCount);
+                debugLog?.log('detach(): removing audio.srcObject');
                 this.audio.muted = true;
                 this.audio.pause();
                 this.audio.srcObject = null;
             }
         } catch (e) {
-            errorLog?.log('detach: failed to disconnect feeder node from fallback output', e);
+            errorLog?.log('detach(): failed to disconnect feeder node from fallback output:', e);
         }
         debugLog?.log('<- detach()');
     }
@@ -85,11 +87,11 @@ export class FallbackPlayback {
             if (this.audio.paused) {
                 await this.whenReady;
                 await this.audio.play();
-                debugLog?.log('play: successfully resumed');
+                debugLog?.log('play(): successfully resumed');
             } else
-                debugLog?.log('play: already playing');
+                debugLog?.log('play(): already playing');
         } catch (e) {
-            errorLog?.log('play: failed to resume:')
+            errorLog?.log('play(): failed to resume:', e);
         }
     }
 
@@ -114,18 +116,13 @@ export class FallbackPlayback {
                     return;
                 }
                 this.aecStream = aecStream;
-                if (this.attachedCount > 0) {
-                    debugLog?.log('replacing audio.srcObject with aecStream');
-                    this.audio.muted = true;
-                    this.audio.pause();
-                    this.audio.srcObject = aecStream;
-                    this.audio.muted = false;
-                    await this.play();
-                }
             }
-            this.audio.srcObject = this.aecStream ?? this.destinationNode.stream;
+            if (this.attachedCount > 0) {
+                debugLog?.log('onContextCreated: replacing audio.srcObject with:', this.audioStream);
+                this.audio.srcObject = this.audioStream;
+            }
         } catch (e) {
-            errorLog?.log('onContextCreated: failed to create destination node', e)
+            errorLog?.log('onContextCreated(): failed to create destination node:', e)
         }
         debugLog?.log('<- onContextCreated()');
     }
@@ -148,7 +145,7 @@ export class FallbackPlayback {
                 this.aecStream = null;
             }
         } catch (e) {
-            errorLog?.log('onContextClosing: failed to cleanup', e)
+            errorLog?.log('onContextClosing: failed to cleanup:', e)
         }
         debugLog?.log('<- onContextClosing()');
     }
@@ -160,7 +157,7 @@ export class FallbackPlayback {
             await warmupTask;
             this.whenReady.resolve(undefined);
         } catch (e) {
-            errorLog?.log('warmup: failed', e)
+            errorLog?.log('warmup() failed:', e)
         }
         debugLog?.log('<- warmup()');
     }
