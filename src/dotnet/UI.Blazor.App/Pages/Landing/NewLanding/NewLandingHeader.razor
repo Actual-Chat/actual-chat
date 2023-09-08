@@ -69,6 +69,7 @@
                         Class="btn-text btn-transparent">Why us
                     </Button>
                     <Button
+                        Click="@PricingClick"
                         Class="btn-text btn-transparent">Pricing
                     </Button>
                     <Button
@@ -83,7 +84,12 @@
                         <span class="font-medium">Sign in</span>
                         <i class="icon-monitor text-2xl font-thin"></i>
                     </button>
-                    <DownloadButton Title="Get app" Class="download-app lg-icon"/>
+                    <DownloadButton
+                        Title="Get app"
+                        Class="download-app lg-icon"/>
+                    <button class="btn-download btn-to-main-page !hidden">
+                        Back to Main page
+                    </button>
                 } else {
                     <div
                         class="context-menu-btn"
@@ -106,6 +112,7 @@
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public EventCallback PricingClick { get; set; }
     [Parameter] public EventCallback Click { get; set; }
 
     private Task SignIn()

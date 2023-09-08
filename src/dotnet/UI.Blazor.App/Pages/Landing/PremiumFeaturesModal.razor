@@ -1,0 +1,179 @@
+@implements IModalView<PremiumFeaturesModal.Model>
+
+<DialogFrame
+    Class="premium-features-modal"
+    Title="Pricing"
+    HasCloseButton="true"
+    NarrowViewSettings="@DialogFrameNarrowViewSettings.SubmitButton(OnOkClick, "OK")">
+    <Body>
+    <FormBlock>
+        <div class="modal-wrapper">
+            <div class="c-header">
+                <p class="c-title">
+                    Get Our AI Feature Pack for Free!
+                </p>
+                <p class="c-subtitle">
+                    Become an Early adopter
+                </p>
+            </div>
+            <div class="c-block-1">
+                <div class="c-left">
+                    <p>
+                        We're a startup eager to grow our user base. A good way to boost our initial growth is to
+                        show our 💖 and gratitude to Early Adopters.
+                    </p>
+                    <p>
+                        While the vast majority of existing features will remain free for everyone*, you can now
+                        secure free lifetime access to our upcoming <span>AI Feature Pack</span>—a set of AI-driven features that
+                        complete our original vision:
+                    </p>
+                </div>
+                <div class="c-right">
+                    <img draggable="false" src="/dist/images/landing/premium-features-1.svg" alt="early adopter">
+                </div>
+            </div>
+            <div class="c-block-yellow">
+                Actual Chat lets you focus on the essence, while AI takes care of the form
+            </div>
+            <div class="c-block-note">
+                <div class="c-left">
+                    <div class="text-note">
+                        *Some features, such as invite-only Places (think corporate accounts), may have limits for
+                        Early Adopters, but they'll be significantly more relaxed than for regular users.
+                    </div>
+                </div>
+                <div class="c-right">
+                    <div class="text-note">
+                        **We'll release AI features one-by-one, so some of them will definitely be available in Q4 2023.
+                    </div>
+                </div>
+            </div>
+            <div class="c-block-2">
+                <div class="c-left">
+                    <PremiumFeaturesModalCard Class="text-only">
+                        <Description>
+                            <p>Once released,</p>
+                            <p>the AI Feature Pack will definitely include:</p>
+                        </Description>
+                    </PremiumFeaturesModalCard>
+                    <PremiumFeaturesModalCard>
+                        <Icon>
+                            <i class="icon-star text-2xl"></i>
+                        </Icon>
+                        <Description>
+                            Conversation and daily summaries
+                        </Description>
+                    </PremiumFeaturesModalCard>
+                    <PremiumFeaturesModalCard>
+                        <Icon>
+                            <i class="icon-email text-2xl"></i>
+                        </Icon>
+                        <Description>
+                            Email digests with AI-generated daily updates
+                        </Description>
+                    </PremiumFeaturesModalCard>
+                    <PremiumFeaturesModalCard>
+                        <Icon>
+                            <i class="icon-ai text-2xl"></i>
+                        </Icon>
+                        <Description>
+                            Access to AI bots in chats
+                        </Description>
+                    </PremiumFeaturesModalCard>
+                </div>
+                <div class="c-right">
+                    <PremiumFeaturesModalCard Class="text-only">
+                        <Description>
+                            <p>And we plan to extend it with:</p>
+                        </Description>
+                    </PremiumFeaturesModalCard>
+                    <PremiumFeaturesModalCard>
+                        <Icon>
+                            <i class="icon-emotion text-2xl"></i>
+                        </Icon>
+                        <Description>
+                            Speech emotion and tone recognition
+                        </Description>
+                    </PremiumFeaturesModalCard>
+                    <PremiumFeaturesModalCard>
+                        <Icon>
+                            <i class="icon-message-ellipse text-2xl"></i>
+                        </Icon>
+                        <Description>
+                            AI-powered auto-responders
+                        </Description>
+                    </PremiumFeaturesModalCard>
+                    <PremiumFeaturesModalCard>
+                        <Icon>
+                            <i class="icon-realtime-translation text-2xl"></i>
+                        </Icon>
+                        <Description>
+                            Real-time translation
+                        </Description>
+                    </PremiumFeaturesModalCard>
+                </div>
+            </div>
+            <div class="c-block-3">
+                <div class="c-left">
+                    To claim your Early Adopter status <span>(and badge!)</span>
+                </div>
+                <div class="c-right">
+                    <div class="flex-x gap-x-4">
+                        <div class="round-blue">1</div>
+                        <div>Sign up for Actual Chat during this promotion*</div>
+                    </div>
+                    <div class="text-note">
+                        *The duration of this promotion is largely dependent on our traction.
+                        It’s intact if you see it on our website.
+                    </div>
+                    <div class="flex-x gap-x-4">
+                        <button class="btn-download light with-border" onclick="@SignIn">
+                            <span class="font-medium">Sign in</span>
+                            <i class="icon-monitor text-2xl font-thin"></i>
+                        </button>
+                        <DownloadButton Title="Get app" Class="download-app"/>
+                    </div>
+                </div>
+            </div>
+            <div class="c-block-4">
+                <div class="c-left">
+                    <p>
+                        If our vision resonates with you – just do it! Discover a truly new communication experience,
+                        aid our growth, and secure the AI Feature Pack for free!
+                    </p>
+                </div>
+                <div class="c-right">
+                    <div class="flex-x gap-x-4">
+                        <div class="round-blue">2</div>
+                        <div>
+                            Produce 30 minutes or more of transcribed audio in conversations with other people within
+                            your first 30 days. That's just 1 minute daily across all your chats
+                        </div>
+                    </div>
+                    <div class="flex-x gap-x-4">
+                        <img draggable="false" src="/dist/images/landing/premium-features-2.svg" alt="record">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </FormBlock>
+    </Body>
+</DialogFrame>
+
+@code {
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private void OnOkClick()
+        => Modal.Close();
+
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
+
+    public sealed record Model;
+}

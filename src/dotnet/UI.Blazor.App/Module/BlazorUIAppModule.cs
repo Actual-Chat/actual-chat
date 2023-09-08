@@ -29,6 +29,7 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
             .Add<LandingVideoModal.Model, LandingVideoModal>()
+            .Add<PremiumFeaturesModal.Model, PremiumFeaturesModal>()
             .Add<SignInModal.Model, SignInModal>()
         );
     }
