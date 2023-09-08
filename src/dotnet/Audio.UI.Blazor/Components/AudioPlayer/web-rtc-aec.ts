@@ -35,33 +35,15 @@ export async function createWebRtcAecStream(stream: MediaStream): Promise<MediaS
     infoLog?.log(`createWebRtcAecStream(), stream:`, stream);
     let outboundConnection = new RTCPeerConnection();
     let inboundConnection = new RTCPeerConnection();
-    const tracks = stream.getTracks();
-
-    const closeConnection = (connection?: RTCPeerConnection) => {
-        if (connection == null)
-            return;
-
-        try {
-            connection.onicecandidate = null;
-            connection.onconnectionstatechange = null;
-            connection.ondatachannel = null;
-            connection.onicecandidateerror = null;
-            connection.oniceconnectionstatechange = null;
-            connection.onicegatheringstatechange = null;
-            connection.onnegotiationneeded = null;
-            connection.onsignalingstatechange = null;
-            connection.ontrack = null;
-            connection.close();
-        }
-        catch (error) {
-            errorLog?.log(`closeConnection failed:`, error, ', connection:', connection);
-        }
-    }
-
     try {
+        const tracks = stream.getTracks();
         inboundConnection.onicecandidate = (e) => e.candidate && outboundConnection.addIceCandidate(e.candidate);
         const whenLoopbackStreamReady = new PromiseSource<MediaStream>()
-        inboundConnection.ontrack = (e) => whenLoopbackStreamReady.resolve(e.streams[0]);
+        let connectedTrackCount = 0;
+        inboundConnection.ontrack = (e) => {
+            if (++connectedTrackCount >= tracks.length)
+                whenLoopbackStreamReady.resolve(e.streams[0]);
+        };
 
         outboundConnection.onicecandidate = (e) => e.candidate && inboundConnection.addIceCandidate(e.candidate);
         tracks.forEach((track) => outboundConnection.addTrack(track, stream));
@@ -83,5 +65,26 @@ export async function createWebRtcAecStream(stream: MediaStream): Promise<MediaS
     }
     catch (e) {
         errorLog?.log(`createWebRtcAecStream() failed:`, e);
+    }
+}
+
+function closeConnection(connection?: RTCPeerConnection) {
+    if (connection == null)
+        return;
+
+    try {
+        connection.onicecandidate = null;
+        connection.onconnectionstatechange = null;
+        connection.ondatachannel = null;
+        connection.onicecandidateerror = null;
+        connection.oniceconnectionstatechange = null;
+        connection.onicegatheringstatechange = null;
+        connection.onnegotiationneeded = null;
+        connection.onsignalingstatechange = null;
+        connection.ontrack = null;
+        connection.close();
+    }
+    catch (error) {
+        errorLog?.log(`closeConnection() failed:`, error, ', connection:', connection);
     }
 }
