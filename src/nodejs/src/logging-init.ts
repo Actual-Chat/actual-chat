@@ -67,7 +67,7 @@ export type LogScope =
     | 'OpusEncoderWorkletProcessor'
     | 'OpusEncoderWorker'
     | 'WarmUpAudioWorkletProcessor'
-    | 'ChromiumEchoCancellation' // Unused
+    | 'WebRtcAec' // Unused
     // Isolated components
     | 'Attachments'
     | 'ChatMessageEditor'

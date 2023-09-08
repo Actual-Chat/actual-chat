@@ -85,7 +85,7 @@ export class AudioPlayer {
             // Create decoder worker
             await decoderWorker.init(this.id, this.decoderToFeederWorkletChannel.port1);
 
-            if(fallbackPlayback.isRequired)
+            if (fallbackPlayback.isRequired)
                 await fallbackPlayback.attach(feederNode, context);
             else {
                 this.gainNodeL = context.createGain();

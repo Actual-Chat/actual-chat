@@ -3,16 +3,19 @@ import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { DeviceInfo } from 'device-info';
 import { audioContextSource } from '../../Services/audio-context-source';
 import { PromiseSource } from 'promises';
+import { createWebRtcAecStream, isWebRtcAecRequired } from './web-rtc-aec';
+import { Disposable } from 'disposable';
 
 const { debugLog, errorLog } = Log.get('FallbackPlayback');
 
 export class FallbackPlayback {
     private readonly audio: HTMLAudioElement;
-    private dest: MediaStreamAudioDestinationNode = null;
+    private destinationNode: MediaStreamAudioDestinationNode = null;
+    private aecStream: MediaStream & Disposable = null;
     private attachedCount = 0;
     private whenReady: PromiseSource<void> = new PromiseSource<void>();
 
-    public get isRequired() { return DeviceInfo.isIos && DeviceInfo.isWebKit; }
+    public get isRequired() { return isWebRtcAecRequired || DeviceInfo.isIos && DeviceInfo.isWebKit; }
 
     constructor() {
         if (!this.isRequired)
@@ -46,13 +49,13 @@ export class FallbackPlayback {
 
         try {
             if (this.attachedCount++ <= 0) {
-                this.audio.srcObject = this.dest.stream;
+                this.audio.srcObject = this.aecStream ?? this.destinationNode.stream;
                 this.audio.muted = false;
                 await this.play();
                 debugLog?.log('attach: success, newCount=', this.attachedCount)
             }
 
-            feederNode.connect(this.dest);
+            feederNode.connect(this.destinationNode);
         } catch (e) {
             errorLog?.log('attach: failed to connect feeder node to fallback output', e);
         }
@@ -77,7 +80,7 @@ export class FallbackPlayback {
         debugLog?.log('<- detach()');
     }
 
-    private async play(){
+    private async play() {
         try {
             if (this.audio.paused) {
                 await this.whenReady;
@@ -90,17 +93,37 @@ export class FallbackPlayback {
         }
     }
 
-    private onContextCreated(context: AudioContext) {
+    private async onContextCreated(context: AudioContext): Promise<void> {
         if (!this.isRequired)
             return;
 
         debugLog?.log('-> onContextCreated()');
         try {
-            this.dest = context.createMediaStreamDestination();
-            this.dest.channelCountMode = 'max';
-            this.dest.channelCount = 2;
-            this.dest.channelInterpretation = 'speakers';
-            this.audio.srcObject = this.dest.stream;
+            this.destinationNode = null;
+            this.aecStream = null;
+
+            const destinationNode = this.destinationNode = context.createMediaStreamDestination();
+            this.destinationNode.channelCountMode = 'max';
+            this.destinationNode.channelCount = 2;
+            this.destinationNode.channelInterpretation = 'speakers';
+            if (isWebRtcAecRequired) {
+                const aecStream = await createWebRtcAecStream(this.destinationNode.stream);
+                if (destinationNode !== this.destinationNode) {
+                    // Concurrent onContextCreated is already creating aecStream for a newer destinationNode
+                    aecStream?.dispose();
+                    return;
+                }
+                this.aecStream = aecStream;
+                if (this.attachedCount > 0) {
+                    debugLog?.log('replacing audio.srcObject with aecStream');
+                    this.audio.muted = true;
+                    this.audio.pause();
+                    this.audio.srcObject = aecStream;
+                    this.audio.muted = false;
+                    await this.play();
+                }
+            }
+            this.audio.srcObject = this.aecStream ?? this.destinationNode.stream;
         } catch (e) {
             errorLog?.log('onContextCreated: failed to create destination node', e)
         }
@@ -116,9 +139,14 @@ export class FallbackPlayback {
             this.audio.muted = true;
             this.audio.pause();
             this.audio.srcObject = null;
-            this.dest.stream.getAudioTracks().forEach(x => x.stop());
-            this.dest.stream.getVideoTracks().forEach(x => x.stop());
-            this.dest = null;
+            this.aecStream = null;
+            this.destinationNode.stream.getAudioTracks().forEach(x => x.stop());
+            this.destinationNode.stream.getVideoTracks().forEach(x => x.stop());
+            this.destinationNode = null;
+            if (this.aecStream) {
+                this.aecStream.dispose();
+                this.aecStream = null;
+            }
         } catch (e) {
             errorLog?.log('onContextClosing: failed to cleanup', e)
         }
