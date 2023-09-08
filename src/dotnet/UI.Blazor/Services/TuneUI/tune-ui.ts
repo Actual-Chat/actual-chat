@@ -2,7 +2,7 @@ import { delayAsync } from 'promises';
 import { VibrationUI } from '../VibrationUI/vibration-ui';
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
-import { soundsPlayer } from './sounds-player';
+import { soundPlayer } from './sound-player';
 
 const { logScope, debugLog, warnLog } = Log.get('TuneUI');
 
@@ -75,8 +75,8 @@ export class TuneUI {
         else
             debugLog?.log(`playSound: '${tuneName}'`);
 
-        const ext = DeviceInfo.isWebKit ? '.mp3' : '.webm'; // TODO: allow webm for iOS >= 16.5
+        const ext = DeviceInfo.isWebKit ? '.m4a' : '.webm'; // TODO: allow webm for iOS >= 16.5
         const soundUrl = `dist/sounds/${tune.sound}${ext}`;
-        await soundsPlayer.play(soundUrl);
+        await soundPlayer.play(soundUrl);
     }
 }

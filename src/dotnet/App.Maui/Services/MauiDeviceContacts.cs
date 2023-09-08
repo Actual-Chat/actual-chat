@@ -33,13 +33,7 @@ public sealed class MauiDeviceContacts(IServiceProvider services) : DeviceContac
             MiddleName = mauiContact.MiddleName,
             NamePrefix = mauiContact.NamePrefix,
             NameSuffix = mauiContact.NameSuffix,
-            Phones = mauiContact.Phones.Select(ToPhone).Where(x => x.IsValid).ToApiSet(),
-            Emails = mauiContact.Emails.Select(ToEmail).ToApiSet(StringComparer.OrdinalIgnoreCase),
+            PhoneHashes = mauiContact.Phones.Select(x => x.PhoneNumber.GetSHA256HashCode()).SkipNullItems().ToApiSet(),
+            EmailHashes = mauiContact.Emails.Select(x => x.EmailAddress.GetSHA256HashCode()).SkipNullItems().ToApiSet(),
         };
-
-    private Phone ToPhone(ContactPhone mauiPhone)
-        => PhoneFormatterExt.FromReadable(mauiPhone.PhoneNumber);
-
-    private static string ToEmail(ContactEmail mauiEmail)
-        => mauiEmail.EmailAddress.ToLowerInvariant();
 }

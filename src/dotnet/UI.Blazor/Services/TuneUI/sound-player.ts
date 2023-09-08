@@ -2,11 +2,11 @@ import { AsyncDisposable } from 'disposable';
 import { AudioContextRef } from '../../../Audio.UI.Blazor/Services/audio-context-ref';
 import { audioContextSource } from '../../../Audio.UI.Blazor/Services/audio-context-source';
 import { Log } from 'logging';
-import { PromiseSourceWithTimeout } from 'promises';
+import {delayAsync, PromiseSourceWithTimeout} from 'promises';
 
 const { debugLog, warnLog } = Log.get('SoundsPlayer');
 
-export class SoundsPlayer implements AsyncDisposable {
+export class SoundPlayer implements AsyncDisposable {
     private context?: AudioContext = null;
     private ref?: AudioContextRef = null;
     private gainNodeL?: GainNode = null;
@@ -45,6 +45,7 @@ export class SoundsPlayer implements AsyncDisposable {
             playTask.setTimeout(5000);
             source.onended = () => playTask.resolve(null);
             await playTask;
+            await delayAsync(500);
         } catch (e) {
             warnLog?.log('play: failed to play sound', url);
         } finally {
@@ -93,4 +94,4 @@ export class SoundsPlayer implements AsyncDisposable {
     }
 }
 
-export const soundsPlayer = new SoundsPlayer();
+export const soundPlayer = new SoundPlayer();

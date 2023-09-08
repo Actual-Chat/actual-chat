@@ -9,6 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor.App.Services;
 using banditoth.MAUI.DeviceId;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Serilog;
 
 namespace ActualChat.App.Maui;
