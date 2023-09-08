@@ -101,7 +101,7 @@ public partial class GoogleTranscriber : ITranscriber
             await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
             Log.LogDebug("Starting recognize process for {AudioStreamId}", audioStreamId);
 
-            var languageCode = GetLanguageCode(options.Language);
+            var languageCode = GetRecognizerOptions(options.Language).LanguageCode;
             var recognizerId = $"{languageCode.ToLowerInvariant()}";
             var parent = $"projects/{GoogleProjectId}/locations/{RegionId}";
             var recognizerName = $"{parent}/recognizers/{recognizerId}";
@@ -362,17 +362,17 @@ public partial class GoogleTranscriber : ITranscriber
         CancellationToken cancellationToken)
     {
         Log.LogWarning("Creating new recognizer: #{RecognizerId}", recognizerId);
-        var languageCode = GetLanguageCode(options.Language);
+        var recognizerOptions = GetRecognizerOptions(options.Language);
         var createRecognizerRequest = new CreateRecognizerRequest {
             Parent = recognizerParent,
             RecognizerId = recognizerId,
             Recognizer = new Recognizer {
-                Model = "latest_long",
+                Model = "long",
                 DisplayName = recognizerId,
-                LanguageCodes = { languageCode },
+                LanguageCodes = { recognizerOptions.LanguageCode },
                 DefaultRecognitionConfig = new RecognitionConfig {
                     Features = new RecognitionFeatures {
-                        EnableAutomaticPunctuation = true,
+                        EnableAutomaticPunctuation = recognizerOptions.EnableAutomaticPunctuation,
                         MaxAlternatives = 0,
                         EnableSpokenPunctuation = false,
                         EnableSpokenEmojis = false,
@@ -395,13 +395,12 @@ public partial class GoogleTranscriber : ITranscriber
         Log.LogWarning("Creating new recognizer: #{RecognizerId} -> {Result}", recognizerId, result);
     }
 
-    private string GetLanguageCode(Language language)
-        => language.Code.Value switch {
-            "EN" => "en-US",
-            "ES" => "es-US",
-            "FR" => "fr-FR",
-            _ => language,
-        };
+    private RecognizerOptions GetRecognizerOptions(Language language)
+    {
+        // if (language == Languages.Chinese)
+        //     return new RecognizerOptions("zh", false);
+        return new RecognizerOptions(language.Value, true);
+    }
 
     private static string FixSuffix(string prefix, string suffix)
     {
@@ -455,4 +454,6 @@ public partial class GoogleTranscriber : ITranscriber
         var converter = new ActualOpusStreamConverter(MomentClockSet.Default, DefaultLog);
         return converter.FromByteStream(byteStream, CancellationToken.None);
     }
+
+    private record struct RecognizerOptions(string LanguageCode, bool EnableAutomaticPunctuation);
 }
