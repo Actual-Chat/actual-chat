@@ -92,14 +92,13 @@
             Class="warning-item"
             Icon="icon-trash03"
             Text="Delete message"
-            Click="@(() => ChatUI.ShowDeleteMessageModal(new ChatMessageModel(entry)))">
+            Click="@(() => Delete(entry))">
         </MenuEntry>
     }
     @if (!hasSelection) {
         <MenuEntrySeparator/>
     }
     @if (canSelect) {
-
         <MenuEntry
             Icon="icon-select"
             Text="Select"
@@ -147,6 +146,7 @@
     [Inject] private History History { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
+    [Inject] private ToastUI ToastUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public string? ClickedLinkUrl { get; set; }
@@ -162,6 +162,18 @@
 
     private Task Edit(ChatEntry chatEntry)
         => ChatEditorUI.Edit(chatEntry);
+
+    private async Task Delete(ChatEntry chatEntry) {
+        var command = new Chats_RemoveTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId);
+        await UICommander.Run(command);
+
+        ToastUI.Show("Message deleted", Restore, "Undo", ToastDismissDelay.Long);
+
+        void Restore() {
+            var restoreCommand = new Chats_RestoreTextEntry(Session, chatEntry.ChatId, chatEntry.LocalId);
+            _ = UICommander.Run(restoreCommand);
+        }
+    }
 
     private async Task Select(ChatEntry chatEntry)
         => await SelectionUI.Select(chatEntry.Id);

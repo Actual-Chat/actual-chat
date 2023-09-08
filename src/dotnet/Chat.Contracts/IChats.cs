@@ -69,6 +69,9 @@ public interface IChats : IComputeService
     Task OnRemoveTextEntry(Chats_RemoveTextEntry command, CancellationToken cancellationToken);
 
     [CommandHandler]
+    Task OnRestoreTextEntry(Chats_RestoreTextEntry command, CancellationToken cancellationToken);
+
+    [CommandHandler]
     Task OnRemoveTextEntries(Chats_RemoveTextEntries command, CancellationToken cancellationToken);
 
     [CommandHandler]
@@ -91,6 +94,14 @@ public sealed partial record Chats_GetOrCreateFromTemplate(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Chats_RemoveTextEntry(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2)] long LocalId
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chats_RestoreTextEntry(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] long LocalId
