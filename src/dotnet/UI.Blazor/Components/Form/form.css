@@ -12,6 +12,9 @@
 .form-section-content > .c-left > * {
     @apply w-full;
 }
+.form-section-content.label-inside-input .c-left {
+    @apply gap-y-0;
+}
 
 .form label {
     @apply font-medium text-03;
@@ -81,7 +84,7 @@
 .label-inside-input input,
 .label-inside-input select {
     @apply bg-transparent border-none rounded-none text-02 font-normal;
-    @apply h-10 min-h-10 md:h-6 md:min-h-6;
+    @apply h-8 min-h-8 md:h-6 md:min-h-6;
 }
 
 .form .form-section-content.label-inside-input label {
