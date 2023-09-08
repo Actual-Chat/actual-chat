@@ -276,6 +276,26 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     }
 
     // [CommandHandler]
+    public virtual async Task OnRestoreTextEntry(Chats_RestoreTextEntry command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId, localId) = command;
+        var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
+        var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
+        chat.Rules.Permissions.Require(ChatPermissions.Write);
+
+        var textEntryId = new TextEntryId(chatId, localId, AssumeValid.Option);
+        await RestoreTextEntry(session,
+                chatId,
+                textEntryId,
+                author,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
     public virtual async Task OnRemoveTextEntries(Chats_RemoveTextEntries command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())

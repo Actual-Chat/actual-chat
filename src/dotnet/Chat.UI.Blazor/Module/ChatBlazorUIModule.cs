@@ -87,7 +87,6 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
             .Add<OnboardingModal.Model, OnboardingModal>()
             .Add<SettingsModal.Model, SettingsModal>()
             .Add<AuthorModal.Model, AuthorModal>()
-            .Add<DeleteMessageModal.Model, DeleteMessageModal>()
             .Add<LeaveChatConfirmationModal.Model, LeaveChatConfirmationModal>()
             .Add<ForwardMessageModal.Model, ForwardMessageModal>()
             .Add<ShareModalModel, ShareModal>()

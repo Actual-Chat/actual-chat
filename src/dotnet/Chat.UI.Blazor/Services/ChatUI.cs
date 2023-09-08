@@ -27,7 +27,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private AccountSettings? _accountSettings;
     private KeepAwakeUI? _keepAwakeUI;
     private TuneUI? _tuneUI;
-    private ModalUI? _modalUI;
     private ActiveChatsUI? _activeChatsUI;
     private ChatAudioUI? _chatAudioUI;
     private ChatEditorUI? _chatEditorUI;
@@ -50,7 +49,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private AccountSettings AccountSettings => _accountSettings ??= Services.GetRequiredService<AccountSettings>();
     private KeepAwakeUI KeepAwakeUI => _keepAwakeUI ??= Services.GetRequiredService<KeepAwakeUI>();
     private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
-    private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
     private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
     private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
     private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
@@ -267,9 +265,6 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         if (updateUI)
             _ = UICommander.RunNothing();
     }
-
-    public Task ShowDeleteMessageModal(ChatMessageModel model)
-        => ModalUI.Show(new DeleteMessageModal.Model(model));
 
     public async ValueTask<SyncedStateLease<ReadPosition>> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)
     {
