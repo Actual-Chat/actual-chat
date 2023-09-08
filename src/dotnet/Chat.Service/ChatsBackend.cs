@@ -907,7 +907,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (account is not { IsAdmin: true })
             return;
 
-        var email = account.User.GetEmail();
+        var email = account.GetVerifiedEmail();
         if (email.IsNullOrEmpty())
             return;
         if (!email.OrdinalEndsWith(Constants.Team.EmailSuffix))

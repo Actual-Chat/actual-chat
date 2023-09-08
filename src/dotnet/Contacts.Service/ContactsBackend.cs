@@ -219,6 +219,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
     public virtual async Task OnGreet(ContactsBackend_Greet command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())

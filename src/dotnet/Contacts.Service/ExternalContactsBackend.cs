@@ -20,8 +20,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
         var idPrefix = ExternalContactId.Prefix(ownerId, deviceId);
         var dbExternalContacts = await dbContext.ExternalContacts
-            .Include(x => x.ExternalPhones)
-            .Include(x => x.ExternalEmails)
+            .Include(x => x.ExternalContactLinks)
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .OrderBy(a => a.DisplayName)
             .ToListAsync(cancellationToken)
@@ -40,29 +39,23 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        IEnumerable<UserId> all = Enumerable.Empty<UserId>();
-        var phone = account.User.GetPhone();
-        if (!phone.IsNone) {
-            var byPhone = await ListIds(dbContext.ExternalPhones
-                    .Where(x => x.Phone == (string)phone)
-                    .Select(x => x.DbExternalContactId))
-                .ConfigureAwait(false);
-            all = all.Concat(byPhone);
-        }
-        var email = account.User.GetEmail();
-        if (!email.IsNullOrEmpty()) {
-            var byEmail = await ListIds(dbContext.ExternalEmails
-                    .Where(x => x.Email == email)
-                    .Select(x => x.DbExternalContactId))
-                .ConfigureAwait(false);
-            all = all.Concat(byEmail);
-        }
-        return all.ToApiSet();
+        var links = GetLinks().ToList();
+        var externalContactIds = await dbContext.ExternalContactLinks.Where(x => links.Contains(x.Value))
+            .Select(x => x.DbExternalContactId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
 
-        async Task<IEnumerable<UserId>> ListIds(IQueryable<string> idsQuery)
+        return externalContactIds.Select(sid => new ExternalContactId(sid).OwnerId).ToApiSet();
+
+        IEnumerable<string> GetLinks()
         {
-            var list = await idsQuery.ToListAsync(cancellationToken).ConfigureAwait(false);
-            return list.Select(sid => new ExternalContactId(sid).OwnerId);
+            var phoneHash = account.User.GetPhoneHash();
+            if (!phoneHash.IsNullOrEmpty())
+                yield return DbExternalContactLink.GetPhoneLink(phoneHash);
+
+            var emailHash = account.User.GetEmailHash();
+            if (!emailHash.IsNullOrEmpty())
+                yield return DbExternalContactLink.GetEmailLink(emailHash);
         }
     }
 
@@ -88,17 +81,16 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         await using var __ = dbContext.ConfigureAwait(false);
 
         var dbExternalContact = await dbContext.ExternalContacts.ForUpdate()
-            .Include(x => x.ExternalPhones)
-            .Include(x => x.ExternalEmails)
+            .Include(x => x.ExternalContactLinks)
             .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
             .ConfigureAwait(false);
         var existing = dbExternalContact?.ToModel();
+        var now = Clocks.SystemClock.Now;
 
         if (change.IsCreate(out var externalContact)) {
             if (existing != null)
                 return existing; // Already exists, so we don't recreate one
 
-            var now = Clocks.SystemClock.Now;
             externalContact = externalContact with {
                 Id = id,
                 Version = VersionGenerator.NextVersion(),
@@ -112,6 +104,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             dbExternalContact.RequireVersion(expectedVersion);
             externalContact = externalContact with {
                 Version = VersionGenerator.NextVersion(dbExternalContact.Version),
+                ModifiedAt = now,
             };
             dbExternalContact.UpdateFrom(externalContact);
         }
@@ -136,7 +129,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     {
         var userId = command.UserId;
         if (Computed.IsInvalidating())
-            return; // spawns commands to remove contacts for other owners, we can skip invalidation for own contacts
+            return; // we can skip invalidation for own contacts
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -157,19 +150,19 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         ExternalContact? existing,
         CancellationToken cancellationToken)
     {
-        var addedPhones = existing != null
-            ? externalContact.Phones.Where(x => !existing.Phones.Contains(x))
-            : externalContact.Phones;
-        foreach (var phone in addedPhones) {
-            var userId = await AccountsBackend.GetIdByPhone(phone, cancellationToken).ConfigureAwait(false);
+        var addedPhoneHashes = existing != null
+            ? externalContact.PhoneHashes.Where(x => !existing.PhoneHashes.Contains(x))
+            : externalContact.PhoneHashes;
+        foreach (var phoneHash in addedPhoneHashes) {
+            var userId = await AccountsBackend.GetIdByPhoneHash(phoneHash, cancellationToken).ConfigureAwait(false);
             await CreateContact(ownerId, userId, cancellationToken).ConfigureAwait(false);
         }
 
-        var addedEmails = existing != null
-            ? externalContact.Emails.Where(x => !existing.Emails.Contains(x))
-            : externalContact.Emails;
-        foreach (var email in addedEmails) {
-            var userId = await AccountsBackend.GetIdByEmail(email, cancellationToken).ConfigureAwait(false);
+        var addedEmailHashes = existing != null
+            ? externalContact.EmailHashes.Where(x => !existing.EmailHashes.Contains(x))
+            : externalContact.EmailHashes;
+        foreach (var emailHash in addedEmailHashes) {
+            var userId = await AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken).ConfigureAwait(false);
             await CreateContact(ownerId, userId, cancellationToken).ConfigureAwait(false);
         }
     }

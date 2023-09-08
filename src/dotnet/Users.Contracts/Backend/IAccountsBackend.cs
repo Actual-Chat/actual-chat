@@ -8,10 +8,10 @@ public interface IAccountsBackend : IComputeService
     Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<UserId> GetIdByPhone(Phone phone, CancellationToken cancellationToken);
+    Task<UserId> GetIdByPhoneHash(string phoneHash, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<UserId> GetIdByEmail(string email, CancellationToken cancellationToken);
+    Task<UserId> GetIdByEmailHash(string emailHash, CancellationToken cancellationToken);
 
     [CommandHandler]
     public Task OnUpdate(AccountsBackend_Update command, CancellationToken cancellationToken);

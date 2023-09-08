@@ -35,8 +35,8 @@ public sealed class NativeAuthController : Controller
         CancellationToken cancellationToken)
     {
         var session = HttpContext.GetSessionFromHeader();
-        userId.RequireNonEmpty(nameof(userId));
-        code.RequireNonEmpty(nameof(code));
+        userId.RequireNonEmpty();
+        code.RequireNonEmpty();
 
         var authenticationHandlerProvider = Services.GetRequiredService<IAuthenticationHandlerProvider>();
         var userSettings = Services.GetRequiredService<UsersSettings>();
@@ -83,7 +83,7 @@ public sealed class NativeAuthController : Controller
     {
         var session = HttpContext.GetSessionFromHeader();
         // code = code.UrlDecode(); // Weird, but this is somehow necessary
-        code.RequireNonEmpty(nameof(code));
+        code.RequireNonEmpty();
         var schemeName = GoogleDefaults.AuthenticationScheme;
         var options = Services
             .GetRequiredService<IOptionsSnapshot<GoogleOptions>>()
