@@ -34,6 +34,10 @@ public static class EnumerableExt
         where T : class
         => source.Where(x => x != null)!;
 
+    public static IEnumerable<T> SkipNullItems<T>(this IEnumerable<T?> source)
+        where T : struct
+        => source.Where(x => x != null)!.Select(x => x!.Value);
+
     public static IEnumerable<T> NoNullItems<T>(this IEnumerable<T?> source)
         where T : class
         => source!;

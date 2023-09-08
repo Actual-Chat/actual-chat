@@ -31,8 +31,8 @@ public sealed class ContactsServiceModule : HostModule<ContactsSettings>
             db.AddEntityResolver<string, DbContact>();
 
             // DbExternalContact
-            db.AddEntityResolver<string, DbExternalContact>(_ => new() {
-                QueryTransformer = query => query.Include(a => a.ExternalPhones),
+            db.AddEntityResolver<string, DbExternalContact>(_ => new () {
+                QueryTransformer = query => query.Include(a => a.ExternalContactLinks),
             });
         });
 

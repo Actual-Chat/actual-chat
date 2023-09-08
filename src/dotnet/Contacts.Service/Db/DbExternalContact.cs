@@ -30,8 +30,7 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public List<DbExternalPhone> ExternalPhones { get; } = new();
-    public List<DbExternalEmail> ExternalEmails { get; } = new();
+    public List<DbExternalContactLink> ExternalContactLinks { get; } = new();
 
     public DbExternalContact() { }
     public DbExternalContact(ExternalContact externalContact) => UpdateFrom(externalContact);
@@ -46,8 +45,8 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
             MiddleName = MiddleName,
             NamePrefix = NamePrefix,
             NameSuffix = NameSuffix,
-            Phones = ExternalPhones.Select(x => new Phone(x.Phone)).ToApiSet(),
-            Emails = ExternalEmails.Select(x => x.Email).ToApiSet(StringComparer.OrdinalIgnoreCase),
+            PhoneHashes = ExternalContactLinks.Select(x => x.ToPhoneHash()).SkipNullItems().ToApiSet(),
+            EmailHashes = ExternalContactLinks.Select(x => x.ToEmailHash()).SkipNullItems().ToApiSet(),
         };
 
     public void UpdateFrom(ExternalContact model)
@@ -68,18 +67,14 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
         ModifiedAt = model.ModifiedAt.ToDateTimeClamped();
         CreatedAt = model.CreatedAt.ToDateTimeClamped();
 
-        var phonesToAdd = model.Phones.Except(ExternalPhones.Select(x => new Phone(x.Phone))).ToList();
-        ExternalPhones.RemoveAll(x => !model.Phones.Contains(new Phone(x.Phone)));
-        ExternalPhones.AddRange(phonesToAdd.Select(x => new DbExternalPhone {
+        var links = model.PhoneHashes.Select(DbExternalContactLink.GetPhoneLink)
+            .Concat(model.EmailHashes.Select(DbExternalContactLink.GetEmailLink))
+            .ToHashSet(StringComparer.Ordinal);
+        var linksToAdd = links.Except(ExternalContactLinks.Select(x => x.Value), StringComparer.Ordinal).ToList();
+        ExternalContactLinks.RemoveAll(x => !links.Contains(x.Value));
+        ExternalContactLinks.AddRange(linksToAdd.Select(x => new DbExternalContactLink {
             DbExternalContactId = model.Id,
-            Phone = x,
-        }));
-
-        var emailsToAdd = model.Emails.Except(ExternalEmails.Select(x => x.Email), StringComparer.OrdinalIgnoreCase).ToList();
-        ExternalEmails.RemoveAll(x => !model.Emails.Contains(x.Email));
-        ExternalEmails.AddRange(emailsToAdd.Select(x => new DbExternalEmail {
-            DbExternalContactId = model.Id,
-            Email = x,
+            Value = x,
         }));
     }
 }

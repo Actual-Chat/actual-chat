@@ -25,17 +25,17 @@ public static partial class StringExt
     private static readonly Regex NewLineRegex = NewLineRegexFactory();
 #pragma warning restore MA0023
 
-    public static string RequireNonEmpty(this string? source, string name)
+    public static string RequireNonEmpty(this string? source, [CallerArgumentExpression(nameof(source))] string name = "")
         => source.NullIfEmpty() ?? throw StandardError.Constraint($"{name} is required here.");
     [return: NotNullIfNotNull(nameof(source))]
-    public static string? RequireNotEqual(this string? source, string target, string name)
+    public static string? RequireNotEqual(this string? source, string target, [CallerArgumentExpression(nameof(source))] string name = "")
         => OrdinalEquals(source, target)
             ? throw StandardError.Constraint($"{name} should not be {target}.")
             : source;
     [return: NotNullIfNotNull(nameof(source))]
-    public static string? RequireEmpty(this string? source, string name)
+    public static string? RequireEmpty(this string? source, [CallerArgumentExpression(nameof(source))] string name = "")
         => source.IsNullOrEmpty() ? source : throw StandardError.Constraint($"{name} must be null or empty here.");
-    public static string? RequireMaxLength(this string source, int length, string name)
+    public static string? RequireMaxLength(this string source, int length, [CallerArgumentExpression(nameof(source))] string name = "")
         => source.Length <= length ? source : throw StandardError.Constraint($"{name} Must be no more than {length} characters.");
 
     public static SearchPhrase ToSearchPhrase(this string text, bool matchPrefixes, bool matchSuffixes)

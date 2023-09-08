@@ -97,12 +97,14 @@ public static partial class Constants
         public static class Phone
         {
             public const string SchemeName = "phone";
+            public const string HashedSchemeName = "phone-hash"; // used only as identity name
             public const string CallbackPath = "/signin/phone/callback";
             public const int TotpLength = 6;
         }
         public static class Email
         {
-            public const string SchemeName = "email"; // used only as identity name for now
+            public const string SchemeName = "email"; // for now used only as identity name
+            public const string HashedSchemeName = "email-hash"; // used only as identity name
         }
         public static class Google
         {

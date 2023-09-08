@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Module;
 using ActualChat.Hosting;
@@ -38,7 +37,9 @@ public partial class ChatsUpgradeBackend
             var user = account.User;
             if (user.Claims.Count == 0)
                 continue;
-            if (!user.Claims.TryGetValue(ClaimTypes.Email, out var email))
+
+            var email = account.GetVerifiedEmail();
+            if (email.IsNullOrEmpty())
                 continue;
 
             if (hostInfo.IsDevelopmentInstance) {
@@ -382,7 +383,7 @@ public partial class ChatsUpgradeBackend
                 continue;
 
             var user = account.User;
-            var email = user.GetEmail();
+            var email = account.GetVerifiedEmail();
             if (email.IsNullOrEmpty())
                 continue;
 

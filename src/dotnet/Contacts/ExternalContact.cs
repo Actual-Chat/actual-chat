@@ -16,22 +16,10 @@ public partial record ExternalContact(
     [DataMember, MemoryPackOrder(5)] public string MiddleName { get; init; } = "";
     [DataMember, MemoryPackOrder(6)] public string NamePrefix { get; init; } = "";
     [DataMember, MemoryPackOrder(7)] public string NameSuffix { get; init; } = "";
-    [DataMember, MemoryPackOrder(8)] public ApiSet<Phone> Phones { get; init; } = ApiSet<Phone>.Empty;
-    [DataMember, MemoryPackOrder(9)] public ApiSet<string> Emails { get; init; } = ApiSet<string>.Empty;
+    [DataMember, MemoryPackOrder(8)] public ApiSet<string> PhoneHashes { get; init; } = ApiSet<string>.Empty;
+    [DataMember, MemoryPackOrder(9)] public ApiSet<string> EmailHashes { get; init; } = ApiSet<string>.Empty;
     [DataMember, MemoryPackOrder(10)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(11)] public Moment ModifiedAt { get; init; }
-
-    public ExternalContact WithoutPhone(Phone phone)
-        => this with { Phones = Phones.Without(phone) };
-
-    public ExternalContact WithPhone(Phone phone)
-        => this with { Phones = Phones.With(phone) };
-
-    public ExternalContact WithoutEmail(string email)
-        => this with { Emails = Emails.Without(email) };
-
-    public ExternalContact WithEmail(string email)
-        => this with { Emails = Emails.With(email) };
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

@@ -30,7 +30,7 @@ public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceP
         dbContext.Accounts.Add(dbAccount);
 
         if (!email.IsNullOrEmpty()) {
-            user = user.WithIdentity(new UserIdentity(Constants.Auth.Email.SchemeName, email.ToLowerInvariant()));
+            user = user.WithEmailIdentities(email);
             UserConverter.UpdateEntity(user, dbUser);
         }
 

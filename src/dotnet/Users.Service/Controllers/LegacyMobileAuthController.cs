@@ -56,9 +56,9 @@ public sealed class LegacyMobileAuthController : Controller
     {
         var session = new Session(request["SessionId"].ToString()).RequireValid();
         var userId = request["UserId"].ToString();
-        userId.RequireNonEmpty(nameof(userId));
+        userId.RequireNonEmpty();
         var code = request["Code"].ToString();
-        code.RequireNonEmpty(nameof(code));
+        code.RequireNonEmpty();
         var email = request["Email"].ToString();
         var name = request["Name"].ToString();
 

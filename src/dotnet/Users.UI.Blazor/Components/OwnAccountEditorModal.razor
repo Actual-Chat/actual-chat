@@ -5,7 +5,7 @@
         return;
     var isPhoneValid = PhoneValidation.IsValid(_form.Code, _form.Number);
     var phone = _form.Phone;
-    var isPhoneVerified = _account.IsPhoneVerified();
+    var isPhoneVerified = _account.HasVerifiedPhone();
 }
 
 <Form @ref="@_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
@@ -43,7 +43,7 @@
                         list="phoneCodes"
                         pattern="@PhoneValidation.CountryCodePattern"
                         onfocus="this.select()"
-                        disabled="@_account.IsPhoneVerified()"/>
+                        disabled="@_account.HasVerifiedPhone()"/>
                     <datalist id="phoneCodes">
                         @foreach (var phoneCode in PhoneCodes.List) {
                             <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
@@ -84,7 +84,7 @@
                     <TextBox @bind-Value="@_form.Email" Id="@_form.EmailFieldId" Autofocus="true" disabled/>
                 </ChildContent>
                 <Right>
-                    <VerificationStatus IsVerified="@_account.IsEmailVerified()"/>
+                    <VerificationStatus IsVerified="@_account.HasVerifiedEmail()"/>
                 </Right>
             </FormSection>
         </FormBlock>

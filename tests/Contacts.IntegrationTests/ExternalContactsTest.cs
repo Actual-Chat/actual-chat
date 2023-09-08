@@ -63,13 +63,11 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         // arrange
         var deviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, deviceId, NewDeviceContactId())) {
-            DisplayName = "John White",
-            GivenName = "John",
-            FamilyName = "White",
-            Phones = new[] { new Phone("1-234567890"), new Phone("2-345678901") }.ToApiSet(),
-            Emails = new[] { "John.White@gmail.com", "John.White@icloud.com" }.ToApiSet(),
-        };
+        var externalContact = NewExternalContact(bob, deviceId)
+            .WithPhone(new Phone("1-234567890"))
+            .WithPhone(new Phone("2-345678901"))
+            .WithEmail("John.White@gmail.com")
+            .WithEmail("John.White@icloud.com");
 
         // act
         await Add(externalContact);
@@ -86,13 +84,11 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         // arrange
         var deviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, deviceId, NewDeviceContactId())) {
-            DisplayName = "John White",
-            GivenName = "John",
-            FamilyName = "White",
-            Phones = new[] { new Phone("1-234567890"), new Phone("2-345678901") }.ToApiSet(),
-            Emails = new[] { "John.White@gmail.com", "John.White@icloud.com" }.ToApiSet(),
-        };
+        var externalContact = NewExternalContact(bob, deviceId)
+            .WithPhone(new Phone("1-234567890"))
+            .WithPhone(new Phone("2-345678901"))
+            .WithEmail("John.White@gmail.com")
+            .WithEmail("John.White@icloud.com");
 
         // act
         await Add(externalContact);
@@ -116,20 +112,16 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         // arrange
         var deviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact1 = new ExternalContact(new ExternalContactId(bob.Id, deviceId, NewDeviceContactId())) {
-            DisplayName = "John White",
-            GivenName = "John",
-            FamilyName = "White",
-            Phones = new[] { new Phone("1-234567890"), new Phone("2-345678901") }.ToApiSet(),
-            Emails = new[] { "John.White@gmail.com", "John.White@icloud.com" }.ToApiSet(),
-        };
-        var externalContact2 = new ExternalContact(new ExternalContactId(bob.Id, deviceId, NewDeviceContactId())) {
-            DisplayName = "Jack Snack",
-            GivenName = "Jack",
-            FamilyName = "Snack",
-            Phones = new[] { new Phone("1-234567890"), new Phone("2-345678901") }.ToApiSet(),
-            Emails = new[] { "Jack.Snack@gmail.com", "jack.snack@icloud.com" }.ToApiSet(),
-        };
+        var externalContact1 = NewExternalContact(bob, deviceId)
+            .WithPhone(new Phone("1-234567890"))
+            .WithPhone(new Phone("2-345678901"))
+            .WithEmail("John.White@gmail.com")
+            .WithEmail("John.White@icloud.com");
+        var externalContact2 = NewExternalContact(bob, deviceId)
+            .WithPhone(new Phone("3-34567890"))
+            .WithPhone(new Phone("4-345678901"))
+            .WithEmail("Jack.Snack@gmail.com")
+            .WithEmail("jack.snack@icloud.com");
 
         // act
         await Add(externalContact1, externalContact2);
@@ -149,11 +141,9 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId())) {
-            DisplayName = "Jack",
-            GivenName = "Jack",
-            Phones = new[] { jack.Phone, new Phone("1-11111111111") }.ToApiSet(),
-        };
+        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId()))
+            .WithPhone(jack.Phone)
+            .WithPhone(new ("1-11111111111"));
 
         // act
         await Add(externalContact);
@@ -175,11 +165,9 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         // arrange
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId())) {
-            DisplayName = "Jack",
-            GivenName = "Jack",
-            Phones = new[] { JackPhone, new Phone("1-11111111111") }.ToApiSet(),
-        };
+        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId()))
+            .WithPhone(JackPhone)
+            .WithPhone(new ("1-11111111111"));
 
         // act
         await Add(externalContact);
@@ -208,11 +196,8 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         // arrange
         var botDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, botDeviceId, NewDeviceContactId())) {
-            DisplayName = "Jack",
-            GivenName = "Jack",
-            Emails = new[] { JackEmail }.ToApiSet(),
-        };
+        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, botDeviceId, NewDeviceContactId()))
+            .WithEmail(JackEmail);
 
         // act
         await Add(externalContact);
@@ -243,10 +228,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId())) {
-            DisplayName = "Jack",
-            Emails = new () { JackEmail },
-        };
+        var externalContact = NewExternalContact(bob, bobDeviceId).WithEmail(JackEmail);
 
         // act
         await Add(externalContact);
@@ -266,12 +248,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId())) {
-            DisplayName = "Jack",
-            GivenName = "Jack",
-            Phones = new[] { JackPhone }.ToApiSet(),
-            Emails = new[] { JackEmail }.ToApiSet(),
-        };
+        var externalContact = NewExternalContact(bob, bobDeviceId).WithPhone(JackPhone).WithEmail(JackEmail);
 
         // act
         await Add(externalContact);
@@ -295,11 +272,9 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
-        var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId())) {
-            DisplayName = "Jack",
-            Phones = new () { new ("1-1111111111") },
-            Emails = new () { "jack.2@some.com" },
-        };
+        var externalContact = NewExternalContact(bob, bobDeviceId)
+            .WithPhone(new ("1-1111111111"))
+            .WithEmail("jack.2@some.com");
 
         // act
         await Add(externalContact);
@@ -372,7 +347,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         foreach (var u in accounts.Select(x => x.User)) {
             var account = await _tester.SignIn(u);
             account.IsGreetingCompleted.Should().BeTrue("every user account mast complete greeting on first sign in");
-            var contacts = await ListContacts();
+            var contacts = await ListContacts(count - 1);
             contacts.Should().HaveCount(count - 1, "all are connected between each other and only self reference is excluded");
             var expectedContactIds =
                 accounts.Where(x => x.Id != account.Id)
@@ -381,13 +356,6 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
             contacts.Select(x => x.Id).Should().BeEquivalentTo(expectedContactIds);
         }
     }
-
-    private ExternalContact NewExternalContact(AccountFull owner, Symbol deviceId, int i)
-        => new (new ExternalContactId(owner.Id, deviceId, NewDeviceContactId())) {
-            DisplayName = BuildUserName(i),
-            Phones = new (new[] { BuildPhone(i) }),
-            Emails = new (new[] { BuildEmail(i) }),
-        };
 
     private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
         => _sut.List(_tester.Session, deviceId, CancellationToken.None);
@@ -403,17 +371,29 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     private Task Remove(ExternalContact externalContact)
         => _commander.Call(new ExternalContacts_Change(_tester.Session, externalContact.Id, null, Change.Remove<ExternalContact>()));
 
-    private async Task<List<Contact>> ListContacts()
+    private async Task<List<Contact>> ListContacts(int? expectedCount = null)
     {
-        var contactIds = await _contacts.ListIds(_tester.Session, CancellationToken.None);
+        ApiArray<ContactId> contactIds;
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        // waiting some time until cache is invalidated
+        do
+            contactIds = await _contacts.ListIds(_tester.Session, CancellationToken.None);
+        while (expectedCount != null && contactIds.Count < expectedCount && !cts.IsCancellationRequested);
+
         var contacts = await contactIds.Where(x => x.ChatId.Kind == ChatKind.Peer).Select(id => _contacts.Get(_tester.Session, id, CancellationToken.None)).Collect();
         return contacts.SkipNullItems().ToList();
     }
 
+    private static ExternalContact NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
+        => new (new ExternalContactId(owner.Id, ownerDeviceId, NewDeviceContactId()));
+
+    private static ExternalContact NewExternalContact(AccountFull owner, Symbol deviceId, int i)
+        => NewExternalContact(owner, deviceId).WithPhone(BuildPhone(i)).WithEmail(BuildEmail(i));
+
     private static Symbol NewDeviceId()
         => new (Guid.NewGuid().ToString());
 
-    private Symbol NewDeviceContactId()
+    private static Symbol NewDeviceContactId()
         => new (Guid.NewGuid().ToString());
 
     private static ContactId BuildContactId(AccountFull owner, AccountFull friendAccount)

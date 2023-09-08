@@ -57,12 +57,12 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // [ComputeMethod]
-    public virtual Task<UserId> GetIdByPhone(Phone phone, CancellationToken cancellationToken)
-        => GetIdByIdentity(phone.ToIdentity().Id.Value, cancellationToken);
+    public virtual Task<UserId> GetIdByPhoneHash(string phoneHash, CancellationToken cancellationToken)
+        => GetIdByIdentity(UserExt.ToHashedPhoneIdentity(phoneHash), cancellationToken);
 
     // [ComputeMethod]
-    public virtual Task<UserId> GetIdByEmail(string email, CancellationToken cancellationToken)
-        => GetIdByIdentity(UserExt.ToEmailIdentity(email), cancellationToken);
+    public virtual Task<UserId> GetIdByEmailHash(string emailHash, CancellationToken cancellationToken)
+        => GetIdByIdentity(UserExt.ToHashedEmailIdentity(emailHash), cancellationToken);
 
     // [CommandHandler]
     public virtual async Task OnUpdate(
