@@ -1,0 +1,14 @@
+<div class="premium-features-modal-card @Class">
+    <div class="c-icon">
+        @Icon
+    </div>
+    <div class="c-text">
+        @Description
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? Icon { get; set; }
+    [Parameter] public RenderFragment? Description { get; set; }
+}

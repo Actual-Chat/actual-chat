@@ -15,7 +15,7 @@
             <p>
                 Become an Early Adopter now
             </p>
-            <button class="btn-download web-signin">
+            <button class="btn-download light" onclick="@PremiumFeaturesClick">
                 <span>Learn more</span>
             </button>
         </div>
@@ -23,7 +23,9 @@
 
     <div class="c-bottom">
         <div class="c-btn-group">
-            <DownloadButton Title="Get mobile/desktop app" Class="download-app"/>
+            <DownloadButton
+                Title="Get mobile/desktop app"
+                Class="download-app"/>
             @if (IsGuest) {
                 <button class="btn-download web-signin" onclick="@SignInClick">
                     <span>Sign-in to web app</span>
@@ -40,4 +42,5 @@
 
     [Parameter] public bool IsGuest { get; set; }
     [Parameter] public EventCallback SignInClick { get; set; }
+    [Parameter] public EventCallback PremiumFeaturesClick { get; set; }
 }

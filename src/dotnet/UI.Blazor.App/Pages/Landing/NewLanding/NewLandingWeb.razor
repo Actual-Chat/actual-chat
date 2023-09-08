@@ -12,7 +12,9 @@
 <div @ref="Ref" class="landing new" xmlns="http://www.w3.org/1999/html">
     <LandingLeftMenu @ref="_landingLeftMenu" />
 
-    <NewLandingHeader Click="OnMenuHandleClick"/>
+    <NewLandingHeader
+        Click="OnMenuHandleClick"
+        PricingClick="OnPremiumFeaturesClick"/>
 
     @* Page 1 *@
     <LandingPage Class="page-1">
@@ -44,10 +46,15 @@
 
     @* Page 6 *@
     <LandingPage Class="page-6">
-        <LandingPage6 IsGuest="@isGuest"/>
+        <LandingPage6
+            IsGuest="@isGuest"
+            PremiumFeaturesClick="@OnPremiumFeaturesClick"
+            SignInClick="@SignIn"/>
     </LandingPage>
 
     <LandingFooter/>
+
+    <LandingDownloadLinks/>
 </div>
 
 @code {
@@ -93,6 +100,9 @@
 
     private Task OnShowVideoClick()
         => ModalUI.Show(new LandingVideoModal.Model());
+
+    private Task OnPremiumFeaturesClick()
+        => ModalUI.Show(new PremiumFeaturesModal.Model());
 
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
