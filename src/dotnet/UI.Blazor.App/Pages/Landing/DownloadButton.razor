@@ -1,4 +1,4 @@
-<button class="btn-download @Class">
+<button class="btn-download @Class" onclick="@Click">
     <div class="c-content">
         @Title
     </div>
@@ -8,4 +8,5 @@
 @code {
     [Parameter] public string Title { get; set; } = "Get mobile/desktop app";
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback Click { get; set; }
 }
