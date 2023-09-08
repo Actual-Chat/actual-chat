@@ -1,3 +1,4 @@
+@using ActualChat.UI.Blazor.App.Events
 @implements IModalView<PremiumFeaturesModal.Model>
 
 <DialogFrame
@@ -131,7 +132,7 @@
                             <span class="font-medium">Sign in</span>
                             <i class="icon-monitor text-2xl font-thin"></i>
                         </button>
-                        <DownloadButton Title="Get app" Class="download-app"/>
+                        <DownloadButton Title="Get app" Class="download-app" Click="@DownloadClick"/>
                     </div>
                 </div>
             </div>
@@ -169,6 +170,10 @@
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    private void DownloadClick() {
+        Modal.Close();
+        _ = UIEventHub.Publish(new ShowDownloadLinksPage());
+    }
     private void OnOkClick()
         => Modal.Close();
 

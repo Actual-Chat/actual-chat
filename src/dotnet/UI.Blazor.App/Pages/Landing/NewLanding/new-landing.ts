@@ -154,6 +154,16 @@ export class NewLanding {
             page.classList.add('hidden');
         }
     }
+
+    private showLinksPage(): void {
+        const linksPage = this.landing.querySelector('.page-links');
+        let isNotLinksPage = linksPage.classList.contains('hidden')
+            || linksPage.getBoundingClientRect().top <= 0;
+        if (isNotLinksPage)
+            this.onDownloadButtonClick(null);
+        else
+            return;
+    }
 }
 
 function getScrollContainer(element: HTMLElement): HTMLElement | null {

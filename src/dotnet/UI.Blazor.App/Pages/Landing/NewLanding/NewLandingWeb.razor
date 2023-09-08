@@ -2,6 +2,7 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.App.Pages.Landing
+@using ActualChat.UI.Blazor.App.Events
 @inherits ComputedStateComponent<NewLandingWeb.Model>
 @{
     var m = State.Value;
@@ -9,6 +10,7 @@
     var isGuest = account is not {IsGuestOrNone: false };
 }
 
+<OnUIEvent TEvent="@ShowDownloadLinksPage" Handler="@OnShowLinksPageEvent" />
 <div @ref="Ref" class="landing new" xmlns="http://www.w3.org/1999/html">
     <LandingLeftMenu @ref="_landingLeftMenu" />
 
@@ -109,6 +111,9 @@
 
     private void OnMenuHandleClick()
         => _landingLeftMenu?.Open();
+
+    public async Task OnShowLinksPageEvent(ShowDownloadLinksPage @event, CancellationToken cancellationToken)
+        => await JSRef.InvokeVoidAsync("showLinksPage", cancellationToken);
 
     public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
 }
