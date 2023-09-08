@@ -233,6 +233,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             debugLog?.log(`start.attach(): getting microphone stream`);
             try {
                 const stream = await OpusMediaRecorder.getMicrophoneStream();
+
                 // multiple microphone stream can be acquired with multiple attach() calls
                 if (!this.stream) {
                     this.stream = stream;
@@ -247,7 +248,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             }
             catch (e) {
                 await this.stopMicrophoneStream();
-                warnLog?.log('start.attach getMicrophoneStream() error:', e);
+                warnLog?.log('start.attach(): getMicrophoneStream() failed:', e);
             }
             debugLog?.log(`<- start.attach()`);
         }
@@ -376,23 +377,25 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             this.source.disconnect();
         this.source = null;
 
-        await OpusMediaRecorder.stopStreamTracks(this.stream);
+        const stream = this.stream;
         this.stream = null;
+        await OpusMediaRecorder.stopStreamTracks(stream);
     }
 
     private static async stopStreamTracks(stream?: MediaStream): Promise<void> {
-        if (stream) {
-            const tracks = new Array<MediaStreamTrack>()
-            tracks.push(...stream.getAudioTracks());
-            tracks.push(...stream.getVideoTracks());
-            for (let track of tracks) {
-                await catchErrors(
-                    () => track.stop(),
-                    e => warnLog?.log('start.detach track.stop error:', e));
-                await catchErrors(
-                    () => stream.removeTrack(track),
-                    e => warnLog?.log('start.detach stream.removeTrack error:', e));
-            }
+        if (!stream)
+            return;
+
+        const tracks = new Array<MediaStreamTrack>()
+        tracks.push(...stream.getAudioTracks());
+        tracks.push(...stream.getVideoTracks());
+        for (let track of tracks) {
+            await catchErrors(
+                () => track.stop(),
+                e => warnLog?.log('stopStreamTracks(): track.stop() error:', e));
+            await catchErrors(
+                () => stream.removeTrack(track),
+                e => warnLog?.log('stopStreamTracks(): stream.removeTrack() error:', e));
         }
     }
 
@@ -401,51 +404,63 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
          * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/modules/mediastream/media_constraints_impl.cc#L98-L116}
          * [Chromium]{@link https://github.com/chromium/chromium/blob/main/third_party/blink/renderer/platform/mediastream/media_constraints.cc#L358-L372}
          */
-        let mediaStream: MediaStream = null;
+        let stream: MediaStream = null;
         try {
             warnLog?.log('-> getMicrophoneStream');
-            const constraints: MediaStreamConstraints & any = {
-                audio: {
-                    channelCount: 1,
-                    sampleRate: 48000,
-                    sampleSize: 32,
-                    autoGainControl: true,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    googEchoCancellation: true,
-                    googEchoCancellation2: true,
-                    latency: 0,
-                    advanced: [
-                        { autoGainControl: { exact: true } },
-                        { echoCancellation: { exact: true } },
-                        { noiseSuppression: { exact: true } },
-                        { googEchoCancellation: { ideal: true } },
-                        { googEchoCancellation2: { ideal: true } },
-                        { googAutoGainControl: { ideal: true } },
-                        { googNoiseSuppression: { ideal: true } },
-                        { googNoiseSuppression2: { ideal: true } },
-                        { googExperimentalAutoGainControl: { ideal: true } },
-                        { googExperimentalEchoCancellation: { ideal: true } },
-                        { googExperimentalNoiseSuppression: { ideal: true } },
-                        { googHighpassFilter: { ideal: true } },
-                        { googTypingNoiseDetection: { ideal: true } },
-                        { googAudioMirroring: { exact: false } },
-                    ],
-                },
-                video: false,
-            };
-            mediaStream = await navigator.mediaDevices.getUserMedia(constraints as MediaStreamConstraints);
-            const tracks = mediaStream.getAudioTracks();
-            if (!tracks[0]) {
+            function getConstraints(): MediaStreamConstraints & any {
+                return {
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 48000,
+                        sampleSize: 32,
+                        echoCancellation: true,
+                        autoGainControl: true,
+                        noiseSuppression: true,
+                        latency: 0,
+                        advanced: [
+                            // The constraint sets going earlier have higher priority!
+                            // 1. Echo cancellation
+                            { googExperimentalEchoCancellation: { exact: true } },
+                            { googEchoCancellation2: { exact: true } },
+                            { googEchoCancellation: { exact: true } },
+                            { echoCancellation: { exact: true } },
+                            { echoCancellationType: { exact: "system" } },
+                            // 2. Auto gain control
+                            { googExperimentalAutoGainControl: { exact: true } },
+                            { googAutoGainControl: { exact: true } },
+                            { autoGainControl: { exact: true } },
+                            // 3. Noise suppression
+                            { googExperimentalNoiseSuppression: { exact: true } },
+                            { googNoiseSuppression2: { exact: true } },
+                            { googNoiseSuppression: { exact: true } },
+                            { noiseSuppression: { exact: true } },
+                            // 4. Misc.
+                            { googTypingNoiseDetection: { exact: true } },
+                            { googHighpassFilter: { exact: true } },
+                            { googAudioMirroring: { exact: false } },
+                            { latency: { exact: 0 } },
+                        ],
+                    },
+                    video: false,
+                };
+            }
+
+            stream = await navigator.mediaDevices.getUserMedia(getConstraints());
+            const tracks = stream.getAudioTracks();
+            const audioTrack = tracks[0];
+            if (!audioTrack) {
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('UnknownError, media track not found.');
             }
 
-            warnLog?.log('<- getMicrophoneStream. mediaStream.active =', mediaStream.active);
-            return mediaStream;
+            warnLog?.log(
+                '<- getMicrophoneStream(), active:', stream.active,
+                 ', constraints:', audioTrack.getConstraints(),
+                 ', settings:', audioTrack.getSettings());
+            return stream;
         }
         catch (e) {
-            await OpusMediaRecorder.stopStreamTracks(mediaStream);
+            await OpusMediaRecorder.stopStreamTracks(stream);
             warnLog?.log('Error getting microphone stream', e);
             throw e;
         }

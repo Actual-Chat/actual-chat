@@ -67,13 +67,15 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
     }
 
     // TODO(DF):
-    // We need to have an audio player that can playback opus audio with AudioUsageKind.VoiceCommunication and AudioContentType.Speech
-    // standard audio context player from web view playbacks audio AudioUsageKind.Media.
-    // It cause the following problems when InCommunication mode is enabled:
+    // We need an audio player that can playback OPUS audio with
+    // AudioUsageKind.VoiceCommunication and AudioContentType.Speech.
+    // Standard audio context player from WebView plays audio with AudioUsageKind.Media flag.
+    // This cause the following problems when InCommunication mode is enabled:
     // 1) Media stream audio sounds a bit quieter than in Normal mode;
     // 2) There 2 volume controls on a screen: one for media, the second one for loudspeaker/earpiece.
-    // Hardware volume buttons affects second one even if I set Activity.VolumeControlStream = Android.Media.Stream.Music.
-    // Audio volume is actually controlled only by the first one which appears on a screen after pressing hardware volume control button.
+    // Hardware volume buttons affects second one even we set Activity.VolumeControlStream = Android.Media.Stream.Music.
+    // Audio volume is actually controlled only by the first one,
+    // which appears on a screen after pressing hardware volume control button.
     //
     // TODO(DF):
     // May be I can get rid of AudioSwitch. But I need to test how _audioManager.SetCommunicationDevice works.
@@ -160,24 +162,18 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
             => null;
     }
 
-    private class FocusChangeListener : Java.Lang.Object, IOnAudioFocusChangeListener
+    private class FocusChangeListener(ILogger log) : Java.Lang.Object, IOnAudioFocusChangeListener
     {
-        private ILogger Log { get; }
-
-        public FocusChangeListener(ILogger log)
-            => Log = log;
+        private ILogger Log { get; } = log;
 
         public void OnAudioFocusChange([GeneratedEnum] AudioFocus focusChange)
             // TODO(DF): handle audio focus change
             => Log.LogDebug("AudioFocus changed: {AudioFocus}", focusChange);
     }
 
-    private class ModeChangedListener : Java.Lang.Object, IOnModeChangedListener
+    private class ModeChangedListener(ILogger log) : Java.Lang.Object, IOnModeChangedListener
     {
-        private ILogger Log { get; }
-
-        public ModeChangedListener(ILogger log)
-            => Log = log;
+        private ILogger Log { get; } = log;
 
         public void OnModeChanged(int mode)
              => Log.LogDebug("AudioManager.Mode change: {Mode}", (Mode)mode);
