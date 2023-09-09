@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using ActualChat.Contacts;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
@@ -33,7 +34,21 @@ public sealed class MauiDeviceContacts(IServiceProvider services) : DeviceContac
             MiddleName = mauiContact.MiddleName,
             NamePrefix = mauiContact.NamePrefix,
             NameSuffix = mauiContact.NameSuffix,
-            PhoneHashes = mauiContact.Phones.Select(x => x.PhoneNumber.GetSHA256HashCode()).SkipNullItems().ToApiSet(),
-            EmailHashes = mauiContact.Emails.Select(x => x.EmailAddress.GetSHA256HashCode()).SkipNullItems().ToApiSet(),
+            PhoneHashes = mauiContact.Phones.Select(GetPhoneHash).SkipNullItems().ToApiSet(),
+            EmailHashes = mauiContact.Emails.Select(GetEmailHash).SkipNullItems().ToApiSet(),
         };
+
+    private static string? GetPhoneHash(ContactPhone mauiPhone)
+    {
+        var phone = PhoneFormatterExt.FromReadable(mauiPhone.PhoneNumber);
+        return !phone.IsValid ? null : phone.Value.GetSHA256HashCode();
+    }
+
+    private static string? GetEmailHash(ContactEmail mauiEmail)
+    {
+        if (mauiEmail.EmailAddress.IsNullOrEmpty() || !MailAddress.TryCreate(mauiEmail.EmailAddress, out _))
+            return null;
+
+        return mauiEmail.EmailAddress.ToLowerInvariant().GetSHA256HashCode();
+    }
 }
