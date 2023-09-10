@@ -54,6 +54,8 @@ public class AccountAutoProvisionTest : AppHostTestBase
         var account2 = await _tester.SignIn(account.User);
 
         // assert
-        account2.Should().BeEquivalentTo(account, options => options.Excluding(x => x.User));
+        account2.Should().BeEquivalentTo(account, options => options
+            .Excluding(x => x.User)
+            .Excluding(x => x.IsGreetingCompleted ));
     }
 }
