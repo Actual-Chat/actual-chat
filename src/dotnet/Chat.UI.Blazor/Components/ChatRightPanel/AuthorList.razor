@@ -4,26 +4,38 @@
 @inherits ComputedStateComponent<AuthorList.Model>
 @{
     var m = State.Value;
-    var groups = new List<(string,IReadOnlyCollection<AuthorId>)> {
-        ("Owners", m.OwnerAuthorIds),
-        ("Online", m.OnlineAuthorIds),
-        ("Offline", m.OfflineAuthorIds)
-    };
+    var isPeerChat = Chat.Id.IsPeerChat(out _);
 }
 
 <div class="author-list-tab">
     <div class="c-content">
-        @foreach (var group in groups) {
-            var title = $"{group.Item1} — {group.Item2.Count}";
-            <Collapsed Title="@title">
-                @foreach (var authorId in group.Item2) {
-                    <AuthorBadge
-                        @key="@authorId"
-                        AuthorSid="@authorId"
-                        ShowPresence="true"
-                        Click="@(_ => AuthorUI.Show(authorId))"/>
-                }
-            </Collapsed>
+        @if (isPeerChat) {
+            var authorIds = m.AllAuthorIds.OrderBy(c => c.Equals(m.OwnAuthorId) ? 0 : 1);
+            @foreach (var authorId in authorIds) {
+                <AuthorBadge
+                    @key="@authorId"
+                    AuthorSid="@authorId"
+                    ShowPresence="true"
+                    Click="@(_ => AuthorUI.Show(authorId))"/>
+            }
+        } else {
+            var groups = new List<(string,IReadOnlyCollection<AuthorId>, bool)> {
+                ("Owners", m.OwnerAuthorIds, false),
+                ("Online", m.OnlineAuthorIds, false),
+                ("Offline", m.OfflineAuthorIds, true)
+            };
+            foreach (var group in groups) {
+                var title = $"{group.Item1} — {group.Item2.Count}";
+                <Collapsed Title="@title" IsCollapsed="@group.Item3">
+                    @foreach (var authorId in group.Item2) {
+                        <AuthorBadge
+                            @key="@authorId"
+                            AuthorSid="@authorId"
+                            ShowPresence="true"
+                            Click="@(_ => AuthorUI.Show(authorId))"/>
+                    }
+                </Collapsed>
+            }
         }
     </div>
 </div>
@@ -76,7 +88,11 @@
         onlineAuthors.Sort(comparison);
         offlineAuthors.Sort(comparison);
 
+        var ownAuthor = await Authors.GetOwn(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+
         return new() {
+            AllAuthorIds = allAuthorIds,
+            OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
             OwnerAuthorIds = ownerAuthors.Select(c => c.Item1).ToApiArray(),
             OnlineAuthorIds = onlineAuthors.Select(c => c.Item1).ToApiArray(),
             OfflineAuthorIds = offlineAuthors.Select(c => c.Item1).ToApiArray(),
@@ -85,6 +101,8 @@
 
     public sealed class Model {
         public static Model None { get; } = new();
+        public AuthorId OwnAuthorId { get; init; } = AuthorId.None;
+        public ApiArray<AuthorId> AllAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
         public ApiArray<AuthorId> OwnerAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
         public ApiArray<AuthorId> OnlineAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
         public ApiArray<AuthorId> OfflineAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;

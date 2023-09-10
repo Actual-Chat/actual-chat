@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<details class="main-collapsed">
+<details class="main-collapsed" open="@(!IsCollapsed)">
     <summary class="c-summary">
         <i class="icon-chevron-up closed"></i>
         <i class="icon-chevron-up open"></i>
@@ -12,5 +12,6 @@
 @code {
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public string TitleClass { get; set; } = "c-group-title";
+    [Parameter] public bool IsCollapsed { get; set; } = true;
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }
