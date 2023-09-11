@@ -12,11 +12,14 @@ namespace ActualChat.Users.Migrations
         {
             migrationBuilder.Sql("""
                                  insert into user_identities(id, user_id, secret)
-                                 select 'email/' || lower(claims_json::json ->> 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'),
+                                 select distinct on ('email/' || lower(claims_json::json ->> 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'))
+                                        'email/' || lower(claims_json::json ->> 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'),
                                         id,
                                         ''
                                  from users
-                                 where nullif(claims_json::json ->> 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress', '')  is not null;
+                                 where nullif(claims_json::json ->> 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress', '') is not null
+                                 order by 'email/' || lower(claims_json::json ->> 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'),
+                                          created_at;
                                  """);
         }
 
