@@ -9,7 +9,6 @@
 }
 .landing.new .page {
     @apply flex-y justify-center items-center;
-    @apply min-h-screen;
     @apply px-16 lg:px-32;
     @apply overflow-hidden;
 }
@@ -89,7 +88,7 @@ body.narrow .landing.new .title-text.main {
 
 /* Header */
 .landing.new .landing-header {
-    @apply absolute z-20 top-0;
+    @apply fixed z-20 top-0;
     @apply flex-x items-center justify-center;
     @apply w-full h-16;
     @apply py-2 px-16 lg:px-32;
@@ -297,7 +296,7 @@ body.app-maui .landing.new .landing-header .btn-download {
     @apply pt-2 md:pt-4;
 }
 .landing.new .page.full-screen-page {
-    height: calc(var(--wh, 100vh));
+    height: calc(var(--vh, 100vh));
 }
 .landing.new .page.full-screen-page.no-auto-scroll {
     @apply h-full;
@@ -312,12 +311,17 @@ body.app-maui .landing.new .landing-header .btn-download {
 }
 .landing.new .page-1 {
     @apply min-h-screen;
+    min-height: calc(var(--vh, 1vh) * 100);
+
 }
 .landing.new .page-1 > .c-content {
     @apply z-10;
     @apply flex-1 flex-x justify-center items-end;
     @apply w-full;
     @apply py-0;
+}
+body.narrow .landing.new .page-1 > .c-content {
+    @apply py-16;
 }
 .landing.new .page-1 .page-1-wrapper,
 .landing.new .page-links .page-links-wrapper {
@@ -326,9 +330,10 @@ body.app-maui .landing.new .landing-header .btn-download {
     @apply pt-16;
     @apply bg-transparent;
 }
-body.narrow .landing.new .page-1,
-body.narrow .landing.new .page-links {
+body.narrow .landing.new .page-1 {
+    @apply min-h-screen;
     @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
+    min-height: calc(var(--vh, 1vh) * 100);
 }
 body.narrow .landing.new .page-1 .page-1-wrapper,
 body.narrow .landing.new .page-links .page-links-wrapper {
@@ -343,11 +348,11 @@ body.narrow .landing.new .page-links .page-links-wrapper {
     @apply md:text-3xl font-normal text-04;
 }
 body.narrow .landing.new .page-1 > .c-content .main-text {
-    @apply justify-center gap-y-8;
+    @apply justify-center gap-y-4;
     @apply w-auto;
 }
 .landing.new .page-1 > .c-content .main-text > .c-title {
-    @apply text-headline-4 lg:text-headline-3;
+    @apply text-3.5xl md:text-headline-4 lg:text-headline-3;
 }
 .landing.new .page-1 .main-text .c-description {
     @apply flex-y;
@@ -358,13 +363,14 @@ body.narrow .landing.new .page-1 > .c-content .main-text {
     @apply lg:text-2xl lg:leading-8;
 }
 body.narrow .landing.new .page-1 .main-text .c-description {
-    @apply text-xl;
+    @apply text-base;
 }
 .landing.new .page-1 .main-text .c-description > .bolder {
     @apply font-semibold;
 }
 .landing.new .page-1 .main-text .c-btn-group {
     @apply flex-y lg:flex-x gap-4;
+    @apply py-4;
 }
 .landing.new .page-1 > .c-content .main-image {
     @apply hidden md:flex justify-end;
@@ -740,7 +746,7 @@ body.narrow .landing-menu .c-container {
     @apply rounded-r-2xl;
     @apply pl-12;
     height: 100vh;
-    height: calc(var(--wh, 1vh) * 100);
+    height: calc(var(--vh, 1vh) * 100);
 }
 body.narrow .landing.new .landing-menu {
     @apply flex-x;
@@ -751,6 +757,7 @@ body.narrow .landing.new .landing-menu {
     @apply h-screen w-10/12;
     @apply rounded-r-2xl;
     @apply bg-01;
+    height: calc(var(--vh, 1vh) * 100);
 }
 .landing-menu .c-container .menu-header {
     @apply ordinary-header;
@@ -1118,6 +1125,7 @@ body.narrow .landing-video-modal {
 body.narrow .landing-video-modal video,
 body.narrow .landing-video-modal .c-video-plug {
     @apply h-screen;
+    height: calc(var(--vh, 1vh) * 100);
 }
 body.narrow .landing-video-modal .dialog-body {
     @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
@@ -1206,10 +1214,23 @@ body.narrow .landing-video-modal .c-footer {
     @apply w-10;
 }
 
-.page-links {
+.landing.new .page-links {
     @apply h-screen;
     @apply overflow-hidden;
-    max-height: 100vh;
+    @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
+    height: calc(var(--vh, 1vh) * 100);
+}
+body.narrow .page-links {
+    @apply min-h-screen;
+    min-height: calc(var(--vh, 1vh) * 100);
+}
+.landing.new .page-links .page-links-wrapper {
+    @apply overflow-hidden;
+}
+.page-links .c-content {
+    @apply flex-y items-center justify-center;
+    @apply h-full;
+    @apply overflow-hidden;
 }
 .page-links .page-title {
     @apply flex;
@@ -1221,6 +1242,14 @@ body.narrow .page-links .page-title {
     @apply w-full;
     @apply mt-0 mb-4;
     @apply text-2xl;
+}
+.page-links .c-tiles {
+    @apply grid grid-cols-2 gap-8;
+    @apply w-auto;
+}
+body.narrow .page-links .c-tiles {
+    @apply grid-cols-1 gap-4;
+    @apply w-full;
 }
 body.wide .page-links .btn-to-main-page {
     @apply hidden;
@@ -1265,12 +1294,24 @@ body.hoverable .landing-download-tile:hover .c-text {
 body.narrow .landing-download-tile .c-content {
     @apply flex-x items-center;
 }
+.landing-download-tile .web-app {
+    @apply flex-x items-center gap-2;
+    @apply px-2 py-1;
+    @apply rounded-lg;
+    @apply bg-black;
+}
+.landing-download-tile .web-app > span {
+    @apply text-base font-medium text-04;
+}
+.landing-download-tile .web-app > i {
+    @apply text-2xl text-04 font-thin;
+}
 
 .landing.new .checkmark {
     @apply flex-x items-center gap-x-4;
 }
 .landing.new .checkmark > .c-text {
-    @apply text-3.5xl md:text-3.5xl lg:text-4.5xl font-normal;
+    @apply text-2xl md:text-3.5xl lg:text-4.5xl font-normal;
 }
 .landing.new .checkmark img {
     @apply w-11 h-11 md:w-12 md:h-12;
@@ -1444,8 +1485,4 @@ body.narrow .premium-features-modal .c-block-note {
     @apply rounded-full;
     @apply bg-[#CCE4FFFF];
     @apply text-title-1 text-accent;
-}
-
-.modal-content:has(.modal-chrome-wrapper:has(.download-links-modal)) {
-    @apply h-screen;
 }
