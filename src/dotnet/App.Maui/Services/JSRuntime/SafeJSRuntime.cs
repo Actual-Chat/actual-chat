@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.JSInterop;
 
-namespace ActualChat.UI.Blazor.Services;
+namespace ActualChat.App.Maui.Services;
 
 // When the page gets reloaded in MAUI app (e.g. due to "Restart" button press there):
 // - Blazor.start triggers creation of a new service provider scope for the new page
@@ -28,46 +29,58 @@ public sealed class SafeJSRuntime : IJSRuntime
         | DynamicallyAccessedMemberTypes.PublicFields
         | DynamicallyAccessedMemberTypes.PublicProperties;
 
-    private static readonly ConditionalWeakTable<IJSRuntime, object> DisconnectedRuntimes = new();
+    private long _isDisconnected;
+    private long _hasAccessedOnce;
 
-    public IJSRuntime Backend { get; }
+    private bool IsDisconnected =>
+        Interlocked.Read(ref _isDisconnected) == 1;
 
-    public SafeJSRuntime(IJSRuntime backend)
-    {
-        while (backend is SafeJSRuntime safeJSRuntime)
-            backend = safeJSRuntime.Backend; // Unwrap
-        Backend = backend;
-    }
+    internal bool IsReady
+        => Interlocked.Read(ref _hasAccessedOnce) == 1;
 
-    public static void MarkDisconnected(IJSRuntime js)
-    {
-        if (js == null)
-            throw new ArgumentNullException(nameof(js));
-        if (js is SafeJSRuntime safeJSRuntime)
-            js = safeJSRuntime.Backend;
+    internal IJSRuntime WebViewJSRuntime { get; }
 
-        DisconnectedRuntimes.Add(js, DisconnectedRuntimes);
-    }
+    public SafeJSRuntime(IJSRuntime webViewJSRuntime)
+        => WebViewJSRuntime = webViewJSRuntime;
 
-    public static bool IsDisconnected(IJSRuntime js)
-        => js is SafeJSRuntime safeJSRuntime
-            ? safeJSRuntime.IsDisconnected()
-            : DisconnectedRuntimes.TryGetValue(js, out _);
+    internal void MarkReady()
+        => Interlocked.Exchange(ref _hasAccessedOnce, 1);
 
-    public bool IsDisconnected()
-        => DisconnectedRuntimes.TryGetValue(Backend, out _);
-
-    public IJSRuntime? IfConnected()
-        => IsDisconnected() ? null : Backend;
-
-    public IJSRuntime RequireConnected()
-        => IsDisconnected() ? throw JSRuntimeErrors.Disconnected() : Backend;
+    internal void MarkDisconnected()
+        => Interlocked.Exchange(ref _isDisconnected, 1);
 
     public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(JsonSerialized)] TValue>(
         string identifier, object?[]? args)
-        => RequireConnected().InvokeAsync<TValue>(identifier, args);
+    {
+        try {
+            return RequireConnected().InvokeAsync<TValue>(identifier, args);
+        }
+        catch (JSDisconnectedException) {
+            throw;
+        }
+        catch (Exception e) {
+            if (e is not JSDisconnectedException && IsDisconnected)
+                throw JSRuntimeErrors.Disconnected(e);
+            throw;
+        }
+    }
 
     public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(JsonSerialized)] TValue>(
         string identifier, CancellationToken cancellationToken, object?[]? args)
-        => RequireConnected().InvokeAsync<TValue>(identifier, cancellationToken, args);
+    {
+        try {
+            return RequireConnected().InvokeAsync<TValue>(identifier, cancellationToken, args);
+        }
+        catch (JSDisconnectedException) {
+            throw;
+        }
+        catch (Exception e) {
+            if (e is not JSDisconnectedException && IsDisconnected)
+                throw JSRuntimeErrors.Disconnected(e);
+            throw;
+        }
+    }
+
+    private IJSRuntime RequireConnected()
+        => IsDisconnected ? throw JSRuntimeErrors.Disconnected() : WebViewJSRuntime;
 }

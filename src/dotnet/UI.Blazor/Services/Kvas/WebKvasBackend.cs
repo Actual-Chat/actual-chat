@@ -16,9 +16,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     public WebKvasBackend(string name, IServiceProvider services)
     {
         Services = services;
-        JS = services.IsScoped()
-            ? services.SafeJSRuntime()
-            : services.JSRuntime();
+        JS = services.JSRuntime();
         _getManyName = $"{name}.getMany";
         _setManyName = $"{name}.setMany";
         _clearName = $"{name}.clear";
