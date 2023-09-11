@@ -25,6 +25,13 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         ChatRecordingActivity = null;
     }
 
+    protected override void OnInitialized()
+    {
+        // Set AuthorId here in order to have actual AuthorId value in GetStateOptions.
+        AuthorId = new AuthorId(AuthorSid);
+        base.OnInitialized();
+    }
+
     protected override void OnParametersSet()
     {
         AuthorId = new AuthorId(AuthorSid);
