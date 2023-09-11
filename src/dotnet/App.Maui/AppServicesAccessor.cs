@@ -1,5 +1,5 @@
+using ActualChat.App.Maui.Services;
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
 using Stl.Internal;
 
@@ -72,9 +72,8 @@ public class AppServicesAccessor
             _scopedServicesTask = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
             _scopedServices = null;
             try {
-                var js = scopedServices.GetService<IJSRuntime>();
-                if (js != null)
-                    SafeJSRuntime.MarkDisconnected(js);
+                if (scopedServices.GetService<IJSRuntime>() is SafeJSRuntime js)
+                    js.MarkDisconnected();
             }
             catch {
                 // Intended

@@ -13,7 +13,4 @@ public static class ServiceProviderExt
 
     public static IJSRuntime JSRuntime(this IServiceProvider services)
         => services.GetRequiredService<IJSRuntime>();
-
-    public static IJSRuntime SafeJSRuntime(this IServiceProvider services)
-        => services.GetRequiredService<SafeJSRuntime>();
 }

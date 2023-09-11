@@ -16,8 +16,8 @@ public class MauiBlazorApp : AppBase
             try {
                 ScopedServices = Services;
             }
-            catch (Exception) {
-                Log.LogWarning("OnInitializedAsync: can't set ScopedServices - will restart");
+            catch (Exception e) {
+                Log.LogWarning(e, "OnInitializedAsync: can't set ScopedServices - will restart");
                 Services.GetRequiredService<ReloadUI>().Reload();
                 return;
             }
