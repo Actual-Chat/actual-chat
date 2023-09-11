@@ -83,15 +83,13 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(AccountUI.OwnAccount.Value, false),
+            InitialValue = new Model(AccountUI.OwnAccount.Value),
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        return new Model(
-            await AccountUI.OwnAccount.Use(cancellationToken),
-            await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken));
+        return new Model(await AccountUI.OwnAccount.Use(cancellationToken));
     }
 
     public override async ValueTask DisposeAsync() {
@@ -115,5 +113,5 @@
     public async Task OnShowLinksPageEvent(ShowDownloadLinksPage @event, CancellationToken cancellationToken)
         => await JSRef.InvokeVoidAsync("showLinksPage", cancellationToken);
 
-    public sealed record Model(AccountFull Account, bool EnableIncompleteUI);
+    public sealed record Model(AccountFull Account);
 }

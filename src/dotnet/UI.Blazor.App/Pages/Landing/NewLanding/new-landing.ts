@@ -27,6 +27,14 @@ export class NewLanding {
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => this.onScreenSizeChange());
 
+        fromEvent(document, 'keydown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: KeyboardEvent) => this.onKeyDown(event));
+
+        fromEvent(document, 'touchmove', { passive: false })
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: TouchEvent) => this.onTouch(event));
+
         fromEvent(document, 'wheel', { passive: false }) // WheelEvent is passive by default
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: WheelEvent) => this.onWheel(event));
@@ -58,6 +66,9 @@ export class NewLanding {
         fromEvent(headerMainPageButtons, 'pointerdown')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onToMainPageButtonClick(event));
+
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
     }
 
     public dispose() {
@@ -79,11 +90,43 @@ export class NewLanding {
             this.landing.classList.remove('no-full-screen-pages');
         else
             this.landing.classList.add('no-full-screen-pages');
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+
+    private onKeyDown(event: KeyboardEvent): void {
+        if (hasModifierKey(event))
+            return;
+        let canScroll = false;
+        if (event.key == "ArrowDown" || event.key == "PageDown" || event.key == "ArrowUp" || event.key == "PageUp")
+            canScroll = true;
+        if (!canScroll)
+            return;
+
+        const linksPage = this.landing.querySelector('.page-links');
+        let isNotLinksPage = linksPage.classList.contains('hidden')
+            || linksPage.getBoundingClientRect().top <= 0;
+
+        if (!isNotLinksPage) {
+            preventDefaultForEvent(event);
+            return;
+        }
     }
 
     private onWheel(event: WheelEvent): void {
         if (hasModifierKey(event))
             return;
+        const linksPage = this.landing.querySelector('.page-links');
+        let isNotLinksPage = linksPage.classList.contains('hidden')
+            || linksPage.getBoundingClientRect().top <= 0;
+
+        if (!isNotLinksPage) {
+            preventDefaultForEvent(event);
+            return;
+        }
+    }
+
+    private onTouch(event: TouchEvent): void {
         const linksPage = this.landing.querySelector('.page-links');
         let isNotLinksPage = linksPage.classList.contains('hidden')
             || linksPage.getBoundingClientRect().top <= 0;
