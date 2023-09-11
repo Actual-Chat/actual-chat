@@ -374,11 +374,15 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     private async Task<List<Contact>> ListContacts(int? expectedCount = null)
     {
         ApiArray<ContactId> contactIds;
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var i = 0;
         // waiting some time until cache is invalidated
-        do
+        do {
+            if (i > 0)
+                await Task.Delay(TimeSpan.FromMilliseconds(50), default);
             contactIds = await _contacts.ListIds(_tester.Session, CancellationToken.None);
-        while (expectedCount != null && contactIds.Count < expectedCount && !cts.IsCancellationRequested);
+            i++;
+        } while (expectedCount != null && contactIds.Count < expectedCount && !cts.IsCancellationRequested);
 
         var contacts = await contactIds.Where(x => x.ChatId.Kind == ChatKind.Peer).Select(id => _contacts.Get(_tester.Session, id, CancellationToken.None)).Collect();
         return contacts.SkipNullItems().ToList();
