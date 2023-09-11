@@ -139,6 +139,8 @@
             }
             catch (TimeoutException) {
                 Computed.GetCurrent()?.Invalidate(LoadTimeoutToReloadDelay);
+                if (lastState != null && chatId == lastChatId)
+                    return lastState;
                 return Model.Loading;
             }
             catch (Exception e) when (e is not OperationCanceledException) {
