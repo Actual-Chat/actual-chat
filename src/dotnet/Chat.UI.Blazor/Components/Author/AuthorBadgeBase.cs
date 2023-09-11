@@ -54,18 +54,14 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
                 Category = GetStateCategory(),
             };
 
-        // Try to provide pre-filled initialValue for the first render when everything is cached
-        var authorTask = GetAuthor(AuthorId, default);
-#pragma warning disable VSTHRD002
-        var author = authorTask.IsCompletedSuccessfully ? authorTask.Result : null;
-#pragma warning restore VSTHRD002
+        var authorComputed = Computed.GetExisting(() => Authors.Get(Session, AuthorId.ChatId, AuthorId, default));
+        var author = authorComputed is { HasValue: true } ? authorComputed.Value : null;
 
         if (author != null) {
             model = new Model(author);
-            var ownAuthorTask = Authors.GetOwn(Session, ChatId, default);
-#pragma warning disable VSTHRD002
-            var ownAuthor = ownAuthorTask.IsCompletedSuccessfully ? ownAuthorTask.Result : null;
-#pragma warning restore VSTHRD002
+
+            var ownAuthorComputed = Computed.GetExisting(() => Authors.GetOwn(Session, ChatId, default));
+            var ownAuthor = ownAuthorComputed is { HasValue: true } ? ownAuthorComputed.Value : null;
             var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
             if (isOwn)
                 model = model with { IsOwn = true };
@@ -81,7 +77,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         if (AuthorId.IsNone)
             return Model.None;
 
-        var author = await GetAuthor(AuthorId, cancellationToken);
+        var author = await Authors.Get(Session, AuthorId.ChatId, AuthorId, cancellationToken);
         if (author == null)
             return Model.None;
 
@@ -92,15 +88,6 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         var ownAuthor = await getOwnAuthorTask;
         var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
         return new(author, presence, isOwn);
-    }
-
-    private async ValueTask<Author?> GetAuthor(AuthorId authorId, CancellationToken cancellationToken)
-    {
-        if (authorId.IsNone)
-            return null;
-
-        var author = await Authors.Get(Session, authorId.ChatId, authorId, cancellationToken);
-        return author;
     }
 
     private async ValueTask<Presence> GetPresence(AuthorId authorId, CancellationToken cancellationToken)
