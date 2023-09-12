@@ -349,37 +349,7 @@
     <Content Include="Platforms\Windows\Assets\**\*.*" />
   </ItemGroup>
 
-  <!-- Versions -->
-  <!-- Use approach described on https://github.com/dotnet/Nerdbank.GitVersioning/issues/828 -->
-  <Target Name="FixVersionForAndroid" Condition="$(TargetFramework.Contains('-android'))" BeforeTargets="_GetAndroidPackageName" DependsOnTargets="SetApplicationVersion" />
-  <Target Name="FixVersionForIOS" Condition="$(TargetFramework.Contains('-ios'))" BeforeTargets="_CompileAppManifest" DependsOnTargets="SetApplicationVersion" />
-  <Target Name="FixVersionForWindows" Condition="$(TargetFramework.Contains('-windows'))" BeforeTargets="MauiGeneratePackageAppxManifest" DependsOnTargets="SetApplicationVersion" />
-  <Target Name="SetApplicationVersion" DependsOnTargets="GetBuildVersion">
-
-    <PropertyGroup>
-
-      <_MajorStr>$([System.String]::Format("{0}", $([System.Version]::Parse("$(BuildVersion)").Major)))</_MajorStr>
-      <_MinorStr>$([System.String]::Format("{0:D3}", $([System.Version]::Parse("$(BuildVersion)").Minor)))</_MinorStr>
-      <_BuildStr>$([System.String]::Format("{0:D3}", $([System.Version]::Parse("$(BuildVersion)").Build)))</_BuildStr>
-
-      <!-- Android requirement: ApplicationVersion must be a positive integer (used as an internal version number) -->
-      <!-- iOS requirement: ApplicationVersion must be a three part version number -->
-      <!-- Windows requirement: ApplicationVersion must be blank when ApplicationDisplayVersion is a four part version number -->
-      <ApplicationVersion Condition="$(TargetFramework.Contains('-android'))">$(_MajorStr)$(_MinorStr)$(_BuildStr)</ApplicationVersion>
-      <ApplicationVersion Condition="$(TargetFramework.Contains('-ios'))">$(BuildVersionSimple)</ApplicationVersion>
-      <ApplicationVersion Condition="$(TargetFramework.Contains('-windows'))"></ApplicationVersion>
-
-      <!-- iOS requirement: ApplicationDisplayVersion must be a three part version number -->
-      <!-- Windows requirement: ApplicationDisplayVersion must be a four part version number -->
-      <ApplicationDisplayVersion Condition="$(TargetFramework.Contains('-android'))">$(Version)</ApplicationDisplayVersion>
-      <ApplicationDisplayVersion Condition="$(TargetFramework.Contains('-ios'))">$(BuildVersionSimple)</ApplicationDisplayVersion>
-      <ApplicationDisplayVersion Condition="$(TargetFramework.Contains('-windows'))">$(BuildVersion)</ApplicationDisplayVersion>
-
-    </PropertyGroup>
-
-  </Target>
-
-  <Target Name="UpdateBundleHash" AfterTargets="SetApplicationVersion">
+  <Target Name="UpdateBundleHash" AfterTargets="Build">
     <PropertyGroup>
       <InputFile>$(MSBuildThisFileDirectory)\wwwroot\index.htm</InputFile>
       <OutputFile>$(MSBuildThisFileDirectory)\wwwroot\index.html</OutputFile>
