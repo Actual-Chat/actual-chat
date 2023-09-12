@@ -6,7 +6,7 @@ export interface FeederAudioWorklet {
     // Commands
     frame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void>;
     pause(noWait?: RpcNoWait): Promise<void>;
-    resume(noWait?: RpcNoWait): Promise<void>;
+    resume(): Promise<void>;
     end(mustAbort: boolean, noWait?: RpcNoWait): Promise<void>;
 }
 

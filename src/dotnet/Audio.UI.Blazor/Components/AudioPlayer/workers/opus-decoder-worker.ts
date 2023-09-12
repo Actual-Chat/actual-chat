@@ -1,4 +1,4 @@
-// Commented out because it causes ts compilation issues in webpack release mode
+ // Commented out because it causes ts compilation issues in webpack release mode
 // /// <reference lib="WebWorker" />
 // export type { };
 // declare const self: WorkerGlobalScope;
@@ -29,7 +29,6 @@ let codecModule: Codec | null = null;
 
 const worker = self as unknown as Worker;
 const decoders = new Map<string, OpusDecoder>();
-const decoderPool = new ObjectPool<Decoder>(() => new codecModule.Decoder());
 
 const serverImpl: OpusDecoderWorker = {
     create: async (artifactVersions: Map<string, string>, _timeout?: RpcTimeout): Promise<void> => {
@@ -41,7 +40,8 @@ const serverImpl: OpusDecoderWorker = {
 
         // Load & warm-up codec
         codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
-        decoderPool.expandTo(1);
+        const decoder = new codecModule.Decoder();
+        decoder.delete();
 
         debugLog?.log(`<- init`);
     },
@@ -49,7 +49,7 @@ const serverImpl: OpusDecoderWorker = {
     init: async (streamId: string, feederWorkletPort: MessagePort): Promise<void> => {
         debugLog?.log(`-> #${streamId}.create`);
         await serverImpl.close(streamId);
-        const decoder = decoderPool.get();
+        const decoder = new codecModule.Decoder();
         const opusDecoder = await OpusDecoder.create(streamId, decoder, feederWorkletPort);
         decoders.set(streamId, opusDecoder);
         debugLog?.log(`<- #${streamId}.create`);
@@ -61,16 +61,16 @@ const serverImpl: OpusDecoderWorker = {
         if (!opusDecoder)
             return;
 
-        decoders.delete(streamId);
         const decoder = opusDecoder.decoder;
         try {
-            await opusDecoder.disposeAsync();
+            decoder.reset();
+            await opusDecoder.end(true);
         }
         catch (e) {
             errorLog?.log(`#${streamId}.close: error while closing the decoder:`, e);
         }
         finally {
-            decoderPool.release(decoder);
+            decoder.reset();
         }
     },
 
