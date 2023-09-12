@@ -68,9 +68,11 @@ export class NewLanding {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onToMainPageButtonClick(event));
 
-        fromEvent(whyUsButton, 'pointerdown')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onWhyUsButtonClick(event));
+        if (whyUsButton != null) {
+            fromEvent(whyUsButton, 'pointerdown')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event: PointerEvent) => this.onWhyUsButtonClick(event));
+        }
 
         let vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
