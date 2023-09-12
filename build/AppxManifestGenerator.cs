@@ -18,7 +18,7 @@ public static class AppxManifestGenerator
 
     private static async Task<Version> GetVersion(CancellationToken cancellationToken)
     {
-        var process = Process.Start(new ProcessStartInfo("nbgv", "get-version -v NuGetPackageVersion") {
+        var process = Process.Start(new ProcessStartInfo(Utils.FindDotnetExe(), "nbgv get-version -v NuGetPackageVersion") {
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
