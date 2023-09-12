@@ -25,6 +25,7 @@
         <div class="c-btn-group">
             <DownloadButton
                 Title="Get mobile/desktop app"
+                Click="@DownloadClick"
                 Class="download-app"/>
             @if (IsGuest) {
                 <button class="btn-download web-signin" onclick="@SignInClick">
@@ -43,4 +44,5 @@
     [Parameter] public bool IsGuest { get; set; }
     [Parameter] public EventCallback SignInClick { get; set; }
     [Parameter] public EventCallback PremiumFeaturesClick { get; set; }
+    [Parameter] public EventCallback DownloadClick { get; set; }
 }
