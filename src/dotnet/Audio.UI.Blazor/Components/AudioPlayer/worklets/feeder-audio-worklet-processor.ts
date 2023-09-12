@@ -38,7 +38,6 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     private bufferState: BufferState = 'ok';
     private lastReportedState: FeederState = null;
     private isEnding = false;
-    private whenEnded = new PromiseSource<void>();
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -67,11 +66,13 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     public frame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void> {
+        debugLog?.log(`#${this.id} -> frame()`);
         if (this.playbackState === 'ended' || this.isEnding)
             return;
 
         this.chunks.push(new Float32Array(buffer, offset, length));
         this.tryBeginPlaying();
+        debugLog?.log(`#${this.id} <- frame()`);
         return ResolvedPromise.Void;
     }
 
@@ -85,12 +86,14 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         return ResolvedPromise.Void;
     }
 
-    public resume(_noWait?: RpcNoWait): Promise<void> {
-        if (this.playbackState !== 'paused')
+    public resume(): Promise<void> {
+        if (this.playbackState === 'playing')
             return;
 
         debugLog?.log(`#${this.id}.resume`);
-        this.playbackState = 'playing';
+        this.playbackState = this.playbackState === 'ended'
+            ? 'paused'
+            : 'playing';
         this.stateHasChanged();
         return ResolvedPromise.Void;
     }
@@ -108,6 +111,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (mustAbort) {
             this.chunks.clear();
             this.chunkOffset = 0;
+            this.playingAt = 0;
         }
         this.chunks.push('end');
     }
@@ -129,7 +133,8 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         if (this.playbackState !== 'playing') {
             // Write silence, because we aren't playing
             channel.fill(0);
-            return this.playbackState !== 'ended';
+            // Keep worklet up and running even in ended state for reuse
+            return true;
         }
 
         // We're in 'playing' state anywhere below this point
@@ -145,10 +150,14 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             if (chunk === 'end') {
                 channel.fill(0, channelOffset);
                 debugLog?.log(`#${this.id}.process: got 'end'`);
+                this.isEnding = false;
                 this.playbackState = 'ended';
-                this.whenEnded.resolve(undefined);
+                this.chunkOffset = 0;
+                this.playingAt = 0;
+                this.chunks.clear();
                 this.stateHasChanged();
-                return false;
+                // Keep worklet up and running even in ended state for reuse
+                return true;
             }
 
             const available = chunk.length - this.chunkOffset;
@@ -201,7 +210,9 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             return;
 
         debugLog?.log(`#${this.id}.tryBeginPlaying: starting playback`);
+        this.isEnding = false;
         this.playbackState = 'playing';
+        this.chunkOffset = 0;
         this.playingAt = 0;
         this.stateHasChanged();
     }

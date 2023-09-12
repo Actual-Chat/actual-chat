@@ -51,8 +51,8 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         return this.worklet.pause(noWait);
     }
 
-    public resume(noWait?: RpcNoWait): Promise<void> {
-        return this.worklet.resume(noWait);
+    public resume(): Promise<void> {
+        return this.worklet.resume();
     }
 
     public end(mustAbort: boolean, noWait?: RpcNoWait): Promise<void> {

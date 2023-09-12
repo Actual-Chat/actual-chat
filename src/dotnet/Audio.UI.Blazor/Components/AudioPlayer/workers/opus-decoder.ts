@@ -43,6 +43,10 @@ export class OpusDecoder implements AsyncDisposable {
         this.bufferPool = new ObjectPool<ArrayBuffer>(() => new ArrayBuffer(SAMPLES_PER_WINDOW * 4)).expandTo(4);
     }
 
+    public init(): void {
+        this.mustAbort = false;
+    }
+
     public async disposeAsync(): Promise<void> {
         if (this.processor.isRunning)
             await this.end(true);
@@ -81,7 +85,7 @@ export class OpusDecoder implements AsyncDisposable {
             if (item === 'end') {
                 debugLog?.log(`#${this.streamId}.process: got 'end'`);
                 void this.feederWorklet.end(this.mustAbort, rpcNoWait);
-                return false;
+                return true;
             }
 
             // typedViewSamples is a typed_memory_view to Decoder internal buffer - so you have to copy data
@@ -104,6 +108,7 @@ export class OpusDecoder implements AsyncDisposable {
         catch (e) {
             errorLog?.log(`#${this.streamId}.process: error:`, e);
         }
-        return item !== 'end';
+        // Keep running for reuse
+        return true;
     }
 }
