@@ -56,24 +56,6 @@ export class NewLanding {
         this.downloadLinksPage = this.landing.querySelector('.page-links');
         this.scrollContainer = getScrollContainer(this.downloadLinksPage);
 
-        let downloadAppButtons = this.landing.querySelectorAll('.download-app');
-        let headerMainPageButtons = this.landing.querySelectorAll('.btn-to-main-page');
-        let whyUsButton = this.landing.querySelector('.why-us');
-
-        fromEvent(downloadAppButtons, 'pointerdown')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onDownloadButtonClick(event));
-
-        fromEvent(headerMainPageButtons, 'pointerdown')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onToMainPageButtonClick(event));
-
-        if (whyUsButton != null) {
-            fromEvent(whyUsButton, 'pointerdown')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe((event: PointerEvent) => this.onWhyUsButtonClick(event));
-        }
-
         let vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
     }
@@ -174,7 +156,7 @@ export class NewLanding {
         }
     }
 
-    private onDownloadButtonClick(event: PointerEvent) : void {
+    private scrollToPageLinks() {
         this.downloadLinksToggle();
         let landingTop = this.landing.getBoundingClientRect().top;
         this.lastPosition = landingTop;
@@ -186,7 +168,7 @@ export class NewLanding {
         this.scrollContainer.scrollTo(options);
     }
 
-    private onToMainPageButtonClick(event: PointerEvent) : void {
+    private scrollFromPageLinks() : void {
         this.downloadLinksToggle();
         let top = -(this.lastPosition);
         const options = {
@@ -196,7 +178,7 @@ export class NewLanding {
         this.scrollContainer.scrollTo(options);
     }
 
-    private onWhyUsButtonClick(event: PointerEvent) : void {
+    private scrollToWhyUs() : void {
         let rect = this.landing.querySelector('.page-4').getBoundingClientRect();
         let top = rect.top;
         let landingTop = this.landing.getBoundingClientRect().top;
@@ -221,7 +203,7 @@ export class NewLanding {
         let isNotLinksPage = linksPage.classList.contains('hidden')
             || linksPage.getBoundingClientRect().top <= 0;
         if (isNotLinksPage)
-            this.onDownloadButtonClick(null);
+            this.scrollToPageLinks();
         else
             return;
     }

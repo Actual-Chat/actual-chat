@@ -45,7 +45,7 @@
                         </div>
                     </Brand>
                 </LandingDownloadTile>
-                <button class="btn-download transparent btn-to-main-page">
+                <button class="btn-download transparent btn-to-main-page" onclick="@BackToMainPageClick">
                     Back to Main page
                 </button>
             </div>
@@ -55,6 +55,8 @@
 
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    [Parameter] public EventCallback BackToMainPageClick { get; set; }
 
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());

@@ -16,6 +16,9 @@
 
     <NewLandingHeader
         Click="OnMenuHandleClick"
+        DownloadClick="@OnDownloadButtonClick"
+        BackToMainPageClick="@OnBackToMainPageButtonClick"
+        WhyUsClick="@OnWhyUsButtonClick"
         PricingClick="OnPremiumFeaturesClick"/>
 
     @* Page 1 *@
@@ -23,6 +26,7 @@
         <LandingPage1
             IsGuest="@isGuest"
             SignInClick="@SignIn"
+            DownloadClick="@OnDownloadButtonClick"
             ShowVideoClick="@OnShowVideoClick"/>
     </LandingPage>
 
@@ -51,12 +55,13 @@
         <LandingPage6
             IsGuest="@isGuest"
             PremiumFeaturesClick="@OnPremiumFeaturesClick"
+            DownloadClick="@OnDownloadButtonClick"
             SignInClick="@SignIn"/>
     </LandingPage>
 
     <LandingFooter/>
 
-    <LandingDownloadLinks/>
+    <LandingDownloadLinks BackToMainPageClick="@OnBackToMainPageButtonClick"/>
 </div>
 
 @code {
@@ -103,6 +108,15 @@
 
     private Task OnPremiumFeaturesClick()
         => ModalUI.Show(new PremiumFeaturesModal.Model());
+
+    public async Task OnDownloadButtonClick()
+        => await JSRef.InvokeVoidAsync("scrollToPageLinks");
+
+    public async Task OnBackToMainPageButtonClick()
+        => await JSRef.InvokeVoidAsync("scrollFromPageLinks");
+
+    public async Task OnWhyUsButtonClick()
+        => await JSRef.InvokeVoidAsync("scrollToWhyUs");
 
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());

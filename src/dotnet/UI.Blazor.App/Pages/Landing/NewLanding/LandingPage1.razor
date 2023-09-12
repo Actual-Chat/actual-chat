@@ -37,6 +37,7 @@
             @if (!isMaui) {
                 <DownloadButton
                     Title="Get mobile/desktop app"
+                    Click="@DownloadClick"
                     Class="download-app lg-icon"/>
             }
             @if (IsGuest) {
@@ -71,4 +72,5 @@
     [Parameter] public bool IsGuest { get; set; }
     [Parameter] public EventCallback SignInClick { get; set; }
     [Parameter] public EventCallback ShowVideoClick { get; set; }
+    [Parameter] public EventCallback DownloadClick { get; set; }
 }
