@@ -13,11 +13,16 @@ public class AppAutoNavigationUI : AutoNavigationUI
             return currentUrl;
 
         // You're at "/" or "/chat" URL
-        var accountUI = Services.GetRequiredService<AccountUI>();
-        await accountUI.WhenLoaded.ConfigureAwait(false);
-        var ownAccount = accountUI.OwnAccount.Value;
-        return ownAccount.IsGuestOrNone
-            ? currentUrl
-            : Links.Chats; // You're signed in - so we redirect you to /chats/
+        try {
+            var accountUI = Services.GetRequiredService<AccountUI>();
+            await accountUI.WhenLoaded.WaitAsync(TimeSpan.FromMilliseconds(2000)).ConfigureAwait(false);
+            var ownAccount = accountUI.OwnAccount.Value;
+            return ownAccount.IsGuestOrNone
+                ? currentUrl
+                : Links.Chats; // You're signed in - so we redirect you to /chats/
+        }
+        catch (TimeoutException) {
+            return currentUrl;
+        }
     }
 }
