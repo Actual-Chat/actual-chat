@@ -58,6 +58,7 @@ export class NewLanding {
 
         let downloadAppButtons = this.landing.querySelectorAll('.download-app');
         let headerMainPageButtons = this.landing.querySelectorAll('.btn-to-main-page');
+        let whyUsButton = this.landing.querySelector('.why-us');
 
         fromEvent(downloadAppButtons, 'pointerdown')
             .pipe(takeUntil(this.disposed$))
@@ -66,6 +67,10 @@ export class NewLanding {
         fromEvent(headerMainPageButtons, 'pointerdown')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onToMainPageButtonClick(event));
+
+        fromEvent(whyUsButton, 'pointerdown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent) => this.onWhyUsButtonClick(event));
 
         let vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
@@ -185,6 +190,17 @@ export class NewLanding {
         const options = {
             behavior: 'auto',
             top: top,
+        } as ScrollToOptions;
+        this.scrollContainer.scrollTo(options);
+    }
+
+    private onWhyUsButtonClick(event: PointerEvent) : void {
+        let rect = this.landing.querySelector('.page-4').getBoundingClientRect();
+        let top = rect.top;
+        let landingTop = this.landing.getBoundingClientRect().top;
+        const options = {
+            behavior: 'smooth',
+            top: top - landingTop,
         } as ScrollToOptions;
         this.scrollContainer.scrollTo(options);
     }
