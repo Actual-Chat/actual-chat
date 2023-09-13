@@ -21,15 +21,16 @@ public partial class ChatAudioUI
                 },
                 TaskScheduler.Default);
 
-        var baseChains = new AsyncChain[] {
-            new(nameof(InvalidateActiveChatDependencies), InvalidateActiveChatDependencies),
-            new(nameof(InvalidateHistoricalPlaybackDependencies), InvalidateHistoricalPlaybackDependencies),
-            new(nameof(PushRecordingState), PushRecordingState),
-            new(nameof(PushRealtimePlaybackState), PushRealtimePlaybackState),
-            new(nameof(StopListeningWhenIdle), StopListeningWhenIdle),
-            new(nameof(StopRecordingOnAwake), StopRecordingOnAwake),
-            new(nameof(ReconnectOnRpcReconnect), ReconnectOnRpcReconnect),
-            new(nameof(PlayRecordingBeep), PlayRecordingBeep),
+        var baseChains = new[] {
+            AsyncChainExt.From(InvalidateActiveChatDependencies),
+            AsyncChainExt.From(InvalidateHistoricalPlaybackDependencies),
+            AsyncChainExt.From(PushRecordingState),
+            AsyncChainExt.From(PushRealtimePlaybackState),
+            AsyncChainExt.From(StopListeningWhenIdle),
+            AsyncChainExt.From(StopRecordingOnAwake),
+            AsyncChainExt.From(ReconnectOnRpcReconnect),
+            AsyncChainExt.From(UpdateNextBeepAt),
+            AsyncChainExt.From(PlayBeep),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (
@@ -315,30 +316,40 @@ public partial class ChatAudioUI
         }
     }
 
-    private async Task PlayRecordingBeep(CancellationToken cancellationToken)
+    private async Task UpdateNextBeepAt(CancellationToken cancellationToken)
     {
         var cBeepState = await Computed.Capture(() => GetRecordingBeepState(cancellationToken)).ConfigureAwait(false);
-        while (!cancellationToken.IsCancellationRequested) {
-            cBeepState = await cBeepState.When(x => x.NeedsBeep, cancellationToken).ConfigureAwait(false);
-            await BeepLoop(cBeepState).ConfigureAwait(false);
-        }
-        return;
-
-        async Task BeepLoop(Computed<RecordingBeepState> cBeepState1)
-        {
-            while (await NeedsBeep(cBeepState1)) {
-                await Task.Delay(AudioSettings.RecordingReminderInterval, cancellationToken).ConfigureAwait(false);
-                if (!await NeedsBeep(cBeepState1))
-                    return;
-
-                await TuneUI.PlayAndWait(Tune.RemindOfRecording).ConfigureAwait(false);
+        var prevActiveUntil = Moment.MinValue;
+        await foreach (var change in cBeepState.Changes(cancellationToken).ConfigureAwait(false)) {
+            var (isRecording, activeUntil) = change.Value;
+            if (!isRecording) {
+                _nextBeep.Value = null;
+                continue;
             }
+
+            var isPreviousCancelled = activeUntil > prevActiveUntil;
+            var lastBeepAt = Moment.Max(activeUntil, _nextBeep.Value?.At ?? Moment.MinValue);
+            var nextBeepAt = lastBeepAt + AudioSettings.RecordingReminderInterval;
+            change.Invalidate(nextBeepAt - Now);
+            _nextBeep.Value = isRecording ? new(nextBeepAt, isPreviousCancelled) : null;
+        }
+    }
+
+    private async Task PlayBeep(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            var cNextBeep = await _nextBeep.When(x => x != null && x.At > Now, cancellationToken).ConfigureAwait(false);
+            var nextBeepAt = cNextBeep.Value!.At;
+            var nextBeepIn = nextBeepAt - Now;
+            await Task.Delay(TimeSpanExt.Max(nextBeepIn, TimeSpan.FromMilliseconds(50)), cancellationToken).ConfigureAwait(false);
+            if (await IsNotCancelled(nextBeepAt))
+                await TuneUI.PlayAndWait(Tune.RemindOfRecording).ConfigureAwait(false);
         }
 
-        async Task<bool> NeedsBeep(Computed<RecordingBeepState> cBeepState1)
+        async Task<bool> IsNotCancelled(Moment previous)
         {
-            var state = await cBeepState1.Use(cancellationToken).ConfigureAwait(false);
-            return state.NeedsBeep;
+            var nextBeep = await _nextBeep.Use(cancellationToken).ConfigureAwait(false);
+            return nextBeep is { IsPreviousCancelled: false } || nextBeep?.At == previous;
         }
     }
 
@@ -361,7 +372,7 @@ public partial class ChatAudioUI
         var isRecording = !recordingChatId.IsNone;
         if (isActive)
             Computed.GetCurrent()!.Invalidate(activeUntil - Now + TimeSpan.FromMilliseconds(1));
-        return new(isRecording, isActive);
+        return new(isRecording, activeUntil);
     }
 
     private async IAsyncEnumerable<Moment?> WatchIdleAudioBoundaries(
@@ -446,11 +457,9 @@ public partial class ChatAudioUI
     }
 
     [StructLayout(LayoutKind.Auto)]
-    public readonly record struct RecordingBeepState(bool IsRecording, bool IsActive)
-    {
-        public static readonly RecordingBeepState None = default;
-        public bool NeedsBeep => IsRecording && !IsActive;
-    }
+    public readonly record struct RecordingBeepState(bool IsRecording, Moment ActiveUntil);
+
+    public record NextBeepState(Moment At, bool IsPreviousCancelled);
 
     [StructLayout(LayoutKind.Auto)]
     public readonly record struct IdleAudioWatchOptions

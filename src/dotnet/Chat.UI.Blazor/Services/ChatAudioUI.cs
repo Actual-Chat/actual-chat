@@ -9,6 +9,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
 {
     private readonly IMutableState<Moment?> _stopRecordingAt;
     private readonly IMutableState<Moment?> _audioStoppedAt;
+    private readonly IMutableState<NextBeepState?> _nextBeep;
     private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
     private AudioSettings? _audioSettings;
     private AudioRecorder? _audioRecorder;
@@ -45,6 +46,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     public IState<Moment?> StopRecordingAt => _stopRecordingAt;
     public Task WhenEnabled => _whenEnabledSource.Task;
     public IState<Moment?> AudioStoppedAt => _audioStoppedAt;
+    public IState<NextBeepState?> NextBeep => _nextBeep;
 
     public ChatAudioUI(IServiceProvider services)
     {
@@ -58,6 +60,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
         var stateFactory = services.StateFactory();
         _stopRecordingAt = stateFactory.NewMutable<Moment?>();
         _audioStoppedAt = stateFactory.NewMutable<Moment?>();
+        _nextBeep = stateFactory.NewMutable<NextBeepState?>();
     }
 
     void INotifyInitialized.Initialized()
