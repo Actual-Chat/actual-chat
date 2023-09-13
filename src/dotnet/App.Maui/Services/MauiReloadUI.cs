@@ -7,7 +7,9 @@ public class MauiReloadUI : ReloadUI
     public MauiReloadUI(IServiceProvider services) : base(services) { }
 
     public override void Reload(bool clearCaches = false)
-        => _ = MainThread.InvokeOnMainThreadAsync(async () => {
+    {
+        Log.LogInformation("Reloading requested");
+        _ = MainThread.InvokeOnMainThreadAsync(async () => {
             Log.LogWarning("Reloading...");
             try {
                 if (clearCaches)
@@ -21,6 +23,7 @@ public class MauiReloadUI : ReloadUI
                 Quit(); // We can't do much in this case
             }
         });
+    }
 
     public override void Quit()
         => App.Current.Quit();

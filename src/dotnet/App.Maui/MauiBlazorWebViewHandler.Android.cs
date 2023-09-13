@@ -21,6 +21,12 @@ public partial class MauiBlazorWebViewHandler
                 AppServices.GetRequiredService<AndroidContentDownloader>()));
     }
 
+    protected override void DisconnectHandler(WebView platformView)
+    {
+        Tracer.Point(nameof(DisconnectHandler));
+        base.DisconnectHandler(platformView);
+    }
+
     private class WebViewClientOverride : WebViewClient
     {
         private const string AppHostAddress = "0.0.0.0";

@@ -15,6 +15,7 @@ public class ReloadUI
 
     public virtual void Reload(bool clearCaches = false)
     {
+        Log.LogInformation("Reloading requested");
         var blazorCircuitContext = Services.GetRequiredService<AppBlazorCircuitContext>();
         _ = blazorCircuitContext.WhenReady.ContinueWith(_ => blazorCircuitContext.Dispatcher.InvokeAsync(async () => {
             Log.LogWarning("Reloading...");
