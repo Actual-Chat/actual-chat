@@ -4,12 +4,12 @@ namespace ActualChat.App.Maui;
 
 public static class BlazorWebViewAttachedProps
 {
-    public static readonly BindableProperty IsDisconnectedProperty =
-        BindableProperty.Create("IsDisconnected", typeof(bool), typeof(BlazorWebView));
+    public static readonly BindableProperty DisconnectMarkerProperty =
+        BindableProperty.Create("DisconnectMarker", typeof(BlazorWebViewDisconnectMarker), typeof(BlazorWebView));
 
-    public static bool GetIsDisconnected(this BlazorWebView webView)
-        => (bool)webView.GetValue(IsDisconnectedProperty);
+    public static BlazorWebViewDisconnectMarker? GetDisconnectMarker(this BlazorWebView webView)
+        => (BlazorWebViewDisconnectMarker)webView.GetValue(DisconnectMarkerProperty);
 
-    public static void SetIsDisconnected(this BlazorWebView webView, bool isDisconnected)
-        => webView.SetValue(IsDisconnectedProperty, isDisconnected);
+    public static void SetDisconnectMarker(this BlazorWebView webView, BlazorWebViewDisconnectMarker? disconnectMarker)
+        => webView.SetValue(DisconnectMarkerProperty, disconnectMarker);
 }
