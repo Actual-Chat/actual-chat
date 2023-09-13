@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui;
 public partial class MainPage : ContentPage
 {
     private MauiNavigationInterceptor? _navigationInterceptor;
-    private ILogger _logger;
+    private ILogger? _logger;
 
     // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
     public static MainPage? Current => (MainPage?)App.Current?.MainPage;
@@ -18,7 +18,7 @@ public partial class MainPage : ContentPage
     private ILogger Log =>
         _logger ??= Services.LogFor(GetType());
 
-    public IServiceProvider Services { get; } // This is root IServiceProvider!
+    private IServiceProvider Services { get; } // This is root IServiceProvider!
 
     public MainPage(IServiceProvider services)
     {
@@ -31,10 +31,12 @@ public partial class MainPage : ContentPage
     public void RecreateWebView()
     {
         if (Content is BlazorWebView oldWebView)
-            oldWebView.SetIsDisconnected(true);
+            oldWebView.GetDisconnectMarker()?.MarkAsDisconnected();
         var webView = new BlazorWebView {
             HostPage = "wwwroot/index.html",
         };
+        var disconnectMarker = new BlazorWebViewDisconnectMarker(webView);
+        webView.SetDisconnectMarker(disconnectMarker);
         webView.BlazorWebViewInitializing += OnWebViewInitializing;
         webView.BlazorWebViewInitialized += OnWebViewInitialized;
         webView.UrlLoading += OnWebViewUrlLoading;
@@ -44,7 +46,7 @@ public partial class MainPage : ContentPage
                 ComponentType = typeof(MauiBlazorAppWrapper),
                 Selector = "#app",
                 Parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
-                    { nameof(MauiBlazorAppWrapper.BlazorWebView), webView }
+                    { nameof(MauiBlazorAppWrapper.DisconnectMarker), disconnectMarker }
                 }
             });
         Content = webView;
