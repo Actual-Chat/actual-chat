@@ -2,7 +2,7 @@ using ActualChat.Transcription;
 
 namespace ActualChat.Audio;
 
-public interface ITranscriptStreamServer
+public interface ITranscriptStreamServer: IDisposable
 {
     Task<IAsyncEnumerable<TranscriptDiff>> Read(
         Symbol streamId,

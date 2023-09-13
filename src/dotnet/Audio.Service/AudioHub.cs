@@ -7,7 +7,6 @@ namespace ActualChat.Audio;
 
 public class AudioHub(IServiceProvider services) : Hub
 {
-    private IServiceProvider Services { get; } = services;
     private IAudioProcessor AudioProcessor { get; } = services.GetRequiredService<IAudioProcessor>();
     private IAudioStreamServer AudioStreamServer { get; } = services.GetRequiredService<IAudioStreamServer>();
     private ITranscriptStreamServer TranscriptStreamServer { get; } = services.GetRequiredService<ITranscriptStreamServer>();
@@ -15,57 +14,14 @@ public class AudioHub(IServiceProvider services) : Hub
     private OtelMetrics Metrics { get; } = services.GetRequiredService<OtelMetrics>();
     private ILogger Log { get; } = services.LogFor<AudioHub>();
 
-    public IAsyncEnumerable<byte[]> GetAudioStream(
+    public async IAsyncEnumerable<byte[]> GetAudioStream(
         string streamId,
         TimeSpan skipTo,
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // We're doing this fairly complex processing via tasks & channels only
-        // because "async IAsyncEnumerable<..>" methods can't contain
-        // "yield return" inside "catch" blocks, and we need this here.
-        var target = Channel.CreateBounded<byte[]>(
-            new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {
-                SingleWriter = true,
-                SingleReader = true,
-                AllowSynchronousContinuations = true,
-                FullMode = BoundedChannelFullMode.Wait,
-            });
-
-        _ = BackgroundTask.Run(async () => {
-            var counter = 0;
-            var currentSkipTo = skipTo;
-            try {
-                while (!cancellationToken.IsCancellationRequested)
-                    try {
-                        var stream = await AudioStreamServer.Read(streamId, currentSkipTo, cancellationToken)
-                            .ConfigureAwait(false);
-                        await foreach (var chunk in stream.ConfigureAwait(false)) {
-                            counter++;
-                            await target.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
-                        }
-                        return;
-                    }
-                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-                        currentSkipTo = skipTo.Add(TimeSpan.FromMilliseconds(20 * counter));
-                        Log.LogWarning("Retry reading audio stream {StreamId} with offset {SkipTo}", streamId, currentSkipTo);
-                    }
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-            catch (OperationCanceledException e) {
-                target.Writer.TryComplete(e);
-                throw;
-            }
-            catch (Exception e) {
-                Log.LogError(e, "Error reading audio stream");
-                target.Writer.TryComplete(e);
-                throw;
-            }
-            finally {
-                target.Writer.TryComplete();
-            }
-        }, cancellationToken);
-
-        return target.Reader.ReadAllAsync(cancellationToken);
+        var stream = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        await foreach (var chunk in stream.ConfigureAwait(false))
+            yield return chunk;
     }
 
     public Task ReportLatency(TimeSpan latency, CancellationToken cancellationToken)
@@ -74,52 +30,13 @@ public class AudioHub(IServiceProvider services) : Hub
         return Task.CompletedTask;
     }
 
-    public IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(
+    public async IAsyncEnumerable<TranscriptDiff> GetTranscriptDiffStream(
         string streamId,
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        // We're doing this fairly complex processing via tasks & channels only
-        // because "async IAsyncEnumerable<..>" methods can't contain
-        // "yield return" inside "catch" blocks, and we need this here.
-        var target = Channel.CreateBounded<TranscriptDiff>(
-            new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {
-                SingleWriter = true,
-                SingleReader = true,
-                AllowSynchronousContinuations = true,
-                FullMode = BoundedChannelFullMode.Wait,
-            });
-
-        _ = BackgroundTask.Run(async () => {
-            try {
-                while (!cancellationToken.IsCancellationRequested)
-                    try {
-                        var stream = await TranscriptStreamServer.Read(streamId, cancellationToken)
-                            .ConfigureAwait(false);
-                        await foreach (var chunk in stream.ConfigureAwait(false)) {
-                            await target.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
-                        }
-                        return;
-                    }
-                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-                        Log.LogWarning("Retry reading transcript stream {StreamId}", streamId);
-                    }
-                cancellationToken.ThrowIfCancellationRequested();
-            }
-            catch (OperationCanceledException e) {
-                target.Writer.TryComplete(e);
-                throw;
-            }
-            catch (Exception e) {
-                Log.LogError(e, "Error reading transcript stream");
-                target.Writer.TryComplete(e);
-                throw;
-            }
-            finally {
-                target.Writer.TryComplete();
-            }
-        }, cancellationToken);
-
-        return target.Reader.ReadAllAsync(cancellationToken);
+        var stream = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
+        await foreach (var chunk in stream.ConfigureAwait(false))
+            yield return chunk;
     }
 
     public Task ProcessAudioChunks(

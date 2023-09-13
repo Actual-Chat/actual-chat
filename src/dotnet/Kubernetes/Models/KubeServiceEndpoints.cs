@@ -58,7 +58,11 @@ public record KubeServiceEndpoints(
         if (port == null)
             return HashRing<string>.Empty;
 
-        var addresses = ReadyEndpoints
+        // fallback to unready endpoints if none are ready
+        var endpoints = ReadyEndpoints.Count > 0
+            ? ReadyEndpoints
+            : Endpoints;
+        var addresses = endpoints
             .SelectMany(e => e.Addresses)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(a => a, StringComparer.Ordinal);

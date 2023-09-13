@@ -44,33 +44,82 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
             return await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
         }
 
-        var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
-        using var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
-        var serviceEndpoints = endpointState.Value;
-        var addressRing = serviceEndpoints.GetAddressHashRing();
-        if (addressRing.IsEmpty) {
-            Log.LogError("Read({Stream}): empty address ring!", streamName);
+        // We're doing this fairly complex processing via tasks & channels only
+        // because "async IAsyncEnumerable<..>" methods can't contain
+        // "yield return" inside "catch" blocks, and we need this here.
+        var target = Channel.CreateBounded<TranscriptDiff>(
+            new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {
+                SingleWriter = true,
+                SingleReader = true,
+                AllowSynchronousContinuations = true,
+                FullMode = BoundedChannelFullMode.Wait,
+            });
+
+        _ = BackgroundTask.Run(async () => {
+            var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
+            var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
+            try {
+                while (!cancellationToken.IsCancellationRequested)
+                    try {
+                        var stream = await ReadFromReplica(endpointState.Value, cancellationToken)
+                            .ConfigureAwait(false);
+                        await foreach (var chunk in stream.ConfigureAwait(false)) {
+                            await target.Writer.WriteAsync(chunk, cancellationToken).ConfigureAwait(false);
+                        }
+                        return;
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+                        Log.LogWarning("Retry reading transcript stream {StreamId}", streamId);
+                    }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException e) {
+                target.Writer.TryComplete(e);
+                throw;
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Error reading transcript stream");
+                target.Writer.TryComplete(e);
+                throw;
+            }
+            finally {
+                target.Writer.TryComplete();
+            }
+        }, cancellationToken);
+
+        return target.Reader.ReadAllAsync(cancellationToken);
+
+        async Task<IAsyncEnumerable<TranscriptDiff>> ReadFromReplica(KubeServiceEndpoints serviceEndpoints, CancellationToken cancellationToken1)
+        {
+            var addressRing = serviceEndpoints.GetAddressHashRing();
+            if (addressRing.IsEmpty) {
+                Log.LogError("Read({Stream}): empty address ring!", streamName);
+                if (TranscriptStreamServer.IsStreamExists(streamId))
+                    return await TranscriptStreamServer.Read(streamId, cancellationToken1);
+                return AsyncEnumerable.Empty<TranscriptDiff>();
+            }
+            var port = serviceEndpoints.GetPort()!.Port;
+            var addresses = addressRing.Segment(streamId.Value.GetDjb2HashCode(), WriteReplicaCount);
+            var readReplicaCount = addresses.Count.Clamp(0, ReadReplicaCount);
+
+            DebugLog?.LogInformation("Read({Stream}): hitting [{Addresses}]", streamName, addresses.ToDelimitedString());
+            var randomizedAddresses = addresses.Shuffle().Take(readReplicaCount);
+            foreach (var address in randomizedAddresses) {
+                DebugLog?.LogInformation("Read({Stream}): trying {Address}", streamName, address);
+                using var client = await GetTranscriptStreamClient(kube, address, port, cancellationToken1).ConfigureAwait(false);
+                var stream = await client.Read(streamId,  cancellationToken1).ConfigureAwait(false);
+                var result = await stream.IsNonEmpty(Clocks.CpuClock, ReadStreamWaitTimeout, cancellationToken1)
+                    .ConfigureAwait(false);
+                if (result.IsSome(out var s)) {
+                    DebugLog?.LogInformation("Read({Stream}): found the stream on {Address}", streamName, address);
+                    return s;
+                }
+            }
+            DebugLog?.LogInformation("Read({Stream}): no stream found", streamName);
+            if (TranscriptStreamServer.IsStreamExists(streamId))
+                return await TranscriptStreamServer.Read(streamId, cancellationToken1);
             return AsyncEnumerable.Empty<TranscriptDiff>();
         }
-        var port = serviceEndpoints.GetPort()!.Port;
-        var addresses = addressRing.Segment(streamId.Value.GetDjb2HashCode(), WriteReplicaCount);
-        var readReplicaCount = addresses.Count.Clamp(0, ReadReplicaCount);
-
-        DebugLog?.LogInformation("Read({Stream}): hitting [{Addresses}]", streamName, addresses.ToDelimitedString());
-        for (var i = 0; i < readReplicaCount; i++) {
-            var address = addresses.GetRandom();
-            DebugLog?.LogInformation("Read({Stream}): trying {Address}", streamName, address);
-
-            var client = await GetTranscriptStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
-            var stream = await client.Read(streamId, cancellationToken).ConfigureAwait(false);
-            var result = await stream.IsNonEmpty(Clocks.CpuClock, ReadStreamWaitTimeout, cancellationToken).ConfigureAwait(false);
-            if (result.IsSome(out var s)) {
-                DebugLog?.LogInformation("Read({Stream}): found the stream on {Address}", streamName, address);
-                return s;
-            }
-        }
-        DebugLog?.LogInformation("Read({Stream}): no stream found", streamName);
-        return AsyncEnumerable.Empty<TranscriptDiff>();
     }
 
     public async Task Write(Symbol streamId, IAsyncEnumerable<TranscriptDiff> stream, CancellationToken cancellationToken)
@@ -113,9 +162,12 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
         await Task.WhenAll(writeTasks).ConfigureAwait(false);
     }
 
+    public void Dispose()
+    { }
+
     private async Task<ITranscriptStreamServer> GetTranscriptStreamClient(
         Kube kube, string address, int port, CancellationToken cancellationToken)
         => OrdinalEquals(address, kube.PodIP) && !kube.IsEmulated
-            ? TranscriptStreamServer
+            ? TranscriptStreamServer.SkipDispose()
             : await AudioHubBackendClientFactory.GetTranscriptStreamClient(address, port, cancellationToken).ConfigureAwait(false);
 }

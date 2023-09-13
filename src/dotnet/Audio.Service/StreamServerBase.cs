@@ -31,6 +31,8 @@ public abstract class StreamServerBase<TItem> : IDisposable
         Metrics = services.GetRequiredService<OtelMetrics>();
     }
 
+    public bool IsStreamExists(Symbol streamId)
+        => _streams.TryGetValue(streamId, out _);
 
     public virtual void Dispose()
         => _disposeTokenSource.CancelAndDisposeSilently();
