@@ -13,6 +13,7 @@ import { Log } from 'logging';
 import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
 import { Subject } from 'rxjs';
+import {AudioContextDestinationFallback} from "./audio-context-destination-fallback";
 
 const { logScope, debugLog, warnLog } = Log.get('AudioContextSource');
 
@@ -34,30 +35,34 @@ const Debug = {
 }
 
 export class AudioContextSource {
-    private _context: AudioContext | null = null;
-    private _onDeviceAwakeHandler: EventHandler<number>;
-    private _deviceWokeUpAt = 0;
-    private _isInteractiveWasReset = false;
-    private _resumeCount = 0;
-    private _interactiveResumeCount = 0;
-    private _whenInitializedInteractively: Promise<void> | null = null;
-    private _refCount = 0;
-    private readonly _refCounts: Map<string, number> = new Map<string, number>();
-    private _whenReady = new PromiseSource<AudioContext | null>();
-    private _whenNotReady = new PromiseSource<void>();
-
+    private readonly refCounts: Map<string, number> = new Map<string, number>();
+    private readonly fallbackDestination?: AudioContextDestinationFallback;
     private readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
     private readonly _contextClosing$: Subject<AudioContext> = new Subject<AudioContext>();
+
+    private _context: AudioContext | null = null;
+    private onDeviceAwakeHandler: EventHandler<number>;
+    private deviceWokeUpAt = 0;
+    private isInteractiveWasReset = false;
+    private resumeCount = 0;
+    private interactiveResumeCount = 0;
+    private whenInitializedInteractively: Promise<void> | null = null;
+    private _refCount = 0;
+    private _whenReady = new PromiseSource<AudioContext | null>();
+    private _whenNotReady = new PromiseSource<void>();
 
     public readonly contextCreated$ = this._contextCreated$.asObservable();
     public readonly contextClosing$ = this._contextClosing$.asObservable();
 
     // Key properties
-    public get context() { return this._context; }
-    public get refCount() { return this._refCount }
+    public get context(): AudioContext { return this._context; }
+    public get destination(): AudioNode { return this.fallbackDestination?.destination ?? this._context.destination; }
+    public get refCount(): number { return this._refCount }
 
     constructor() {
-        this._onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
+        this.onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
+        if (AudioContextDestinationFallback.isRequired)
+            this.fallbackDestination = new AudioContextDestinationFallback();
         void this.maintain();
     }
 
@@ -85,19 +90,19 @@ export class AudioContextSource {
             return; // Already ready
         }
 
-        if (this._whenInitializedInteractively)
+        if (this.whenInitializedInteractively)
             return; // Already being initialized
 
         const whenInitializedInteractively = new PromiseSource<void>();
         try {
-            this._whenInitializedInteractively = whenInitializedInteractively;
+            this.whenInitializedInteractively = whenInitializedInteractively;
             const context = await this.create(true);
             // skip warmup as we need the context ASAP - e.g. after clicking on the recording button
             this.markReady(context);
         }
         finally {
             whenInitializedInteractively.resolve(undefined);
-            this._whenInitializedInteractively = null;
+            this.whenInitializedInteractively = null;
         }
     }
 
@@ -162,18 +167,18 @@ export class AudioContextSource {
         for (;;) { // Renew loop
             let context: AudioContext = null;
             try {
-                let whenInitializedInteractively = this._whenInitializedInteractively as PromiseSource<void>;
+                let whenInitializedInteractively = this.whenInitializedInteractively as PromiseSource<void>;
                 if (!whenInitializedInteractively) {
                     whenInitializedInteractively = new PromiseSource<void>();
                     try {
-                        this._whenInitializedInteractively = whenInitializedInteractively;
+                        this.whenInitializedInteractively = whenInitializedInteractively;
                         context = await this.create();
                         await this.warmup(context);
                         this.markReady(context);
                     }
                     finally {
                         whenInitializedInteractively.resolve(undefined);
-                        this._whenInitializedInteractively = null;
+                        this.whenInitializedInteractively = null;
                     }
                 }
                 else {
@@ -248,8 +253,8 @@ export class AudioContextSource {
     protected async create(isAlreadyInteractiveToResume = false): Promise<AudioContext> {
         debugLog?.log(`create`, isAlreadyInteractiveToResume);
 
-        this._resumeCount = 0;
-        this._interactiveResumeCount = 0;
+        this.resumeCount = 0;
+        this.interactiveResumeCount = 0;
         // Try to create audio context early w/o waiting for user interaction.
         // It might be in suspended state in this case.
         const context = new AudioContext({
@@ -258,6 +263,16 @@ export class AudioContextSource {
         });
         this._contextCreated$.next(context);
         try {
+            if (this.fallbackDestination)
+                await this.fallbackDestination.attach(context);
+            debugLog?.log(`create: loading modules`);
+            const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
+            const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
+            const vadWorkerPath = Versioning.mapPath('/dist/vadWorklet.js');
+            const whenModule1 = context.audioWorklet.addModule(feederWorkletPath);
+            const whenModule2 = context.audioWorklet.addModule(encoderWorkletPath);
+            const whenModule3 = context.audioWorklet.addModule(vadWorkerPath);
+
             if (isAlreadyInteractiveToResume) {
                 debugLog?.log(`create: isAlreadyInteractiveToResume == true`);
                 await this.resume(context, true);
@@ -267,13 +282,6 @@ export class AudioContextSource {
                 await this.interactiveResume(context);
             }
 
-            debugLog?.log(`create: loading modules`);
-            const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
-            const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
-            const vadWorkerPath = Versioning.mapPath('/dist/vadWorklet.js');
-            const whenModule1 = context.audioWorklet.addModule(feederWorkletPath);
-            const whenModule2 = context.audioWorklet.addModule(encoderWorkletPath);
-            const whenModule3 = context.audioWorklet.addModule(vadWorkerPath);
             await Promise.all([whenModule1, whenModule2, whenModule3]);
             return context;
         }
@@ -372,12 +380,13 @@ export class AudioContextSource {
         if (Interactive.isAlwaysInteractive) {
             debugLog?.log(`interactiveResume: Interactive.isAlwaysInteractive == true`);
             await this.resume(context, false);
+            await this.fallbackDestination?.play();
         }
         else {
             // Resume can be called during user interaction only
             const isWakeUp = this.isWakeUp();
-            if (isWakeUp && !this._isInteractiveWasReset) {
-                this._isInteractiveWasReset = true;
+            if (isWakeUp && !this.isInteractiveWasReset) {
+                this.isInteractiveWasReset = true;
                 Interactive.isInteractive = false;
                 debugLog?.log(`interactiveResume: Interactive.isInteractive was reset on wake up`);
             }
@@ -396,6 +405,7 @@ export class AudioContextSource {
                         warnLog?.log(reason, 'resume() failed with an error');
                         resumeTask.reject(reason);
                     });
+            this.fallbackDestination?.play();
         });
         try {
             const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => false);
@@ -413,9 +423,9 @@ export class AudioContextSource {
     private async resume(context: AudioContext, isInteractive: boolean): Promise<void> {
         debugLog?.log(`resume:`, Log.ref(context), isInteractive);
 
-        this._resumeCount++;
+        this.resumeCount++;
         if (isInteractive)
-            this._interactiveResumeCount++;
+            this.interactiveResumeCount++;
 
         if (this.isRunning(context)) {
             debugLog?.log(`resume: already resumed, AudioContext:`, Log.ref(context));
@@ -493,7 +503,8 @@ export class AudioContextSource {
             return;
         if (context.state === 'closed')
             return;
-
+        if (this.fallbackDestination)
+            this.fallbackDestination.detach();
         try {
             this._contextClosing$.next(context);
             await context.close();
@@ -513,10 +524,10 @@ export class AudioContextSource {
     }
 
     private throwIfTooManyResumes(): void {
-        if (this._resumeCount >= MaxResumeCount)
-            throw new Error(`maintain: resume attempt count is too high (${this._resumeCount}).`);
-        if (this._interactiveResumeCount >= MaxInteractiveResumeCount)
-            throw new Error(`maintain: interactive resume attempt count is too high (${this._interactiveResumeCount}).`);
+        if (this.resumeCount >= MaxResumeCount)
+            throw new Error(`maintain: resume attempt count is too high (${this.resumeCount}).`);
+        if (this.interactiveResumeCount >= MaxInteractiveResumeCount)
+            throw new Error(`maintain: interactive resume attempt count is too high (${this.interactiveResumeCount}).`);
     }
 
     private throwIfClosed(context: AudioContext): void {
@@ -525,23 +536,23 @@ export class AudioContextSource {
     }
 
     private isWakeUp(): boolean {
-        return (Date.now() - this._deviceWokeUpAt) <= WakeUpDetectionIntervalMs;
+        return (Date.now() - this.deviceWokeUpAt) <= WakeUpDetectionIntervalMs;
     }
 
     // Event handlers
 
     private onDeviceAwake() {
         debugLog?.log(`onDeviceAwake`);
-        this._deviceWokeUpAt = Date.now();
-        this._isInteractiveWasReset = false;
+        this.deviceWokeUpAt = Date.now();
+        this.isInteractiveWasReset = false;
         // Close current AudioContext as it might be corrupted and can produce clicking sound
         void this.closeSilently(this._context);
         this.markNotReady();
     }
 
     private incrementRefCount(operationName: string) {
-        const count = (this._refCounts.get(operationName) ?? 0) + 1;
-        this._refCounts.set(operationName, count);
+        const count = (this.refCounts.get(operationName) ?? 0) + 1;
+        this.refCounts.set(operationName, count);
         this._refCount++;
         if (this._refCount > 100)
             warnLog?.log(`getRef(${operationName}): high refCount:`, this._refCount);
@@ -549,12 +560,12 @@ export class AudioContextSource {
     }
 
     private decrementRefCount(operationName: string) {
-        const count = (this._refCounts.get(operationName) ?? 0) - 1;
+        const count = (this.refCounts.get(operationName) ?? 0) - 1;
         if (count == 0)
-            this._refCounts.delete(operationName);
+            this.refCounts.delete(operationName);
         if (count < 0)
             warnLog?.log(`getRef(${operationName}): negative refCount for ${operationName}:`, count);
-        this._refCounts.set(operationName, count);
+        this.refCounts.set(operationName, count);
         this._refCount--;
         if (this._refCount < 0)
             warnLog?.log(`getRef(${operationName}): negative refCount:`, this._refCount);

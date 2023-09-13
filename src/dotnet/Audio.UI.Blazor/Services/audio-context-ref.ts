@@ -9,13 +9,14 @@ import {
 import { nextTickAsync } from 'timeout';
 import { AudioContextSource } from './audio-context-source';
 import { Log } from 'logging';
+import {AudioContextDestinationFallback} from "./audio-context-destination-fallback";
 
 const { debugLog, errorLog } = Log.get('AudioContextRef');
 
 let nextId = 1;
 
 export interface AudioContextRefOptions {
-    attach?: (context: AudioContext) => Promise<void> | void,
+    attach?: (context: AudioContext, destination: AudioNode) => Promise<void> | void,
     detach?: (context: AudioContext) => Promise<void> | void,
     dispose?: () => Promise<void> | void,
     ready?: (context: AudioContext) => Promise<void> | void,
@@ -26,11 +27,9 @@ export interface AudioContextRefOptions {
 export class AudioContextRef implements AsyncDisposable {
     private readonly name: string;
     private readonly _whenFirstTimeReady = new PromiseSource<AudioContext>;
-    private readonly _whenRunning: Promise<void>;
-    private readonly _whenDisposeRequested = new PromiseSource<Cancelled>;
-    private _context: AudioContext;
-
-    public get context() { return this._context }
+    private readonly whenRunning: Promise<void>;
+    private readonly whenDisposeRequested = new PromiseSource<Cancelled>;
+    private context: AudioContext;
 
     constructor(
         public readonly source: AudioContextSource,
@@ -38,23 +37,23 @@ export class AudioContextRef implements AsyncDisposable {
         private readonly options: AudioContextRefOptions,
     ) {
         this.name = `#${nextId++}-${operationName}`
-        this._whenRunning = this.maintain();
+        this.whenRunning = this.maintain();
     }
 
     async disposeAsync() : Promise<void> {
         debugLog?.log(`${this.name}.disposeAsync`);
-        if (!this._whenDisposeRequested.isCompleted())
-            this._whenDisposeRequested.resolve(cancelled)
+        if (!this.whenDisposeRequested.isCompleted())
+            this.whenDisposeRequested.resolve(cancelled)
 
-        await this._whenRunning;
+        await this.whenRunning;
     }
 
     public whenFirstTimeReady() {
-        return waitAsync(this._whenFirstTimeReady, this._whenDisposeRequested);
+        return waitAsync(this._whenFirstTimeReady, this.whenDisposeRequested);
     }
 
     public async whenDisposed() {
-        await this._whenRunning;
+        await this.whenRunning;
     }
 
     private async maintain(): Promise<void> {
@@ -65,12 +64,12 @@ export class AudioContextRef implements AsyncDisposable {
 
         let lastContext: AudioContext = null;
         try {
-            while (!this._whenDisposeRequested.isCompleted()) {
+            while (!this.whenDisposeRequested.isCompleted()) {
                 debugLog?.log(`${this.name}: awaiting whenReady`);
-                this._context = await this.source.whenReady(this._whenDisposeRequested);
+                this.context = await this.source.whenReady(this.whenDisposeRequested);
                 if (lastContext === this.context) {
-                    debugLog?.log(`${this.name}: ready, context:`, Log.ref(this._context));
-                    await this.options.ready?.(this._context);
+                    debugLog?.log(`${this.name}: ready, context:`, Log.ref(this.context));
+                    await this.options.ready?.(this.context);
                 }
                 else {
                     if (lastContext) {
@@ -78,27 +77,27 @@ export class AudioContextRef implements AsyncDisposable {
                         await this.options.detach?.(lastContext);
                         lastContext = null;
                     }
-                    debugLog?.log(`${this.name}: attach, context:`, Log.ref(this._context));
-                    await this.options.attach?.(this._context);
-                    lastContext = this._context;
-                    this._whenFirstTimeReady.resolve(this._context);
+                    debugLog?.log(`${this.name}: attach, context:`, Log.ref(this.context));
+                    await this.options.attach?.(this.context, this.source.destination);
+                    lastContext = this.context;
+                    this._whenFirstTimeReady.resolve(this.context);
                 }
 
                 debugLog?.log(`${this.name}: awaiting whenNotReady`);
-                await this.source.whenNotReady(this._context, this._whenDisposeRequested);
-                debugLog?.log(`${this.name}: unready, context:`, Log.ref(this._context));
-                await this.options.unready?.(this._context);
+                await this.source.whenNotReady(this.context, this.whenDisposeRequested);
+                debugLog?.log(`${this.name}: unready, context:`, Log.ref(this.context));
+                await this.options.unready?.(this.context);
             }
         }
         catch (e) {
-            const mustReport = !((e instanceof OperationCancelledError) && this._whenDisposeRequested.isCompleted());
+            const mustReport = !((e instanceof OperationCancelledError) && this.whenDisposeRequested.isCompleted());
             if (mustReport)
                 errorLog?.log(`${this.name}.maintain: error:`, e);
         }
 
         debugLog?.log(`${this.name}.maintain: shutting down...`);
-        if (!this._whenDisposeRequested.isCompleted())
-            this._whenDisposeRequested.resolve(cancelled); // Just for the consistency
+        if (!this.whenDisposeRequested.isCompleted())
+            this.whenDisposeRequested.resolve(cancelled); // Just for the consistency
 
         try {
             if (lastContext) {

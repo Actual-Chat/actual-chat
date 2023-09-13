@@ -55,10 +55,6 @@ export class FeederAudioWorkletNode extends AudioWorkletNode {
         return this.worklet.resume();
     }
 
-    public end(mustAbort: boolean, noWait?: RpcNoWait): Promise<void> {
-        return this.worklet.end(mustAbort, noWait);
-    }
-
     private onProcessorError = (ev: Event) => {
         errorLog?.log(`#${this.id}.onProcessorError: unhandled error:`, Log.ref(ev));
     };

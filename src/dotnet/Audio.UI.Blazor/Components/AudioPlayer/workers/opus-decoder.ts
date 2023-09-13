@@ -51,6 +51,7 @@ export class OpusDecoder implements AsyncDisposable {
         if (this.processor.isRunning)
             await this.end(true);
         this.decoder = null;
+        this.mustAbort = true;
     }
 
     public decode(buffer: ArrayBuffer, offset: number, length: number,): void {
@@ -83,7 +84,7 @@ export class OpusDecoder implements AsyncDisposable {
     private async process(item: Uint8Array | 'end'): Promise<boolean> {
         try {
             if (item === 'end') {
-                debugLog?.log(`#${this.streamId}.process: got 'end'`);
+                debugLog?.log(`#${this.streamId}.process: got 'end'`, this.mustAbort);
                 void this.feederWorklet.end(this.mustAbort, rpcNoWait);
                 return true;
             }
