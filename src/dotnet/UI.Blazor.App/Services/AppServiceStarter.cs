@@ -75,6 +75,8 @@ public class AppServiceStarter
     {
         // Starts in Blazor dispatcher
         using var _1 = Tracer.Region();
+        // Force LoadingUI instantiation to trigger ShowLoadingOverlay
+        _ = LoadingUI;
         try {
             // Creating core services - this should be done as early as possible
             var browserInfo = Services.GetRequiredService<BrowserInfo>();
@@ -116,6 +118,7 @@ public class AppServiceStarter
 
             // Finishing with BrowserInit
             await browserInitTask.ConfigureAwait(false); // Must be completed before the next call
+            Tracer.Point("Browser init has completed");
 
             // Finishing with auto-navigation & History init
             var url = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);
