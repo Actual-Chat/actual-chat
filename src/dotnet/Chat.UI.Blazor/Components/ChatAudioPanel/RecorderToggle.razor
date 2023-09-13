@@ -23,7 +23,7 @@
         if (!_isTroubleshootGuideTriggered) {
             _isTroubleshootGuideTriggered = true;
             Clocks.CoarseSystemClock
-                .Delay(2500, _cancelTroubleshootGuide?.Token ?? CancellationToken.None)
+                .Delay(5000, _cancelTroubleshootGuide?.Token ?? CancellationToken.None)
                 .ContinueWith(_ => DisplayTroubleshootGuide(), TaskContinuationOptions.OnlyOnRanToCompletion);
         }
     }

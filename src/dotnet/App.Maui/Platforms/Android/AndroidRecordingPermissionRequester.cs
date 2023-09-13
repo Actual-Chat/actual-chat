@@ -5,6 +5,8 @@ namespace ActualChat.App.Maui;
 
 public class AndroidRecordingPermissionRequester : IRecordingPermissionRequester
 {
+    public bool CanRequest => true;
+
     public Task<bool> TryRequest()
     {
         var context = Platform.AppContext;

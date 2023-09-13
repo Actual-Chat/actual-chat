@@ -40,6 +40,10 @@
     var title = type == GuideType.Unknown
         ? "Troubleshoot recording issues"
         : "Microphone access guide";
+
+    var buttonTitle = RecordingPermissionRequester?.CanRequest ?? false
+        ? "Settings"
+        : "OK";
 }
 
 <DialogFrame
@@ -84,7 +88,7 @@
     </Body>
     <Buttons>
         <Button Class="btn-modal" Click="OnOkClick">
-            OK
+            @buttonTitle
         </Button>
     </Buttons>
 </DialogFrame>
@@ -103,7 +107,8 @@
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     private async Task OnOkClick() {
-        ModalModel.WasPermissionRequested = await RecordingPermissionRequester.TryRequest();
+        if (ModalModel.GuideType != GuideType.Unknown)
+            ModalModel.WasPermissionRequested = await RecordingPermissionRequester.TryRequest();
         Modal.Close();
     }
 
