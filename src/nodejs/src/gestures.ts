@@ -7,7 +7,7 @@ import { History } from '../../dotnet/UI.Blazor/Services/History/history';
 import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Timeout } from 'timeout';
-import { TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
+import { Tune, TuneName, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 import { Vector2D } from 'math';
 import { Log } from 'logging';
 
@@ -125,16 +125,17 @@ class DataHrefGesture extends Gesture {
             return;
 
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
-        const tuneName = element.dataset['hrefTune'];
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        const tune: Tune = Tune[element?.dataset['hrefTune'] as TuneName];
         FocusUI.blur();
-        if (tuneName)
-            TuneUI.play(tuneName);
+        if (tune)
+            TuneUI.play(tune);
         if (href.startsWith('http://') || href.startsWith('https://'))
             location.href = href; // External URL
         else {
             const replaceOnPrefix = element.dataset['replaceOnPrefix'];
             let mustReplace = false;
-            if (!!replaceOnPrefix) {
+            if (replaceOnPrefix) {
                 const url = new URL(location.href);
                 const path = url.pathname;
                 if (path.startsWith(replaceOnPrefix) && path.length > replaceOnPrefix.length)

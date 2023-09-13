@@ -1,8 +1,8 @@
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
 using Plugin.Firebase.CloudMessaging;
-using Serilog;
 
 namespace ActualChat.App.Maui;
 
@@ -16,6 +16,7 @@ public static partial class MauiProgram
         services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<PushNotifications>());
         services.AddScoped<IRecordingPermissionRequester>(_ => new IOSRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
+        services.AddScoped<TuneUI>(c => new IosTuneUI(c));
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)

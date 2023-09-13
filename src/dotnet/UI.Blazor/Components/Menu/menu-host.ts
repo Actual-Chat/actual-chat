@@ -1,8 +1,4 @@
-import {
-    merge,
-    Subject,
-    takeUntil,
-} from 'rxjs';
+import { merge, Subject, takeUntil } from 'rxjs';
 import {
     computePosition,
     flip,
@@ -21,8 +17,8 @@ import { nextTick } from 'timeout';
 import { Vector2D } from 'math';
 import Escapist from '../../Services/Escapist/escapist';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
-import { VibrationUI } from '../../Services/VibrationUI/vibration-ui';
 import { Log } from 'logging';
+import { Tune, TuneUI } from '../../Services/TuneUI/tune-ui';
 
 const {  logScope, debugLog } = Log.get('MenuHost');
 
@@ -171,7 +167,7 @@ export class MenuHost implements Disposable {
         this.menu = menu;
         this.blazorRef.invokeMethodAsync('OnShowRequest', menu.id, menu.menuRef, menu.isHoverMenu);
         if (ScreenSize.isNarrow())
-            VibrationUI.vibrate();
+            TuneUI.play(Tune.ShowMenu);
     }
 
     private hide(options?: {
