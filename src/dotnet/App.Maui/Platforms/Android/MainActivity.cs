@@ -75,6 +75,16 @@ public partial class MainActivity : MauiAppCompatActivity
         base.OnCreate(savedInstanceState);
         _tracer.Point("OnCreate, base.OnCreate completed");
 
+        if (this.Window != null) {
+            // Set System bars colors
+            // See https://developer.android.com/design/ui/mobile/guides/layout-and-content/layout-basics
+            // I do it from here because I can not modify theme 'Maui.MainTheme'
+            // which is applied after calling base.OnCreate.
+            var bg07 = Android.Graphics.Color.Rgb(68, 68, 68);
+            this.Window.SetStatusBarColor(bg07);
+            this.Window.SetNavigationBarColor(bg07);
+        }
+
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
         // seems it does not help
