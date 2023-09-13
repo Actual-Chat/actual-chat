@@ -1,20 +1,14 @@
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Audio;
 
-public class AudioHubBackend : Hub
+public class AudioHubBackend(IServiceProvider services) : Hub
 {
-    private AudioStreamServer AudioStreamServer { get; }
-    private TranscriptStreamServer TranscriptStreamServer { get; }
-
-    public AudioHubBackend(
-        AudioStreamServer audioStreamServer,
-        TranscriptStreamServer transcriptStreamServer)
-    {
-        AudioStreamServer = audioStreamServer;
-        TranscriptStreamServer = transcriptStreamServer;
-    }
+    private AudioStreamServer AudioStreamServer { get; } = services.GetRequiredService<AudioStreamServer>();
+    private TranscriptStreamServer TranscriptStreamServer { get; } = services.GetRequiredService<TranscriptStreamServer>();
+    private IHostApplicationLifetime HostApplicationLifetime { get; } = services.GetRequiredService<IHostApplicationLifetime>();
 
     public async IAsyncEnumerable<byte[]> GetAudioStream(
         string streamId,
@@ -39,6 +33,10 @@ public class AudioHubBackend : Hub
         string streamId,
         IAsyncEnumerable<byte[]> stream) // No CancellationToken argument here, otherwise SignalR binder fails!
     {
+        // Do not accept new audio streams in terminating state
+        if (HostApplicationLifetime.ApplicationStopping.IsCancellationRequested)
+            Context.Abort();
+
         var cancellationToken = Context.GetHttpContext()!.RequestAborted;
         await AudioStreamServer.Write(streamId, stream, cancellationToken).ConfigureAwait(false);
     }
@@ -47,6 +45,10 @@ public class AudioHubBackend : Hub
         string streamId,
         IAsyncEnumerable<TranscriptDiff> stream) // No CancellationToken argument here, otherwise SignalR binder fails!
     {
+        // Do not accept new transcript streams in terminating state
+        if (HostApplicationLifetime.ApplicationStopping.IsCancellationRequested)
+            Context.Abort();
+
         var cancellationToken = Context.GetHttpContext()!.RequestAborted;
         await TranscriptStreamServer.Write(streamId, stream, cancellationToken).ConfigureAwait(false);
     }

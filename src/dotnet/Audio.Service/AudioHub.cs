@@ -2,11 +2,13 @@ using ActualChat.Security;
 using ActualChat.Transcription;
 using ActualChat.Web;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Audio;
 
 public class AudioHub(IServiceProvider services) : Hub
 {
+    private IHostApplicationLifetime HostApplicationLifetime { get; } = services.GetRequiredService<IHostApplicationLifetime>();
     private IAudioProcessor AudioProcessor { get; } = services.GetRequiredService<IAudioProcessor>();
     private IAudioStreamServer AudioStreamServer { get; } = services.GetRequiredService<IAudioStreamServer>();
     private ITranscriptStreamServer TranscriptStreamServer { get; } = services.GetRequiredService<ITranscriptStreamServer>();
@@ -64,6 +66,10 @@ public class AudioHub(IServiceProvider services) : Hub
         IAsyncEnumerable<byte[]> audioStream)
     {
         // AY: No CancellationToken argument here, otherwise SignalR binder fails!
+
+        // Do not accept new audio streams in terminating state
+        if (HostApplicationLifetime.ApplicationStopping.IsCancellationRequested)
+            Context.Abort();
 
         var httpContext = Context.GetHttpContext()!;
         var session = GetSessionFromToken(sessionToken) ?? httpContext.GetSessionFromCookie();
