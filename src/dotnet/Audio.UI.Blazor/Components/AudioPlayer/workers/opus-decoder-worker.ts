@@ -48,11 +48,21 @@ const serverImpl: OpusDecoderWorker = {
 
     init: async (streamId: string, feederWorkletPort: MessagePort): Promise<void> => {
         debugLog?.log(`-> #${streamId}.create`);
-        await serverImpl.close(streamId);
         const decoder = new codecModule.Decoder();
         const opusDecoder = await OpusDecoder.create(streamId, decoder, feederWorkletPort);
+        opusDecoder.init();
         decoders.set(streamId, opusDecoder);
         debugLog?.log(`<- #${streamId}.create`);
+    },
+
+    resume: async  (streamId: string, _noWait?: RpcNoWait): Promise<void> => {
+        const opusDecoder = getDecoder(streamId, false);
+        if (!opusDecoder) {
+            errorLog?.log(`#${streamId}.resume() has failed - decoder does not exist`)
+            return;
+        }
+
+        opusDecoder.init();
     },
 
     close: async (streamId: string, _noWait?: RpcNoWait): Promise<void> => {
@@ -63,7 +73,6 @@ const serverImpl: OpusDecoderWorker = {
 
         const decoder = opusDecoder.decoder;
         try {
-            decoder.reset();
             await opusDecoder.end(true);
         }
         catch (e) {

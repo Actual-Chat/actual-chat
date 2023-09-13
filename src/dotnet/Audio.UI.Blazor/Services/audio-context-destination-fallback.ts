@@ -1,5 +1,4 @@
 import { Log } from 'logging';
-import { FeederAudioWorkletNode } from './worklets/feeder-audio-worklet-node';
 import { DeviceInfo } from 'device-info';
 import { PromiseSource } from 'promises';
 import { createWebRtcAecStream, isWebRtcAecRequired } from './web-rtc-aec';
@@ -7,18 +6,20 @@ import { Disposable } from 'disposable';
 
 const { debugLog, errorLog } = Log.get('FallbackPlayback');
 
-export class FallbackPlayback {
+export class AudioContextDestinationFallback {
     private readonly audio: HTMLAudioElement;
-    private destinationNode: MediaStreamAudioDestinationNode = null;
+    private destinationNode?: MediaStreamAudioDestinationNode = null;
     private aecStream: MediaStream & Disposable = null;
     private whenReady: PromiseSource<void> = new PromiseSource<void>();
 
+    public static get isRequired() { return isWebRtcAecRequired || DeviceInfo.isIos && DeviceInfo.isWebKit; }
+
+    public get destination() { return this.destinationNode; }
+
     private get audioStream() { return this.aecStream ?? this.destinationNode.stream; }
 
-    public get isRequired() { return isWebRtcAecRequired || DeviceInfo.isIos && DeviceInfo.isWebKit; }
-
     constructor() {
-        if (!this.isRequired)
+        if (!AudioContextDestinationFallback.isRequired)
             return;
 
         this.audio = new Audio();
@@ -40,7 +41,7 @@ export class FallbackPlayback {
     }
 
     public async attach(context: AudioContext): Promise<void> {
-        if (!this.isRequired)
+        if (!AudioContextDestinationFallback.isRequired)
             return;
 
         debugLog?.log('-> attach(): ', Log.ref(context));
@@ -63,7 +64,7 @@ export class FallbackPlayback {
     }
 
     public detach() {
-        if (!this.isRequired)
+        if (!AudioContextDestinationFallback.isRequired)
             return;
 
         debugLog?.log('-> detach()');
@@ -71,10 +72,12 @@ export class FallbackPlayback {
             debugLog?.log('detach(): removing audio.srcObject');
             this.audio.pause();
             this.audio.srcObject = null;
-            this.destinationNode.stream.getAudioTracks().forEach(x => x.stop());
-            this.destinationNode.stream.getVideoTracks().forEach(x => x.stop());
-            this.destinationNode.disconnect();
-            this.destinationNode = null;
+            if (this.destinationNode) {
+                this.destinationNode.stream.getAudioTracks().forEach(x => x.stop());
+                this.destinationNode.stream.getVideoTracks().forEach(x => x.stop());
+                this.destinationNode.disconnect();
+                this.destinationNode = null;
+            }
             if (this.aecStream) {
                 this.aecStream.dispose();
                 this.aecStream = null;
@@ -85,14 +88,15 @@ export class FallbackPlayback {
         debugLog?.log('<- detach()');
     }
 
-    public async play(feederNode: FeederAudioWorkletNode): Promise<void> {
+    public async play(): Promise<void> {
+        debugLog?.log('-> play()');
         try {
-            feederNode.connect(this.destinationNode);
             this.audio.muted = false;
             await this.audio.play();
         } catch (e) {
             errorLog?.log('play(): failed to resume:', e);
         }
+        debugLog?.log('<- play()');
     }
 
     private async warmup(): Promise<void> {
@@ -107,5 +111,3 @@ export class FallbackPlayback {
         debugLog?.log('<- warmup()');
     }
 }
-
-export const fallbackPlayback = new FallbackPlayback();

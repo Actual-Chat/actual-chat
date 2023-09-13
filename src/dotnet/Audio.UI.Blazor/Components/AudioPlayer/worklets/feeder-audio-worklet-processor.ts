@@ -66,13 +66,13 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
     }
 
     public frame(buffer: ArrayBuffer, offset: number, length: number, noWait?: RpcNoWait): Promise<void> {
-        debugLog?.log(`#${this.id} -> frame()`);
+        // debugLog?.log(`#${this.id} -> frame()`);
         if (this.playbackState === 'ended' || this.isEnding)
             return;
 
         this.chunks.push(new Float32Array(buffer, offset, length));
         this.tryBeginPlaying();
-        debugLog?.log(`#${this.id} <- frame()`);
+        // debugLog?.log(`#${this.id} <- frame()`);
         return ResolvedPromise.Void;
     }
 

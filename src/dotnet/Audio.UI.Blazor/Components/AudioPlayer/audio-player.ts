@@ -8,7 +8,6 @@ import { catchErrors, PromiseSource, retry } from 'promises';
 import { rpcClient, rpcNoWait } from 'rpc';
 import { Versioning } from 'versioning';
 import { Log } from 'logging';
-import { fallbackPlayback } from './fallback-playback';
 import { ObjectPool } from "object-pool";
 import { Resettable } from "resettable";
 
@@ -66,7 +65,7 @@ export class AudioPlayer implements Resettable {
         this.internalId = String(AudioPlayer.nextInternalId++);
         debugLog?.log(`#${this.internalId}.constructor`);
 
-        const attach = async (context: AudioContext) => {
+        const attach = async (context: AudioContext, destination: AudioNode) => {
             debugLog?.log(`#${this.internalId}.contextRef.attach: context:`, Log.ref(context));
 
             await AudioPlayer.whenInitialized;
@@ -93,20 +92,15 @@ export class AudioPlayer implements Resettable {
             // Create decoder worker
             await decoderWorker.init(this.internalId, this.decoderToFeederWorkletChannel.port1);
 
-            if (fallbackPlayback.isRequired) {
-                await fallbackPlayback.attach(context);
-                await fallbackPlayback.play(feederNode);
-            }
-            else {
-                this.gainNodeL = context.createGain();
-                this.gainNodeR = context.createGain();
-                this.channelMerger = context.createChannelMerger(2);
-                this.gainNodeL.connect(this.channelMerger, 0, 0);
-                this.gainNodeR.connect(this.channelMerger, 0, 1);
-                this.channelMerger.connect(context.destination);
-                feederNode.connect(this.gainNodeL);
-                feederNode.connect(this.gainNodeR);
-            }
+
+            this.gainNodeL = context.createGain();
+            this.gainNodeR = context.createGain();
+            this.channelMerger = context.createChannelMerger(2);
+            this.gainNodeL.connect(this.channelMerger, 0, 0);
+            this.gainNodeR.connect(this.channelMerger, 0, 1);
+            this.channelMerger.connect(destination);
+            feederNode.connect(this.gainNodeL);
+            feederNode.connect(this.gainNodeR);
 
             this.isAttached = true;
         };
@@ -133,7 +127,6 @@ export class AudioPlayer implements Resettable {
 
             const feederNode = this.feederNode;
             if (feederNode) {
-                fallbackPlayback.detach();
                 this.gainNodeL?.disconnect();
                 this.gainNodeR?.disconnect();
                 this.channelMerger?.disconnect();
@@ -151,7 +144,7 @@ export class AudioPlayer implements Resettable {
 
         if (this.contextRef == null) {
             const options: AudioContextRefOptions = {
-                attach: context => retry(3, () => attach(context)),
+                attach: (context, destination) => retry(3, () => attach(context, destination)),
                 detach: detach,
                 dispose: () => this.end(true),
             }
@@ -166,6 +159,7 @@ export class AudioPlayer implements Resettable {
         debugLog?.log(`#${this.internalId} -> startPlayback()`);
         this.blazorRef = blazorRef;
         if (this.playbackState === 'ended') {
+            await decoderWorker.resume(this.internalId, rpcNoWait);
             await this.feederNode.resume();
         }
         this.playbackState = 'paused';
