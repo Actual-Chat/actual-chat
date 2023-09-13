@@ -5,6 +5,7 @@ using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using Stl.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -149,6 +150,7 @@ public class AppServiceStarter
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
             if (HostInfo.AppKind.IsClient())
                 Services.GetRequiredService<SessionTokens>().Start();
+            (Services.GetRequiredService<TuneUI>() as INotifyInitialized).Initialized();
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client

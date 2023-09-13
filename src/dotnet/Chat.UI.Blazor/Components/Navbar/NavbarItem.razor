@@ -15,7 +15,7 @@
             @ChildContent
         </div>
     } else {
-        <div class="navbar-item-content" data-href="@Url" data-replace-on-prefix="@ReplaceOnPrefix" data-href-tune="select-navbar-item">
+        <div class="navbar-item-content" data-href="@Url" data-replace-on-prefix="@ReplaceOnPrefix" data-href-tune="@Tune.SelectNavbarItem.ToString()">
             @ChildContent
         </div>
     }

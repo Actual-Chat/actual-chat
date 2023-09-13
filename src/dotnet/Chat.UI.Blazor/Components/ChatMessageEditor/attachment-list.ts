@@ -1,9 +1,9 @@
-import { TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
+import { Tune, TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 import { OperationCancelledError, PromiseSource } from 'promises';
 import { Log } from 'logging';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
-import {BrowserInit} from "../../../UI.Blazor/Services/BrowserInit/browser-init";
-import {SessionTokens} from "../../../UI.Blazor/Services/Security/session-tokens";
+import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
+import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
 
 const { debugLog, errorLog } = Log.get('Attachments');
 
@@ -91,7 +91,7 @@ export class AttachmentList {
             this.attachmentsIdSeed++;
             this.attachments.set(attachment.id, attachment);
             if (!silent)
-                TuneUI.play('change-attachments');
+                TuneUI.play(Tune.ChangeAttachments);
             const upload = new FileUpload(chatId, blob, fileName, pct => this.invokeUploadProgress(attachment.id, pct))
             upload.whenCompleted.then(x => {
                 attachment.mediaId = x.mediaId;
@@ -114,7 +114,7 @@ export class AttachmentList {
 
     /** Called by Blazor */
     public remove(id: number) {
-        TuneUI.play('change-attachments');
+        TuneUI.play(Tune.ChangeAttachments);
         const upload = this.uploads.get(id);
         if (upload) {
             upload.cancel();
@@ -131,14 +131,14 @@ export class AttachmentList {
 
     /** Called by Blazor */
     public showFilePicker = () => {
-        TuneUI.play('change-attachments');
+        TuneUI.play(Tune.ChangeAttachments);
         this.filePickerElement.click();
     };
 
     /** Called by Blazor */
     public clear() {
         if (this.attachments.size != 0)
-            TuneUI.play('change-attachments');
+            TuneUI.play(Tune.ChangeAttachments);
         for (const attachment of this.attachments.values()) {
             if (attachment?.tempUrl)
                 URL.revokeObjectURL(attachment.tempUrl);
