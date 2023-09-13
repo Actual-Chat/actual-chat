@@ -4,27 +4,33 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services;
 
-public class MauiWebViewLivenessProbe
+public class MauiWebViewLivenessProbe(IServiceProvider services)
 {
     private readonly CancellationTokenSource _cancellationTokenSource = new ();
 
     private CancellationToken CancellationToken => _cancellationTokenSource.Token;
-    private IServiceProvider Services { get; }
-
-    public MauiWebViewLivenessProbe(IServiceProvider services)
-        => Services = services;
+    private IServiceProvider Services { get; } = services;
+    private ILogger Log { get; } = services.LogFor<MauiWebViewLivenessProbe>();
 
     public async Task StartCheck()
     {
-        for (int i = 0; i < 4; i++) {
-            if (i > 0)
-                await Task.Delay(300, CancellationToken).ConfigureAwait(false);
-            var isAlive = await IsAlive(CancellationToken).ConfigureAwait(false);
-            if (isAlive)
-                return;
+        Log.LogDebug("Starting check");
+        try {
+            for (int i = 0; i < 4; i++) {
+                if (i > 0)
+                    await Task.Delay(300, CancellationToken).ConfigureAwait(false);
+                var isAlive = await IsAlive(CancellationToken).ConfigureAwait(false);
+                if (isAlive) {
+                    Log.LogDebug("Check passed");
+                    return;
+                }
+            }
         }
-        if (CancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) { }
+        if (CancellationToken.IsCancellationRequested) {
+            Log.LogDebug("Check cancelled");
             return;
+        }
         OnDead();
     }
 
@@ -52,18 +58,15 @@ public class MauiWebViewLivenessProbe
                 e is OperationCanceledException ||
                 e is TimeoutException ||
                 e is JSDisconnectedException;
-            if (!silent) {
-                Services.LogFor<MauiWebViewLivenessProbe>()
-                    .LogWarning(e, "An exception occurred during maui web view aliveness check");
-            }
+            if (!silent)
+                Log.LogWarning(e, "An exception occurred during aliveness check");
         }
         return false;
     }
 
     private void OnDead()
     {
-        Services!.LogFor<MauiWebViewLivenessProbe>()
-            .LogError("WebView is not alive. Will try to reload");
-        Services!.GetRequiredService<ReloadUI>().Reload();
+        Log.LogError("WebView is not alive. Will try to reload");
+        Services.GetRequiredService<ReloadUI>().Reload();
     }
 }
