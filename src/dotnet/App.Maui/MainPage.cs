@@ -7,6 +7,7 @@ namespace ActualChat.App.Maui;
 public partial class MainPage : ContentPage
 {
     private MauiNavigationInterceptor? _navigationInterceptor;
+    private ILogger _logger;
 
     // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
     public static MainPage? Current => (MainPage?)App.Current?.MainPage;
@@ -14,6 +15,8 @@ public partial class MainPage : ContentPage
     private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
     private MauiNavigationInterceptor NavigationInterceptor =>
         _navigationInterceptor ??= Services.GetRequiredService<MauiNavigationInterceptor>();
+    private ILogger Log =>
+        _logger ??= Services.LogFor(GetType());
 
     public IServiceProvider Services { get; } // This is root IServiceProvider!
 
@@ -27,6 +30,8 @@ public partial class MainPage : ContentPage
 
     public void RecreateWebView()
     {
+        if (Content is BlazorWebView oldWebView)
+            oldWebView.SetIsDisconnected(true);
         var webView = new BlazorWebView {
             HostPage = "wwwroot/index.html",
         };
@@ -36,8 +41,11 @@ public partial class MainPage : ContentPage
         webView.Loaded += OnWebViewLoaded;
         webView.RootComponents.Add(
             new RootComponent {
-                ComponentType = typeof(MauiBlazorApp),
+                ComponentType = typeof(MauiBlazorAppWrapper),
                 Selector = "#app",
+                Parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
+                    { nameof(MauiBlazorAppWrapper.BlazorWebView), webView }
+                }
             });
         Content = webView;
     }
