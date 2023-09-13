@@ -320,7 +320,7 @@ internal static class Program
             }
         });
 
-        Target(Targets.PublishWin, DependsOn(Targets.CleanDist, Targets.NpmInstall), async () => {
+        Target(Targets.PublishWin, DependsOn(Targets.CleanDist, Targets.RestoreTools, Targets.NpmInstall), async () => {
             await Npm()
                 .WithArguments($"run build:{configuration}")
                 .ToConsole(Blue("webpack: "))
