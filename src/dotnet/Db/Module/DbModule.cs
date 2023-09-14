@@ -74,7 +74,7 @@ public sealed class DbModule : HostModule<DbSettings>
                 builder.UseNpgsql(dbInfo.ConnectionString, npgsql => {
                     npgsql.CommandTimeout(CommandTimeout);
                     npgsql.EnableRetryOnFailure(0);
-                    npgsql.MaxBatchSize(1);
+                    npgsql.MaxBatchSize(16); // NOTE(AY): Was 1 - not sure why, prob. related to old concurrency issues
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
                 });
                 builder.UseNpgsqlHintFormatter();
