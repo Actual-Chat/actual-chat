@@ -1,11 +1,8 @@
 namespace ActualChat.Blobs;
 
-internal class ContentSaver : IContentSaver
+internal class ContentSaver(IBlobStorageProvider blobStorageProvider) : IContentSaver
 {
-    private readonly IBlobStorage _blobStorage;
-
-    public ContentSaver(IBlobStorageProvider blobStorageProvider)
-        => _blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
+    private readonly IBlobStorage _blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
 
     public Task Save(Content content, CancellationToken cancellationToken)
         => _blobStorage.Write(content.ContentId, content.Stream, content.ContentType, cancellationToken);

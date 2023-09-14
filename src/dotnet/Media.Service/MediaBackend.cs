@@ -3,16 +3,12 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
 
-internal class MediaBackend : DbServiceBase<MediaDbContext>, IMediaBackend
+internal class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbContext>(services), IMediaBackend
 {
     private IDbEntityResolver<string, DbMedia> DbMediaResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbMedia>>();
     private IContentSaver ContentSaver { get; }
-
-    public MediaBackend(IServiceProvider services) : base(services)
-    {
-        DbMediaResolver = services.GetRequiredService<IDbEntityResolver<string, DbMedia>>();
-        ContentSaver = services.GetRequiredService<IContentSaver>();
-    }
+        = services.GetRequiredService<IContentSaver>();
 
     // [ComputeMethod]
     public virtual async Task<Media?> Get(MediaId mediaId, CancellationToken cancellationToken)
