@@ -138,6 +138,17 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
         return copy;
     }
 
+    public ApiArray<T> UpdateWhere(Func<T, bool> where, Func<T, T> updater)
+    {
+        ApiArray<T>? copy = null;
+        for (var i = 0; i < Items.Length; i++)
+            if (where(Items[i])) {
+                copy ??= Clone();
+                copy.Value.Items[i] = updater(copy.Value.Items[i]);
+            }
+        return copy ?? this;
+    }
+
     public ApiArray<T> RemoveAll(T item)
     {
         var items = _items;
