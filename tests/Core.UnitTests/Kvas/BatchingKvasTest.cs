@@ -14,9 +14,8 @@ public class BatchingKvasTest : TestBase
         services.AddFusion();
         services.AddSingleton(_ => new TestBatchingKvasBackend() { Out = Out });
         services.AddSingleton(_ => new BatchingKvas.Options() {
-            ReadBatchConcurrencyLevel = 1,
-            ReadBatchDelayTaskFactory = null,
-            ReadBatchMaxSize = 10,
+            ReaderBatchSize = 10,
+            ReaderWorkerPolicy = new BatchProcessorWorkerPolicy() { MaxWorkerCount = 1 },
             FlushDelay = TimeSpan.FromMilliseconds(10),
         });
         services.AddSingleton(c => new BatchingKvas(c.GetRequiredService<BatchingKvas.Options>(), c) {

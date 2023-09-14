@@ -7,13 +7,13 @@ public class BatchingKvas : IKvas, IAsyncDisposable
 {
     public record Options
     {
-        public Func<IThreadSafeLruCache<Symbol, byte[]?>> ReadCacheFactory { get; init; } =
-            () => new ThreadSafeLruCache<Symbol, byte[]?>(256);
-        public Func<CancellationToken, Task>? ReadBatchDelayTaskFactory { get; init; } = null;
-        public int ReadBatchConcurrencyLevel { get; init; } = 4;
-        public int ReadBatchMaxSize { get; init; } = 64;
+        public int ReaderBatchSize { get; init; } = 64;
+        public IBatchProcessorWorkerPolicy ReaderWorkerPolicy { get; init; }
+            = new BatchProcessorWorkerPolicy() { MaxWorkerCount = 4 };
+        public Func<IThreadSafeLruCache<Symbol, byte[]?>> ReaderCacheFactory { get; init; }
+            = () => new ThreadSafeLruCache<Symbol, byte[]?>(256);
+        public int FlushBatchSize { get; init; } = 64;
         public TimeSpan FlushDelay { get; init; } = TimeSpan.FromSeconds(0.25);
-        public int FlushMaxItemCount { get; init; } = 64;
         public TimeSpan DisposeTimeout { get; init; } = TimeSpan.FromSeconds(3);
         public RetryDelaySeq FlushRetryDelays { get; init; } = new();
     }
@@ -33,19 +33,18 @@ public class BatchingKvas : IKvas, IAsyncDisposable
     {
         Settings = settings;
         Services = services;
-        ReadCache = settings.ReadCacheFactory.Invoke();
+        ReadCache = settings.ReaderCacheFactory.Invoke();
         Reader = new BatchProcessor<string, byte[]?>() {
-            ConcurrencyLevel = settings.ReadBatchConcurrencyLevel,
-            MaxBatchSize = settings.ReadBatchMaxSize,
-            BatchingDelayTaskFactory = settings.ReadBatchDelayTaskFactory,
-            Implementation = BatchRead,
+            BatchSize = settings.ReaderBatchSize,
+            WorkerPolicy = settings.ReaderWorkerPolicy,
+            Implementation = ReadBatch,
         };
         Writer = new LazyWriter<(string Key, byte[]? Value)>() {
             FlushDelay = settings.FlushDelay,
-            FlushMaxItemCount = settings.FlushMaxItemCount,
+            FlushMaxItemCount = settings.FlushBatchSize,
             FlushRetryDelays = settings.FlushRetryDelays,
             DisposeTimeout = settings.DisposeTimeout,
-            Implementation = BatchWrite,
+            Implementation = WriteBatch,
             FlushErrorSeverityProvider = e =>
                 e is JSDisconnectedException or ObjectDisposedException or OperationCanceledException
                     ? LogLevel.None
@@ -92,7 +91,7 @@ public class BatchingKvas : IKvas, IAsyncDisposable
 
     // Private methods
 
-    private async Task BatchRead(List<BatchItem<string, byte[]?>> batch, CancellationToken cancellationToken)
+    private async Task ReadBatch(List<BatchProcessor<string, byte[]?>.Item> batch, CancellationToken cancellationToken)
     {
         var results = await Backend
             .GetMany(batch.Select(i => i.Input).ToArray(), cancellationToken)
@@ -103,6 +102,6 @@ public class BatchingKvas : IKvas, IAsyncDisposable
         }
     }
 
-    private Task BatchWrite(List<(string Key, byte[]? Value)> batch)
+    private Task WriteBatch(List<(string Key, byte[]? Value)> batch)
         => Backend.SetMany(batch, CancellationToken.None);
 }

@@ -79,7 +79,7 @@ namespace ActualChat.UI.Blazor.App
                     if (peer.Ref == RpcPeerRef.Default)
                         sb.Append(urlMapper.WebsocketBaseUrl);
                     else {
-                        var addressAndPort = peer.Ref.Id.Value;
+                        var addressAndPort = peer.Ref.Key.Value;
                         sb.Append(addressAndPort.OrdinalEndsWith(":443") ? "wss://" : "ws://");
                         sb.Append(addressAndPort);
                     }

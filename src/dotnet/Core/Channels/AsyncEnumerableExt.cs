@@ -23,7 +23,7 @@ public static class AsyncEnumerableExt
             AllowSynchronousContinuations = true,
             FullMode = BoundedChannelFullMode.DropOldest,
         });
-        _ = source.CopyTo(c, ChannelCompletionMode.Full, cancellationToken);
+        _ = source.CopyTo(c, ChannelCopyMode.CopyAllSilently, cancellationToken);
         await foreach (var item in c.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
             yield return item;
             if (minInterval > TimeSpan.Zero)
