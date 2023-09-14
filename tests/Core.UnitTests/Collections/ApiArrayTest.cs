@@ -74,4 +74,16 @@ public class ApiArrayTest : TestBase
         a.Should().HaveCount(6);
         a[3].Should().Be(5);
     }
+
+    [Fact]
+    public void UpdateAllTest()
+    {
+        var a = Enumerable.Range(0, 5).ToApiArray();
+        a.Should().HaveCount(5);
+
+        a.UpdateWhere(i => i == 5, i => i + 100).Should().BeEquivalentTo(new[] { 0, 1, 2, 3, 4 }, o => o.WithStrictOrdering());
+        a.UpdateWhere(i => i == 4, i => i + 100).Should().BeEquivalentTo(new[] { 0, 1, 2, 3, 104 }, o => o.WithStrictOrdering());
+        a.UpdateWhere(i => i != 5, i => i + 100).Should().BeEquivalentTo(new[] { 100, 101, 102, 103, 104 }, o => o.WithStrictOrdering());
+        a.Should().BeEquivalentTo(new[] { 0, 1, 2, 3, 4 }, o => o.WithStrictOrdering());
+    }
 }

@@ -141,7 +141,8 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
                     });
                 if (!chatId.IsNone) {
                     var newChat = new ActiveChat(chatId, true, true, Now);
-                    activeChats = activeChats.AddOrReplace(newChat);
+                    activeChats = activeChats.AddOrReplace(newChat)
+                        .UpdateWhere(x => x.IsListening && x.ChatId != chatId, x => x with { IsListening = false });
                     _ = TuneUI.Play(Tune.BeginRecording);
                 }
                 else
