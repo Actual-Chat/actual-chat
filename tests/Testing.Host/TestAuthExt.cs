@@ -33,16 +33,8 @@ public static class TestAuthExt
 
         // Wait till the authentication happens
         var cAccount = await Computed.Capture(() => accounts.GetOwn(session, cancellationToken)).ConfigureAwait(false);
-        cAccount = await cAccount
-            .Changes(FixedDelayer.ZeroUnsafe, cancellationToken)
-            .FirstAsync(c => !(c.ValueOrDefault?.IsGuestOrNone ?? true), cancellationToken).AsTask()
-            .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
-            .ConfigureAwait(false);
-        var account = cAccount.Value;
-
-        // Just in case
-        await Task.Delay(TimeSpan.FromSeconds(0.1), cancellationToken).ConfigureAwait(false);
-        return account;
+        cAccount = await cAccount.When(x => !x.IsGuestOrNone, FixedDelayer.ZeroUnsafe, cancellationToken).ConfigureAwait(false);
+        return cAccount.Value;
     }
 
     public static Task SignOut(
