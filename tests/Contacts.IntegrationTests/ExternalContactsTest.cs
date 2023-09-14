@@ -314,7 +314,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         // assert
         using var _3 = tracer.Region($"Assert {count} accounts");
         foreach (var account in accounts) {
-            using var _4 = tracer.Region($"Assert contacts of '{account.FullName}'");
+            using var _4 = tracer.Region($"Assert contacts of {account.User.Name} #({account.User.Id})");
             await _tester.SignIn(account.User);
             var contacts = await ListContacts();
             var expectedContactIds =
@@ -343,17 +343,22 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
             await Add(externalContacts);
         }
 
-        // assert
         foreach (var u in accounts.Select(x => x.User)) {
+            // act
             var account = await _tester.SignIn(u);
-            account.IsGreetingCompleted.Should().BeTrue("every user account mast complete greeting on first sign in");
+
+            // assert
+            account.IsGreetingCompleted.Should().BeTrue("greeting for user {0} (#{1}) must be completed on first sign in");
             var contacts = await ListContacts(count - 1);
-            contacts.Should().HaveCount(count - 1, "all are connected between each other and only self reference is excluded");
+            var contactIds = contacts.Select(x => x.Id).ToHashSet();
             var expectedContactIds =
                 accounts.Where(x => x.Id != account.Id)
                     .Select(x => BuildContactId(account, x))
-                    .ToList();
-            contacts.Select(x => x.Id).Should().BeEquivalentTo(expectedContactIds);
+                    .ToHashSet();
+            var unexpected = contactIds.Where(x => !expectedContactIds.Contains(x));
+            var missing = expectedContactIds.Where(x => !contactIds.Contains(x));
+            unexpected.Should().BeEmpty("no extra contacts for {0} (#{1}) must be created", u.Name, u.Id);
+            missing.Should().BeEmpty("all contacts for {0} (#{1}) must be created", u.Name, u.Id);
         }
     }
 
@@ -375,7 +380,11 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         var cContactIds = await Computed.Capture(() => _contacts.ListIds(_tester.Session, cts.Token));
-        cContactIds = await cContactIds.When(x => x.Count >= expectedCount, cts.Token).ConfigureAwait(false);
+        try {
+            cContactIds = await cContactIds.When(x => expectedCount is null || x.Count >= expectedCount, cts.Token);
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
+
         var contacts = await cContactIds.Value.Where(x => x.ChatId.Kind == ChatKind.Peer)
             .Select(id => _contacts.Get(_tester.Session, id, CancellationToken.None))
             .Collect();
