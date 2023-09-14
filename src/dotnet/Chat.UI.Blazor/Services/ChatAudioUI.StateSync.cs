@@ -318,6 +318,9 @@ public partial class ChatAudioUI
 
     private async Task UpdateNextBeepAt(CancellationToken cancellationToken)
     {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         var cBeepState = await Computed.Capture(() => GetRecordingBeepState(cancellationToken)).ConfigureAwait(false);
         var prevActiveUntil = Moment.MinValue;
         await foreach (var change in cBeepState.Changes(cancellationToken).ConfigureAwait(false)) {
@@ -337,6 +340,9 @@ public partial class ChatAudioUI
 
     private async Task PlayBeep(CancellationToken cancellationToken)
     {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
         while (!cancellationToken.IsCancellationRequested) {
             var cNextBeep = await _nextBeep.When(x => x != null && x.At > Now, cancellationToken).ConfigureAwait(false);
             var nextBeepAt = cNextBeep.Value!.At;
