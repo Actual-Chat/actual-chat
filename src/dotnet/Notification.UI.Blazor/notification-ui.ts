@@ -62,15 +62,12 @@ export class NotificationUI {
                     debugLog?.log(`onMessage, payload:`, payload);
                 });
 
-                const origin = new URL('notification-ui.ts', import.meta.url).origin;
-                const workerPath = new URL('/sw.js', origin).toString();
-                const workerUrl = `${workerPath}?config=${configBase64}`;
-
-                const workerRegistration = await navigator.serviceWorker.register(workerUrl, { scope: '/', updateViaCache: 'all' });
-                workerRegistration.addEventListener('updatefound', ev => {
-                    warnLog?.log(`updateFound: updated service worker detected`);
+                await navigator.serviceWorker.controller.postMessage({
+                    type: 'ENABLE_NOTIFICATIONS',
+                    payload: configBase64,
                 });
 
+                const workerRegistration = await navigator.serviceWorker.getRegistration('sw.js');
                 const tokenOptions: GetTokenOptions = {
                     vapidKey: publicKey,
                     serviceWorkerRegistration: workerRegistration,
