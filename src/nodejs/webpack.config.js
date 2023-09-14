@@ -121,9 +121,6 @@ module.exports = (env, args) => {
         // another type of inlined source maps
         //devtool: isDevelopment ? 'eval' : false,
         plugins: [
-            new webpack.DefinePlugin({
-                'process.env.NODE_ENV': JSON.stringify(isDevelopment ? 'development' : 'production')
-            }),
             new CopyPlugin({
                 patterns: [
                     { from: _('../../firebase.config.json'), to: 'config/firebase.config.js', noErrorOnMissing: true },
@@ -135,22 +132,22 @@ module.exports = (env, args) => {
             new FileManagerPlugin({
                 events: {
                     onEnd: [
-                        {
-                            delete: [
-                                {
-                                    source: mauiOutputPath,
-                                    options: {
-                                        force: true,
-                                    },
-                                }
-                            ],
-                        },
-                        {
-                            copy: [
-                                { source: outputPath, destination: mauiOutputPath },
-                            ],
-                        },
-                    ]
+						{
+							delete: [
+								{
+									source: mauiOutputPath,
+									options: {
+										force: true,
+									},
+								}
+							],
+						},
+						{
+							copy: [
+								{ source: outputPath, destination: mauiOutputPath },
+							],
+						},
+					]
                 },
             }),
             // @ts-ignore

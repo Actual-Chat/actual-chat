@@ -1,9 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
-import { registerRoute, Route } from 'workbox-routing';
-import { CacheFirst } from 'workbox-strategies';
-import { ExpirationPlugin } from 'workbox-expiration';
-import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 import { Log } from 'logging';
 import { stopEvent } from 'event-handling';
 
@@ -11,6 +7,9 @@ const { debugLog, infoLog } = Log.get('ServiceWorker');
 
 // @ts-ignore
 const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
+const configBase64 = new URL(location.href).searchParams.get('config');
+const configString = atob(configBase64);
+const config = JSON.parse(configString);
 
 interface ExtendableEvent extends Event {
     waitUntil(f: Promise<any>): void;
@@ -67,50 +66,24 @@ const onNotificationClick = async function(event: NotificationEvent): Promise<an
         await newClientWindow.focus();
 }
 
-sw.addEventListener('message', async (event) => {
-    if (!event.data || event.data.type !== 'ENABLE_NOTIFICATIONS') {
-        return;
+const app = initializeApp(config);
+const messaging = getMessaging(app);
+debugLog?.log(`Subscribing to FCM background messages`);
+onBackgroundMessage(messaging, async payload => {
+    debugLog?.log(`onBackgroundMessage: got FCM background message, payload:`, payload);
+    const tag = payload.data.tag;
+    const options: NotificationOptions = {
+        tag: tag.toString(),
+        icon: payload.data.icon,
+        body: payload.notification.body,
+        data: {
+            url: payload.fcmOptions.link,
+        },
+    };
+    // silly hack because notifications get lost or suppressed
+    const notificationsToClose = await sw.registration.getNotifications({tag: tag});
+    for (let toClose of notificationsToClose) {
+        toClose.close();
     }
-
-    const configBase64 = event.data.payload;
-    const configString = atob(configBase64);
-    const config = JSON.parse(configString);
-    const app = initializeApp(config);
-    const messaging = getMessaging(app);
-    debugLog?.log(`Subscribing to FCM background messages`);
-    onBackgroundMessage(messaging, async payload => {
-        debugLog?.log(`onBackgroundMessage: got FCM background message, payload:`, payload);
-        const tag = payload.data.tag;
-        const options: NotificationOptions = {
-            tag: tag.toString(),
-            icon: payload.data.icon,
-            body: payload.notification.body,
-            data: {
-                url: payload.fcmOptions.link,
-            },
-        };
-        // silly hack because notifications get lost or suppressed
-        const notificationsToClose = await sw.registration.getNotifications({tag: tag});
-        for (let toClose of notificationsToClose) {
-            toClose.close();
-        }
-        await sw.registration.showNotification(payload.notification.title, options);
-    });
+    await sw.registration.showNotification(payload.notification.title, options);
 });
-
-const imagesCacheStrategy = new CacheFirst({
-    cacheName: 'images-cache',
-    plugins: [
-        new ExpirationPlugin({
-            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-        }),
-        new CacheableResponsePlugin({
-            statuses: [0, 200],
-        }),
-    ],
-});
-const imagesRoute = new Route(
-    ({ request }) => request.destination === 'image',
-    imagesCacheStrategy,
-);
-registerRoute(imagesRoute);
