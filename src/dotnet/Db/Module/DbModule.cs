@@ -63,7 +63,7 @@ public sealed class DbModule : HostModule<DbSettings>
             services.AddHealthChecks().AddNpgSql(connectionStringSuffix, name: $"db_{contextName}", failureStatus:HealthStatus.Degraded, tags: new[] { HealthTags.Ready });
 
         services.AddSingleton(dbInfo);
-        services.AddPooledDbContextFactory<TDbContext>(builder => {
+        services.AddTransientDbContextFactory<TDbContext>(builder => {
             switch (dbKind) {
             case DbKind.InMemory:
                 Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).GetName());
@@ -86,7 +86,7 @@ public sealed class DbModule : HostModule<DbSettings>
             }
             if (IsDevelopmentInstance)
                 builder.EnableSensitiveDataLogging();
-        }, 256);
+        });
         services.AddDbContextServices<TDbContext>(db => {
             services.AddSingleton(new CompletionProducer.Options {
                 // Let's not waste log with successful completed command
