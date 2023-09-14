@@ -28,16 +28,6 @@ export class AudioContextDestinationFallback {
         this.audio.hidden = true;
         this.audio.muted = false;
         document.body.append(this.audio);
-
-        document.body.addEventListener(
-            'click',
-            (e) => {
-                if (!e.isTrusted)
-                    return; // trigger on user action only!
-
-                void this.warmup();
-            },
-            { capture: true, passive: false, once: true });
     }
 
     public async attach(context: AudioContext): Promise<void> {
@@ -89,25 +79,14 @@ export class AudioContextDestinationFallback {
     }
 
     public async play(): Promise<void> {
-        debugLog?.log('-> play()');
+        debugLog?.log('-> play()', this.audio.paused);
         try {
             this.audio.muted = false;
-            await this.audio.play();
+            if (this.audio.paused)
+                await this.audio.play();
         } catch (e) {
             errorLog?.log('play(): failed to resume:', e);
         }
-        debugLog?.log('<- play()');
-    }
-
-    private async warmup(): Promise<void> {
-        debugLog?.log('-> warmup()');
-        try {
-            const warmupTask = this.audio.play().then(() => this.audio.pause());
-            await warmupTask;
-            this.whenReady.resolve(undefined);
-        } catch (e) {
-            errorLog?.log('warmup() failed:', e)
-        }
-        debugLog?.log('<- warmup()');
+        debugLog?.log('<- play()', this.audio.paused);
     }
 }
