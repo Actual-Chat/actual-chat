@@ -14,7 +14,10 @@ public sealed class SQLiteClientComputedCache : AppClientComputedCache
         public FilePath DbPath { get; init; }
 
         public Options()
-            => ReadBatchConcurrencyLevel = HardwareInfo.ProcessorCount.Clamp(1, 16);
+            => ReaderWorkerPolicy = new BatchProcessorWorkerPolicy() {
+                MinWorkerCount = 2,
+                MaxWorkerCount = HardwareInfo.ProcessorCount.Clamp(2, 16),
+            };
     }
 
     private new Options Settings { get; }
