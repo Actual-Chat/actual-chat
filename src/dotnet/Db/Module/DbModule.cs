@@ -4,6 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
 using Stl.Fusion.EntityFramework.Redis;
@@ -59,7 +60,7 @@ public sealed class DbModule : HostModule<DbSettings>
 
         // Adding services
         if (dbKind == DbKind.PostgreSql)
-            services.AddHealthChecks().AddNpgSql(connectionStringSuffix, name: $"db_{contextName}", tags: new[] { HealthTags.Ready });
+            services.AddHealthChecks().AddNpgSql(connectionStringSuffix, name: $"db_{contextName}", failureStatus:HealthStatus.Degraded, tags: new[] { HealthTags.Ready });
 
         services.AddSingleton(dbInfo);
         services.AddDbContextFactory<TDbContext>(builder => {
