@@ -41,7 +41,12 @@ public abstract class StreamServerBase<TItem> : IDisposable
     {
         var entry = GetOrAddStream(streamId, ReadStreamExpiration);
         try {
-            var memoizer = await entry.Value.Task.WaitAsync(ReadStreamWaitDuration, cancellationToken).ConfigureAwait(false);
+            var storedStreamTask = entry.Value.Task;
+            var isStreamExpired = storedStreamTask.IsCanceled || storedStreamTask.IsFaulted;
+            if (isStreamExpired)
+                return AsyncEnumerable.Empty<TItem>();
+
+            var memoizer = await storedStreamTask.WaitAsync(ReadStreamWaitDuration, cancellationToken).ConfigureAwait(false);
             var stream = memoizer
                 .Replay(cancellationToken)
                 .WithBuffer(StreamBufferSize, cancellationToken);

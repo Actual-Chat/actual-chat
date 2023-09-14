@@ -32,13 +32,13 @@ public static partial class Constants
             => HostInfo.IsDevelopmentInstance && HostInfo.AppKind != AppKind.MauiApp;
         public static readonly bool AudioRecording = false;
         public static readonly bool AudioRecordingStream = false;
-        public static readonly bool AudioStreamProxy = false;
+        public static readonly bool AudioStreamProxy = true;
 
         // Transcription
         public static readonly bool Transcription = false;
         public static readonly bool TranscriberAny = false;
         public static readonly bool TranscriberGoogle = false;
-        public static readonly bool TranscriptStreamProxy = false;
+        public static readonly bool TranscriptStreamProxy = true;
 
         // Database
         public static readonly bool Npgsql = false;

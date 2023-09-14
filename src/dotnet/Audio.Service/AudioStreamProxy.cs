@@ -9,6 +9,7 @@ public class AudioStreamProxy : IAudioStreamServer
     private const int WriteReplicaCount = 2;
     private const int ReadReplicaCount = 2;
     private const int WriteAttemptCount = 2;
+    private const int ReadAttemptCount = 2;
     private TimeSpan ReadStreamWaitTimeout { get; } = TimeSpan.FromSeconds(1);
 
     private AudioSettings Settings { get; }
@@ -57,12 +58,13 @@ public class AudioStreamProxy : IAudioStreamServer
             });
 
         _ = BackgroundTask.Run(async () => {
+            var retryCount = 0;
             var counter = 0;
             var currentSkipTo = skipTo;
             var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
             var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
             try {
-                while (!cancellationToken.IsCancellationRequested)
+                while (!cancellationToken.IsCancellationRequested && retryCount++ < ReadAttemptCount)
                     try {
                         var stream = await ReadFromReplica(endpointState.Value, currentSkipTo, cancellationToken)
                             .ConfigureAwait(false);
@@ -74,7 +76,11 @@ public class AudioStreamProxy : IAudioStreamServer
                     }
                     catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
                         currentSkipTo = skipTo.Add(TimeSpan.FromMilliseconds(20 * counter));
-                        Log.LogWarning("Retry reading audio stream {StreamId} with offset {SkipTo}", streamId, currentSkipTo);
+                        Log.LogWarning("Retry reading audio stream {StreamId} on cancel with offset {SkipTo}", streamId, currentSkipTo);
+                    }
+                    catch (WebSocketException) when (!cancellationToken.IsCancellationRequested) {
+                        currentSkipTo = skipTo.Add(TimeSpan.FromMilliseconds(20 * counter));
+                        Log.LogWarning("Retry reading audio stream {StreamId} on network error with offset {SkipTo}", streamId, currentSkipTo);
                     }
                 cancellationToken.ThrowIfCancellationRequested();
             }
@@ -164,7 +170,7 @@ public class AudioStreamProxy : IAudioStreamServer
                 port,
                 cancellationToken)));
         var retryCount = 0;
-        while (isNotCompletedYet && retryCount <= WriteAttemptCount) {
+        while (!cancellationToken.IsCancellationRequested && isNotCompletedYet && retryCount <= WriteAttemptCount) {
             await Task.WhenAny(writeTasks).ConfigureAwait(false);
 
             var tasksToRetry = writeTasks
@@ -190,6 +196,8 @@ public class AudioStreamProxy : IAudioStreamServer
             else
                 isNotCompletedYet = writeTasks.Any(t => !t.IsCompleted);
         }
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (writeTasks.Count > 0)
             await Task.WhenAll(writeTasks).ConfigureAwait(false);
     }

@@ -1,3 +1,4 @@
+using System.Net.WebSockets;
 using ActualChat.Kubernetes;
 using ActualChat.Transcription;
 using Microsoft.Toolkit.HighPerformance;
@@ -8,6 +9,8 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
 {
     private const int WriteReplicaCount = 2;
     private const int ReadReplicaCount = 2;
+    private const int WriteAttemptCount = 2;
+    private const int ReadAttemptCount = 2;
     private TimeSpan ReadStreamWaitTimeout { get; } = TimeSpan.FromSeconds(1);
 
     private AudioSettings Settings { get; }
@@ -56,10 +59,11 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
             });
 
         _ = BackgroundTask.Run(async () => {
+            var retryCount = 0;
             var kubeService = new KubeService(Settings.Namespace, Settings.ServiceName);
             var endpointState = await KubeServices.GetServiceEndpoints(kubeService, cancellationToken).ConfigureAwait(false);
             try {
-                while (!cancellationToken.IsCancellationRequested)
+                while (!cancellationToken.IsCancellationRequested && retryCount++ < ReadAttemptCount)
                     try {
                         var stream = await ReadFromReplica(endpointState.Value, cancellationToken)
                             .ConfigureAwait(false);
@@ -70,6 +74,9 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
                     }
                     catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
                         Log.LogWarning("Retry reading transcript stream {StreamId}", streamId);
+                    }
+                    catch (WebSocketException) when (!cancellationToken.IsCancellationRequested) {
+                        Log.LogWarning("Retry reading transcript stream {StreamId} on network error", streamId);
                     }
                 cancellationToken.ThrowIfCancellationRequested();
             }
@@ -142,24 +149,53 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
             return;
         }
         var port = serviceEndpoints.GetPort()!.Port;
-        var addresses = addressRing.Segment(streamId.Value.GetDjb2HashCode(), WriteReplicaCount);
-
-        DebugLog?.LogInformation("Write({Stream}): hitting [{Addresses}]", streamName, addresses.ToDelimitedString());
         var memoized = stream.Memoize(cancellationToken);
-        var writeTasks = addresses
-            .Select(async address => {
-                DebugLog?.LogInformation("Write({Stream}): writing to {Address} started", streamName, address);
-                var client = await GetTranscriptStreamClient(kube, address, port, cancellationToken).ConfigureAwait(false);
-                try {
-                    await client.Write(streamId, memoized.Replay(cancellationToken), cancellationToken).ConfigureAwait(false);
-                    DebugLog?.LogInformation("Write({Stream}): done writing to {Address}", streamName, address);
-                }
-                catch (Exception e) when (e is not OperationCanceledException) {
-                    Log.LogError(e, "Write({Stream}): failed writing to {Address}", streamName, address);
-                }
-            })
-            .ToList();
-        await Task.WhenAll(writeTasks).ConfigureAwait(false);
+        var isNotCompletedYet = true;
+        var replicasLeft = WriteReplicaCount;
+        var writeTasks = new HashSet<Task>();
+        var addresses = endpointState.Value
+            .GetAddressHashRing()
+            .Segment(streamId.Value.GetDjb2HashCode(), replicasLeft);
+        DebugLog?.LogInformation("Write({Stream}): hitting [{Addresses}]", streamName, addresses.ToDelimitedString());
+        writeTasks.AddRange(addresses.Select(a => WriteToReplica(a, cancellationToken)));
+        var retryCount = 0;
+        while (!cancellationToken.IsCancellationRequested && isNotCompletedYet && retryCount <= WriteAttemptCount) {
+            await Task.WhenAny(writeTasks).ConfigureAwait(false);
+
+            var tasksToRetry = writeTasks
+                .Where(t => t.IsFaulted && (t.Exception?.InnerExceptions.Any(e => e is WebSocketException) ?? false))
+                .ToList();
+            writeTasks.RemoveWhere(t => t.IsCompletedSuccessfully);
+            if (tasksToRetry.Count > 0) {
+                // Get fresh state value
+                addresses = endpointState.Value
+                    .GetAddressHashRing()
+                    .Segment(streamId.Value.GetDjb2HashCode(), tasksToRetry.Count);
+                Log.LogWarning("Write({Stream}): retrying write to [{Addresses}]", streamName, addresses.ToDelimitedString());
+                writeTasks.AddRange(addresses.Select(a => WriteToReplica(a, cancellationToken)));
+                retryCount++;
+            }
+            else
+                isNotCompletedYet = writeTasks.Any(t => !t.IsCompleted);
+        }
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (writeTasks.Count > 0)
+            await Task.WhenAll(writeTasks).ConfigureAwait(false);
+        return;
+
+        async Task WriteToReplica(string address, CancellationToken cancellationToken1)
+        {
+            DebugLog?.LogInformation("Write({Stream}): writing to {Address} started", streamName, address);
+            var client = await GetTranscriptStreamClient(kube, address, port, cancellationToken1).ConfigureAwait(false);
+            try {
+                await client.Write(streamId, memoized.Replay(cancellationToken1), cancellationToken1).ConfigureAwait(false);
+                DebugLog?.LogInformation("Write({Stream}): done writing to {Address}", streamName, address);
+            }
+            catch (Exception e) when (e is not OperationCanceledException) {
+                Log.LogError(e, "Write({Stream}): failed writing to {Address}", streamName, address);
+            }
+        }
     }
 
     public void Dispose()
