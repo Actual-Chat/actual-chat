@@ -20,7 +20,7 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbSessionInfo> Sessions { get; protected set; } = null!;
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
-    public UsersDbContext(DbContextOptions options) : base(options) { }
+    public UsersDbContext(DbContextOptions<UsersDbContext> options) : base(options) { }
 
 #pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)

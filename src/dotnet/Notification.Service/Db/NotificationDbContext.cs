@@ -13,7 +13,7 @@ public class NotificationDbContext : DbContextBase
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
-    public NotificationDbContext(DbContextOptions options) : base(options) { }
+    public NotificationDbContext(DbContextOptions<NotificationDbContext> options) : base(options) { }
 
 #pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)

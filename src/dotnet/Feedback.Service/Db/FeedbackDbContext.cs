@@ -12,7 +12,7 @@ public class FeedbackDbContext : DbContextBase
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
-    public FeedbackDbContext(DbContextOptions options) : base(options) { }
+    public FeedbackDbContext(DbContextOptions<FeedbackDbContext> options) : base(options) { }
 
 #pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)

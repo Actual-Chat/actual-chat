@@ -20,7 +20,7 @@ public class ChatDbContext : DbContextBase
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
-    public ChatDbContext(DbContextOptions options) : base(options) { }
+    public ChatDbContext(DbContextOptions<ChatDbContext> options) : base(options) { }
 
 #pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)

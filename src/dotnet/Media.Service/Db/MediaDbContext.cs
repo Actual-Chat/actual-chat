@@ -12,7 +12,7 @@ public class MediaDbContext : DbContextBase
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
-    public MediaDbContext(DbContextOptions options) : base(options) { }
+    public MediaDbContext(DbContextOptions<MediaDbContext> options) : base(options) { }
 
 #pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)

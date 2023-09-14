@@ -14,7 +14,7 @@ public class ContactsDbContext : DbContextBase
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
-    public ContactsDbContext(DbContextOptions options) : base(options) { }
+    public ContactsDbContext(DbContextOptions<ContactsDbContext> options) : base(options) { }
 
 #pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)

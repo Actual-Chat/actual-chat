@@ -1,5 +1,6 @@
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 
@@ -49,6 +50,7 @@ public class AppHost : IDisposable
             .Select(x => AsDisposable(x.ImplementationType))
             .SkipNullItems()
             .Where(x => x.Namespace?.OrdinalIgnoreCaseStartsWith("Microsoft") != true)
+            .Where(x => !typeof(DbContext).IsAssignableFrom(x))
             .ToList();
         if (transientDisposables.Any()) {
             var transientDisposablesString = string.Join("", transientDisposables.Select(x => $"{Environment.NewLine}- {x}"));
