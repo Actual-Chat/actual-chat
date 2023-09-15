@@ -29,8 +29,17 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
 .pic-upload-drop-zone-hover {
     border-style: solid;
 }
-.pic-upload .btn {
+
+.pic-upload .c-btn-group {
+    @apply flex-1 flex-y gap-4;
+}
+.pic-upload .c-btn-group > .btn {
+    @apply justify-start;
     @apply max-w-none;
+}
+.pic-upload .c-btn-group > .btn > .btn-content {
+    @apply gap-x-4;
+    @apply px-2;
 }
 
 .pic-size-4 {

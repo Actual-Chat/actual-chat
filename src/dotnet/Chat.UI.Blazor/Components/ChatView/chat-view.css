@@ -231,7 +231,7 @@ body.hoverable .chat-header-title:hover {
 }
 .message-image-attachments {
     @apply flex-y flex-wrap gap-px;
-    @apply w-auto md:w-120 /*lg:w-180*/ /*xl:w-240*//* 2xl:w-320*/;
+    @apply w-fit max-w-full md:max-w-120 /*lg:w-180*/ /*xl:w-240*//* 2xl:w-320*/;
     @apply rounded-xl;
     @apply overflow-hidden;
 }

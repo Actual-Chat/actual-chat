@@ -1,4 +1,3 @@
-@using ActualChat.UI.Blazor.App.Events
 @implements IModalView<PremiumFeaturesModal.Model>
 
 <DialogFrame
@@ -170,9 +169,10 @@
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private void DownloadClick() {
+    private async Task DownloadClick() {
         Modal.Close();
-        _ = UIEventHub.Publish(new ShowDownloadLinksPage());
+        await History.WhenNavigationCompleted();
+        ModalModel.DownloadClick();
     }
     private void OnOkClick()
         => Modal.Close();
@@ -180,5 +180,6 @@
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
 
-    public sealed record Model;
+    public sealed record Model(Action DownloadClick);
+
 }
