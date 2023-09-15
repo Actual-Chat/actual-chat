@@ -1,4 +1,4 @@
-namespace ActualChat.Notification.UI.Blazor;
+namespace ActualChat.UI.Blazor;
 
 public enum PermissionState
 {

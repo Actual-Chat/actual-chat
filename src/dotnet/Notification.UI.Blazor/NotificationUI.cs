@@ -38,7 +38,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
         Services = services;
 
         var stateFactory = services.StateFactory();
-        _permissionState = stateFactory.NewMutable(Blazor.PermissionState.Denied, nameof(PermissionState));
+        _permissionState = stateFactory.NewMutable(ActualChat.UI.Blazor.PermissionState.Denied, nameof(PermissionState));
         WhenReady = Initialize();
 
         async Task Initialize() {
@@ -92,7 +92,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
                     return;
             }
             _permissionState.Value = state;
-            if (state == Blazor.PermissionState.Granted)
+            if (state == ActualChat.UI.Blazor.PermissionState.Granted)
                 RegisterDevice();
         }
         finally {
@@ -104,9 +104,9 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     public void SetPermissionState(string permissionState)
     {
         var state = permissionState switch {
-            "granted" => Blazor.PermissionState.Granted,
-            "prompt" => Blazor.PermissionState.Prompt,
-            _ => Blazor.PermissionState.Denied,
+            "granted" => ActualChat.UI.Blazor.PermissionState.Granted,
+            "prompt" => ActualChat.UI.Blazor.PermissionState.Prompt,
+            _ => ActualChat.UI.Blazor.PermissionState.Denied,
         };
         SetPermissionState(state);
     }
