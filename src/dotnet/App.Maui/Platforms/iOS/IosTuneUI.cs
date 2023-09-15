@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.Services;
 using CoreHaptics;
+using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui;
 
@@ -24,6 +25,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
     public override ValueTask PlayAndWait(Tune tune, bool vibrate = true)
         => Task.WhenAll(Vibrate(tune).AsTask(), base.PlayAndWait(tune, false).AsTask()).ToValueTask();
 
+    [JSInvokable]
     public override ValueTask OnVibrate(Tune tune)
         => Vibrate(tune);
 
