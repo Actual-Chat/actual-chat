@@ -3,11 +3,12 @@ using Stl.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class TuneUI(IServiceProvider services) : INotifyInitialized
+public class TuneUI : ITuneUIBackend, INotifyInitialized, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.init";
     private static readonly string JSPlayMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.play";
     private static readonly string JSPlayAndWaitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.playAndWait";
+    private readonly DotNetObjectReference<ITuneUIBackend> _blazorRef;
 
     protected static readonly Dictionary<Tune, TuneInfo> Tunes = new () {
         // General actions
@@ -37,14 +38,22 @@ public class TuneUI(IServiceProvider services) : INotifyInitialized
         { Tune.ShowMenu, new (new[] { 20 }/*, "show-menu"*/) },
     };
 
-    private IJSRuntime JS { get; } = services.JSRuntime();
-    private ILogger Log { get; } = services.LogFor<TuneUI>();
+    public TuneUI(IServiceProvider services)
+    {
+        JS = services.JSRuntime();
+        Log = services.LogFor<TuneUI>();
+        _blazorRef = DotNetObjectReference.Create<ITuneUIBackend>(this);
+    }
 
-    private async ValueTask Init()
+    protected virtual bool UseJsVibration => true;
+    private IJSRuntime JS { get; }
+    private ILogger Log { get; }
+
+    private async ValueTask InvokeInit()
     {
         try
         {
-            await JS.InvokeVoidAsync(JSInitMethod, Tunes);
+            await JS.InvokeVoidAsync(JSInitMethod, _blazorRef, Tunes, UseJsVibration);
         }
         catch (Exception e)
         {
@@ -52,14 +61,26 @@ public class TuneUI(IServiceProvider services) : INotifyInitialized
         }
     }
 
+    void INotifyInitialized.Initialized()
+        => _ = InvokeInit();
+
+    public virtual void Dispose()
+        => _blazorRef.DisposeSilently();
+
     public virtual ValueTask Play(Tune tune, bool vibrate = true)
-        => JS.InvokeVoidAsync(JSPlayMethod, tune.ToString(), vibrate);
+        => JS.InvokeVoidAsync(JSPlayMethod, tune, vibrate);
 
     public virtual ValueTask PlayAndWait(Tune tune, bool vibrate = true)
-        => JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune.ToString(), vibrate);
+        => JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune, vibrate);
 
-    void INotifyInitialized.Initialized()
-        => _ = Init();
+    [JSInvokable]
+    public virtual ValueTask OnVibrate(Tune tune)
+        => ValueTask.CompletedTask;
+}
+
+internal interface ITuneUIBackend
+{
+    ValueTask OnVibrate(Tune tune);
 }
 
 public enum Tune
