@@ -54,11 +54,11 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
+
         var dbChat = await dbContext.Chats
             .Where(c => c.TemplateId == templateId && c.TemplatedForUserId == userId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-
         return dbChat?.ToModel();
     }
 

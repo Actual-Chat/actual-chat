@@ -26,6 +26,7 @@ public class UserPresencesBackend : DbServiceBase<UsersDbContext>, IUserPresence
             return;
         }
 
+        // We must call CreateCommandDbContext to make sure this operation is logged in the Users DB
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
     }

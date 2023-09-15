@@ -6,17 +6,12 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-internal class ReactionsBackend : DbServiceBase<ChatDbContext>, IReactionsBackend
+internal class ReactionsBackend(IServiceProvider services)
+    : DbServiceBase<ChatDbContext>(services), IReactionsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
-    private IChatsBackend ChatsBackend { get; }
-    private IAuthorsBackend AuthorsBackend { get; }
-
-    public ReactionsBackend(IServiceProvider services) : base(services)
-    {
-        ChatsBackend = services.GetRequiredService<IChatsBackend>();
-        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
-    }
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Reaction?> Get(TextEntryId entryId, AuthorId authorId, CancellationToken cancellationToken)

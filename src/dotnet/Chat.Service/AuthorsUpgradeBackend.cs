@@ -6,18 +6,12 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class AuthorsUpgradeBackend : DbServiceBase<ChatDbContext>, IAuthorsUpgradeBackend
+public class AuthorsUpgradeBackend(IServiceProvider services)
+    : DbServiceBase<ChatDbContext>(services), IAuthorsUpgradeBackend
 {
-    private IAccounts Accounts { get; }
-    private IServerKvas ServerKvas { get; }
-    private IAuthorsBackend Backend { get; }
-
-    public AuthorsUpgradeBackend(IServiceProvider services) : base(services)
-    {
-        Accounts = services.GetRequiredService<IAccounts>();
-        ServerKvas = services.GetRequiredService<IServerKvas>();
-        Backend = services.GetRequiredService<IAuthorsBackend>();
-    }
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IServerKvas ServerKvas { get; } = services.GetRequiredService<IServerKvas>();
+    private IAuthorsBackend Backend { get; } = services.GetRequiredService<IAuthorsBackend>();
 
     public async Task<List<ChatId>> ListChatIds(UserId userId, CancellationToken cancellationToken)
     {

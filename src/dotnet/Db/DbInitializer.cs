@@ -5,25 +5,20 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Db;
 
-public abstract class DbInitializer<TDbContext> : DbServiceBase<TDbContext>, IDbInitializer
+public abstract class DbInitializer<TDbContext>(IServiceProvider services)
+    : DbServiceBase<TDbContext>(services), IDbInitializer
     where TDbContext : DbContext
 {
     private const int CommandTimeout = 30;
 
     private new DbHub<TDbContext> DbHub => base.DbHub;
     public new IServiceProvider Services => base.Services;
-    public DbInfo<TDbContext> DbInfo { get; }
-    public HostInfo HostInfo { get; }
+    public DbInfo<TDbContext> DbInfo { get; } = services.GetRequiredService<DbInfo<TDbContext>>();
+    public HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
     public Dictionary<IDbInitializer, Task> RunningTasks { get; set; } = null!;
 
     public bool ShouldRepairData => DbInfo.ShouldRepairDb;
     public bool ShouldVerifyData => DbInfo.ShouldVerifyDb;
-
-    protected DbInitializer(IServiceProvider services) : base(services)
-    {
-        DbInfo = services.GetRequiredService<DbInfo<TDbContext>>();
-        HostInfo = services.GetRequiredService<HostInfo>();
-    }
 
     public new TDbContext CreateDbContext(bool readWrite = false)
     {
