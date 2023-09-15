@@ -77,7 +77,8 @@
     }
 
     public sealed class FormModel : FormModel<FormModel> {
-        [Required(ErrorMessage = "Delete confirmation is required"), RegularExpression("^DELETE$", ErrorMessage = "Please enter DELETE to confirm")]
+        [Required(ErrorMessage = "Delete confirmation is required")]
+        [RegularExpression("^DELETE$", ErrorMessage = "Please enter DELETE to confirm")]
         public string Delete { get; set; } = "";
         public string DeleteFieldId { get; set; } = "";
 

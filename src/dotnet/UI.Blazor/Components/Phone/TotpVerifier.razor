@@ -5,7 +5,7 @@
 <UITimer Period="@(TotpTtl)" Tick="OnTotpExpired"/>
 <div class="totp-verifier @Class" @onclick="@(() => Focus())">
     <span class="c-description">
-        Please enter the code we've sent to <span class="whitespace-nowrap">@(new Phone(Phone).ToReadable())</span>
+        Enter the code we've sent to <span class="whitespace-nowrap">@(new Phone(Phone).ToReadable())</span>
         to verify you own this phone number.
     </span>
     <TotpInput @ref="_totpInput" Completed="OnInputCompleted"/>
