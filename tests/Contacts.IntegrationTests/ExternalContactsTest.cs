@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using ActualChat.App.Server;
 using ActualChat.Performance;
+using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -36,10 +37,14 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         _sut = _appHost.Services.GetRequiredService<IExternalContacts>();
         _contacts = _appHost.Services.GetRequiredService<IContacts>();
         _commander = _appHost.Services.Commander();
+        FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
+
     }
 
     public override async Task DisposeAsync()
     {
+        foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
+            FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();
     }
@@ -316,12 +321,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         foreach (var account in accounts) {
             using var _4 = tracer.Region($"Assert contacts of {account.User.Name} #({account.User.Id})");
             await _tester.SignIn(account.User);
-            var contacts = await ListContacts();
-            var expectedContactIds =
-                accounts.Where(x => x.Id != account.Id)
-                    .Select(x => BuildContactId(account, x))
-                    .ToList();
-            contacts.Select(x => x.Id).Should().BeEquivalentTo(expectedContactIds);
+            await AssertConnectedUsers(account, accounts);
         }
     }
 
@@ -349,16 +349,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
             // assert
             account.IsGreetingCompleted.Should().BeTrue("greeting for user {0} (#{1}) must be completed on first sign in");
-            var contacts = await ListContacts(count - 1);
-            var contactIds = contacts.Select(x => x.Id).ToHashSet();
-            var expectedContactIds =
-                accounts.Where(x => x.Id != account.Id)
-                    .Select(x => BuildContactId(account, x))
-                    .ToHashSet();
-            var unexpected = contactIds.Where(x => !expectedContactIds.Contains(x));
-            var missing = expectedContactIds.Where(x => !contactIds.Contains(x));
-            unexpected.Should().BeEmpty("no extra contacts for {0} (#{1}) must be created", u.Name, u.Id);
-            missing.Should().BeEmpty("all contacts for {0} (#{1}) must be created", u.Name, u.Id);
+            await AssertConnectedUsers(account, accounts);
         }
     }
 
@@ -375,6 +366,15 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
     private Task Remove(ExternalContact externalContact)
         => _commander.Call(new ExternalContacts_Change(_tester.Session, externalContact.Id, null, Change.Remove<ExternalContact>()));
+
+    private async Task AssertConnectedUsers(AccountFull account, AccountFull[] allAccounts)
+    {
+        var userMap = allAccounts.ToDictionary(x => x.Id, x => x.User);
+        var contacts = await ListContacts(allAccounts.Length - 1);
+        var connectedUsers = contacts.ConvertAll(x => userMap[x.UserId]).OrderBy(x => x.Name);
+        var otherUsers = allAccounts.Where(x => x.Id != account.Id).Select(x => x.User).OrderBy(x => x.Name);
+        connectedUsers.Should().BeEquivalentTo(otherUsers);
+    }
 
     private async Task<List<Contact>> ListContacts(int? expectedCount = null)
     {
