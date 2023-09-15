@@ -12,6 +12,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
     private CHHapticEngine? _hapticEngine;
     private CHHapticEngine HapticEngine => _hapticEngine ??= CreateHapticEngine();
 
+    protected override bool UseJsVibration => false;
     private ILogger Log { get; } = services.LogFor<IosTuneUI>();
 
     public override ValueTask Play(Tune tune, bool vibrate = true)
@@ -21,9 +22,12 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
     }
 
     public override ValueTask PlayAndWait(Tune tune, bool vibrate = true)
-        => Task.WhenAll(Vibrate(tune), base.PlayAndWait(tune, false).AsTask()).ToValueTask();
+        => Task.WhenAll(Vibrate(tune).AsTask(), base.PlayAndWait(tune, false).AsTask()).ToValueTask();
 
-    private async Task Vibrate(Tune tune)
+    public override ValueTask OnVibrate(Tune tune)
+        => Vibrate(tune);
+
+    private async ValueTask Vibrate(Tune tune)
     {
         await Task.Yield();
 
@@ -48,7 +52,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
 
     private CHHapticEngine CreateHapticEngine()
     {
-        lock (_lock) {
+        lock (_lock)
             try
             {
                 var engine = new CHHapticEngine(out var error);
@@ -63,7 +67,6 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
                 Log.LogError(e, "Failed to create haptic engine");
                 throw;
             }
-        }
     }
 
     private ICHHapticPatternPlayer GetPlayer(Tune tune)
@@ -116,8 +119,9 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
         return new CHHapticParameterCurve(CHHapticDynamicParameterId.HapticIntensityControl, curvePoints, 0);
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
+        base.Dispose();
         List<ICHHapticPatternPlayer> toDispose;
         lock (_lock) {
             if (_players.Count == 0)

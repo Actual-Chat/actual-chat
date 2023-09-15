@@ -4,12 +4,12 @@ import { DeviceInfo } from 'device-info';
 import { soundPlayer } from './sound-player';
 import { Interactive } from 'interactive';
 
-const { logScope, debugLog, warnLog } = Log.get('TuneUI');
+const { logScope, debugLog, warnLog, errorLog } = Log.get('TuneUI');
 
 // !!! keep in sync with TuneUI.cs
 export enum Tune
 {
-    None,
+    None = 0,
     CancelReply,
     OpenModal,
     CloseModal,
@@ -37,40 +37,57 @@ export type TuneName = keyof typeof Tune;
 interface TuneInfo { vibration: Array<number>, sound?: string }
 
 export class TuneUI {
-    private static whenReady = new PromiseSource<{ [key in TuneName]: TuneInfo }>();
+    private static whenReady = new PromiseSource();
+    private static useJsVibration: boolean;
+    private static blazorRef: DotNet.DotNetObject;
+    private static tunes: { [key in Tune]: TuneInfo };
 
     /** Called by blazor */
-    public static init(tunes: { [key in TuneName]: TuneInfo }){
-        this.whenReady.resolve(tunes);
+    public static init(blazorRef: DotNet.DotNetObject, tunes: { [key in Tune]: TuneInfo }, useJsVibration: boolean){
+        this.blazorRef = blazorRef;
+        this.tunes = tunes;
+        this.useJsVibration = useJsVibration;
+        this.whenReady.resolve(null);
     }
 
     /** Called by blazor */
-    public static play(tune: Tune | TuneName, vibrate = true): void {
+    public static play(tune: Tune, vibrate = true): void {
         void this.playAndWait(tune, vibrate);
     }
 
     /** Called by blazor */
-    public static async playAndWait(tune: Tune | TuneName, vibrate = true): Promise<void> {
-        const tunes = await this.whenReady;
-        const tuneInfo = tunes[tune] ?? tunes[Tune[tune]];
+    public static async playAndWait(tune: Tune, vibrate = true): Promise<void> {
+        try {
+            await this.whenReady;
+            const tuneInfo = this.tunes[tune] ?? this.tunes[Tune[tune]];
 
-        if (!tuneInfo)
-            throw new Error(`${logScope}.playAndWait: unexpected tune ${tune}.`);
+            if (!tuneInfo)
+            {
+                errorLog?.log(`${logScope}.playAndWait: unexpected tune ${tune}.`)
+                return;
+            }
 
-        return Promise.race([
-                                vibrate ? this.playVibration(tune, tuneInfo) : null,
-                                this.playSound(tune, tuneInfo)]);
+            await Promise.all([
+                                   vibrate ? this.playVibration(tune, tuneInfo) : null,
+                                   this.playSound(tune, tuneInfo)]);
+        } catch (e) {
+            warnLog?.log('Failed yo play tune', tune, e);
+        }
     }
 
     // Private methods
 
-    private static async playVibration(tune: Tune | TuneName, tuneInfo: TuneInfo): Promise<void> {
+    private static async playVibration(tune: Tune, tuneInfo: TuneInfo): Promise<void> {
         if (!tuneInfo.vibration) {
             warnLog?.log(`playVibration: no vibration for tune '${tune}'`);
             return;
         }
         else
             debugLog?.log(`playVibration: '${tune}'`);
+        if (this.useJsVibration) {
+            await this.blazorRef.invokeMethodAsync('OnVibrate', tune);
+            return;
+        }
 
         for (let i = 0; i < tuneInfo.vibration.length; i++) {
             const durationMs = tuneInfo[i];
@@ -81,7 +98,7 @@ export class TuneUI {
         }
     }
 
-    private static async playSound(tune: Tune | TuneName, tuneInfo: TuneInfo): Promise<void> {
+    private static async playSound(tune: Tune, tuneInfo: TuneInfo): Promise<void> {
         if (!tuneInfo.sound) {
             return;
         }
