@@ -58,7 +58,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         var user = new User(Symbol.Empty, string.Empty).WithPhone(phone);
         await Commander
-            .Call(new AuthBackend_SignIn(session, user), cancellationToken)
+            .Call(new AuthBackend_SignIn(session, user, user.GetPhoneIdentity()), cancellationToken)
             .ConfigureAwait(false);
         return true;
     }
