@@ -84,7 +84,7 @@ export class TuneUI {
         }
         else
             debugLog?.log(`playVibration: '${tune}'`);
-        if (this.useJsVibration) {
+        if (!this.useJsVibration) {
             await this.blazorRef.invokeMethodAsync('OnVibrate', tune);
             return;
         }
