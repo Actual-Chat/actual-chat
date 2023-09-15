@@ -1,7 +1,7 @@
 using FluentAssertions.Equivalency;
 using Stl.Versioning;
 
-namespace ActualChat.Testing;
+namespace ActualChat.Testing.Assertion;
 
 public static class AssertOptionsExt
 {
