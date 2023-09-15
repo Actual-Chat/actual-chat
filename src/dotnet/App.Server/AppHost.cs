@@ -175,6 +175,7 @@ public class AppHost : IDisposable
             using var _ = dbInitializer.Activate();
             var dbInitializerName = $"{dbInitializer.GetType().GetName()}.{name}";
             try {
+                using var _1 = Tracer.Default.Region(dbInitializerName);
                 log.LogInformation("{DbInitializer} started", dbInitializerName);
                 var task = invoker.Invoke(dbInitializer, cancellationToken);
                 if (task.IsCompletedSuccessfully)
