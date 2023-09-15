@@ -13,7 +13,7 @@
   },
   "DbSettings": {
     // "DefaultDb": "mysql:Server=localhost;Database=ac_{instance_}{context};Port=3306;User=root;Password=mariadb",
-    "DefaultDb": "postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres;Enlist=false;Minimum Pool Size=5;Maximum Pool Size=20;Connection Idle Lifetime=30;Multiplexing=true;Write Coalescing Buffer Threshold Bytes=4000;Max Auto Prepare=8;Include Error Detail=True",
+    "DefaultDb": "postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres;Enlist=false;Minimum Pool Size=3;Maximum Pool Size=20;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True",
     // "DefaultDb": "memory:ac_{instance_}{context}",
     "OverrideDb": "",
     // OverrideDb": "memory:ac_{instance_}{context}",
