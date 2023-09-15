@@ -67,14 +67,24 @@ public class TuneUI : ITuneUIBackend, INotifyInitialized, IDisposable
     public virtual void Dispose()
         => _blazorRef.DisposeSilently();
 
-    public virtual ValueTask Play(Tune tune, bool vibrate = true)
-        => JS.InvokeVoidAsync(JSPlayMethod, tune, vibrate);
+    public ValueTask Play(Tune tune)
+    {
+        if (!UseJsVibration)
+            _ = Vibrate(tune);
+        return JS.InvokeVoidAsync(JSPlayMethod, tune);
+    }
 
-    public virtual ValueTask PlayAndWait(Tune tune, bool vibrate = true)
-        => JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune, vibrate);
+    public ValueTask PlayAndWait(Tune tune)
+    {
+        var vibrateTask = UseJsVibration ? Task.CompletedTask : Vibrate(tune).AsTask();
+        return Task.WhenAll(JS.InvokeVoidAsync(JSPlayAndWaitMethod, tune).AsTask(), vibrateTask).ToValueTask();
+    }
 
     [JSInvokable]
-    public virtual ValueTask OnVibrate(Tune tune)
+    public ValueTask OnVibrate(Tune tune)
+        => Vibrate(tune);
+
+    protected virtual ValueTask Vibrate(Tune tune)
         => ValueTask.CompletedTask;
 }
 

@@ -51,12 +51,12 @@ export class TuneUI {
     }
 
     /** Called by blazor */
-    public static play(tune: Tune, vibrate = true): void {
-        void this.playAndWait(tune, vibrate);
+    public static play(tune: Tune): void {
+        void this.playAndWait(tune);
     }
 
     /** Called by blazor */
-    public static async playAndWait(tune: Tune, vibrate = true): Promise<void> {
+    public static async playAndWait(tune: Tune): Promise<void> {
         try {
             await this.whenReady;
             const tuneInfo = this.tunes[tune] ?? this.tunes[Tune[tune]];
@@ -68,7 +68,7 @@ export class TuneUI {
             }
 
             await Promise.all([
-                                   vibrate ? this.playVibration(tune, tuneInfo) : null,
+                                   this.playVibration(tune, tuneInfo),
                                    this.playSound(tune, tuneInfo)]);
         } catch (e) {
             warnLog?.log('Failed yo play tune', tune, e);
@@ -82,8 +82,8 @@ export class TuneUI {
             warnLog?.log(`playVibration: no vibration for tune '${tune}'`);
             return;
         }
-        else
-            debugLog?.log(`playVibration: '${tune}'`);
+
+        debugLog?.log(`playVibration: '${tune}'`);
         if (!this.useJsVibration) {
             await this.blazorRef.invokeMethodAsync('OnVibrate', tune);
             return;

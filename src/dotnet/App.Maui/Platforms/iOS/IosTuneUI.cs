@@ -16,20 +16,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
     protected override bool UseJsVibration => false;
     private ILogger Log { get; } = services.LogFor<IosTuneUI>();
 
-    public override ValueTask Play(Tune tune, bool vibrate = true)
-    {
-        _ = Vibrate(tune);
-        return base.Play(tune, false);
-    }
-
-    public override ValueTask PlayAndWait(Tune tune, bool vibrate = true)
-        => Task.WhenAll(Vibrate(tune).AsTask(), base.PlayAndWait(tune, false).AsTask()).ToValueTask();
-
-    [JSInvokable]
-    public override ValueTask OnVibrate(Tune tune)
-        => Vibrate(tune);
-
-    private async ValueTask Vibrate(Tune tune)
+    protected override async ValueTask Vibrate(Tune tune)
     {
         await Task.Yield();
 
