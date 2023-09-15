@@ -60,7 +60,7 @@ public sealed class DbModule : HostModule<DbSettings>
 
         // Adding services
         if (dbKind == DbKind.PostgreSql)
-            services.AddHealthChecks();//.AddNpgSql(connectionStringSuffix, name: $"db_{contextName}", failureStatus:HealthStatus.Degraded, tags: new[] { HealthTags.Ready });
+            services.AddHealthChecks().AddNpgSql(connectionStringSuffix, name: $"db_{contextName}", failureStatus:HealthStatus.Degraded, tags: new[] { HealthTags.Ready });
 
         services.AddSingleton(dbInfo);
         services.AddTransientDbContextFactory<TDbContext>(builder => {
