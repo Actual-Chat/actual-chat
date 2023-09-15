@@ -5,6 +5,7 @@ using Android.OS;
 using Android.Content;
 using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
 using Android.Views.Animations;

@@ -11,20 +11,19 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     private UICommander UICommander { get; } = services.UICommander();
     private ILogger Log { get; } = services.LogFor<ContactSync>();
-    private ILogger? DebugLog => Constants.DebugMode.ContactsUI ? Log : null;
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var baseChains = new[] {
             AsyncChainExt.From(EnsureGreeted),
-            AsyncChainExt.From(SyncExternalContacts),
+            AsyncChainExt.From(SyncUntilSignedOut),
         };
         var retryDelays = RetryDelaySeq.Exp(3, 600);
         return (
             from chain in baseChains
             select chain
-                .Log(LogLevel.Debug, DebugLog)
-                .RetryForever(retryDelays, DebugLog)
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log)
             ).RunIsolated(cancellationToken);
     }
 
@@ -38,22 +37,33 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
         await UICommander.Call(new Contacts_Greet(Session), cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task SyncExternalContacts(CancellationToken cancellationToken)
+    private async Task SyncUntilSignedOut(CancellationToken cancellationToken)
     {
         var deviceId = DeviceContacts.DeviceId;
         if (deviceId.IsEmpty)
             return;
 
-        await WhenAuthenticated(cancellationToken).ConfigureAwait(false);
+        using var cts = cancellationToken.CreateLinkedTokenSource();
+        var cAccount = await WhenAuthenticated(cancellationToken).ConfigureAwait(false);
+        await Task.WhenAny(WhenSignedOut(cts.Token), Sync(cts.Token)).ConfigureAwait(false);
+        cts.Cancel();
+        return;
 
-        var existingContacts = await ExternalContacts.List(Session, deviceId, cancellationToken).ConfigureAwait(false);
+        Task WhenSignedOut(CancellationToken cancellationToken1)
+            => cAccount.When(x => x.IsGuestOrNone || x.Id != cAccount.Value.Id, cancellationToken1);
+    }
+
+    private async Task Sync(CancellationToken cancellationToken)
+    {
+        var existingContacts = await ExternalContacts.List(Session, DeviceContacts.DeviceId, cancellationToken).ConfigureAwait(false);
         var existingMap = existingContacts.ToDictionary(x => x.Id);
         var deviceContacts = await DeviceContacts.List(cancellationToken).ConfigureAwait(false);
 
         var toAdd = deviceContacts.Where(x => !existingMap.ContainsKey(x.Id)).ToList();
         var toRemove = existingContacts.ExceptBy(deviceContacts.Select(x => x.Id), x => x.Id).ToList();
         var toUpdate = deviceContacts
-            .Select(x => {
+            .Select(x =>
+            {
                 if (!existingMap.TryGetValue(x.Id, out var externalContact))
                     return null;
 
@@ -72,11 +82,15 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
             .Concat(ToCommands(toAdd, Change.Create))
             .ToList();
 
-        foreach (var cmd in commands) {
+        foreach (var cmd in commands)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             var (_, error) = await UICommander.Run(cmd, cancellationToken).ConfigureAwait(false);
-            if (error != null)
+            var isCancelled = error is OperationCanceledException && cancellationToken.IsCancellationRequested;
+            if (error != null && !isCancelled)
                 Log.LogError(error, "Failed to sync external contact {Id}", cmd.Id);
         }
+        return;
 
         IEnumerable<ExternalContacts_Change> ToCommands(
             IEnumerable<ExternalContact> externalContacts,
