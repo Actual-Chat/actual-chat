@@ -61,8 +61,14 @@ export class AudioContextSource {
 
     constructor() {
         this.onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
-        if (AudioContextDestinationFallback.isRequired)
+        if (AudioContextDestinationFallback.isRequired) {
             this.fallbackDestination = new AudioContextDestinationFallback();
+            Interactive.interactionEvents.addJustOnce( (e) => {
+                // this play should be called without async in the same sync stack as user gesture!!!
+                debugLog?.log(`.ctor: Interactive.interactionEvents triggered`, e);
+                void this.fallbackDestination.play();
+            });
+        }
         void this.maintain();
     }
 
@@ -263,8 +269,11 @@ export class AudioContextSource {
         });
         this._contextCreated$.next(context);
         try {
-            if (this.fallbackDestination)
+            if (this.fallbackDestination) {
                 await this.fallbackDestination.attach(context);
+                if (Interactive.isAlwaysInteractive)
+                    await this.fallbackDestination.play();
+            }
             debugLog?.log(`create: loading modules`);
             const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
             const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');

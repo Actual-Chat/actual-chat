@@ -106,7 +106,7 @@ public class AudioStreamProxy : IAudioStreamServer
             if (addressRing.IsEmpty) {
                 Log.LogError("Read({Stream}): empty address ring!", streamName);
                 if (AudioStreamServer.IsStreamExists(streamId))
-                    return await AudioStreamServer.Read(streamId, skipTo1, cancellationToken1);
+                    return await AudioStreamServer.Read(streamId, skipTo1, cancellationToken1).ConfigureAwait(false);
                 return AsyncEnumerable.Empty<byte[]>();
             }
             var port = serviceEndpoints.GetPort()!.Port;
@@ -128,7 +128,7 @@ public class AudioStreamProxy : IAudioStreamServer
             }
             DebugLog?.LogInformation("Read({Stream}): no stream found", streamName);
             if (AudioStreamServer.IsStreamExists(streamId))
-                return await AudioStreamServer.Read(streamId, skipTo1, cancellationToken1);
+                return await AudioStreamServer.Read(streamId, skipTo1, cancellationToken1).ConfigureAwait(false);
             return AsyncEnumerable.Empty<byte[]>();
         }
     }

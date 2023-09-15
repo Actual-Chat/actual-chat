@@ -102,7 +102,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
             if (addressRing.IsEmpty) {
                 Log.LogError("Read({Stream}): empty address ring!", streamName);
                 if (TranscriptStreamServer.IsStreamExists(streamId))
-                    return await TranscriptStreamServer.Read(streamId, cancellationToken1);
+                    return await TranscriptStreamServer.Read(streamId, cancellationToken1).ConfigureAwait(false);
                 return AsyncEnumerable.Empty<TranscriptDiff>();
             }
             var port = serviceEndpoints.GetPort()!.Port;
@@ -124,7 +124,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
             }
             DebugLog?.LogInformation("Read({Stream}): no stream found", streamName);
             if (TranscriptStreamServer.IsStreamExists(streamId))
-                return await TranscriptStreamServer.Read(streamId, cancellationToken1);
+                return await TranscriptStreamServer.Read(streamId, cancellationToken1).ConfigureAwait(false);
             return AsyncEnumerable.Empty<TranscriptDiff>();
         }
     }
