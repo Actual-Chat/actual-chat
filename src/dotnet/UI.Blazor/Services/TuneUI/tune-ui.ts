@@ -9,7 +9,7 @@ const { logScope, debugLog, warnLog } = Log.get('TuneUI');
 // !!! keep in sync with TuneUI.cs
 export enum Tune
 {
-    None = 0,
+    None,
     CancelReply,
     OpenModal,
     CloseModal,
@@ -39,38 +39,41 @@ interface TuneInfo { vibration: Array<number>, sound?: string }
 export class TuneUI {
     private static whenReady = new PromiseSource<{ [key in TuneName]: TuneInfo }>();
 
+    /** Called by blazor */
     public static init(tunes: { [key in TuneName]: TuneInfo }){
         this.whenReady.resolve(tunes);
     }
 
-    public static play(tune: Tune, vibrate = true): void {
+    /** Called by blazor */
+    public static play(tune: Tune | TuneName, vibrate = true): void {
         void this.playAndWait(tune, vibrate);
     }
 
-    public static async playAndWait(tuneKey: Tune, vibrate = true): Promise<void> {
+    /** Called by blazor */
+    public static async playAndWait(tune: Tune | TuneName, vibrate = true): Promise<void> {
         const tunes = await this.whenReady;
-        const tune = tunes[tuneKey];
+        const tuneInfo = tunes[tune] ?? tunes[Tune[tune]];
 
-        if (!tune)
-            throw new Error(`${logScope}.playAndWait: unexpected tune ${tuneKey}.`);
+        if (!tuneInfo)
+            throw new Error(`${logScope}.playAndWait: unexpected tune ${tune}.`);
 
         return Promise.race([
-                                vibrate ? this.playVibration(tuneKey, tune) : null,
-                                this.playSound(tuneKey, tune)]);
+                                vibrate ? this.playVibration(tune, tuneInfo) : null,
+                                this.playSound(tune, tuneInfo)]);
     }
 
     // Private methods
 
-    private static async playVibration(tuneKey: Tune, tune: TuneInfo): Promise<void> {
-        if (!tune.vibration) {
-            warnLog?.log(`playVibration: no vibration for tune '${tuneKey}'`);
+    private static async playVibration(tune: Tune | TuneName, tuneInfo: TuneInfo): Promise<void> {
+        if (!tuneInfo.vibration) {
+            warnLog?.log(`playVibration: no vibration for tune '${tune}'`);
             return;
         }
         else
-            debugLog?.log(`playVibration: '${tuneKey}'`);
+            debugLog?.log(`playVibration: '${tune}'`);
 
-        for (let i = 0; i < tune.vibration.length; i++) {
-            const durationMs = tune[i];
+        for (let i = 0; i < tuneInfo.vibration.length; i++) {
+            const durationMs = tuneInfo[i];
             if (i % 2 == 0)
                 await this.vibrateAndWait(durationMs);
             else
@@ -78,15 +81,15 @@ export class TuneUI {
         }
     }
 
-    private static async playSound(tuneKey: Tune, tune: TuneInfo): Promise<void> {
-        if (!tune.sound) {
+    private static async playSound(tune: Tune | TuneName, tuneInfo: TuneInfo): Promise<void> {
+        if (!tuneInfo.sound) {
             return;
         }
         else
-            debugLog?.log(`playSound: '${tuneKey}'`);
+            debugLog?.log(`playSound: '${tune}'`);
 
         const ext = DeviceInfo.isWebKit ? '.m4a' : '.webm'; // TODO: allow webm for iOS >= 16.5
-        const soundUrl = `dist/sounds/${tune.sound}${ext}`;
+        const soundUrl = `dist/sounds/${tuneInfo.sound}${ext}`;
         await soundPlayer.play(soundUrl);
     }
 

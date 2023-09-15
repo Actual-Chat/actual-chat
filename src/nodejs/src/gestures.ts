@@ -7,7 +7,7 @@ import { History } from '../../dotnet/UI.Blazor/Services/History/history';
 import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Timeout } from 'timeout';
-import { Tune, TuneName, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
+import { TuneName, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 import { Vector2D } from 'math';
 import { Log } from 'logging';
 
@@ -125,8 +125,7 @@ class DataHrefGesture extends Gesture {
             return;
 
         debugLog?.log(`DataHrefGesture: navigating on data href:`, href);
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        const tune: Tune = Tune[element?.dataset['hrefTune'] as TuneName];
+        const tune = element?.dataset['hrefTune'] as TuneName;
         FocusUI.blur();
         if (tune)
             TuneUI.play(tune);
