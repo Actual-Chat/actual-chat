@@ -32,6 +32,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
     public override async Task InitializeAsync()
     {
+        Tracer.Default = Out.NewTracer();
         _appHost = await NewAppHost();
         _tester = _appHost.NewWebClientTester();
         _sut = _appHost.Services.GetRequiredService<IExternalContacts>();
@@ -43,6 +44,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
     public override async Task DisposeAsync()
     {
+        Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();
@@ -295,7 +297,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     public async Task StressTest_AllUsersExist_AllAreConnected(int count)
     {
         // arrange
-        var tracer = Tracer.Default = Out.NewTracer();
+        var tracer = Tracer.Default;
         using var __ = tracer.Region();
         var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
         var accounts = new AccountFull[count];
