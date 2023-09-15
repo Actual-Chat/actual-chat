@@ -1,6 +1,7 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat
 @using ActualChat.UI.Blazor.Module
+@implements IAsyncDisposable
 @implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 
@@ -8,11 +9,17 @@
     <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry" DownloadUrl="@ModalModel.Url"/>
     <div @ref="@Ref" class="image-viewer-content">
         @if (ModalModel.IsVideo) {
-            <video width="@ModalModel.Width" height="@ModalModel.Height" preload="auto" autoplay controls onclick="this.play()">
+            <video
+                class="video-container"
+                width="@ModalModel.Width"
+                height="@ModalModel.Height"
+                preload="auto"
+                autoplay controls
+                onclick="this.play()">
                 <source src="@ModalModel.Url"/>
             </video>
         } else {
-            <img class="hidden"
+            <img class="image-container hidden"
                  width="@ModalModel.Width"
                  height="@ModalModel.Height"
                  src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"
@@ -42,6 +49,14 @@
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public async ValueTask DisposeAsync()
+    {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
 
     protected override void OnInitialized()
         => _cachedImgElementId = IdGenerator.Next("image-viewer-modal-cached-image");

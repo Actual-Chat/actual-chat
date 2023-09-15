@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.App.Pages.Landing;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
@@ -33,12 +32,5 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
             .Add<PremiumFeaturesModal.Model, PremiumFeaturesModal>()
             .Add<SignInModal.Model, SignInModal>()
         );
-
-        services.ConfigureUIEvents(
-            eventHub => eventHub.Subscribe<ShowDownloadLinksPage>((@event, ct) => {
-                var landing = eventHub.Services.GetRequiredService<NewLandingWeb>();
-                _ = landing.OnShowLinksPageEvent(@event, ct);
-                return Task.CompletedTask;
-            }));
     }
 }

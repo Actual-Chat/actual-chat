@@ -2,7 +2,6 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.UI.Blazor.App.Pages.Landing
-@using ActualChat.UI.Blazor.App.Events
 @inherits ComputedStateComponent<NewLandingWeb.Model>
 @{
     var m = State.Value;
@@ -10,7 +9,6 @@
     var isGuest = account is not {IsGuestOrNone: false };
 }
 
-<OnUIEvent TEvent="@ShowDownloadLinksPage" Handler="@OnShowLinksPageEvent" />
 <div @ref="Ref" class="landing new" xmlns="http://www.w3.org/1999/html">
     <LandingLeftMenu @ref="_landingLeftMenu" />
 
@@ -107,7 +105,9 @@
         => ModalUI.Show(new LandingVideoModal.Model());
 
     private Task OnPremiumFeaturesClick()
-        => ModalUI.Show(new PremiumFeaturesModal.Model());
+        => ModalUI.Show(new PremiumFeaturesModal.Model(() => {
+            _ = JSRef.InvokeVoidAsync("showLinksPage");
+        }));
 
     public async Task OnDownloadButtonClick()
         => await JSRef.InvokeVoidAsync("scrollToPageLinks");
@@ -123,9 +123,6 @@
 
     private void OnMenuHandleClick()
         => _landingLeftMenu?.Open();
-
-    public async Task OnShowLinksPageEvent(ShowDownloadLinksPage @event, CancellationToken cancellationToken)
-        => await JSRef.InvokeVoidAsync("showLinksPage", cancellationToken);
 
     public sealed record Model(AccountFull Account);
 }

@@ -30,18 +30,18 @@
                class="pic-upload-input-file-label">
         </label>
     </div>
-    <div class="flex-1 flex-y gap-4">
-        <Button Class="btn-modal !justify-start">
-            <i class="icon-image text-2xl mx-2"></i>
-            <span class="mx-2">Upload image</span>
+    <div class="c-btn-group">
+        <Button Class="btn-modal">
+            <i class="icon-image"></i>
+            <span>Upload image</span>
             <label for="@_inputId"
                    class="pic-upload-input-file-label absolute">
             </label>
         </Button>
         @if (GenerateAvatar.HasDelegate) {
-            <Button Class="btn-modal !justify-start" Click="GenerateAvatar">
-                <i class="icon-sync text-2xl mx-2"></i>
-                <span class="mx-2">Generate avatar</span>
+            <Button Class="btn-modal" Click="GenerateAvatar">
+                <i class="icon-sync"></i>
+                <span>Generate avatar</span>
             </Button>
         }
     </div>
