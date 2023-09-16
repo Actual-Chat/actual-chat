@@ -7,8 +7,8 @@ const { debugLog } = Log.get('Interactive');
 
 export class Interactive {
     private static _isInitialized = false;
-    private static _isInteractive = false;
-    private static _isAlwaysInteractive = false;
+    private static _isInteractive = window.location.host === '0.0.0.0';
+    private static _isAlwaysInteractive = window.location.host === '0.0.0.0';
 
     public static interactionEvents: EventHandlerSet<Event>;
     public static readonly interactionEvent$ = new Observable<Event>(subject => {

@@ -13,7 +13,7 @@ import { Log } from 'logging';
 import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
 import { Subject } from 'rxjs';
-import {AudioContextDestinationFallback} from "./audio-context-destination-fallback";
+import { AudioContextDestinationFallback } from "./audio-context-destination-fallback";
 
 const { logScope, debugLog, warnLog } = Log.get('AudioContextSource');
 
@@ -385,7 +385,8 @@ export class AudioContextSource {
             return;
         }
 
-        await BrowserInfo.whenReady; // This is where isAlwaysInteractive flag gets set - it checked further
+        if (!Interactive.isAlwaysInteractive)
+            await BrowserInfo.whenReady; // This is where isAlwaysInteractive flag gets set - it checked further
         if (Interactive.isAlwaysInteractive) {
             debugLog?.log(`interactiveResume: Interactive.isAlwaysInteractive == true`);
             await this.resume(context, false);
