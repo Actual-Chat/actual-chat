@@ -1,7 +1,6 @@
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text;
-using ActualChat.Security;
 using ActualChat.Users.Module;
 using ActualChat.Web;
 using AspNet.Security.OAuth.Apple;
@@ -15,16 +14,14 @@ using Stl.Fusion.Server;
 
 namespace ActualChat.Users.Controllers;
 
-[ApiController, JsonifyErrors, Route("api/native-auth")]
-public sealed class NativeAuthController : Controller
+// [JsonifyErrors] use is intended: all endpoints here are invoked from .NET only
+[ApiController, Route("api/native-auth"), JsonifyErrors]
+public sealed class NativeAuthController(IServiceProvider services) : ControllerBase
 {
     private ILogger? _log;
 
-    private IServiceProvider Services { get; }
+    private IServiceProvider Services { get; } = services;
     private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    public NativeAuthController(IServiceProvider services)
-        => Services = services;
 
     [HttpGet("sign-in-apple")]
     public async Task SignInApple(

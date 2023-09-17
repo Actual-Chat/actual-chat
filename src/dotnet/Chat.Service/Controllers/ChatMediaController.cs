@@ -1,31 +1,21 @@
 using ActualChat.Media;
-using ActualChat.Security;
-using ActualChat.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Chat.Controllers;
 
 [ApiController, Route("api/chat-media")]
-public sealed class ChatMediaController : ControllerBase
+public sealed class ChatMediaController(
+    IContentSaver contentSaver,
+    IEnumerable<IUploadProcessor> uploadProcessors,
+    ICommander commander
+    ) : ControllerBase
 {
-    private IContentSaver ContentSaver { get; }
-    private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
-    private ICommander Commander { get; }
-
-    public ChatMediaController(
-        IContentSaver contentSaver,
-        IEnumerable<IUploadProcessor> uploadProcessors,
-        ICommander commander)
-    {
-        ContentSaver = contentSaver;
-        UploadProcessors = uploadProcessors.ToList();
-        Commander = commander;
-    }
+    private IContentSaver ContentSaver { get; } = contentSaver;
+    private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; } = uploadProcessors.ToList();
+    private ICommander Commander { get; } = commander;
 
     [HttpPost("{chatId}/upload")]
-    [Route("api/chats/{chatId}/upload-picture")] // [Obsolete("2023.07: Keep for legacy clients.")
-    [Route("api/chats/{chatId}/files")] // [Obsolete("2023.07: Keep for legacy clients.")
     public async Task<ActionResult<MediaContent>> Upload(ChatId chatId, CancellationToken cancellationToken)
     {
         // TODO(AY): Uncomment this when obsolete routes above are removed

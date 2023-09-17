@@ -1,13 +1,12 @@
 using ActualChat.Security;
-using ActualChat.Web;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server.Authentication;
 
 namespace ActualChat.Users.Controllers;
 
 // NOTE(AY): All requests to this controller must be opened in browser to rather than called via RestEase!
-[Route(Route)]
-public sealed class MauiAuthController : Controller
+[ApiController, Route(Route)]
+public sealed class MauiAuthController(IServiceProvider services) : ControllerBase
 {
     public const string Route = "/maui-auth";
 
@@ -16,14 +15,11 @@ public sealed class MauiAuthController : Controller
     private UrlMapper? _urlMapper;
     private ILogger? _log;
 
-    private IServiceProvider Services { get; }
+    private IServiceProvider Services { get; } = services;
     private ISecureTokensBackend SecureTokensBackend => _secureTokensBackend ??= Services.GetRequiredService<ISecureTokensBackend>();
     private ServerAuthHelper ServerAuthHelper => _serverAuthHelper ??= Services.GetRequiredService<ServerAuthHelper>();
     private UrlMapper UrlMapper => _urlMapper ??= Services.GetRequiredService<UrlMapper>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    public MauiAuthController(IServiceProvider services)
-        => Services = services;
 
     [HttpGet("sign-in/{scheme}")]
     public ActionResult SignIn(

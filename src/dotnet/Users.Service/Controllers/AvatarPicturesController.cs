@@ -6,19 +6,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace ActualChat.Users.Controllers;
 
 [ApiController, Route("api/avatars")]
-public sealed class AvatarPicturesController : ControllerBase
+public sealed class AvatarPicturesController(IServiceProvider services) : ControllerBase
 {
     private IAuth? _auth;
     private IContentSaver? _contentSaver;
     private ICommander? _commander;
 
-    private IServiceProvider Services { get; }
+    private IServiceProvider Services { get; } = services;
     private IAuth Auth => _auth ??= Services.GetRequiredService<IAuth>();
     private IContentSaver ContentSaver => _contentSaver ??= Services.GetRequiredService<IContentSaver>();
     private ICommander Commander => _commander ??= Services.Commander();
-
-    public AvatarPicturesController(IServiceProvider services)
-        => Services = services;
 
     [HttpPost("upload-picture")]
     public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
