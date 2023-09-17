@@ -1,5 +1,11 @@
+Now:
+
+- Static landing page content
+- Check what's off w/ tracing / activities
+
 Near-term:
 
+- HEIC support
 - Make sure server caching works as expected - we have had suspicious stats messages in the log with 0% hit
 - Voice conversation is interrupted on pod scale-down
 
