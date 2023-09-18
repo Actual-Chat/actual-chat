@@ -4,7 +4,6 @@ namespace ActualChat.Users;
 
 public static class UserExt
 {
-    // TODO: change to email identity
     public static string? GetEmail(this User user)
         => user.GetEmailIdentity().SchemaBoundId.NullIfEmpty();
     public static Phone GetPhone(this User user)
@@ -48,13 +47,15 @@ public static class UserExt
     }
 
     public static UserIdentity GetPhoneIdentity(this User user)
-        => user.Identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, Constants.Auth.Phone.SchemeName)).Key;
+        => user.GetIdentity(Constants.Auth.Phone.SchemeName);
     public static UserIdentity GetEmailIdentity(this User user)
-        => user.Identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, Constants.Auth.Email.SchemeName)).Key;
+        => user.GetIdentity(Constants.Auth.Email.SchemeName);
     public static UserIdentity GetHashedPhoneIdentity(this User user)
-        => user.Identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, Constants.Auth.Phone.HashedSchemeName)).Key;
+        => user.GetIdentity(Constants.Auth.Phone.HashedSchemeName);
     public static UserIdentity GetHashedEmailIdentity(this User user)
-        => user.Identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, Constants.Auth.Email.HashedSchemeName)).Key;
+        => user.GetIdentity(Constants.Auth.Email.HashedSchemeName);
+    public static UserIdentity GetIdentity(this User user, string scheme)
+        => user.Identities.FirstOrDefault(x => OrdinalEquals(x.Key.Schema, scheme)).Key;
 
     private static UserIdentity ToPhoneIdentity(Phone phone)
         => new (Constants.Auth.Phone.SchemeName, phone);
