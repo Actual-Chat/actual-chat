@@ -12,8 +12,12 @@
         @if (ReferenceEquals(Avatar, Avatar.Loading)) {
             <div class="c-skeleton @_class"></div>
         } else {
-            <img draggable="false" class="c-avatar @_class"
-                 src="@_pictureUrl" alt="avatar" title="@title"
+            <img draggable="false"
+                 class="c-avatar @_class"
+                 crossorigin="anonymous"
+                 src="@_pictureUrl"
+                 alt="avatar"
+                 title="@title"
                  @onclick="@Click"/>
         }
 
