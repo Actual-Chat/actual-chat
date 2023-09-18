@@ -1,11 +1,31 @@
-Now:
+Before release:
 
-- Static landing page content
+- Pre-rendered landing page [AY]
+- Check all new text messages (esp. "Share" + troubleshooters) [AY]
+- Phone sign-in: enable it [Frol]
+- Sign-in: replace sign-in menu w/ modal everywhere + remove menu [Andrey]
+- Languages: add Chinese, Korean, etc. + update settings page layout 
+- New chat: 2-page layout
+- Chat: empty chat must contain invite link + splash
+- Audio activity: blinking "Listen"
+- Onboarding: pre-create chats page
+- Onboarding: use stored phone number
+- Service worker / asset caching
+
+- Critical bugs:
+  - Hot restart / WebView close: make sure the old view doesn't record
+  - Audio: use mono playback on Android? [AK]
+  - "Verify phone" hangs the UI
+- Important, but not critical bugs: 
+  - Chat: scrolling issues
+
+ASAP:
+
 - Check what's off w/ tracing / activities
+- HEIC support
 
 Near-term:
 
-- HEIC support
 - Make sure server caching works as expected - we have had suspicious stats messages in the log with 0% hit
 - Voice conversation is interrupted on pod scale-down
 

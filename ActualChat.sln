@@ -250,7 +250,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts", "src\dotnet\Cont
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-92B2-4BC2-9970-8AFF829A1987}"
 	ProjectSection(SolutionItems) = preProject
-		docs\TaskList-AY.md = docs\TaskList-AY.md
+		docs\Tasks.md = docs\Tasks.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
