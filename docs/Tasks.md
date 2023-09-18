@@ -11,6 +11,7 @@ Before release:
 - Onboarding: pre-create chats page
 - Onboarding: use stored phone number
 - Service worker / asset caching
+- Stop historical playback in other chats when recording starts [Frol]
 
 - Critical bugs:
   - Hot restart / WebView close: make sure the old view doesn't record
