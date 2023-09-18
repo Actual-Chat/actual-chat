@@ -16,7 +16,7 @@ Before release:
 - Critical bugs:
   - Hot restart / WebView close: make sure the old view doesn't record
   - Audio: use mono playback on Android? [AK]
-  - "Verify phone" hangs the UI
+  - "Verify phone" hangs the UI [Frol]
 - Important, but not critical bugs: 
   - Chat: scrolling issues
 
