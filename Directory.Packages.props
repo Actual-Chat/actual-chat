@@ -13,7 +13,7 @@
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>7.0.1</MicrosoftExtensionsVersion>
     <MicrosoftExtensionsBaseVersion>7.0.0</MicrosoftExtensionsBaseVersion>
-    <NpgsqlVersion>7.0.4</NpgsqlVersion>
+    <NpgsqlVersion>7.0.11</NpgsqlVersion>
     <RedisVersion>2.6.122</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
     <StlFusionVersion>6.4.30</StlFusionVersion>
@@ -144,7 +144,7 @@
     <PackageVersion Include="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)" />
     <PackageVersion Include="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
-    <PackageVersion Include="Ulid" Version="1.3.1" />
+    <PackageVersion Include="Ulid" Version="1.3.2" />
     <PackageVersion Include="ZString" Version="2.5.0" />
     <!-- MAUI  -->
     <PackageVersion Include="banditoth.MAUI.DeviceId" Version="1.0.0" />
