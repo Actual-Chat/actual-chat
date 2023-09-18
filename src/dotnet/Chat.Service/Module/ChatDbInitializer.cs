@@ -20,6 +20,7 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
         if (HostInfo.IsDevelopmentInstance)
             await EnsureDefaultChatExists(cancellationToken).ConfigureAwait(false);
+        await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task RepairData(CancellationToken cancellationToken)
@@ -124,6 +125,39 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         }
         catch (Exception e) {
             Log.LogCritical(e, "Failed to create 'Feedback' chat!");
+            throw;
+        }
+    }
+
+    private async Task EnsureNotesChatsExist(CancellationToken cancellationToken)
+    {
+        var dbContext = DbHub.CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var hasNotesChat = await dbContext.Chats
+            .AnyAsync(c => c.Tag == Constants.Chat.Tags.Notes, cancellationToken)
+            .ConfigureAwait(false);
+        if (hasNotesChat)
+            return;
+
+        try {
+            Log.LogInformation("There is no 'Notes' chat, creating one for each user");
+
+            // Get all users
+            var userIds = await dbContext.Authors
+                .Where(a => a.HasLeft == false && a.IsAnonymous == false)
+                .Select(a => a.UserId)
+                .Distinct()
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var userId in userIds) {
+                var createNotesChatCommand = new ChatsBackend_CreateNotesChat(UserId.Parse(userId));
+                await Commander.Call(createNotesChatCommand, cancellationToken).ConfigureAwait(false);
+            }
+            Log.LogInformation("{Count} 'Notes' chats has been created", userIds.Count);
+        }
+        catch (Exception e) {
+            Log.LogCritical(e, "Failed to create 'Notes' chats!");
             throw;
         }
     }

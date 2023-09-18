@@ -162,6 +162,9 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             ? GetDefaultPeerChatAuthor(peerChatId, authorId, userId).Require()
             : null;
 
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -203,6 +206,13 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             // Create author, + we know here it's not a peer chat
             if (userId.IsNone)
                 throw new ArgumentOutOfRangeException(nameof(command), "UserId is required to create a new author.");
+            if (chat.AllowSingleAuthorOnly) {
+                var alreadyHasAuthor = await dbContext.Authors
+                    .AnyAsync(a => a.ChatId == chatId && a.UserId != userId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (alreadyHasAuthor)
+                    throw StandardError.Constraint("There can only be one author in this chat.");
+            }
             var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
 
             var localId = await DbAuthorLocalIdGenerator

@@ -57,6 +57,8 @@ public interface IChatsBackend : IComputeService
     Task OnRemoveOwnChats(ChatsBackend_RemoveOwnChats command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveOwnEntries(ChatsBackend_RemoveOwnEntries command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -90,5 +92,11 @@ public sealed partial record ChatsBackend_RemoveOwnChats(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_RemoveOwnEntries(
+    [property: DataMember, MemoryPackOrder(0)] UserId UserId
+) : ICommand<ChatEntry>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_CreateNotesChat(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<ChatEntry>, IBackendCommand;

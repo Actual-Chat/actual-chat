@@ -73,6 +73,69 @@ public class ChatOperationsTest : AppHostTestBase
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task CreateNewChatBackend(bool isPublicChat)
+    {
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewBlazorTester();
+        var session = tester.Session;
+        var account = await tester.SignIn(new User("", "Bob"));
+
+        var services = tester.AppServices;
+        var chatsBackend = services.GetRequiredService<IChatsBackend>();
+        var roles = services.GetRequiredService<IRoles>();
+        var authors = services.GetRequiredService<IAuthors>();
+        var commander = tester.Commander;
+
+        var chatTitle = "test chat 2";
+        var chat = await commander.Call(new ChatsBackend_Change(ChatId.None, default,  new() {
+            Create = new ChatDiff() {
+                Title = chatTitle,
+                Kind = ChatKind.Group,
+                IsPublic = isPublicChat,
+            },
+        }, account.Id));
+        chat.Require();
+        await Task.Delay(100); // Let's wait invalidations to hit the client
+        chat = await chatsBackend.Get(chat.Id, default).Require();
+
+        chat.Should().NotBeNull();
+        chat.Title.Should().Be(chatTitle);
+        chat.IsPublic.Should().Be(isPublicChat);
+
+        var chatRoles = await roles.List(session, chat.Id, default);
+        chatRoles.Count.Should().Be(2);
+
+        var owners = chatRoles.Single(r => r.SystemRole is SystemRole.Owner);
+        owners.Name.Should().Be(SystemRole.Owner.ToString());
+        owners.Permissions.Has(ChatPermissions.Owner).Should().BeTrue();
+
+        var joined = chatRoles.Single(r => r.SystemRole is SystemRole.Anyone);
+        joined.Name.Should().Be(SystemRole.Anyone.ToString());
+        joined.Permissions.Has(ChatPermissions.Read).Should().BeTrue();
+        joined.Permissions.Has(ChatPermissions.Write).Should().BeTrue();
+        joined.Permissions.Has(ChatPermissions.Join).Should().BeTrue();
+        joined.Permissions.Has(ChatPermissions.Invite).Should().BeTrue();
+
+        chat.Should().NotBeNull();
+
+        var rules = await chatsBackend.GetRules(chat.Id, new PrincipalId(account.Id, AssumeValid.Option), default);
+        rules.CanRead().Should().BeTrue();
+        rules.CanWrite().Should().BeTrue();
+        rules.CanJoin().Should().BeTrue();
+        rules.CanInvite().Should().BeTrue();
+        rules.CanEditProperties().Should().BeTrue();
+        rules.CanEditRoles().Should().BeTrue();
+        rules.IsOwner().Should().BeTrue();
+
+        var author = await authors.GetOwn(session, chat.Id, default);
+        author.Should().NotBeNull();
+        author!.UserId.Should().Be(account.Id);
+    }
+
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task JoinChat(bool isPublicChat)
     {
         using var appHost = await NewAppHost();

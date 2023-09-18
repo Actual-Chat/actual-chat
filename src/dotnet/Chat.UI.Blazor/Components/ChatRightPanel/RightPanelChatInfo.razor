@@ -17,17 +17,19 @@
         </Icon>
     </RightPanelChatInfoItem>
 
-    <RightPanelChatInfoItem
-        Click="@(_ => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted))"
-        Content="Notifications"
-        Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
-        <Icon>
-            <i class="text-2xl text-icons-03 icon-bell"></i>
-        </Icon>
-        <Right>
-            <Toggle Class="mr-2" IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)"/>
-        </Right>
-    </RightPanelChatInfoItem>
+    @if (!m.HideNotificationsToggle) {
+        <RightPanelChatInfoItem
+            Click="@(_ => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted))"
+            Content="Notifications"
+            Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
+            <Icon>
+                <i class="text-2xl text-icons-03 icon-bell"></i>
+            </Icon>
+            <Right>
+                <Toggle Class="mr-2" IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)"/>
+            </Right>
+        </RightPanelChatInfoItem>
+    }
 
     @if (m.Link is { } publicUrl) {
         <RightPanelChatInfoItem
@@ -85,6 +87,7 @@
             Title = Chat.Title,
             Link = link?.ToDisplayUrl(UrlMapper),
             NotificationMode = userChatSettings.NotificationMode,
+            HideNotificationsToggle = Chat.AllowSingleAuthorOnly,
             Rules = rules,
         };
     }
@@ -120,6 +123,7 @@
         public string? Title { get; init; }
         public DisplayUrl? Link { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
+        public bool HideNotificationsToggle { get; init; }
         public AuthorRules Rules { get; init; } = null!;
     }
 }

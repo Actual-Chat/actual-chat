@@ -340,7 +340,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 var createOwnersRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
                     Create = new RoleDiff() {
                         SystemRole = SystemRole.Owner,
-                        Permissions = ChatPermissions.Owner,
+                        Permissions = ChatPermissions.Write | ChatPermissions.EditProperties,
                         AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
                             AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
                         },
@@ -348,17 +348,22 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 });
                 await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
 
-                var createAnyoneRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
-                    Create = new RoleDiff() {
-                        SystemRole = SystemRole.Anyone,
-                        Permissions =
-                            ChatPermissions.Write
-                            | ChatPermissions.Invite
-                            | ChatPermissions.SeeMembers
-                            | ChatPermissions.Leave,
-                    },
-                });
-                await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
+                if (!chat.AllowSingleAuthorOnly) {
+                    var createAnyoneRoleCmd = new RolesBackend_Change(chatId,
+                        default,
+                        null,
+                        new () {
+                            Create = new RoleDiff() {
+                                SystemRole = SystemRole.Anyone,
+                                Permissions =
+                                    ChatPermissions.Write
+                                    | ChatPermissions.Invite
+                                    | ChatPermissions.SeeMembers
+                                    | ChatPermissions.Leave,
+                            },
+                        });
+                    await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
+                }
             }
             else
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
@@ -713,6 +718,43 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         context.Operation().Items.Set(chatEntriesToInvalidate);
     }
 
+    public virtual async Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var userId = command.UserId;
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var hasNotesChat = await dbContext.Chats
+            .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
+            .AnyAsync(x => x.a.UserId == userId && x.c.Tag == Constants.Chat.Tags.Notes, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (hasNotesChat)
+            return;
+
+        var createNotesCommand = new ChatsBackend_Change(
+            ChatId.None,
+            null,
+            new Change<ChatDiff> {
+                Create = new ChatDiff {
+                    Title = "Notes",
+                    Kind = ChatKind.Group,
+                    IsPublic = false,
+                    IsTemplate = false,
+                    AllowGuestAuthors = false,
+                    AllowAnonymousAuthors = false,
+                    AllowSingleAuthorOnly = true,
+                    Tag = Constants.Chat.Tags.Notes,
+                },
+            },
+            userId);
+        await Commander.Call(createNotesCommand, cancellationToken).ConfigureAwait(false);
+        // var author = await AuthorsBackend.EnsureJoined(chat.Id, userId, cancellationToken).ConfigureAwait(false);
+    }
+
     // Event handlers
 
     [EventHandler]
@@ -722,6 +764,9 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             return; // It just spawns other commands, so nothing to do here
 
         await JoinAnnouncementsChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
+
+        var createNotesCommand = new ChatsBackend_CreateNotesChat(eventCommand.UserId);
+        await Commander.Call(createNotesCommand, cancellationToken).ConfigureAwait(false);
 
         if (HostInfo.IsDevelopmentInstance) {
             await JoinDefaultChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);

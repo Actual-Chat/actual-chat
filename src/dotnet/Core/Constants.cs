@@ -23,6 +23,13 @@ public static partial class Constants
         public const int MaxSearchFilterLength = 100;
         public const int ReactionFirstAuthorIdsLimit = 10;
         public const int ImageRowCapacity = 4;
+
+        public static class Tags
+        {
+            public const string Notes = "notes";
+            public const string Family = "family";
+            public const string Friends = "friends";
+        }
     }
 
     public static class User
