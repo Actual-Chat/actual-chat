@@ -339,7 +339,8 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
                 var createOwnersRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
                     Create = new RoleDiff() {
-                        SystemRole = SystemRole.Owner,
+                        Name = "SingleAuthor",
+                        SystemRole = SystemRole.None,
                         Permissions = ChatPermissions.Write | ChatPermissions.EditProperties,
                         AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
                             AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
@@ -800,6 +801,10 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         // and template chat owners
         var ownerRole = await RolesBackend.GetSystem(author.ChatId, SystemRole.Owner, cancellationToken).ConfigureAwait(false);
         if ((chat?.TemplatedForUserId.HasValue ?? false) && ownerRole != null && author.RoleIds.Contains(ownerRole.Id))
+            return;
+
+        // and chats with predefined tags
+        if (!(chat?.Tag.IsNullOrEmpty() ?? true))
             return;
 
         // Let's delay fetching an author a bit
