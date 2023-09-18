@@ -55,22 +55,13 @@ export class NotificationUI {
             const response = await fetch('/dist/config/firebase.config.js');
             if (response.ok || response.status === 304) {
                 const { config, publicKey } = await response.json();
-                const configBase64 = btoa(JSON.stringify(config));
                 const app = initializeApp(config);
                 const messaging = getMessaging(app);
                 onMessage(messaging, (payload) => {
                     debugLog?.log(`onMessage, payload:`, payload);
                 });
 
-                const origin = new URL('notification-ui.ts', import.meta.url).origin;
-                const workerPath = new URL('/sw.js', origin).toString();
-                const workerUrl = `${workerPath}?config=${configBase64}`;
-
-                const workerRegistration = await navigator.serviceWorker.register(workerUrl, { scope: '/', updateViaCache: 'all' });
-                workerRegistration.addEventListener('updatefound', ev => {
-                    warnLog?.log(`updateFound: updated service worker detected`);
-                });
-
+                const workerRegistration = await navigator.serviceWorker.getRegistration('sw.js');
                 const tokenOptions: GetTokenOptions = {
                     vapidKey: publicKey,
                     serviceWorkerRegistration: workerRegistration,
@@ -89,7 +80,6 @@ export class NotificationUI {
     public static async registerRequestNotificationHandler(buttonContainer: HTMLElement): Promise<void> {
         buttonContainer.addEventListener('click', async () => {
             await this.requestNotificationPermission();
-            await this.getDeviceToken();
         });
     }
 

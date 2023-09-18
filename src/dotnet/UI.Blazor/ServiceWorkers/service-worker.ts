@@ -1,5 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw';
+import { registerRoute, Route } from 'workbox-routing';
+import { CacheFirst } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 import { Log } from 'logging';
 import { stopEvent } from 'event-handling';
 
@@ -87,3 +91,20 @@ onBackgroundMessage(messaging, async payload => {
     }
     await sw.registration.showNotification(payload.notification.title, options);
 });
+
+const imagesCacheStrategy = new CacheFirst({
+    cacheName: 'images-cache',
+    plugins: [
+        new ExpirationPlugin({
+            maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+        }),
+        new CacheableResponsePlugin({
+            statuses: [0, 200],
+        }),
+    ],
+});
+const imagesRoute = new Route(
+    ({ request }) => request.destination === 'image',
+    imagesCacheStrategy,
+);
+registerRoute(imagesRoute);
