@@ -8,12 +8,14 @@ public class AppServerAuthHelper : ServerAuthHelper
 {
     private readonly string _closeWindowAppRequestPath;
     private ClaimMapper ClaimMapper { get; }
+    private IAccountsBackend AccountsBackend { get; }
 
     public AppServerAuthHelper(Options settings, IServiceProvider services)
         : base(settings, services)
     {
         ClaimMapper = services.GetRequiredService<ClaimMapper>();
         _closeWindowAppRequestPath = Settings.CloseWindowRequestPath + "-app";
+        AccountsBackend = services.GetRequiredService<IAccountsBackend>();
     }
 
     public override bool IsCloseWindowRequest(HttpContext httpContext, out string closeWindowFlowName)
@@ -27,11 +29,41 @@ public class AppServerAuthHelper : ServerAuthHelper
         return isCloseWindowRequest;
     }
 
-    protected override (User User, UserIdentity AuthenticatedIdentity) CreateOrUpdateUser(User? user, ClaimsPrincipal httpUser, string schema)
+    private async Task<(User User, UserIdentity AuthenticatedIdentity)> CreateOrUpdateUser(User? user, ClaimsPrincipal httpUser, string schema, CancellationToken cancellationToken)
     {
         var (newUser, userIdentity) = base.CreateOrUpdateUser(user, httpUser, schema);
         var httpClaims = httpUser.Claims.ToDictionary(c => c.Type, c => c.Value, StringComparer.Ordinal);
         newUser = ClaimMapper.UpdateClaims(newUser, httpClaims);
+        await UseExistingEmailIdentity().ConfigureAwait(false);
         return (newUser, userIdentity);
+
+        async Task UseExistingEmailIdentity()
+        {
+            // Check if user with such email exists when logging in with external identity
+            if (user is not null || !Constants.Auth.IsExternalEmailScheme(schema) || httpUser.FindFirstValue(ClaimTypes.Email) is not { } email)
+                return;
+
+            var userId = await AccountsBackend.GetIdByEmailHash(email.GetSHA256HashCode(), cancellationToken)
+                .ConfigureAwait(false);
+            if (userId.IsNone)
+                return;
+
+            newUser = newUser.WithEmailIdentities(email);
+            userIdentity = newUser.GetEmailIdentity();
+        }
+    }
+
+    protected override async Task SignIn(
+        Session session,
+        SessionInfo sessionInfo,
+        User? user,
+        ClaimsPrincipal httpUser,
+        string httpAuthenticationSchema,
+        CancellationToken cancellationToken)
+    {
+        var (newUser, authenticatedIdentity) =
+            await CreateOrUpdateUser(user, httpUser, httpAuthenticationSchema, cancellationToken).ConfigureAwait(false);
+        var signInCommand = new AuthBackend_SignIn(session, newUser, authenticatedIdentity);
+        await Commander.Call(signInCommand, true, cancellationToken).ConfigureAwait(false);
     }
 }

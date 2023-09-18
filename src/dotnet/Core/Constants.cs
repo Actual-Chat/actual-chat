@@ -114,5 +114,8 @@ public static partial class Constants
         {
             public const string SchemeName = "Apple";
         }
+
+        public static bool IsExternalEmailScheme(string schemeName)
+            => OrdinalEquals(schemeName, Apple.SchemeName) || OrdinalEquals(schemeName, Google.SchemeName);
     }
 }
