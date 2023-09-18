@@ -72,7 +72,7 @@ public class CommandQueueScheduler : WorkerBase
                 return;
         }
 
-        Log.LogInformation("Running queued command: {Command}", command);
+        Log.LogDebug("Running queued command: {Command}", command);
         try {
             await Commander.Call(command.Command, true, cancellationToken).ConfigureAwait(false);
             await queueBackend.MarkCompleted(command, cancellationToken).ConfigureAwait(false);
