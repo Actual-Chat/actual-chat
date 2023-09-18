@@ -373,13 +373,14 @@ export class VirtualList {
         if (this._isRendering)
             return;
 
+        const time = Date.now();
         // get most recent measurement results
         const pivots = entries
             .sort((l, r) => r.time - l.time)
             .map((entry): Pivot => ({
                 itemKey: getItemKey(entry.target as HTMLElement),
                 offset: Math.ceil(entry.boundingClientRect.top),
-                time: entry.time,
+                time,
             }));
 
         const matchedJumps = pivots
@@ -521,11 +522,7 @@ export class VirtualList {
                     }
                 }
             }
-            else if (this._pivots.length && (this._lastQuery.expandEndBy > 0 || this._isNearSkeleton || (this._lastQuery.expandEndBy == 0 || this._lastQuery.expandStartBy == 0))) {
-                // let's fix scroll position for scroll down only, when
-                // - items are added before the viewport (in our reverse-rendered list)
-                // - or skeletons are visible (because browsers can start scrolling automatically to the latest visible element after adding new child elements to the list)
-                // - or we are cleaning up old items removing items before the viewport
+            else if (this._pivots.length ) {
                 await this.restoreScrollPosition();
 
                 // ensure scroll position and size are recalculated
@@ -855,7 +852,6 @@ export class VirtualList {
             let shouldResync = false;
 
             // measure scroll position
-            await fastReadRaf();
             const pivotOffset = pivot.offset;
             const itemRect = pivotRef.getBoundingClientRect();
             const currentPivotOffset = itemRect.top;
@@ -981,26 +977,40 @@ export class VirtualList {
             }
         }
 
-        // refresh pivots
-        fastRaf({
-            read: () => {
-                if (this._isRendering)
-                    return;
-
-                for (let pivot of this._pivots) {
-                    const pivotRef = this.getItemRef(pivot.itemKey);
-                    if (!pivotRef)
-                        continue;
-
-                    // measure scroll position
-                    const itemRect = pivotRef.getBoundingClientRect();
-                    // update offset if closer to the viewport
-                    if (Math.abs(pivot.offset) > Math.abs(itemRect.top)) {
-                        pivot.offset = Math.ceil(itemRect.top);
-                    }
+        const time = Date.now();
+        if (this._pivots.length) {
+            for (let pivot of this._pivots) {
+                const pivotRef = this.getItemRef(pivot.itemKey);
+                if (!pivotRef)
+                    continue;
+                // measure scroll position
+                const itemRect = pivotRef.getBoundingClientRect();
+                // update offset if closer to the viewport
+                if (Math.abs(pivot.offset) > Math.abs(itemRect.top)) {
+                    pivot.offset = Math.ceil(itemRect.top);
+                    pivot.time = time;
                 }
             }
-        });
+        }
+        else {
+            const itemKeys = [this._query.keyRange.start, this._query.keyRange.end];
+            const queryPivots = new Array<Pivot>();
+            for (let itemKey of itemKeys) {
+                const pivotRef = this.getItemRef(itemKey);
+                if (!pivotRef)
+                    continue;
+
+                // measure scroll position
+                const itemRect = pivotRef.getBoundingClientRect();
+                const pivot: Pivot = {
+                    itemKey,
+                    time,
+                    offset: itemRect.top,
+                };
+                queryPivots.push(pivot);
+            }
+            this._pivots = queryPivots;
+        }
 
         // debug helper
         // await delayAsync(50);
@@ -1029,7 +1039,8 @@ export class VirtualList {
             return true;
 
         const requiresMoreData = intersection.start - queryItemRange.start > viewportSize
-            || queryItemRange.end - intersection.end > viewportSize;
+            || queryItemRange.end - intersection.end > viewportSize
+            || this._isNearSkeleton && (intersection.start > queryItemRange.start || queryItemRange.end > intersection.end);
 
         // if old items area is big enough or more data is required - rerender
         if (getRidOfOldItems)
@@ -1053,7 +1064,7 @@ export class VirtualList {
         let loadEnd = viewport.end + loadZoneSize;
         if (loadEnd > alreadyLoaded.end && rs.hasVeryLastItem)
             loadEnd = alreadyLoaded.end;
-        let bufferZoneSize = loadZoneSize * 2;
+        let bufferZoneSize = loadZoneSize * 3;
         const loadZone = new NumberRange(loadStart, loadEnd);
         const bufferZone = new NumberRange(
             viewport.start - bufferZoneSize,
