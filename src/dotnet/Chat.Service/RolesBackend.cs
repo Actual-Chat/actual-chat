@@ -134,7 +134,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         // Fetching chat: if it doesn't exist, this command can't proceed anyway
-        await dbContext.Chats.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
+        var dbChat = await dbContext.Chats.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
 
         Role? role;
         DbRole? dbRole;
@@ -205,7 +205,14 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             // Adding items
             var addedAuthorIds = update.AuthorIds.AddedItems
                 .Where(x => !existingAuthorIds.Contains(x))
-                .Distinct();
+                .Distinct()
+                .ToList();
+            if (dbChat.AllowSingleAuthorOnly) {
+                var totalAuthors = existingAuthorIds.Count + addedAuthorIds.Count;
+                if (totalAuthors > 1)
+                    throw StandardError.Constraint("There can only be one author in this chat.");
+            }
+
             foreach (var authorId in addedAuthorIds)
                 dbContext.AuthorRoles.Add(new() {
                     DbRoleId = roleId,

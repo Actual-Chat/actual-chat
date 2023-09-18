@@ -30,7 +30,9 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(7)] public UserId? TemplatedForUserId { get; init; }
     [DataMember, MemoryPackOrder(8)] public bool AllowGuestAuthors { get; init; }
     [DataMember, MemoryPackOrder(9)] public bool AllowAnonymousAuthors { get; init; }
+    [DataMember, MemoryPackOrder(13)] public bool AllowSingleAuthorOnly { get; init; }
     [DataMember, MemoryPackOrder(10)] public MediaId MediaId { get; init; }
+    [DataMember, MemoryPackOrder(14)] public string Tag { get; init; }
 
     // Populated only on front-end
     [DataMember, MemoryPackOrder(11)] public AuthorRules Rules { get; init; } = null!;
@@ -55,5 +57,7 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember, MemoryPackOrder(5)] public Option<UserId?> TemplatedForUserId { get; init; }
     [DataMember, MemoryPackOrder(6)] public bool? AllowGuestAuthors { get; init; }
     [DataMember, MemoryPackOrder(7)] public bool? AllowAnonymousAuthors { get; init; }
+    [DataMember, MemoryPackOrder(9)] public bool? AllowSingleAuthorOnly { get; init; }
     [DataMember, MemoryPackOrder(8)] public MediaId? MediaId { get; init; }
+    [DataMember, MemoryPackOrder(10)] public string? Tag { get; init; }
 }

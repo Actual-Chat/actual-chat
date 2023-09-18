@@ -30,6 +30,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsPublic { get; set; }
     public bool AllowGuestAuthors { get; set; }
     public bool AllowAnonymousAuthors { get; set; }
+    public bool AllowSingleAuthorOnly { get; set; }
+    public string? Tag { get; set; }
 
     public DateTime CreatedAt {
         get => _createdAt.DefaultKind(DateTimeKind.Utc);
@@ -50,6 +52,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsPublic = IsPublic,
             AllowGuestAuthors = AllowGuestAuthors,
             AllowAnonymousAuthors = AllowAnonymousAuthors,
+            AllowSingleAuthorOnly = AllowSingleAuthorOnly,
+            Tag = Tag,
             MediaId = new MediaId(MediaId),
         };
 
@@ -69,6 +73,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsPublic = model.IsPublic;
         AllowGuestAuthors = model.AllowGuestAuthors;
         AllowAnonymousAuthors = model.AllowAnonymousAuthors;
+        AllowSingleAuthorOnly = model.AllowSingleAuthorOnly;
+        Tag = model.Tag;
         Kind = model.Kind;
         MediaId = model.MediaId;
     }
