@@ -337,19 +337,31 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     });
                 var author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
-                var createOwnersRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
-                    Create = new RoleDiff() {
-                        Name = "SingleAuthor",
-                        SystemRole = SystemRole.None,
-                        Permissions = ChatPermissions.Write | ChatPermissions.EditProperties,
-                        AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
-                            AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
+                if (chat.AllowSingleAuthorOnly) {
+                    var createCustomRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
+                        Create = new RoleDiff {
+                            Name = "SingleAuthor",
+                            SystemRole = SystemRole.None,
+                            Permissions = ChatPermissions.Write | ChatPermissions.EditProperties,
+                            AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
+                                AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
+                            },
                         },
-                    },
-                });
-                await Commander.Call(createOwnersRoleCmd, cancellationToken).ConfigureAwait(false);
+                    });
+                    await Commander.Call(createCustomRoleCmd, cancellationToken).ConfigureAwait(false);
+                }
+                else {
+                    var createOwnerRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
+                        Create = new RoleDiff {
+                            SystemRole = SystemRole.Owner,
+                            Permissions = ChatPermissions.Owner,
+                            AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
+                                AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
+                            },
+                        },
+                    });
+                    await Commander.Call(createOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
 
-                if (!chat.AllowSingleAuthorOnly) {
                     var createAnyoneRoleCmd = new RolesBackend_Change(chatId,
                         default,
                         null,
@@ -753,7 +765,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             },
             userId);
         await Commander.Call(createNotesCommand, cancellationToken).ConfigureAwait(false);
-        // var author = await AuthorsBackend.EnsureJoined(chat.Id, userId, cancellationToken).ConfigureAwait(false);
     }
 
     // Event handlers
