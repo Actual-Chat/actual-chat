@@ -1,10 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Search
+@using ActualChat.Contacts
 @inherits ComputedStateComponent<ContactSelect.ComputedModel>
 
 <div class="contact-select-list">
     @foreach (var chatInfo in _filteredChats) {
-        var isSelected = _selectedChats.Contains(chatInfo.Id);
+        var isSelected = _model.IsSelected(chatInfo.Id);
         <div class="contact-select-list-item"
              @onclick="() => OnContactClick(chatInfo)">
             <ContactView
@@ -20,13 +21,31 @@
 
 @code {
     private List<ChatInfo> _filteredChats = new();
-    private readonly List<ChatId> _selectedChats = new();
+    private ContactSelectContext.Model _model = null!;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    [Inject] private IContacts Contacts { get; init; } = null!;
 
+    [CascadingParameter] public ContactSelectContext.Model? ContextModel { get; set; }
+
+    [Parameter] public bool ShowUserContactsOnly { get; set; }
+    [Parameter] public ChatListOrder ChatListOrder { get; set; } = ChatListOrder.ByOwnUpdateTime;
     [Parameter, EditorRequired] public SearchPhrase SearchPhrase { get; set; } = null!;
     [Parameter] public IReadOnlyCollection<ChatId> ContactsToExclude { get; set; } = Array.Empty<ChatId>();
     [Parameter] public EventCallback<IReadOnlyCollection<ChatId>> SelectionChanged { get; set; }
+    [Parameter] public EventCallback<IReadOnlyCollection<ChatInfo>> ChatSelectionChanged { get; set; }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _model = ContextModel ?? new ContactSelectContext.Model();
+        _model.Changed += async (_, _) => {
+            if (SelectionChanged.HasDelegate)
+                await SelectionChanged.InvokeAsync(_model.GetSelectedChatIds());
+            if (ChatSelectionChanged.HasDelegate)
+                await ChatSelectionChanged.InvokeAsync(_model.GetSelectedChats());
+            StateHasChanged();
+        };
+    }
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
@@ -40,10 +59,11 @@
     }
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var allUnordered = await ChatListUI.ListAllUnordered(ChatListFilter.None, cancellationToken);
+        var filter = ShowUserContactsOnly ? ChatListFilter.Personal : ChatListFilter.None;
+        var allUnordered = await ChatListUI.ListAllUnordered(filter, cancellationToken);
         var chats = allUnordered.Values
             .ExceptBy(ContactsToExclude, x => x.Id)
-            .OrderBy(ChatListOrder.ByOwnUpdateTime)
+            .OrderBy(ChatListOrder)
             .ToList();
 
         FilterChats(chats);
@@ -66,15 +86,6 @@
                 .ToList();
     }
 
-    private async Task OnContactClick(ChatInfo contact) {
-        if (_selectedChats.Contains(contact.Id)) {
-            _selectedChats.Remove(contact.Id);
-        } else {
-            _selectedChats.Add(contact.Id);
-        }
-
-        await SelectionChanged.InvokeAsync(_selectedChats.ToList());
-
-        StateHasChanged();
-    }
+    private void OnContactClick(ChatInfo contact)
+        => _model.Toggle(contact);
 }

@@ -1,111 +1,113 @@
 @using System.ComponentModel.DataAnnotations
-@using ActualChat.Contacts
-@using ActualChat.Search
 @implements IModalView<NewChatModal.Model>
+@inherits FusionComponentBase
+@namespace ActualChat.Chat.UI.Blazor.Components
 
 <DialogFrame
     Class="new-chat-modal"
     Title="New chat"
     HasCloseButton="true"
-    NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
+    NarrowViewSettings="@_narrowViewSettings">
     <Body>
-    <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
-        <FormBlock>
-            <DataAnnotationsValidator/>
-            <PicUpload
-                UploadUrl="@UploadUrl"
-                Picked="OnImagePicked"
-                Size="SquareSize.Size24"
-                Title="@_form.Title"
-                Picture="_form.Picture">
-                <NoPicture>
-                    @if (_form.Title.IsNullOrEmpty()) {
-                        <AnonymousIcon Class="w-24 h-24"></AnonymousIcon>
-                    } else {
-                        <Pic Title="@_form.Title" Size="SquareSize.Size24"/>
-                    }
-                </NoPicture>
-            </PicUpload>
-            <FormSection
-                For="() => _form.Title"
-                Label="Name"
-                InputId="@_form.TitleId"
-                IsLabelInsideInput="true"
-                Class="!mt-0 grow"
-                IsRequired="true">
-                <TextBox
-                    @bind-Value="@_form.Title"
-                    Id="@_form.TitleId"
-                    Autofocus="false"
-                    Autocomplete="false"/>
-            </FormSection>
-            <TileItem>
-                <Icon>
-                    <i class="icon-people"></i>
-                </Icon>
-                <Content>
-                    <Label InputId="@_form.IsPublicId" Text="Public chat"></Label>
-                </Content>
-                <Caption>
-                    <Label InputId="@_form.IsPublicId" Text="Anyone can join"></Label>
-                </Caption>
-                <Right>
-                    <ToggleEdit Id="@_form.IsPublicId" @bind-Value="_form.IsPublic"/>
-                </Right>
-            </TileItem>
-        </FormBlock>
-
-        <FormBlock>
-            @if (_selectedContacts.Any()) {
-                <div class="new-chat-modal-selected-contacts">
-                    @foreach (var contact in _selectedContacts) {
-                        <div class="new-chat-modal-selected-contact"
-                             @onclick="() => OnContactClick(contact)">
-                            <div class="new-chat-modal-remove-contact-icon">
-                                <i class="icon-close text-04 text-2xl pl-1"></i>
-                            </div>
-                            <AvatarCircle Size="SquareSize.Size6" Avatar="@contact.Contact.Account?.Avatar"/>
-                            <div class="px-1 max-w-36 truncate">
-                                @contact.Contact.Account?.Avatar.Name
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
-            <SearchBox
-                Placeholder="Type the username"
-                MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                TextChanged="@OnFilter"/>
-            <div class="new-chat-modal-contact-list">
-                @foreach (var contact in _filteredContacts) {
-                    var isSelected = _selectedContacts.Contains(contact);
-                    <div class="new-chat-modal-contact-list-item"
-                         @onclick="() => OnContactClick(contact)">
-                        <AccountCircle UserSid="@contact.Contact.Account!.Id" ShowPresence="true"/>
-                        <div class="flex-y grow gap-y-1 overflow-hidden">
-                            <span class="text-headline-1 text-02 truncate">
-                                <SearchMatchHighlighter Match="@GetMatch(contact.Contact.Account.Avatar.Name)"/>
-                            </span>
-                            <span class="text-xs text-03 truncate">
-                                @contact.LastChatMessage
-                            </span>
-                        </div>
-                        <Checkbox
-                            IsChecked="@isSelected"
-                            Class="!flex-none"
-                            Change="() => OnContactClick(contact)"/>
-                    </div>
+        <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
+            <FormBlock>
+                <DataAnnotationsValidator/>
+                <PicUpload
+                    UploadUrl="@UploadUrl"
+                    Picked="OnImagePicked"
+                    Size="SquareSize.Size24"
+                    Title="@_form.Title"
+                    Picture="_form.Picture">
+                    <NoPicture>
+                        @if (_form.Title.IsNullOrEmpty()) {
+                            <AnonymousIcon Class="w-24 h-24"></AnonymousIcon>
+                        } else {
+                            <Pic Title="@_form.Title" Size="SquareSize.Size24"/>
+                        }
+                    </NoPicture>
+                </PicUpload>
+                <FormSection
+                    For="() => _form.Title"
+                    Label="Name"
+                    InputId="@_form.TitleId"
+                    IsLabelInsideInput="true"
+                    Class="!mt-0 grow"
+                    IsRequired="true">
+                    <TextBox
+                        @bind-Value="@_form.Title"
+                        Id="@_form.TitleId"
+                        Autofocus="false"
+                        Autocomplete="false"/>
+                </FormSection>
+            </FormBlock>
+            <FormBlock Title="Chat type">
+                <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
+                    <TileItem>
+                        <Icon>
+                            <InputRadio id="@_form.IsPublicTrueFormId" Value="@true"/>
+                        </Icon>
+                        <Content>
+                            <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
+                        </Content>
+                        <Caption>
+                            <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this chat by navigating to its URL"></Label>
+                        </Caption>
+                    </TileItem>
+                    <TileItem>
+                        <Icon>
+                            <InputRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
+                        </Icon>
+                        <Content>
+                            <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>
+                        </Content>
+                        <Caption>
+                            <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
+                        </Caption>
+                    </TileItem>
+                </InputRadioGroup>
+            </FormBlock>
+            <FormBlock>
+                @if (_form.IsPublic) {
+                    <TileItem Class="field-allow-guest">
+                        <Icon>
+                            <i class="icon-guest"></i>
+                        </Icon>
+                        <Content>
+                            <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
+                        </Content>
+                        <Caption>
+                            <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
+                        </Caption>
+                        <Right>
+                            <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
+                        </Right>
+                    </TileItem>
                 }
-            </div>
-        </FormBlock>
-    </Form>
+                <TileItem Class="field-allow-anonym">
+                    <Icon>
+                        <i class="icon-anonym"></i>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+                    </Content>
+                    <Caption>
+                        <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+                    </Caption>
+                    <Right>
+                        <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
+                    </Right>
+                </TileItem>
+            </FormBlock>
+        </Form>
     </Body>
     <Buttons>
-        <Button
-            Click="@(() => Modal.Close())"
-            Class="btn-modal">
-            Cancel
-        </Button>
+        @if (ScreenSize.IsWide()) {
+            <Button
+                Click="@(() => Modal.Close())"
+                Class="btn-modal">
+                Cancel
+            </Button>
+        }
         <Button
             Click="@OnCreate"
             Type="@ButtonType.Submit"
@@ -117,72 +119,24 @@
 
 @code {
     private static readonly string UploadUrl = "/api/avatars/upload-picture";
+    private readonly DialogFrameNarrowViewSettings _narrowViewSettings =
+        DialogFrameNarrowViewSettings.Stretch with { UseInteractiveHeader = true, ShouldHideButtons = false};
 
     private Form _formRef = null!;
     private FormModel _form = null!;
-    private string _filter = null!;
-    private List<ContactModel> _filteredContacts = new();
-    private List<ContactModel> _allContacts = new();
-    private readonly List<ContactModel> _selectedContacts = new();
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IContacts Contacts { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override async Task OnInitializedAsync() {
-        _form = new(ComponentIdGenerator);
-        var userContacts = await Contacts.ListUserContacts(Session, CancellationToken.None);
-        var models = await userContacts
-            .OrderBy(x => x.Account?.Avatar.Name)
-            .Select(LoadContact)
-            .Collect();
-        _allContacts = models.ToList();
-        _filteredContacts = _allContacts.ToList();
-    }
-
-    private async Task<ContactModel> LoadContact(Contact contact) {
-        var chatInfo = contact.ChatId != ChatId.None
-            ? await ChatUI.Get(contact.ChatId, CancellationToken.None)
-            : null;
-
-;        return new ContactModel {
-            Contact = contact,
-            LastChatMessage = chatInfo?.LastTextEntryText,
-        };
-    }
-
-    private SearchMatch GetMatch(string text) {
-        var searchPhrase = _filter.ToSearchPhrase(true, false);
-        return searchPhrase.GetMatch(text);
-    }
-
-    private void OnFilter(string filter) {
-        _filter = filter;
-
-        _filteredContacts = string.IsNullOrWhiteSpace(filter)
-            ? _allContacts.ToList()
-            : _allContacts
-                .Where(x => x.Contact.Account != null && x.Contact.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
-                .ToList();
-
-        StateHasChanged();
-    }
-
-    private void OnContactClick(ContactModel contact) {
-        if (_selectedContacts.Contains(contact)) {
-            _selectedContacts.Remove(contact);
-        } else {
-            _selectedContacts.Add(contact);
-        }
-
-        StateHasChanged();
-    }
+    protected override void OnInitialized()
+        => _form = new(ComponentIdGenerator);
 
     private void OnImagePicked(MediaContent mediaContent) {
         _form.Picture = new(mediaContent);
@@ -197,6 +151,8 @@
                     Kind = ChatKind.Group,
                     IsPublic = _form.IsPublic,
                     MediaId = _form.Picture?.MediaContent?.MediaId,
+                    AllowGuestAuthors = _form.AllowGuestAuthors,
+                    AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
                 },
             });
             var (chat, createChatError) = await UICommander.Run(command, CancellationToken.None);
@@ -204,20 +160,10 @@
                 return;
 
             chat.Require();
-
-            var userIds = _selectedContacts
-                .Where(contact => contact.Contact.Account != null)
-                .Select(contact => contact.Contact.Account!.Id)
-                .ToArray();
-            var createAuthorsCommand = new Authors_Invite(Session, chat.Id, userIds);
-            var (_, createAuthorsError) = await UICommander.Run(createAuthorsCommand, CancellationToken.None);
-            if (createAuthorsError != null)
-                return;
-
-            _ = History.NavigateTo(Links.Chat(chat.Id));
-            // Required for proper navigation to the newly created chat
-            await Task.Delay(100);
             Modal.Close();
+            await History.WhenNavigationCompleted();
+
+            _ = ModalUI.Show(new NewChatMembersModal.Model(chat));
         }
         catch { // Intended: command errors are shown in the UI anyway
         }
@@ -225,27 +171,30 @@
 
     public sealed record Model;
 
-    private sealed class FormModel {
-        public string FormId { get; }
-
+    public sealed class FormModel {
         [Required, MinLength(1)]
         public string Title { get; set; } = "";
-        public string TitleId { get; }
-
-        public bool IsPublic { get; set; }
-        public string IsPublicId { get; }
 
         public Picture? Picture { get; set; }
+        public bool IsPublic { get; set; }
+        public bool AllowGuestAuthors { get; set; }
+        public bool AllowAnonymousAuthors { get; set; }
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string IsPublicTrueFormId { get; }
+        public string IsPublicFalseFormId { get; }
+        public string AllowGuestAuthorsFormId { get; }
+        public string AllowAnonymousAuthorsFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             TitleId = $"{FormId}-title";
-            IsPublicId = $"{FormId}-public";
+            var isPublicFormId = $"{FormId}-is-public";
+            IsPublicTrueFormId = isPublicFormId + "-true";
+            IsPublicFalseFormId = isPublicFormId + "-false";
+            AllowGuestAuthorsFormId = $"{FormId}-allows-guests";
+            AllowAnonymousAuthorsFormId = $"{FormId}-allows-anonymous";
         }
-    }
-
-    private sealed class ContactModel {
-        public Contact Contact { get; init; } = null!;
-        public string? LastChatMessage { get; init; }
     }
 }

@@ -1,9 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio;
-using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Chat.UI.Blazor.Components.MarkupParts;
 using ActualChat.Chat.UI.Blazor.Components.MarkupParts.CodeBlockMarkupView;
-using ActualChat.Chat.UI.Blazor.Components.NewChat;
 using ActualChat.Chat.UI.Blazor.Components.Settings;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Testing;
@@ -84,6 +82,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
             .Add<ChatSettingsModal.Model, ChatSettingsModal>()
             .Add<AddMemberModal.Model, AddMemberModal>()
             .Add<NewChatModal.Model, NewChatModal>()
+            .Add<NewChatMembersModal.Model, NewChatMembersModal>()
             .Add<OnboardingModal.Model, OnboardingModal>()
             .Add<SettingsModal.Model, SettingsModal>()
             .Add<AuthorModal.Model, AuthorModal>()
