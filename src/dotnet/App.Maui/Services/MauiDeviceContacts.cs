@@ -63,12 +63,12 @@ public sealed class MauiDeviceContacts(IServiceProvider services) : DeviceContac
     private ExternalContact ToExternalContact(UserId ownerId, MauiContact mauiContact)
         => new (ExternalContactId.None) {
             Id = new ExternalContactId(ownerId, DeviceId, mauiContact.Id),
-            GivenName = mauiContact.GivenName,
-            DisplayName = mauiContact.DisplayName,
-            FamilyName = mauiContact.FamilyName,
-            MiddleName = mauiContact.MiddleName,
-            NamePrefix = mauiContact.NamePrefix,
-            NameSuffix = mauiContact.NameSuffix,
+            GivenName = mauiContact.GivenName ?? "",
+            DisplayName = mauiContact.DisplayName ?? "",
+            FamilyName = mauiContact.FamilyName ?? "",
+            MiddleName = mauiContact.MiddleName ?? "",
+            NamePrefix = mauiContact.NamePrefix ?? "",
+            NameSuffix = mauiContact.NameSuffix ?? "",
             PhoneHashes = mauiContact.Phones.Select(GetPhoneHash).SkipNullItems().ToApiSet(),
             EmailHashes = mauiContact.Emails.Select(GetEmailHash).SkipNullItems().ToApiSet(),
         };
