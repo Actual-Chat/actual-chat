@@ -55,16 +55,10 @@ export class NotificationUI {
             const response = await fetch('/dist/config/firebase.config.js');
             if (response.ok || response.status === 304) {
                 const { config, publicKey } = await response.json();
-                const configBase64 = btoa(JSON.stringify(config));
                 const app = initializeApp(config);
                 const messaging = getMessaging(app);
                 onMessage(messaging, (payload) => {
                     debugLog?.log(`onMessage, payload:`, payload);
-                });
-
-                await navigator.serviceWorker.controller.postMessage({
-                    type: 'ENABLE_NOTIFICATIONS',
-                    payload: configBase64,
                 });
 
                 const workerRegistration = await navigator.serviceWorker.getRegistration('sw.js');
@@ -86,7 +80,6 @@ export class NotificationUI {
     public static async registerRequestNotificationHandler(buttonContainer: HTMLElement): Promise<void> {
         buttonContainer.addEventListener('click', async () => {
             await this.requestNotificationPermission();
-            await this.getDeviceToken();
         });
     }
 
