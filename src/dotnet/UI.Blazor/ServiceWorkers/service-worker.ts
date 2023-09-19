@@ -99,7 +99,7 @@ const imagesCacheStrategy = new CacheFirst({
             maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
         }),
         new CacheableResponsePlugin({
-            statuses: [0, 200],
+            statuses: [200],
         }),
     ],
 });
