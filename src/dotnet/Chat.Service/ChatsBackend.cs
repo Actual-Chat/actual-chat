@@ -328,7 +328,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             else if (chatId.Kind == ChatKind.Group) {
                 // Group chat
                 ownerId.Require("Command.OwnerId");
-                // If chat is created with possibility to join anonymous authors, then join owner is anonymous author.
+                // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
                 // After that they can reveal themself if needed.
                 var upsertCommand = new AuthorsBackend_Upsert(
                     chatId, default, ownerId, null,
