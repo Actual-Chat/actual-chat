@@ -13,3 +13,38 @@
 .contact-select-list-item * {
     @apply cursor-pointer;
 }
+
+.contact-select-badges {
+    @apply flex-x flex-wrap;
+    @apply gap-x-2;
+}
+.contact-select-badges-contact {
+    @apply flex-none flex-x items-center;
+    @apply my-0.5 bg-03;
+    @apply rounded-full;
+}
+.contact-select-badges-contact,
+.contact-select-badges-contact * {
+    @apply cursor-pointer;
+}
+.contact-select-badges-remove-contact-icon {
+    @apply hidden items-center;
+    @apply rounded-full;
+    @apply w-6 h-6;
+    @apply bg-transparent;
+}
+.contact-select-badges-remove-contact-icon > i {
+    @apply text-04 text-2xl pl-1;
+}
+.contact-select-badges-title {
+    @apply px-1 max-w-36 truncate;
+}
+body.hoverable .contact-select-badges-contact:hover {
+    @apply bg-error text-04;
+}
+body.hoverable .contact-select-badges-contact:hover .contact-select-badges-remove-contact-icon {
+    @apply flex;
+}
+body.hoverable .contact-select-badges-contact:hover .avatar-circle {
+    @apply hidden;
+}

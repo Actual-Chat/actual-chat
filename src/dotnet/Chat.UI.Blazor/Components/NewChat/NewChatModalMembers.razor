@@ -1,0 +1,69 @@
+@using ActualChat.Search
+@inherits FusionComponentBase
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<FormBlock>
+    <ContactSelectContext ChatSelectionChanged="OnSelectionChanged">
+        <SearchBox
+            Placeholder="Whom would you like to Add"
+            Class="icon-alight-right"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <ContactSelectBadges />
+        <ContactSelect
+            ShowUserContactsOnly="true"
+            ChatListOrder="ChatListOrder.ByAlphabet"
+            SearchPhrase="_searchPhrase" />
+    </ContactSelectContext>
+</FormBlock>
+
+<RenderIntoSlot Name="@ButtonsSlotName">
+    @if (_selectedChats.Count > 0) {
+        <Button
+            Class="btn-modal btn-primary"
+            Click="@OnAdd">
+            Add @_selectedChats.Count member(s)
+        </Button>
+    } else {
+        <Button Class="btn-modal btn-primary"
+                Click="@(() => SkipRequested())">
+            Skip
+        </Button>
+    }
+</RenderIntoSlot>
+
+@code {
+    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
+    private IReadOnlyCollection<ChatInfo> _selectedChats = Array.Empty<ChatInfo>();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
+    [Parameter, EditorRequired] public Action MembersAdded { get; set; } = null!;
+    [Parameter, EditorRequired] public Action SkipRequested { get; set; } = null!;
+
+    private void OnFilter(string filter) {
+        _searchPhrase = filter.ToSearchPhrase(true, false);
+        StateHasChanged();
+    }
+
+    private void OnSelectionChanged(IReadOnlyCollection<ChatInfo> selectedChats) {
+        _selectedChats = selectedChats;
+        StateHasChanged();
+    }
+
+    private async Task OnAdd() {
+        var userIds = _selectedChats
+            .Select(chat => chat.Contact.Account)
+            .SkipNullItems()
+            .Select(c => c.Id)
+            .ToArray();
+        var createAuthorsCommand = new Authors_Invite(Session, new ChatId(ChatSid), userIds);
+        var (_, error) = await UICommander.Run(createAuthorsCommand);
+        if (error != null)
+            return;
+        MembersAdded();
+    }
+}

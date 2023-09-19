@@ -1,0 +1,185 @@
+﻿@using System.ComponentModel.DataAnnotations
+@inherits FusionComponentBase
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
+    <FormBlock>
+        <DataAnnotationsValidator/>
+        <PicUpload
+            UploadUrl="@UploadUrl"
+            Picked="OnImagePicked"
+            Size="SquareSize.Size24"
+            Title="@_form.Title"
+            Picture="_form.Picture">
+            <NoPicture>
+                @if (_form.Title.IsNullOrEmpty()) {
+                    <AnonymousIcon Class="w-24 h-24"></AnonymousIcon>
+                } else {
+                    <Pic Title="@_form.Title" Size="SquareSize.Size24"/>
+                }
+            </NoPicture>
+        </PicUpload>
+        <FormSection
+            For="() => _form.Title"
+            Label="Name"
+            InputId="@_form.TitleId"
+            IsLabelInsideInput="true"
+            Class="!mt-0 grow"
+            IsRequired="true">
+            <TextBox
+                @bind-Value="@_form.Title"
+                Id="@_form.TitleId"
+                Autofocus="false"
+                Autocomplete="false"/>
+        </FormSection>
+    </FormBlock>
+    <FormBlock Title="Chat type">
+        <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
+            <TileItem>
+                <Icon>
+                    <InputRadio id="@_form.IsPublicTrueFormId" Value="@true"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this chat by navigating to its URL"></Label>
+                </Caption>
+            </TileItem>
+            <TileItem>
+                <Icon>
+                    <InputRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
+                </Caption>
+            </TileItem>
+        </InputRadioGroup>
+    </FormBlock>
+    <FormBlock>
+        @if (_form.IsPublic) {
+            <TileItem Class="field-allow-guest">
+                <Icon>
+                    <i class="icon-guest"></i>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
+                </Caption>
+                <Right>
+                    <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
+                </Right>
+            </TileItem>
+        }
+        <TileItem Class="field-allow-anonym">
+            <Icon>
+                <i class="icon-anonym"></i>
+            </Icon>
+            <Content>
+                <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
+            </Content>
+            <Caption>
+                <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
+            </Caption>
+            <Right>
+                <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
+            </Right>
+        </TileItem>
+    </FormBlock>
+</Form>
+
+<RenderIntoSlot Name="@ButtonsSlotName">
+    @if (ScreenSize.IsWide()) {
+        <Button
+            Click="@(() => CloseRequested())"
+            Class="btn-modal">
+            Cancel
+        </Button>
+    }
+    <Button
+        Click="@OnCreate"
+        Type="@ButtonType.Button"
+        Class="btn-modal btn-primary">
+        Create
+    </Button>
+</RenderIntoSlot>
+
+@code {
+    private static readonly string UploadUrl = "/api/avatars/upload-picture";
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
+    [Parameter, EditorRequired] public Action<Chat> ChatCreated { get; set; } = null!;
+    [Parameter, EditorRequired] public Action CloseRequested { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _form = new(ComponentIdGenerator);
+
+    private void OnImagePicked(MediaContent mediaContent) {
+        _form.Picture = new(mediaContent);
+        StateHasChanged();
+    }
+
+    private async Task OnCreate() {
+        try {
+            var command = new Chats_Change(Session, default, null, new() {
+                Create = new ChatDiff {
+                    Title = _form.Title,
+                    Kind = ChatKind.Group,
+                    IsPublic = _form.IsPublic,
+                    MediaId = _form.Picture?.MediaContent?.MediaId,
+                    AllowGuestAuthors = _form.AllowGuestAuthors,
+                    AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
+                },
+            });
+            var (chat, createChatError) = await UICommander.Run(command, CancellationToken.None);
+            if (createChatError != null)
+                return;
+
+            chat.Require();
+            ChatCreated(chat);
+        }
+        catch { // Intended: command errors are shown in the UI anyway
+        }
+    }
+
+    public sealed class FormModel {
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+
+        public Picture? Picture { get; set; }
+        public bool IsPublic { get; set; }
+        public bool AllowGuestAuthors { get; set; }
+        public bool AllowAnonymousAuthors { get; set; }
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string IsPublicTrueFormId { get; }
+        public string IsPublicFalseFormId { get; }
+        public string AllowGuestAuthorsFormId { get; }
+        public string AllowAnonymousAuthorsFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            TitleId = $"{FormId}-title";
+            var isPublicFormId = $"{FormId}-is-public";
+            IsPublicTrueFormId = isPublicFormId + "-true";
+            IsPublicFalseFormId = isPublicFormId + "-false";
+            AllowGuestAuthorsFormId = $"{FormId}-allows-guests";
+            AllowAnonymousAuthorsFormId = $"{FormId}-allows-anonymous";
+        }
+    }
+}

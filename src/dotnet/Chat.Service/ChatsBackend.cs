@@ -328,9 +328,14 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             else if (chatId.Kind == ChatKind.Group) {
                 // Group chat
                 ownerId.Require("Command.OwnerId");
-                var author = await AuthorsBackend
-                    .EnsureJoined(chatId, ownerId, cancellationToken)
-                    .ConfigureAwait(false);
+                // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
+                // After that they can reveal themself if needed.
+                var upsertCommand = new AuthorsBackend_Upsert(
+                    chatId, default, ownerId, null,
+                    new AuthorDiff {
+                        IsAnonymous = chat.AllowAnonymousAuthors
+                    });
+                var author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
                 var createOwnersRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
                     Create = new RoleDiff() {
