@@ -107,7 +107,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Actual Chat-specific UI services
         services.AddScoped(c => new ThemeUI(c));
         services.AddScoped(c => new FeedbackUI(c));
-        services.AddScoped(c => new VisualMediaViewerUI(c.GetRequiredService<ModalUI>()));
+        services.AddScoped(c => new VisualMediaViewerUI(c));
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddService<SearchUI>(ServiceLifetime.Scoped);
 

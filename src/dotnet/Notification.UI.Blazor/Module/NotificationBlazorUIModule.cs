@@ -21,7 +21,7 @@ public sealed class NotificationBlazorUIModule: HostModule, IBlazorUIModule
         // Scoped / Blazor Circuit services
         services.AddScoped<NotificationUI>();
         if (appKind.IsServer() || appKind.IsWasmApp()) {
-            services.AddTransient<IDeviceTokenRetriever>(c => new WebDeviceTokenRetriever(c.GetRequiredService<IJSRuntime>()));
+            services.AddTransient<IDeviceTokenRetriever>(c => new WebDeviceTokenRetriever(c));
             services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<NotificationUI>());
         }
     }

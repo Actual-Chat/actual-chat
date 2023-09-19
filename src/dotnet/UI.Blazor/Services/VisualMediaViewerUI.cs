@@ -1,12 +1,9 @@
 using ActualChat.Chat;
 namespace ActualChat.UI.Blazor.Services;
 
-public class VisualMediaViewerUI
+public class VisualMediaViewerUI(IServiceProvider services)
 {
-    private readonly ModalUI _modalUI;
-
-    public VisualMediaViewerUI(ModalUI modalUI)
-        => _modalUI = modalUI;
+    private ModalUI ModalUI { get; } = services.GetRequiredService<ModalUI>();
 
     public async Task Show(
         string url,
@@ -18,7 +15,7 @@ public class VisualMediaViewerUI
         bool isVideo = false)
     {
         var model = new VisualMediaViewerModal.Model(url, cachedImageUrl, altText, width, height, chatEntry, isVideo);
-        var modalRef = await _modalUI.Show(model);
-        await modalRef.WhenClosed;
+        var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
+        await modalRef.WhenClosed.ConfigureAwait(false);
     }
 }

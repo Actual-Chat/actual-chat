@@ -37,7 +37,7 @@ public class SelectionUI : WorkerBase, INotifyInitialized, IComputeService
     public async Task Select(ChatEntryId chatEntryId) {
         _selection.Value = _selection.Value.Add(chatEntryId);
         _hasSelection.Value = true;
-        _escapistSubscription ??= await Escapist.SubscribeOnce(Clear, StopToken);
+        _escapistSubscription ??= await Escapist.SubscribeOnce(Clear, StopToken).ConfigureAwait(false);
     }
 
     public void Unselect(ChatEntryId chatEntryId) {

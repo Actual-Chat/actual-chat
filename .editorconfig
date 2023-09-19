@@ -394,3 +394,11 @@ dotnet_diagnostic.RCS1079.severity = none # (duplicate of MA0025) RCS1079: Imple
 dotnet_diagnostic.MA0046.severity = none # Use EventHandler<T> to declare events
 dotnet_diagnostic.MA0069.severity = none # Duplicate of CA2211
 dotnet_diagnostic.MA0015.severity = suggestion # shows annoying warning for new ArgumentOutOfRangeException(nameof(arg.somProp))
+
+[**/Components/**/*.cs]
+MA0004.report = DetectContext
+dotnet_diagnostic.MA0004.severity = none
+
+[{*.razor,*razor.cs}]
+MA0004.report = DetectContext
+dotnet_diagnostic.MA0004.severity = none

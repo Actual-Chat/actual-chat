@@ -56,7 +56,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
                     return;
                 entryPlaybackTasks = EntryPlaybackTasks.ToList();
             }
-            await Task.WhenAll(entryPlaybackTasks);
+            await Task.WhenAll(entryPlaybackTasks).ConfigureAwait(false);
         }
     }
 
@@ -145,7 +145,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         _ = BackgroundTask.Run(async () => {
                 var now = Clocks.SystemClock.Now;
                 var latency = now - audio.CreatedAt;
-                await AudioStreamer.ReportLatency(latency, cancellationToken);
+                await AudioStreamer.ReportLatency(latency, cancellationToken).ConfigureAwait(false);
                 var recorderState = AudioRecorder.State.LastNonErrorValue;
                 if (recorderState.IsRecording && recorderState.ChatId == audioEntry.ChatId)
                     await AudioRecorder.ConversationSignal(cancellationToken).ConfigureAwait(false);

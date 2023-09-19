@@ -1,8 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <!--    [MA0004]: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed-->
-    <NoWarn>$(NoWarn);MA0004</NoWarn>
+    <!-- Suppressed warnings (please sort alphabetically!) -->
   </PropertyGroup>
 
   <ItemGroup>

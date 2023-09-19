@@ -1,20 +1,17 @@
 namespace ActualChat.UI.Blazor.Services;
 
-internal sealed class WebClientAuth : IClientAuth
+internal sealed class WebClientAuth(IServiceProvider services) : IClientAuth
 {
     private ClientAuthHelper? _clientAuthHelper;
 
-    private IServiceProvider Services { get; }
+    private IServiceProvider Services { get; } = services;
     private ClientAuthHelper ClientAuthHelper => _clientAuthHelper ??= Services.GetRequiredService<ClientAuthHelper>();
 
-    public WebClientAuth(IServiceProvider services)
-        => Services = services;
+    public Task SignIn(string schema)
+        => ClientAuthHelper.SignIn(schema).AsTask();
 
-    public async Task SignIn(string schema)
-        => await ClientAuthHelper.SignIn(schema);
-
-    public async Task SignOut()
-        => await ClientAuthHelper.SignOut();
+    public Task SignOut()
+        => ClientAuthHelper.SignOut().AsTask();
 
     public ValueTask<(string Name, string DisplayName)[]> GetSchemas()
         => ClientAuthHelper.GetSchemas();

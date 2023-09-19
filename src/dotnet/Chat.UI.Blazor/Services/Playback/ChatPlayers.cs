@@ -152,11 +152,11 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
         {
             if (state is HistoricalPlaybackState historical) {
                 _ = TuneUI.Play(Tune.StopHistoricalPlayback);
-                await StopPlayer(historical.ChatId, ChatPlayerKind.Historical);
+                await StopPlayer(historical.ChatId, ChatPlayerKind.Historical).ConfigureAwait(false);
             }
             else if (state is RealtimePlaybackState realtime) {
                 _ = TuneUI.Play(Tune.StopRealtimePlayback);
-                await StopPlayers(realtime.ChatIds, ChatPlayerKind.Realtime);
+                await StopPlayers(realtime.ChatIds, ChatPlayerKind.Realtime).ConfigureAwait(false);
             }
         }
     }
@@ -195,7 +195,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
                 return;
             _players = _players.Remove((chatId, playerKind));
         }
-        await player.DisposeAsync();
+        await player.DisposeAsync().ConfigureAwait(false);
         using (Computed.Invalidate())
             _ = Get(chatId, playerKind, default);
     }

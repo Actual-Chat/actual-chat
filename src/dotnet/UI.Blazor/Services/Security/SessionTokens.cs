@@ -42,7 +42,7 @@ public sealed class SessionTokens : WorkerBase, IComputeService
         minLifespan = minLifespan.Clamp(MinLifespan, AsGoodAsNewLifespan);
         var result = _current;
         if (result == null || result.ExpiresAt < Now + minLifespan)
-            result = await GetNew(cancellationToken);
+            result = await GetNew(cancellationToken).ConfigureAwait(false);
         return result;
     }
 
@@ -60,10 +60,10 @@ public sealed class SessionTokens : WorkerBase, IComputeService
 
     // Protected & private methods
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
+    protected override Task OnRun(CancellationToken cancellationToken)
     {
         var retryDelays = RetryDelaySeq.Exp(0.1, 5);
-        await new AsyncChain(nameof(AutoRefresh), AutoRefresh)
+        return AsyncChainExt.From(AutoRefresh)
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .RunIsolated(cancellationToken);
@@ -73,7 +73,7 @@ public sealed class SessionTokens : WorkerBase, IComputeService
     {
         var minLifespan = MinLifespan + RefreshReserve;
         while (!cancellationToken.IsCancellationRequested) {
-            var current = await Get(minLifespan, cancellationToken);
+            var current = await Get(minLifespan, cancellationToken).ConfigureAwait(false);
             await JS.InvokeVoidAsync(JSSetCurrentMethod, cancellationToken, current.Token).ConfigureAwait(false);
             var refreshAt = current.ExpiresAt - minLifespan;
             await Clock.Delay(refreshAt, cancellationToken).ConfigureAwait(false);

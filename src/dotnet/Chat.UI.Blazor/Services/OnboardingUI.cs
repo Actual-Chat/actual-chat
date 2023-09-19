@@ -53,7 +53,7 @@ public class OnboardingUI : IDisposable, IOnboardingUI
         // We give it 5 seconds to complete, otherwise it won't be shown
         using var cts = _lastTryShowCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try {
-            shouldBeShown = await ShouldBeShown(cts.Token);
+            shouldBeShown = await ShouldBeShown(cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { }
         finally {
@@ -66,7 +66,7 @@ public class OnboardingUI : IDisposable, IOnboardingUI
 
         UpdateSettings(Settings.Value with { LastShownAt = Now });
         var modalUI = Services.GetRequiredService<ModalUI>();
-        _lastModalRef = await modalUI.Show(new OnboardingModal.Model());
+        _lastModalRef = await modalUI.Show(new OnboardingModal.Model()).ConfigureAwait(false);
         return true;
     }
 

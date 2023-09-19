@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.UI.Blazor;
 
+[SuppressMessage("Usage", "MA0004:Use Task.ConfigureAwait(false)")]
 public sealed class UIEventHub : IHasServices
 {
     private readonly Dictionary<Type, ImmutableList<Delegate>> _handlers = new ();

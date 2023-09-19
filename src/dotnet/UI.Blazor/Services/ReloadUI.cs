@@ -21,7 +21,7 @@ public class ReloadUI
             Log.LogWarning("Reloading...");
             try {
                 if (clearCaches)
-                    await ClearCaches();
+                    await ClearCaches().ConfigureAwait(false);
                 var nav = Services.GetRequiredService<NavigationManager>();
                 nav.NavigateTo(Links.Home, true);
             }

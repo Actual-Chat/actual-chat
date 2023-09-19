@@ -119,7 +119,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         var lastTextEntryText = "";
         if (news.LastTextEntry is { } lastTextEntry) {
             var chatMarkupHub = ChatMarkupHubFactory[chatId];
-            var markup = await chatMarkupHub.GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken);
+            var markup = await chatMarkupHub.GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken).ConfigureAwait(false);
             lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
         }
 
@@ -270,7 +270,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     {
         var lease = await _readPositionStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
         var result = new SyncedStateLease<ReadPosition>(lease);
-        await result.WhenFirstTimeRead;
+        await result.WhenFirstTimeRead.ConfigureAwait(false);
         return result;
     }
 

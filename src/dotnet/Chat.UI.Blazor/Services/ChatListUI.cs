@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Kvas;
@@ -118,6 +119,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     }
 
     [ComputeMethod]
+    [SuppressMessage("Usage", "MA0004:Use Task.ConfigureAwait(false)")]
     public virtual async Task<IReadOnlyList<ChatInfo>> ListActive(CancellationToken cancellationToken = default)
     {
         await ActiveChatsUI.WhenLoaded; // No need for .ConfigureAwait(false) here
@@ -160,7 +162,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     {
         var chatById = await ListAllUnorderedRaw(cancellationToken).ConfigureAwait(false);
         if (await _isSelectedChatUnlisted.Use(cancellationToken).ConfigureAwait(false)) {
-            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
             selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
             var selectedChat = selectedChatId.IsNone ? null
                 : await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);

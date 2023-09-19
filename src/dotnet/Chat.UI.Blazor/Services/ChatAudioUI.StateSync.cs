@@ -142,7 +142,7 @@ public partial class ChatAudioUI
         Task? whenIdle = null;
         var cts = cancellationToken.CreateLinkedTokenSource();
         try {
-            var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
+            var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
             var repliedChatEntryId = relatedChatEntry is { Kind: RelatedEntryKind.Reply }
                 ? relatedChatEntry.Value.Id
                 : ChatEntryId.None;
@@ -348,7 +348,7 @@ public partial class ChatAudioUI
             var nextBeepAt = cNextBeep.Value!.At;
             var nextBeepIn = nextBeepAt - Now;
             await Task.Delay(TimeSpanExt.Max(nextBeepIn, TimeSpan.FromMilliseconds(50)), cancellationToken).ConfigureAwait(false);
-            if (await IsNotCancelled(nextBeepAt))
+            if (await IsNotCancelled(nextBeepAt).ConfigureAwait(false))
                 await TuneUI.PlayAndWait(Tune.RemindOfRecording).ConfigureAwait(false);
         }
 
@@ -444,9 +444,10 @@ public partial class ChatAudioUI
             idRange = (startFrom.Value, idRange.End);
         var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
         return await reader.GetLastWhile(idRange,
-            x => x.HasAudioEntry || x.IsStreaming,
-            x => GetEndsAt(x.ChatEntry) >= minEndsAt && x.SkippedCount < 100,
-            cancellationToken);
+                x => x.HasAudioEntry || x.IsStreaming,
+                x => GetEndsAt(x.ChatEntry) >= minEndsAt && x.SkippedCount < 100,
+                cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private Moment GetEndsAt(ChatEntry lastEntry)

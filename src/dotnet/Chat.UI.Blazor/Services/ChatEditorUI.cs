@@ -60,7 +60,7 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
         if (updateUI)
             _ = UICommander.RunNothing();
         PlayTune();
-        await SaveRelatedEntry(relatedChatEntry.Id.ChatId, relatedChatEntry);
+        await SaveRelatedEntry(relatedChatEntry.Id.ChatId, relatedChatEntry).ConfigureAwait(false);
 
         void PlayTune()
         {

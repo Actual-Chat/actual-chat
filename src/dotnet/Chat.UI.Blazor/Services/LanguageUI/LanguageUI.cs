@@ -70,7 +70,7 @@ public class LanguageUI : IDisposable
 
     private async ValueTask<UserLanguageSettings> CreateLanguageSettings(CancellationToken cancellationToken)
     {
-        var languages = await GetClientLanguages(cancellationToken);
+        var languages = await GetClientLanguages(cancellationToken).ConfigureAwait(false);
         var settings = new UserLanguageSettings() {
             Primary = languages.Count > 0 ? languages[0] : Languages.Main,
             Secondary = languages.Count > 1 ? (Language?) languages[1] : null,
@@ -78,7 +78,7 @@ public class LanguageUI : IDisposable
 
         // This code stores the languages after 1s delay
         _ = BackgroundTask.Run(async () => {
-            await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None);
+            await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken.None).ConfigureAwait(false);
             _settings.Set(_ => settings);
         }, CancellationToken.None);
         return settings;

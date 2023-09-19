@@ -45,7 +45,7 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
                 // ReSharper disable once InconsistentNaming
                 var canUseNNVad = HostInfo.ClientKind != ClientKind.Ios || IsIOSDeviceFastEnoughToRunNNVad(deviceModel);
                 var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
-                await JS.InvokeVoidAsync(JSInitMethod, ct, backendRef, UrlMapper.BaseUrl, canUseNNVad);
+                await JS.InvokeVoidAsync(JSInitMethod, ct, backendRef, UrlMapper.BaseUrl, canUseNNVad).ConfigureAwait(false);
             })
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)

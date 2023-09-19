@@ -39,9 +39,9 @@ public abstract class AutoNavigationUI : IHasServices
             if (_autoNavigationCandidates == null)
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
 
-            var defaultUrl = await GetDefaultAutoNavigationUrl();
+            var defaultUrl = await GetDefaultAutoNavigationUrl().ConfigureAwait(false);
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{DefaultUrl}}", defaultUrl);
-            await Services.GetRequiredService<AutoNavigationTasks>().Complete().WaitAsync(cancellationToken);
+            await Services.GetRequiredService<AutoNavigationTasks>().Complete().WaitAsync(cancellationToken).ConfigureAwait(false);
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: AutoNavigationTasks are completed");
             var candidates = Interlocked.Exchange(ref _autoNavigationCandidates, null);
             if (candidates == null)
@@ -64,7 +64,7 @@ public abstract class AutoNavigationUI : IHasServices
 
         return Task.Run(async () => {
             await BlazorCircuitContext.WhenReady.ConfigureAwait(false);
-            await Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
+            await Dispatcher.InvokeAsync(() => NavigateTo(url, reason)).ConfigureAwait(false);
         });
     }
 

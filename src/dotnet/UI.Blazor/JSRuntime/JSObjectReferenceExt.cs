@@ -16,13 +16,13 @@ public static class JSObjectReferenceExt
         {
             if (!jsDisposeMethodName1.IsNullOrEmpty())
                 try {
-                    await jsRef1.InvokeVoidAsync(jsDisposeMethodName1);
+                    await jsRef1.InvokeVoidAsync(jsDisposeMethodName1).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) { }
                 catch (JSDisconnectedException) { }
 
             try {
-                await jsRef1.DisposeAsync();
+                await jsRef1.DisposeAsync().ConfigureAwait(false);
             }
             catch (OperationCanceledException) { }
             catch (JSDisconnectedException) { }
