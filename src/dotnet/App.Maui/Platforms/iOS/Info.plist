@@ -48,7 +48,7 @@
 	<key>aps-environment</key>
 	<string>development</string>
 	<key>MinimumOSVersion</key>
-	<string>16.1</string>
+	<string>16.4</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
@@ -57,12 +57,12 @@
 		<string>remote-notification</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-    <string>Need access to your camera to take photos and share them with other users.</string>
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Share photos and videos from your photo gallery.</string>
-    <key>NSPhotoLibraryUsageDescription</key>
-    <string>Upload photos to share with other users or to change your avatar.</string>
-    <key>NSContactsUsageDescription</key>
-    <string>Find friends, relatives, colleagues, etc.</string>
+	<string>Need access to your camera to take photos and share them with other users.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Share photos and videos from your photo gallery.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Upload photos to share with other users or to change your avatar.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Find friends, relatives, colleagues, etc.</string>
 </dict>
 </plist>
