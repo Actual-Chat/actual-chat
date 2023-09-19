@@ -55,13 +55,13 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
             };
 
         var authorComputed = Computed.GetExisting(() => Authors.Get(Session, AuthorId.ChatId, AuthorId, default));
-        var author = authorComputed is { HasValue: true } ? authorComputed.Value : null;
+        var author = authorComputed is { HasValue: true, ConsistencyState: ConsistencyState.Consistent } ? authorComputed.Value : null;
 
         if (author != null) {
             model = new Model(author);
 
             var ownAuthorComputed = Computed.GetExisting(() => Authors.GetOwn(Session, ChatId, default));
-            var ownAuthor = ownAuthorComputed is { HasValue: true } ? ownAuthorComputed.Value : null;
+            var ownAuthor = ownAuthorComputed is { HasValue: true, ConsistencyState: ConsistencyState.Consistent } ? ownAuthorComputed.Value : null;
             var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
             if (isOwn)
                 model = model with { IsOwn = true };
