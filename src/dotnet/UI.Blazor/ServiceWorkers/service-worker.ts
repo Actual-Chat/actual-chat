@@ -8,6 +8,8 @@ import { Log } from 'logging';
 import { stopEvent } from 'event-handling';
 
 const { debugLog, infoLog } = Log.get('ServiceWorker');
+// @ts-ignore
+self.__WB_DISABLE_DEV_LOGS = true; // disable workbox dev logs
 
 // @ts-ignore
 const sw = self as ServiceWorkerGlobalScope & typeof globalThis;
