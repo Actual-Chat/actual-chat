@@ -4,24 +4,24 @@ Before release:
 - Check all new text messages (esp. "Share" + troubleshooters) [AY]
 - Phone sign-in: enable it [Frol]
 - Sign-in: replace sign-in menu w/ modal everywhere + remove menu [Andrey]
-- Languages: add Chinese, Korean, etc. + update settings page layout 
-- New chat: 2-page layout
-- Chat: empty chat must contain invite link + splash
-- Audio activity: blinking "Listen"
+- ~~Languages: add Chinese, Korean, etc. + update settings page layout [DF]~~
+- ~~New chat: 2-page layout [DF]~~
+- Chat: empty chat must contain invite link + splash [DF]
+- Audio activity: blinking "Listen" [Andrey]
 - Onboarding: pre-create chats page
-- Onboarding: use stored phone number
-- Service worker / asset caching
+- Onboarding: use stored phone number [Frol]
+- ~~Service worker / asset caching [EK]~~
 - Stop historical playback in other chats when recording starts [Frol]
 
 - Critical bugs:
-  - iOS 16.1.1 - exit on startup 
+  - iOS 16.1.1 - exit on startup [AK]
   - Hot restart / WebView close: make sure the old view doesn't record
   - Audio: use mono playback on Android? [AK]
   - "Verify phone" hangs the UI [Frol]
   - Audio on iPhone: the latest prod version still triggers "no access to mic" sometimes [AK]
   - Investigate white screen issue [AY] 
 - Important, but not critical bugs:
-  - Chat: scrolling issues
+  - Chat: scrolling issues [AK]
 
 ASAP:
 
@@ -36,7 +36,7 @@ Near-term:
 Mid-term (team):
 
 - Extract Session service & migrate it to Redis
-- "Notes" chat
+- ~~"Notes" chat [AK]~~
 - "Search in this chat / everywhere" feature
 - Efficient operation log monitoring and processing without re-reads
 - Real-time playback somehow shows cached user activities sometimes
