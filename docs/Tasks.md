@@ -14,8 +14,8 @@ Before release:
 - Stop historical playback in other chats when recording starts [Frol]
 
 - Critical bugs:
-  - iOS 16.1.1 - exit on startup [AK]
-  - Hot restart / WebView close: make sure the old view doesn't record
+  - ~~iOS 16.1.1 - exit on startup [AK]~~
+  - Hot restart / WebView close: make sure the old view doesn't record [AK]
   - Audio: use mono playback on Android? [AK]
   - "Verify phone" hangs the UI [Frol]
   - Audio on iPhone: the latest prod version still triggers "no access to mic" sometimes [AK]
