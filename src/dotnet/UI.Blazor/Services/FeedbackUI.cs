@@ -1,21 +1,13 @@
 ﻿using ActualChat.Feedback;
-using ActualChat.UI.Blazor.Components;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class FeedbackUI
+public class FeedbackUI(IServiceProvider services)
 {
-    private readonly Session _session;
-    private readonly ModalUI _modalUI;
-    private readonly UICommander _uiCommander;
+    private readonly Session _session = services.Session();
+    private readonly ModalUI _modalUI = services.GetRequiredService<ModalUI>();
+    private readonly UICommander _uiCommander = services.GetRequiredService<UICommander>();
     private ModalRef? _modal;
-
-    public FeedbackUI(IServiceProvider services)
-    {
-        _session = services.Session();
-        _modalUI = services.GetRequiredService<ModalUI>();
-        _uiCommander = services.GetRequiredService<UICommander>();
-    }
 
     public async Task AskFeatureRequestFeedback(string feature, string? featureTitle = null)
     {

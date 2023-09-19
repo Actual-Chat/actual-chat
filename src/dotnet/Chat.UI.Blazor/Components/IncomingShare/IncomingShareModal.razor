@@ -163,7 +163,7 @@
             fileUploads.Add((fileUpload, mediaType));
         }
         if (fileSizeLimitError != null)
-            Services.GetRequiredService<ErrorUI>().ShowError(fileSizeLimitError);
+            Services.UICommander().ShowError(fileSizeLimitError);
         return fileUploads;
     }
 

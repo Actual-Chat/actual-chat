@@ -3,8 +3,8 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits ComputedStateComponent<RpcPeerState?>
 @{
-    var m = State.Value ?? DefaultState;
-    var isReconnecting = !m.IsConnected && m.ReconnectsAt <= Clock.Now;
+    var m = State.Value ?? ReconnectUI.ConnectedState;
+    var isReconnecting = !m.IsConnected && m.ReconnectsAt <= ReconnectUI.Clock.Now;
 }
 
 <Banner Class="reconnect-banner" IsVisible="@(!m.IsConnected)">
@@ -14,7 +14,7 @@
     <Body>
         <div class="c-main-text">Connection lost.</div>
         @if (isReconnecting) {
-            <div>Reconnecting...</div>
+            <div class="c-secondary-text">Reconnecting...</div>
         } else {
             <div class="c-secondary-text">
                 Will reconnect in
@@ -25,24 +25,13 @@
     </Body>
     <Buttons>
         @if (!isReconnecting) {
-            <Button Class="btn-transparent on" Click="@(_ => ReconnectDelayer.CancelDelays())">Retry</Button>
+            <Button Class="btn-transparent on" Click="@(_ => ReconnectUI.ReconnectIfDisconnected())">Retry</Button>
         }
     </Buttons>
 </Banner>
 
 @code {
-    private static readonly RpcPeerState DefaultState = new(true);
-
-    private RpcPeerStateMonitor? _monitor;
-
-    [Inject] private RpcClientPeerReconnectDelayer ReconnectDelayer { get; init; } = null!;
-    private IMomentClock Clock => ReconnectDelayer.Clock;
-
-    protected override void OnInitialized()
-    {
-        _monitor = Services.GetService<RpcPeerStateMonitor>();
-        base.OnInitialized();
-    }
+    [Inject] private ReconnectUI ReconnectUI { get; init; } = null!;
 
     protected override ComputedState<RpcPeerState?>.Options GetStateOptions()
         => new() {
@@ -53,8 +42,7 @@
     protected override async Task<RpcPeerState?> ComputeState(CancellationToken cancellationToken)
     {
         try {
-            return _monitor == null ? null
-                : await _monitor.State.Use(cancellationToken).ConfigureAwait(false);
+            return await ReconnectUI.GetState(cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             return null;

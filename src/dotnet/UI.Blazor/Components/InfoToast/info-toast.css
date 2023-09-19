@@ -31,7 +31,7 @@
 .info-toast .toast-content {
     @apply flex grow;
     @apply text-base font-normal;
-    @apply break-all;
+    @apply break-words;
 }
 .info-toast .toast-action {
     @apply -mr-4;

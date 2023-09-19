@@ -104,7 +104,6 @@
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
@@ -209,7 +208,7 @@
             await AttachmentListRef.Clear();
         }
         catch (Exception e) {
-            ErrorUI.ShowError(e);
+            UICommander.ShowError(e);
             attachmentListSnapshot.Rollback();
             await MarkupEditorRef.SetText(text);
         }

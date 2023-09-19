@@ -93,63 +93,60 @@
         // and moreover, we want to make sure ComputeState gets invalidated
         // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        try {
-            await ChatUI.WhenLoaded;
-            var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-            var lastState = State.ValueOrDefault;
-            var lastChatId = lastState?.Chat.Id ?? ChatId.None;
-            // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
+        await ChatUI.WhenLoaded;
+        var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        var lastState = State.ValueOrDefault;
+        var lastChatId = lastState?.Chat.Id ?? ChatId.None;
+        // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
-            if (_isVeryFirstLoad) {
-                _isVeryFirstLoad = false;
-                var hostInfo = Services.GetRequiredService<HostInfo>();
-                var mustDelayVeryFirstLoad =
-                    hostInfo.AppKind.IsClient()
-                    && ChatSid.IsNullOrEmpty()
-                    && BrowserInfo.ScreenSize.Value.IsNarrow();
-                if (mustDelayVeryFirstLoad) {
-                    // Postpone chat loading when it's invisible
-                    Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
-                    await Task.Delay(VeryFirstLoadDelay, cancellationToken).ConfigureAwait(false);
-                    this.NotifyStateHasChanged();
-                }
-            }
-
-            var account = AccountFull.Loading;
-            try {
-                account = await Accounts
-                    .GetOwn(Session, cancellationToken)
-                    .WaitAsync(LoadTimeout, cancellationToken);
-                var chat = SpecialChat.NoChatSelected;
-                if (!chatId.IsNone) {
-                    if (OSInfo.IsAndroid) {
-                        // Postponing chat change to let left panel slide smoothly - don't change this delay!
-                        var isChatChange = !lastChatId.IsNone && chatId != lastChatId;
-                        if (isChatChange && PanelsUI.ScreenSize.Value.IsNarrow())
-                            await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
-                    }
-
-                    chat = await Chats
-                        .Get(Session, chatId, cancellationToken)
-                        .WaitAsync(LoadTimeout, cancellationToken);
-                    chat ??= SpecialChat.Unavailable;
-                }
-                var footer = await GetFooterModel(chat, account, cancellationToken);
-                return new Model(chat, account, footer);
-            }
-            catch (TimeoutException) {
-                Computed.GetCurrent()?.Invalidate(LoadTimeoutToReloadDelay);
-                if (lastState != null && chatId == lastChatId)
-                    return lastState;
-                return Model.Loading;
-            }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-                return new Model(SpecialChat.Unavailable, account, new());
+        if (_isVeryFirstLoad) {
+            _isVeryFirstLoad = false;
+            var hostInfo = Services.GetRequiredService<HostInfo>();
+            var mustDelayVeryFirstLoad =
+                hostInfo.AppKind.IsClient()
+                && ChatSid.IsNullOrEmpty()
+                && BrowserInfo.ScreenSize.Value.IsNarrow();
+            if (mustDelayVeryFirstLoad) {
+                // Postpone chat loading when it's invisible
+                Log.LogDebug("Delay loading for chat #{ChatId}", chatId);
+                await Task.Delay(VeryFirstLoadDelay, cancellationToken).ConfigureAwait(false);
+                this.NotifyStateHasChanged();
             }
         }
-        finally {
-            // Log.LogDebug("ComputeState() - exit: {Computed}", computed.DebugDump());
+
+        var account = AccountFull.Loading;
+        try {
+            account = await Accounts
+                .GetOwn(Session, cancellationToken)
+                .WaitAsync(LoadTimeout, cancellationToken);
+            var chat = SpecialChat.NoChatSelected;
+            if (!chatId.IsNone) {
+                if (OSInfo.IsAndroid) {
+                    // Postponing chat change to let left panel slide smoothly - don't change this delay!
+                    var isChatChange = !lastChatId.IsNone && chatId != lastChatId;
+                    if (isChatChange && PanelsUI.ScreenSize.Value.IsNarrow())
+                        await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
+                }
+
+                chat = await Chats
+                    .Get(Session, chatId, cancellationToken)
+                    .WaitAsync(LoadTimeout, cancellationToken);
+                chat ??= SpecialChat.Unavailable;
+            }
+            var footer = await GetFooterModel(chat, account, cancellationToken);
+            return new Model(chat, account, footer);
+        }
+        catch (TimeoutException) {
+            Computed.GetCurrent()?.Invalidate(LoadTimeoutToReloadDelay);
+            this.NotifyStateHasChanged();
+            if (lastState != null && chatId == lastChatId)
+                return lastState;
+            return Model.Loading;
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
+            this.NotifyStateHasChanged();
+            return new Model(SpecialChat.Unavailable, account, new());
         }
     }
 

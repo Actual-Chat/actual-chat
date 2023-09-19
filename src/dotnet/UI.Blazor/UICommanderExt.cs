@@ -29,9 +29,9 @@ public static class UICommanderExt
         return uiCommander.Run(command, CancellationToken.None);
     }
 
-    public static Task Error(this UICommander uiCommander, Exception error)
+    public static void ShowError(this UICommander uiCommander, Exception error)
     {
         var command = new LocalActionCommand() { Handler = _ => throw error };
-        return uiCommander.Run(command, CancellationToken.None);
+        _ = uiCommander.Run(command, CancellationToken.None);
     }
 }

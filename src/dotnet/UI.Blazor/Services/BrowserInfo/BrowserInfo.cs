@@ -107,6 +107,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     protected void Update(ScreenSize? screenSize = null, bool? isHoverable = null, bool? isVisible = null)
     {
         var isUpdated = false;
+        var becameVisible = false;
  #pragma warning disable MA0064
         lock (Lock) {
  #pragma warning restore MA0064
@@ -120,10 +121,13 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
             }
             if (isVisible is { } vIsVisible && _isVisible.Value != vIsVisible) {
                 _isVisible.Value = vIsVisible;
+                becameVisible = vIsVisible;
                 isUpdated = true;
             }
         }
         if (isUpdated)
             _ = UICommander.RunNothing(); // To instantly update everything
+        if (becameVisible)
+            Services.GetRequiredService<ReconnectUI>().ReconnectWhenDisconnected(); // To reconnect on showing up
     }
 }

@@ -83,9 +83,9 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // UI services
         services.AddScoped(c => new ReloadUI(c));
         services.AddScoped(c => new LoadingUI(c));
+        services.AddScoped(c => new ReconnectUI(c));
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new InteractiveUI(c));
-        services.AddScoped(c => new ErrorUI(c.GetRequiredService<UIActionTracker>()));
         services.AddScoped(c => new History(c));
         services.AddScoped(c => new HistoryStepper(c));
         services.AddScoped(c => new BackButtonHandler());

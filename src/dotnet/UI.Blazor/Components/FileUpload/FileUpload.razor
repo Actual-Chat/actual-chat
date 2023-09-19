@@ -13,10 +13,10 @@
     private DotNetObjectReference<FileUpload> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [Parameter, EditorRequired] public string UploadUrl { get; set; } = "";
     [Parameter] public int? MaxSize { get; set; }
@@ -55,7 +55,7 @@
             return;
 
         var size = FileSizeFormatter.Format(MaxSize.Value);
-        ErrorUI.ShowError(StandardError.Constraint($"File is too big. Max file size: {size}."));
+        UICommander.ShowError(StandardError.Constraint($"File is too big. Max file size: {size}."));
     }
 
     // Nested types

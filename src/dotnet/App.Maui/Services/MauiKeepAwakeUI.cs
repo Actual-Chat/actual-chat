@@ -3,13 +3,10 @@ using Dispatcher = Microsoft.AspNetCore.Components.Dispatcher;
 
 namespace ActualChat.App.Maui.Services;
 
-public class MauiKeepAwakeUI : KeepAwakeUI
+public class MauiKeepAwakeUI(IServiceProvider services) : KeepAwakeUI(services)
 {
     private Dispatcher? _dispatcher;
     private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
-
-    public MauiKeepAwakeUI(IServiceProvider services) : base(services)
-    { }
 
     public override ValueTask SetKeepAwake(bool value)
         => Dispatcher.InvokeAsync(() => SetKeepAwakeUnsafe(value)).ToValueTask();

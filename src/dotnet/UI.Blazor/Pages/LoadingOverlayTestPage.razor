@@ -93,10 +93,10 @@
 <LoadingOverlay/>
 
 @code {
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
 
     private void OnClick(int count) {
         var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();
-        ErrorUI.ShowError(StandardError.Constraint(result));
+        UICommander.ShowError(StandardError.Constraint(result));
     }
 }

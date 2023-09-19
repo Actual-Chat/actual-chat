@@ -27,7 +27,6 @@
     private Moment? _totpExpiresAt;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
@@ -59,7 +58,7 @@
 
         var (isValid, error) = await UICommander.Run(cmd);
         if (error != null) {
-            ErrorUI.ShowError(error);
+            UICommander.ShowError(error);
             if (_totpInput != null)
                 await _totpInput.Clear();
 
@@ -83,7 +82,7 @@
     {
         var (expiresAt, error) = await UICommander.Run(new PhoneAuth_SendTotp(Session, new Phone(Phone), Purpose));
         if (error != null) {
-            ErrorUI.ShowError(error);
+            UICommander.ShowError(error);
             return;
         }
 

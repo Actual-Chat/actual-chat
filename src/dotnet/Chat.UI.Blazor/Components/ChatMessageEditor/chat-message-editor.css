@@ -46,7 +46,6 @@
     @apply bg-07 md:bg-03;
     @apply cursor-text;
     word-break: break-word;
-
 }
 .post-panel .message-input .editor-content {
     @apply mr-0 md:mr-4;

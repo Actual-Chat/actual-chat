@@ -76,7 +76,6 @@
     private DotNetObjectReference<IAttachmentListBackend> BlazorRef { get; set; } = null!;
     private ElementReference FilePickerRef { get; set; }
 
-    [Inject] private ErrorUI ErrorUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
 
@@ -147,7 +146,7 @@
     public bool OnAttachmentAdded(int id, string url, string? fileName, string? fileType, int length) {
         var error = TryAdd();
         if (error != null) {
-            ErrorUI.ShowError(error);
+            Services.UICommander().ShowError(error);
             return false;
         }
 
