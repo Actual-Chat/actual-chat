@@ -56,7 +56,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             var enqueueDelay = (entry.BeginsAt - playbackNow - EnqueueAheadDuration).Positive();
             if (enqueueDelay > TimeSpan.Zero) {
                 Log.LogInformation("Play: delaying #{EntryId} for {EnqueueDelay}", entry.Id.Value, enqueueDelay);
-                await EnqueueDelay(enqueueDelay, cancellationToken);
+                await EnqueueDelay(enqueueDelay, cancellationToken).ConfigureAwait(false);
                 playbackNow = PlaybackNow(); // Re-sync to account for sleep during EnqueueDelay
             }
 

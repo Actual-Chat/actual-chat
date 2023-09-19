@@ -46,7 +46,7 @@ public class TuneUI(IServiceProvider services) : ITuneUIBackend, INotifyInitiali
     {
         try {
             _blazorRef = DotNetObjectReference.Create<ITuneUIBackend>(this);
-            await JS.InvokeVoidAsync(JSInitMethod, _blazorRef, Tunes, UseJsVibration);
+            await JS.InvokeVoidAsync(JSInitMethod, _blazorRef, Tunes, UseJsVibration).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to init TuneUI");

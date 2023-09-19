@@ -54,7 +54,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
             }
 
             if (!await CanContinuePlayback(cancellationToken).ConfigureAwait(false)) {
-                await ChatAudioUI.SetListeningState(ChatId, false);
+                await ChatAudioUI.SetListeningState(ChatId, false).ConfigureAwait(false);
                 return;
             }
 

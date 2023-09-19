@@ -59,7 +59,7 @@ public class PanelsUI : WorkerBase, IHasServices
 
             // We want to make sure HidePanels() creates an additional history step,
             // otherwise "Back" from chat will hide the panel AND select the prev. chat.
-            await History.WhenNavigationCompleted();
+            await History.WhenNavigationCompleted().ConfigureAwait(false);
             HidePanels();
         }
     }
@@ -72,7 +72,7 @@ public class PanelsUI : WorkerBase, IHasServices
     protected override Task OnRun(CancellationToken cancellationToken)
         => Dispatcher.InvokeAsync(async () => {
             var lastIsWide = IsWide();
-            await foreach (var _ in ScreenSize.Changes(cancellationToken)) {
+            await foreach (var _ in ScreenSize.Changes(cancellationToken).ConfigureAwait(false)) {
                 var isWide = IsWide();
                 if (lastIsWide != isWide) {
                     lastIsWide = isWide;

@@ -37,7 +37,7 @@ public class DeviceAwakeUI : ISleepDurationProvider, IDeviceAwakeUIBackend, IDis
             return;
 
         try {
-            await JS.InvokeVoidAsync(JSInitMethod, _backendRef);
+            await JS.InvokeVoidAsync(JSInitMethod, _backendRef).ConfigureAwait(false);
             // Debug logic
             // _ = Task.Run(async () => {
             //     while (true) {

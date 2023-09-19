@@ -38,14 +38,14 @@ public sealed class BubbleUI : IDisposable
     public async Task WhenReadyToShowBubbles()
     {
         // Wait for sign-in
-        await AccountUI.WhenLoaded;
+        await AccountUI.WhenLoaded.ConfigureAwait(false);
         await Clocks.Timeout(2)
             .ApplyTo(ct => AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, ct), false)
             .ConfigureAwait(false);
 
         // Wait when settings are read
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        await _settings.Synchronize();
+        await _settings.Synchronize().ConfigureAwait(false);
 
         // If there was a recent account change, add a delay to let them hit the client
         await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);

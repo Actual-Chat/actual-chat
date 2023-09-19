@@ -46,7 +46,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
         async Task DelayedDispose()
         {
             // We want it to use the same scheduler everywhere
-            await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(10));
+            await Clocks.CpuClock.Delay(TimeSpan.FromSeconds(10), StopToken);
             Log.LogDebug("DelayedDispose in Blazor Circuit #{Id}", Id);
             if (serviceScope is IAsyncDisposable ad) {
                 var __ = ad.DisposeAsync();

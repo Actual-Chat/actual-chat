@@ -57,7 +57,7 @@ public class ThemeUI : WorkerBase
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
 
         await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false))
-            await ApplyTheme(cTheme.Value.Theme);
+            await ApplyTheme(cTheme.Value.Theme).ConfigureAwait(false);
     }
 
     private Task ApplyTheme(Theme theme)

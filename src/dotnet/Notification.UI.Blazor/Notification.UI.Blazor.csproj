@@ -2,8 +2,6 @@
 
   <PropertyGroup>
     <!-- Suppressed warnings (please sort alphabetically!) -->
-    <!--    [MA0004]: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed-->
-    <NoWarn>$(NoWarn);MA0004</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

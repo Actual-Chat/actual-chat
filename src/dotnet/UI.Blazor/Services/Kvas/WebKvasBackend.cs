@@ -27,7 +27,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     {
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
-        var values = await JS.InvokeAsync<string?[]>(_getManyName, cancellationToken, new object[] { keys });
+        var values = await JS.InvokeAsync<string?[]>(_getManyName, cancellationToken, new object[] { keys }).ConfigureAwait(false);
         var result = new byte[]?[keys.Length];
         for (var i = 0; i < values.Length; i++) {
             var value = values[i];
@@ -48,7 +48,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
             values[i++] = value == null ? null : Convert.ToBase64String(value);
         }
         try {
-            await JS.InvokeVoidAsync(_setManyName, cancellationToken, keys, values);
+            await JS.InvokeVoidAsync(_setManyName, cancellationToken, keys, values).ConfigureAwait(false);
         }
         catch (JSDisconnectedException) {
             // Suppress exception to avoid reprocessing.
@@ -60,6 +60,6 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     {
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
-        await JS.InvokeVoidAsync(_clearName, cancellationToken).AsTask();
+        await JS.InvokeVoidAsync(_clearName, cancellationToken).ConfigureAwait(false);
     }
 }

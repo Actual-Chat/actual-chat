@@ -30,10 +30,10 @@ public sealed class DebugUI : IDisposable
     public void Dispose()
         => _backendRef.DisposeSilently();
 
-    private async Task Initialize()
+    private Task Initialize()
     {
         _backendRef = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync(JSInitMethod, _backendRef);
+        return JS.InvokeVoidAsync(JSInitMethod, _backendRef).AsTask();
     }
 
     [JSInvokable]

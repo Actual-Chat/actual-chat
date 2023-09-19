@@ -126,7 +126,7 @@ public class ActiveChatsUI
             return activeChats;
 
         var activeChatsWithEffectiveRecency = await activeChats
-            .Select(async chat => (Chat: chat, EffectiveRecency: await GetEffectiveRecency(chat, cancellationToken)))
+            .Select(async chat => (Chat: chat, EffectiveRecency: await GetEffectiveRecency(chat, cancellationToken).ConfigureAwait(false)))
             .Collect()
             .ConfigureAwait(false);
         return activeChatsWithEffectiveRecency

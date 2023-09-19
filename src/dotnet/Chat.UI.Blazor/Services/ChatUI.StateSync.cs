@@ -52,7 +52,7 @@ public partial class ChatUI
     protected virtual async Task<ChatId> GetFixedSelectedChatId(CancellationToken cancellationToken)
     {
         var chatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        var fixedChatId = await FixChatId(chatId, cancellationToken);
+        var fixedChatId = await FixChatId(chatId, cancellationToken).ConfigureAwait(false);
         var wasFixed = fixedChatId != chatId;
         return wasFixed ? fixedChatId : default;
     }

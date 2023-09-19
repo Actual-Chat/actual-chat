@@ -15,6 +15,6 @@ public abstract class OwnAccountComponentBase : ComputedStateComponent<AccountFu
             Category = GetStateCategory(),
         };
 
-    protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => await AccountUI.OwnAccount.Use(cancellationToken);
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => AccountUI.OwnAccount.Use(cancellationToken).AsTask();
 }
