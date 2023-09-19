@@ -22,6 +22,7 @@ Before release:
   - Investigate white screen issue [AY] 
 - Important, but not critical bugs:
   - Chat: scrolling issues [AK]
+  - Audio: use MediaStreamAudioSourceNode for EAC workaround instead of Audio element
 
 ASAP:
 
