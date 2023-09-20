@@ -53,7 +53,7 @@ public class OnboardingUI : IDisposable, IOnboardingUI
         // We give it 5 seconds to complete, otherwise it won't be shown
         using var cts = _lastTryShowCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try {
-            shouldBeShown = await ShouldBeShown(cts.Token).ConfigureAwait(false);
+            shouldBeShown = await ShouldBeShown(cts.Token).ConfigureAwait(true);
         }
         catch (OperationCanceledException) { }
         finally {
