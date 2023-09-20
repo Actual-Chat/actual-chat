@@ -86,7 +86,7 @@
             Link = link?.ToDisplayUrl(UrlMapper),
             IsJoinLink = isJoinLink,
             NotificationMode = userChatSettings.NotificationMode,
-            HideNotificationsToggle = Chat.AllowSingleAuthorOnly,
+            HideNotificationsToggle = Chat.HasSingleAuthor,
             Rules = rules,
         };
     }
