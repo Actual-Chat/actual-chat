@@ -81,10 +81,24 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
             .Concat(ToCommands(toAdd, Change.Create))
             .ToList();
 
-        await commands.Select(x => Commander.Call(x, cancellationToken))
-            .TakeWhile(_ => !cancellationToken.IsCancellationRequested)
-            .Collect(1)
-            .ConfigureAwait(false);
+        var errors = new List<Exception>();
+        foreach (var command in commands) {
+            cancellationToken.ThrowIfCancellationRequested();
+            try {
+                await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+                Log.LogWarning(e, "Failed to sync contact {ContactId}", command.Id.DeviceContactId);
+                errors.Add(e);
+                await Task.Delay(TimeSpan.FromSeconds(5000), cancellationToken).ConfigureAwait(false);
+            }
+        }
+        if (errors.Count > 0)
+            throw new AggregateException("Some errors occured while syncing contacts", errors);
+
         return;
 
         IEnumerable<ExternalContacts_Change> ToCommands(
