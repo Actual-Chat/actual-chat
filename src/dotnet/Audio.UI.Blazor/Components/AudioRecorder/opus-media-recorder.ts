@@ -13,6 +13,7 @@ import { Versioning } from 'versioning';
 import { Log } from 'logging';
 import { RecorderStateChanged, RecorderStateEventHandler } from "./opus-media-recorder-contracts";
 import * as signalR from "@microsoft/signalr";
+import { AudioInitializer } from "../../Services/audio-initializer";
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -44,7 +45,7 @@ const RecordingFailedInterval = 500;
 export class OpusMediaRecorder implements RecorderStateEventHandler {
     public static readonly audioPowerChanged$: signalR.Subject<number> = new signalR.Subject<number>();
 
-    private readonly whenInitialized: PromiseSource<void>;
+    private whenInitialized: PromiseSource<void>;
 
     private encoderWorkerInstance: Worker = null;
     private encoderWorker: OpusEncoderWorker & Disposable = null;
@@ -285,8 +286,8 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     public async stop(): Promise<void> {
         debugLog?.log(`-> stop()`);
         try {
-            await this.whenInitialized;
             await this.stopMicrophoneStream();
+            await this.whenInitialized;
             void this.vadWorklet?.stop(rpcNoWait);
             void this.encoderWorklet?.stop(rpcNoWait);
             if (!this.contextRef)
@@ -299,6 +300,15 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         finally {
             debugLog?.log(`<- stop()`);
         }
+    }
+
+    public async terminate(): Promise<void> {
+        await this.encoderWorker?.stop();
+        await this.vadWorker?.reset();
+        this.encoderWorkerInstance.terminate();
+        this.vadWorkerInstance.terminate();
+        this.whenInitialized = new PromiseSource<void>();
+        AudioInitializer.isRecorderInitialized = false;
     }
 
     public async reconnect(): Promise<void> {

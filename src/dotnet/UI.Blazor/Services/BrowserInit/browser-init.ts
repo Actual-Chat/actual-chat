@@ -1,6 +1,9 @@
 import {EventHandlerSet} from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
 import { Log } from "logging";
+import { AudioRecorder } from "../../../Audio.UI.Blazor/Components/AudioRecorder/audio-recorder";
+import { AudioPlayer } from "../../../Audio.UI.Blazor/Components/AudioPlayer/audio-player";
+import { audioContextSource } from "../../../Audio.UI.Blazor/Services/audio-context-source";
 
 const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
@@ -17,6 +20,7 @@ export class BrowserInit {
     public static readonly whenReloading = new PromiseSource<void>();
     public static readonly reconnectedEvents = new EventHandlerSet<void>();
     public static connectionState = "";
+    public static isTerminated = false;
 
     public static async init(apiVersion: string, baseUri: string, sessionHash: string, calls: Array<unknown>): Promise<void> {
         if (this.whenInitialized.isCompleted()) {
@@ -65,6 +69,9 @@ export class BrowserInit {
     }
 
     public static startReconnecting(mustReconnectBlazor): void {
+        if (BrowserInit.isTerminated)
+            return;
+
         this.setAppConnectionState("Reconnecting...");
         if (mustReconnectBlazor) {
             const blazor = window['Blazor'];
@@ -76,6 +83,8 @@ export class BrowserInit {
     }
 
     public static startReloading(): void {
+        if (BrowserInit.isTerminated)
+            return;
         if (this.whenReloading.isCompleted())
             return;
 
@@ -90,6 +99,9 @@ export class BrowserInit {
         const blazorReconnectDiv = document.getElementById('components-reconnect-modal');
         if (blazorReconnectDiv) {
             const observer = new MutationObserver((mutations, _) => {
+                if (BrowserInit.isTerminated)
+                    return;
+
                 mutations.forEach(mutation => {
                     const target = mutation.target;
                     if (this.whenReloading.isCompleted() || !(target instanceof HTMLElement))
@@ -111,6 +123,9 @@ export class BrowserInit {
         const blazorErrorDiv = document.getElementById('blazor-error-ui');
         if (blazorErrorDiv) {
             const observer = new MutationObserver((mutations, _) => {
+                if (BrowserInit.isTerminated)
+                    return;
+
                 mutations.forEach(mutation => {
                     const target = mutation.target;
                     if (this.whenReloading.isCompleted() || !(target instanceof HTMLElement))
@@ -133,6 +148,36 @@ export class BrowserInit {
     public static async startLoadingOverlayRemoval(delayMs: number): Promise<void> {
         await delayAsync(delayMs);
         this.removeLoadingOverlay();
+    }
+
+    public static async reload(): Promise<void> {
+        // force stop recording before reload
+        warnLog.log('reloading...');
+        await globalThis['opusMediaRecorder']?.stop();
+        if (BrowserInit.isTerminated)
+            return;
+
+        if (!window.location.hash) {
+            // refresh with GET
+            // noinspection SillyAssignmentJS
+            window.location.href = window.location.href;
+        } else {
+            window.location.reload();
+        }
+    }
+
+    public static terminate(): void {
+        // force stop recording before
+        warnLog.log('terminating web view...');
+        BrowserInit.isTerminated  = true;
+
+        void AudioRecorder.terminate();
+        void AudioPlayer.terminate();
+        void audioContextSource.terminate();
+
+        // cleanup everything
+        document.open();
+        document.close();
     }
 
     // Private methods
@@ -218,11 +263,11 @@ export class BrowserInit {
         }
     }
 
-    private static async tryReload(): Promise<void> {
+    public static async tryReload(): Promise<void> {
         try {
             let response = await fetch('');
             if (response.ok)
-                window.location.reload();
+                BrowserInit.reload();
         }
         catch {
             warnLog?.log(`tryReload: waiting for connection to server to reload the app...`);

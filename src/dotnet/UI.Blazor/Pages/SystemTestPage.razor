@@ -1,5 +1,6 @@
 @page "/test/system"
 @using ActualChat.Hosting
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 
 <RequireAccount MustBeAdmin="true"/>
@@ -17,12 +18,16 @@
 <p>Garbage collection:
     <Button Click="@OnGCCollectClick">GC.Collect() x 3</Button>
 </p>
+<p>
+    <Button Click="@OnReloadUIClick">Reload UI</Button>
+</p>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AgentInfo AgentInfo { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ReloadUI ReloadUI { get; init; } = null!;
 
     private Task OnInvalidateEverythingLocallyClick() {
         ComputedRegistry.Instance.InvalidateEverything();
@@ -42,5 +47,8 @@
         }
     }
 
-
+    private Task OnReloadUIClick() {
+        ReloadUI.Reload();
+        return Task.CompletedTask;
+    }
 }

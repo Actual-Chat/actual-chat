@@ -50,6 +50,7 @@ export class AudioContextSource {
     private _refCount = 0;
     private _whenReady = new PromiseSource<AudioContext | null>();
     private _whenNotReady = new PromiseSource<void>();
+    private isTerminated = false;
 
     public readonly contextCreated$ = this._contextCreated$.asObservable();
     public readonly contextClosing$ = this._contextClosing$.asObservable();
@@ -110,6 +111,11 @@ export class AudioContextSource {
             whenInitializedInteractively.resolve(undefined);
             this.whenInitializedInteractively = null;
         }
+    }
+
+    public async terminate(): Promise<void> {
+        this.isTerminated = true;
+        await this.closeSilently(this._context);
     }
 
     // Must be private, but good to keep it near markNotReady
@@ -232,6 +238,9 @@ export class AudioContextSource {
                     }
 
                     for(;;) {
+                        if (this.isTerminated)
+                            return;
+
                         this.throwIfUnused();
                         this.throwIfClosed(context);
                         this.throwIfTooManyResumes();
@@ -250,7 +259,8 @@ export class AudioContextSource {
                 warnLog?.log(`maintain: error:`, e);
             }
             finally {
-                this.markNotReady();
+                if (!this.isTerminated)
+                    this.markNotReady();
                 await this.closeSilently(context);
             }
         }

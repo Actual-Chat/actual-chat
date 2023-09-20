@@ -10,6 +10,7 @@ import { Versioning } from 'versioning';
 import { Log } from 'logging';
 import { ObjectPool } from "object-pool";
 import { Resettable } from "resettable";
+import { AudioInitializer } from "../../Services/audio-initializer";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioPlayer');
 
@@ -19,8 +20,8 @@ let decoderWorkerInstance: Worker = null;
 let decoderWorker: OpusDecoderWorker & Disposable = null;
 
 export class AudioPlayer implements Resettable {
-    private static readonly whenInitialized = new PromiseSource<void>();
     private static readonly pool: ObjectPool<AudioPlayer> = new ObjectPool<AudioPlayer>(() => new AudioPlayer());
+    private static whenInitialized = new PromiseSource<void>();
     private static nextInternalId: number = 0;
 
 
@@ -51,6 +52,12 @@ export class AudioPlayer implements Resettable {
         decoderWorker = rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
         await decoderWorker.create(Versioning.artifactVersions, { type: 'rpc-timeout', timeoutMs: 20_000 });
         this.whenInitialized.resolve(undefined);
+    }
+
+    public static async terminate(): Promise<void> {
+        decoderWorkerInstance.terminate();
+        AudioPlayer.whenInitialized = new PromiseSource<void>();
+        AudioInitializer.isPlayerInitialized = false;
     }
 
     /** Called from Blazor */
