@@ -35,7 +35,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var (session, phone, purpose) = command;
         var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose).ConfigureAwait(false);
         var totp = Totps.GenerateCode(securityToken, modifier); // generate totp with the newest one
-        var expiresAt = Clocks.SystemClock.UtcNow + Settings.TotpLifetime;
+        var expiresAt = Clocks.SystemClock.UtcNow + Settings.TotpUIThrottling;
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
         await Sms.Send(phone, $"Actual.chat: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
