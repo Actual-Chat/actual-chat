@@ -9,9 +9,7 @@
 
 <Button
     Class="@btnClass"
-    data-menu="@(MenuRef.New<SignInContextMenu>().ToString())"
-    data-menu-trigger="@MenuTrigger.Primary"
-    data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+    Click="@SignIn">
     @if (ButtonType == MenuButton.Default) {
         <span>Sign in</span>
     } else {
@@ -28,7 +26,11 @@
     }
 
     [Inject] private IClientAuth ClientAuth { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [Parameter] public string ButtonClass { get; set; } = "";
     [Parameter] public MenuButton ButtonType { get; set; } = MenuButton.Default;
+
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
 }
