@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ActualChat.UI.Blazor;
 
-[SuppressMessage("Usage", "MA0004:Use Task.ConfigureAwait(false)")]
 public sealed class UIEventHub : IHasServices
 {
     private readonly Dictionary<Type, ImmutableList<Delegate>> _handlers = new ();
@@ -45,15 +44,15 @@ public sealed class UIEventHub : IHasServices
         }
     }
 
-    public async Task Publish<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
+    public Task Publish<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
         where TEvent: class, IUIEvent
     {
         ImmutableList<Delegate>? eventHandlers;
         lock (_handlers)
             if (!_handlers.TryGetValue(typeof(TEvent), out eventHandlers))
-                return;
+                return Task.CompletedTask;
 
-        await Dispatcher.InvokeAsync(async () => {
+        return Dispatcher.InvokeAsync(async () => {
             foreach (var eventHandler in eventHandlers) {
                 try {
                     if (eventHandler is UIEventHandler<TEvent> h)

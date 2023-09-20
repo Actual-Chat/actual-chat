@@ -119,16 +119,16 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     }
 
     [ComputeMethod]
-    [SuppressMessage("Usage", "MA0004:Use Task.ConfigureAwait(false)")]
     public virtual async Task<IReadOnlyList<ChatInfo>> ListActive(CancellationToken cancellationToken = default)
     {
-        await ActiveChatsUI.WhenLoaded; // No need for .ConfigureAwait(false) here
+        await ActiveChatsUI.WhenLoaded.ConfigureAwait(true); // No need for .ConfigureAwait(false) here
 
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats
                 .OrderByDescending(c => c.Recency)
                 .Select(c => ChatUI.Get(c.ChatId, cancellationToken))
-                .Collect())
+                .Collect()
+                .ConfigureAwait(true))
             .SkipNullItems();
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);

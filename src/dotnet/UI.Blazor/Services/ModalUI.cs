@@ -21,11 +21,11 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
         return Show(model, options);
     }
 
-    public async Task<ModalRef> Show<TModel>(TModel model, ModalOptions options)
+    public Task<ModalRef> Show<TModel>(TModel model, ModalOptions options)
         where TModel : class
     {
         var componentType = GetComponentType(model);
-        return await Show(componentType, model, options).ConfigureAwait(false);
+        return Show(componentType, model, options).AsTask();
     }
 
     // Private methods
@@ -36,7 +36,7 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
         ModalOptions options)
         where TModel : class
     {
-        await WhenReady.ConfigureAwait(false);
+        await WhenReady.ConfigureAwait(true);
         var content = new RenderFragment(builder => {
             builder.OpenComponent(0, componentType);
             builder.AddAttribute(1, nameof(IModalView<TModel>.ModalModel), model);
