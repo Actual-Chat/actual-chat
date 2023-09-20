@@ -12,19 +12,18 @@ Before release:
 - Onboarding: use stored phone number [Frol]
 - ~~Service worker / asset caching [EK]~~
 - Stop historical playback in other chats when recording starts [Frol]
-- Don't highlight SelectedChat(s) on mobile
 - Don't update SelectedChat when MiddlePanel isn't visible
 
 - Critical bugs:
   - ~~iOS 16.1.1 - exit on startup [AK]~~
-  - Hot restart / WebView close: make sure the old view doesn't record [AK]
+  - ~~Hot restart / WebView close: make sure the old view doesn't record [AK]~~
   - Audio: use mono playback on Android? [AK]
   - "Verify phone" hangs the UI [Frol]
-  - Audio on iPhone: the latest prod version still triggers "no access to mic" sometimes [AK]
+  - ~~Audio on iPhone: the latest prod version still triggers "no access to mic" sometimes [AK]~~
   - Investigate white screen issue [AY] 
 - Important, but not critical bugs:
   - Chat: scrolling issues [AK]
-  - Audio: use MediaStreamAudioSourceNode for EAC workaround instead of Audio element
+  - Audio: use MediaStreamAudioSourceNode for EAC workaround instead of Audio element [AK]
 
 ASAP:
 
@@ -61,3 +60,4 @@ Backlog (team):
 - ChatInfo & ChatState: get rid of one of these. ChatInfo = ChatState + ChatAudioState, i.e. doesn't change frequently enough to have a dedicated entity
 - Extract SessionService w/ proper sharding (+ use Redis?) and migrate to our own AuthService
 - SettingsPanel / SettingsTab - make sure they inherit or use TabPanel / Tab
+- Don't highlight SelectedChat(s) on mobile
