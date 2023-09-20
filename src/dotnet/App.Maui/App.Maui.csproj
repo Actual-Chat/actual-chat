@@ -233,7 +233,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-ios|AnyCPU'">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
-    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store Dev</CodesignProvision>
+    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
     <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
     <ArchiveOnBuild>true</ArchiveOnBuild>
     <MtouchLink>SdkOnly</MtouchLink>
@@ -247,7 +247,6 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
-
   <ItemGroup>
     <!-- App Icon -->
     <MauiIcon Include="Resources\AppIcon\appicon.svg" />
