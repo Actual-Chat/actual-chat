@@ -22,10 +22,11 @@ public sealed class UsersSettings
     public string TwilioSmsFrom { get; set; } = "";
 
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Inactive;
-    public TimeSpan TotpTimestep { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan TotpTimestep { get; set; } = TimeSpan.FromSeconds(60);
     public int TotpTimestepCount { get; set; } = 2;
     public int TotpRandomSecretLength { get; set; } = 32;
     public TimeSpan TotpLifetime => TotpTimestep * TotpTimestepCount;
+    public TimeSpan TotpUIThrottling => TotpTimestep;
     public bool IsTwilioEnabled => !TwilioAccountSid.IsNullOrEmpty()
         && !TwilioApiKey.IsNullOrEmpty()
         && !TwilioApiSecret.IsNullOrEmpty()
