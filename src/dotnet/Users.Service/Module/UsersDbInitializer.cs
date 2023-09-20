@@ -13,7 +13,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
     public override async Task InitializeData(CancellationToken cancellationToken)
     {
         await EnsureAdminExists(cancellationToken).ConfigureAwait(false);
-        if (HostInfo.IsDevelopmentInstance && !HostInfo.AppKind.IsTestServer())
+        if (HostInfo.IsDevelopmentInstance && HostInfo.AppKind.IsServer() && !HostInfo.IsTested)
             await EnsureTestBotsExist(cancellationToken).ConfigureAwait(false);
     }
 

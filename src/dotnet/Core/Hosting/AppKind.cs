@@ -6,5 +6,4 @@ public enum AppKind
     WebServer,
     WasmApp,
     MauiApp,
-    TestServer,
 }

@@ -1,6 +1,6 @@
 {
   "HostSettings": {
-    "AppKind": "TestServer"
+    "IsTested": true
   },
   "CoreSettings": {
     "Instance": "dev",

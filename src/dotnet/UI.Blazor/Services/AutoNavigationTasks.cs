@@ -2,14 +2,11 @@ using ActualChat.Hosting;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class AutoNavigationTasks
+public class AutoNavigationTasks(AppKind appKind)
 {
     private readonly object _lock = new();
     private Task _whenCompleted = Task.CompletedTask;
-    private bool _isCompleted;
-
-    public AutoNavigationTasks(AppKind appKind)
-        => _isCompleted = appKind.IsServer();
+    private bool _isCompleted = appKind.IsServer();
 
     public bool Add(Task task)
     {

@@ -67,14 +67,15 @@ public partial class History : IHasServices, IDisposable
         _isSaveSuppressed = new RegionalValue<bool>(false);
         _saveRegion = new NoRecursionRegion("Save", Lock, Log);
         _locationChangeRegion = new NoRecursionRegion("LocationChange", Lock, Log);
-        if (HostInfo.AppKind.IsTestServer())
+        var isTestServer = HostInfo.AppKind.IsServer() && HostInfo.IsTested;
+        if (isTestServer)
             _uri = Links.Home;
         else
             _uri = Nav.GetLocalUrl().Value;
         _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
 
-        if (!HostInfo.AppKind.IsTestServer())
+        if (!isTestServer)
             Nav.LocationChanged += (_, eventArgs) => LocationChange(eventArgs);
     }
 

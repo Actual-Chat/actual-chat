@@ -77,7 +77,8 @@ public static class Program
     public static void ConfigureServices(
         IServiceCollection services,
         IConfiguration configuration,
-        string baseUrl)
+        string baseUrl,
+        bool isTested = false)
     {
         using var _ = Tracer.Region();
         services.AddSingleton(new ScopedTracerProvider(Tracer)); // We don't want to have scoped tracers in WASM app
@@ -90,6 +91,7 @@ public static class Program
         services.AddSingleton(c => new HostInfo() {
             AppKind = AppKind.WasmApp,
             ClientKind = ClientKind.Wasm,
+            IsTested = isTested,
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
             Configuration = c.GetRequiredService<IConfiguration>(),
             BaseUrl = baseUrl,

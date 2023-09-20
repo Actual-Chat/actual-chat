@@ -5,6 +5,8 @@ namespace ActualChat.App.Server.Module;
 public sealed class HostSettings
 {
     public AppKind? AppKind { get; set; }
+    public bool? IsTested { get; set; }
+
     // Please don't rename this - we use externally stored settings / env variables to fulfill the value
     public string BaseUri { get; set; } = "";
     public string WebRootPath { get; set; } = "";

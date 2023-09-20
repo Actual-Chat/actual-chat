@@ -130,7 +130,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // ClientComputedCache:
         // Temporarily disabled for WASM due to startup issues
-        if (appKind.IsWasmApp()) {
+        if (appKind.IsWasmApp() && !HostInfo.IsTested) {
             services.AddSingleton(_ => new WebClientComputedCache.Options());
             services.AddSingleton(c => new WebClientComputedCache(
                 c.GetRequiredService<WebClientComputedCache.Options>(), c));

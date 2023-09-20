@@ -17,10 +17,11 @@ public sealed record HostInfo
 
     public AppKind AppKind { get; init; }
     public ClientKind ClientKind { get; init; }
+    public bool IsTested { get; init; }
     public Symbol Environment { get; init; } = Environments.Development;
     public IConfiguration Configuration { get; init; } = null!;
     public string DeviceModel { get; init; } = "Unknown";
-    public ImmutableHashSet<Symbol> RequiredServiceScopes => _requiredServiceScopes ??= AppKind.GetRequiredServiceScopes();
+    public ImmutableHashSet<Symbol> RequiredServiceScopes => _requiredServiceScopes ??= AppKind.GetRequiredServiceScopes(IsTested);
 
     public string BaseUrl {
         get {

@@ -32,22 +32,17 @@ using Serilog.Events;
 
 namespace ActualChat.App.Server;
 
-public class Startup
+public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
 {
-    private IConfiguration Cfg { get; }
-    private IWebHostEnvironment Env { get; }
+    private IConfiguration Cfg { get; } = cfg;
+    private IWebHostEnvironment Env { get; } = environment;
     private ModuleHost ModuleHost { get; set; } = null!;
-
-    public Startup(IConfiguration cfg, IWebHostEnvironment environment)
-    {
-        Cfg = cfg;
-        Env = environment;
-    }
 
     public void ConfigureServices(IServiceCollection services)
     {
         var hostSettings = Cfg.GetSettings<HostSettings>();
         var appKind = hostSettings.AppKind ?? AppKind.WebServer;
+        var isTested = hostSettings.IsTested ?? false;
 
         // Logging
         services.AddLogging(logging => {
@@ -57,7 +52,7 @@ public class Startup
 #pragma warning disable IL2026
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
 #pragma warning restore IL2026
-            if (AppLogging.IsDevLogRequested && appKind.IsServer()) { // This excludes TestServer
+            if (AppLogging.IsDevLogRequested && appKind.IsServer() && !isTested) { // This excludes TestServer
                 var serilog = new LoggerConfiguration()
                     .MinimumLevel.Is(LogEventLevel.Verbose)
                     .Enrich.FromLogContext()
@@ -97,6 +92,7 @@ public class Startup
 
             return new HostInfo() {
                 AppKind = appKind,
+                IsTested = isTested,
                 ClientKind = ClientKind.Unknown,
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,

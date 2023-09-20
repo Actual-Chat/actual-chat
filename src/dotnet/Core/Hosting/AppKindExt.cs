@@ -3,11 +3,9 @@ namespace ActualChat.Hosting;
 public static class AppKindExt
 {
     public static bool IsServer(this AppKind appKind)
-        => appKind is AppKind.WebServer or AppKind.TestServer;
+        => appKind is AppKind.WebServer;
     public static bool IsWebServer(this AppKind appKind)
         => appKind is AppKind.WebServer;
-    public static bool IsTestServer(this AppKind appKind)
-        => appKind is AppKind.TestServer;
 
     public static bool IsClient(this AppKind appKind)
         => appKind is AppKind.WasmApp or AppKind.MauiApp;
@@ -19,8 +17,9 @@ public static class AppKindExt
     public static bool HasBlazorUI(this AppKind appKind)
         => appKind is not AppKind.Unknown;
 
-    public static ImmutableHashSet<Symbol> GetRequiredServiceScopes(this AppKind appKind)
-        => appKind switch {
+    public static ImmutableHashSet<Symbol> GetRequiredServiceScopes(this AppKind appKind, bool isTested)
+    {
+        var scopes = appKind switch {
             AppKind.WebServer => ImmutableHashSet.Create(
                 ServiceScope.WebServerApp,
                 ServiceScope.Server,
@@ -33,8 +32,10 @@ public static class AppKindExt
                 ServiceScope.MauiApp,
                 ServiceScope.Client,
                 ServiceScope.BlazorUI),
-            AppKind.TestServer => AppKind.WebServer.GetRequiredServiceScopes()
-                .Add(ServiceScope.Test),
             _ => throw new ArgumentOutOfRangeException(nameof(appKind), appKind, null),
         };
+        if (isTested)
+            scopes = scopes.Add(ServiceScope.Test);
+        return scopes;
+    }
 }
