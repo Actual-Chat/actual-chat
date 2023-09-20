@@ -12,6 +12,8 @@ Before release:
 - Onboarding: use stored phone number [Frol]
 - ~~Service worker / asset caching [EK]~~
 - Stop historical playback in other chats when recording starts [Frol]
+- Don't highlight SelectedChat(s) on mobile
+- Don't update SelectedChat when MiddlePanel isn't visible
 
 - Critical bugs:
   - ~~iOS 16.1.1 - exit on startup [AK]~~
