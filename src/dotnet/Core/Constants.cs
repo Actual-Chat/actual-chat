@@ -26,9 +26,9 @@ public static partial class Constants
 
         public static class Tags
         {
-            public const string Notes = "notes";
-            public const string Family = "family";
-            public const string Friends = "friends";
+            public static readonly Symbol Notes = "notes";
+            public static readonly Symbol Family = "family";
+            public static readonly Symbol Friends = "friends";
         }
     }
 

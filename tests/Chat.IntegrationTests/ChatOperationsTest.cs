@@ -1,6 +1,9 @@
+using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
 using ActualChat.Users;
+using Microsoft.EntityFrameworkCore;
+using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -132,6 +135,49 @@ public class ChatOperationsTest : AppHostTestBase
         author!.UserId.Should().Be(account.Id);
     }
 
+    [Fact]
+    public async Task NotesChatCreatedOnSignIn()
+    {
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewBlazorTester();
+        var session = tester.Session;
+        var account = await tester.SignIn(new User("", "Notes"));
+
+        var services = tester.AppServices;
+        var chatsBackend = services.GetRequiredService<IChatsBackend>();
+        var authors = services.GetRequiredService<IAuthors>();
+
+        await services.Clocks().SystemClock.Delay(2000);
+
+        var dbHub = services.DbHub<ChatDbContext>();
+        var dbContext = dbHub.CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChat = await dbContext.Chats
+            .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
+            .Where(x => x.a.UserId == account.Id && x.c.SystemTag == (string)Constants.Chat.Tags.Notes)
+            .Select(x => x.c)
+            .FirstOrDefaultAsync();
+
+        dbChat.Should().NotBeNull();
+        var chat = await chatsBackend.Get(ChatId.Parse(dbChat!.Id), CancellationToken.None);
+        chat.Require();
+        chat.Should().NotBeNull();
+        chat.Title.Should().Be("Notes");
+        chat.IsPublic.Should().Be(false);
+        var rules = await chatsBackend.GetRules(chat.Id, new PrincipalId(account.Id, AssumeValid.Option), default);
+        rules.CanRead().Should().BeTrue();
+        rules.CanWrite().Should().BeTrue();
+        rules.CanJoin().Should().BeFalse();
+        rules.CanInvite().Should().BeFalse();
+        rules.CanEditProperties().Should().BeFalse();
+        rules.CanEditRoles().Should().BeFalse();
+        rules.IsOwner().Should().BeFalse();
+
+        var author = await authors.GetOwn(session, chat.Id, default);
+        author.Should().NotBeNull();
+        author!.UserId.Should().Be(account.Id);
+    }
 
     [Theory]
     [InlineData(false)]

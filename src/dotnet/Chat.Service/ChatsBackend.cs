@@ -337,12 +337,12 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     });
                 var author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
-                if (chat.AllowSingleAuthorOnly) {
+                if (chat.HasSingleAuthor) {
                     var createCustomRoleCmd = new RolesBackend_Change(chatId, default, null, new() {
                         Create = new RoleDiff {
                             Name = "SingleAuthor",
                             SystemRole = SystemRole.None,
-                            Permissions = ChatPermissions.Write | ChatPermissions.EditProperties,
+                            Permissions = ChatPermissions.Write,
                             AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId>() {
                                 AddedItems = ApiArray<AuthorId>.Empty.Add(author.Id),
                             },
@@ -742,7 +742,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         var hasNotesChat = await dbContext.Chats
             .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
-            .AnyAsync(x => x.a.UserId == userId && x.c.Tag == Constants.Chat.Tags.Notes, cancellationToken)
+            .AnyAsync(x => x.a.UserId == userId && x.c.SystemTag == (string)Constants.Chat.Tags.Notes, cancellationToken)
             .ConfigureAwait(false);
 
         if (hasNotesChat)
@@ -759,8 +759,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     IsTemplate = false,
                     AllowGuestAuthors = false,
                     AllowAnonymousAuthors = false,
-                    AllowSingleAuthorOnly = true,
-                    Tag = Constants.Chat.Tags.Notes,
+                    SystemTag = Constants.Chat.Tags.Notes,
                 },
             },
             userId);
@@ -776,9 +775,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             return; // It just spawns other commands, so nothing to do here
 
         await JoinAnnouncementsChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
-
-        var createNotesCommand = new ChatsBackend_CreateNotesChat(eventCommand.UserId);
-        await Commander.Call(createNotesCommand, cancellationToken).ConfigureAwait(false);
+        await CreateNotesChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
 
         if (HostInfo.IsDevelopmentInstance) {
             await JoinDefaultChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
@@ -806,16 +803,16 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         // Skip for template chats
         var chat = await Get(author.ChatId, cancellationToken).ConfigureAwait(false);
-        if (chat?.IsTemplate ?? false)
+        if (chat is { IsTemplate: true })
             return;
 
         // and template chat owners
         var ownerRole = await RolesBackend.GetSystem(author.ChatId, SystemRole.Owner, cancellationToken).ConfigureAwait(false);
-        if ((chat?.TemplatedForUserId.HasValue ?? false) && ownerRole != null && author.RoleIds.Contains(ownerRole.Id))
+        if (chat is { TemplatedForUserId: not null } && ownerRole != null && author.RoleIds.Contains(ownerRole.Id))
             return;
 
         // and chats with predefined tags
-        if (!(chat?.Tag.IsNullOrEmpty() ?? true))
+        if (chat is { SystemTag.IsEmpty: false })
             return;
 
         // Let's delay fetching an author a bit
@@ -953,6 +950,12 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             return;
 
         await AddOwner(chatId, author, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task CreateNotesChat(UserId userId, CancellationToken cancellationToken)
+    {
+        var createNotesCommand = new ChatsBackend_CreateNotesChat(userId);
+        await Commander.Run(createNotesCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task JoinDefaultChatIfAdmin(UserId userId, CancellationToken cancellationToken)

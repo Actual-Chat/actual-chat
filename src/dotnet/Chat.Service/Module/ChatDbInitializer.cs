@@ -135,13 +135,13 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         await using var _ = dbContext.ConfigureAwait(false);
 
         var hasNotesChat = await dbContext.Chats
-            .AnyAsync(c => c.Tag == Constants.Chat.Tags.Notes, cancellationToken)
+            .AnyAsync(c => c.SystemTag == (string)Constants.Chat.Tags.Notes, cancellationToken)
             .ConfigureAwait(false);
         if (hasNotesChat)
             return;
 
         try {
-            Log.LogInformation("There is no 'Notes' chat, creating one for each user");
+            Log.LogInformation("There is no 'Notes' chat, creating one for every user");
 
             // Get all users
             var userIds = await dbContext.Authors
