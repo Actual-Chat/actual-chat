@@ -3,7 +3,7 @@ Before release:
 - Pre-rendered landing page [AY]
 - Check all new text messages (esp. "Share" + troubleshooters) [AY]
 - Phone sign-in: enable it [Frol]
-- Sign-in: replace sign-in menu w/ modal everywhere + remove menu [Andrey]
+- ~~Sign-in: replace sign-in menu w/ modal everywhere + remove menu [EK]~~
 - ~~Languages: add Chinese, Korean, etc. + update settings page layout [DF]~~
 - ~~New chat: 2-page layout [DF]~~
 - Chat: empty chat must contain invite link + splash [DF]
