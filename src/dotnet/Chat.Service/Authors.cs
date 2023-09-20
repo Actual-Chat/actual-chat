@@ -220,7 +220,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             var ownerIds = await Roles.ListOwnerIds(session, chatId, default).ConfigureAwait(false);
             var hasAnotherOwner = ownerIds.Any(c => c.Id != author.Id);
             if (!hasAnotherOwner)
-                throw StandardError.Constraint("You can not leave the chat because you are the only owner of the chat. Assign another chat owner and try again.");
+                throw StandardError.Constraint("You can't leave this chat because you are its only owner. Please add another chat owner first.");
 
             var ownerRole = await RolesBackend
                 .GetSystem(chatId, SystemRole.Owner, cancellationToken)
@@ -282,12 +282,12 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             return;
 
         if (chat.Rules.Account.Id == author.UserId)
-            throw StandardError.Constraint("You can not remove yourself from the chat members.");
+            throw StandardError.Constraint("You can't remove yourself from chat members.");
 
         var ownerIds = await Roles.ListOwnerIds(session, chatId, cancellationToken).ConfigureAwait(false);
         var isOwner = ownerIds.Contains(authorId);
         if (isOwner)
-            throw StandardError.Constraint("You can not remove an owner from the chat members.");
+            throw StandardError.Constraint("You can't remove an owner of this chat from chat members.");
 
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,
@@ -345,7 +345,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
 
         var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
         if (author == null || author.HasLeft)
-            throw StandardError.Constraint("You can not promote the author. Author is not found or left the chat.");
+            throw StandardError.Constraint("The selected author has already left the chat.");
 
         if (chat.Rules.Account.Id == author.UserId)
             return;

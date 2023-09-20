@@ -288,7 +288,7 @@
         var ownAuthorId = m.Rules!.Author!.Id;
         var hasAnotherOwner = ownerIds.Any(c => c.Id != ownAuthorId);
         if (!hasAnotherOwner) {
-            var message = "You can not leave the chat because you are the only owner of the chat. Assign another chat owner and try again.";
+            var message = "You can't leave this chat because you are its only owner. Please add another chat owner first.";
             Services.UICommander().ShowError(StandardError.Constraint(message));
         } else {
             var chat = await Chats.Get(Session, ChatId, default);
