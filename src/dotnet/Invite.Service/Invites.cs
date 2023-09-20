@@ -7,12 +7,14 @@ namespace ActualChat.Invite;
 internal class Invites : IInvites
 {
     private IChats? _chats;
+    private MomentClockSet? _clocks;
 
     private IServiceProvider Services { get; }
     private IAccounts Accounts { get; }
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private ICommander Commander { get; }
     private IInvitesBackend Backend { get; }
+    private MomentClockSet Clocks => _clocks ??= Services.GetRequiredService<MomentClockSet>();
 
     public Invites(IServiceProvider services)
     {
@@ -43,6 +45,43 @@ internal class Invites : IInvites
 
         var searchKey = new ChatInviteOption(chatId).GetSearchKey();
         return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Invite?> GetOrGenerateChatInvite(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null || !chat.Rules.CanInvite())
+            return null;
+
+        var invites = await ListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
+        var threshold = Clocks.SystemClock.Now - TimeSpan.FromMinutes(10);
+        invites = invites
+            .Where(c => c.ExpiresOn > threshold)
+            .OrderByDescending(c => c.ExpiresOn)
+            .ToApiArray();
+
+        if (invites.Count > 0) {
+            var invite = invites[0];
+            AutoInvalidate(invite);
+            return invite;
+        }
+
+        var newInvite = Invite.New(10000, new ChatInviteOption(chatId));
+        newInvite = await Commander.Call(new Invites_Generate(session, newInvite), true, cancellationToken).ConfigureAwait(false);
+        AutoInvalidate(newInvite);
+        return newInvite;
+
+        void AutoInvalidate(Invite invite)
+        {
+            var expiresIn = Clocks.SystemClock.Now - invite.ExpiresOn;
+            var delay = expiresIn > TimeSpan.FromHours(1) ? TimeSpan.FromHours(1) : expiresIn;
+            delay = delay.Add(TimeSpan.FromMinutes(5).Negate());
+            Computed.GetCurrent()!.Invalidate(delay);
+        }
     }
 
     // [CommandHandler]

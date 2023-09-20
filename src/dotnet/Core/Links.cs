@@ -40,4 +40,10 @@ public static class Links
         public static readonly string iOS = "https://testflight.apple.com/join/5JP64q4v";
         public static readonly string Windows = "https://www.microsoft.com/store/apps/9N6RWRD9FMS2";
     }
+
+    public static class InviteLinkFormat
+    {
+        public const string JoinChat = "join/{0}";
+        public const string InviteUser = "user/invite/{0}";
+    }
 }

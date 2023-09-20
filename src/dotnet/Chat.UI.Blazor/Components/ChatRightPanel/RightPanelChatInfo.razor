@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Notification
+@using ActualChat.Invite
 @inherits ComputedStateComponent<RightPanelChatInfo.Model>
 @{
     var m = State.Value;
@@ -31,7 +32,7 @@
 
     @if (m.Link is { } publicUrl) {
         <RightPanelChatInfoItem
-            Click="@(() => OnShareClick(publicUrl.AbsoluteUrl))"
+            Click="@(() => OnShareClick(publicUrl.AbsoluteUrl, m.IsJoinLink))"
             ContentClass="text-accent"
             Content="Share">
             <Icon>
@@ -56,14 +57,11 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private IRoles Roles { get; init; } = null!;
-    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
-    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
-    [Inject] private AuthorUI AuthorUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private IInvites Invites { get; init; } = null!;
 
     private ModalUI ModalUI => Services.GetRequiredService<ModalUI>();
     private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
@@ -79,24 +77,31 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var rules = await Chats.GetRules(Session, Chat.Id, default);
-        var link = await GetLink(cancellationToken);
+        var (link, isJoinLink) = await GetLink(rules, cancellationToken);
         var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
         return new() {
             Title = Chat.Title,
             Link = link?.ToDisplayUrl(UrlMapper),
+            IsJoinLink = isJoinLink,
             NotificationMode = userChatSettings.NotificationMode,
             Rules = rules,
         };
     }
 
-    private async Task<LocalUrl?> GetLink(CancellationToken cancellationToken) {
+    private async Task<(LocalUrl?, bool)> GetLink(AuthorRules rules, CancellationToken cancellationToken) {
         var account = await Accounts.GetOwn(Session, cancellationToken);
         if (Chat.Id.IsPeerChat(out var peerChatId)) {
             var otherUserId = peerChatId.UserIds.OtherThan(account.Id);
-            return Links.User(otherUserId);
+            return (Links.User(otherUserId), false);
         }
-
-        return Chat.IsPublic ? Links.Chat(Chat.Id) : (LocalUrl?)null;
+        if (Chat.IsPublic)
+            return (Links.Chat(Chat.Id), false);
+        if (rules.CanInvite()) {
+            var invite = await Invites.GetOrGenerateChatInvite(Session, Chat.Id, cancellationToken);
+            if (invite != null)
+                return (Links.Invite(Links.InviteLinkFormat.JoinChat, invite.Id), true);
+        }
+        return (null, false);
     }
 
     private Task OnValueChanged(bool isMuted)
@@ -111,14 +116,19 @@
     private Task OnInviteClick()
         => ModalUI.Show(new AddMemberModal.Model(Chat.Id));
 
-    private void OnShareClick(string link)
-        => ShareUI.ShareLink(link, "Share chat", $"\"{Chat.Title}\" on Actual Chat");
+    private void OnShareClick(string link, bool isJoinLink) {
+        var description = isJoinLink
+            ? $"\"{Chat.Title}\" on Actual Chat join link"
+            : $"\"{Chat.Title}\" on Actual Chat";
+        ShareUI.ShareLink(link, "Share chat", description);
+    }
 
     public sealed record Model {
         public static Model None { get; } = new();
 
         public string? Title { get; init; }
         public DisplayUrl? Link { get; init; }
+        public bool IsJoinLink { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
         public AuthorRules Rules { get; init; } = null!;
     }

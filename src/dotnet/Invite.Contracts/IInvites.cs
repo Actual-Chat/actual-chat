@@ -8,6 +8,8 @@ public interface IInvites : IComputeService
     Task<ApiArray<Invite>> ListUserInvites(Session session, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Invite?> GetOrGenerateChatInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Invite> OnGenerate(Invites_Generate command, CancellationToken cancellationToken);
