@@ -36,10 +36,6 @@ export class AudioPlayer implements Resettable {
     private playbackState: PlaybackState = 'paused';
     private decoderToFeederWorkletChannel: MessageChannel = null;
     private feederNode?: FeederAudioWorkletNode = null;
-    private gainNodeL?: GainNode = null;
-    private gainNodeR?: GainNode = null;
-    private channelMerger?: ChannelMergerNode = null;
-
 
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
 
@@ -99,15 +95,7 @@ export class AudioPlayer implements Resettable {
             // Create decoder worker
             await decoderWorker.init(this.internalId, this.decoderToFeederWorkletChannel.port1);
 
-
-            this.gainNodeL = context.createGain();
-            this.gainNodeR = context.createGain();
-            this.channelMerger = context.createChannelMerger(2);
-            this.gainNodeL.connect(this.channelMerger, 0, 0);
-            this.gainNodeR.connect(this.channelMerger, 0, 1);
-            this.channelMerger.connect(destination);
-            feederNode.connect(this.gainNodeL);
-            feederNode.connect(this.gainNodeR);
+            feederNode.connect(destination);
 
             this.isAttached = true;
         };
@@ -134,14 +122,8 @@ export class AudioPlayer implements Resettable {
 
             const feederNode = this.feederNode;
             if (feederNode) {
-                this.gainNodeL?.disconnect();
-                this.gainNodeR?.disconnect();
-                this.channelMerger?.disconnect();
                 this.feederNode.disconnect();
                 this.feederNode = null;
-                this.gainNodeL = null;
-                this.gainNodeR = null;
-                this.channelMerger = null;
                 await catchErrors(
                     () => feederNode.disconnect(),
                     e => warnLog?.log(`#${this.internalId}.start.detach error:`, e));

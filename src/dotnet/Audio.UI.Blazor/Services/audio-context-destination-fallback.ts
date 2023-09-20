@@ -10,7 +10,6 @@ export class AudioContextDestinationFallback {
     private readonly audio: HTMLAudioElement;
     private destinationNode?: MediaStreamAudioDestinationNode = null;
     private aecStream: MediaStream & Disposable = null;
-    private whenReady: PromiseSource<void> = new PromiseSource<void>();
 
     public static get isRequired() { return isWebRtcAecRequired || DeviceInfo.isIos && DeviceInfo.isWebKit; }
 
@@ -39,8 +38,6 @@ export class AudioContextDestinationFallback {
         try {
             if (!this.destinationNode || this.destinationNode.context !== context) {
                 this.destinationNode = context.createMediaStreamDestination();
-                this.destinationNode.channelCountMode = 'max';
-                this.destinationNode.channelCount = 2;
                 this.destinationNode.channelInterpretation = 'speakers';
                 if (isWebRtcAecRequired)
                     this.aecStream = await createWebRtcAecStream(this.destinationNode.stream);
