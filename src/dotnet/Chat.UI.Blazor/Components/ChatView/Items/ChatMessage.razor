@@ -176,8 +176,6 @@
     [Inject] private SelectionUI SelectionUI { get; init; } = null!;
     [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
     // [Inject] private ILogger<ChatMessage> Log { get; init; } = null!;
 
     // Shortcuts
@@ -252,14 +250,12 @@
             ? await Authors.Get(Session, entry.ForwardedChatEntryId.ChatId, entry.ForwardedAuthorId, cancellationToken)
             : null;
         var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken);
-        var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
             IsHighlighted = isHighlighted,
             IsReplyTarget = isReplyTarget,
             IsSelected = selectedChatEntries.Contains(entry.Id),
-            HasSelection = hasSelection,
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
             ForwardedAuthor = forwardedAuthor,
@@ -326,7 +322,6 @@
         public bool IsReplyTarget { get; init; }
         public bool IsOwnAuthorMentioned { get; init; }
         public bool IsSelected { get; init; }
-        public bool HasSelection { get; init; }
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; init; }
         public Author? ForwardedAuthor { get; init; }
