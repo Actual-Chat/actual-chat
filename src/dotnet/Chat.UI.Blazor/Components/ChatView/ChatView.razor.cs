@@ -21,6 +21,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private bool _itemVisibilityUpdateHasReceived;
     private bool _doNotShowNewMessagesSeparator;
     private IMutableState<ChatViewItemVisibility> _itemVisibility = null!;
+    private ChatMessageContext _messageContext = null!;
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -31,6 +32,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Inject] private History History { get; init; } = null!;
     [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
     [Inject] private IStateFactory StateFactory { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
 
     private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
     private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
@@ -47,6 +49,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     protected override async Task OnInitializedAsync()
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
+        _messageContext = new ChatMessageContext(new ChatMessageServices(Services), Chat);
         Nav.LocationChanged += OnLocationChanged;
         try {
             NavigateToEntryLid = StateFactory.NewMutable(

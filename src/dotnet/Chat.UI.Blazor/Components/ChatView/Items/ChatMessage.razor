@@ -71,9 +71,9 @@
             @if (showAuthor) {
                 <ChatMessageAuthorCircle
                     AuthorSid="@entry.AuthorId"
-                    Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
+                    Click="@(_ => MessageServices.AuthorUI.Show(entry.AuthorId))"/>
             } else {
-                var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
+                var timestamp = MessageServices.TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
                 <div class="c-empty">
                     <span class="chat-message-timestamp-on-hover">@timestamp</span>
                 </div>
@@ -166,23 +166,18 @@
     private Markup _markup = Markup.Empty;
     private ChatMessageModel? _lastMessage;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
-    [Inject] private AuthorUI AuthorUI { get; init; } = null!;
-    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
-    [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
-    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
-    // [Inject] private ILogger<ChatMessage> Log { get; init; } = null!;
-
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
     private ChatId ChatId => Message.Entry.ChatId;
+    private ChatMessageServices MessageServices => Context.Services;
+    private Session Session => MessageServices.Session;
+    private History History => MessageServices.History;
+    private IAuthors Authors => MessageServices.Authors;
+    private IChats Chats => MessageServices.Chats;
+    private ChatUI ChatUI => MessageServices.ChatUI;
 
     [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessageContext Context { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -200,7 +195,7 @@
         */
         if (mustReset) {
             _lastMessage = Message;
-            _chatMarkupHub = ChatMarkupHubFactory[ChatId];
+            _chatMarkupHub = MessageServices.ChatMarkupHubFactory[ChatId];
             _markupTask = _chatMarkupHub.GetMarkup(Entry, MarkupConsumer.MessageView, default);
             _markup = await _markupTask;
             await base.OnParametersSetAsync(); // Triggers recompute
@@ -240,7 +235,7 @@
         var repliedEntry = await GetRepliedEntry(cancellationToken);
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
-        var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
+        var relatedChatEntry = await MessageServices.ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken);
         var forwardedChat = !entry.ForwardedChatEntryId.IsNone
@@ -249,7 +244,7 @@
         var forwardedAuthor = !entry.ForwardedChatEntryId.IsNone && !entry.ForwardedAuthorId.IsNone
             ? await Authors.Get(Session, entry.ForwardedChatEntryId.ChatId, entry.ForwardedAuthorId, cancellationToken)
             : null;
-        var selectedChatEntries = await SelectionUI.Selection.Use(cancellationToken);
+        var selectedChatEntries = await MessageServices.SelectionUI.Selection.Use(cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,

@@ -11,7 +11,7 @@
     KeyComparer="@LongAsStringKeyComparer.Default"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
-        <ChatMessage Message="@context" />
+        <ChatMessage Context="_messageContext" Message="@context" />
     </Item>
     <Empty>
         <EmptyChatContent Chat="@Chat"/>
