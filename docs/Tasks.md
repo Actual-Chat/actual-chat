@@ -20,8 +20,8 @@ Before release:
 - ~~Fade out loading overlay [AY]~~
 
 - Critical bugs:
-  - 2 "Notes" chats on dev / no upgrade on prod
-  - iOS: background playback issues
+  - 2 "Notes" chats on dev / no upgrade on prod [AK]
+  - iOS: background playback issues [AK]
   - ~~iOS 16.1.1 - exit on startup [AK]~~
   - ~~Hot restart / WebView close: make sure the old view doesn't record [AK]~~
   - ~~Audio: use mono playback on Android? [AK]~~
