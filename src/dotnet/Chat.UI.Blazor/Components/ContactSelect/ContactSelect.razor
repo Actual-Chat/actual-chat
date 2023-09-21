@@ -59,7 +59,7 @@
     }
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var filter = ShowUserContactsOnly ? ChatListFilter.Personal : ChatListFilter.None;
+        var filter = ShowUserContactsOnly ? ChatListFilter.People : ChatListFilter.None;
         var allUnordered = await ChatListUI.ListAllUnordered(filter, cancellationToken);
         var chats = allUnordered.Values
             .ExceptBy(ContactsToExclude, x => x.Id)
