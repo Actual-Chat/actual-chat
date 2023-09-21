@@ -3,14 +3,18 @@
     var icon = IsVerified ? "icon-checkmark-circle-2" : "icon-alert-circle";
     var text = IsVerified ? "Verified" : "Not verified";
     var colorCls = IsVerified ? "text-success" : "text-icons-04";
+    var cursorCls = !IsVerified ? "cursor-pointer" : "";
 }
 
-<div class="flex-x items-center justify-center @Class">
-    <i class="@icon text-xl @colorCls" aria-hidden="true" data-tooltip="@text"></i>
+<div class="flex-x items-center justify-center @Class @cursorCls"
+     @onclick="@(IsVerified ? default : Verify)"
+     data-tooltip="@text">
+    <i class="@icon text-xl @colorCls" aria-hidden="true"></i>
 </div>
 
 
 @code {
     [Parameter, EditorRequired] public bool IsVerified { get; set; }
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback Verify { get; set; }
 }
