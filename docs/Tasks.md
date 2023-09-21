@@ -1,6 +1,7 @@
 Before release:
 
-- Pre-rendered landing page [AY]
+- ~~Pre-rendered landing page [AY]~~
+- Add proper site image and description to _Host.cshtml [Andrey, Grisha]
 - Check all new text messages (esp. "Share" + troubleshooters) [AY]
 - Phone sign-in: enable it [Frol]
 - ~~Sign-in: replace sign-in menu w/ modal everywhere + remove menu [EK]~~
@@ -11,8 +12,10 @@ Before release:
 - Onboarding: pre-create chats page
 - Onboarding: use stored phone number [Frol]
 - ~~Service worker / asset caching [EK]~~
+- Push-to-talk must not change the playback state [AY]
 - Stop historical playback in other chats when recording starts [Frol]
 - Don't update SelectedChat when MiddlePanel isn't visible
+- ~~Fade out loading overlay [AY]~~
 
 - Critical bugs:
   - ~~iOS 16.1.1 - exit on startup [AK]~~
