@@ -41,12 +41,9 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
 
         StartedAt = Clock.Now;
         _maxInvalidationDelay = TimeSpan.FromSeconds(HostInfo.AppKind.IsServer() ? 0.5 : 2);
-        var ownAccountTask = Accounts.GetOwn(Session, default);
- #pragma warning disable VSTHRD002, VSTHRD104
-        AccountFull initialOwnAccount = ownAccountTask.IsCompletedSuccessfully
-            ? ownAccountTask.Result
-            : AccountFull.Loading;
- #pragma warning restore VSTHRD002, VSTHRD104
+        var ownAccountComputed = Computed.GetExisting(() => Accounts.GetOwn(Session, default));
+        var ownAccount = ownAccountComputed?.IsConsistent() == true &&  ownAccountComputed.HasValue ? ownAccountComputed.Value : null;
+        var initialOwnAccount = ownAccount ?? AccountFull.Loading;
 
         var stateFactory = services.StateFactory();
         _ownAccount = stateFactory.NewMutable<AccountFull>(new () {

@@ -217,14 +217,15 @@
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         var initialValue = Model.None;
-        var ownAuthorTask = Authors.GetOwn(Session, ChatId, default);
-        if (ownAuthorTask.IsCompletedSuccessfully) {
-            var ownAuthorId = ownAuthorTask.Result?.Id ?? AuthorId.None;
+        var ownAuthorComputed = Computed.GetExisting(() => Authors.GetOwn(Session, ChatId, default));
+        var ownAuthor = ownAuthorComputed?.IsConsistent() == true &&  ownAuthorComputed.HasValue ? ownAuthorComputed.Value : null;
+        var ownAuthorId = ownAuthor?.Id ?? AuthorId.None;
+        var repliedEntry = Entry.RepliedEntryLocalId != null ? ChatEntry.Loading : null;
+        if (!ownAuthorId.IsNone || repliedEntry != null)
             initialValue = new Model {
                 OwnAuthorId = ownAuthorId,
-                RepliedEntry = Entry.RepliedEntryLocalId != null ? ChatEntry.Loading : null,
+                RepliedEntry = repliedEntry,
             };
-        }
         return new() {
             InitialValue = initialValue,
             Category = GetStateCategory(),
