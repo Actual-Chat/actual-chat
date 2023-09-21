@@ -128,8 +128,10 @@
         _form.Name = _account.Name;
         _form.LastName = _account.LastName;
         _form.Email = _account.Email;
-        _form.Code = PhoneCodes.GetByCode(_account.Phone.Code)?.DisplayCode ?? PhoneCodes.Default.DisplayCode;
-        _form.Number = _account.Phone.Number;
+        if (!_account.Phone.IsNone) { // just in case it's not filled from external provider (Apple)
+            _form.Code = PhoneCodes.GetByCode(_account.Phone.Code)?.DisplayCode ?? PhoneCodes.Default.DisplayCode;
+            _form.Number = _account.Phone.Number;
+        }
         _form.CopyToBase();
     }
 
