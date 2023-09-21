@@ -186,7 +186,7 @@ public partial class MainActivity : MauiAppCompatActivity
             // you cannot change the notification behaviors—the user has complete control at that point.
             // Though you can still change a channel's name and description.
             // https://developer.android.com/develop/ui/views/notifications/channels
-            var channel = new NotificationChannel(NotificationConstants.ChannelIds.Default, "Default", NotificationImportance.High);
+            var channel = new NotificationChannel(Constants.Notification.ChannelIds.Default, "Default", NotificationImportance.High);
             notificationManager.CreateNotificationChannel(channel);
         }
     }
@@ -198,13 +198,13 @@ public partial class MainActivity : MauiAppCompatActivity
             return;
 
         var keySet = extras.KeySet()!.ToArray();
-        if (!keySet.Contains(NotificationConstants.MessageDataKeys.NotificationId, StringComparer.Ordinal))
+        if (!keySet.Contains(Constants.Notification.MessageDataKeys.NotificationId, StringComparer.Ordinal))
             return;
 
         // a notification action, lets collect message data
         var data = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach(var key in keySet) {
-            if (!NotificationConstants.MessageDataKeys.IsValidKey(key))
+            if (!Constants.Notification.MessageDataKeys.IsValidKey(key))
                 continue;
             if (data.ContainsKey(key))
                 continue;
@@ -219,7 +219,7 @@ public partial class MainActivity : MauiAppCompatActivity
             Log.LogInformation("NotificationTap. Data: {Data}", dataAsText);
         }
 
-        var url = data.GetValueOrDefault(NotificationConstants.MessageDataKeys.Link);
+        var url = data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Link);
         if (url.IsNullOrEmpty())
             return;
 

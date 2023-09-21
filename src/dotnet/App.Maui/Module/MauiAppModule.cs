@@ -54,6 +54,8 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
             };
         });
 
-        services.AddScoped<DeviceContacts>(c => new MauiDeviceContacts(c));
+        // Contacts
+        services.AddScoped<IContactPermissions>(c => new MauiContactPermissions(c));
+        services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
     }
 }

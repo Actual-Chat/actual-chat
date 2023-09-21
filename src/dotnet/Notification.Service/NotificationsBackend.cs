@@ -269,7 +269,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
             using ICacheEntry cacheEntry = _recentChatsWithNotifications.CreateEntry(key);
             cacheEntry.Size = 1;
             cacheEntry.Value = "";
-            cacheEntry.AbsoluteExpirationRelativeToNow = NotificationConstants.ThrottleIntervals.Message;
+            cacheEntry.AbsoluteExpirationRelativeToNow = Constants.Notification.ThrottleIntervals.Message;
         }
         else if (mentionIds.Count == 0)
             // throttle low priority notifications
@@ -388,9 +388,9 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     private TimeSpan? GetThrottleInterval(Notification notification)
     {
         if (notification.Kind == NotificationKind.Message)
-            return NotificationConstants.ThrottleIntervals.Message;
+            return Constants.Notification.ThrottleIntervals.Message;
         if (notification.Kind == NotificationKind.Reaction)
-            return NotificationConstants.ThrottleIntervals.Message;
+            return Constants.Notification.ThrottleIntervals.Message;
 
         return null;
     }

@@ -9,7 +9,7 @@
       android:supportsRtl="true"
       android:networkSecurityConfig="@xml/network_security_config">
     <!-- Defines the fallback channel id when backend does not specify notification channel id -->
-    <!-- Resource value should aligned with NotificationConstants.ChannelIds.Default -->
+    <!-- Resource value should aligned with Constants.Notification.ChannelIds.Default -->
     <meta-data
       android:name="com.google.firebase.messaging.default_notification_channel_id"
       android:value="@string/default_notification_channel_id" />

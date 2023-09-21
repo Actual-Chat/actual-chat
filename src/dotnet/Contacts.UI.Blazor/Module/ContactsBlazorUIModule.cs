@@ -18,6 +18,6 @@ public partial class ContactsBlazorUIModule : HostModule, IBlazorUIModule
 
         var fusion = services.AddFusion();
         fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
-        services.AddScoped<DeviceContacts>();
+        services.AddScoped<DeviceContacts>(c => new DeviceContacts());
     }
 }

@@ -48,20 +48,20 @@ public class FirebaseMessagingClient
             // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
             // Notification = default,
             Data = new Dictionary<string, string>(StringComparer.Ordinal) {
-                { NotificationConstants.MessageDataKeys.NotificationId, notificationId },
-                { NotificationConstants.MessageDataKeys.Tag, tag },
-                { NotificationConstants.MessageDataKeys.ChatId, chatId },
-                { NotificationConstants.MessageDataKeys.ChatEntryId, chatEntryId },
-                { NotificationConstants.MessageDataKeys.Icon, absoluteIconUrl },
-                { NotificationConstants.MessageDataKeys.Link, link },
+                { Constants.Notification.MessageDataKeys.NotificationId, notificationId },
+                { Constants.Notification.MessageDataKeys.Tag, tag },
+                { Constants.Notification.MessageDataKeys.ChatId, chatId },
+                { Constants.Notification.MessageDataKeys.ChatEntryId, chatEntryId },
+                { Constants.Notification.MessageDataKeys.Icon, absoluteIconUrl },
+                { Constants.Notification.MessageDataKeys.Link, link },
             },
             Android = new AndroidConfig {
                 // We do not specify Notification instance, because we use Data messages to deliver notifications to Android
                 // Notification = default,
                 Data = new Dictionary<string, string>(StringComparer.Ordinal) {
-                    { NotificationConstants.MessageDataKeys.Title, title },
-                    { NotificationConstants.MessageDataKeys.Body, content },
-                    { NotificationConstants.MessageDataKeys.ImageUrl, absoluteIconUrl },
+                    { Constants.Notification.MessageDataKeys.Title, title },
+                    { Constants.Notification.MessageDataKeys.Body, content },
+                    { Constants.Notification.MessageDataKeys.ImageUrl, absoluteIconUrl },
                 },
                 Priority = Priority.High,
                 // CollapseKey = default, /* We don't use collapsible messages */

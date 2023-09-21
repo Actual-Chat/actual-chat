@@ -1,4 +1,4 @@
 <resources>
-  <!-- Resource value should aligned with NotificationConstants.ChannelIds.Default -->
+  <!-- Resource value should aligned with Constants.Notification.ChannelIds.Default -->
   <string name="default_notification_channel_id" translatable="false">fcm_default_channel</string>
 </resources>

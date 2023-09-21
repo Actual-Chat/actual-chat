@@ -1,50 +1,41 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Notification.UI.Blazor
-@using ActualChat.Notification.UI.Blazor.Module
-@using ActualChat.Hosting
 @using ActualChat.Kvas
-@using ActualChat.Notification
-@inherits ComputedStateComponent<GrantNotificationPermissionBanner.Model>
+@using ActualChat.Contacts.UI.Blazor.Services
+@inherits ComputedStateComponent<GrantContactPermissionBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
         return;
 
-    var isVisible = m is { State: PermissionState.Prompt, IsDismissed: false };
+    var isVisible = m.State != PermissionState.Granted && !m.IsDismissed;
 }
 
 @if (isVisible) {
     <RenderIntoSlot Name="PermissionBanner">
         <Banner @key="GetType()" IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowDismissButton="true" Dismiss="OnDismiss">
             <Body>
-            Actual Chat can notify you about new messages
+            Actual Chat can find your friends
             </Body>
             <Buttons>
                 <Button
                     Class="btn-transparent on"
-                    Click="@OnConfigureClick"
-                    Rendered="@OnConfigureRendered">Configure</Button>
+                    Click="@OnConfigureClick">Configure</Button>
             </Buttons>
         </Banner>
     </RenderIntoSlot>
 }
 
-
 @code {
-    private bool _isHandlerRegistered;
     private IStoredState<Moment> _dismissedAt = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
     [Inject] private LocalSettings LocalSettings { get; init; } = null!;
-    [Inject] private NotificationUI NotificationUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private DeviceContacts DeviceContacts { get; init; } = null!;
+    [Inject] private IContactPermissions ContactPermissions { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
+    [Inject] private ILogger<GrantContactPermissionBanner> Log { get; init; } = null!;
 
     protected override void OnInitialized() {
-        _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, nameof(_dismissedAt)));
+        _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "ContactPermission_DismissedAt"));
         base.OnInitialized();
     }
 
@@ -58,11 +49,11 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (!_dismissedAt.WhenRead.IsCompleted)
             await _dismissedAt.WhenRead;
-        var permissionState = await NotificationUI.PermissionState.Use(cancellationToken);
+        var permissionState = await ContactPermissions.GetState();
         // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
         var dismissedAt = await _dismissedAt.Use(cancellationToken);
         var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
-        var isDismissed = dismissPeriod < Constants.Notification.PermissionRequestDismissPeriod;
+        var isDismissed = dismissPeriod < Constants.Contacts.PermissionRequestDismissPeriod;
         return new(permissionState, isDismissed);
     }
 
@@ -72,15 +63,21 @@
         => _dismissedAt.Value = Clocks.SystemClock.Now;
 
 
-    private Task OnConfigureClick(MouseEventArgs arg)
-        => NotificationPermissions.RequestNotificationPermission(CancellationToken.None);
-
-    private async Task OnConfigureRendered(ElementReference buttonRef) {
-        if (_isHandlerRegistered)
-            return;
-
-        await NotificationUI.RegisterRequestNotificationHandler(buttonRef);
-        _isHandlerRegistered = true;
+    private async Task OnConfigureClick(MouseEventArgs e) {
+        var state = await ContactPermissions.GetState();
+        switch (state) {
+            case PermissionState.Denied:
+                await ContactPermissions.OpenSettings();
+                break;
+            case PermissionState.Prompt:
+                await ContactPermissions.Request();
+                break;
+            case PermissionState.Granted:
+                break;
+            default:
+                Log.LogError("Unexpected permission state {PermissionState}", state);
+                break;
+        }
     }
 
     // Nested types
