@@ -30,7 +30,8 @@ public readonly struct MenuRef
         var span = buffer.Span;
         try {
             span[0] = MenuRegistry.GetTypeId(MenuType).Value;
-            Arguments.CopyTo(span.Slice(1));
+            for (int i = 0; i < Arguments.Length; i++)
+                span[i + 1] = Arguments[i].ToBase64();
             return ZString.Join(Separator, (ReadOnlySpan<string>) span);
         }
         finally {
@@ -50,6 +51,9 @@ public readonly struct MenuRef
             result = default;
             return false;
         }
+
+        for (int i = 1; i < parts.Length; i++)
+            parts[i] = parts[i].FromBase64();
 
         var typeId = parts[0];
         result = parts.Length == 1
