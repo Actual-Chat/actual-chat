@@ -38,6 +38,10 @@
     <Separator Title="New messages" TitleClass="new-separator-title"/>
     return;
 }
+@if (message.IsWelcome) {
+    <ChatWelcomeMessage Context="@Context" Class="message-wrapper" />
+    return;
+}
 @if (isSystem) {
     <div class="@cls"
          data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.TrueString))"

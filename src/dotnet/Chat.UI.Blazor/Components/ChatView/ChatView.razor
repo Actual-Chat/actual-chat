@@ -9,7 +9,8 @@
     DataSource="@this"
     Identity="@Chat.Id"
     KeyComparer="@LongAsStringKeyComparer.Default"
-    ItemVisibilityChanged="@OnItemVisibilityChanged">
+    ItemVisibilityChanged="@OnItemVisibilityChanged"
+    IsEmptyTest="IsEmpty" >
     <Item>
         <ChatMessage Context="_messageContext" Message="@context" />
     </Item>

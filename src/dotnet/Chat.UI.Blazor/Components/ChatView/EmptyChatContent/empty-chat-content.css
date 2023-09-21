@@ -1,3 +1,21 @@
 .empty-chat-content {
-    @apply flex-y items-center text-lg;
+    @apply flex-y items-center gap-y-4;
+}
+.empty-chat-content > .c-image {
+    height: 279px;
+    width: 282px;
+    background-image: url('/dist/images/empty-chat-content-image.svg');
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+.empty-chat-content > .c-text {
+    @apply flex-y items-center;
+    @apply text-lg text-icons-01 text-headline-5;
+}
+.narrow .empty-chat-content > .c-image {
+    height: 224px;
+    width: 226px;
+}
+.narrow .empty-chat-content > .c-text {
+    @apply text-headline-1;
 }
