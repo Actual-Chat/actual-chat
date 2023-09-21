@@ -4,13 +4,14 @@
 @implements IRootComponent
 @implements IDisposable
 @{
+    if (_isPrerendering) {
+        <NewLandingWeb/>
+        return;
+    }
     if (!_readyToRender)
         return;
     if (_simulatedCrashError != null)
         throw _simulatedCrashError;
-    if (RenderModeSelector.IsPrerendering) {
-        <NewLandingWeb/>
-    }
 }
 
 <ScreenSizeProvider>
@@ -89,11 +90,8 @@
         else if (appKind.IsMauiApp()) {
             sessionHash = TrueSessionResolver!.Session.Hash;
         }
-        if (_isPrerendering) {
-            _readyToRender = true;
-            _shouldRender = true;
+        if (_isPrerendering)
             return;
-        }
 
         var prepareFirstRenderTask = AppServiceStarter.PrepareFirstRender(sessionHash);
         if (ReferenceEquals(UIModuleAssemblies, null)) {
