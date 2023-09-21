@@ -2,8 +2,10 @@ Before release:
 
 - ~~Pre-rendered landing page [AY]~~
 - Add proper site image and description to _Host.cshtml [Andrey, Grisha]
+- Use max(activity date, contact creation date) in all sort modes
 - Check all new text messages (esp. "Share" + troubleshooters) [AY]
 - Phone sign-in: enable it [Frol]
+- Add more languages: Hindi, Bengali, Tamil, Modern Standard Arabic, Turkish, Vietnamese, Italian, Thai, Portuguese, Polish
 - ~~Sign-in: replace sign-in menu w/ modal everywhere + remove menu [EK]~~
 - ~~Languages: add Chinese, Korean, etc. + update settings page layout [DF]~~
 - ~~New chat: 2-page layout [DF]~~
@@ -18,6 +20,8 @@ Before release:
 - ~~Fade out loading overlay [AY]~~
 
 - Critical bugs:
+  - 2 "Notes" chats on dev / no upgrade on prod
+  - iOS: background playback issues
   - ~~iOS 16.1.1 - exit on startup [AK]~~
   - ~~Hot restart / WebView close: make sure the old view doesn't record [AK]~~
   - ~~Audio: use mono playback on Android? [AK]~~
