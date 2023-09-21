@@ -34,7 +34,7 @@
                 </div>
                 <div class="flex gap-x-8 flex-col items-center md:items-start">
                     @if (isGuest) {
-                        <button class="btn-download web-signin transparent" onclick="@SignIn">
+                        <button class="btn-download web-signin transparent" @onclick="@SignIn">
                             <span class="px-2 text-xl font-semibold">Sign in</span>
                         </button>
                     }

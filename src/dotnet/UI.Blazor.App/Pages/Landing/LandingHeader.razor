@@ -69,7 +69,7 @@
                     Class="header-text text-headline-1 btn-transparent">Docs
                 </Button>
                 @if (isGuest) {
-                    <button class="signin-button-group items-center" onclick="@SignIn">
+                    <button class="signin-button-group items-center" @onclick="@SignIn">
                         @if (HostInfo.AppKind.IsMauiApp()) {
                             <span class="font-medium">Sign in</span>
                         }

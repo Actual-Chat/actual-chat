@@ -9,14 +9,14 @@
         if (language == userLanguages.Primary) {
             <button
                 class="@(language == m.Item2 ? "active" : "")"
-                onclick="@(() => OnClick(language))">
+                @onclick="@(() => OnClick(language))">
                 @userLanguages.Primary.Title
             </button>
         }
         if (language == userLanguages.Secondary) {
             <button
                 class="@(language == m.Item2 ? "active" : "")"
-                onclick="@(() => OnClick(language))">
+                @onclick="@(() => OnClick(language))">
                 @userLanguages.Secondary.Value.Title
             </button>
         }

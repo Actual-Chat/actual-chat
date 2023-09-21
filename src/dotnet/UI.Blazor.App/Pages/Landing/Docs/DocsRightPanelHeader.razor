@@ -9,7 +9,7 @@
 
 <div class="c-header">
     @if (isGuest) {
-        <button class="signin-button-group" onclick="@SignIn">
+        <button class="signin-button-group" @onclick="@SignIn">
             <span class="px-2">Sign in</span>
         </button>
     } else {

@@ -81,7 +81,7 @@
             </div>
             <div class="c-btn-group">
                 @if (isGuest) {
-                    <button class="signin-button-group items-center lg-icon" onclick="@SignIn">
+                    <button class="signin-button-group items-center lg-icon" @onclick="@SignIn">
                         <span class="font-medium">Sign in</span>
                         <i class="icon-monitor text-2xl font-thin"></i>
                     </button>
@@ -89,7 +89,7 @@
                         Title="Get app"
                         Click="DownloadClick"
                         Class="download-app lg-icon"/>
-                    <button class="btn-download btn-to-main-page !hidden" onclick="@BackToMainPageClick">
+                    <button class="btn-download btn-to-main-page !hidden" @onclick="@BackToMainPageClick">
                         Back to Main page
                     </button>
                 } else {

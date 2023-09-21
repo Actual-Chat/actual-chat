@@ -15,7 +15,7 @@
             <p>
                 Become an Early Adopter now
             </p>
-            <button class="btn-download light" onclick="@PremiumFeaturesClick">
+            <button class="btn-download light" @onclick="@PremiumFeaturesClick">
                 <span>Learn more</span>
             </button>
         </div>
@@ -28,7 +28,7 @@
                 Click="@DownloadClick"
                 Class="download-app"/>
             @if (IsGuest) {
-                <button class="btn-download web-signin" onclick="@SignInClick">
+                <button class="btn-download web-signin" @onclick="@SignInClick">
                     <span>Sign-in to web app</span>
                     <i class="icon-monitor text-2xl font-thin"></i>
                 </button>

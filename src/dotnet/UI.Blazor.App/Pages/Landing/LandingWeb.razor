@@ -33,7 +33,7 @@
                 </p>
                 <div class="flex-y md:flex-x gap-y-4 gap-x-4 py-8 md:py-4">
                     @if (isGuest) {
-                        <button class="btn-download web-signin text-01" onclick="@SignIn">
+                        <button class="btn-download web-signin text-01" @onclick="@SignIn">
                             <span class="text-base font-medium">Sign-in to web app</span>
                             <i class="icon-monitor text-2xl font-thin"></i>
                         </button>
@@ -446,7 +446,7 @@
                 <div class="flex-y gap-y-4">
                     <DownloadButton Class="download-app"/>
                     @if (isGuest) {
-                        <button class="btn-download web-signin" onclick="@SignIn">
+                        <button class="btn-download web-signin" @onclick="@SignIn">
                             <span class="text-base font-medium">Sign-in to web app</span>
                             <i class="icon-monitor text-2xl font-thin"></i>
                         </button>
