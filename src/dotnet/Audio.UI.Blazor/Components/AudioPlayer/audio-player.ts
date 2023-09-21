@@ -23,7 +23,7 @@ export class AudioPlayer implements Resettable {
     private static readonly pool: ObjectPool<AudioPlayer> = new ObjectPool<AudioPlayer>(() => new AudioPlayer());
     private static whenInitialized = new PromiseSource<void>();
     private static nextInternalId: number = 0;
-
+    private static initStarted = false;
 
     private readonly internalId: string;
     private readonly whenReady: Promise<void>;
@@ -40,20 +40,33 @@ export class AudioPlayer implements Resettable {
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
 
     public static async init(): Promise<void> {
+        this.initStarted = true;
         if (this.whenInitialized.isCompleted())
             return;
 
-        const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
-        decoderWorkerInstance = new Worker(decoderWorkerPath);
-        decoderWorker = rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
-        await decoderWorker.create(Versioning.artifactVersions, { type: 'rpc-timeout', timeoutMs: 20_000 });
-        this.whenInitialized.resolve(undefined);
+        try {
+            const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
+            decoderWorkerInstance = new Worker(decoderWorkerPath);
+            decoderWorker = rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
+            await decoderWorker.create(Versioning.artifactVersions, {type: 'rpc-timeout', timeoutMs: 20_000});
+        }
+        finally {
+            this.whenInitialized.resolve(undefined);
+        }
+    }
+
+    private static async ensureInitialized(): Promise<void> {
+        if (AudioPlayer.initStarted)
+            await AudioPlayer.whenInitialized;
+        else
+            await AudioPlayer.init();
     }
 
     public static async terminate(): Promise<void> {
         decoderWorkerInstance.terminate();
         AudioPlayer.whenInitialized = new PromiseSource<void>();
         AudioInitializer.isPlayerInitialized = false;
+        this.initStarted = false;
     }
 
     /** Called from Blazor */
@@ -71,7 +84,7 @@ export class AudioPlayer implements Resettable {
         const attach = async (context: AudioContext, destination: AudioNode) => {
             debugLog?.log(`#${this.internalId}.contextRef.attach: context:`, Log.ref(context));
 
-            await AudioPlayer.whenInitialized;
+            await AudioPlayer.ensureInitialized();
             this.playbackState = 'paused';
 
             // Create whatever isn't created

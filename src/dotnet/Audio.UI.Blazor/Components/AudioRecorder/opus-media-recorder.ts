@@ -46,6 +46,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     public static readonly audioPowerChanged$: signalR.Subject<number> = new signalR.Subject<number>();
 
     private whenInitialized: PromiseSource<void>;
+    private initStarted = false;
 
     private encoderWorkerInstance: Worker = null;
     private encoderWorker: OpusEncoderWorker & Disposable = null;
@@ -71,6 +72,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
 
     public async init(baseUri: string, canUseNNVad: boolean): Promise<void> {
         debugLog?.log(`-> init()`);
+        this.initStarted = true;
         if (this.whenInitialized.isCompleted())
             return;
 
@@ -114,7 +116,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         if (!chatId)
             throw new Error('start: chatId is unspecified.');
 
-        await this.whenInitialized;
+        await this.ensureInitialized();
         debugLog?.log(`start(): awaited whenInitialized`);
 
         await this.stop();
@@ -279,7 +281,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     }
 
     public async setSessionToken(sessionToken: string): Promise<void> {
-        await this.whenInitialized;
+        await this.ensureInitialized();
         await this.encoderWorker.setSessionToken(sessionToken);
     }
 
@@ -287,7 +289,6 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         debugLog?.log(`-> stop()`);
         try {
             await this.stopMicrophoneStream();
-            await this.whenInitialized;
             void this.vadWorklet?.stop(rpcNoWait);
             void this.encoderWorklet?.stop(rpcNoWait);
             if (!this.contextRef)
@@ -375,6 +376,13 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     }
 
     // Private methods
+
+    private async ensureInitialized(): Promise<void> {
+        if (this.initStarted)
+            await this.whenInitialized;
+        else
+            throw Error('OpusMediaRecorder init has not been called');
+    }
 
     private recordingFailedDebounced = debounce(() => this.recordingFailed(), RecordingFailedInterval);
     private async recordingFailed(): Promise<void> {
