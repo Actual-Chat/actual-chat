@@ -311,6 +311,21 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             };
             chat = ApplyDiff(chat, update);
             dbChat = new DbChat(chat);
+            if (!dbChat.SystemTag.IsNullOrEmpty()) {
+                // Only group chats can have system tags
+                ownerId.Require("Command.OwnerId");
+                // Chats with system tags should be unique per user.
+                var existingDbChat = await dbContext.Chats
+                    .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
+                    .Where(x => x.a.UserId == ownerId && x.c.SystemTag == (string)Constants.Chat.Tags.Notes)
+                    .Select(x => x.c)
+                    .FirstOrDefaultAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (existingDbChat != null)
+                    return existingDbChat.ToModel();
+            }
+
             dbContext.Add(dbChat);
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

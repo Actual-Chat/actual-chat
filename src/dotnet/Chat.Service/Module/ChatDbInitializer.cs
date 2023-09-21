@@ -134,32 +134,28 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var dbContext = DbHub.CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var hasNotesChat = await dbContext.Chats
-            .AnyAsync(c => c.SystemTag == (string)Constants.Chat.Tags.Notes, cancellationToken)
+        // Get users that don't have Notes chat
+        var userIds = await dbContext.Authors
+            .Where(a => a.HasLeft == false && a.IsAnonymous == false)
+            .Select(a => a.UserId)
+            .Distinct()
+            .Where(uid => !dbContext.Chats
+                .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
+                .Any(x => x.a.UserId == uid && x.c.SystemTag == (string)Constants.Chat.Tags.Notes))
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (hasNotesChat)
+
+        if (userIds.Count == 0)
             return;
 
-        try {
-            Log.LogInformation("There is no 'Notes' chat, creating one for every user");
+        Log.LogInformation("There is no 'Notes' chat for some users, creating chats for them");
 
-            // Get all users
-            var userIds = await dbContext.Authors
-                .Where(a => a.HasLeft == false && a.IsAnonymous == false)
-                .Select(a => a.UserId)
-                .Distinct()
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false);
-            foreach (var userId in userIds) {
-                var createNotesChatCommand = new ChatsBackend_CreateNotesChat(UserId.Parse(userId));
-                await Commander.Call(createNotesChatCommand, cancellationToken).ConfigureAwait(false);
-            }
-            Log.LogInformation("{Count} 'Notes' chats has been created", userIds.Count);
+        foreach (var userId in userIds) {
+            var createNotesChatCommand = new ChatsBackend_CreateNotesChat(UserId.Parse(userId));
+            await Commander.Run(createNotesChatCommand, true, cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception e) {
-            Log.LogCritical(e, "Failed to create 'Notes' chats!");
-            throw;
-        }
+
+        Log.LogInformation("{Count} 'Notes' chats has been created", userIds.Count);
     }
 
     private async Task FixCorruptedReadPositions(CancellationToken cancellationToken)
