@@ -21,9 +21,12 @@ public class PanelsUI : WorkerBase, IHasServices
         History = services.GetRequiredService<History>();
 
         var browserInfo = services.GetRequiredService<BrowserInfo>();
-        if (!browserInfo.WhenReady.IsCompleted)
-            throw StandardError.Internal(
-                $"{nameof(PanelsUI)} is resolved too early: {nameof(BrowserInfo)} is not ready yet.");
+        if (!browserInfo.WhenReady.IsCompleted) {
+            var isPrerendering = services.GetRequiredService<RenderModeSelector>().IsPrerendering;
+            if (!isPrerendering)
+                throw StandardError.Internal(
+                    $"{nameof(PanelsUI)} is resolved too early: {nameof(BrowserInfo)} is not ready yet.");
+        }
 
         ScreenSize = browserInfo.ScreenSize;
         Left = new LeftPanel(this);

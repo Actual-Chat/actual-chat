@@ -20,7 +20,7 @@
     if (isNewSession)
         HttpContext.Response.Cookies.Delete(BlazorModeEndpoint.Cookie.Name!);
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
-    var isBlazorServer = !isNewSession && BlazorModeEndpoint.IsBlazorServer(HttpContext);
+    var isBlazorServer = isNewSession || BlazorModeEndpoint.IsBlazorServer(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = 10_000_000;
     var blazorScriptsHash = GetBlazorScriptsHash();

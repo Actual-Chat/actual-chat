@@ -48,8 +48,9 @@
 @code {
     private static readonly object BodyKey = new();
 
-    [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
     [Inject] private ToastUI ToastUI { get; init; } = null!;
+    [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
+    [Inject] private RenderModeSelector RenderModeSelector { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
@@ -62,7 +63,7 @@
     }
 
     protected override async Task OnInitializedAsync() {
-        if (BlazorModeHelper.IsBlazorServer)
+        if (BlazorModeHelper.IsBlazorServer && !RenderModeSelector.IsPrerendering)
             await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
     }
 

@@ -8,6 +8,9 @@
         return;
     if (_simulatedCrashError != null)
         throw _simulatedCrashError;
+    if (RenderModeSelector.IsPrerendering) {
+        <NewLandingWeb/>
+    }
 }
 
 <ScreenSizeProvider>
@@ -28,7 +31,6 @@
             <PageNotFoundBlock/>
         </NotFound>
     </Router>
-
 </ScreenSizeProvider>
 
 @code {
@@ -37,6 +39,7 @@
 
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
+    private bool _isPrerendering;
     private bool _readyToRender;
     private bool _shouldRender;
     private Exception? _simulatedCrashError;
@@ -55,7 +58,6 @@
 
     [Parameter] public string SessionHash { get; set; } = "";
     [Parameter] public string SessionToken { get; set; } = "";
-    [Parameter] public bool IsNewSession { get; set; }
 
     public AppBase() {
         LoadingUI.MarkAppCreated();
@@ -70,6 +72,7 @@
         // Configure CircuitContext
         CircuitContext.RootComponent = this;
         ((AppBlazorCircuitContext)CircuitContext).MarkReady();
+        _isPrerendering = RenderModeSelector.IsPrerendering;
     }
 
     protected override async Task OnInitializedAsync() {
@@ -85,6 +88,11 @@
         }
         else if (appKind.IsMauiApp()) {
             sessionHash = TrueSessionResolver!.Session.Hash;
+        }
+        if (_isPrerendering) {
+            _readyToRender = true;
+            _shouldRender = true;
+            return;
         }
 
         var prepareFirstRenderTask = AppServiceStarter.PrepareFirstRender(sessionHash);

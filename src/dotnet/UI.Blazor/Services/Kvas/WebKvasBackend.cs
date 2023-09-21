@@ -4,6 +4,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class WebKvasBackend : IBatchingKvasBackend
 {
+    private readonly bool _isPrerendering;
     private readonly string _getManyName;
     private readonly string _setManyName;
     private readonly string _clearName;
@@ -20,11 +21,15 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
         _getManyName = $"{name}.getMany";
         _setManyName = $"{name}.setMany";
         _clearName = $"{name}.clear";
-        WhenReady = JS.EvalVoid("App.whenBundleReady").AsTask();
+        _isPrerendering = services.GetRequiredService<RenderModeSelector>().IsPrerendering;
+        WhenReady = _isPrerendering ? Task.CompletedTask
+            : JS.EvalVoid("App.whenBundleReady").AsTask();
     }
 
     public async ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
+        if (_isPrerendering)
+            return new byte[]?[keys.Length];
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
         var values = await JS.InvokeAsync<string?[]>(_getManyName, cancellationToken, new object[] { keys }).ConfigureAwait(false);
@@ -38,6 +43,8 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
 
     public async Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
     {
+        if (_isPrerendering)
+            return;
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
         var keys = new string[updates.Count];
@@ -58,6 +65,8 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
 
     public async Task Clear(CancellationToken cancellationToken = default)
     {
+        if (_isPrerendering)
+            return;
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
         await JS.InvokeVoidAsync(_clearName, cancellationToken).ConfigureAwait(false);
