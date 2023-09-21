@@ -49,7 +49,7 @@
         </Icon>
         <Right>
             <CopyToClipboard ButtonClass="btn-sm transparent tile-hidden-btn" Text="@account.Phone.ToReadable()"/>
-            <VerificationStatus IsVerified="account.HasVerifiedPhone()" Class="w-8 h-8"/>
+            <VerificationStatus IsVerified="account.HasVerifiedPhone()" Class="w-8 h-8" Verify="@OnEditClick"/>
         </Right>
         <Content>
             @account.Phone.ToReadable()
