@@ -2,7 +2,7 @@ Before release:
 
 - ~~Pre-rendered landing page [AY]~~
 - Add proper site image and description to _Host.cshtml [Andrey, Grisha]
-- Use max(activity date, contact creation date) in all sort modes
+- Use max(activity date, contact creation date) in all sort modes to make sure new contacts go on top
 - Check all new text messages (esp. "Share" + troubleshooters) [AY]
 - Phone sign-in: enable it [Frol]
 - Add more languages: Hindi, Bengali, Tamil, Modern Standard Arabic, Turkish, Vietnamese, Italian, Thai, Portuguese, Polish
