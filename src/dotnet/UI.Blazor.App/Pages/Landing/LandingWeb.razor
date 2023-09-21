@@ -40,7 +40,7 @@
                     }
                     <DownloadButton Class="download-app"/>
                     @if (isGuest) {
-                        <button class="btn-download web-signin transparent md:hidden" onclick="@OnShowVideoClick">
+                        <button class="btn-download web-signin transparent md:hidden" @onclick="@OnShowVideoClick">
                             <i class="icon-play-fill text-2xl"></i>
                             <span class="text-headline-1">Watch video how it works</span>
                         </button>
@@ -51,7 +51,9 @@
                 <video controls hidden muted playsinline loop class="landing-video">
                     <source src="/dist/images/landing/landing-tutorial.webm" type="video/webm"/>
                 </video>
-                <img draggable="false" src="/dist/images/landing/landing-tutorial-plug.png" alt="plug" class="landing-video-plug flex">
+                <img draggable="false" src="/dist/images/landing/landing-tutorial-plug.png"
+                     alt="Loading Actual.chat demo video..."
+                     class="landing-video-plug flex">
             </div>
         </div>
     </div>
@@ -64,7 +66,7 @@
     Class="scrollable">
 
     <LandingItemImage>
-        <img draggable="false" src="/dist/images/landing/evolution.svg" alt="evolution">
+        <img draggable="false" src="/dist/images/landing/evolution.svg" alt="">
     </LandingItemImage>
     <LandingItemDescription Title="We used to speak, laugh, and cry">
         <p>
@@ -92,7 +94,7 @@
             We reimagine calls, texts and voice messages
         </LandingItemTitle>
         <LandingItemImage>
-            <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="voice and text">
+            <img draggable="false" src="/dist/images/landing/voice-and-text.svg" alt="">
         </LandingItemImage>
         <LandingItemDescription Title="We reimagine calls, texts and voice messages" TitleClass="hidden md:flex">
             <p>
@@ -144,7 +146,7 @@
         </HeaderContent>
         <ChildContent>
             <LandingItemImage>
-                <img draggable="false" src="/dist/images/landing/stressless.svg" alt="stressless">
+                <img draggable="false" src="/dist/images/landing/stressless.svg" alt="">
             </LandingItemImage>
             <LandingItemDescription Title="Stressless">
                 <ul>
@@ -182,18 +184,18 @@
                 <div class="c-tiles">
                     <div class="c-row">
                         <div class="c-image">
-                            <img draggable="false" src="/dist/images/landing/person-01.svg" alt="body">
+                            <img draggable="false" src="/dist/images/landing/person-01.svg" alt="">
                         </div>
                         <div class="c-image">
-                            <img draggable="false" src="/dist/images/landing/person-02.svg" alt="body">
+                            <img draggable="false" src="/dist/images/landing/person-02.svg" alt="">
                         </div>
                     </div>
                     <div class="c-row">
                         <div class="c-image">
-                            <img draggable="false" src="/dist/images/landing/person-03.svg" alt="body">
+                            <img draggable="false" src="/dist/images/landing/person-03.svg" alt="">
                         </div>
                         <div class="c-image">
-                            <img draggable="false" src="/dist/images/landing/person-04.svg" alt="body">
+                            <img draggable="false" src="/dist/images/landing/person-04.svg" alt="">
                         </div>
                     </div>
                 </div>
@@ -225,7 +227,7 @@
         </HeaderContent>
         <ChildContent>
             <LandingItemImage>
-                <img draggable="false" src="/dist/images/landing/synchronous.svg" alt="synchronous">
+                <img draggable="false" src="/dist/images/landing/synchronous.svg" alt="">
             </LandingItemImage>
             <LandingItemDescription Title="Real-time + asynchronous">
                 <ul>
@@ -257,7 +259,7 @@
         </HeaderContent>
         <ChildContent>
             <LandingItemImage>
-                <img draggable="false" src="/dist/images/landing/productive.svg" alt="productive">
+                <img draggable="false" src="/dist/images/landing/productive.svg" alt="">
             </LandingItemImage>
             <LandingItemDescription Title="Productive">
                 <ul>
@@ -292,7 +294,7 @@
         </HeaderContent>
         <ChildContent>
             <LandingItemImage>
-                <img draggable="false" src="/dist/images/landing/team-friendly.svg" alt="team-friendly">
+                <img draggable="false" src="/dist/images/landing/team-friendly.svg" alt="">
             </LandingItemImage>
             <LandingItemDescription Title="Team-friendly">
                 <p>
@@ -339,7 +341,7 @@
             <LandingItemImage Class="flex-col gap-y-4 md:gap-y-12 md:flex-row items-center !max-h-none">
                 <div class="flex-x md:flex-y gap-y-4 items-center">
                     <div class="flex w-1/2 md:w-auto h-32 md:h-48 items-center justify-center">
-                        <img draggable="false" src="/dist/images/landing/enjoyable-01.svg" alt="enjoyable">
+                        <img draggable="false" src="/dist/images/landing/enjoyable-01.svg" alt="">
                     </div>
                     <div class="w-1/2 md:w-auto px-1 md:px-8 text-center">
                         Many people prefer hearing your voice rather than reading your texts
@@ -348,7 +350,7 @@
 
                 <div class="flex-x md:flex-y gap-y-4 items-center">
                     <div class="flex w-1/2 md:w-auto h-32 md:h-48 items-center justify-center">
-                        <img draggable="false" src="/dist/images/landing/enjoyable-02.svg" alt="enjoyable" class="">
+                        <img draggable="false" src="/dist/images/landing/enjoyable-02.svg" alt="" class="">
                     </div>
                     <div class="w-1/2 md:w-auto px-1 md:px-8 text-center">
                         For some, speaking is a stronger communication tool than writing
@@ -357,7 +359,7 @@
 
                 <div class="flex-x md:flex-y gap-y-4 items-center">
                     <div class="flex w-1/2 md:w-auto h-32 md:h-48 items-center justify-center">
-                        <img draggable="false" src="/dist/images/landing/enjoyable-03.svg" alt="enjoyable" class="">
+                        <img draggable="false" src="/dist/images/landing/enjoyable-03.svg" alt="" class="">
                     </div>
                     <div class="w-1/2 md:w-auto px-1 md:px-8 text-center">
                         Jokes are almost always more fun when delivered verbally

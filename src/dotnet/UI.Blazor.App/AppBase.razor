@@ -47,6 +47,7 @@
     [Inject] protected HostInfo HostInfo { get; init; } = null!;
     [Inject] protected ModuleHost Host { get; init; } = null!;
     [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] protected RenderModeSelector RenderModeSelector { get; init; } = null!;
     [Inject] protected AppServiceStarter AppServiceStarter { get; init; } = null!;
     [Inject] protected ISessionResolver SessionResolver { get; init; } = null!;
     [Inject] protected Tracer Tracer { get; init; } = null!;
@@ -54,6 +55,7 @@
 
     [Parameter] public string SessionHash { get; set; } = "";
     [Parameter] public string SessionToken { get; set; } = "";
+    [Parameter] public bool IsNewSession { get; set; }
 
     public AppBase() {
         LoadingUI.MarkAppCreated();

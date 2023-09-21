@@ -34,14 +34,14 @@
                                 <i class="icon-trash03 text-2xl font-thin text-04"></i>
                             </ButtonSquare>
                             @if (attachment.IsImage) {
-                                <img src="@attachment.Url" alt="image"/>
+                                <img src="@attachment.Url" alt="Image attachment"/>
                             } else if (attachment.IsVideo) {
                                 <video preload="metadata">
                                     <source src="@attachment.Url#t=0.5" />
                                 </video>
                             } else {
                                 <div class="flex items-center justify-center p-3">
-                                    <img draggable="false" src="/dist/images/attachment.svg" alt="attachment" class="h-12">
+                                    <img draggable="false" src="/dist/images/attachment.svg" alt="File attachment" class="h-12">
                                 </div>
                             }
                         </div>

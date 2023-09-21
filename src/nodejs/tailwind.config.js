@@ -403,7 +403,6 @@ module.exports = {
       'opacity-0-100-0': 'opacity-0-100-0 3s ease-in-out infinite',
       'opacity-10-20-10': 'opacity-10-20-10 3s ease-in-out infinite',
       'backdrop-2-4-2': 'backdrop-2-4-2 3s ease-in-out infinite',
-
     },
     aspectRatio: {
       auto: 'auto',

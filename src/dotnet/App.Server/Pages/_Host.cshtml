@@ -4,21 +4,23 @@
 @using ActualChat.App.Wasm
 @using ActualChat.Hosting
 @using ActualChat.Security
+@using ActualChat.UI.Blazor.Services
 @using ActualChat.Web
-@using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Endpoints
 
 @inject HostInfo HostInfo
 @inject ServerAuthHelper ServerAuthHelper
 @inject ISessionResolver SessionResolver
-@inject ISecureTokens SecureTokens
+@inject IServiceProvider Services
 @{
     var cancellationToken = HttpContext.RequestAborted;
-    var session = await HttpContext.Authenticate(ServerAuthHelper, cancellationToken);
+    var (session, isNewSession) = await HttpContext.Authenticate(ServerAuthHelper, cancellationToken);
     SessionResolver.Session = session;
+    if (isNewSession)
+        HttpContext.Response.Cookies.Delete(BlazorModeEndpoint.Cookie.Name!);
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
-    var isBlazorServer = BlazorModeEndpoint.IsBlazorServer(HttpContext);
+    var isBlazorServer = !isNewSession && BlazorModeEndpoint.IsBlazorServer(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = 10_000_000;
     var blazorScriptsHash = GetBlazorScriptsHash();
@@ -97,12 +99,21 @@
 <body class="app-web @(isBlazorServer ? "app-server" : "app-wasm")">
 
 @if (!isBlazorServer && !isCloseWindowRequest) {
-    <div id="until-ui-is-ready" class="loading-overlay hidden">
-        <div class="c-box">
-            <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="loading">
-        </div>
-        <div class="c-rotating-bg"></div>
-    </div>
+    <div id="until-ui-is-ready" class="loading-overlay"></div>
+    <script>
+        @* We use script here to make sure this overlay isn't used as content image by crawlers *@
+        (function() {
+            const overlay = document.getElementById('until-ui-is-ready');
+            if (overlay) {
+                overlay.innerHTML = `
+                    <div class="c-box">
+                        <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="Loading...">
+                    </div>
+                    <div class="c-rotating-bg"></div>
+                `;
+            }
+        })();
+    </script>
 }
 
 @if (isCloseWindowRequest) {
@@ -113,7 +124,7 @@
     </script>
     <div class="fusion-close" data-flow-name="@(closeWindowFlowName)">
         <div class="c-content">
-            <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="checked">
+            <img draggable="false" src="/dist/images/landing/checkmark-checked.svg" alt="Checked">
             <div class="c-title">
                 <span>@(closeWindowFlowName)</span>
                 <span>completed.</span>
@@ -132,7 +143,14 @@
             if (isBlazorServer) {
                 appComponentType = typeof(ServerApp);
                 renderMode = RenderMode.Server;
-                sessionToken = (await SecureTokens.CreateForSession(session, cancellationToken)).Token;
+                var isPrerendering = isBlazorServer && isNewSession;
+                if (isPrerendering) {
+                    var renderModeSelector = Services.GetRequiredService<RenderModeSelector>();
+                    renderModeSelector.IsPrerendering = true;
+                    renderMode = RenderMode.ServerPrerendered;
+                }
+                var secureTokens = Services.GetRequiredService<ISecureTokens>();
+                sessionToken = (await secureTokens.CreateForSession(session, cancellationToken)).Token;
             }
             var parameters = new { SessionHash = session.Hash, SessionToken = sessionToken };
         }
@@ -142,14 +160,7 @@
     <!-- This block must go right after app, otherwise page content won't be blurred -->
     <div id="components-reconnect-modal"></div>
     <div id="blazor-error-ui"></div>
-    <div id="app-connection-state" class="reconnect-overlay" style="display: none">
-        <div class="c-bg"></div>
-        <div class="c-circle-blur"></div>
-        <div class="c-circle">
-            <img draggable="false" src="/dist/images/loading-cat.svg" alt="loading">
-            <span class="c-text">Reconnecting...</span>
-        </div>
-    </div>
+    <div id="app-connection-state" class="reconnect-overlay" style="display: none"></div>
 
     @if (isBlazorServer) {
         <script src="_framework/blazor.server@(blazorScriptsHash).js" autostart="false"></script>

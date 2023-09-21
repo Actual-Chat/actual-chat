@@ -54,11 +54,8 @@ public class MauiWebViewLivenessProbe(IServiceProvider services)
             return isAlive;
         }
         catch (Exception e) {
-            var silent =
-                e is OperationCanceledException ||
-                e is TimeoutException ||
-                e is JSDisconnectedException;
-            if (!silent)
+            var isSilent = e is OperationCanceledException or TimeoutException or JSDisconnectedException;
+            if (!isSilent)
                 Log.LogWarning(e, "An exception occurred during aliveness check");
         }
         return false;

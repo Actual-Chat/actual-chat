@@ -11,7 +11,6 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
 
     public IServiceProvider Services { get; }
     public long Id { get; }
-    public string Origin { get; }
     public CancellationToken StopToken { get; }
     public Task WhenReady => _whenReady.Task;
 
@@ -22,7 +21,6 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
         Clocks = services.Clocks();
 
         Id = Interlocked.Increment(ref _lastId);
-        Origin = Alphabet.AlphaNumeric.Generator8.Next();
         StopToken = _stopToken.Token;
         Log.LogInformation("[+] Blazor Circuit #{Id}", Id);
     }
@@ -40,8 +38,7 @@ public sealed class AppBlazorCircuitContext : BlazorCircuitContext
         _stopToken.CancelAndDisposeSilently();
 
         // Let's reliably dispose serviceScope
-        var _ = DelayedDispose()
-            .WithErrorLog(Log, "Delayed dispose of AppBlazorCircuitContext's service scope failed");
+        _ = DelayedDispose().WithErrorLog(Log, "Delayed dispose of AppBlazorCircuitContext's service scope failed");
 
         async Task DelayedDispose()
         {

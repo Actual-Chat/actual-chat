@@ -15,7 +15,7 @@ public static class HttpSessionExt
         Expiration = TimeSpan.FromDays(28),
     };
 
-    public static async Task<Session> Authenticate(
+    public static async Task<(Session Session, bool IsNew)> Authenticate(
         this HttpContext httpContext,
         ServerAuthHelper serverAuthHelper,
         CancellationToken cancellationToken = default)
@@ -35,9 +35,10 @@ public static class HttpSessionExt
                     .UpdateAuthState(session, httpContext, cancellationToken)
                     .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
                     .ConfigureAwait(false);
-                if (originalSession != session)
+                var isNew = originalSession != session;
+                if (isNew)
                     httpContext.AddSessionCookie(session);
-                return session;
+                return (session, isNew);
             }
             catch (TimeoutException) {
                 if (tryIndex >= 2)

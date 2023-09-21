@@ -22,12 +22,12 @@
             <img class="image-container hidden"
                  width="@ModalModel.Width"
                  height="@ModalModel.Height"
-                 src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"
+                 src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"
                  onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
             <img id="@_cachedImgElementId"
                  style="width: @(ModalModel.Width)px; height: @(ModalModel.Height)px;"
                  src="@ModalModel.CachedImageUrl"
-                 alt="@(ModalModel.AltText.NullIfEmpty() ?? "image")"/>
+                 alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"/>
         }
     </div>
     <div class="image-viewer-footer">

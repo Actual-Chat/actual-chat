@@ -1,4 +1,4 @@
-import {EventHandlerSet} from "event-handling";
+import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
 import { Log } from "logging";
 import { AudioRecorder } from "../../../Audio.UI.Blazor/Components/AudioRecorder/audio-recorder";
@@ -141,8 +141,10 @@ export class BrowserInit {
 
     public static removeLoadingOverlay() {
         const overlay = document.getElementById('until-ui-is-ready');
-        if (overlay)
-            overlay.remove();
+        if (overlay) {
+            overlay.style.opacity = '0';
+            setTimeout(function() { overlay.remove(); }, 500);
+        }
     }
 
     public static async startLoadingOverlayRemoval(delayMs: number): Promise<void> {
@@ -151,14 +153,14 @@ export class BrowserInit {
     }
 
     public static async reload(): Promise<void> {
-        // force stop recording before reload
+        // Force stop recording before reload
         warnLog.log('reloading...');
         await globalThis['opusMediaRecorder']?.stop();
         if (BrowserInit.isTerminated)
             return;
 
         if (!window.location.hash) {
-            // refresh with GET
+            // Refresh with GET
             // noinspection SillyAssignmentJS
             window.location.href = window.location.href;
         } else {
@@ -167,15 +169,15 @@ export class BrowserInit {
     }
 
     public static terminate(): void {
-        // force stop recording before
-        warnLog.log('terminating web view...');
+        // Force stop recording
+        warnLog.log('terminate()');
         BrowserInit.isTerminated  = true;
 
         void AudioRecorder.terminate();
         void AudioPlayer.terminate();
         void audioContextSource.terminate();
 
-        // cleanup everything
+        // Clean up everything
         document.open();
         document.close();
     }
@@ -208,7 +210,7 @@ export class BrowserInit {
         if (!android)
             return;
 
-        // In Android WebView read text and write text operations fail with insufficient permissions
+        // In Android WebView readText and writeText operations fail with insufficient permissions,
         // and there is no way to grant these permissions.
         // https://stackoverflow.com/questions/61243646/clipboard-api-call-throws-notallowederror-without-invoking-onpermissionrequest
         // So we replace `navigator.clipboard` functions with our own implementation
@@ -247,19 +249,28 @@ export class BrowserInit {
         if (this.whenReloading.isCompleted())
             return;
 
-        const appReloadingDiv = document.getElementById('app-connection-state');
-        if (!appReloadingDiv)
-            return;
-        const textDiv = appReloadingDiv.querySelector('.c-text');
-        if (!textDiv)
+        const appConnectionStateDiv = document.getElementById('app-connection-state');
+        if (!appConnectionStateDiv)
             return;
 
+        if (appConnectionStateDiv.childElementCount === 0) {
+            appConnectionStateDiv.innerHTML = `
+                <div class="c-bg"></div>
+                <div class="c-circle-blur"></div>
+                <div class="c-circle">
+                    <img draggable="false" src="/dist/images/loading-cat.svg" alt="Loading...">
+                    <span class="c-text">Reconnecting...</span>
+                </div>
+            `
+        }
+
+        const textDiv = appConnectionStateDiv.querySelector('.c-text');
         if (state) {
             textDiv.innerHTML = state;
-            appReloadingDiv.style.display = null;
+            appConnectionStateDiv.style.display = null;
         }
         else {
-            appReloadingDiv.style.display = 'none';
+            appConnectionStateDiv.style.display = 'none';
         }
     }
 
@@ -267,7 +278,7 @@ export class BrowserInit {
         try {
             let response = await fetch('');
             if (response.ok)
-                BrowserInit.reload();
+                void BrowserInit.reload();
         }
         catch {
             warnLog?.log(`tryReload: waiting for connection to server to reload the app...`);

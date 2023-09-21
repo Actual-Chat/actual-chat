@@ -70,26 +70,34 @@
 </head>
 
 <body class="app-mobile app-maui">
-    <div id="until-ui-is-ready" class="loading-overlay hidden">
-        <div class="c-box">
-            <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="loading">
-        </div>
-        <div class="c-rotating-bg"></div>
-    </div>
+    <div id="until-ui-is-ready" class="loading-overlay"></div>
+    <script>
+        // We use script here to make sure this overlay isn't used as content image by crawlers
+        (function() {
+            const overlay = document.getElementById('until-ui-is-ready');
+            if (overlay) {
+                const userAgent = (navigator?.userAgent ?? '').toLowerCase();
+                const isChromium = userAgent.indexOf('chrome') >= 0;
+                const isWebKit = !isChromium && userAgent.indexOf('webkit') >= 0;
+                if (isWebKit)
+                    overlay.remove(); // No loading overlay on iOS
+                else
+                    overlay.innerHTML = `
+                        <div class="c-box">
+                            <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="Loading...">
+                        </div>
+                        <div class="c-rotating-bg"></div>
+                `;
+            }
+        })();
+    </script>
 
     <div id="app" class="flex flex-col h-full"></div>
 
     <!-- This block must go right after app, otherwise page content won't be blurred -->
     <div id="components-reconnect-modal"></div>
     <div id="blazor-error-ui"></div>
-    <div id="app-connection-state" class="reconnect-overlay" style="display: none">
-        <div class="c-bg"></div>
-        <div class="c-circle-blur"></div>
-        <div class="c-circle">
-            <img draggable="false" src="/dist/images/loading-cat.svg" alt="loading">
-            <span class="c-text">Reconnecting...</span>
-        </div>
-    </div>
+    <div id="app-connection-state" class="reconnect-overlay" style="display: none"></div>
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 </body>

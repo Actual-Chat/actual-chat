@@ -18,7 +18,7 @@
              @onmouseover="@(_ => Selection = mention)"
              @onclick="@(_ => Manager.SelectMention(mention))">
             <div class="flex-x gap-x-2 px-4 items-center h-9">
-                <img draggable="false" class="flex-none w-7 h-7 rounded-full" src="@pictureUrl" alt="avatar"/>
+                <img draggable="false" class="flex-none w-7 h-7 rounded-full" src="@pictureUrl" alt="Avatar"/>
                 <div class="flex-auto text-ellipsis whitespace-nowrap overflow-hidden text-headline-1 text-02">
                     <SearchMatchHighlighter Match="@mention.SearchMatch"/>
                 </div>
