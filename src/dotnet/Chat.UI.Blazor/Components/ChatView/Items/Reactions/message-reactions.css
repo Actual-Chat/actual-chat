@@ -1,5 +1,6 @@
 .message-reactions {
     @apply flex-x flex-wrap gap-0.5 md:gap-1 items-center;
+    @apply h-7 md:h-6; /* reactionBadgeHeight + paddings */
     @apply py-0.5;
     @apply select-none;
 }
