@@ -21,6 +21,10 @@ Before release:
 
 - Critical bugs:
   - 2 "Notes" chats on dev / no upgrade on prod [AK]
+  - Android: echo problem is still there, but only sometimes on S32
+  - Android: language switch triggers "No mic access" modal [AK]
+  - "No mic access" -> "OK" shouldn't be there / should have "X" instead
+  - "Open [Settings] to grant microphone access permission" should be a separate bullet point there
   - ~~iOS: background playback issues [AK]~~
   - ~~iOS 16.1.1 - exit on startup [AK]~~
   - ~~Hot restart / WebView close: make sure the old view doesn't record [AK]~~
