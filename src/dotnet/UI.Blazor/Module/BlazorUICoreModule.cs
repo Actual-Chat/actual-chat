@@ -55,7 +55,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Core UI-related services
         services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
         services.AddSingleton(_ => new AutoNavigationTasks(appKind));
-        services.AddScoped(_ => new RenderModeSelector());
+        if (appKind.IsClient())
+            services.AddSingleton(_ => new RenderModeSelector()); // Kinda no-op on the client
+        else
+            services.AddScoped(_ => new RenderModeSelector()); // Should be scoped on server
         services.AddScoped(_ => new DisposeMonitor());
         services.AddScoped(c => new BrowserInit(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new BrowserInfo(c));
