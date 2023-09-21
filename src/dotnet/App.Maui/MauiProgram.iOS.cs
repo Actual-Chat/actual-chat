@@ -1,4 +1,5 @@
 using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
@@ -17,6 +18,7 @@ public static partial class MauiProgram
         services.AddScoped<IRecordingPermissionRequester>(_ => new IOSRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c));
+        services.AddScoped<IContactPermissions>(c => new IosContactPermissions(c));
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)

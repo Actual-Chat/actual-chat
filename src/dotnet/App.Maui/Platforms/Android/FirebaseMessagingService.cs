@@ -64,9 +64,9 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         // Now we use Data message to deliver notifications to Android.
         // This allows us to control notification display style both when app is in foreground and in background modes.
         if (notification == null) {
-            data.TryGetValue(NotificationConstants.MessageDataKeys.Title, out title);
-            data.TryGetValue(NotificationConstants.MessageDataKeys.Body, out text);
-            data.TryGetValue(NotificationConstants.MessageDataKeys.ImageUrl, out imageUrl);
+            data.TryGetValue(Constants.Notification.MessageDataKeys.Title, out title);
+            data.TryGetValue(Constants.Notification.MessageDataKeys.Body, out text);
+            data.TryGetValue(Constants.Notification.MessageDataKeys.ImageUrl, out imageUrl);
         }
         else {
             // Backward compatibility, we still can accept notification messages.
@@ -78,7 +78,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
             return;
 
         if (_utils!.IsAppForeground()) {
-            data.TryGetValue(NotificationConstants.MessageDataKeys.ChatId, out var sChatId);
+            data.TryGetValue(Constants.Notification.MessageDataKeys.ChatId, out var sChatId);
             var chatId = new ChatId(sChatId, ParseOrNone.Option);
             if (!chatId.IsNone && TryGetScopedServices(out var scopedServices)) {
                 var history = scopedServices.GetRequiredService<History>();
@@ -117,7 +117,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         var pendingIntent = PendingIntent.GetActivity(this, pendingIntentRequestCode,
             intent, PendingIntentFlags.OneShot | PendingIntentFlags.Immutable);
 
-        var notificationBuilder = new NotificationCompat.Builder(this, NotificationConstants.ChannelIds.Default)
+        var notificationBuilder = new NotificationCompat.Builder(this, Constants.Notification.ChannelIds.Default)
             .SetContentTitle(title)
             // The small icon should be opaque white
             // https://doc.batch.com/android/advanced/customizing-notifications/#setting-up-custom-push-icons

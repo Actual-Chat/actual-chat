@@ -97,7 +97,7 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
 
     private void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
     {
-        if (!e.Notification.Data.TryGetValue(NotificationConstants.MessageDataKeys.Link, out var url)) {
+        if (!e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.Link, out var url)) {
             Log.LogWarning("No message link received within notification");
             return;
         }
