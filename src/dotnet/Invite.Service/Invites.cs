@@ -77,7 +77,7 @@ internal class Invites : IInvites
 
         void AutoInvalidate(Invite invite)
         {
-            var expiresIn = Clocks.SystemClock.Now - invite.ExpiresOn;
+            var expiresIn = invite.ExpiresOn - Clocks.SystemClock.Now;
             var delay = expiresIn > TimeSpan.FromHours(1) ? TimeSpan.FromHours(1) : expiresIn;
             delay = delay.Add(TimeSpan.FromMinutes(5).Negate());
             Computed.GetCurrent()!.Invalidate(delay);
