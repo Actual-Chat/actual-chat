@@ -98,7 +98,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.ConfigureUIEvents(
             eventHub => eventHub.Subscribe<ShowSettingsEvent>((@event, ct) => {
                 var modalUI = eventHub.Services.GetRequiredService<ModalUI>();
-                _ = modalUI.Show(SettingsModal.Model.Instance, true);
+                _ = modalUI.Show(SettingsModal.Model.Instance, ModalOptions.FullScreen, ct);
                 return Task.CompletedTask;
             }));
     }
