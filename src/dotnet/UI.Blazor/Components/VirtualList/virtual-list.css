@@ -56,6 +56,10 @@
 
 .virtual-list > ul.c-virtual-container > li.item {
     @apply flex flex-y;
+    overflow-anchor: none;
+}
+
+.virtual-list > ul.c-virtual-container > li.item.anchor {
     overflow-anchor: auto;
 }
 

@@ -16,7 +16,7 @@ import { DeviceInfo } from 'device-info';
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
-const UpdateViewportInterval: number = 320;
+const UpdateViewportInterval: number = 640;
 const UpdateItemVisibilityInterval: number = 250;
 const IronPantsHandlePeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
@@ -24,7 +24,7 @@ const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 160;
 const ScrollDebounce: number = 200;
-const RemoveOldItemsDebounce: number = 320;
+const RemoveOldItemsDebounce: number = 500;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
 const UpdateTimeout: number = 800;
@@ -61,6 +61,7 @@ export class VirtualList {
     private _whenRenderCompleted: PromiseSource<void> | null = null;
     private _whenUpdateCompleted: PromiseSource<void> | null = null;
     private _pivots: Pivot[] = [];
+    private _oldPivots: Pivot[][] = [];
     private _top: number;
     private _lastVisibleItem: string | null = null;
 
@@ -225,7 +226,7 @@ export class VirtualList {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private maybeOnRenderEnd = (mutations: MutationRecord[], _observer: MutationObserver): void => {
         this._isRendering = true;
-
+        const time = Date.now();
         this._itemRefs.fill(null);
 
         const removedCount = mutations.reduce((prev, m) => prev+ m.removedNodes.length, 0);
@@ -281,7 +282,7 @@ export class VirtualList {
 
         const rs = this.getRenderState();
         if (rs) {
-            void this.onRenderEnd(rs);
+            void this.onRenderEnd(rs, time);
         }
         else {
             this._isRendering = false;
@@ -391,18 +392,43 @@ export class VirtualList {
             .filter(x => Math.abs(x.p1.offset - x.p2.offset) > (this._viewport?.size ?? MinViewPortSize) * 2) // location of the same item has changed significantly
             .filter(x => Math.abs(x.p1.time - x.p2.time) < 100); // less than 100 ms between measurements
 
-        if (matchedJumps.length) {
-            warnLog?.log('onScrollPivotVisibilityChange: scroll jump', matchedJumps, this._viewport);
-            void this.restoreScrollPosition().then(() => {
-                this._pivots = [];
-            });
-            return;
+        // AK: disabled temporarily
+        if (false) {
+        // if (matchedJumps.length) {
+            // warnLog?.log('onScrollPivotVisibilityChange: scroll jump', matchedJumps, this._viewport);
+            // void this.restoreScrollPosition(time);
+            // return;
         } else {
             // keep 10 pivots to simplify calculation further
-            this._pivots = pivots
+            const firstClassPivots = pivots
                 .filter(p => Math.abs(p.offset) < this._viewport?.size ?? MinViewPortSize) // take pivots close to the viewport
-                .slice(0, 10)
-                .sort((l, r) => r.offset - l.offset);
+                .sort((l, r) => r.offset - l.offset)
+                .slice(0, 10);
+
+            const businessClassPivots = pivots
+                .filter(p => Math.abs(p.offset) < (this._viewport?.size ?? MinViewPortSize) * 2) // take pivots close to the viewport
+                .sort((l, r) => r.offset - l.offset)
+                .slice(0, 10);
+
+            const economyClassPivots = pivots
+                .sort((l, r) => r.offset - l.offset)
+                .slice(0, 10);
+
+            if (firstClassPivots.length || businessClassPivots.length || economyClassPivots.length) {
+                if (this._pivots.length) {
+                    this._oldPivots.push(this._pivots);
+                    if (this._oldPivots.length > 4)
+                        this._oldPivots.shift();
+                }
+            }
+
+            if (firstClassPivots.length)
+                this._pivots = firstClassPivots;
+            else if (businessClassPivots.length)
+                this._pivots = businessClassPivots;
+            else if (economyClassPivots.length)
+                this._pivots = economyClassPivots;
+
 
             this.updateViewportThrottled();
         }
@@ -463,7 +489,7 @@ export class VirtualList {
         return rs;
     }
 
-    private async onRenderEnd(rs: VirtualListRenderState): Promise<void> {
+    private async onRenderEnd(rs: VirtualListRenderState, time: number): Promise<void> {
         debugLog?.log(`onRenderEnd, renderIndex = #${rs.renderIndex}, rs =`, rs);
 
         try {
@@ -524,11 +550,14 @@ export class VirtualList {
                     }
                 }
             }
-            else if (this._pivots.length ) {
-                await this.restoreScrollPosition();
+            else if (this._pivots.length) {
+                await this.restoreScrollPosition(time);
 
                 // ensure scroll position and size are recalculated
                 await fastWriteRaf();
+            }
+            else {
+                warnLog?.log(`onRenderEnd: there are no pivots`);
             }
         } finally {
             this._isRendering = false;
@@ -684,12 +713,14 @@ export class VirtualList {
                 if (this._pivots.length <= 2 && !this._isRendering) {
                     for (let pivot of this._pivots) {
                         const pivotRef = this.getItemRef(pivot.itemKey);
-                        if (pivotRef) {
-                            pivot.offset = pivotRef.getBoundingClientRect().top;
-                            pivots.push(pivot);
-                        }
+                        if (!pivotRef)
+                            continue;
+
+                        pivot.offset = Math.ceil(pivotRef.getBoundingClientRect().top);
+                        pivots.push(pivot);
                     }
-                    this._pivots = pivots;
+                    if (pivots.length)
+                        this._pivots = pivots;
                     this.updateViewportThrottled();
                 }
             }, 'pivotRecalculate');
@@ -843,8 +874,17 @@ export class VirtualList {
         return false;
     }
 
-    private async restoreScrollPosition(): Promise<void> {
-        for (const pivot of this._pivots) {
+    private async restoreScrollPosition(renderTime: number): Promise<void> {
+        debugLog?.log(`restoreScrollPosition: pivots`, [...this._pivots], renderTime);
+
+        let pivots = this._pivots;
+        // skip pivots that have been updated after render
+        while (pivots.length && pivots.find(p => renderTime - p.time < 16)) {
+            pivots = this._oldPivots.pop() ?? [];
+            debugLog?.log(`restoreScrollPosition: revert to pivots: `, [...pivots]);
+        }
+
+        for (const pivot of pivots) {
             // resync scroll to make pivot ref position the same within viewport
             const pivotRef = this.getItemRef(pivot.itemKey);
             if (!pivotRef)
@@ -892,6 +932,7 @@ export class VirtualList {
             break;
         }
         this._pivots = [];
+        this._oldPivots = [];
     }
 
     private ensureItemRangeCalculated(isRecalculationForced: boolean): boolean {
@@ -985,6 +1026,11 @@ export class VirtualList {
                 const pivotRef = this.getItemRef(pivot.itemKey);
                 if (!pivotRef)
                     continue;
+
+                // to use browser native scroll pivots
+                if (!pivotRef.classList.contains('pivot'))
+                    pivotRef.classList.add('pivot');
+
                 // measure scroll position
                 const itemRect = pivotRef.getBoundingClientRect();
                 // update offset if closer to the viewport
@@ -1002,21 +1048,35 @@ export class VirtualList {
                 if (!pivotRef)
                     continue;
 
+                // to use browser native scroll pivots
+                if (!pivotRef.classList.contains('pivot'))
+                    pivotRef.classList.add('pivot');
+
                 // measure scroll position
                 const itemRect = pivotRef.getBoundingClientRect();
                 const pivot: Pivot = {
                     itemKey,
                     time,
-                    offset: itemRect.top,
+                    offset: Math.ceil(itemRect.top),
                 };
                 queryPivots.push(pivot);
             }
             this._pivots = queryPivots;
         }
+        // set native pivot class for visible items
+        for (const itemKey of this._visibleItems) {
+            const pivotRef = this.getItemRef(itemKey);
+            if (!pivotRef)
+                continue;
+
+            // to use browser native scroll pivots
+            if (!pivotRef.classList.contains('pivot'))
+                pivotRef.classList.add('pivot');
+        }
 
         // debug helper
         // await delayAsync(50);
-        debugLog?.log(`requestData: query:`, this._query);
+        debugLog?.log(`requestData: query:`, this._query, [...this._pivots]);
         await this._blazorRef.invokeMethodAsync('RequestData', this._query);
         this._lastQuery = this._query;
         this._lastQueryTime = Date.now();
