@@ -239,3 +239,45 @@ body.hoverable .chat-header-title:hover {
     @apply flex-y gap-y-1;
 }
 
+.chat-welcome-message {
+    @apply flex-y gap-y-2;
+    @apply px-2.5 mb-3;
+}
+.chat-welcome-message .c-header {
+    @apply flex-x gap-x-2 items-center;
+}
+.chat-welcome-message .c-chat-title {
+    @apply text-01 text-headline-6;
+}
+.chat-welcome-message .c-content {
+    @apply text-02 text-text-1;
+}
+.chat-welcome-message .c-link {
+    @apply flex-x items-center gap-x-4;
+    @apply mt-2 px-4 py-4;
+    @apply border border-bg-04 rounded-lg;
+    @apply text-accent text-headline-1;
+}
+.narrow .chat-welcome-message .c-link {
+    @apply flex-y items-start gap-y-4;
+}
+.chat-welcome-message .c-link .c-link-url,
+.chat-welcome-message .c-link .c-link-buttons {
+    @apply flex-x items-center gap-x-4;
+}
+.chat-welcome-message .c-link i {
+    @apply text-xl;
+}
+.chat-welcome-message .c-link i.icon-copy,
+.chat-welcome-message .c-link i.fa-check {
+    @apply text-lg;
+}
+.chat-welcome-message .link-hint {
+    @apply text-xs font-normal text-03;
+}
+.chat-welcome-message .btn {
+    @apply px-8;
+}
+.chat-welcome-message .btn .btn-content {
+    @apply flex-x gap-x-3;
+}

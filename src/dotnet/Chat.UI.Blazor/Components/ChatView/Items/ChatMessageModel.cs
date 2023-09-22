@@ -18,6 +18,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnreadSeparator { get; init; }
     public bool ShowEntryKind { get; init; }
+    public bool IsWelcome { get; set; }
 
     public ChatMessageModel(ChatEntry entry)
         => Entry = entry;
@@ -30,6 +31,8 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         var key = Entry.LocalId.Format();
         if (DateLine != null)
             return $"{key}-date-{DateLine.Value.ToString("yyyyMMdd", CultureInfo.InvariantCulture)}";
+        if (IsWelcome)
+            return $"{key}-welcome-message";
 
         if (IsFirstUnreadSeparator)
             return $"{key}-new-messages";
@@ -71,6 +74,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
         IReadOnlyCollection<ChatMessageModel> oldItems,
         long? lastReadEntryId,
         bool hasVeryFirstItem,
+        bool addWelcomeMessage,
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
@@ -104,6 +108,12 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
                     result.Add(oldItem);
                 else
                     result.Add(item);
+                if (addWelcomeMessage) {
+                    result.Add(new ChatMessageModel(entry) {
+                        IsWelcome = true
+                    });
+                    addWelcomeMessage = false;
+                }
             }
             if (isUnread && !isPrevUnread) {
                 var item = new ChatMessageModel(entry) {

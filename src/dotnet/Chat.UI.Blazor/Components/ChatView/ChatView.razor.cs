@@ -242,11 +242,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             ? int.MaxValue
             : _initialReadEntryLid;
 
+        var isOwner = chat.Rules.IsOwner();
+        var addWelcomeMessage = isOwner && hasVeryFirstItem && !chat.Id.IsPeerChat(out _);
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             oldData.Items,
             unreadEntryLidStarts,
             hasVeryFirstItem,
+            addWelcomeMessage,
             TimeZoneConverter);
 
         var result = VirtualListData.New(
@@ -422,5 +425,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var isVisible = RegionVisibility.IsVisible.Value;
         if (!DisposeToken.IsCancellationRequested)
             _getDataSuspender.IsSuspended = !isVisible;
+    }
+
+    private bool IsEmpty(VirtualListData<ChatMessageModel> data)
+    {
+        if (data == VirtualListData<ChatMessageModel>.None)
+            return false;
+        var items = data.Items;
+        if (items.Count == 0)
+            return true;
+        return items.All(c => c.DateLine.HasValue || c.Entry.IsSystemEntry);
     }
 }

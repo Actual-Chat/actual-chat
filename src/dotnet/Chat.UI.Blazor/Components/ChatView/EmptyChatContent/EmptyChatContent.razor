@@ -6,12 +6,15 @@
 }
 
 <div class="empty-chat-content">
-    <div>This chat is new - there are no messages yet.</div>
-    @if (m.PeerAccount is { } peerAccount) {
-        <div>Say "Hi" to <AccountName UserSid="@m.PeerAccount.Id"/>!</div>
-    } else {
-        <div>Say "Hi" to your friends or invite them!</div>
-    }
+    <div class="c-image"></div>
+    <div class="c-text">
+        <span>No messages here yet.</span>
+        @if (m.PeerAccount is { } peerAccount) {
+            <span>Say "Hi" to <AccountName UserSid="@m.PeerAccount.Id"/>!</span>
+        } else {
+            <span>Be the first one</span>
+        }
+    </div>
 </div>
 
 @code {
