@@ -7,7 +7,7 @@
     var link = m?.Link;
 }
 
-<div class="@Class">
+<div class="message-wrapper">
     <div class="chat-welcome-message">
         <div class="c-header">
             <div class="c-chat-icon">
@@ -62,7 +62,6 @@
     private Chat Chat => Context.Chat;
 
     [Parameter, EditorRequired] public ChatMessageContext Context { get; set; } = null!;
-    [Parameter] public string Class { get; set; } = "";
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var (link, isJoinLink) =  await GetLink(cancellationToken);

@@ -18,7 +18,7 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public int CountAs { get; init; } = 1;
     public bool IsFirstUnreadSeparator { get; init; }
     public bool ShowEntryKind { get; init; }
-    public bool IsWelcome { get; set; }
+    public bool IsWelcome { get; init; }
 
     public ChatMessageModel(ChatEntry entry)
         => Entry = entry;
