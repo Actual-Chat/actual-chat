@@ -6,8 +6,8 @@ public class VirtualListDataQuery
 
     public Range<string> KeyRange { get; }
     public Range<double>? VirtualRange { get; init; }
-    public double ExpandStartBy { get; init; } = 0;
-    public double ExpandEndBy { get; init; } = 0;
+    public int ExpandStartBy { get; init; } = 0;
+    public int ExpandEndBy { get; init; } = 0;
 
     public bool IsNone
         => ReferenceEquals(this, None);

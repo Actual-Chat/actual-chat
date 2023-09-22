@@ -1,39 +1,21 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public class VirtualListData<TItem>
+public class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     where TItem : IVirtualListItem
 {
-    public static VirtualListData<TItem> None { get; } = new(VirtualListDataQuery.None, Array.Empty<TItem>());
+    public static VirtualListData<TItem> None { get; } = new(Array.Empty<TItem>());
 
-    public VirtualListDataQuery Query { get; }
-    public IReadOnlyCollection<TItem> Items { get; }
+    public bool IsNone
+        => ReferenceEquals(this, None);
+
+    public Range<string> KeyRange
+        => new (items[0].Key, items[^1].Key);
+
+    public IReadOnlyList<TItem> Items { get; } = items;
+    public int? RequestedStartExpansion { get; init; }
+    public int? RequestedEndExpansion { get; init; }
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
     public bool HasAllItems => HasVeryFirstItem && HasVeryLastItem;
     public string? ScrollToKey { get; init; }
-
-    public VirtualListData(VirtualListDataQuery query, IReadOnlyCollection<TItem> items)
-    {
-        Query = query;
-        Items = items;
-    }
-}
-
-public static class VirtualListData
-{
-    public static VirtualListData<TItem> New<TItem>(
-        VirtualListDataQuery query,
-        IEnumerable<TItem> items,
-        bool hasVeryFirstItem = false,
-        bool hasVeryLastItem = false,
-        string? scrollToKey = default)
-        where TItem : IVirtualListItem
-    {
-        var readOnlyItems = items as IReadOnlyCollection<TItem> ?? items.ToList();
-        return new(query, readOnlyItems) {
-            HasVeryFirstItem = hasVeryFirstItem,
-            HasVeryLastItem = hasVeryLastItem,
-            ScrollToKey = scrollToKey,
-        };
-    }
 }

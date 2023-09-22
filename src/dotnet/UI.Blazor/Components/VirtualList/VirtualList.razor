@@ -14,17 +14,24 @@
         : renderIndex == 0
             ? 0
             : SpacerSize;
-    var startExpansion = Data.Items
+    var startExpansion = Query.IsNone
+        ? 0
+        : Data.Items
         .TakeWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.Start) < 0)
         .Sum(i => i.CountAs);
-    var endExpansion = Data.Items
+    var endExpansion = Query.IsNone
+        ? 0
+        : Data.Items
         .SkipWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.End) <= 0)
         .Sum(i => i.CountAs);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
+        KeyRange = new (Data.Items[0].Key, Data.Items[^1].Key),
         SpacerSize = spacerSize,
         EndSpacerSize = endSpacerSize,
+        RequestedStartExpansion = Data.RequestedStartExpansion,
+        RequestedEndExpansion = Data.RequestedEndExpansion,
         StartExpansion = startExpansion,
         EndExpansion = endExpansion,
         HasVeryFirstItem = Data.HasVeryFirstItem,
@@ -33,6 +40,7 @@
     };
     var items = Data.Items;
     LastData = Data;
+    Query = VirtualListDataQuery.None;
 }
 
 <div @ref="Ref"

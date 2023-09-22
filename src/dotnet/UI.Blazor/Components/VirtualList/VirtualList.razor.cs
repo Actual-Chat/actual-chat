@@ -19,7 +19,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
-    private VirtualListDataQuery LastQuery { get; set; } = VirtualListDataQuery.None;
     private VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
     private VirtualListData<TItem> Data => State.Value;
     private VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
@@ -112,7 +111,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         VirtualListData<TItem> response;
         try {
             response = await DataSource.GetData(query, LastData, cancellationToken);
-            LastQuery = Query = response.Query;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);

@@ -37,13 +37,14 @@ public class VirtualListTestService : IComputeService
         start = Math.Max(range.Start, start);
         end = Math.Min(range.End, end);
 
-        var result = VirtualListData.New(
-            query,
+        var result = new VirtualListData<TestListItemRef>(
             Enumerable
                 .Range(start, end - start + 1)
-                .Select(key => new TestListItemRef(key, rangeSeedValue, contentSeed)),
-            start == range.Start,
-            end == range.End);
+                .Select(key => new TestListItemRef(key, rangeSeedValue, contentSeed))
+                .ToList()) {
+            HasVeryFirstItem = start == range.Start,
+            HasVeryLastItem = end == range.End,
+        };
         await Task.Delay(100, cancellationToken).ConfigureAwait(false);
         return result;
     }

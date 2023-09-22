@@ -178,7 +178,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         */
 
         var entryLid = readEntryLid;
-        var mustScrollToEntry = query.IsNone && entryLid != 0;
+        var mustScrollToEntry = oldData.IsNone && entryLid != 0;
 
         // Get the last tile to check whether the Author has submitted a new entry
         var lastIdTile = IdTileStack.Layers[0].GetTile(chatIdRange.ToInclusive().End);
@@ -213,7 +213,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         // If we are scrolling somewhere - let's load the date near the entryId
-        var idRangeToLoad = GetIdRangeToLoad(query, mustScrollToEntry ? entryLid : 0, chatIdRange);
+        var idRangeToLoad = GetIdRangeToLoad(query, oldData, mustScrollToEntry ? entryLid : 0, chatIdRange);
 
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End + 1 >= chatIdRange.End;
@@ -252,12 +252,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             addWelcomeMessage,
             TimeZoneConverter);
 
-        var result = VirtualListData.New(
-            new VirtualListDataQuery(idRangeToLoad.AsStringRange()),
-            chatMessages,
-            hasVeryFirstItem,
-            hasVeryLastItem,
-            scrollToKey);
+        var result = new VirtualListData<ChatMessageModel>(chatMessages) {
+            HasVeryFirstItem = hasVeryFirstItem,
+            HasVeryLastItem = hasVeryLastItem,
+            ScrollToKey = scrollToKey,
+            RequestedStartExpansion = query.IsNone
+                ? null
+                : query.ExpandStartBy,
+            RequestedEndExpansion = query.IsNone
+                ? null
+                : query.ExpandEndBy,
+        };
 
         var visibility = ItemVisibility.Value;
         // Keep most recent entry as read if end anchor is visible
@@ -283,19 +288,23 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         return result;
     }
 
-    private Range<long> GetIdRangeToLoad(VirtualListDataQuery query, long scrollToEntryLid, Range<long> chatIdRange)
+    private Range<long> GetIdRangeToLoad(
+        VirtualListDataQuery query,
+        VirtualListData<ChatMessageModel> oldData,
+        long scrollToEntryLid,
+        Range<long> chatIdRange)
     {
-        var queryRange = query.IsNone
-            ? new Range<long>(
-                chatIdRange.End - (2 * PageSize),
-                chatIdRange.End)
-            : query.KeyRange
+        var queryRange = (query.IsNone, oldData.Items.Count == 0) switch {
+            (true, true) => new Range<long>(chatIdRange.End - (2 * PageSize), chatIdRange.End),
+            (true, false) => oldData.KeyRange.AsLongRange(),
+            _ => query.KeyRange
                 .AsLongRange()
-                .Expand(new Range<long>((long)query.ExpandStartBy, (long)query.ExpandEndBy));
+                .Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),
+        };
         var scrollToEntryRange = scrollToEntryLid > 0
             ? new Range<long>(
                 scrollToEntryLid - PageSize,
-                scrollToEntryLid + PageSize)
+                scrollToEntryLid + (2 * PageSize))
             : queryRange;
 
         // Union (queryRange, scrollToEntryRange) if they overlap, otherwise pick scrollToEntryRange
@@ -309,7 +318,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Extend requested range if it's close to chat Id range
         var isCloseToTheEnd = queryRange.End >= chatIdRange.End - (PageSize / 2);
         var isCloseToTheStart = queryRange.Start <= chatIdRange.Start + (PageSize / 2);
-        var isClientRequest = query.VirtualRange.HasValue;
+        var isClientRequest = !query.IsNone;
         var extendedRange = (closeToTheStart: isCloseToTheStart, closeToTheEnd: isCloseToTheEnd) switch {
             (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
             (_, true) when isClientRequest => new Range<long>(queryRange.Start, chatIdRange.End + 2),

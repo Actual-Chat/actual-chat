@@ -173,9 +173,10 @@ export class VirtualList {
         this._renderState = {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
-
             spacerSize: 0,
             endSpacerSize: 0,
+            requestedStartExpansion: null,
+            requestedEndExpansion: null,
             startExpansion: 0,
             endExpansion: 0,
             hasVeryFirstItem: false,
@@ -474,10 +475,10 @@ export class VirtualList {
 
             // Update statistics
             const ratio = this._statistics.responseFulfillmentRatio;
-            if (rs.query.expandStartBy > 0 && !rs.hasVeryFirstItem)
-                this._statistics.addResponse(rs.startExpansion, rs.query.expandStartBy * ratio);
-            if (rs.query.expandEndBy > 0 && !rs.hasVeryLastItem)
-                this._statistics.addResponse(rs.endExpansion, rs.query.expandEndBy * ratio);
+            if (rs.requestedStartExpansion > 0 && !rs.hasVeryFirstItem)
+                this._statistics.addResponse(rs.startExpansion, rs.requestedStartExpansion * ratio);
+            if (rs.requestedEndExpansion > 0 && !rs.hasVeryLastItem)
+                this._statistics.addResponse(rs.endExpansion, rs.requestedEndExpansion * ratio);
 
             const scrollToItemRef = this.getItemRef(rs.scrollToKey);
             if (scrollToItemRef != null) {

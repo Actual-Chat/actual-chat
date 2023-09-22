@@ -3,16 +3,19 @@ namespace ActualChat.UI.Blazor.Components.Internal;
 /// <summary> The data transferred from Blazor to JS. </summary>
 public class VirtualListRenderState
 {
-    public long RenderIndex { get; set; }
-    public VirtualListDataQuery Query { get; set; } = null!;
+    public long RenderIndex { get; init; }
+    public VirtualListDataQuery Query { get; init; } = VirtualListDataQuery.None;
 
-    public double SpacerSize { get; set; }
-    public double EndSpacerSize { get; set; }
-    public int StartExpansion { get; set; }
-    public int EndExpansion { get; set; }
+    public Range<string> KeyRange { get; init; }
+    public double SpacerSize { get; init; }
+    public double EndSpacerSize { get; init; }
+    public int? RequestedStartExpansion { get; init; }
+    public int? RequestedEndExpansion { get; init; }
+    public int StartExpansion { get; init; }
+    public int EndExpansion { get; init; }
 
-    public bool HasVeryFirstItem { get; set; }
-    public bool HasVeryLastItem { get; set; }
+    public bool HasVeryFirstItem { get; init; }
+    public bool HasVeryLastItem { get; init; }
 
-    public string? ScrollToKey { get; set; }
+    public string? ScrollToKey { get; init; }
 }
