@@ -9,7 +9,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INotifyInitialized
 {
-    public static readonly int ActiveItemCountWhenLoading = 2;
+    public static readonly int ActiveItemCountWhenLoading = 0;
     public static readonly int AllItemCountWhenLoading = 14;
 
     private readonly List<ChatId> _activeItems = new List<ChatId>().AddMany(default, ActiveItemCountWhenLoading);
@@ -125,14 +125,10 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats
-                .OrderByDescending(c => c.Recency)
-                .Select(c => ChatUI.Get(c.ChatId, cancellationToken))
-                .Collect()
-                .ConfigureAwait(true))
-            .SkipNullItems();
-
-        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
-        chats = chats.FilterBySearchPhrase(searchPhrase);
+            .Select(c => ChatUI.Get(c.ChatId, cancellationToken))
+            .Collect()
+            .ConfigureAwait(true)
+            ).SkipNullItems();
         return chats.ToList();
     }
 

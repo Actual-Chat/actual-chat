@@ -62,13 +62,6 @@ public class ActiveChatsUI
         _ = UICommander.RunNothing();
     }
 
-    public ValueTask AddActiveChat(ChatId chatId)
-        => chatId.IsNone
-            ? default
-            : UpdateActiveChats(c
-                => c.AddOrUpdate(new (chatId, false, false, Now),
-                    existing => existing with { Recency = Now }));
-
     public ValueTask RemoveActiveChat(ChatId chatId)
         => chatId.IsNone ? default
             : UpdateActiveChats(c => c.RemoveAll(chatId));
@@ -101,55 +94,41 @@ public class ActiveChatsUI
             return activeChats;
 
         // Removing chats that violate access rules + enforce "just 1 recording chat" rule
-        var recordingChat = activeChats.FirstOrDefault(c => c.IsRecording);
-        var chatRules = await activeChats
+        var chatsAndRules = await activeChats
             .Select(async chat => (
                 Chat: chat,
                 Rules: await Chats.GetRules(Session, chat.ChatId, cancellationToken).ConfigureAwait(false)))
             .Collect()
             .ConfigureAwait(false);
-        foreach (var (c, rules) in chatRules) {
-            // There must be just 1 recording chat
-            var chat = c;
-            if (c.IsRecording && c != recordingChat) {
-                chat = chat with { IsRecording = false };
-                activeChats = activeChats.TryAdd(chat);
-            }
 
-            // And it must be accessible
-            if (!rules.CanRead() || (chat.IsRecording && !rules.CanRead()))
-                activeChats = activeChats.RemoveAll(chat);
+        var recordingChat = chatsAndRules
+            .Where(x => x.Chat.IsRecording && x.Rules.CanWrite())
+            .OrderByDescending(x => x.Chat.Recency)
+            .FirstOrDefault()
+            .Chat;
+        foreach (var (chat, rules) in chatsAndRules) {
+            // There must be just 1 recording chat
+            var newChat = chat;
+            if (newChat.IsRecording && newChat.ChatId != recordingChat.ChatId)
+                newChat = newChat with { IsRecording = false };
+            if (!(newChat.IsListening || newChat.IsRecording)) // Must be active
+                newChat = default;
+            else if (!rules.CanRead()) // Must be accessible
+                newChat = default;
+
+            if (!chat.IsSameAs(newChat))
+                activeChats = newChat.IsNone
+                    ? activeChats.RemoveAll(chat)
+                    : activeChats.AddOrReplace(newChat);
         }
 
         // There must be no more than MaxActiveChatCount active chats
-        if (activeChats.Count <= MaxActiveChatCount)
-            return activeChats;
-
-        var activeChatsWithEffectiveRecency = await activeChats
-            .Select(async chat => (Chat: chat, EffectiveRecency: await GetEffectiveRecency(chat, cancellationToken).ConfigureAwait(false)))
-            .Collect()
-            .ConfigureAwait(false);
-        return activeChatsWithEffectiveRecency
-            .OrderByDescending(x => x.Chat.IsRecording)
-            .ThenByDescending(x => x.EffectiveRecency)
-            .Select(x => x.Chat)
-            .Take(MaxActiveChatCount)
-            .ToApiArray();
-
-        async ValueTask<Moment> GetEffectiveRecency(ActiveChat chat, CancellationToken cancellationToken1)
-        {
+        while (activeChats.Count > MaxActiveChatCount) {
+            var chat = activeChats[^1];
             if (chat.IsRecording)
-                return Clocks.CpuClock.Now;
-            if (!chat.IsListening)
-                return chat.Recency;
-
-            var chatNews = await Chats.GetNews(Session, chat.ChatId, cancellationToken1).ConfigureAwait(false);
-            var lastEntry = chatNews.LastTextEntry;
-            if (lastEntry == null)
-                return chat.Recency;
-            return lastEntry.IsStreaming
-                ? Clocks.CpuClock.Now
-                : Moment.Max(chat.Recency, lastEntry.EndsAt ?? lastEntry.BeginsAt);
+                chat = activeChats[^2];
+            activeChats = activeChats.RemoveAll(chat);
         }
+        return activeChats;
     }
 }

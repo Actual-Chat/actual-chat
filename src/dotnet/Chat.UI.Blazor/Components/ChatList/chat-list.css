@@ -2,25 +2,55 @@
     Simplified nesting structure:
 
     navbar-chats navbar-group
-        active-chats
-            chat-list-active chat-list
-        chats-tab
-            chat-list-[pinned|unpinned] chat-list
-                navbar-item group
-                    navbar-item-content
-                    navbar-item-ending
-                        [on-hover] - optionally
-                            btn - listening, recording
-                            menu
-                                btn - [...] hover menu
+        c-container
+            c-(all|active)-chats
+                active-chats
+                    chat-list-active chat-list
+                        <navbar-item>
+                chats-tab
+                    chat-list chat-list-[pinned|unpinned]
+                        <navbar-item>
+    <navbar-item>:
+        navbar-item group
+            navbar-item-content
+            navbar-item-ending
+                [on-hover] - optionally
+                    btn - listening, recording
+                    menu
+                        btn - [...] hover menu
 */
 
-.navbar-chats {
-    will-change: custom; /* Ensures its own composition layer */
+.navbar-chats.navbar-group {
+    @apply overflow-y-hidden;
 }
-.navbar-chats > .c-container > .tab-panel {
-    @apply md:overflow-y-hidden;
+.navbar-chats.navbar-group > .c-container {
+    @apply flex-1 flex-y;
+    @apply overflow-y-hidden;
 }
+.navbar-chats .c-all-chats {
+    @apply flex-1 flex-y;
+    @apply overflow-y-hidden;
+}
+.navbar-chats .c-all-chats > .tab-panel {
+    @apply overflow-y-hidden;
+}
+.navbar-chats .c-all-chats > .tab-panel > .tab {
+    /* This item is, in fact, empty, so it shouldn't take space */
+    @apply flex-none flex-y;
+    @apply overflow-y-hidden;
+}
+.navbar-chats .c-active-chats {
+    @apply flex-none flex-y;
+    @apply overflow-y-hidden;
+}
+.navbar-chats .c-active-chats > .c-delimiter {
+    @apply border-t-4 border-bg-04;
+}
+.navbar-chats .chat-list {
+    @apply flex-1 flex-y;
+    @apply overflow-y-auto custom-scrollbar;
+}
+
 /* Top-level container - active-chats, pinned-chats, etc. */
 .active-chats {
     @apply relative flex-y bottom-0 p-2;
@@ -169,4 +199,3 @@ body.hoverable .chat-list .navbar-item:hover .navbar-item-ending .slot.hoverable
 .sort-menu .ac-menu-item:hover .ac-menu-icon > i {
     @apply text-primary;
 }
-

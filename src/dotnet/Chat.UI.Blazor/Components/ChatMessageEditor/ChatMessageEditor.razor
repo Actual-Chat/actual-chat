@@ -204,7 +204,6 @@
 
             if (ReadPositionState != null && ReadPositionState.Value.EntryLid < readEntryLid)
                 ReadPositionState.Value = new (Chat.Id, readEntryLid);
-            _ = ActiveChatsUI.AddActiveChat(Chat.Id);
             await AttachmentListRef.Clear();
         }
         catch (Exception e) {

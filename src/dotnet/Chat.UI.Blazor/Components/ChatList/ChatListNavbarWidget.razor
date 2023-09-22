@@ -24,29 +24,29 @@
 <NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
     <ChildContent>
         <div class="c-container">
-            <ChatList Kind="ChatListKind.Active">
-                <FooterDelimiter>
-                    <div class="c-delimiter"></div>
-                </FooterDelimiter>
-            </ChatList>
-            <TabPanel
-                @ref="@_tabPanel"
-                BottomHill="true"
-                TabsClass="left-panel-tabs"
-                SelectedTabIdChanged="@OnSelectedTabIdChanged">
-                <AdditionalButton>
-                    <ChatListSortButton />
-                </AdditionalButton>
-                <ChildContent>
-                    @for (var i = 0; i < ChatListFilter.All.Count; i++) {
-                        var filter = ChatListFilter.All[i];
-                        @RenderTab(filter, i)
-                    }
-                </ChildContent>
-                <TabContent>
-                    <ChatList Kind="ChatListKind.All" />
-                </TabContent>
-            </TabPanel>
+            <div class="c-all-chats">
+                <TabPanel
+                    @ref="@_tabPanel"
+                    BottomHill="true"
+                    TabsClass="left-panel-tabs"
+                    SelectedTabIdChanged="@OnSelectedTabIdChanged">
+                    <AdditionalButton>
+                        <ChatListSortButton/>
+                    </AdditionalButton>
+                    <ChildContent>
+                        @for (var i = 0; i < ChatListFilter.All.Count; i++) {
+                            var filter = ChatListFilter.All[i];
+                            @RenderTab(filter, i)
+                        }
+                    </ChildContent>
+                    <TabContent>
+                        <ChatList Kind="ChatListKind.All"/>
+                    </TabContent>
+                </TabPanel>
+            </div>
+            <div class="c-active-chats">
+                <ChatList Kind="ChatListKind.Active"/>
+            </div>
         </div>
     </ChildContent>
 </NavbarGroup>

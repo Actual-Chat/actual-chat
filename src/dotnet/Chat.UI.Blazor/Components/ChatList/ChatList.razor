@@ -9,12 +9,15 @@
 }
 
 @if (Kind == ChatListKind.Active) {
-    var title = "Recent Chats" + (m.IsSearchModeOn ? " — filtered on search" : "");
+    if (m.ChatCount == 0)
+        return;
+
+    <div class="c-delimiter"></div>
     <div class="active-chats"
-         data-bubble="@(BubbleRef.New<RecentChatsBubble>())"
+         data-bubble="@(BubbleRef.New<ActiveChatsBubble>())"
          data-bubble-priority="202"
          data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-        <div class="c-title" data-tooltip="Your active or recently used chats, 3 at most">@title</div>
+        <div class="c-title" data-tooltip="Chats where you are listening or recording right now">Active Chats</div>
 
         <div class="chat-list chat-list-active">
             @for (var i = 0; i < m.ChatCount; i++) {
@@ -40,9 +43,6 @@
         }
     </div>
 }
-@if (m.ChatCount > 0) {
-    @FooterDelimiter
-}
 
 @code {
     private Model _rendered;
@@ -53,7 +53,6 @@
     [Inject] private SearchUI SearchUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
-    [Parameter] public RenderFragment? FooterDelimiter { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

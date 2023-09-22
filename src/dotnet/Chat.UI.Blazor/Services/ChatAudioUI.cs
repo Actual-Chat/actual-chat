@@ -99,12 +99,13 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
             if (activeChats.TryGetValue(chatId, out var chat) && chat.IsListening != mustListen) {
                 chat = chat with {
                     IsListening = mustListen,
+                    Recency = mustListen ? now : chat.Recency,
                     ListeningRecency = mustListen ? now : chat.ListeningRecency,
                 };
                 activeChats = activeChats.AddOrReplace(chat);
             }
             else if (mustListen)
-                activeChats = activeChats.Add(new ActiveChat(chatId, true, false, now, now));
+                activeChats = activeChats.Add(new ActiveChat(chatId, true, false, now, now), true);
             return activeChats;
         });
     }
@@ -134,12 +135,13 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
                 if (oldRecordingChat.ChatId == chatId)
                     return activeChats;
 
+                var now = Now;
                 if (chatId.IsNone) {
                     // End recording
                     if (!oldRecordingChat.IsNone) {
                         activeChats = activeChats.AddOrReplace(oldRecordingChat with {
                             IsRecording = false,
-                            Recency = Now,
+                            Recency = now,
                         });
                         _ = TuneUI.Play(Tune.EndRecording);
                     }
@@ -148,18 +150,26 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
 
                 // Begin recording
                 var chat = activeChats.FirstOrDefault(c => c.ChatId == chatId);
+                var mustListen = !isPushToTalk;
                 if (chat.IsNone)
-                    chat = new ActiveChat(chatId, !isPushToTalk, true, Now);
-                else
+                    chat = new ActiveChat(chatId, mustListen, true, now, mustListen ? now : default);
+                else {
+                    var isListening = mustListen || chat.IsListening;
                     chat = chat with {
-                        IsListening = !isPushToTalk || chat.IsListening,
+                        IsListening = isListening,
                         IsRecording = true,
-                        Recency = Now,
+                        Recency = now,
+                        ListeningRecency = isListening && !chat.IsListening ? now : chat.ListeningRecency,
                     };
-                activeChats = activeChats.AddOrReplace(chat);
-                activeChats = activeChats.UpdateWhere(
-                    c => c.ChatId != chatId && (c.IsRecording || (!isPushToTalk && c.IsListening)),
-                    c => c with { IsListening = false, IsRecording = false });
+                }
+                activeChats = activeChats.AddOrReplace(chat, true);
+                activeChats = mustListen
+                    ? activeChats.UpdateWhere(
+                        c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
+                        c => c with { IsRecording = false, IsListening = false })
+                    : activeChats.UpdateWhere(
+                        c => c.ChatId != chatId && c.IsRecording,
+                        c => c with { IsRecording = false });
                 _ = TuneUI.Play(Tune.BeginRecording);
                 return activeChats;
             },
