@@ -17,12 +17,12 @@
     <div class="banner-body">
         @Body
     </div>
-    @if (Buttons != null) {
+    @if (Buttons != null || ShowDismissButton) {
         <div class="banner-buttons">
             @Buttons
             @if (ShowDismissButton) {
                 <Button
-                    Class="btn-transparent blackout text-icons-01"
+                    Class="btn-transparent blackout"
                     Click="OnClose"
                     Tooltip="Dismiss"
                     TooltipPosition="FloatingPosition.Top">
@@ -37,13 +37,12 @@
     private ShowHideAnimator _animator = null!;
     private bool _isDismissed = false;
 
-    [CascadingParameter] public BannerDef? BannerDef { get; set; } = null!;
+    [CascadingParameter] public BannerDef? BannerDef { get; set; }
 
     [Parameter, EditorRequired] public RenderFragment Body { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public RenderFragment? Icon { get; set; }
     [Parameter] public RenderFragment? Buttons { get; set; }
-    [Parameter] public bool ShowIconCircle { get; set; } = true;
     [Parameter] public bool ShowDismissButton { get; set; }
     [Parameter] public bool IsVisible { get; set; } = true;
     [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Info;
