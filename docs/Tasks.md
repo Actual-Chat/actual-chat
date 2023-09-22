@@ -14,10 +14,11 @@ Before release:
 - Onboarding: pre-create chats page
 - Onboarding: use stored phone number [Frol]
 - ~~Service worker / asset caching [EK]~~
-- Push-to-talk must not change the playback state [AY]
+- ~~Push-to-talk must not change the playback state [AY]~~
 - Stop historical playback in other chats when recording starts [Frol]
 - Don't update SelectedChat when MiddlePanel isn't visible
 - ~~Fade out loading overlay [AY]~~
+- ~~New Active Chats UX [AY]~~
 
 - Critical bugs:
   - 2 "Notes" chats on dev / no upgrade on prod [AK]
