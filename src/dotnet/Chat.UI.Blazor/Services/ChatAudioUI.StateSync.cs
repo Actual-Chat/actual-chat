@@ -111,7 +111,9 @@ public partial class ChatAudioUI
             .Capture(() => GetRecordingState(cancellationToken))
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
-            var cRecordingState = await cRecordingStateBase.When(x => !x.ChatId.IsNone, cancellationToken).ConfigureAwait(false);
+            var cRecordingState = await cRecordingStateBase
+                .When(x => !x.ChatId.IsNone, FixedDelayer.ZeroUnsafe, cancellationToken)
+                .ConfigureAwait(false);
             await BackgroundTask.Run(
                 () => RecordChat(cRecordingState, cancellationToken),
                 Log, $"{nameof(RecordChat)} failed",
