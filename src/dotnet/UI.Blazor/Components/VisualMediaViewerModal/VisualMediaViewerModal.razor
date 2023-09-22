@@ -1,41 +1,110 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat
 @using ActualChat.UI.Blazor.Module
+@using System.Numerics
 @implements IAsyncDisposable
 @implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 
+@{
+    List<TextEntryAttachment>? mediaList = null;
+    if (ModalModel.ChatEntry?.Attachments.Count > 0) {
+        mediaList = ModalModel.ChatEntry.Attachments.ToList();
+    }
+
+    RenderFragment RenderMedia(TextEntryAttachment media) {
+        var cls = "gallery-item";
+        var id = media.Media.ContentId;
+        var url = UrlMapper.ContentUrl(media.Media.ContentId);
+        string? previewUrl = null;
+        if (media.IsGif()) {
+            previewUrl = url; // currently image proxy fails on large gifs
+        } else if(media.IsImage()) {
+            previewUrl = UrlMapper.ImagePreviewUrl(url, 80, 54);
+        }
+        if (url != ModalModel.Url)
+            cls += " inactive";
+        else
+            cls += " active";
+        return @<div class="@cls" id="@id">
+                   @if (media.IsVideo()) {
+                       <video preload="metadata">
+                           <source src="@url#t=,5"/>
+                       </video>
+                   } else {
+                       <img draggable="false" class="inline skeleton" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')"/>
+                   }
+               </div>;
+    }
+}
+
 <ModalFrame Class="image-viewer-modal">
     <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry" DownloadUrl="@ModalModel.Url"/>
-    <div @ref="@Ref" class="image-viewer-content">
-        @if (ModalModel.IsVideo) {
-            <video
-                class="video-container"
-                width="@ModalModel.Width"
-                height="@ModalModel.Height"
-                preload="auto"
-                autoplay controls
-                onclick="this.play()">
-                <source src="@ModalModel.Url"/>
-            </video>
-        } else {
-            <img class="image-container hidden"
-                 width="@ModalModel.Width"
-                 height="@ModalModel.Height"
-                 src="@ModalModel.Url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"
-                 onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
-            <img id="@_cachedImgElementId"
-                 style="width: @(ModalModel.Width)px; height: @(ModalModel.Height)px;"
-                 src="@ModalModel.CachedImageUrl"
-                 alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"/>
+    <div @ref="@Ref" class="image-viewer-content invisible">
+        @if (mediaList != null) {
+            foreach (var media in mediaList) {
+                var url = UrlMapper.ContentUrl(media.Media.ContentId);
+                var id = media.Media.ContentId;
+                string? previewUrl = null;
+                if (media.IsGif()) {
+                    previewUrl = url; // currently image proxy fails on large gifs
+                } else if (media.IsImage()) {
+                    previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
+                }
+                var mediaCls = url == ModalModel.Url ? "active" : "inactive";
+                @if (media.IsVideo()) {
+                    <video
+                        id="@id"
+                        class="video-container @mediaCls"
+                        width="@media.Media.Width"
+                        height="@media.Media.Height"
+                        preload="auto"
+                        autoplay controls
+                        onclick="this.play()">
+                        <source src="@url"/>
+                    </video>
+                } else {
+                    <img class="image-container @mediaCls"
+                         id="@id"
+                         width="@media.Media.Width"
+                         height="@media.Media.Height"
+                         src="@url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"
+                         onload="document.getElementById('@_cachedImgElementId').remove(); this.classList.remove('hidden')"/>
+                    <img id="@_cachedImgElementId"
+                         class="hidden"
+                         style="width: @(media.Media.Width)px; height: @(media.Media.Height)px;"
+                         src="@previewUrl"
+                         alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"/>
+                }
+            }
         }
     </div>
+    @if (mediaList?.Count > 1) {
+        <div class="c-previous invisible">
+            <i class="icon-chevron-left text-5xl"></i>
+        </div>
+        <div class="c-next invisible">
+            <i class="icon-chevron-right text-5xl"></i>
+        </div>
+    }
     <div class="image-viewer-footer">
-        <a class="show-original-button" href="@ModalModel.Url" target="_blank">Show original</a>
+        <div class="footer-gallery">
+            @if (mediaList != null) {
+                foreach (var media in mediaList) {
+                    @RenderMedia(media) ;
+                }
+            }
+
+        </div>
     </div>
 </ModalFrame>
 
 @code {
+    private const int MaxWidth = 400; // In pixels
+    private const int MaxHeight = 300; // In pixels
+    private static readonly Vector2 MaxSize = new(MaxWidth, MaxHeight);
+    private const int ActualResolutionMultiplier = 2;
+
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VisualMediaViewer.create";
 
     private string _cachedImgElementId = "";
@@ -43,6 +112,7 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private ComponentIdGenerator IdGenerator { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ILogger<VisualMediaViewerModal> Log { get; init; } = null!;
@@ -78,6 +148,13 @@
     [JSInvokable]
     public void Close()
         => CloseModal();
+
+    [JSInvokable]
+    public void ChangeMedia(string mediaId) {
+        var url = UrlMapper.ContentUrl(mediaId);
+        ModalModel = new Model(url, "", "", null, null, ModalModel.ChatEntry);
+        StateHasChanged();
+    }
 
     public sealed record Model(
         string Url,

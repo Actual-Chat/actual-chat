@@ -2,7 +2,6 @@ import { preventDefaultForEvent } from 'event-handling';
 import { fromEvent, Subject, takeUntil, debounceTime } from 'rxjs';
 
 import { Log } from 'logging';
-import { setTimeout } from 'timerQueue';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 
 const { debugLog } = Log.get('VisualMediaViewer');
@@ -25,9 +24,14 @@ class MoveState {
 export class VisualMediaViewer {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private readonly overlay: HTMLElement;
-    private readonly media: HTMLElement;
+    private media: HTMLElement;
     private readonly header: HTMLElement;
     private readonly footer: HTMLElement;
+    private mainCarousel: HTMLElement;
+    private footerCarousel: HTMLElement;
+    private nextButton: HTMLElement;
+    private prevButton: HTMLElement;
+    private mediaArray: Element[];
     private readonly multiplier: number = 1.25;
     private startY: number = 0;
     private startX: number = 0;
@@ -35,8 +39,6 @@ export class VisualMediaViewer {
     private deltaX: number = 0;
     private prevY: number = 0;
     private prevX: number = 0;
-    private originMediaWidth: number = 0;
-    private originMediaHeight: number = 0;
     private isMovementStarted: boolean = false;
     private startDistance: number = 0;
     private startImageRect: DOMRect;
@@ -46,8 +48,8 @@ export class VisualMediaViewer {
     private footerTop: number = 0;
     private isFooterAndHeaderShown: boolean = false;
     private points: PointerEvent[] = new Array<PointerEvent>();
-    private minWidth: number = 0;
-    private minHeight: number = 0;
+    private minWidth: number = 100;
+    private minHeight: number = 100;
     private readonly maxWidth: number = 0;
     private readonly maxHeight: number = 0;
 
@@ -66,21 +68,8 @@ export class VisualMediaViewer {
         ScreenSize.event$
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => this.onScreenSizeChange());
-        let image = imageViewer.querySelector('img');
-        let video = imageViewer.querySelector('video');
-        if (image != null) {
-            this.media = image;
-            this.originMediaWidth = this.minWidth = this.round(this.media.getBoundingClientRect().width);
-            this.originMediaHeight = this.minHeight = this.round(this.media.getBoundingClientRect().height);
-        } else if (video != null) {
-            this.media = video;
-            this.media.oncanplay = (event) => {
-                this.originMediaWidth = this.minWidth = this.round(this.media.getBoundingClientRect().width);
-                this.originMediaHeight = this.minHeight = this.round(this.media.getBoundingClientRect().height);
-            }
-        } else {
-            return;
-        }
+
+        this.media = imageViewer.querySelector('.active');
 
         this.overlay = this.imageViewer.closest('.modal-overlay');
         this.header = this.overlay.querySelector('.image-viewer-header');
@@ -91,11 +80,25 @@ export class VisualMediaViewer {
         this.maxHeight = window.innerHeight * 3;
         this.maxWidth = window.innerWidth * 3;
 
+        if (this.getOriginWidthAndHeight() == false)
+            return;
+
+        let vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+
+        this.initCarousels();
+
+        this.prevButton = this.overlay.querySelector('.c-previous');
+        this.nextButton = this.overlay.querySelector('.c-next');
+        this.controlButtonsVisibilityToggle();
+        this.prevButton.classList.remove('invisible');
+        this.nextButton.classList.remove('invisible');
+
         fromEvent(this.overlay, 'wheel')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: WheelEvent) => this.onWheel(event));
 
-        fromEvent(window, 'pointerdown', { capture: false })
+        fromEvent(window, 'pointerdown')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onPointerDown(event));
 
@@ -107,8 +110,13 @@ export class VisualMediaViewer {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onPointerUp(event));
 
-        let vh = window.innerHeight * 0.01;
-        document.documentElement.style.setProperty('--vh', `${vh}px`);
+        fromEvent(this.prevButton, 'pointerdown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent) => this.onPreviousButtonClick(event));
+
+        fromEvent(this.nextButton, 'pointerdown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent) => this.onNextButtonClick(event));
     }
 
     public dispose() {
@@ -130,6 +138,70 @@ export class VisualMediaViewer {
     private onScreenSizeChange() {
         let vh = window.innerHeight * 0.01;
         document.documentElement.style.setProperty('--vh', `${vh}px`);
+        this.getOriginWidthAndHeight();
+    }
+
+    private getOriginWidthAndHeight() : boolean {
+        if (this.media == null)
+            return false;
+        let tagName = this.media.tagName.toLowerCase();
+        if (tagName == 'img' || tagName == 'video') {
+            let screenHeight = this.footerTop - this.headerBottom;
+            if (ScreenSize.isNarrow()) {
+                screenHeight = window.innerHeight;
+            }
+            let screenWidth = window.innerWidth;
+            let mediaHeight = this.round(Number(this.media.getAttribute('height')));
+            let mediaWidth = this.round(Number(this.media.getAttribute('width')));
+            let multiplier = 1;
+
+            if (mediaWidth > screenWidth) {
+                multiplier = screenWidth / mediaWidth;
+                mediaWidth = screenWidth;
+                mediaHeight = mediaHeight * multiplier;
+            }
+            if (mediaHeight > screenHeight) {
+                multiplier = screenHeight / mediaHeight;
+                mediaHeight = screenHeight;
+                mediaWidth = mediaWidth * multiplier;
+            }
+            if (mediaWidth != this.round(Number(this.media.getAttribute('width')))) {
+                mediaWidth = this.round(mediaWidth);
+                mediaHeight = this.round(mediaHeight);
+                this.media.setAttribute('width', `${mediaWidth}`);
+                this.media.setAttribute('height', `${mediaHeight}`);
+            }
+            this.media.style.width = this.imageViewer.style.width = mediaWidth + 'px';
+            this.media.style.height = this.imageViewer.style.height = mediaHeight + 'px';
+            this.centerMedia(mediaWidth, mediaHeight);
+            this.imageViewer.classList.remove('invisible');
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private centerMedia(width: number, height: number) {
+        let screenWidth = window.innerWidth;
+        let screenHeight = window.innerHeight;
+        let left = (screenWidth - width) / 2;
+        let top = (screenHeight - height) / 2;
+        this.imageViewer.style.left = left + 'px';
+        this.imageViewer.style.top = top + 'px';
+    }
+
+    private initCarousels() {
+        this.mainCarousel = this.imageViewer;
+        this.footerCarousel = this.footer.querySelector('.footer-gallery');
+        let allMedia = this.mainCarousel.querySelectorAll('.active, .inactive');
+        let allFooterMedia = this.footerCarousel.querySelectorAll('.active, .inactive');
+        if (allMedia.length < 2)
+            return;
+        this.mediaArray = Array.from(allMedia);
+
+        fromEvent(allFooterMedia, 'pointerdown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: PointerEvent) => this.onFooterMediaItemPointerDown(event));
     }
 
     private toggleFooterHeaderVisibility() {
@@ -257,38 +329,35 @@ export class VisualMediaViewer {
         const width = this.media.getBoundingClientRect().width;
         const height = this.media.getBoundingClientRect().height;
         let newWidth = width;
+        let newHeight = height;
         preventDefaultForEvent(event);
         if (delta < 0) {
             // up
             newWidth = width * this.multiplier;
+            newHeight = height * this.multiplier;
             if (newWidth / windowWidth <= 1.03 && newWidth / windowWidth >= 0.97) {
                 newWidth = windowWidth;
             }
-            let newMaxWidth = newWidth;
-            let newMaxHeight = height * this.multiplier;
-            if ((newMaxHeight > windowHeight * 3 || newMaxWidth > windowWidth * 3)) {
+            if ((newHeight > windowHeight * 3 || newWidth > windowWidth * 3)) {
                 return;
             } else {
+                this.media.style.height = this.imageViewer.style.height = this.round(newHeight) + 'px';
                 this.media.style.width = this.imageViewer.style.width = this.round(newWidth) + 'px';
-                this.media.style.maxHeight = this.round(newMaxHeight) + 'px';
-                this.media.style.maxWidth = this.round(newMaxWidth) + 'px';
                 this.centerImageX(viewerRect);
                 this.centerImageY(viewerRect);
             }
         } else {
             // down
             newWidth = width / this.multiplier;
+            newHeight = height / this.multiplier;
             if (newWidth / windowWidth < 1.03 && newWidth / windowWidth > 0.97) {
                 newWidth = windowWidth;
             }
-            let newMaxWidth = newWidth;
-            let newMaxHeight = height / this.multiplier;
-            if (newWidth < 100 && newMaxHeight < 100) {
+            if (newWidth < 100 && newHeight < 100) {
                 return;
             } else {
+                this.media.style.height = this.imageViewer.style.height = this.round(newHeight) + 'px';
                 this.media.style.width = this.imageViewer.style.width = this.round(newWidth) + 'px';
-                this.media.style.maxHeight = this.round(newMaxHeight) + 'px';
-                this.media.style.maxWidth = this.round(newMaxWidth) + 'px';
                 this.centerImageX(viewerRect);
                 this.centerImageY(viewerRect);
             }
@@ -301,11 +370,6 @@ export class VisualMediaViewer {
                 this.points.push(event);
                 let target = event.target as HTMLElement;
                 if (this.isRequiredClass(target)) {
-                    const parent = this.imageViewer.parentElement;
-                    this.headerBottom = this.round(parent.querySelector('.image-viewer-header')
-                                                       .getBoundingClientRect().bottom);
-                    this.footerTop = this.round(parent.querySelector('.image-viewer-footer')
-                                                    .getBoundingClientRect().top);
                     const viewerRect = this.imageViewer.getBoundingClientRect();
                     const viewerTop = this.round(viewerRect.top);
                     const viewerBottom = this.round(viewerRect.bottom);
@@ -326,7 +390,7 @@ export class VisualMediaViewer {
                 this.overlay.style.touchAction = 'none';
                 this.points.push(event);
                 this.startImageRect = this.media.getBoundingClientRect();
-                let imageRect = this.media.getBoundingClientRect();
+                let imageRect = this.startImageRect;
                 let viewerRect = this.imageViewer.getBoundingClientRect();
                 this.curState = new MoveState(imageRect, viewerRect, 0);
                 this.prevState = new MoveState(imageRect, viewerRect, 0);
@@ -385,20 +449,25 @@ export class VisualMediaViewer {
             let imageHeight = this.round(this.media.getBoundingClientRect().height);
             if (imageWidth < this.minWidth || imageHeight < this.minHeight) {
                 this.media.style.width = this.minWidth + 'px';
-                this.media.style.maxWidth = this.minWidth + 'px';
-                this.media.style.maxHeight = this.minHeight + 'px';
-                this.imageViewer.style.left = this.media.style.left = ((window.innerWidth - this.originMediaWidth) / 2) + 'px';
-                this.imageViewer.style.top = this.media.style.left = ((window.innerHeight - this.originMediaHeight) / 2) + 'px';
+                this.imageViewer.style.width = this.minWidth + 'px';
+                let rect = this.media.getBoundingClientRect();
+                this.imageViewer.style.left = ((window.innerWidth - rect.width) / 2) + 'px';
+                this.imageViewer.style.top = ((window.innerHeight - rect.height) / 2) + 'px';
             }
         } else if (event.pointerType === 'mouse') {
             let savedEvent = this.points.find(e => e.pointerId == event.pointerId);
             let target = event.target as HTMLElement;
-            if (savedEvent != null
-                && (event.timeStamp - savedEvent.timeStamp < 500)
-                && this.isSameCoords(event, savedEvent)) {
+            let savedTarget = savedEvent.target as HTMLElement;
+
+            if ((event.timeStamp - savedEvent.timeStamp < 500) && this.isSameCoords(event, savedEvent)) {
                 if (this.isRequiredClass(target)) {
                     this.toggleFooterHeaderVisibility();
-                } else if (!this.footer.contains(target) && !this.header.contains(target)) {
+                } else if (!this.footer.contains(target)
+                    && !this.header.contains(target)
+                    && !this.prevButton.contains(target)
+                    && !this.nextButton.contains(target)
+                    && !this.prevButton.contains(savedTarget)
+                    && !this.nextButton.contains(savedTarget)) {
                     this.blazorRef.invokeMethodAsync('Close');
                 }
             }
@@ -497,8 +566,11 @@ export class VisualMediaViewer {
         this.prevState.imageRect = this.prevState.viewerRect = this.curState.imageRect;
         let newImageWidth = this.round(this.startImageRect.width * scale);
         let newImageHeight = this.round(this.startImageRect.height * scale);
-        this.media.style.width = this.media.style.maxWidth = newImageWidth + 'px';
-        this.media.style.maxHeight = newImageHeight + 'px';
+        if (newImageHeight < this.minHeight || newImageWidth < this.minWidth) {
+            return;
+        }
+        this.media.style.width = this.imageViewer.style.width = newImageWidth + 'px';
+        this.media.style.height = this.imageViewer.style.height = newImageHeight + 'px';
         this.curState.imageRect = this.curState.viewerRect = this.media.getBoundingClientRect();
         this.centerImage();
     }
@@ -566,6 +638,58 @@ export class VisualMediaViewer {
         if (deltaX < 10 && deltaY < 10)
             result = true;
         return result;
+    }
+
+    private controlButtonsVisibilityToggle() {
+        let currentMediaIndex = this.mediaArray.indexOf(this.media);
+        if (currentMediaIndex == 0) {
+            this.prevButton.classList.add('!hidden');
+        } else if (currentMediaIndex == this.mediaArray.length - 1) {
+            this.nextButton.classList.add('!hidden');
+        } else {
+            this.prevButton.classList.remove('!hidden');
+            this.nextButton.classList.remove('!hidden');
+        }
+    }
+
+    private onFooterMediaItemPointerDown = (event: PointerEvent) => {
+        let newFooterMedia = event.currentTarget as HTMLElement;
+        if (newFooterMedia == null || !newFooterMedia.classList.contains('gallery-item') || newFooterMedia.classList.contains('active'))
+            return;
+        let newMediaId = newFooterMedia.getAttribute('id');
+        let newMedia = this.mediaArray.find(item => item.getAttribute('id') == newMediaId) as HTMLElement;
+        let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
+        this.changeMedia(footerMedia, newFooterMedia, newMedia);
+    }
+
+    private onPreviousButtonClick = (event: PointerEvent) => {
+        let currentMediaIndex = this.mediaArray.indexOf(this.media);
+        if (currentMediaIndex == 0)
+            return;
+        let newMedia = this.mediaArray[currentMediaIndex - 1] as HTMLElement;
+        let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
+        this.changeMedia(footerMedia, newMedia, newMedia);
+    }
+
+    private onNextButtonClick = (event: PointerEvent) => {
+        let currentMediaIndex = this.mediaArray.indexOf(this.media);
+        if (currentMediaIndex == this.mediaArray.length - 1)
+            return;
+        let newMedia = this.mediaArray[currentMediaIndex + 1] as HTMLElement;
+        let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
+        this.changeMedia(footerMedia, newMedia, newMedia)
+    }
+
+    private changeMedia(footerMedia: HTMLElement, newFooterMedia: HTMLElement, newMedia: HTMLElement) {
+        this.media.classList.replace('active', 'inactive');
+        footerMedia.classList.replace('active', 'inactive');
+        newMedia.classList.replace('inactive', 'active');
+        newFooterMedia.classList.replace('inactive', 'active');
+        this.media = newMedia;
+        let newMediaId = newMedia.getAttribute('id');
+        this.getOriginWidthAndHeight();
+        this.controlButtonsVisibilityToggle();
+        this.blazorRef.invokeMethodAsync('ChangeMedia', newMediaId);
     }
 }
 
