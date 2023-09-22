@@ -128,19 +128,20 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     public virtual Task<ChatId> GetRecordingChatId()
         => Task.FromResult(ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId);
 
-    public ValueTask SetRecordingChatId(ChatId chatId)
+    public ValueTask SetRecordingChatId(ChatId chatId, bool isPushToTalk = false)
         => ActiveChatsUI.UpdateActiveChats(activeChats => {
                 var oldChat = activeChats.FirstOrDefault(c => c.IsRecording);
                 if (oldChat.ChatId == chatId)
                     return activeChats;
 
-                if (!oldChat.ChatId.IsNone)
+                if (!oldChat.IsNone)
                     activeChats = activeChats.AddOrReplace(oldChat with {
                         IsRecording = false,
                         Recency = Now,
                     });
                 if (!chatId.IsNone) {
-                    var newChat = new ActiveChat(chatId, true, true, Now);
+                    var isListening = !isPushToTalk || activeChats.FirstOrDefault(c => c.ChatId == chatId).IsListening;
+                    var newChat = new ActiveChat(chatId, isListening, true, Now);
                     activeChats = activeChats.AddOrReplace(newChat)
                         .UpdateWhere(x => x.IsListening && x.ChatId != chatId, x => x with { IsListening = false });
                     _ = TuneUI.Play(Tune.BeginRecording);
