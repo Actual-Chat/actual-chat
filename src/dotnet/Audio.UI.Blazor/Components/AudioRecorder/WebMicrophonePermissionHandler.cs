@@ -26,12 +26,11 @@ public class WebMicrophonePermissionHandler : MicrophonePermissionHandler
     protected override Task<bool> Troubleshoot(CancellationToken cancellationToken)
         => Dispatcher.InvokeAsync(async () => {
             var model = new GuideModal.Model(false, GuideType.WebChrome);
-            var modalRef = await ModalUI.Show(model);
+            var modalRef = await ModalUI.Show(model, cancellationToken);
             try {
                 await modalRef.WhenClosed.WaitAsync(cancellationToken);
             }
             catch (OperationCanceledException) {
-                modalRef.Close(true);
                 return false;
             }
             return model.WasPermissionRequested;

@@ -14,18 +14,20 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
     public Task WhenReady => _hostAcceptor.WhenAccepted();
     public ModalHost Host => _hostAcceptor.Value;
 
-    public Task<ModalRef> Show<TModel>(TModel model, bool isFullScreen = false)
+    public Task<ModalRef> Show<TModel>(
+        TModel model,
+        CancellationToken cancellationToken = default)
         where TModel : class
-    {
-        var options = isFullScreen ? ModalOptions.FullScreen : ModalOptions.Default;
-        return Show(model, options);
-    }
+        => Show(model, ModalOptions.Default, cancellationToken);
 
-    public Task<ModalRef> Show<TModel>(TModel model, ModalOptions options)
+    public Task<ModalRef> Show<TModel>(
+        TModel model,
+        ModalOptions options,
+        CancellationToken cancellationToken = default)
         where TModel : class
     {
         var componentType = GetComponentType(model);
-        return Show(componentType, model, options).AsTask();
+        return Show(componentType, model, options, cancellationToken).AsTask();
     }
 
     // Private methods
@@ -33,7 +35,8 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
     private async ValueTask<ModalRef> Show<TModel>(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type componentType,
         TModel model,
-        ModalOptions options)
+        ModalOptions options,
+        CancellationToken cancellationToken)
         where TModel : class
     {
         await WhenReady.ConfigureAwait(true);
@@ -42,7 +45,10 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
             builder.AddAttribute(1, nameof(IModalView<TModel>.ModalModel), model);
             builder.CloseComponent();
         });
-        return Host.Show(options, model, content);
+        var modalRef = Host.Show(options, model, content);
+        cancellationToken.Register(() => modalRef.Close(true), true);
+
+        return modalRef;
     }
 
 #pragma warning disable IL2073
