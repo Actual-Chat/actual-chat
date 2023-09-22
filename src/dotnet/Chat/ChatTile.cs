@@ -10,7 +10,7 @@ public sealed partial class ChatTile
     [DataMember, MemoryPackOrder(2)] public Range<Moment> BeginsAtRange { get; init; }
     [DataMember, MemoryPackOrder(3)] public ApiArray<ChatEntry> Entries { get; init; } = ApiArray<ChatEntry>.Empty; // Always sorted by Id!
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsEmpty => Entries.Count == 0;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]

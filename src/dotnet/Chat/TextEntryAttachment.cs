@@ -20,7 +20,7 @@ public sealed partial record TextEntryAttachment(
 
     // Computed properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatId ChatId => EntryId.ChatId;
 
     public TextEntryAttachment() : this(Symbol.Empty) { }

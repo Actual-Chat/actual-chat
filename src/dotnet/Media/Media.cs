@@ -20,37 +20,37 @@ public sealed partial record Media : IHasId<MediaId>, IRequirementTarget
 
     // Computed properties
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ImmutableOptionSet Metadata {
         get => _metadata.Value;
         init => _metadata.Value = value;
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public long Length {
         get => GetMetadataValue(0L);
         init => SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string FileName {
         get => GetMetadataValue("");
         init => SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string ContentType {
         get => GetMetadataValue("");
         init => SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int Width {
         get => GetMetadataValue<int>();
         init => SetMetadataValue(value);
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int Height {
         get => GetMetadataValue<int>();
         init => SetMetadataValue(value);

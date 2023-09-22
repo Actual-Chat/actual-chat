@@ -13,7 +13,7 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(2)] public Moment LastShownAt { get; init; }
     [DataMember, MemoryPackOrder(3)] public string Origin { get; init; } = "";
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasUncompletedSteps
         => this is not {
             IsAvatarStepCompleted: true,

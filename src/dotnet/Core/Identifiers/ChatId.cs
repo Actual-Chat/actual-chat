@@ -26,11 +26,11 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     private readonly UserId UserId2;
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string Value => Id.Value;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatKind Kind => UserId1.IsNone ? ChatKind.Group : ChatKind.Peer;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]

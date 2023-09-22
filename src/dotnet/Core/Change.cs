@@ -18,7 +18,7 @@ public partial record Change<TCreate, TUpdate> : IChange
     [DataMember, MemoryPackOrder(2)]
     public bool Remove { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChangeKind Kind {
         get {
             this.RequireValid();

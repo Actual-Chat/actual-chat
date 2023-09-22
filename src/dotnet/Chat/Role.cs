@@ -15,9 +15,9 @@ public sealed partial record Role(
     [DataMember, MemoryPackOrder(5)] public SystemRole SystemRole { get; init; } = SystemRole.None;
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatId ChatId => Id.ChatId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public long LocalId => Id.LocalId;
 
     private Role() : this(RoleId.None) { }

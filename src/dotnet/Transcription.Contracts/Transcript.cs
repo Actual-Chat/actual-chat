@@ -21,11 +21,11 @@ public sealed partial record Transcript(
     public static Vector2 TimeMapEpsilon { get; } = new(0.1f, 0.1f);
     public static Transcript Empty { get; } = New();
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int Length => Text.Length;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Range<int> TextRange => new(0, Text.Length);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Range<float> TimeRange => TimeMap.YRange;
 
     public static Transcript New()

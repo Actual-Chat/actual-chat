@@ -14,11 +14,11 @@ public sealed partial record MentionMarkup(
     public static readonly Func<MentionMarkup, string> NameOrNotAvailableFormatter = m => "@" + m.NameOrNotAvailable;
     public static readonly Func<MentionMarkup, string> NameOrIdFormatter = m => "@" + m.NameOrId;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string QuotedName => Quote(Name);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string NameOrNotAvailable => Name.NullIfEmpty() ?? NotAvailableName;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string NameOrId => Name.NullIfEmpty() ?? Id;
 
     public override string Format()

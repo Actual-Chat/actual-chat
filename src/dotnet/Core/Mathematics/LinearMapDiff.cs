@@ -11,7 +11,7 @@ public readonly partial record struct LinearMapDiff(
 {
     public static LinearMapDiff None { get; } = default;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => Suffix.IsEmpty;
 
     public static LinearMapDiff New(LinearMap map, LinearMap baseMap, Vector2 epsilon)

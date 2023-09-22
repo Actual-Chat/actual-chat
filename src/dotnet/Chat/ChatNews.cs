@@ -12,6 +12,6 @@ public partial record struct ChatNews(
 {
     public static ChatNews None { get; } = default;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => this == default;
 }

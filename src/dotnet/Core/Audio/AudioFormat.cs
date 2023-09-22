@@ -6,7 +6,7 @@ namespace ActualChat.Audio;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record AudioFormat : MediaFormat
 {
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public override MediaType Type => MediaType.Audio;
 
     [DataMember(Order = 10), MemoryPackOrder(10)] public short ChannelCount { get; init; } = 1;

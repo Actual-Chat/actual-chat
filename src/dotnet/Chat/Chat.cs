@@ -37,10 +37,10 @@ public sealed partial record Chat(
     [DataMember, MemoryPackOrder(11)] public AuthorRules Rules { get; init; } = null!;
     [DataMember, MemoryPackOrder(12)] public Media.Media? Picture { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatKind Kind => Id.Kind;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasSingleAuthor => SystemTag == Constants.Chat.Tags.Notes;
 
     // This record relies on referential equality

@@ -16,7 +16,7 @@ public readonly partial record struct Trimmed<T>
     [DataMember, MemoryPackOrder(0)] public T Value { get; }
     [DataMember, MemoryPackOrder(1)] public T? Limit { get; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsTrimmed => Limit is { } t && EqualityComparer<T>.Default.Equals(Value, t);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]

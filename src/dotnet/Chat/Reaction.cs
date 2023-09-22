@@ -14,6 +14,6 @@ public sealed partial record Reaction : IHasId<Symbol>, IHasVersion<long>, IRequ
     [DataMember, MemoryPackOrder(4)] public Symbol EmojiId { get; init; }
     [DataMember, MemoryPackOrder(5)] public Moment ModifiedAt { get; init; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Emoji Emoji => Emoji.Get(EmojiId);
 }

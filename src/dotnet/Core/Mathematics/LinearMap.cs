@@ -13,7 +13,7 @@ public readonly partial struct LinearMap
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public float[] Data => _data ?? Array.Empty<float>();
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ReadOnlySpan<Vector2> Points {
         get {
             var data = _data;
@@ -26,15 +26,15 @@ public readonly partial struct LinearMap
         }
     }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int Length => _data == null ? 0 : _data.Length >> 1;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsEmpty => _data == null || _data.Length == 0;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsDegenerate => Data.Length < 4;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Range<float> XRange => IsEmpty ? default : new Range<float>(Points[0].X, Points[^1].X);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Range<float> YRange => IsEmpty ? default : new Range<float>(Points[0].Y, Points[^1].Y);
 
     public Vector2 this[int index] => Points[index];

@@ -16,7 +16,7 @@ public partial record ReactionSummary : IHasId<Symbol>, IHasVersion<long>, IRequ
     [DataMember, MemoryPackOrder(5)]
     public ImmutableList<AuthorId> FirstAuthorIds { get; init; } = ImmutableList<AuthorId>.Empty;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Emoji Emoji => Emoji.Get(EmojiId);
 
     public ReactionSummary IncrementCount(long diff = 1)

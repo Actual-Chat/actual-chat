@@ -23,7 +23,7 @@ public partial record Avatar(
     [DataMember, MemoryPackOrder(2)] public string Name { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public string PictureUrl { get; init; } = "";
     [DataMember, MemoryPackOrder(4)] public MediaId MediaId { get; init; }
-    [IgnoreDataMember, MemoryPackIgnore, JsonIgnore, Newtonsoft.Json.JsonIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Picture? Picture => Media.ToPicture(PictureUrl);
     [DataMember, MemoryPackOrder(5)] public string Bio { get; init; } = "";
 

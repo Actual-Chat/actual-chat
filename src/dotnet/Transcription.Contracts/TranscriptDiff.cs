@@ -9,7 +9,7 @@ public sealed partial record TranscriptDiff(
 {
     public static TranscriptDiff None { get; } = new(StringDiff.None, LinearMapDiff.None);
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => TextDiff.IsNone && TimeMapDiff.IsNone;
 
     public static TranscriptDiff New(Transcript transcript, Transcript baseTranscript)

@@ -18,11 +18,11 @@ public sealed partial class SearchPhrase
     [DataMember, MemoryPackOrder(0)] public string[] Terms { get; }
     [DataMember, MemoryPackOrder(1)] public bool MatchPrefixes { get; }
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string Text => _text ??= Terms.ToDelimitedString(" ");
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public Regex TermRegex => _termRegex ??= new Regex(GetTermRegexString(), RegexOptions.IgnoreCase);
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsEmpty => Terms.Length == 0;
 
     public SearchPhrase(string text, bool matchPrefixes, bool matchSuffixes)

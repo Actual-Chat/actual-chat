@@ -25,9 +25,9 @@ public partial record Author(
     [DataMember, MemoryPackOrder(5)] public Avatar Avatar { get; init; } = null!;
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatId ChatId => Id.ChatId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public long LocalId => Id.LocalId;
 
     private Author() : this(default, 0) { }

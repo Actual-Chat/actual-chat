@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 public sealed partial record SystemEntry : IUnionRecord<SystemEntryOption?>
 {
     // Union options
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public SystemEntryOption? Option { get; init; }
 
     [DataMember, MemoryPackOrder(0)]

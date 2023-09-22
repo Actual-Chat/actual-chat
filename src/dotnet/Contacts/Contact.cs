@@ -21,11 +21,11 @@ public sealed partial record Contact(
     [DataMember, MemoryPackOrder(4)] public bool IsPinned { get; init; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ContactKind Kind => Id.ChatId.Kind == ChatKind.Peer ? ContactKind.User : ContactKind.Chat;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public UserId OwnerId => Id.OwnerId;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatId ChatId => Id.ChatId;
 
     // Populated on backend on reads

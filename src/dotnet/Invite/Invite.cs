@@ -54,7 +54,7 @@ public sealed partial record Invite(
 public sealed partial record InviteDetails : IUnionRecord<InviteDetailsOption?>
 {
     // Union options
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public InviteDetailsOption? Option { get; init; }
 
     [DataMember, MemoryPackOrder(0)]

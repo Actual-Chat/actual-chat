@@ -39,7 +39,7 @@ public sealed partial record AccountFull(
     [DataMember, MemoryPackOrder(13)] public bool IsGreetingCompleted { get; init; }
 
     // Computed
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string FullName => $"{Name} {LastName}".Trim();
 
     // This record relies on referential equality

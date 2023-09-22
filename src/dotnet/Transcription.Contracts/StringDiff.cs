@@ -11,7 +11,7 @@ public readonly partial record struct StringDiff(
 {
     public static StringDiff None { get; } = default;
 
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, MemoryPackIgnore]
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => ReferenceEquals(Suffix, null);
 
     public static StringDiff New(string text, string baseText)
