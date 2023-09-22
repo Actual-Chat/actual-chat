@@ -6,7 +6,6 @@
 .ac-menu-host.has-overlay {
     @apply pointer-events-auto;
 }
-
 .ac-menu-overlay {
     @apply fixed inset-0 overflow-hidden z-menu-overlay;
     background-color: rgba(0,0,0,.32);
@@ -19,6 +18,9 @@
     @apply bg-01 rounded-lg;
     @apply pointer-events-auto;
 }
+.ac-menu {
+    animation: ac-menu-show 200ms ease-in-out;
+}
 body.wide .ac-menu {
     box-shadow: 0 10px 20px rgba(0,0,0,.3), 0 0 0 1px #eee;
 }
@@ -28,12 +30,24 @@ body.narrow .ac-menu {
     box-shadow: 0 10px 20px rgba(0,0,0,.75);
 }
 
+@keyframes ac-menu-show {
+    0% {
+        opacity: 0;
+        transform: translateY(1rem);
+    }
+    99% {
+        opacity: 1;
+        transform: translateY(0rem);
+    }
+}
+
 /* Hover menu container */
 .ac-menu-hover {
     @apply hidden absolute z-menu-hover;
     @apply p-1;
     @apply bg-01 rounded-full border border-bg-03;
     @apply pointer-events-auto;
+
 }
 .ac-menu-hover .btn.btn-round .btn-content {
     @apply min-h-8 min-w-8 max-h-8 min-h-8;
