@@ -30,6 +30,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     {
         if (_isPrerendering)
             return new byte[]?[keys.Length];
+
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
         var values = await JS.InvokeAsync<string?[]>(_getManyName, cancellationToken, new object[] { keys }).ConfigureAwait(false);
@@ -45,6 +46,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     {
         if (_isPrerendering)
             return;
+
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
         var keys = new string[updates.Count];
@@ -67,6 +69,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
     {
         if (_isPrerendering)
             return;
+
         if (!WhenReady.IsCompleted)
             await WhenReady.ConfigureAwait(false);
         await JS.InvokeVoidAsync(_clearName, cancellationToken).ConfigureAwait(false);
