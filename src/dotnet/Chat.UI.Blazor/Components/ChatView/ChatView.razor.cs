@@ -252,7 +252,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             addWelcomeMessage,
             TimeZoneConverter);
 
-        var isResultTheSame = chatMessages.Count == oldData.Items.Count
+        var isResultTheSame = !oldData.IsNone
+            && chatMessages.Count == oldData.Items.Count
             && chatMessages
                 .Zip(oldData.Items)
                 .TakeWhile(pair => ReferenceEquals(pair.First, pair.Second))
@@ -305,7 +306,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         var queryRange = (query.IsNone, oldData.Items.Count == 0) switch {
             (true, true) => new Range<long>(chatIdRange.End - (2 * PageSize), chatIdRange.End),
-            (true, false) => oldData.KeyRange.AsLongRange(),
+            (true, false) => new Range<long>(oldData.Items[0].Entry.LocalId, oldData.Items[^1].Entry.LocalId),
             _ => query.KeyRange
                 .AsLongRange()
                 .Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),

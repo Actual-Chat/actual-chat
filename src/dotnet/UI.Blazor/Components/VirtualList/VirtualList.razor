@@ -27,7 +27,7 @@
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
-        KeyRange = new (Data.Items[0].Key, Data.Items[^1].Key),
+        KeyRange = Data.KeyRange,
         SpacerSize = spacerSize,
         EndSpacerSize = endSpacerSize,
         RequestedStartExpansion = Data.RequestedStartExpansion,

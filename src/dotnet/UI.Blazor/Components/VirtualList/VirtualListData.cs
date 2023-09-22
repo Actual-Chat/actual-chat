@@ -9,7 +9,9 @@ public class VirtualListData<TItem>(IReadOnlyList<TItem> items)
         => ReferenceEquals(this, None);
 
     public Range<string> KeyRange
-        => new (items[0].Key, items[^1].Key);
+        => items.Count > 0
+        ? new Range<string>(items[0].Key, items[^1].Key)
+        : default;
 
     public IReadOnlyList<TItem> Items { get; } = items;
     public int? RequestedStartExpansion { get; init; }
