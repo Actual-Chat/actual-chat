@@ -2,6 +2,7 @@ Before release:
 
 - ~~Pre-rendered landing page [AY]~~
 - Add proper site image and description to _Host.cshtml [Andrey, Grisha]
+- Show <Recording> sign for streaming entries in chat list
 - Use max(activity date, contact creation date) in all sort modes to make sure new contacts go on top
 - Check all new text messages (esp. "Share" + troubleshooters) [AY]
 - Phone sign-in: enable it [Frol]
