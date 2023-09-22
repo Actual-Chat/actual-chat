@@ -173,6 +173,7 @@ export class VirtualList {
         this._renderState = {
             renderIndex: -1,
             query: VirtualListDataQuery.None,
+            keyRange: new Range<string>('',''),
             spacerSize: 0,
             endSpacerSize: 0,
             requestedStartExpansion: null,
