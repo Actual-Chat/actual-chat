@@ -1,17 +1,10 @@
 namespace ActualChat.Internal;
 
-internal sealed class LanguageHandle
+internal sealed class LanguageHandle(Symbol id, Symbol shortTitle, string title)
 {
     internal static readonly LanguageHandle None = new("", "?", "Unknown");
 
-    public readonly Symbol Id;
-    public readonly Symbol Code;
-    public readonly string Title;
-
-    public LanguageHandle(Symbol id, Symbol code, string title)
-    {
-        Id = id;
-        Code = code;
-        Title = title;
-    }
+    public readonly Symbol Id = id;
+    public readonly Symbol ShortTitle = shortTitle;
+    public readonly string Title = title;
 }

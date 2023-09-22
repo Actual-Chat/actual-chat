@@ -10,9 +10,9 @@
     <div class="c-text">
         <span>No messages here yet.</span>
         @if (m.PeerAccount is { } peerAccount) {
-            <span>Say "Hi" to <AccountName UserSid="@m.PeerAccount.Id"/>!</span>
+            <span>Say "Hi" to <AccountName UserSid="@peerAccount.Id"/>!</span>
         } else {
-            <span>Be the first one</span>
+            <span>Post the first one!</span>
         }
     </div>
 </div>
