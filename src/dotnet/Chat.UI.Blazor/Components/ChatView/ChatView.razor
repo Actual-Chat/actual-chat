@@ -3,6 +3,7 @@
 @using ActualChat.Chat.UI.Blazor.Events
 
 <OnUIEvent TEvent="@NavigateToChatEntryEvent" Handler="@OnNavigateToChatEntry" />
+<button @onclick="Start">Start</button>
 <VirtualList
     @key="@Chat.Id.Value"
     Class="chat-view"
@@ -27,3 +28,18 @@
         ChatSid="@Chat.Id"
         ChatView="@this" />
 </RenderIntoStack>
+
+@code {
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    private async Task Start() {
+        var num = 0;
+        while (true) {
+            num++;
+            var s = string.Join(Environment.NewLine, Enumerable.Range(0, 10).Select(_ => num));
+            var command = new Chats_UpsertTextEntry(Session, Chat.Id, null, s);
+            var entry = await UICommander.Call(command, CancellationToken.None).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(3), DisposeToken);
+        }
+    }
+}

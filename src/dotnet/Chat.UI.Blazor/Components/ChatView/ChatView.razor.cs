@@ -122,24 +122,24 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (DisposeToken.IsCancellationRequested)
             return;
 
-        var uri = History.Uri;
-        var fragment = new LocalUrl(uri).ToAbsolute(History.UrlMapper).ToUri().Fragment.TrimStart('#');
-        if (long.TryParse(fragment, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
-            var uriWithoutFragment = Regex.Replace(uri, "#.*$", "");
-            var cts = new CancellationTokenSource();
-            var cancellationToken = cts.Token;
-            _ = ForegroundTask.Run(async () => {
-                try {
-                    await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
-                    _ = History.NavigateTo(uriWithoutFragment, true);
-                }
-                finally {
-                    cts.CancelAndDisposeSilently();
-                }
-            }, CancellationToken.None);
-            History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, uri));
-            NavigateToEntry(entryId);
-        }
+        // var uri = History.Uri;
+        // var fragment = new LocalUrl(uri).ToAbsolute(History.UrlMapper).ToUri().Fragment.TrimStart('#');
+        // if (long.TryParse(fragment, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entryId) && entryId > 0) {
+        //     var uriWithoutFragment = Regex.Replace(uri, "#.*$", "");
+        //     var cts = new CancellationTokenSource();
+        //     var cancellationToken = cts.Token;
+        //     _ = ForegroundTask.Run(async () => {
+        //         try {
+        //             await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+        //             _ = History.NavigateTo(uriWithoutFragment, true);
+        //         }
+        //         finally {
+        //             cts.CancelAndDisposeSilently();
+        //         }
+        //     }, CancellationToken.None);
+        //     History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, uri));
+        //     NavigateToEntry(entryId);
+        // }
     }
 
     // Private methods
@@ -196,9 +196,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 continue;
 
             // Scroll to the latest Author entry - e.g.m when author submits the new one
-            _initialReadEntryLid = entry.LocalId;
-            entryLid = entry.LocalId;
-            mustScrollToEntry = true;
+            // _initialReadEntryLid = entry.LocalId;
+            // entryLid = entry.LocalId;
+            // mustScrollToEntry = true;
         }
 
         var isHighlighted = false;
@@ -260,19 +260,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             scrollToKey);
 
         var visibility = ItemVisibility.Value;
-        // Keep most recent entry as read if end anchor is visible
-        if (visibility != ChatViewItemVisibility.Empty
-            && visibility.IsEndAnchorVisible
-            && hasVeryLastItem
-            && chatEntries.Count > 0) {
-            var lastEntryId = chatEntries[^1].Id.LocalId;
-            if (ReadPositionState != null) {
-                if (lastEntryId > readEntryLid)
-                    ReadPositionState.Value = new ReadPosition(chatId,  lastEntryId);
-                else if (readEntryLid >= chatIdRange.End)
-                    ReadPositionState.Value = new ReadPosition(chatId,chatIdRange.End - 1);
-            }
-        }
+        // // Keep most recent entry as read if end anchor is visible
+        // if (visibility != ChatViewItemVisibility.Empty
+        //     && visibility.IsEndAnchorVisible
+        //     && hasVeryLastItem
+        //     && chatEntries.Count > 0) {
+        //     var lastEntryId = chatEntries[^1].Id.LocalId;
+        //     if (ReadPositionState != null) {
+        //         if (lastEntryId > readEntryLid)
+        //             ReadPositionState.Value = new ReadPosition(chatId,  lastEntryId);
+        //         else if (readEntryLid >= chatIdRange.End)
+        //             ReadPositionState.Value = new ReadPosition(chatId,chatIdRange.End - 1);
+        //     }
+        // }
 
         if (isHighlighted) {
             // highlight entry when it has already been loaded
@@ -335,28 +335,28 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private void OnItemVisibilityChanged(VirtualListItemVisibility virtualListItemVisibility)
     {
-        var identity = virtualListItemVisibility.ListIdentity;
-        if (!OrdinalEquals(identity, Chat.Id.Value)) {
-            Log.LogWarning(
-                $"{nameof(OnItemVisibilityChanged)} received wrong identity {{Identity}} while expecting {{ActualIdentity}}",
-                identity,
-                Chat.Id.Value);
-            return;
-        }
-
-        _itemVisibilityUpdateHasReceived = true;
-        var lastItemVisibility = ItemVisibility.Value;
-        var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
-        if (itemVisibility.ContentEquals(lastItemVisibility))
-            return;
-
-        _itemVisibility.Value = itemVisibility;
-        var readPositionState = ReadPositionState;
-        if (itemVisibility.IsEmpty || readPositionState == null)
-            return;
-
-        if (readPositionState.Value.EntryLid < itemVisibility.MaxEntryLid)
-            readPositionState.Value = new ReadPosition(Chat.Id, itemVisibility.MaxEntryLid);
+        // var identity = virtualListItemVisibility.ListIdentity;
+        // if (!OrdinalEquals(identity, Chat.Id.Value)) {
+        //     Log.LogWarning(
+        //         $"{nameof(OnItemVisibilityChanged)} received wrong identity {{Identity}} while expecting {{ActualIdentity}}",
+        //         identity,
+        //         Chat.Id.Value);
+        //     return;
+        // }
+        //
+        // _itemVisibilityUpdateHasReceived = true;
+        // var lastItemVisibility = ItemVisibility.Value;
+        // var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
+        // if (itemVisibility.ContentEquals(lastItemVisibility))
+        //     return;
+        //
+        // _itemVisibility.Value = itemVisibility;
+        // var readPositionState = ReadPositionState;
+        // if (itemVisibility.IsEmpty || readPositionState == null)
+        //     return;
+        //
+        // if (readPositionState.Value.EntryLid < itemVisibility.MaxEntryLid)
+        //     readPositionState.Value = new ReadPosition(Chat.Id, itemVisibility.MaxEntryLid);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
@@ -372,6 +372,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private async Task<bool> ComputeIsViewportAboveUnreadEntry(IComputedState<bool> state, CancellationToken cancellationToken)
     {
         var readPositionState = ReadPositionState;
+
         var chatPosition = readPositionState != null ? await readPositionState.Use(cancellationToken) : null;
         var readEntryLid = chatPosition?.EntryLid ?? 0;
         var visibility = await ItemVisibility.Use(cancellationToken);
