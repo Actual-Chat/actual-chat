@@ -252,17 +252,26 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             addWelcomeMessage,
             TimeZoneConverter);
 
-        var result = new VirtualListData<ChatMessageModel>(chatMessages) {
-            HasVeryFirstItem = hasVeryFirstItem,
-            HasVeryLastItem = hasVeryLastItem,
-            ScrollToKey = scrollToKey,
-            RequestedStartExpansion = query.IsNone
-                ? null
-                : query.ExpandStartBy,
-            RequestedEndExpansion = query.IsNone
-                ? null
-                : query.ExpandEndBy,
-        };
+        var isResultTheSame = chatMessages.Count == oldData.Items.Count
+            && chatMessages
+                .Zip(oldData.Items)
+                .TakeWhile(pair => ReferenceEquals(pair.First, pair.Second))
+                .Count()
+            == chatMessages.Count;
+
+        var result = isResultTheSame && scrollToKey == oldData.ScrollToKey
+            ? oldData
+            : new VirtualListData<ChatMessageModel>(chatMessages) {
+                HasVeryFirstItem = hasVeryFirstItem,
+                HasVeryLastItem = hasVeryLastItem,
+                ScrollToKey = scrollToKey,
+                RequestedStartExpansion = query.IsNone
+                    ? null
+                    : query.ExpandStartBy,
+                RequestedEndExpansion = query.IsNone
+                    ? null
+                    : query.ExpandEndBy,
+            };
 
         var visibility = ItemVisibility.Value;
         // Keep most recent entry as read if end anchor is visible
