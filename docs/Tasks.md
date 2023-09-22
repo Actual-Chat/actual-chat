@@ -1,5 +1,5 @@
 Before release:
-
+ 
 - ~~Pre-rendered landing page [AY]~~
 - Add proper site image and description to _Host.cshtml [Andrey, Grisha]
 - Show <Recording> sign for streaming entries in chat list
@@ -12,7 +12,6 @@ Before release:
 - ~~New chat: 2-page layout [DF]~~
 - Chat: empty chat must contain invite link + splash [DF]
 - Audio activity: blinking "Listen" [Andrey]
-- Onboarding: pre-create chats page
 - Onboarding: use stored phone number [Frol]
 - ~~Service worker / asset caching [EK]~~
 - ~~Push-to-talk must not change the playback state [AY]~~
@@ -22,27 +21,31 @@ Before release:
 - ~~New Active Chats UX [AY]~~
 
 - Critical bugs:
-  - Share into the app: sometimes auto-navigation instantly closes share modal [DF] 
-  - 2 "Notes" chats on dev / no upgrade on prod [AK]
-  - Android: echo problem is still there, but only sometimes on S23
-  - Android: language switch triggers "No mic access" modal [AK]
-  - "No mic access" -> "OK" shouldn't be there / should have "X" instead
-  - "Open [Settings] to grant microphone access permission" should be a separate bullet point there
-  - ~~iOS: background playback issues [AK]~~
-  - ~~iOS 16.1.1 - exit on startup [AK]~~
-  - ~~Hot restart / WebView close: make sure the old view doesn't record [AK]~~
-  - ~~Audio: use mono playback on Android? [AK]~~
-  - "Verify phone" hangs the UI [Frol]
-  - ~~Audio on iPhone: the latest prod version still triggers "no access to mic" sometimes [AK]~~
-  - Investigate white screen issue [AY] 
+    - Share into the app: sometimes auto-navigation instantly closes share modal [DF]
+    - 2 "Notes" chats on dev / no upgrade on prod [AK]
+    - Android: echo problem is still there, but only sometimes on S23
+    - Android: language switch triggers "No mic access" modal [AK]
+    - "No mic access" -> "OK" shouldn't be there / should have "X" instead
+    - "Open [Settings] to grant microphone access permission" should be a separate bullet point there
+    - ~~iOS: background playback issues [AK]~~
+    - ~~iOS 16.1.1 - exit on startup [AK]~~
+    - ~~Hot restart / WebView close: make sure the old view doesn't record [AK]~~
+    - ~~Audio: use mono playback on Android? [AK]~~
+    - "Verify phone" hangs the UI [Frol]
+    - ~~Audio on iPhone: the latest prod version still triggers "no access to mic" sometimes [AK]~~
+    - Investigate white screen issue [AY]
 - Important, but not critical bugs:
-  - Chat: scrolling issues [AK]
-  - Audio: use MediaStreamAudioSourceNode for EAC workaround instead of Audio element [AK]
+    - Chat: scrolling issues [AK]
+    - Audio: use MediaStreamAudioSourceNode for EAC workaround instead of Audio element [AK]
 
-ASAP:
+Next week:
 
+- Onboarding: pre-create chats page
+- Onboarding: request mic access permission
+- Onboarding: request notification permission
+- Onboarding: request contacts permission
 - Check what's off w/ tracing / activities
-- HEIC support
+- HEIC support?
 
 Near-term:
 
