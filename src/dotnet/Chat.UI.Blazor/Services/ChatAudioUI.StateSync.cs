@@ -150,7 +150,6 @@ public partial class ChatAudioUI
                 : ChatEntryId.None;
             await ChatEditorUI.HideRelatedEntry().ConfigureAwait(false);
 
-            ChatPlayers.StopPlayback();
             await AudioRecorder.StartRecording(chatId, repliedChatEntryId, cancellationToken).ConfigureAwait(false);
 
             var whenChanged = ForegroundTask.Run(async () => {
