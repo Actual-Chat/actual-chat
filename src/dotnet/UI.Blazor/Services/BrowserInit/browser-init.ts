@@ -253,23 +253,19 @@ export class BrowserInit {
         if (!appConnectionStateDiv)
             return;
 
-        if (appConnectionStateDiv.childElementCount === 0) {
+        if (state) {
             appConnectionStateDiv.innerHTML = `
                 <div class="c-bg"></div>
                 <div class="c-circle-blur"></div>
                 <div class="c-circle">
-                    <img draggable="false" src="/dist/images/loading-cat.svg" alt="Loading...">
-                    <span class="c-text">Reconnecting...</span>
+                    <img draggable="false" src="/dist/images/loading-cat.svg" alt="">
+                    <span class="c-text">${state}</span>
                 </div>
-            `
-        }
-
-        const textDiv = appConnectionStateDiv.querySelector('.c-text');
-        if (state) {
-            textDiv.innerHTML = state;
-            appConnectionStateDiv.style.display = null;
+            `;
+            appConnectionStateDiv.style.display = '';
         }
         else {
+            appConnectionStateDiv.innerHTML = '';
             appConnectionStateDiv.style.display = 'none';
         }
     }
