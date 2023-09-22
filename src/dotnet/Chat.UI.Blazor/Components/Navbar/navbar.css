@@ -80,7 +80,7 @@ body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
 .navbar-item {
     @apply relative;
     @apply flex-x justify-start items-center gap-x-1;
-    @apply h-12;
+    @apply min-h-12 h-12;
     @apply rounded-lg;
 }
 .navbar-item .navbar-item-content {
