@@ -49,7 +49,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     protected override async Task OnInitializedAsync()
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
-        _messageContext = new ChatMessageContext(new ChatMessageServices(Services), Chat);
+        _messageContext = new ChatMessageContext(new ChatMessageServices(Services), Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
             NavigateToEntryLid = StateFactory.NewMutable(

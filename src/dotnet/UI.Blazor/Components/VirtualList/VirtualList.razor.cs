@@ -45,6 +45,11 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     // trigger StateHasChanged on parent component.
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
 
+    protected override Task OnParametersSetAsync()
+    {
+        return base.OnParametersSetAsync();
+    }
+
     [JSInvokable]
     public Task RequestData(VirtualListDataQuery query)
     {

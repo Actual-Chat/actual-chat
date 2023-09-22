@@ -1,27 +1,30 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Invite
-@inherits ComputedStateComponent<ChatWelcomeMessage.Model>
+@inherits ComputedStateComponent<ChatWelcomeMessage.Model?>
 
 @{
     var m = State.ValueOrDefault;
-    var link = m?.Link;
+    if (m == null)
+        return;
+    var chat = m.Chat;
+    var link = m.Link;
 }
 
 <div class="message-wrapper">
     <div class="chat-welcome-message">
         <div class="c-header">
             <div class="c-chat-icon">
-                <ChatIcon Chat="@Chat"/>
+                <ChatIcon Chat="@chat"/>
             </div>
-            <div class="c-chat-title">@Chat.Title</div>
+            <div class="c-chat-title">@chat.Title</div>
         </div>
         <div class="c-content">
             Welcome to the beginning of the chat. You could share it with your contacts:
         </div>
         @if (link.HasValue) {
-            var description = m!.IsJoinLink
-                ? $"\"{Chat.Title}\" on Actual Chat join link"
-                : $"\"{Chat.Title}\" on Actual Chat";
+            var description = m.IsJoinLink
+                ? $"\"{chat.Title}\" on Actual Chat join link"
+                : $"\"{chat.Title}\" on Actual Chat";
             var hint = m.IsJoinLink ? "Invite link" : "Public link";
             <div class="c-link">
                 <div class="c-link-url">
@@ -51,30 +54,36 @@
 </div>
 
 @code {
-    [Inject] private Session Session { get; set; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IRoles Roles { get; init; } = null!;
+    // Shortcuts
+    private ChatMessageServices MessageServices => Context.Services;
+    private Session Session => MessageServices.Session;
+    private History History => MessageServices.History;
+    private IAuthors Authors => MessageServices.Authors;
+    private IChats Chats => MessageServices.Chats;
+    private ChatUI ChatUI => MessageServices.ChatUI;
+
+    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
+
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
 
-    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
-    private Chat Chat => Context.Chat;
-
     [Parameter, EditorRequired] public ChatMessageContext Context { get; set; } = null!;
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var (link, isJoinLink) =  await GetLink(cancellationToken);
-        return new() {
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var chat = await Chats.Get(Session, Context.ChatId, cancellationToken);
+        if (chat == null)
+            return null;
+        var (link, isJoinLink) =  await GetLink(chat, cancellationToken);
+        return new(chat) {
             Link = link?.ToDisplayUrl(UrlMapper),
             IsJoinLink = isJoinLink,
         };
     }
 
-    private async Task<(LocalUrl?, bool)> GetLink(CancellationToken cancellationToken) {
-        if (Chat.IsPublic)
-            return (Links.Chat(Chat.Id), false);
-        var invite = await Invites.GetOrGenerateChatInvite(Session, Chat.Id, cancellationToken);
+    private async Task<(LocalUrl?, bool)> GetLink(Chat chat, CancellationToken cancellationToken) {
+        if (chat.IsPublic)
+            return (Links.Chat(chat.Id), false);
+        var invite = await Invites.GetOrGenerateChatInvite(Session, chat.Id, cancellationToken);
         if (invite != null)
             return (Links.Invite(Links.InviteLinkFormat.JoinChat, invite.Id), true);
         return (null, false);
@@ -83,7 +92,7 @@
     private void OnShareClick(string link, string description)
         => ShareUI.ShareLink(link, "Share chat", description);
 
-    public record Model {
+    public record Model(Chat Chat) {
         public DisplayUrl? Link { get; init; }
         public bool IsJoinLink { get; init; }
     }
