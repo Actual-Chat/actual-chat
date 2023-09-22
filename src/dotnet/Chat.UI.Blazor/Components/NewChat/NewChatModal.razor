@@ -11,15 +11,16 @@
     HasCloseButton="true"
     NarrowViewSettings="@_narrowViewSettings">
     <Body>
-        @if (_chat == null) {
+        @if (_page == Page.Props) {
             <NewChatModalProps
                 ButtonsSlotName="@_buttonsSlotName"
                 ChatCreated="OnChatCreated"
                 CloseRequested="OnClose" />
-        } else {
+        }
+        else if (_page == Page.Members){
             <NewChatModalMembers
                 ButtonsSlotName="@_buttonsSlotName"
-                ChatSid="@_chat.Id"
+                ChatSid="@_chat!.Id"
                 MembersAdded ="OnClose"
                 SkipRequested="OnClose" />
         }
@@ -35,8 +36,10 @@
     private readonly string _buttonsSlotName = Guid.NewGuid().ToString();
 
     private Chat? _chat;
+    private Page _page = Page.Props;
 
     [Inject] private History History { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -44,9 +47,17 @@
     protected override void OnInitialized()
         => _ = NavigateToChatWhenClosed();
 
-    private void OnChatCreated(Chat chat) {
+    private async void OnChatCreated(Chat chat) {
         _chat = chat;
-        StateHasChanged();
+        var peopleContacts = await ChatListUI.ListAllUnordered(ChatListFilter.People);
+        if (peopleContacts.Count == 0) {
+            // If there is no people to add, close the dialog.
+            OnClose();
+        } else {
+            _page = Page.Members;
+            // Re-render component to show Add members page.
+            StateHasChanged();
+        }
     }
 
     private void OnClose()
@@ -61,4 +72,5 @@
     }
 
     public sealed record Model;
+    private enum Page { Props, Members }
 }
