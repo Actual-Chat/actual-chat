@@ -67,9 +67,7 @@ export class TuneUI {
                 return;
             }
 
-            await Promise.all([
-                                   this.playVibration(tune, tuneInfo),
-                                   this.playSound(tune, tuneInfo)]);
+            await Promise.all([this.playVibration(tune, tuneInfo), this.playSound(tune, tuneInfo)]);
         } catch (e) {
             warnLog?.log('Failed yo play tune', tune, e);
         }
@@ -90,7 +88,7 @@ export class TuneUI {
         }
 
         for (let i = 0; i < tuneInfo.vibration.length; i++) {
-            const durationMs = tuneInfo[i];
+            const durationMs = tuneInfo.vibration[i];
             if (i % 2 == 0)
                 await this.vibrateAndWait(durationMs);
             else

@@ -334,9 +334,10 @@ public partial class ChatAudioUI
 
             var isPreviousCancelled = activeUntil > prevActiveUntil;
             var lastBeepAt = Moment.Max(activeUntil, _nextBeep.Value?.At ?? Moment.MinValue);
-            var nextBeepAt = lastBeepAt + AudioSettings.RecordingReminderInterval;
-            change.Invalidate(nextBeepAt - Now);
+            var nextBeepAt = lastBeepAt + AudioSettings.RecordingBeepInterval;
+            change.Invalidate(nextBeepAt - Now); // force invalidation after interval
             _nextBeep.Value = isRecording ? new(nextBeepAt, isPreviousCancelled) : null;
+            prevActiveUntil = activeUntil;
         }
     }
 
@@ -376,10 +377,7 @@ public partial class ChatAudioUI
     {
         var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
         var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false);
-        var isActive = activeUntil > Now;
         var isRecording = !recordingChatId.IsNone;
-        if (isActive)
-            Computed.GetCurrent()!.Invalidate(activeUntil - Now + TimeSpan.FromMilliseconds(1));
         return new(isRecording, activeUntil);
     }
 
