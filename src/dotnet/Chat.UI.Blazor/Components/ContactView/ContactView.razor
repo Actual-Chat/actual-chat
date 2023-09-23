@@ -1,6 +1,5 @@
 @using ActualChat.Search
 @namespace ActualChat.Chat.UI.Blazor.Components
-
 @{
     var chatInfo = ChatInfo;
     var lastTextEntry = ChatInfo.LastTextEntry;
@@ -21,7 +20,12 @@
                         ShowDetailsOnClick="false"/>:
                 </span>
             }
-            @chatInfo.LastTextEntryText
+            @if (lastTextEntry.IsStreaming) {
+                <RecordingTextSkeleton/>
+            }
+            else {
+                @chatInfo.LastTextEntryText
+            }
         </div>
     }
 </div>

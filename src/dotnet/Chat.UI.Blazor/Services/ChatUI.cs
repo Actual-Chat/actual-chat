@@ -118,9 +118,13 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
 
         var lastTextEntryText = "";
         if (news.LastTextEntry is { } lastTextEntry) {
-            var chatMarkupHub = ChatMarkupHubFactory[chatId];
-            var markup = await chatMarkupHub.GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken).ConfigureAwait(false);
-            lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
+            if (lastTextEntry.IsStreaming)
+                lastTextEntryText = Constants.Messages.RecordingSkeleton;
+            else {
+                var chatMarkupHub = ChatMarkupHubFactory[chatId];
+                var markup = await chatMarkupHub.GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken).ConfigureAwait(false);
+                lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
+            }
         }
 
         var result = new ChatInfo(contact) {

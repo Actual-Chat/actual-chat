@@ -7,9 +7,10 @@
     var hasSelection = SelectionUI.HasSelection.Value;
     var isForwarder = ChatEntry.ForwardedAuthorId.IsNone;
     var showPlayButton = ScreenSize.IsNarrow() && entry.AudioEntryId != null && !hasSelection;
-    var canDelete = this is { CanWrite: true, IsOwnEntry: true }
-                    && ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false }
-                    && !hasSelection;
+    var canDelete =
+        this is { CanWrite: true, IsOwnEntry: true }
+        && ChatEntry is { Kind: ChatEntryKind.Text, IsStreaming: false }
+        && !hasSelection;
     var canEdit = canDelete && isForwarder;
     var messageLink = Links.Chat(entry.Id).ToAbsolute(UrlMapper);
     var isSelected = SelectionUI.IsSelected(entry.Id);
@@ -135,18 +136,18 @@
     }
 </div>
 
-@code{
+@code {
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
+    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
     [Inject] private ToastUI ToastUI { get; init; } = null!;
+    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
+    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
+    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public string? ClickedLinkUrl { get; set; }
@@ -192,6 +193,7 @@
                 continue;
             if (chatEntry.Content.IsNullOrEmpty())
                 continue;
+
             sb.AppendLine(chatEntry.Content);
         }
 

@@ -5,10 +5,8 @@
     private CancellationTokenSource? _periodChangedTokenSource;
     private bool _isDisposed;
 
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-
     [Parameter, EditorRequired] public TimeSpan Period { get; set; }
-    [Parameter] public EventCallback Tick { get; set; }
+    [Parameter, EditorRequired] public EventCallback Tick { get; set; }
 
     protected override void OnParametersSet() {
         if (_isDisposed || _period == Period)
@@ -25,7 +23,7 @@
         var cancellationToken = _periodChangedTokenSource.Token;
         ForegroundTask.Run(async () => {
             while (!cancellationToken.IsCancellationRequested) {
-                await Clocks.CpuClock.Delay(Period, cancellationToken);
+                await Task.Delay(Period, cancellationToken);
                 await Tick.InvokeAsync();
             }
         }, cancellationToken);

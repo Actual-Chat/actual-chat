@@ -92,6 +92,11 @@ public static partial class Constants
         public static TimeSpan OfflineTimeout { get; } = TimeSpan.FromMinutes(10);
     }
 
+    public static class Messages
+    {
+        public static readonly string RecordingSkeleton = "🎙…";
+    }
+
     // Diagnostics, etc.
 
     public static class Sentry

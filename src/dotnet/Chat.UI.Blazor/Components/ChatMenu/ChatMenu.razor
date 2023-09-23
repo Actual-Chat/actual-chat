@@ -14,7 +14,7 @@
     }
     <ChatMenuPin/>
     <ChatMenuListen/>
-    @if (_listKind == ChatListKind.Active && !m.IsSelected) {
+    @if (_listKind == ChatListKind.Active) {
         <ChatMenuRemoveFromActiveChats/>
     }
     @if (rules.CanLeave()) {

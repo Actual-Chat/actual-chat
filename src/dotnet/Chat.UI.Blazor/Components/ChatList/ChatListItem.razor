@@ -38,7 +38,12 @@ else {
                                     <AuthorName AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
                                 </span>
                             }
-                            @chatInfo.LastTextEntryText
+                            @if (lastTextEntry.IsStreaming) {
+                                <RecordingTextSkeleton/>
+                            }
+                            else {
+                                @chatInfo.LastTextEntryText
+                            }
                         </div>
                     }
                 </div>

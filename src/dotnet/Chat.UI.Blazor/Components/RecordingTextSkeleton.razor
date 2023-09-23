@@ -1,0 +1,11 @@
+<UITimer Period="@TimeSpan.FromSeconds(2)" Tick="@OnTick"></UITimer>
+@ContentVariants[_tickCount % ContentVariants.Length]
+
+@code {
+    private static readonly string[] ContentVariants = Enumerable.Range(0, 4)
+        .Select(i => "🎙" + new string('.', i))
+        .ToArray();
+    private int _tickCount;
+
+    private void OnTick() => _tickCount++;
+}
