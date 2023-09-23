@@ -10,5 +10,5 @@ public sealed class AudioSettings
     public TimeSpan IdleRecordingCheckInterval { get; set; } = TimeSpan.FromSeconds(1);
     public TimeSpan IdleListeningTimeout { get; set; } = TimeSpan.FromMinutes(5);
     public TimeSpan IdleListeningCheckInterval { get; set; } = TimeSpan.FromSeconds(3); // not critical to stop at exact time for playback
-    public TimeSpan RecordingReminderInterval { get; set; } = TimeSpan.FromMinutes(1);
+    public TimeSpan RecordingBeepInterval { get; set; } = TimeSpan.FromMinutes(1);
 }
