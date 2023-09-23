@@ -3,8 +3,7 @@
 @{
     if (ReferenceEquals(_account, AccountFull.Loading))
         return;
-    var isPhoneValid = PhoneValidation.IsValid(_form.Code, _form.Number);
-    var phone = _form.Phone;
+    var phone = PhoneFormatterExt.FromReadable(_form.Phone);
     var isPhoneVerified = _account.HasVerifiedPhone();
 }
 
@@ -28,54 +27,30 @@
                 <TextBox @bind-Value="@_form.LastName" Id="@_form.LastNameFieldId" Autofocus="true"/>
             </FormSection>
 
-            <div class="flex-x gap-x-4 items-center">
-                <FormSection
-                    For="() => _form.Code"
-                    InputId="@_form.CodeFieldId"
-                    Label="Code"
-                    Class="w-20"
-                    IsLabelInsideInput="true"
-                    IsRequired="true">
-                    @* TODO: seems like we need custom country code control *@
+            <FormSection
+                For="() => _form.Phone"
+                InputId="@_form.PhoneFieldId"
+                Label="Phone "
+                Class="grow"
+                IsLabelInsideInput="true"
+                IsRequired="true">
+                <ChildContent>
                     <InputText
-                        id="@_form.CodeFieldId"
-                        @bind-Value="_form.Code"
-                        list="phoneCodes"
-                        pattern="@PhoneValidation.CountryCodePattern"
-                        onfocus="this.select()"
-                        disabled="@_account.HasVerifiedPhone()"/>
-                    <datalist id="phoneCodes">
-                        @foreach (var phoneCode in PhoneCodes.List) {
-                            <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
-                        }
-                    </datalist>
-                </FormSection>
-                <FormSection
-                    For="() => _form.Number"
-                    InputId="@_form.NumberFieldId"
-                    Label="Phone number"
-                    Class="grow"
-                    IsLabelInsideInput="true"
-                    IsRequired="true">
-                    <ChildContent>
-                        <InputText
-                            id="@_form.NumberFieldId"
-                            @bind-Value="_form.Number"
-                            autocomplete="tel-national"
-                            type="tel"
-                            pattern="@PhoneValidation.NumberPattern"
-                            inputmode="tel"
-                            disabled="@isPhoneVerified"/>
-                    </ChildContent>
-                    <Right>
-                        @if (isPhoneValid) {
-                            <VerificationStatus IsVerified="isPhoneVerified"/>
-                        }
-                    </Right>
-                </FormSection>
-            </div>
+                        id="@_form.PhoneFieldId"
+                        @bind-Value="_form.Phone"
+                        autocomplete="tel"
+                        type="tel"
+                        inputmode="tel"
+                        disabled="@isPhoneVerified"/>
+                </ChildContent>
+                <Right>
+                    @if (phone.IsValid) {
+                        <VerificationStatus IsVerified="isPhoneVerified"/>
+                    }
+                </Right>
+            </FormSection>
 
-            @if (isPhoneValid && !isPhoneVerified) {
+            @if (phone.IsValid && !isPhoneVerified) {
                 <PhoneVerifier Phone="@phone.Value" Class="my-3" Verified="OnPhoneVerified"/>
             }
 
@@ -128,10 +103,8 @@
         _form.Name = _account.Name;
         _form.LastName = _account.LastName;
         _form.Email = _account.Email;
-        if (!_account.Phone.IsNone) { // just in case it's not filled from external provider (Apple)
-            _form.Code = PhoneCodes.GetByCode(_account.Phone.Code)?.DisplayCode ?? PhoneCodes.Default.DisplayCode;
-            _form.Number = _account.Phone.Number;
-        }
+        _form.Phone = !_account.Phone.IsNone ? _account.Phone.ToReadable() : PhoneCodes.Default.DisplayCode;
+
         _form.CopyToBase();
     }
 
@@ -170,11 +143,8 @@
         public string LastNameFieldId { get; set; } = "";
         public string Email { get; set; } = "";
         public string EmailFieldId { get; set; } = "";
-        [Required, CountryCode] public string Code { get; set; } = PhoneCodes.Default.DisplayCode;
-        public string CodeFieldId { get; set; } = "";
-        [Required, PhoneNumber] public string Number { get; set; } = "";
-        public string NumberFieldId { get; set; } = "";
-        public Phone Phone => new(Code, Number);
+        public string Phone { get; set; } = "";
+        public string PhoneFieldId { get; set; } = "";
 
         public FormModel(ComponentIdGenerator? componentIdGenerator)
             : base("own-account-editor", componentIdGenerator)

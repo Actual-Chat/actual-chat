@@ -43,43 +43,20 @@
             Model="@_stepModel"
             OnValidSubmit="OnSignInWithPhone">
             <DataAnnotationsValidator/>
-            <div class="flex-x gap-x-4 items-center">
-                <FormSection
-                    For="() => _stepModel.Code"
-                    InputId="@_stepModel.CodeFieldId"
-                    Label="Code"
-                    Class="w-20"
-                    IsLabelInsideInput="true"
-                    IsRequired="true">
-                    @* TODO: seems like we need custom country code control *@
-                    <InputText
-                        id="@_stepModel.CodeFieldId"
-                        @bind-Value="_stepModel.Code"
-                        list="phoneCodes"
-                        pattern="@PhoneValidation.CountryCodePattern"
-                        onfocus="this.select()"/>
-                    <datalist id="phoneCodes">
-                        @foreach (var phoneCode in PhoneCodes.List) {
-                            <option value="@phoneCode.DisplayCode">@phoneCode.Country (@phoneCode.DisplayCode)</option>
-                        }
-                    </datalist>
-                </FormSection>
-                <FormSection
-                    For="() => _stepModel.Number"
-                    InputId="@_stepModel.NumberFieldId"
-                    Label="Phone number"
-                    Class="grow"
-                    IsLabelInsideInput="true"
-                    IsRequired="true">
-                    <InputText
-                        id="@_stepModel.NumberFieldId"
-                        @bind-Value="_stepModel.Number"
-                        autocomplete="tel-national"
-                        type="tel"
-                        pattern="@PhoneValidation.NumberPattern"
-                        inputmode="tel"/>
-                </FormSection>
-            </div>
+            <FormSection
+                For="() => _stepModel.Phone"
+                InputId="@_stepModel.PhoneFieldId"
+                Label="Phone"
+                Class="grow"
+                IsLabelInsideInput="true"
+                IsRequired="true">
+                <InputText
+                    id="@_stepModel.PhoneFieldId"
+                    @bind-Value="_stepModel.Phone"
+                    autocomplete="tel"
+                    type="tel"
+                    inputmode="tel"/>
+            </FormSection>
              <FormButtons IsEndAligned="false">
                 <Button Type="@ButtonType.Submit" Class="btn-primary btn-modal sign-in">Continue</Button>
             </FormButtons>
@@ -129,7 +106,7 @@
     }
 
     protected override Task<bool> Save() {
-        var phone = new Phone(_stepModel.Code, _stepModel.Number);
+        var phone = PhoneFormatterExt.FromReadable(_stepModel.Phone);
         PhoneSignInModel.Phone = phone;
         return TaskExt.TrueTask;
     }
@@ -153,18 +130,9 @@
         public string? Icon { get; init; }
     }
 
-    public sealed class StepModel : FormModel<StepModel> {
-
-        [Required, CountryCode]
-        public string Code { get; set; } = PhoneCodes.Default.DisplayCode;
-        public string CodeFieldId { get; set; } = "";
-        [Required, PhoneNumber]
-        public string Number { get; set; } = "";
-        public string NumberFieldId { get; set; } = "";
-
-        public StepModel(ComponentIdGenerator? componentIdGenerator = null)
-            : base("phone-signin", componentIdGenerator) {
-        }
-
+    public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
+        : FormModel<StepModel>("phone-signin", componentIdGenerator) {
+        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
+        public string PhoneFieldId { get; set; } = "";
     }
 }
