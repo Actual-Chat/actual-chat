@@ -58,14 +58,14 @@
             Label="First name"
             IsLabelInsideInput="true"
             IsRequired="true">
-            <InputText id="name" @bind-Value="_stepModel.Name"/>
+            <InputText id="name" @bind-Value="_stepModel.Name" autocomplete="given-name"/>
         </FormSection>
         <FormSection
             For="() => _stepModel.LastName"
             InputId="lastName"
             Label="Last name (optional)"
             IsLabelInsideInput="true">
-            <InputText id="lastName" @bind-Value="_stepModel.LastName"/>
+            <InputText id="lastName" @bind-Value="_stepModel.LastName" autocomplete="family-name"/>
         </FormSection>
     </Form>
 </div>

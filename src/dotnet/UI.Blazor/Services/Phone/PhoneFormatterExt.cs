@@ -52,6 +52,6 @@ public static class PhoneFormatterExt
             return Phone.None;
 
         var number = s[phoneCode.Code.Length..];
-        return !PhoneValidation.IsNumberValid(number) ? Phone.None : new Phone(phoneCode.Code, number);
+        return number.Length < Phone.MinNumberLength ? Phone.None : new Phone(phoneCode.Code, number);
     }
 }

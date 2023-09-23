@@ -17,53 +17,22 @@
         Class="mt-6"
         Model="@_stepModel">
         <DataAnnotationsValidator/>
-        @if (!_hasPhoneIdentity) {
-            <FormSection
-                For="() => _stepModel.Country"
-                InputId="country"
-                Label="Country"
-                IsLabelInsideInput="true"
-                IsRequired="@(!_hasPhoneIdentity)">
-                <InputSelect id="country" @bind-Value="_stepModel.Country">
-                    @foreach (var phoneCode in PhoneCodes.List)
-                    {
-                        <option value="@phoneCode.Country">@phoneCode.Country</option>
-                    }
-                </InputSelect>
-            </FormSection>
-        }
-        <div class="flex-x gap-x-1">
-            <FormSection
-                For="() => _stepModel.Code"
-                InputId="phoneCode"
-                Label="Code"
-                Class="w-20"
-                IsLabelInsideInput="true"
-                IsRequired="@(!_hasPhoneIdentity)">
-                <InputText
-                    id="phoneCode"
-                    @bind-Value="_stepModel.Code"
-                    pattern="@PhoneValidation.CountryCodePattern"
-                    autocomplete="tel-country-code"
-                    disabled="@_hasPhoneIdentity"/>
-            </FormSection>
-            <FormSection
-                For="() => _stepModel.Number"
-                InputId="phoneNumber"
-                Label="Phone number"
-                Class="grow"
-                IsLabelInsideInput="true"
-                IsRequired="@(!_hasPhoneIdentity)">
-                <InputText
-                    id="phoneNumber"
-                    @bind-Value="_stepModel.Number"
-                    autocomplete="tel-national"
-                    type="tel"
-                    pattern="@PhoneValidation.NumberPattern"
-                    inputmode="tel"
-                    disabled="@_hasPhoneIdentity"/>
-            </FormSection>
-        </div>
+        <FormSection
+            For="() => _stepModel.Phone"
+            InputId="phone"
+            Label="Phone"
+            Class="grow"
+            IsLabelInsideInput="true"
+            IsRequired="@(!_hasPhoneIdentity)">
+            <InputText
+                id="phone"
+                @bind-Value="_stepModel.Phone"
+                autocomplete="tel"
+                type="tel"
+                inputmode="tel"
+                disabled="@_hasPhoneIdentity"/>
+        </FormSection>
+
         <FormSection
             For="() => _stepModel.Email"
             InputId="email"
@@ -73,7 +42,10 @@
             <InputText
                 id="email"
                 @bind-Value="_stepModel.Email"
-                disabled="@(_hasEmail)"/>
+                disabled="@(_hasEmail)"
+                autocomplete="email"
+                type="email"
+                inputmode="email"/>
         </FormSection>
     </Form>
 </div>
@@ -100,14 +72,7 @@
         _hasEmail = !account.Email.IsNullOrEmpty();
         _stepModel.Email = account.Email;
         if (!account.Phone.IsNone) {
-            var phoneCode = PhoneCodes.GetByCode(account.Phone.Code);
-            if (phoneCode != null) {
-                _stepModel.Code = phoneCode.DisplayCode;
-                _stepModel.Country = phoneCode.Country;
-                _stepModel.Number = account.Phone.Number;
-            } else {
-                _stepModel.Number = account.Phone.Number;
-            }
+            _stepModel.Phone = account.Phone.ToReadable();
         }
     }
 
@@ -123,7 +88,7 @@
         var command = new Accounts_Update(
             Session,
             account with {
-                Phone = new (_stepModel.Code, _stepModel.Number),
+                Phone = PhoneFormatterExt.FromReadable(_stepModel.Phone),
                 Email = _hasEmail ? account.Email : _stepModel.Email,
             },
             account.Version);
@@ -132,19 +97,7 @@
     }
 
     public class PhoneStepModel {
-        private string _country = PhoneCodes.Default.Country;
-
-        [Required]
-        public string Country {
-            get => _country;
-            set {
-                _country = value;
-                Code = PhoneCodes.List.First(x => x.Country == value).DisplayCode;
-            }
-        }
-
-        [Required, CountryCode] public string Code { get; set; } = PhoneCodes.Default.DisplayCode;
-        [Required, PhoneNumber] public string Number { get; set; } = "";
+        [Required, PhoneNumber] public string Phone { get; set; } = "";
         [Required, EmailAddress] public string Email { get; set; } = "";
     }
 }
