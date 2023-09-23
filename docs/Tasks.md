@@ -3,20 +3,20 @@ Before release:
 - ~~Pre-rendered landing page [AY]~~
 - Add proper site image and description to _Host.cshtml [Andrey, Grisha]
 - Show <Recording> sign for streaming entries in chat list
-- Use max(activity date, contact creation date) in all sort modes to make sure new contacts go on top
-- Check all new text messages (esp. "Share" + troubleshooters) [AY]
+- ~~Use max(activity date, contact creation date) in all sort modes to make sure new contacts go on top~~
+- Check all new text messages (esp. ~~"Share"~~ + troubleshooters) [AY]
 - Phone sign-in: enable it [Frol]
 - ~~Add more languages: Hindi, Bengali, Tamil, Modern Standard Arabic, Turkish, Vietnamese, Italian, Thai, Portuguese, Polish~~
 - ~~Sign-in: replace sign-in menu w/ modal everywhere + remove menu [EK]~~
 - ~~Languages: add Chinese, Korean, etc. + update settings page layout [DF]~~
 - ~~New chat: 2-page layout [DF]~~
-- Chat: empty chat must contain invite link + splash [DF]
+- ~~Chat: empty chat must contain invite link + splash [DF]~~
 - Audio activity: blinking "Listen" [Andrey]
 - Onboarding: use stored phone number [Frol]
 - ~~Service worker / asset caching [EK]~~
 - ~~Push-to-talk must not change the playback state [AY]~~
 - Stop historical playback in other chats when recording starts [Frol]
-- Don't update SelectedChat when MiddlePanel isn't visible
+- ~~Don't update SelectedChat when MiddlePanel isn't visible~~
 - ~~Fade out loading overlay [AY]~~
 - ~~New Active Chats UX [AY]~~
 
