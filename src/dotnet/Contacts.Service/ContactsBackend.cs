@@ -190,7 +190,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     public virtual async Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken)
     {
         var userId = command.UserId;
-        var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating())
             return; // spawns commands to remove contacts for other owners, we can skip invalidation for own contacts
 
@@ -237,8 +236,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);
         await Commander.Call(completeCmd, true, cancellationToken).ConfigureAwait(false);
 
-        Task<Contact?> CreateContact(UserId ownerId)
-        {
+        Task<Contact?> CreateContact(UserId ownerId) {
             var contact = new Contact(ContactId.Peer(ownerId, userToGreetId));
             var cmd = new ContactsBackend_Change(contact.Id, null, Change.Create(contact));
             return Commander.Call(cmd, true, cancellationToken);

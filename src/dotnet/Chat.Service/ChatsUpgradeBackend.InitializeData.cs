@@ -66,7 +66,7 @@ public partial class ChatsUpgradeBackend
             null,
             new () {
                 Create = new ChatDiff {
-                    Title = "Actual.chat Announcements",
+                    Title = "Actual Chat Announcements",
                     IsPublic = true,
                 },
             },
@@ -382,7 +382,6 @@ public partial class ChatsUpgradeBackend
             if (account == null)
                 continue;
 
-            var user = account.User;
             var email = account.GetVerifiedEmail();
             if (email.IsNullOrEmpty())
                 continue;
@@ -415,7 +414,7 @@ public partial class ChatsUpgradeBackend
             null,
             new () {
                 Create = new ChatDiff {
-                    Title = "Actual.chat Feedback",
+                    Title = "Actual Chat Feedback",
                     IsPublic = true,
                     IsTemplate = true,
                     AllowGuestAuthors = true,

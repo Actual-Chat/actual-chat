@@ -54,7 +54,9 @@
         }));
     }
 
-    public record Model(
+    // Nested types
+
+    public sealed record Model(
         bool HasReactions,
         ApiArray<ReactionSummary> Reactions,
         Reaction? OwnReaction = null

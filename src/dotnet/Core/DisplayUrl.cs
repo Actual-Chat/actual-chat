@@ -3,7 +3,7 @@ namespace ActualChat;
 public readonly record struct DisplayUrl(LocalUrl LocalUrl, string AbsoluteUrl)
 {
     public string ShortLocalUrl
-        => LocalUrl.Value[1..];
+        => LocalUrl.DisplayText;
 
     public string ShortAbsoluteUrl {
         get {

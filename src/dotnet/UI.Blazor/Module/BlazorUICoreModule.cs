@@ -104,8 +104,8 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new Escapist(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new TuneUI(c));
         services.AddScoped(c => new BubbleUI(c));
-        services.AddScoped(c => new ShareUI(c.GetRequiredService<ModalUI>()));
-        services.AddScoped(c => new ToastUI());
+        services.AddScoped(c => new ShareUI(c));
+        services.AddScoped(_ => new ToastUI());
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
 
         // Actual Chat-specific UI services

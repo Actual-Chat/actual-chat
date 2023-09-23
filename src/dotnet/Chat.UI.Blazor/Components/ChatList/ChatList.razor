@@ -72,6 +72,8 @@
     protected override bool ShouldRender()
         => State.HasError || State.Value != _rendered;
 
+    // Nested types
+
     public record struct Model(
         int ChatCount,
         bool IsSearchModeOn = false,

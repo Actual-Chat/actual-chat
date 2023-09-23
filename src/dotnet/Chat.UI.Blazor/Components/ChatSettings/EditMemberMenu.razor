@@ -109,5 +109,11 @@
         ToastUI.Show($"{authorName} is promoted to Owner", "icon-star", ToastDismissDelay.Short);
     }
 
-    public record Model(Author Author, bool IsOwner, bool IsOwn, bool CanPromoteToOwner);
+    // Nested types
+
+    public sealed record Model(
+        Author Author,
+        bool IsOwner,
+        bool IsOwn,
+        bool CanPromoteToOwner);
 }

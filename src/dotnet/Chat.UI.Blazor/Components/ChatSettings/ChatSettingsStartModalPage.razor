@@ -98,7 +98,7 @@
                 @if (m.Invites.Count > 0) {
                     <InviteList
                         Invites="m.Invites"
-                        LinkFormat="@Links.InviteLinkFormat.JoinChat"
+                        LinkFormat="@InviteLinkFormat.PrivateChat"
                         NewInviteId="@_newInviteId"
                         AllowRevoke="true"/>
                 }

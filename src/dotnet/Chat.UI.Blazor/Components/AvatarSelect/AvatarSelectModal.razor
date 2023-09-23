@@ -154,11 +154,13 @@
     private void OnCancel()
         => Modal.Close();
 
+    // Nested types
+
     private enum Mode { Join, Change }
 
-    public record Model(ChatId ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
+    public sealed record Model(ChatId ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
 
-    public record ViewModel(ApiArray<AvatarFull> Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {
+    public sealed record ViewModel(ApiArray<AvatarFull> Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {
         public static readonly ViewModel None = new(ApiArray<AvatarFull>.Empty, Symbol.Empty, null);
     }
 }

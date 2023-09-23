@@ -36,10 +36,8 @@
         => await AccountUI.OwnAccount.Use(cancellationToken);
 
     private void OnShareClick(UserId accountId, string name) {
-        var urlMapper = Services.GetRequiredService<UrlMapper>();
         var shareUI = Services.GetRequiredService<ShareUI>();
-        var link = Links.User(accountId).ToAbsolute(urlMapper);
-
-        shareUI.ShareLink(link, "Share your contact", $"{name} on Actual Chat");
+        var request = new ShareRequest($"{name} on Actual Chat", Links.User(accountId));
+        shareUI.Share("Share your contact", request);
     }
 }

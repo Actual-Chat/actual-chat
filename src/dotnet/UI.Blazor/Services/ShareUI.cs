@@ -1,14 +1,14 @@
 ﻿namespace ActualChat.UI.Blazor.Services;
 
-public class ShareUI
+public sealed class ShareUI(IServiceProvider services) : IHasServices
 {
-    private readonly ModalUI _modalUI;
+    private ModalUI? _modalUI;
 
-    public ShareUI(ModalUI modalUI)
-        => _modalUI = modalUI;
+    public IServiceProvider Services { get; } = services;
+    public ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
 
-    public void ShareLink(string link, string title = "", string linkDescription = "")
-        => ShareLink(new Uri(link), title, linkDescription);
-    public void ShareLink(Uri link, string title = "", string linkDescription = "")
-        => _ = _modalUI.Show(new ShareModalModel(link, linkDescription) { Title = title });
+    public Task<ModalRef> Share(ShareModalModel model)
+        => ModalUI.Show(model);
+    public Task<ModalRef> Share(string title, ShareRequest request)
+        => ModalUI.Show(new ShareModalModel(title, request));
 }

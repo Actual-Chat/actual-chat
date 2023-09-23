@@ -63,8 +63,9 @@
         }));
     }
 
-    public record Model(bool CanReply) {
+    // Nested types
+
+    public sealed record Model(bool CanReply) {
         public static readonly Model None = new(false);
     }
-
 }

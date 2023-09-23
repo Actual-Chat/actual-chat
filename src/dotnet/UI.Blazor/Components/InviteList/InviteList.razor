@@ -16,7 +16,7 @@
                         <i class="icon-link-2 text-2xl"></i>
                     </Icon>
                     <Content>
-                        @link.ShortAbsoluteUrl
+                        @link.DisplayText
                         @if (isNew) {
                             <sup class="text-badge ml-0.5">new</sup>
                         }
@@ -53,8 +53,8 @@
     [Parameter] public bool AllowRevoke { get; init; }
     [Parameter] public string NewInviteId { get; init; } = "";
 
-    private DisplayUrl GetLink(Invite invite)
-        => Links.Invite(LinkFormat, invite.Id).ToDisplayUrl(UrlMapper);
+    private LocalUrl GetLink(Invite invite)
+        => Links.Invite(LinkFormat, invite.Id);
 
     private string GetCaption(Invite invite) {
         switch (invite.Details.Option) {
@@ -70,19 +70,25 @@
     private Task Revoke(Invite invite)
         => Services.UICommander().Run(new Invites_Revoke(Services.Session(), invite.Id));
 
-    private async Task OnShareClick(Invite invite) {
+    private async ValueTask OnShareClick(Invite invite) {
+        var link = GetLink(invite);
         switch (invite.Details.Option) {
             case UserInviteOption: {
-                ShareUI.ShareLink(GetLink(invite).AbsoluteUrl, "Share invite", "User invite to Actual Chat");
+                var request = new ShareRequest("Your Actual Chat invite", link);
+                _ = ShareUI.Share("Share Actual Chat invite", request);
                 return;
             }
             case ChatInviteOption chatDetails: {
-                var linkDescription = "Chat join link";
+                // The code here is ~ a copy of ShareUIExt.GetModel(ChatId...) - we can't reference it here, so...
                 var chats = Services.GetRequiredService<IChats>();
                 var chat = await chats.Get(Services.Session(), chatDetails.ChatId, default);
-                if (chat != null)
-                    linkDescription = $"\"{chat.Title}\" on Actual Chat join link";
-                ShareUI.ShareLink(GetLink(invite).AbsoluteUrl, "Share chat", linkDescription);
+                if (chat == null || chat.HasSingleAuthor || chat.Id.IsPeerChat(out _))
+                    return;
+
+                var title = "Share private chat join link";
+                var text = $"\"{chat.Title}\" on Actual Chat";
+                var shareModel = new ShareModalModel(title, new(text, link));
+                _ = ShareUI.Share(shareModel);
                 return;
             }
             default:

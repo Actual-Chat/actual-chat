@@ -32,7 +32,9 @@
         return new (entry, vRelatedChatEntry.Kind, ownAuthor?.Id == entry.AuthorId);
     }
 
-    public record Model(
+    // Nested types
+
+    public sealed record Model(
         ChatEntry Entry,
         RelatedEntryKind Kind,
         bool IsOwn);

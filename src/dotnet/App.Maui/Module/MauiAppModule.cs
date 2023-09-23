@@ -26,7 +26,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         services.AddSingleton<ReloadUI>(c => new MauiReloadUI(c)); // Note that it replaces scoped ReloadUI
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
-        services.AddScoped<IMauiShare>(_ => new MauiShare());
+        services.AddScoped<IMauiShare>(c => new MauiShare(c));
 
         // Misc.
         services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));

@@ -21,7 +21,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private bool _itemVisibilityUpdateHasReceived;
     private bool _doNotShowNewMessagesSeparator;
     private IMutableState<ChatViewItemVisibility> _itemVisibility = null!;
-    private ChatMessageContext _messageContext = null!;
+    private ChatContext _context = null!;
 
     [Inject] private ILogger<ChatView> Log { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
@@ -49,7 +49,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     protected override async Task OnInitializedAsync()
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
-        _messageContext = new ChatMessageContext(new ChatMessageServices(Services), Chat.Id);
+        _context = new ChatContext(Services, Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
             NavigateToEntryLid = StateFactory.NewMutable(
@@ -95,9 +95,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         long navigateToEntryLid;
         var readEntryLid = ReadPositionState?.Value.EntryLid ?? 0;
-        if (readEntryLid > 0) {
+        if (readEntryLid > 0)
             navigateToEntryLid = readEntryLid;
-        }
         else {
             var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryKind.Text, DisposeToken);
             navigateToEntryLid = chatIdRange.ToInclusive().End;

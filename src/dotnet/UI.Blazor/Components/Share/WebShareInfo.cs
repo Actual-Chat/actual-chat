@@ -3,15 +3,14 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Components;
 
-public class WebShareInfo : IDisposable, IWebShareInfoBackend
+public sealed class WebShareInfo : IDisposable, IWebShareInfoBackend
 {
-    private static readonly string JSInitWebShareInfoMethod = $"{BlazorUICoreModule.ImportName}.Share.initWebShareInfo";
-
-    private bool _canShareText;
-    private bool _canShareLink;
+    private static readonly string JSInitWebShareInfoMethod = $"{BlazorUICoreModule.ImportName}.Share.init";
 
     private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
-    private DotNetObjectReference<IWebShareInfoBackend>? _backendRef;
+    private readonly DotNetObjectReference<IWebShareInfoBackend>? _backendRef;
+    private bool _canShareText;
+    private bool _canShareLink;
 
     private Task WhenReady => _whenReadySource.Task;
     private IJSRuntime JS { get; }
@@ -21,19 +20,26 @@ public class WebShareInfo : IDisposable, IWebShareInfoBackend
     {
         Log = services.LogFor(GetType());
         JS = services.JSRuntime();
-        _ = Initialize();
+        _backendRef = DotNetObjectReference.Create<IWebShareInfoBackend>(this);
+        _ = JS.InvokeVoidAsync(JSInitWebShareInfoMethod, _backendRef);
     }
 
     public void Dispose()
         => _backendRef.DisposeSilently();
 
-    public async Task<bool> CanShareText()
+    public async ValueTask<bool> CanShare()
+    {
+        await WhenReady.ConfigureAwait(true);
+        return _canShareText || _canShareLink;
+    }
+
+    public async ValueTask<bool> CanShareText()
     {
         await WhenReady.ConfigureAwait(true);
         return _canShareText;
     }
 
-    public async Task<bool> CanShareLink()
+    public async ValueTask<bool> CanShareLink()
     {
         await WhenReady.ConfigureAwait(true);
         return _canShareLink;
@@ -43,16 +49,8 @@ public class WebShareInfo : IDisposable, IWebShareInfoBackend
     public void OnInitialized(IWebShareInfoBackend.InitResult initResult)
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
-
         _canShareText = initResult.CanShareText;
         _canShareLink = initResult.CanShareLink;
-
         _whenReadySource.TrySetResult();
-    }
-
-    private ValueTask Initialize()
-    {
-        _backendRef = DotNetObjectReference.Create<IWebShareInfoBackend>(this);
-        return JS.InvokeVoidAsync(JSInitWebShareInfoMethod, _backendRef);
     }
 }

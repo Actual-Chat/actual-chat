@@ -1,13 +1,12 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Invite
 @inherits ComputedStateComponent<ChatWelcomeMessage.Model?>
-
 @{
     var m = State.ValueOrDefault;
     if (m == null)
         return;
+
     var chat = m.Chat;
-    var link = m.Link;
 }
 
 <div class="message-wrapper">
@@ -21,14 +20,17 @@
         <div class="c-content">
             Welcome! Share the link to this chat to invite more people here:
         </div>
-        @if (link.HasValue) {
-            var linkKind = m.IsJoinLink ? "Private join link" : "Public link";
-            var copyText = $"\"{chat.Title}\" on Actual Chat: {link.Value.AbsoluteUrl}";
+        @if (m.ShareModel is { } shareModel) {
+            var link = shareModel.Request.Link.GetValueOrDefault();
+            var linkKind = link.IsPrivateChatInvite()
+                ? "Private join link"
+                : "Public link";
+            var copyText = shareModel.Request.GetShareTextAndLink(UrlMapper);
             <div class="c-link">
                 <div class="c-link-url">
                     <i class="icon-link-2"></i>
                     <div>
-                        <div class="link-url">@link.Value.ShortLocalUrl</div>
+                        <div class="link-url">@link.DisplayText</div>
                         <div class="link-hint">@linkKind</div>
                     </div>
                 </div>
@@ -40,7 +42,7 @@
                             Copy
                         </Button>
                     </CopyTrigger>
-                    <Button Class="btn-modal" Click="@(() => OnShareClick(link.Value.AbsoluteUrl, copyText))">
+                    <Button Class="btn-modal" Click="@(() => OnShareClick(shareModel))">
                         <i class="icon-share"></i>
                         Share
                     </Button>
@@ -53,45 +55,33 @@
 
 @code {
     // Shortcuts
-    private ChatMessageServices MessageServices => Context.Services;
-    private Session Session => MessageServices.Session;
-    private History History => MessageServices.History;
-    private IAuthors Authors => MessageServices.Authors;
-    private IChats Chats => MessageServices.Chats;
-    private ChatUI ChatUI => MessageServices.ChatUI;
+    private Session Session => Context.Session;
+    private History History => Context.History;
+    private IAuthors Authors => Context.Authors;
+    private IChats Chats => Context.Chats;
+    private ChatUI ChatUI => Context.ChatUI;
+    private ShareUI ShareUI => Context.ShareUI;
+    private UrlMapper UrlMapper => Context.UrlMapper;
 
-    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
-
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private IInvites Invites { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatMessageContext Context { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext Context { get; set; } = null!;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var chat = await Chats.Get(Session, Context.ChatId, cancellationToken);
         if (chat == null)
             return null;
-        var (link, isJoinLink) =  await GetLink(chat, cancellationToken);
-        return new(chat) {
-            Link = link?.ToDisplayUrl(UrlMapper),
-            IsJoinLink = isJoinLink,
-        };
+
+        var shareModel = await ShareUI.GetModel(chat.Id, cancellationToken).ConfigureAwait(false);
+        return new Model(chat, shareModel);
     }
 
-    private async Task<(LocalUrl?, bool)> GetLink(Chat chat, CancellationToken cancellationToken) {
-        if (chat.IsPublic)
-            return (Links.Chat(chat.Id), false);
-        var invite = await Invites.GetOrGenerateChatInvite(Session, chat.Id, cancellationToken);
-        if (invite != null)
-            return (Links.Invite(Links.InviteLinkFormat.JoinChat, invite.Id), true);
-        return (null, false);
-    }
+    private void OnShareClick(ShareModalModel shareModel)
+        => ShareUI.Share(shareModel);
 
-    private void OnShareClick(string link, string description)
-        => ShareUI.ShareLink(link, "Share chat", description);
+    // Nested types
 
-    public record Model(Chat Chat) {
-        public DisplayUrl? Link { get; init; }
-        public bool IsJoinLink { get; init; }
-    }
+    public sealed record Model(
+        Chat Chat,
+        ShareModalModel? ShareModel = null);
 }

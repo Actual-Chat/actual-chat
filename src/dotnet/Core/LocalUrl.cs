@@ -11,6 +11,9 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
     [DataMember, MemoryPackOrder(0)]
     public string Value => _value ?? "/";
 
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public string DisplayText => Value.Length <= 1 ? Value : Value[1..];
+
     [MemoryPackConstructor]
     public LocalUrl(string? value)
     {
@@ -21,7 +24,7 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
         }
         if (!value.OrdinalStartsWith("/"))
             value = "/" + value;
-        if (value.OrdinalEndsWith("/"))
+        if (value.OrdinalEndsWith("/") && value.Length > 1)
             value = value[..^1];
         _value = value;
     }
@@ -48,9 +51,9 @@ public readonly partial struct LocalUrl : IEquatable<LocalUrl>
         => nav.ToAbsoluteUri(Value).ToString();
 
     public DisplayUrl ToDisplayUrl(UrlMapper urlMapper)
-        => new (this, ToAbsolute(urlMapper));
+        => new(this, ToAbsolute(urlMapper));
     public DisplayUrl ToDisplayUrl(NavigationManager nav)
-        => new (this, ToAbsolute(nav));
+        => new(this, ToAbsolute(nav));
 
     public static implicit operator LocalUrl(string url) => new(url);
     public static implicit operator string(LocalUrl localUrl) => localUrl.Value;

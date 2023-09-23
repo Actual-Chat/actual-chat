@@ -93,7 +93,7 @@
         // and moreover, we want to make sure ComputeState gets invalidated
         // specifically when SelectedChatId changes (vs when ChatSid changes).
 
-        await ChatUI.WhenLoaded;
+        await ChatUI.WhenLoaded.WaitAsync(cancellationToken);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
         var lastState = State.ValueOrDefault;
         var lastChatId = lastState?.Chat.Id ?? ChatId.None;

@@ -1,10 +1,8 @@
 ﻿@using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.Chat.UI.Blazor.Components
-
 @{
-    var localUrl = LocalUrl.FromAbsolute(Link.ToString(), UrlMapper);
-    var linkText = localUrl.HasValue ? localUrl.Value.Value[1..] : $"{Link.Host}{Link.AbsolutePath}";
+    var displayLink = new ShareRequest(Link).GetDisplayLink();
 }
 
 <div class="link-info">
@@ -13,11 +11,11 @@
     </div>
     <div class="c-body">
         <div class="c-link">
-            @linkText
+            @displayLink
         </div>
     </div>
     <div class="c-right">
-        <CopyTrigger CopyTextInputSource="@CopyTextInputSource">
+        <CopyTrigger CopyTextSourceRef="@CopyTextSource">
             <ButtonRound
                 ContentClass="flex-x gap-x-1"
                 Class="transparent">
@@ -31,6 +29,6 @@
 @code {
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
-    [Parameter] public Uri Link { get; set; } = null!;
-    [Parameter] public ElementReference CopyTextInputSource { get; set; }
+    [Parameter, EditorRequired] public LocalUrl Link { get; set; } = null!;
+    [Parameter] public ElementReference? CopyTextSource { get; set; }
 }

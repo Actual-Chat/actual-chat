@@ -2,6 +2,7 @@
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.OS;
+using Java.Lang;
 using Activity = Android.App.Activity;
 using Uri = Android.Net.Uri;
 
@@ -35,11 +36,13 @@ public class IncomingShareHandler
             if (OrdinalEquals(mimeType, System.Net.Mime.MediaTypeNames.Text.Plain))
                 _ = HandlePlainTextSend(intent.GetStringExtra(Intent.ExtraText));
             else if (hasExtraStream) {
-                 var stream = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
-                    ? intent.GetParcelableExtra(Intent.ExtraStream, Java.Lang.Class.FromType(typeof(Uri)))
+                var stream = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
+                    ? intent.GetParcelableExtra(Intent.ExtraStream, Class.FromType(typeof(Uri)))
+ #pragma warning disable CA1422
                     : intent.GetParcelableExtra(Intent.ExtraStream);
+ #pragma warning restore CA1422
                 if (stream is Uri uri)
-                    _ = HandleFilesSend(mimeType, new []{ uri });
+                    _ = HandleFilesSend(mimeType, new[] { uri });
                 else
                     Log.LogWarning("Unsupported stream type: '{StreamType}'", stream?.ToString() ?? "<null>");
             }
@@ -49,8 +52,10 @@ public class IncomingShareHandler
         else {
             if (hasExtraStream) {
                 var streams = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
-                    ? intent.GetParcelableArrayListExtra(Intent.ExtraStream, Java.Lang.Class.FromType(typeof(Uri)))
+                    ? intent.GetParcelableArrayListExtra(Intent.ExtraStream, Class.FromType(typeof(Uri)))
+ #pragma warning disable CA1422
                     : intent.GetParcelableArrayListExtra(Intent.ExtraStream);
+ #pragma warning restore CA1422
                 if (streams == null)
                     Log.LogWarning("No file streams provided");
                 else {

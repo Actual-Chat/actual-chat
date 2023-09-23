@@ -7,14 +7,19 @@ export class CopyTrigger {
     private readonly triggerElementRef: HTMLElement;
     private readonly copyText: string;
     private readonly tooltip: string;
-    private readonly copyTextSourceInputRef: HTMLInputElement | null;
+    private readonly copyTextSourceRef: HTMLInputElement | null;
     private disposed$: Subject<void> = new Subject<void>();
 
-    public constructor(triggerElementRef: HTMLElement, copyText: string, tooltip: string, copyTextSourceInputRef: HTMLInputElement | null) {
+    public constructor(
+        triggerElementRef: HTMLElement,
+        copyText: string,
+        tooltip: string,
+        copyTextSourceRef: HTMLInputElement | null
+    ) {
         this.triggerElementRef = triggerElementRef;
         this.copyText = copyText;
         this.tooltip = tooltip;
-        this.copyTextSourceInputRef = copyTextSourceInputRef;
+        this.copyTextSourceRef = copyTextSourceRef;
         fromEvent(this.triggerElementRef, 'click').pipe(
             takeUntil(this.disposed$),
             switchMap(() => this.copy()),
@@ -37,7 +42,7 @@ export class CopyTrigger {
     }
 
     private async copy() {
-        const text = this.copyTextSourceInputRef?.value ?? this.copyText;
+        const text = this.copyTextSourceRef?.value ?? this.copyText;
         return navigator.clipboard.writeText(text).catch(e => errorLog?.log(`copy: failed to write to clipboard`, e));
     }
 

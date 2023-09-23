@@ -1,10 +1,9 @@
+@using ActualChat.Users.UI.Blazor
 @inherits ComputedStateComponent<AccountFull>
 @{
     var account = State.Value;
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
-
-    var link = Links.User(account.Id).ToAbsolute(UrlMapper);
 }
 
 <Tile>
@@ -59,7 +58,7 @@
         </Caption>
     </TileItem>
 
-    <div @onclick="@(() => OnShareClick(link, account.Avatar.Name))"
+    <div @onclick="@OnShareClick"
          data-bubble="@(BubbleRef.New<LinkToAccountBubble>())"
          data-bubble-priority="301"
          data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())">
@@ -82,10 +81,8 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-
     private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
+    private ModalUI ModalUI => ShareUI.ModalUI;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {
@@ -96,9 +93,9 @@
     protected override async Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => await AccountUI.OwnAccount.Use(cancellationToken);
 
-    private Task OnEditClick()
+    private void OnEditClick()
         => ModalUI.Show(OwnAccountEditorModal.Model.Default);
 
-    private void OnShareClick(string link, string name)
-        => ShareUI.ShareLink(link, "Share your contact", $"{name} on Actual Chat");
+    private void OnShareClick()
+        => _ = ShareUI.ShareOwnAccount();
 }

@@ -1,3 +1,4 @@
+@using ActualChat.Users.UI.Blazor
 <Tile>
     <TileItem IsHoverable="false" Class="first-tile-item my-2">
         <Icon>
@@ -52,7 +53,7 @@
     }
 
     @if (!Author.IsAnonymous) {
-        <div @onclick="OnShareClick">
+        <div @onclick="@(() => _ = OnShareClick())">
             <TileItem Class="tile-item-share">
                 <Icon>
                     <i class="icon-share text-xl"></i>
@@ -75,18 +76,14 @@
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
 
     private async Task OnShareClick() {
-        var urlMapper = Services.GetRequiredService<UrlMapper>();
         if (IsOwn) {
-            var account = await Services.GetRequiredService<AccountUI>().OwnAccount.Use();
-            var link = Links.User(account.Id).ToAbsolute(urlMapper);
-            ShareUI.ShareLink(link, "Share your contact", $"{account.Avatar.Name} on Actual Chat");
-        } else {
-            var authors = Services.GetRequiredService<IAuthors>();
-            var account = await authors.GetAccount(Services.Session(), Author.ChatId, Author.Id, default);
-            if (account != null) {
-                var link = Links.User(account.Id).ToAbsolute(urlMapper);
-                ShareUI.ShareLink(link, "Share user contact", $"{account.Avatar.Name} on Actual Chat");
-            }
+            _ = ShareUI.ShareOwnAccount();
+            return;
         }
+
+        var authors = Services.GetRequiredService<IAuthors>();
+        var account = await authors.GetAccount(Services.Session(), Author.ChatId, Author.Id, default);
+        if (account != null)
+            _ = ShareUI.Share(account.Id);
     }
 }

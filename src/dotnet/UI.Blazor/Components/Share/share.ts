@@ -1,69 +1,66 @@
-﻿import {Log} from "logging";
-
+﻿import { Log } from "logging";
 
 const { infoLog } = Log.get('Share');
 
 export class Share {
     private static backendRef: DotNet.DotNetObject = null;
 
-    public static initWebShareInfo(backendRef1: DotNet.DotNetObject): void {
-        infoLog?.log(`initializing`);
+    public static init(backendRef1: DotNet.DotNetObject): void {
         this.backendRef = backendRef1;
 
-        // Call OnInitialized
         const initResult: InitResult = {
-            canShareText: Share.canShareSafe({
+            canShareText: this.canShare({
                 text: 'Actual Chat',
             }),
-            canShareLink: Share.canShareSafe({
+            canShareLink: this.canShare({
                 url: 'https://actual.chat/',
             }),
         };
-        infoLog?.log(`init:`, JSON.stringify(initResult));
+        infoLog?.log(`init:`, initResult);
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
     }
 
-    public static canShare() : boolean {
-        return navigator.canShare();
+    public static canShare(data?: ShareData): boolean {
+        return navigator.canShare && navigator.canShare(data);
     }
 
-    public static shareLink(title : string, link: string) : Promise<void> {
-        return navigator.share({
-            title : title,
-            url : link
-        });
+    public static async shareLink(title: string, link: string) : Promise<boolean> {
+        const data = {
+            title: title,
+            url: link
+        };
+        if (!this.canShare(data))
+            return false;
+
+        await navigator.share(data);
+        return true;
     }
 
-    public static shareText(title : string, text: string) : Promise<void> {
-        return navigator.share({
-            title : title,
-            text : text
-        });
+    public static async shareText(title: string, text: string) : Promise<boolean> {
+        const data = {
+            title: title,
+            text: text
+        };
+        if (!this.canShare(data))
+            return false;
+
+        await navigator.share(data);
+        return true;
     }
 
-    public static onClick = (event : Event) => {
+    public static onClick = async (event: Event): Promise<void> => {
         const target = event.currentTarget as HTMLElement;
         if (!target)
             return;
-        const link = target.dataset.shareLink;
-        const text = target.dataset.shareText;
-        const title = target.dataset.shareTitle;
-        if (link) {
-            void navigator.share({
-                title : title ?? 'Share link',
-                url : link,
-            });
-        }
-        else if (text) {
-            void navigator.share({
-                title : title,
-                text : text
-            });
-        }
-    }
 
-    private static canShareSafe(data?: ShareData): boolean {
-        return navigator.canShare && navigator.canShare(data);
+        const title = target.dataset.shareTitle;
+        const link = target.dataset.shareLink;
+        if (link && await this.shareLink(title, link)) // Link share is preferred over text share
+            return;
+
+        const text = target.dataset.shareText;
+        if (text)
+            await this.shareText(title, text);
     }
 }
 

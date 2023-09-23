@@ -38,7 +38,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var expiresAt = Clocks.SystemClock.UtcNow + Settings.TotpUIThrottling;
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
-        await Sms.Send(phone, $"Actual.chat: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
+        await Sms.Send(phone, $"Actual Chat: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
         return expiresAt;
     }
 

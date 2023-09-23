@@ -11,7 +11,7 @@
 <div class="-flex-x">
     <Button Click="OnNewInviteClick" Class="btn-primary">New invite link</Button>
 </div>
-<InviteList Invites="@m" LinkFormat="@Links.InviteLinkFormat.InviteUser"/>
+<InviteList Invites="@m" LinkFormat="@InviteLinkFormat.User"/>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;

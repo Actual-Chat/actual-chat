@@ -3,14 +3,14 @@ using ActualChat.UI.Blazor.Services;
 namespace ActualChat.Chat.UI.Blazor.Components;
 
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageModel>
+public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquatable<ChatMessageModel>
 {
     private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
     private Symbol? _key;
 
     public Symbol Key => _key ??= GetKey();
 
-    public ChatEntry Entry { get; }
+    public ChatEntry Entry { get; } = entry;
     public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
@@ -19,9 +19,6 @@ public sealed class ChatMessageModel : IVirtualListItem, IEquatable<ChatMessageM
     public bool IsFirstUnreadSeparator { get; init; }
     public bool ShowEntryKind { get; init; }
     public bool IsWelcome { get; init; }
-
-    public ChatMessageModel(ChatEntry entry)
-        => Entry = entry;
 
     public override string ToString()
         => $"(#{Key} -> {Entry})";

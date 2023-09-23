@@ -22,12 +22,14 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "Copy";
     [Parameter] public string CopyText { get; set; } = "";
+    [Parameter] public ElementReference? CopyTextSourceRef { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    [Parameter] public ElementReference? CopyTextInputSource { get; set; }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender)
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _ref, CopyText, Tooltip, CopyTextInputSource);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
+                JSCreateMethod,
+                _ref, CopyText, Tooltip, CopyTextSourceRef);
     }
 
     public async ValueTask DisposeAsync() {

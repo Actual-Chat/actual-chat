@@ -8,7 +8,7 @@
     var shareButtonClass = !destinationSelected ? "hidden" : "";
     shareButtonClass += " btn-modal btn-primary share-button";
     var shareFilesWithPreview = _selectedChats.Count == 1 && ModalModel.Files.Length <= Constants.Attachments.FileCountLimit;
-    var showCommentEditor = destinationSelected && (!ModalModel.IsFilesShare || !shareFilesWithPreview);
+    var showCommentEditor = destinationSelected && (!ModalModel.HasFiles || !shareFilesWithPreview);
 }
 
 <DialogFrame
@@ -34,7 +34,7 @@
         }
     </Footer>
     <Buttons>
-        @if (ModalModel.IsFilesShare) {
+        @if (ModalModel.HasFiles) {
             <Button Class="@shareButtonClass" IsDisabled="@(!destinationSelected)" Click="@(() => ShareFiles(shareFilesWithPreview))">
                 <span>@(shareFilesWithPreview ? "Next" : "Send")</span>
             </Button>
@@ -201,15 +201,17 @@
         return chatEntry;
     }
 
-    public record Model {
+    // Nested types
+
+    public sealed record Model {
+        public IncomingShareFile[] Files { get; } = Array.Empty<IncomingShareFile>();
+        public string Text { get; } = "";
+        public bool HasFiles => Files.Length > 0;
+
         public Model(string plainText)
             => Text = plainText;
 
         public Model(IncomingShareFile[] files)
             => Files = files;
-
-        public IncomingShareFile[] Files { get; } = Array.Empty<IncomingShareFile>();
-        public string Text { get; } = "";
-        public bool IsFilesShare => Files.Length > 0;
     }
 }

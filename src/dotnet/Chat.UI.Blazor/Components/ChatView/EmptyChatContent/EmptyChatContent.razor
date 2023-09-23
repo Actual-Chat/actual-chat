@@ -42,7 +42,9 @@
         return new Model() { PeerAccount = peerAccount };
     }
 
-    public record Model {
+    // Nested types
+
+    public sealed record Model {
         public static Model None { get; } = new();
 
         public Account? PeerAccount { get; init; }
