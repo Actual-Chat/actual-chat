@@ -1,6 +1,9 @@
 details > summary {
     list-style-type: none;
 }
+details > summary::-webkit-details-marker {
+    @apply hidden;
+}
 details.main-collapsed > summary.c-summary {
     @apply flex-x items-center gap-x-2;
 }
