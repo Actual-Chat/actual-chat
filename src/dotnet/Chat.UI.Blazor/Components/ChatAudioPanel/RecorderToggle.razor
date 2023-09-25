@@ -85,6 +85,7 @@
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ILogger<RecorderToggle> Log { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     private bool IsChatChanging => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
@@ -131,11 +132,15 @@
         var startRecordingAt = currentState.StartRecordingAt;
         if (isApplyingChanges || !recorderState.IsConnected) {
             startRecordingAt ??= Clocks.CoarseSystemClock.Now;
-            _cancelTroubleshootGuide = new();
+            var cts = _cancelTroubleshootGuide;
+            if (cts == null || cts.IsCancellationRequested)
+                _cancelTroubleshootGuide = new();
         } else {
+            Log.LogDebug("Cancelling troubleshoot guide");
             startRecordingAt = null;
             _cancelTroubleshootGuide.CancelAndDisposeSilently();
             _cancelTroubleshootGuide = null;
+            _isTroubleshootGuideTriggered = false;
         }
         return new(
             Chat,
@@ -191,7 +196,7 @@
             }
 
             var model = new GuideModal.Model(false, GuideType.Unknown);
-            var modalRef = await ModalUI.Show(model);
+            var modalRef = await ModalUI.Show(model, token);
             try {
                 await modalRef.WhenClosed.WaitAsync(token);
             }

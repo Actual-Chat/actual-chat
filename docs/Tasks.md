@@ -25,7 +25,7 @@ Before release:
     - Share into the app: sometimes auto-navigation instantly closes share modal [DF]
     - 2 "Notes" chats on dev / no upgrade on prod [AK]
     - Android: echo problem is still there, but only sometimes on S23
-    - Android: language switch triggers "No mic access" modal [AK]
+    - ~~Android: language switch triggers "No mic access" modal [AK]~~
     - "No mic access" -> "OK" shouldn't be there / should have "X" instead
     - ~~iOS: background playback issues [AK]~~
     - ~~iOS 16.1.1 - exit on startup [AK]~~
