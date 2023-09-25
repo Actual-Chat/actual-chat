@@ -53,7 +53,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             AllowAnonymousAuthors = AllowAnonymousAuthors,
             SystemTag = SystemTag.IsNullOrEmpty()
                 ? Symbol.Empty
-                : SystemTag,
+                : new Symbol(SystemTag),
             MediaId = new MediaId(MediaId),
         };
 
@@ -75,7 +75,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         AllowAnonymousAuthors = model.AllowAnonymousAuthors;
         SystemTag = model.SystemTag.IsEmpty
             ? null
-            : model.SystemTag;
+            : model.SystemTag.Value;
         Kind = model.Kind;
         MediaId = model.MediaId;
     }
