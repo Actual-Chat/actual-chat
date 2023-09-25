@@ -39,8 +39,9 @@ public class AppServerAuthHelper : ServerAuthHelper
 
         async Task UseExistingEmailIdentity()
         {
+            var existingUserId = await AccountsBackend.GetIdByUserIdentity(userIdentity, cancellationToken).ConfigureAwait(false);
             // Check if user with such email exists when logging in with external identity
-            if (user is not null || !Constants.Auth.IsExternalEmailScheme(schema) || httpUser.FindFirstValue(ClaimTypes.Email) is not { } email)
+            if (!existingUserId.IsNone || !Constants.Auth.IsExternalEmailScheme(schema) || httpUser.FindFirstValue(ClaimTypes.Email) is not { } email)
                 return;
 
             var userId = await AccountsBackend.GetIdByEmailHash(email.GetSHA256HashCode(), cancellationToken)

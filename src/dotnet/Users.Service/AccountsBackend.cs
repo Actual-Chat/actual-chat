@@ -57,12 +57,17 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // [ComputeMethod]
-    public virtual Task<UserId> GetIdByPhoneHash(string phoneHash, CancellationToken cancellationToken)
-        => GetIdByIdentity(UserExt.ToHashedPhoneIdentity(phoneHash), cancellationToken);
+    public virtual async Task<UserId> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
 
-    // [ComputeMethod]
-    public virtual Task<UserId> GetIdByEmailHash(string emailHash, CancellationToken cancellationToken)
-        => GetIdByIdentity(UserExt.ToHashedEmailIdentity(emailHash), cancellationToken);
+        var sid = identity.Id.Value;
+        var dbUserIdentity = await dbContext.UserIdentities
+            .FirstOrDefaultAsync(x => x.Id == sid, cancellationToken)
+            .ConfigureAwait(false);
+        return new UserId(dbUserIdentity?.DbUserId);
+    }
 
     // [CommandHandler]
     public virtual async Task OnUpdate(
@@ -149,18 +154,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (HasGoogleIdentity(user) && OrdinalEquals(emailAddress.Host, AdminEmailDomain))
             return true; // actual.chat email
         return false;
-    }
-
-    private async Task<UserId> GetIdByIdentity(UserIdentity identity, CancellationToken cancellationToken)
-    {
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var sid = identity.Id.Value;
-        var dbUserIdentity = await dbContext.UserIdentities
-            .FirstOrDefaultAsync(x => x.Id == sid, cancellationToken)
-            .ConfigureAwait(false);
-        return new UserId(dbUserIdentity?.DbUserId);
     }
 
     private static bool HasGoogleIdentity(User user)
