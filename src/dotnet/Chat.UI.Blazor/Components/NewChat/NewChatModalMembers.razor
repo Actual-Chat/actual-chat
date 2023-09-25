@@ -9,6 +9,7 @@
     <ContactSelector
         @ref="@_contactSelectorRef"
         Filter="ChatListFilter.People"
+        Changed="StateHasChanged"
         SearchPhrase="_searchPhrase">
         <SearchBox
             Placeholder="Whom would you like to add?"
@@ -16,6 +17,7 @@
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
             TextChanged="@OnFilter"/>
         <ContactSelectorBadges />
+        <ContactSelectorList/>
     </ContactSelector>
 </FormBlock>
 

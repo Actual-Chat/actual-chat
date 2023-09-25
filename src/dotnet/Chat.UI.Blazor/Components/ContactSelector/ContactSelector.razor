@@ -37,7 +37,7 @@
 
 
     public void Remove(ChatId chatId)
-        => _selectedChatIds.Set(chatId, static (chatId1, x) => x.Value.Add(chatId1));
+        => _selectedChatIds.Set(chatId, static (chatId1, x) => x.Value.Remove(chatId1));
 
     public void Clear()
         => _selectedChatIds.Set(static x => x.Value.Clear());
