@@ -23,7 +23,7 @@ Before release:
 
 - Critical bugs:
     - Share into the app: sometimes auto-navigation instantly closes share modal [DF]
-    - 2 "Notes" chats on dev / no upgrade on prod [AK]
+    - ~~2 "Notes" chats on dev / no upgrade on prod [AK]~~
     - Android: echo problem is still there, but only sometimes on S23
     - ~~Android: language switch triggers "No mic access" modal [AK]~~
     - "No mic access" -> "OK" shouldn't be there / should have "X" instead
