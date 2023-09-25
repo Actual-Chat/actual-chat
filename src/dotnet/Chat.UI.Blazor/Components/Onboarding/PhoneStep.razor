@@ -97,7 +97,7 @@
     }
 
     public class PhoneStepModel {
-        [Required, PhoneNumber] public string Phone { get; set; } = "";
+        [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
         [Required, EmailAddress] public string Email { get; set; } = "";
     }
 }
