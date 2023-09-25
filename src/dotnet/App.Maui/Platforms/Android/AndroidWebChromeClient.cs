@@ -29,9 +29,15 @@ internal class AndroidWebChromeClient : WebChromeClient
     // Webkit resource maps to an Android permission.
 
     // In a real app, you would probably use more convincing rationales tailored toward what your app does.
-    private const string CameraAccessRationale = "This app requires access to your camera. Please grant access to your camera when requested.";
-    private const string LocationAccessRationale = "This app requires access to your location. Please grant access to your precise location when requested.";
-    private const string MicrophoneAccessRationale = "This app requires access to your microphone. Please grant access to your microphone when requested.";
+    private const string CameraAccessRationale
+        = "Actual Chat can use your camera to take and share pictures upon your request. "
+        + "Please grant access to your camera when requested.";
+    private const string LocationAccessRationale
+        = "Actual Chat can share your location with your friends upon your request. "
+        + "Please grant access to your precise location when requested.";
+    private const string MicrophoneAccessRationale
+        = "Actual Chat uses your microphone to record and transcribe your audio messages. "
+        + "Please grant access to your microphone when requested.";
 
     private static readonly Dictionary<string, string> _rationalesByPermission = new(StringComparer.Ordinal) {
         [Manifest.Permission.Camera] = CameraAccessRationale,
