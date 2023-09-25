@@ -1,0 +1,39 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<Unit>
+@{
+    var chats = Selector.Chats.Value;
+    var selectedChatIds = Selector.SelectedChatIds.Value;
+}
+
+<div class="contact-selector-list">
+    @foreach (var chat in chats) {
+        <div class="contact-selector-list-item" @onclick="() => OnContactClick(chat.Id)">
+            <ContactView
+                ChatInfo="chat"
+                SearchPhrase="Selector.SearchPhrase"/>
+            <Checkbox
+                IsChecked="@(selectedChatIds.Contains(chat.Id))"
+                Class="!flex-none"
+                Change="() => OnContactClick(chat.Id)"/>
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public ContactSelector Selector { get; set; } = null!;
+
+    protected override ComputedState<Unit>.Options GetStateOptions()
+        => new() {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Unit> ComputeState(CancellationToken cancellationToken) {
+        await Selector.Chats.Use(cancellationToken).ConfigureAwait(false);
+        await Selector.SelectedChatIds.Use(cancellationToken).ConfigureAwait(false);
+        return default;
+    }
+
+    private void OnContactClick(ChatId chatId)
+        => Selector.Toggle(chatId);
+}

@@ -48,9 +48,9 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSelection = await SelectionUI.HasSelection.Use(cancellationToken);
         var model = await InnerComputeState(cancellationToken);
-        if (_rendered is not { Map: { } })
+        if (_rendered is not { Map: not null })
             return model with { // Never rendered
-                HasSelection = hasSelection
+                HasSelection = hasSelection,
             };
 
         var colorLease = ActualizeColorLease(model, _rendered);

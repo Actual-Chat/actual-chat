@@ -1,69 +1,76 @@
 @using ActualChat.Search
 @inherits FusionComponentBase
 @namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var selectedChatIds = SelectedChatIds;
+}
 
 <FormBlock>
-    <ContactSelectContext ChatSelectionChanged="OnSelectionChanged">
+    <ContactSelector
+        @ref="@_contactSelectorRef"
+        Filter="ChatListFilter.People"
+        SearchPhrase="_searchPhrase">
         <SearchBox
             Placeholder="Whom would you like to add?"
             Class="icon-alight-right"
             MaxLength="@Constants.Chat.MaxSearchFilterLength"
             TextChanged="@OnFilter"/>
-        <ContactSelectBadges />
-        <ContactSelect
-            ShowUserContactsOnly="true"
-            ChatListOrder="ChatListOrder.ByAlphabet"
-            SearchPhrase="_searchPhrase" />
-    </ContactSelectContext>
+        <ContactSelectorBadges />
+    </ContactSelector>
 </FormBlock>
 
 <RenderIntoSlot Name="@ButtonsSlotName">
-    @if (_selectedChats.Count > 0) {
+    @if (selectedChatIds.Count > 0) {
         <Button
             Class="btn-modal btn-primary"
             Click="@OnAdd">
-            Add @_selectedChats.Count member(s)
+            Add @(selectedChatIds.Count) @("member".Pluralize(selectedChatIds.Count))
         </Button>
     } else {
-        <Button Class="btn-modal btn-primary"
-                Click="@(() => SkipRequested())">
+        <Button
+            Class="btn-modal btn-primary"
+            Click="@(() => Closed.InvokeAsync(false))">
             Skip
         </Button>
     }
 </RenderIntoSlot>
 
 @code {
-    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
-    private IReadOnlyCollection<ChatInfo> _selectedChats = Array.Empty<ChatInfo>();
+    private ContactSelector? _contactSelectorRef;
+    private SearchPhrase _searchPhrase = SearchPhrase.None;
+
+
+    private IReadOnlyDictionary<ChatId, ChatInfo> AllChats
+        => _contactSelectorRef?.AllChats.Value ?? ImmutableDictionary<ChatId, ChatInfo>.Empty;
+    private IReadOnlySet<ChatId> SelectedChatIds
+        => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
-    [Parameter, EditorRequired] public Action MembersAdded { get; set; } = null!;
-    [Parameter, EditorRequired] public Action SkipRequested { get; set; } = null!;
+    [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
+    [Parameter, EditorRequired] public EventCallback<bool> Closed { get; set; }
 
     private void OnFilter(string filter) {
         _searchPhrase = filter.ToSearchPhrase(true, false);
         StateHasChanged();
     }
 
-    private void OnSelectionChanged(IReadOnlyCollection<ChatInfo> selectedChats) {
-        _selectedChats = selectedChats;
-        StateHasChanged();
-    }
-
     private async Task OnAdd() {
-        var userIds = _selectedChats
-            .Select(chat => chat.Contact.Account)
+        var allChats = AllChats;
+        var userIds = SelectedChatIds
+            .Select(chatId => allChats.GetValueOrDefault(chatId)?.Contact.Account)
             .SkipNullItems()
             .Select(c => c.Id)
             .ToArray();
-        var createAuthorsCommand = new Authors_Invite(Session, new ChatId(ChatSid), userIds);
-        var (_, error) = await UICommander.Run(createAuthorsCommand);
-        if (error != null)
-            return;
-        MembersAdded();
+        if (userIds.Length != 0) {
+            var createAuthorsCommand = new Authors_Invite(Session, new ChatId(ChatSid), userIds);
+            var (_, error) = await UICommander.Run(createAuthorsCommand);
+            if (error != null)
+                return;
+        }
+
+        await Closed.InvokeAsync(true);
     }
 }

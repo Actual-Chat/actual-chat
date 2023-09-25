@@ -2,13 +2,13 @@
 @using ActualChat.Search
 @using ActualChat.Media
 @implements IModalView<IncomingShareModal.Model>
-
 @{
-    var destinationSelected = _selectedChats.Count > 0;
+    var selectedChatIds = SelectedChatIds;
+    var destinationSelected = selectedChatIds.Count > 0;
     var shareButtonClass = !destinationSelected ? "hidden" : "";
     shareButtonClass += " btn-modal btn-primary share-button";
-    var shareFilesWithPreview = _selectedChats.Count == 1 && ModalModel.Files.Length <= Constants.Attachments.FileCountLimit;
-    var showCommentEditor = destinationSelected && (!ModalModel.HasFiles || !shareFilesWithPreview);
+    var showFilePreview = selectedChatIds.Count == 1 && ModalModel.Files.Length <= Constants.Attachments.FileCountLimit;
+    var showCommentEditor = destinationSelected && (!ModalModel.HasFiles || !showFilePreview);
 }
 
 <DialogFrame
@@ -17,13 +17,15 @@
     Title="Share to"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>
-        <SearchBoxNew
-            Placeholder="Who would you like to share with"
-            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@OnFilter"/>
-        <ContactSelect
-            SearchPhrase="_searchPhrase"
-            SelectionChanged="OnSelectionChanged"/>
+        <ContactSelector
+            @ref="@_contactSelectorRef"
+            SearchPhrase="@_searchPhrase">
+            <SearchBoxNew
+                Placeholder="Who would you like to share with"
+                MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                TextChanged="@OnFilter"/>
+            <ContactSelectorList/>
+        </ContactSelector>
     </Body>
     <Footer>
         @if (showCommentEditor) {
@@ -35,11 +37,17 @@
     </Footer>
     <Buttons>
         @if (ModalModel.HasFiles) {
-            <Button Class="@shareButtonClass" IsDisabled="@(!destinationSelected)" Click="@(() => ShareFiles(shareFilesWithPreview))">
-                <span>@(shareFilesWithPreview ? "Next" : "Send")</span>
+            <Button
+                Class="@shareButtonClass"
+                IsDisabled="@(!destinationSelected)"
+                Click="@(() => ShareFiles(showFilePreview))">
+                <span>@(showFilePreview ? "Next" : "Send")</span>
             </Button>
         } else {
-            <Button Class="@shareButtonClass" IsDisabled="@(!destinationSelected)" Click="@(() => ShareText(_comment))">
+            <Button
+                Class="@shareButtonClass"
+                IsDisabled="@(!destinationSelected)"
+                Click="@(() => ShareText(_comment))">
                 <span>Send</span>
             </Button>
         }
@@ -47,11 +55,14 @@
 </DialogFrame>
 
 @code {
-    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
-    private IReadOnlyCollection<ChatId> _selectedChats = Array.Empty<ChatId>();
+    private ContactSelector? _contactSelectorRef;
+    private SearchPhrase _searchPhrase = SearchPhrase.None;
     private string _comment = "";
     private ILogger? _log;
     private ILogger Log => _log ??= Services.LogFor(GetType());
+
+    private ImmutableHashSet<ChatId> SelectedChatIds
+        => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
 
@@ -63,9 +74,6 @@
         StateHasChanged();
     }
 
-    private void OnSelectionChanged(IReadOnlyCollection<ChatId> selectedChats)
-        => _selectedChats = selectedChats;
-
     private Task OnCommentChanged(string text) {
         _comment = text;
         return Task.CompletedTask;
@@ -73,11 +81,14 @@
 
     private async Task ShareText(string comment)
     {
-        var text = ModalModel.Text;
+        var selectedChatIds = SelectedChatIds;
+        if (selectedChatIds.Count == 0)
+            return;
 
+        var text = ModalModel.Text;
         var session = Services.Session();
         var uiCommander = Services.UICommander();
-        foreach (var chatId in _selectedChats) {
+        foreach (var chatId in selectedChatIds) {
             if (!comment.IsNullOrEmpty()) {
                 var cmd2 = new Chats_UpsertTextEntry(session, chatId, null, comment);
                 _ = await uiCommander.Run(cmd2, CancellationToken.None);
@@ -89,13 +100,17 @@
 
         Modal.Close(true);
         await Services.GetRequiredService<History>()
-            .NavigateTo(Links.Chat(_selectedChats.First()));
+            .NavigateTo(Links.Chat(selectedChatIds.First()));
     }
 
-    private async Task ShareFiles(bool handleWithPreview)
+    private async Task ShareFiles(bool showFilePreview)
     {
-        if (handleWithPreview) {
-            var chatId = _selectedChats.First();
+        var selectedChatIds = SelectedChatIds;
+        if (selectedChatIds.Count == 0)
+            return;
+
+        if (showFilePreview) {
+            var chatId = SelectedChatIds.First();
             Services.GetRequiredService<SentAttachmentsStorage>()
                 .Store(chatId, ModalModel.Files.Select(c => c.Url).ToArray());
 
@@ -108,7 +123,7 @@
             var fileDownloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
             var uploader = Services.GetRequiredService<FileUploader>();
             var postTasks = new List<Task<ChatEntry?>>();
-            foreach (var chatId in _selectedChats) {
+            foreach (var chatId in selectedChatIds) {
                 var comment = _comment;
                 foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
                     var fileUploads = UploadFiles(fileDownloader, uploader, chatId, filesChunk);
@@ -118,7 +133,7 @@
                 }
             }
             await Task.WhenAll(postTasks);
-            var expectedUploadedFilesNumber = ModalModel.Files.Length * _selectedChats.Count;
+            var expectedUploadedFilesNumber = ModalModel.Files.Length * selectedChatIds.Count;
             var attachments = postTasks
                 .Where(c => c.IsCompletedSuccessfully)
                 .Select(c => c.Result)

@@ -3,11 +3,16 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class FileUploader
+public class FileUploader(IServiceProvider services)
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly UrlMapper _urlMapper;
-    private readonly SessionTokens _sessionTokens;
+    private UrlMapper? _urlMapper;
+    private SessionTokens? _sessionTokens;
+    private IHttpClientFactory? _httpClientFactory;
+
+    private UrlMapper UrlMapper => _urlMapper ??= services.GetRequiredService<UrlMapper>();
+    private SessionTokens SessionTokens => _sessionTokens ??= services.GetRequiredService<SessionTokens>();
+    private IHttpClientFactory HttpClientFactory
+        => _httpClientFactory ??= services.GetRequiredService<IHttpClientFactory>();
 
     public async Task<MediaContent> Upload(ChatId chatId, Stream file, string? contentType, string? fileName, CancellationToken cancellationToken = default)
     {
@@ -16,14 +21,15 @@ public class FileUploader
         if (contentType != null)
             streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
         formData.Add(streamContent, "file", fileName.NullIfEmpty() ?? "Upload");
-        var httpClient = _httpClientFactory.CreateClient("UploadFile.Client");
-        httpClient.DefaultRequestHeaders.Add(SessionTokens.HeaderName, _sessionTokens.Current!.Token);
-        var url = _urlMapper.ApiBaseUrl + "chat-media/"+ chatId + "/upload";
+        var httpClient = HttpClientFactory.CreateClient("UploadFile.Client");
+        httpClient.DefaultRequestHeaders.Add(SessionTokens.HeaderName, SessionTokens.Current!.Token);
+        var url = UrlMapper.ApiBaseUrl + "chat-media/"+ chatId + "/upload";
         try {
             var response = await httpClient.PostAsync(url, formData, cancellationToken)
                 .ConfigureAwait(false);
             if (response.IsSuccessStatusCode) {
-                var result = await response.Content.ReadFromJsonAsync<MediaContent>(cancellationToken: cancellationToken)
+                var result = await response.Content
+                    .ReadFromJsonAsync<MediaContent>(cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 return result!;
             }
@@ -32,15 +38,5 @@ public class FileUploader
         } catch(Exception) when (cancellationToken.IsCancellationRequested) {
             throw new TaskCanceledException();
         }
-    }
-
-    public FileUploader(
-        IHttpClientFactory httpClientFactory,
-        UrlMapper urlMapper,
-        SessionTokens sessionTokens)
-    {
-        _httpClientFactory = httpClientFactory;
-        _urlMapper = urlMapper;
-        _sessionTokens = sessionTokens;
     }
 }

@@ -69,9 +69,8 @@ export class SelectionHost implements Disposable {
         debugLog?.log('onSelect, chatEntryId:', chatEntryId);
 
         this.selection.add(chatEntryId);
-        if (!triggerElement.classList.contains('replied-message')) {
+        if (!triggerElement.classList.contains('replied-message'))
             triggerElement.classList.remove('replied-message');
-        }
         await this.blazorRef.invokeMethodAsync('OnSelect', chatEntryId);
     }
 }

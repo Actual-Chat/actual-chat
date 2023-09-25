@@ -1,3 +1,5 @@
+using ActualChat.Search;
+
 namespace ActualChat.Core.UnitTests.Search;
 
 public class SearchPhraseTest : TestBase
@@ -19,6 +21,7 @@ public class SearchPhraseTest : TestBase
         Out.WriteLine(m.ToString());
         m.Parts.Length.Should().Be(2);
 
+        SearchPhrase.None.IsEmpty.Should().BeTrue();
         "".ToSearchPhrase(false, false).GetTermRegexString().Should().Be("");
         "".ToSearchPhrase(true, true).GetTermRegexString().Should().Be("");
 

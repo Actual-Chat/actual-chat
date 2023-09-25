@@ -2,10 +2,11 @@
 @using ActualChat.Search
 @implements IModalView<ShareModalModel>
 @{
-    var shareDialogButtonsClass = _selectedChats.Count == 0 ? "" : "hidden";
-    var shareButtonClass = _selectedChats.Count == 0 ? "hidden" : "";
+    var selectedChatIds = SelectedChatIds;
+    var shareDialogButtonsClass = selectedChatIds.Count == 0 ? "" : "hidden";
+    var shareButtonClass = selectedChatIds.Count == 0 ? "hidden" : "";
     shareButtonClass += " btn-modal btn-primary share-button";
-    var canSend = _selectedChats.Count > 0;
+    var canSend = selectedChatIds.Count > 0;
 }
 
 <DialogFrame
@@ -15,13 +16,16 @@
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>
     <FormBlock>
-        <SearchBoxNew
-            Placeholder="Who would you like to share with"
-            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@OnFilter"/>
-        <ContactSelect
+        <ContactSelector
+            @ref="@_contactSelectorRef"
             SearchPhrase="_searchPhrase"
-            SelectionChanged="OnSelectionChanged"/>
+            Changed="@StateHasChanged">
+            <SearchBoxNew
+                Placeholder="Who would you like to share with"
+                MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                TextChanged="@OnFilter"/>
+            <ContactSelectorList/>
+        </ContactSelector>
     </FormBlock>
     </Body>
     <Footer>
@@ -50,11 +54,13 @@
 
 
 @code {
-    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
-    private IReadOnlyCollection<ChatId> _selectedChats = Array.Empty<ChatId>();
+    private ContactSelector? _contactSelectorRef;
+    private SearchPhrase _searchPhrase = SearchPhrase.None;
     private string _comment = "";
     private ElementReference _copyTextSourceRef;
 
+    private IReadOnlySet<ChatId> SelectedChatIds
+        => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
     private ShareRequest RequestWithComment => ModalModel.Request.WithText(_comment);
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
@@ -81,22 +87,21 @@
         StateHasChanged();
     }
 
-    private void OnSelectionChanged(IReadOnlyCollection<ChatId> selectedChats) {
-        _selectedChats = selectedChats;
-    }
-
     private async Task OnSendClicked() {
         var text = RequestWithComment.GetShareTextAndLink(UrlMapper);
         var session = Services.Session();
         var uiCommander = Services.UICommander();
-        foreach (var chatId in _selectedChats) {
+        var selectedChatIds = SelectedChatIds;
+        foreach (var chatId in selectedChatIds) {
             var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
             _ = await uiCommander.Run(cmd, CancellationToken.None);
         }
         Modal.Close(true);
-
-        var history = Services.GetRequiredService<History>();
-        await history.NavigateTo(Links.Chat(_selectedChats.First()));
+        if (selectedChatIds.Count != 0) {
+            var history = Services.GetRequiredService<History>();
+            await history.WhenNavigationCompleted();
+            await history.NavigateTo(Links.Chat(selectedChatIds.First()));
+        }
     }
 
     private void OnCommentChanged(string text)

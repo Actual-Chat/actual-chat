@@ -10,10 +10,7 @@
         class="mention-markup mention-markup-valid @(context.IsOwn ? "mention-markup-own" : "")"
         @onclick="@(_ => AuthorUI.Show(_authorId))">
         <div class="truncate">
-            <i class="absolute icon-at text-lg"></i>
-            <span class="ml-5">
-                @context.Author.Avatar.Name
-            </span>
+            @context.Author.Avatar.Name
         </div>
     </div>
 </AuthorBadgeTemplate>

@@ -2,7 +2,7 @@
 @implements IModalView<ForwardMessageModal.Model>
 @using ActualChat.Search
 @{
-    var canSend = _selectedChats?.Any() == true;
+    var canSend = SelectedChatIds.Count != 0;
     _viewSettings.CanSubmit = canSend;
 }
 
@@ -13,21 +13,24 @@
     NarrowViewSettings="_viewSettings">
     <Body>
     <FormBlock>
-        <SearchBoxNew
-            Placeholder="Who would you like to share with"
-            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@OnFilter"/>
-        <ContactSelect
-            ContactsToExclude="@ModalModel.ContactsToExclude"
-            SearchPhrase="_searchPhrase"
-            SelectionChanged="OnSelectionChanged"/>
+        <ContactSelector
+            @ref="@_contactSelectorRef"
+            ExcludeChatIds="@ModalModel.ExcludedChatIds"
+            SearchPhrase="@_searchPhrase"
+            Changed="@StateHasChanged">
+            <SearchBoxNew
+                Placeholder="Who would you like to share with"
+                MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                TextChanged="@OnFilter"/>
+            <ContactSelectorList/>
+        </ContactSelector>
     </FormBlock>
     </Body>
     <Buttons>
         <Button
             Type="@ButtonType.Button"
             Class="btn-cancel"
-            Click="OnCancel">
+            Click="@(() => Modal.Close())">
             Cancel
         </Button>
         <Button
@@ -41,30 +44,21 @@
 </DialogFrame>
 
 @code {
-    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
-    private IReadOnlyCollection<ChatId>? _selectedChats;
+    private ContactSelector? _contactSelectorRef;
+    private SearchPhrase _searchPhrase = SearchPhrase.None;
     private DialogFrameNarrowViewSettings _viewSettings = null!;
 
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    private ImmutableHashSet<ChatId> SelectedChatIds
+        => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public sealed record Model(
-        IReadOnlyCollection<ChatId> ContactsToExclude,
-        Action<IReadOnlyCollection<ChatId>> ChatsSelected);
-
     protected override void OnInitialized()
         => _viewSettings = DialogFrameNarrowViewSettings.SubmitButton(OnSend, "Send");
 
-    private void OnCancel() {
-        Modal.Close();
-    }
-
     private void OnSend() {
-        if (_selectedChats?.Any() == true)
-            ModalModel.ChatsSelected(_selectedChats);
-
+        ModalModel.SelectedChatIds = SelectedChatIds;
         Modal.Close();
     }
 
@@ -73,7 +67,13 @@
         StateHasChanged();
     }
 
-    private void OnSelectionChanged(IReadOnlyCollection<ChatId> selectedChats) {
-        _selectedChats = selectedChats;
-    }
+    // Nested types
+
+    public sealed class Model(IReadOnlySet<ChatId> excludedChatIds) {
+
+        public IReadOnlySet<ChatId> ExcludedChatIds { get; } = excludedChatIds;
+        public ImmutableHashSet<ChatId> SelectedChatIds { get; set; } = ImmutableHashSet<ChatId>.Empty;
+
+        public Model(ChatId chatId) : this(ImmutableHashSet.Create(chatId)) { }
+    };
 }

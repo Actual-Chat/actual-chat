@@ -21,8 +21,8 @@
     }
 
     [JSInvokable]
-    public async Task OnSelect(ChatEntryId chatEntryId)
-        => await SelectionUI.Select(chatEntryId);
+    public void OnSelect(ChatEntryId chatEntryId)
+        => SelectionUI.Select(chatEntryId);
 
     [JSInvokable]
     public void OnUnselect(ChatEntryId chatEntryId)

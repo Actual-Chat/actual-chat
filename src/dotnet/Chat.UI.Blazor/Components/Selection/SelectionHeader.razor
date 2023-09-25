@@ -1,20 +1,18 @@
 @using System.Text
 @using ActualChat.UI.Blazor.Services.Internal
-@inherits ComputedStateComponent<SelectionHeader.Model>
+@inherits ComputedStateComponent<ImmutableHashSet<ChatEntryId>>
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
-    var m = State.Value;
-    if (ReferenceEquals(m, Model.None))
+    var selection = State.Value;
+    if (selection.Count == 0) {
+        _ = StopHandleEscape();
         return;
+    }
 
-    if (!m.Selection.Any())
-        return;
-
-    var messageCount = m.Selection.Count;
-    var firstSelected = m.Selection.First();
+    StartHandleEscape();
 }
 
-<SelectionHost Selected="@firstSelected" />
+<SelectionHost Selected="@selection.First()" />
 
 @if (ScreenSize.IsNarrow()) {
     <div class="selection-header">
@@ -26,23 +24,22 @@
             </ButtonRound>
         </div>
         <div class="selection-header-title">
-            @(messageCount) @(messageCount == 1 ? "message" : "messages")
+            @(selection.Count) @("message".Pluralize(selection.Count))
         </div>
         <div class="selection-header-buttons">
-            <HeaderButton Click="() => OnDelete(m.Selection)">
+            <HeaderButton Click="@(() => SelectionUI.Delete())">
                 <i class="icon-trash03 text-icons-04"></i>
             </HeaderButton>
-            <HeaderButton Click="() => OnCopy(m.Selection)">
+            <HeaderButton Click="@(() => SelectionUI.CopyToClipboard())">
                 <i class="icon-copy !text-lg"></i>
             </HeaderButton>
             <Button
                 Class="btn-submit btn-transparent"
-                Click="() => OnForward(m.Selection)">
+                Click="@(() => SelectionUI.Forward())">
                 Forward
             </Button>
         </div>
     </div>
-
     return;
 }
 
@@ -56,138 +53,78 @@
     </div>
 
     <div class="selection-header-title">
-        @(messageCount) @(messageCount == 1 ? "message" : "messages")
+        @(selection.Count) @("message".Pluralize(selection.Count))
     </div>
 
     <div class="selection-header-buttons">
         <HeaderButton
-            Click="() => OnDelete(m.Selection)"
+            Click="@(() => SelectionUI.Delete())"
             Tooltip="Delete selected"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-trash03 text-icons-04"></i>
         </HeaderButton>
         <HeaderButton
-            Click="() => OnCopy(m.Selection)"
+            Click="@(() => SelectionUI.CopyToClipboard())"
             Tooltip="Copy selected as text"
             TooltipPosition="FloatingPosition.Bottom">
             <i class="icon-copy !text-lg"></i>
         </HeaderButton>
-
-        @if (messageCount == 1) {
-            <HeaderButton
-                Click="() => OnReply(m.Selection.Single())">
-                <span class="text-accent">Reply</span>
-            </HeaderButton>
-        }
-
         <Button
             Class="btn-primary btn-sm"
-            Click="() => OnForward(m.Selection)">
+            Click="@(() => SelectionUI.Forward())">
             Forward
         </Button>
     </div>
 </div>
 
 @code {
+    private Task<IAsyncDisposable>? _escapistSubscriptionTask;
+
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
     [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private ToastUI ToastUI { get; init; } = null!;
+    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
+    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
+    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private Escapist Escapist { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+        await StopHandleEscape();
+    }
+
+    protected override ComputedState<ImmutableHashSet<ChatEntryId>>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = ImmutableHashSet<ChatEntryId>.Empty,
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var selection = await SelectionUI.Selection.Use(cancellationToken);
-
-        return new Model {
-            Selection = selection.ToList(),
-        };
-    }
-
-    public sealed record Model
-    {
-        public static Model None { get; } = new();
-
-        public IReadOnlyCollection<ChatEntryId> Selection { get; init; } = null!;
-    }
+    protected override Task<ImmutableHashSet<ChatEntryId>> ComputeState(CancellationToken cancellationToken)
+        => SelectionUI.Selection.Use(cancellationToken).AsTask();
 
     private void OnCancel()
         => SelectionUI.Clear();
 
-    private async Task OnCopy(IReadOnlyCollection<ChatEntryId> selection) {
-        var sb = new StringBuilder();
-        foreach (var chatEntryId in selection.OrderBy(x => x.LocalId)) {
-            var chatEntry = await Chats.GetEntry(Session, chatEntryId);
-            if (chatEntry == null)
-                continue;
-            if (chatEntry.Content.IsNullOrEmpty())
-                continue;
+    private void StartHandleEscape()
+        => _escapistSubscriptionTask ??= Escapist.SubscribeOnce(OnEscape, State.DisposeToken).AsTask();
 
-            sb.AppendLine(chatEntry.Content);
-        }
-
-        await ClipboardUI.WriteText(sb.ToString());
-        SelectionUI.Clear();
-    }
-
-    private async Task OnDelete(IReadOnlyCollection<ChatEntryId> selection) {
-        var chatId = selection.Select(x => x.ChatId).First();
-        var localIds = selection.Select(x => x.LocalId).ToApiArray();
-        var removeCommand = new Chats_RemoveTextEntries(Session, chatId, localIds);
-        await UICommander.Run(removeCommand);
-
-        ToastUI.Show("Messages deleted", Restore, "Undo", ToastDismissDelay.Long);
-        SelectionUI.Clear();
-
-        void Restore() {
-            var restoreCommand = new Chats_RestoreTextEntries(Session, chatId, localIds);
-            _ = UICommander.Run(restoreCommand);
-        }
-    }
-
-    private async Task OnReply(ChatEntryId chatEntryId) {
-        await ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, chatEntryId, focusOnEditor: true);
-        SelectionUI.Clear();
-    }
-
-    private async Task OnForward(IReadOnlyCollection<ChatEntryId> selection) {
-        var chatId = selection.First().ChatId;
-
-        IReadOnlyCollection<ChatId> selectedChats = Array.Empty<ChatId>();
-        var modal = await ModalUI.Show(new ForwardMessageModal.Model(
-            new [] { chatId },
-            chats => {
-                selectedChats = chats;
-            }));
-        await modal.WhenClosed;
-
-        if (!selectedChats.Any()) {
+    private async ValueTask StopHandleEscape() {
+        var escapistSubscriptionTask = _escapistSubscriptionTask;
+        if (escapistSubscriptionTask == null)
             return;
-        }
 
-        var cmd = new Chats_ForwardTextEntries(
-            Session,
-            chatId,
-            selection.ToApiArray(),
-            selectedChats.ToApiArray());
-        await UICommander.Run(cmd, CancellationToken.None);
-
-        SelectionUI.Clear();
-
-        if (selectedChats.Count == 1)
-            _ = History.NavigateTo(Links.Chat(selectedChats.First()));
+        _escapistSubscriptionTask = null;
+        var escapistSubscription = (await escapistSubscriptionTask.ResultAwait()).ValueOrDefault;
+        await escapistSubscription.DisposeSilentlyAsync();
     }
+
+    private void OnEscape()
+        => SelectionUI.Clear();
 }

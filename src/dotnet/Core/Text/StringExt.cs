@@ -69,6 +69,9 @@ public static partial class StringExt
         return sb.ToString();
     }
 
+    public static string Pluralize(this string source, int count)
+        => count == 1 ? source : source + "s";
+
     public static string EnsureSuffix(this string source, string suffix)
         => source.OrdinalEndsWith(suffix) ? source : source + suffix;
 

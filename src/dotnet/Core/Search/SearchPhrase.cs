@@ -9,8 +9,9 @@ public sealed partial class SearchPhrase
 {
     [GeneratedRegex("[\\s_]+")]
     private static partial Regex TermSplitRegexFactory();
-
     private static readonly Regex TermSplitRegex = TermSplitRegexFactory();
+
+    public static readonly SearchPhrase None = "".ToSearchPhrase(true, false);
 
     private string? _text;
     private Regex? _termRegex;

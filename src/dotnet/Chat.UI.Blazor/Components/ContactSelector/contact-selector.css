@@ -1,50 +1,54 @@
-.contact-select-list {
+/* List */
+.contact-selector-list {
     @apply flex-y grow;
     @apply py-1;
     @apply overflow-y-auto custom-scrollbar;
 }
-.contact-select-list-item {
+
+/* List item */
+.contact-selector-list-item {
     @apply flex-x items-center;
     @apply gap-x-1 py-1 px-4;
     @apply rounded-md;
     @apply hover:bg-secondary;
 }
-.contact-select-list-item,
-.contact-select-list-item * {
+.contact-selector-list-item,
+.contact-selector-list-item * {
     @apply cursor-pointer;
 }
 
-.contact-select-badges {
+/* List item badges */
+.contact-selector-badges {
     @apply flex-x flex-wrap;
     @apply gap-x-2;
 }
-.contact-select-badges-contact {
+.contact-selector-badges-contact {
     @apply flex-none flex-x items-center;
     @apply my-0.5 bg-03;
     @apply rounded-full;
 }
-.contact-select-badges-contact,
-.contact-select-badges-contact * {
+.contact-selector-badges-contact,
+.contact-selector-badges-contact * {
     @apply cursor-pointer;
 }
-.contact-select-badges-remove-contact-icon {
+.contact-selector-badges-remove-contact-icon {
     @apply hidden items-center;
     @apply rounded-full;
     @apply w-6 h-6;
     @apply bg-transparent;
 }
-.contact-select-badges-remove-contact-icon > i {
+.contact-selector-badges-remove-contact-icon > i {
     @apply text-04 text-2xl pl-1;
 }
-.contact-select-badges-title {
+.contact-selector-badges-title {
     @apply px-1 max-w-36 truncate;
 }
-body.hoverable .contact-select-badges-contact:hover {
+body.hoverable .contact-selector-badges-contact:hover {
     @apply bg-error text-04;
 }
-body.hoverable .contact-select-badges-contact:hover .contact-select-badges-remove-contact-icon {
+body.hoverable .contact-selector-badges-contact:hover .contact-selector-badges-remove-contact-icon {
     @apply flex;
 }
-body.hoverable .contact-select-badges-contact:hover .avatar-circle {
+body.hoverable .contact-selector-badges-contact:hover .avatar-circle {
     @apply hidden;
 }

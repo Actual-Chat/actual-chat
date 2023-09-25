@@ -53,7 +53,7 @@
 </div>
 
 @code {
-    private SearchPhrase _searchPhrase = "".ToSearchPhrase(true, false);
+    private SearchPhrase _searchPhrase = SearchPhrase.None;
     private ChatId ChatId { get; set; }
 
     [Inject] private IAuthors Authors { get; init; } = null!;

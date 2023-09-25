@@ -29,4 +29,7 @@ public static partial class MarkupExt
         text = WhitespaceRegex.Replace(text, " ").Trim();
         return text;
     }
+
+    public static string ToClipboardText(this Markup markup)
+        => MarkupFormatter.Readable.Format(markup);
 }

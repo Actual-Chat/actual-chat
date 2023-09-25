@@ -1,0 +1,82 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<IReadOnlyList<ChatInfo>>
+@using ActualChat.Search
+@using ActualChat.Contacts
+
+<CascadingValue IsFixed="true" Value="@this">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private IMutableState<IReadOnlyDictionary<ChatId, ChatInfo>> _allChats = null!;
+    private IMutableState<ImmutableHashSet<ChatId>> _selectedChatIds = null!;
+
+    [Inject] private IContacts Contacts { get; init; } = null!;
+    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+
+    [Parameter] public ChatListOrder Order { get; set; } = ChatListOrder.ByOwnUpdateTime;
+    [Parameter] public ChatListFilter Filter { get; set; } = ChatListFilter.None;
+    [Parameter] public IReadOnlySet<ChatId>? ExcludeChatIds { get; set; } = null;
+    [Parameter] public SearchPhrase SearchPhrase { get; set; } = SearchPhrase.None;
+    [Parameter] public EventCallback Changed { get; set; }
+    [Parameter] public RenderFragment ChildContent { get; set; } = null!;
+
+    public IState<IReadOnlyDictionary<ChatId, ChatInfo>> AllChats => _allChats;
+    public IComputedState<IReadOnlyList<ChatInfo>> Chats => State;
+    public IState<ImmutableHashSet<ChatId>> SelectedChatIds => _selectedChatIds;
+
+    public void Toggle(ChatId chatId)
+        => _selectedChatIds.Set(
+            chatId,
+            static (chatId1, x) => x.Value.Contains(chatId1)
+                ? x.Value.Remove(chatId1)
+                : x.Value.Add(chatId1));
+
+    public void Add(ChatId chatId)
+        => _selectedChatIds.Set(chatId, static (chatId1, x) => x.Value.Add(chatId1));
+
+
+    public void Remove(ChatId chatId)
+        => _selectedChatIds.Set(chatId, static (chatId1, x) => x.Value.Add(chatId1));
+
+    public void Clear()
+        => _selectedChatIds.Set(static x => x.Value.Clear());
+
+    // Protected methods
+
+    protected override void OnInitialized() {
+        _allChats = StateFactory.NewMutable(
+            (IReadOnlyDictionary<ChatId, ChatInfo>)ImmutableDictionary<ChatId, ChatInfo>.Empty,
+            StateCategories.Get(GetType(), nameof(AllChats)));
+        _selectedChatIds = StateFactory.NewMutable(
+            ImmutableHashSet<ChatId>.Empty,
+            StateCategories.Get(GetType(), nameof(SelectedChatIds)));
+        _selectedChatIds.Updated += OnSelectedChatIdsUpdated;
+        base.OnInitialized();
+    }
+
+    protected override ComputedState<IReadOnlyList<ChatInfo>>.Options GetStateOptions()
+        => new() {
+            InitialValue = ImmutableList<ChatInfo>.Empty,
+            UpdateDelayer = FixedDelayer.Get(0.25),
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
+        var allChats = await ChatListUI.ListAllUnordered(Filter, cancellationToken);
+        _allChats.Value = allChats;
+
+        var chats = allChats.Values;
+        if (ExcludeChatIds is { } excludeChatIds && excludeChatIds.Count != 0)
+            chats = chats.Where(x => !excludeChatIds.Contains(x.Id));
+        chats = chats.OrderBy(Order);
+        if (!SearchPhrase.IsEmpty)
+            chats = chats.FilterAndOrderBySearchPhrase(SearchPhrase);
+        return chats.ToList();
+    }
+
+    private void OnSelectedChatIdsUpdated(IState<ImmutableHashSet<ChatId>> state, StateEventKind eventKind)
+        => _ = InvokeAsync(() => !State.DisposeToken.IsCancellationRequested
+            ? Changed.InvokeAsync()
+            : Task.CompletedTask);
+}

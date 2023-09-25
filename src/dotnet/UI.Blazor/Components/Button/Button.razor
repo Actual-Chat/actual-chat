@@ -31,11 +31,10 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
-    protected override Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender && Rendered.HasDelegate)
-            return Rendered.InvokeAsync(_buttonRef);
-        return Task.CompletedTask;
-    }
+    protected override Task OnAfterRenderAsync(bool firstRender)
+        => firstRender
+            ? Rendered.InvokeAsync(_buttonRef)
+            : Task.CompletedTask;
 
     private string GetButtonType()
         => Type.ToString().ToLower();

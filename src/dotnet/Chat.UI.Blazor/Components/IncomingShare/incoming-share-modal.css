@@ -15,10 +15,10 @@
 .share-incoming-modal .dialog-footer {
     @apply p-0;
 }
-.share-incoming-modal .contact-select-list {
+.share-incoming-modal .contact-selector-list {
     @apply pt-2;
 }
-.narrow .share-incoming-modal .contact-select-list {
+.narrow .share-incoming-modal .contact-selector-list {
     @apply pb-0;
 }
 

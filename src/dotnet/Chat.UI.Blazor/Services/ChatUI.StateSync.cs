@@ -41,6 +41,7 @@ public partial class ChatUI
                 _ = IsSelected(newChatId);
             }
 
+            SelectionUI.Clear();
             _ = ChatEditorUI.RestoreRelatedEntry(newChatId).ConfigureAwait(false);
             _ = UIEventHub.Publish<SelectedChatChangedEvent>(CancellationToken.None);
             _ = UICommander.RunNothing();

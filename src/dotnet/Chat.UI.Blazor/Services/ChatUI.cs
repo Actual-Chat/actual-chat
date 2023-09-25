@@ -30,6 +30,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private ActiveChatsUI? _activeChatsUI;
     private ChatAudioUI? _chatAudioUI;
     private ChatEditorUI? _chatEditorUI;
+    private SelectionUI? _selectionUI;
     private UICommander? _uiCommander;
     private UIEventHub? _uiEventHub;
     private ICommander? _commander;
@@ -52,6 +53,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
     private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
     private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
+    private SelectionUI SelectionUI => _selectionUI ??= Services.GetRequiredService<SelectionUI>();
     private UICommander UICommander => _uiCommander ??= Services.UICommander();
     private UIEventHub UIEventHub => _uiEventHub ??= Services.UIEventHub();
     private ICommander Commander => _commander ??= Services.Commander();
@@ -122,7 +124,9 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
                 lastTextEntryText = Constants.Messages.RecordingSkeleton;
             else {
                 var chatMarkupHub = ChatMarkupHubFactory[chatId];
-                var markup = await chatMarkupHub.GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken).ConfigureAwait(false);
+                var markup = await chatMarkupHub
+                    .GetMarkup(lastTextEntry, MarkupConsumer.ChatListItemText, cancellationToken)
+                    .ConfigureAwait(false);
                 lastTextEntryText = markup.ToReadableText(MarkupConsumer.ChatListItemText);
             }
         }
