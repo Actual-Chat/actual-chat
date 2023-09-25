@@ -326,18 +326,40 @@ public partial class ChatAudioUI
         var cBeepState = await Computed.Capture(() => GetRecordingBeepState(cancellationToken)).ConfigureAwait(false);
         var prevActiveUntil = Moment.MinValue;
         await foreach (var change in cBeepState.Changes(cancellationToken).ConfigureAwait(false)) {
-            var (isRecording, activeUntil) = change.Value;
-            if (!isRecording) {
-                _nextBeep.Value = null;
+            var nextBeep = GetNextBeep(change.Value);
+            _nextBeep.Value = nextBeep;
+            if (nextBeep == null)
                 continue;
-            }
 
-            var isPreviousCancelled = activeUntil > prevActiveUntil;
-            var lastBeepAt = Moment.Max(activeUntil, _nextBeep.Value?.At ?? Moment.MinValue);
-            var nextBeepAt = lastBeepAt + AudioSettings.RecordingBeepInterval;
-            change.Invalidate(nextBeepAt - Now); // force invalidation after interval
-            _nextBeep.Value = isRecording ? new(nextBeepAt, isPreviousCancelled) : null;
-            prevActiveUntil = activeUntil;
+            prevActiveUntil = change.Value.ActiveUntil;
+            change.Invalidate(nextBeep.At - Now);
+        }
+        return;
+
+        NextBeepState? GetNextBeep(RecordingBeepState state)
+        {
+            var (isRecording, activeUntil, isCountingDown) = state;
+            if (!isRecording)
+                return null;
+
+            var beepIn = isCountingDown
+                ? AudioSettings.RecordingAggressiveBeepInterval
+                : AudioSettings.RecordingBeepInterval;
+
+            if (activeUntil > prevActiveUntil)
+                // UI interaction resets beep timer
+                return new (activeUntil + beepIn, true);
+
+            // hasn't beeped yet
+            if (_nextBeep.Value is not {} prevBeep || prevBeep.At < activeUntil)
+                return new NextBeepState(activeUntil + beepIn, false);
+
+            // doesn't need recalculation
+            if (prevBeep.At > Now)
+                return prevBeep;
+
+            // recalculate
+            return new (prevBeep.At + beepIn, false);
         }
     }
 
@@ -376,9 +398,14 @@ public partial class ChatAudioUI
     protected virtual async Task<RecordingBeepState> GetRecordingBeepState(CancellationToken cancellationToken)
     {
         var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
+        if (recordingChatId.IsNone)
+            // if recording is not started, other properties make no sense
+            return new (false, Moment.MinValue, false);
+
         var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false);
+        var recordingStopsAt = await StopRecordingAt.Use(cancellationToken).ConfigureAwait(false);
         var isRecording = !recordingChatId.IsNone;
-        return new(isRecording, activeUntil);
+        return new(isRecording, activeUntil, recordingStopsAt != null);
     }
 
     private async IAsyncEnumerable<Moment?> WatchIdleAudioBoundaries(
@@ -464,7 +491,7 @@ public partial class ChatAudioUI
     }
 
     [StructLayout(LayoutKind.Auto)]
-    public readonly record struct RecordingBeepState(bool IsRecording, Moment ActiveUntil);
+    public readonly record struct RecordingBeepState(bool IsRecording, Moment ActiveUntil, bool IsCountingDown);
 
     public record NextBeepState(Moment At, bool IsPreviousCancelled);
 
