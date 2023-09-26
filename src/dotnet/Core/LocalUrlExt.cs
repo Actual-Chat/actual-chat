@@ -10,7 +10,7 @@ public static partial class LocalUrlExt
     private static readonly Regex IsChatRegex = IsChatRegexFactory();
 
     public static bool IsHome(this LocalUrl url)
-        => url == Links.Home;
+        => url == Links.Home || url.Value.OrdinalStartsWith("/?");
 
     public static bool IsDocsOrDocsRoot(this LocalUrl url)
         => url.IsDocs() || url.IsDocsRoot();
