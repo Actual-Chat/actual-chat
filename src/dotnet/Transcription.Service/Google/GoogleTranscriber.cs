@@ -397,9 +397,18 @@ public partial class GoogleTranscriber : ITranscriber
 
     private RecognizerOptions GetRecognizerOptions(Language language)
     {
+        // Defined based on https://cloud.google.com/speech-to-text/v2/docs/speech-to-text-supported-languages
+        bool supportAutomaticPunctuation =
+            language != Languages.EnglishIN &&
+            language != Languages.FrenchCA &&
+            language != Languages.Portuguese &&
+            language != Languages.Ukrainian &&
+            language != Languages.Turkish &&
+            language != Languages.Thai &&
+            language != Languages.Polish;
         // if (language == Languages.Chinese)
         //     return new RecognizerOptions("zh", false);
-        return new RecognizerOptions(language.Value, true);
+        return new RecognizerOptions(language.Value, supportAutomaticPunctuation);
     }
 
     private static string FixSuffix(string prefix, string suffix)

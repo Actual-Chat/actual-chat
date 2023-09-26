@@ -22,9 +22,9 @@ public static class Languages
     public static readonly Language SpanishUS    = new("es-US", "ES", "Spanish (USA)", AssumeValid.Option);
     public static readonly Language Ukrainian    = new("uk-UA", "UA", "Ukrainian", AssumeValid.Option);
     public static readonly Language Hindi        = new("hi-IN", "HI", "Hindi", AssumeValid.Option);
-    public static readonly Language Bengali      = new("bn-BD", "BN", "Bengali", AssumeValid.Option);
-    public static readonly Language Tamil        = new("ta-IN", "TA", "Tamil", AssumeValid.Option);
-    public static readonly Language Arabic       = new("ar-SA", "AR", "Arabic (Saudi Arabia)", AssumeValid.Option);
+    //public static readonly Language Bengali      = new("bn-BD", "BN", "Bengali", AssumeValid.Option); Not supported
+    //public static readonly Language Tamil        = new("ta-IN", "TA", "Tamil", AssumeValid.Option); Supports only Chirp Model in us-central1 Location
+    //public static readonly Language Arabic       = new("ar-SA", "AR", "Arabic (Saudi Arabia)", AssumeValid.Option); We need RTL support
     public static readonly Language Turkish      = new("tr-TR", "TR", "Turkish", AssumeValid.Option);
     public static readonly Language Vietnamese   = new("vi-VN", "VN", "Vietnamese", AssumeValid.Option);
     public static readonly Language Italian      = new("it-IT", "IT", "Italian", AssumeValid.Option);
@@ -37,11 +37,10 @@ public static class Languages
     public static readonly ApiArray<Language> All = ApiArray.New(
         // Arabic,
         // Chinese,
-        Arabic,
         English,
         EnglishUK,
         EnglishIN,
-        Bengali,
+        //Bengali,
         French,
         FrenchCA,
         German,
@@ -56,7 +55,8 @@ public static class Languages
         Spanish,
         SpanishMX,
         SpanishUS,
-        Tamil,
+        //Tamil,
+        Thai,
         Turkish,
         Ukrainian,
         Vietnamese
