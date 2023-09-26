@@ -36,9 +36,9 @@ public partial class History
             if (existingItem != null) {
                 if (OrdinalEquals(uri, existingItem.Uri)) {
                     currentItem = _currentItem = existingItem;
-                    if (currentItem.OnNavigation is {IsNone: false} onNavigation) {
+                    if (currentItem.OnNavigation is { IsNone: false } onNavigation) {
                         DebugLog?.LogDebug("LocationChange: OnNavigation action: {OnNavigation}", onNavigation);
-                        currentItem = currentItem with {OnNavigation = default};
+                        currentItem = currentItem with { OnNavigation = default };
                         ReplaceItem(ref currentItem);
                         _locationChangeRegion.ExitAction = onNavigation.Action;
                         return;
