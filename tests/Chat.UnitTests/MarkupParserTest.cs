@@ -174,6 +174,32 @@ code
 ```", out _);
         m.Language.Should().Be("cs");
         m.Code.Should().Be("");
+
+        m = Parse<CodeBlockMarkup>(@"```cs
+    public class CodeWithIndent
+    {
+    }
+```", out _);
+        m.Language.Should().Be("cs");
+        m.Code.Should().Be(@"    public class CodeWithIndent
+    {
+    }
+".Replace("\n", "\r\n"));
+
+        m = Parse<CodeBlockMarkup>(@"```cs
+
+    public class CodeWithIndent
+    {
+    }
+
+```", out _);
+        m.Language.Should().Be("cs");
+        m.Code.Should().Be(@"
+    public class CodeWithIndent
+    {
+    }
+
+".Replace("\n", "\r\n"));
     }
 
     [Fact]

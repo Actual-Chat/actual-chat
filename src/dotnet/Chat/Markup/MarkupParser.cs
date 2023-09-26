@@ -177,9 +177,7 @@ public partial class MarkupParser : IMarkupParser
 
     // Code block
     private static readonly Parser<char, string> CodeBlockStart =
-        CodeBlockToken
-            .Then(IdChar.ManyString().Before(EndOfLine)) // Language
-            .Before(WhitespaceChar.SkipMany());
+        CodeBlockToken.Then(IdChar.ManyString().Before(EndOfLine)); // Language
     private static readonly Parser<char, char> CodeBlockEnd =
         WhitespaceChar.SkipMany().Then(CodeBlockToken).Then(Lookahead(Whitespace.OrEnd()));
     private static readonly Parser<char, string> CodeBlockLine =
