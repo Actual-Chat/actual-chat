@@ -23,13 +23,14 @@ export enum Tune
     StopHistoricalPlayback,
     StopRealtimePlayback,
     PinUnpinChat,
+    NotifyOnNewMessageInApp,
     SendMessage,
     EditMessage,
     ReplyMessage,
     ChangeAttachments,
     SelectPrimaryLanguage,
     SelectSecondaryLanguage,
-    ShowMenu
+    ShowMenu,
 }
 
 export type TuneName = keyof typeof Tune;

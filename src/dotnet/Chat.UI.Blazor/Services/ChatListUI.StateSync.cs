@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public partial class ChatListUI
@@ -6,10 +8,11 @@ public partial class ChatListUI
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        var baseChains = new AsyncChain[] {
-            new(nameof(InvalidateIsSelectedChatUnlisted), InvalidateIsSelectedChatUnlisted),
+        var baseChains = new[] {
+            AsyncChainExt.From(InvalidateIsSelectedChatUnlisted),
             new($"{nameof(PushItems)}({ChatListKind.Active})", ct => PushItems(ChatListKind.Active, ct)),
             new($"{nameof(PushItems)}({ChatListKind.All})", ct => PushItems(ChatListKind.All, ct)),
+            AsyncChainExt.From(PlayTuneOnNewMessages),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (
@@ -80,6 +83,28 @@ public partial class ChatListUI
             DebugLog?.LogDebug("PushItems({ListKind}): invalidating GetCount", listKind);
             if (isCountChanged)
                 _ = GetCount(listKind);
+        }
+    }
+
+    private async Task PlayTuneOnNewMessages(CancellationToken cancellationToken)
+    {
+        var cChatInfoMap = await Computed.Capture(() => ListAllUnorderedRaw(cancellationToken)).ConfigureAwait(false);
+        var previous = await cChatInfoMap.Use(cancellationToken).ConfigureAwait(false);
+        var lastPlayedAt = Moment.MinValue;
+        await foreach (var change in cChatInfoMap.Changes(cancellationToken).ConfigureAwait(false))
+            OnChange(change.Value);
+
+        void OnChange(IReadOnlyDictionary<ChatId, ChatInfo> chatInfoMap)
+        {
+            if (lastPlayedAt + MinNotificationInterval <= Now)
+                foreach (var pair in chatInfoMap.Where(x => x.Key != ChatUI.SelectedChatId.Value))
+                    if (!previous.TryGetValue(pair.Key, out var prevChatInfo)
+                        || prevChatInfo.UnmutedUnreadCount < pair.Value.UnmutedUnreadCount) {
+                        _ = TuneUI.Play(Tune.NotifyOnNewMessageInApp);
+                        lastPlayedAt = Now;
+                        break;
+                    }
+            previous = chatInfoMap;
         }
     }
 }
