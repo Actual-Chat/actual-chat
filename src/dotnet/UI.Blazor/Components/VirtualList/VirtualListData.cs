@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public class VirtualListData<TItem>(IReadOnlyList<TItem> items)
+public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     where TItem : IVirtualListItem
 {
     public static VirtualListData<TItem> None { get; } = new(Array.Empty<TItem>());
@@ -10,8 +10,8 @@ public class VirtualListData<TItem>(IReadOnlyList<TItem> items)
 
     public Range<string> KeyRange
         => items.Count > 0
-        ? new Range<string>(items[0].Key, items[^1].Key)
-        : default;
+            ? new Range<string>(Items[0].Key, Items[^1].Key)
+            : default;
 
     public IReadOnlyList<TItem> Items { get; } = items;
     public int? RequestedStartExpansion { get; init; }

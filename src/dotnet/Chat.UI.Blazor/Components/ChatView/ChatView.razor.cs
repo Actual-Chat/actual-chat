@@ -259,7 +259,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .Count()
             == chatMessages.Count;
 
-        var result = isResultTheSame && scrollToKey == oldData.ScrollToKey
+        var result = isResultTheSame && OrdinalEquals(scrollToKey, oldData.ScrollToKey)
             ? oldData
             : new VirtualListData<ChatMessageModel>(chatMessages) {
                 HasVeryFirstItem = hasVeryFirstItem,

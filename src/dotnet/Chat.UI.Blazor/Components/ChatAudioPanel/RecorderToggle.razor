@@ -22,9 +22,11 @@
     if (forceDisplay && m.StartRecordingAt.HasValue) {
         if (!_isTroubleshootGuideTriggered) {
             _isTroubleshootGuideTriggered = true;
-            Clocks.CoarseSystemClock
-                .Delay(5000, _cancelTroubleshootGuide?.Token ?? CancellationToken.None)
-                .ContinueWith(_ => DisplayTroubleshootGuide(), TaskContinuationOptions.OnlyOnRanToCompletion);
+            var cancellationToken = _cancelTroubleshootGuide?.Token ?? CancellationToken.None;
+            _ = ForegroundTask.Run(async () => {
+                await Task.Delay(5000, cancellationToken);
+                await DisplayTroubleshootGuide();
+            }, cancellationToken);
         }
     }
 }

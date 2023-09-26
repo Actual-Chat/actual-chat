@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public class VirtualListDataQuery
+public sealed class VirtualListDataQuery
 {
     public static VirtualListDataQuery None { get; } = new (default);
 
