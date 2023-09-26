@@ -18,7 +18,6 @@
     var tooltip = audioState.IsListening ? "Listening..." : "Listen";
     _rendered = m;
     var loudBtnCls = "loud-btn " + (m.IsSpeakerphoneOn ? "on" : "off");
-    var isAnimated = Random.Shared.Next(2) == 0;
 }
 
 <div class="@wrapperCls playback-wrapper">
@@ -29,7 +28,7 @@
         TooltipPosition="FloatingPosition.Top"
         MustKeepAwake="@(!audioState.IsListening)">
         @* <i class="icon-listen-2 text-3xl"></i> *@
-        <playback-toggle-svg isAnimated="@isAnimated"/>
+        <playback-toggle-svg isAnimated="@m.IsAnimated"/>
     </ButtonRound>
     @* Temporarily disabled switch between loud speaker and earpiece *@
     @* to have single audio channel controlled with volume buttons  *@
@@ -41,8 +40,11 @@
 @code {
     private Model _rendered = Model.Loading;
 
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
+    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
 
     private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
@@ -60,8 +62,16 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var audioState = await ChatAudioUI.GetState(Chat.Id);
+        var isAnimated = false;
+        if (!audioState.IsListening) {
+            var chatInfo = await ChatUI.Get(Chat.Id, cancellationToken);
+            if (chatInfo?.News.LastTextEntry is { IsStreaming: true } lastTextEntry) {
+                var ownAuthor = await Authors.GetOwn(Session, Chat.Id, cancellationToken);
+                isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
+            }
+        }
         var isSpeakerphoneOn = await AudioOutputController.IsSpeakerphoneOn.Use(cancellationToken);
-        return new Model(Chat, audioState, isSpeakerphoneOn);
+        return new Model(Chat, audioState, isAnimated, isSpeakerphoneOn);
     }
 
     private void OnListenClick() {
@@ -78,6 +88,7 @@
     public sealed record Model(
         Chat Chat,
         ChatAudioState AudioState,
+        bool IsAnimated = false,
         bool IsSpeakerphoneOn = false
     ) {
         public static Model Loading { get; } = new(SpecialChat.Loading, ChatAudioState.None);
