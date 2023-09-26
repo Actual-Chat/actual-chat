@@ -376,7 +376,7 @@ public partial class GoogleTranscriber : ITranscriber
                         MaxAlternatives = 0,
                         EnableSpokenPunctuation = false,
                         EnableSpokenEmojis = false,
-                        ProfanityFilter = true,
+                        ProfanityFilter = recognizerOptions.ProfanityFilter,
                         EnableWordConfidence = false,
                         EnableWordTimeOffsets = false,
                         MultiChannelMode = RecognitionFeatures.Types.MultiChannelMode.Unspecified,
@@ -406,9 +406,9 @@ public partial class GoogleTranscriber : ITranscriber
             language != Languages.Turkish &&
             language != Languages.Thai &&
             language != Languages.Polish;
-        // if (language == Languages.Chinese)
-        //     return new RecognizerOptions("zh", false);
-        return new RecognizerOptions(language.Value, supportAutomaticPunctuation);
+        bool profanityFilter =
+            language != Languages.FrenchCA;
+        return new RecognizerOptions(language.Value, supportAutomaticPunctuation, profanityFilter);
     }
 
     private static string FixSuffix(string prefix, string suffix)
@@ -464,5 +464,5 @@ public partial class GoogleTranscriber : ITranscriber
         return converter.FromByteStream(byteStream, CancellationToken.None);
     }
 
-    private record struct RecognizerOptions(string LanguageCode, bool EnableAutomaticPunctuation);
+    private record struct RecognizerOptions(string LanguageCode, bool EnableAutomaticPunctuation, bool ProfanityFilter);
 }
