@@ -29,9 +29,9 @@ export class VisualMediaViewer {
     private readonly footer: HTMLElement;
     private mainCarousel: HTMLElement;
     private footerCarousel: HTMLElement;
-    private nextButton: HTMLElement;
-    private prevButton: HTMLElement;
-    private mediaArray: Element[];
+    private nextButton: HTMLElement = null;
+    private prevButton: HTMLElement = null;
+    private mediaArray: Element[] = null;
     private readonly multiplier: number = 1.25;
     private startY: number = 0;
     private startX: number = 0;
@@ -88,11 +88,23 @@ export class VisualMediaViewer {
 
         this.initCarousels();
 
-        this.prevButton = this.overlay.querySelector('.c-previous');
-        this.nextButton = this.overlay.querySelector('.c-next');
-        this.controlButtonsVisibilityToggle();
-        this.prevButton.classList.remove('invisible');
-        this.nextButton.classList.remove('invisible');
+        if (this.mediaArray != null && this.mediaArray.length > 1) {
+            this.prevButton = this.overlay.querySelector('.c-previous');
+            this.nextButton = this.overlay.querySelector('.c-next');
+            this.controlButtonsVisibilityToggle();
+            this.prevButton.classList.remove('invisible');
+            this.nextButton.classList.remove('invisible');
+
+            fromEvent(this.prevButton, 'pointerdown')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event: PointerEvent) => this.onPreviousButtonClick(event));
+
+            fromEvent(this.nextButton, 'pointerdown')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event: PointerEvent) => this.onNextButtonClick(event));
+        }
+
+
 
         fromEvent(this.overlay, 'wheel')
             .pipe(takeUntil(this.disposed$))
@@ -109,14 +121,6 @@ export class VisualMediaViewer {
         fromEvent(window, 'pointercancel')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onPointerUp(event));
-
-        fromEvent(this.prevButton, 'pointerdown')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onPreviousButtonClick(event));
-
-        fromEvent(this.nextButton, 'pointerdown')
-            .pipe(takeUntil(this.disposed$))
-            .subscribe((event: PointerEvent) => this.onNextButtonClick(event));
     }
 
     public dispose() {
@@ -462,12 +466,7 @@ export class VisualMediaViewer {
             if ((event.timeStamp - savedEvent.timeStamp < 500) && this.isSameCoords(event, savedEvent)) {
                 if (this.isRequiredClass(target)) {
                     this.toggleFooterHeaderVisibility();
-                } else if (!this.footer.contains(target)
-                    && !this.header.contains(target)
-                    && !this.prevButton.contains(target)
-                    && !this.nextButton.contains(target)
-                    && !this.prevButton.contains(savedTarget)
-                    && !this.nextButton.contains(savedTarget)) {
+                } else if (this.isClickToClose(target, savedTarget)) {
                     this.blazorRef.invokeMethodAsync('Close');
                 }
             }
@@ -475,6 +474,18 @@ export class VisualMediaViewer {
         }
         this.curState.imageRect = this.curState.viewerRect = this.prevState.imageRect = this.prevState.viewerRect = this.media.getBoundingClientRect();
     };
+
+    private isClickToClose(target: HTMLElement, savedTarget: HTMLElement) : boolean {
+        if (this.footer.contains(target))
+            return false;
+        else if (this.header.contains(target))
+            return false;
+        else if (this.prevButton != null && (this.prevButton.contains(target) || this.prevButton.contains(savedTarget)))
+            return false;
+        else if (this.nextButton != null && (this.nextButton.contains(target) || this.nextButton.contains(savedTarget)))
+            return false;
+        return true;
+    }
 
     private onTouchableMove = (event: PointerEvent) => {
         if (!this.isMovementStarted)
@@ -641,11 +652,15 @@ export class VisualMediaViewer {
     }
 
     private controlButtonsVisibilityToggle() {
+        if (this.mediaArray == null || this.mediaArray.length < 2)
+            return;
         let currentMediaIndex = this.mediaArray.indexOf(this.media);
         if (currentMediaIndex == 0) {
             this.prevButton.classList.add('!hidden');
+            this.nextButton.classList.remove('!hidden');
         } else if (currentMediaIndex == this.mediaArray.length - 1) {
             this.nextButton.classList.add('!hidden');
+            this.prevButton.classList.remove('!hidden');
         } else {
             this.prevButton.classList.remove('!hidden');
             this.nextButton.classList.remove('!hidden');

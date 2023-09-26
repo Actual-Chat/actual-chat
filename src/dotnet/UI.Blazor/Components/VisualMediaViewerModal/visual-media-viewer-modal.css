@@ -100,8 +100,6 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
 
 /* Image viewer content */
 .image-viewer-modal .image-viewer-content {
-    /*@apply absolute flex-y max-h-fit;*/
-    /*@apply absolute flex-x max-h-fit;*/
     @apply absolute flex-x;
     @apply justify-center items-center md:backdrop-blur-md;
 }
@@ -119,7 +117,8 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
 .image-viewer-modal .c-previous,
 .image-viewer-modal .c-next {
     @apply absolute;
-    @apply flex;
+    @apply flex items-center;
+    @apply h-full;
     @apply cursor-pointer;
 }
 body.narrow .image-viewer-modal .c-previous,
@@ -140,5 +139,5 @@ body.narrow .image-viewer-modal .c-next {
 }
 .image-viewer-modal .c-previous:hover,
 .image-viewer-modal .c-next:hover {
-    @apply backdrop-blur brightness-125;
+    @apply backdrop-blur-sm brightness-125;
 }
