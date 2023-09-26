@@ -746,7 +746,7 @@ function cleanupPastedText(text: string, fixDoubleNewLines: boolean): string {
     text = normalize(text);
     if (fixDoubleNewLines && !text.match(SingleLfRe))
         text = text.replace(DoubleLfRe, '\n');
-    text = text.trim();
+    // text = text.trim(); // This makes pasting code quite inconvenient
     return text;
 }
 

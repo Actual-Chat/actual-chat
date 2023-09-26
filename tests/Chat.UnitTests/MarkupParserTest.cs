@@ -23,7 +23,7 @@ public class MarkupParserTest : TestBase
     [Fact]
     public void NewLineTest()
     {
-        var m = Parse<MarkupSeq>("Мороз и солнце; день\r\n чудесный!", out var text);
+        var m = Parse<MarkupSeq>("Мороз и солнце; день\r\n чудесный!");
         m.Items.Count(m => m is PlainTextMarkup).Should().Be(2);
         m.Items.Count(m => m is NewLineMarkup).Should().Be(1);
     }
@@ -51,7 +51,7 @@ public class MarkupParserTest : TestBase
     [Fact]
     public void UrlWithQueryAndHashTest()
     {
-        var m = Parse<MarkupSeq>("https://docs.google.com/spreadsheets/d/nj/edit#gid=1534300344 x", out _);
+        var m = Parse<MarkupSeq>("https://docs.google.com/spreadsheets/d/nj/edit#gid=1534300344 x");
         m.Items.Length.Should().Be(2);
         var url = (UrlMarkup)m.Items[0];
         url.Url.Should().EndWith("344");
@@ -62,7 +62,7 @@ public class MarkupParserTest : TestBase
     [Fact]
     public void UrlWithCommaInHashTest()
     {
-        var m = Parse<MarkupSeq>("https://github.com/Actual-Chat/actual-chat/blob/710d73de02f1241e1f4b2e8c13e6f8978c3896c9/src/nodejs/styles/tailwind.css#L18,L23 x", out _);
+        var m = Parse<MarkupSeq>("https://github.com/Actual-Chat/actual-chat/blob/710d73de02f1241e1f4b2e8c13e6f8978c3896c9/src/nodejs/styles/tailwind.css#L18,L23 x");
         m.Items.Length.Should().Be(2);
         var url = (UrlMarkup)m.Items[0];
         url.Url.Should().EndWith("L18,L23");
@@ -74,7 +74,7 @@ public class MarkupParserTest : TestBase
     public void UrlWithQuoteInQuery()
     {
         var url = "https://actual.chat?k='v'";
-        var m = Parse<MarkupSeq>($"{url} x", out _);
+        var m = Parse<MarkupSeq>($"{url} x");
         m.Items.Length.Should().Be(2);
         var urlMarkup = (UrlMarkup)m.Items[0];
         urlMarkup.Url.Should().Be("https://actual.chat?k='v'");
@@ -98,17 +98,17 @@ public class MarkupParserTest : TestBase
     [Fact]
     public void NamedMentionTest()
     {
-        var m = Parse<MentionMarkup>("@`a`a:chatid:1", out var text);
+        var m = Parse<MentionMarkup>("@`a`a:chatid:1");
         m.Name.Should().Be("a");
         m.Id.Value.Should().Be("a:chatid:1");
 
-        m = Parse<MentionMarkup>("@`a x`a:chatid:1", out text);
+        m = Parse<MentionMarkup>("@`a x`a:chatid:1");
         m.Name.Should().Be("a x");
         m.Id.Value.Should().Be("a:chatid:1");
 
         // Empty id case
-        Parse<MarkupSeq>("@`Alex Yakunin`", out text);
-        Parse<MarkupSeq>("@`a`b", out text);
+        Parse<MarkupSeq>("@`Alex Yakunin`");
+        Parse<MarkupSeq>("@`a`b");
     }
 
     [Fact]
@@ -157,33 +157,39 @@ public class MarkupParserTest : TestBase
     [Fact]
     public void PreformattedTest()
     {
-        var m = Parse<PreformattedTextMarkup>("`a``b`", out _);
+        var m = Parse<PreformattedTextMarkup>("`a``b`");
         m.Text.Should().Be("a`b");
     }
 
     [Fact]
-    public void CodeTest()
+    public void CodeBlockTest()
     {
         var m = Parse<CodeBlockMarkup>(@"```cs
 code
-```", out _);
+```");
         m.Language.Should().Be("cs");
         m.Code.Should().Be("code\r\n");
 
+        m = Parse<CodeBlockMarkup>("``` code\n```", false);
+        m.Language.Should().Be("");
+        m.Code.Should().Be("code\r\n");
+
         m = Parse<CodeBlockMarkup>(@"```cs
-```", out _);
+```");
         m.Language.Should().Be("cs");
         m.Code.Should().Be("");
 
         m = Parse<CodeBlockMarkup>(@"```cs
     public class CodeWithIndent
     {
+      Test();
     }
-```", out _);
+```", false);
         m.Language.Should().Be("cs");
-        m.Code.Should().Be(@"    public class CodeWithIndent
-    {
-    }
+        m.Code.Should().Be(@"public class CodeWithIndent
+{
+  Test();
+}
 ".Replace("\n", "\r\n"));
 
         m = Parse<CodeBlockMarkup>(@"```cs
@@ -192,12 +198,12 @@ code
     {
     }
 
-```", out _);
+```", false);
         m.Language.Should().Be("cs");
         m.Code.Should().Be(@"
-    public class CodeWithIndent
-    {
-    }
+public class CodeWithIndent
+{
+}
 
 ".Replace("\n", "\r\n"));
     }
@@ -210,7 +216,7 @@ code
 ```cs
 code
 ```
-2", out _);
+2");
         m.Items.Length.Should().Be(6);
     }
 
@@ -222,7 +228,7 @@ code
 ```cs
 code
 ```
-2 ```cs", out _);
+2 ```cs");
         m.Items.Length.Should().Be(10);
     }
 
@@ -236,7 +242,7 @@ code
     [Fact]
     public void MixedTest()
     {
-        var m = Parse<MarkupSeq>("***bi*** @alex `a``b` *i* **b** *", out _);
+        var m = Parse<MarkupSeq>("***bi*** @alex `a``b` *i* **b** *");
         m.Items.Length.Should().Be(11);
         var um = (UnparsedTextMarkup)m.Items.Last();
         um.Text.Should().Be("*");
@@ -278,8 +284,18 @@ code
 
     private TResult Parse<TResult>(string text, out string copy)
         where TResult : Markup
+        => Parse<TResult>(text, true, out copy);
+
+    private TResult Parse<TResult>(string text, bool validateFormat, out string copy)
+        where TResult : Markup
     {
         copy = text;
+        return Parse<TResult>(text, validateFormat);
+    }
+
+    private TResult Parse<TResult>(string text, bool validateFormat = true)
+        where TResult : Markup
+    {
         Out.WriteLine($"Input:");
         Out.WriteLine($"  \"{text}\"");
         ParserExt.DebugOutput = line => Out.WriteLine(line);
@@ -289,11 +305,13 @@ code
         Out.WriteLine($"  {simplified}");
         Out.WriteLine($"  Raw: {parsed}");
         var result = simplified.Should().BeOfType<TResult>().Subject;
-        var expectedMarkupText = text.OrdinalReplace("\r\n", "\n");
-        var markupText1 = simplified.Format().OrdinalReplace("\r\n", "\n");
-        var markupText2 = MarkupFormatter.Default.Format(simplified).OrdinalReplace("\r\n", "\n");
-        markupText1.Should().Be(expectedMarkupText);
-        markupText2.Should().Be(expectedMarkupText);
+        if (validateFormat) {
+            var expectedMarkupText = text.OrdinalReplace("\r\n", "\n");
+            var markupText1 = simplified.Format().OrdinalReplace("\r\n", "\n");
+            var markupText2 = MarkupFormatter.Default.Format(simplified).OrdinalReplace("\r\n", "\n");
+            markupText1.Should().Be(expectedMarkupText);
+            markupText2.Should().Be(expectedMarkupText);
+        }
         return result;
     }
 }

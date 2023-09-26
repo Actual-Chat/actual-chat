@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text;
@@ -5,6 +6,7 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
 using Cysharp.Text;
+using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 
@@ -79,6 +81,14 @@ public static partial class StringExt
         => source.Length <= maxLength ? source : source[..maxLength];
     public static string Truncate(this string source, int maxLength, string ellipsis)
         => source.Length <= maxLength ? source : source[..maxLength] + ellipsis;
+
+    public static int GetIndentLength(this string source)
+    {
+        for (var i = 0; i < source.Length; i++)
+            if (source[i] != 32)
+                return i;
+        return source.Length;
+    }
 
     public static int GetCommonPrefixLength(this string a, string b)
     {

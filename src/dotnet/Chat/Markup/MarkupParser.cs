@@ -176,8 +176,10 @@ public partial class MarkupParser : IMarkupParser
             .Debug("<Text>");
 
     // Code block
-    private static readonly Parser<char, string> CodeBlockStart =
+    private static readonly Parser<char, string> CodeBlockWithLanguageStart =
         CodeBlockToken.Then(IdChar.ManyString().Before(EndOfLine)); // Language
+    private static readonly Parser<char, string> CodeBlockWithoutLanguageStart =
+        CodeBlockToken.ThenReturn(""); // Language
     private static readonly Parser<char, char> CodeBlockEnd =
         WhitespaceChar.SkipMany().Then(CodeBlockToken).Then(Lookahead(Whitespace.OrEnd()));
     private static readonly Parser<char, string> CodeBlockLine =
@@ -187,15 +189,35 @@ public partial class MarkupParser : IMarkupParser
         Try(CodeBlockLine)
             .SeparatedAndTerminated(Try(EndOfLine))
             .Select(lines => {
-                using var sb = ZString.CreateStringBuilder();
-                foreach (var line in lines) {
-                    sb.Append(line);
-                    sb.Append("\r\n"); // We want stable line endings here
+                var buffer = ArrayBuffer<string>.Lease(false);
+                var sb = ZString.CreateStringBuilder();
+                try {
+                    var minIndent = int.MaxValue;
+                    foreach (var line in lines) {
+                        var properLine = line.Replace("\t", "    "); // Replace tabs w/ spaces
+                        var indentLength = properLine.GetIndentLength();
+                        if (indentLength == properLine.Length)
+                            properLine = ""; // Empty line
+                        else
+                            minIndent = Math.Min(minIndent, indentLength);
+                        buffer.Add(properLine);
+                    }
+                    if (buffer.Count == 0)
+                        return "";
+
+                    foreach (var line in buffer) {
+                        sb.Append(minIndent < line.Length ? line[minIndent..] : "");
+                        sb.Append("\r\n"); // We want stable line endings here
+                    }
+                    return sb.ToString();
                 }
-                return sb.ToString();
+                finally {
+                    sb.Dispose();
+                    buffer.Release();
+                }
             });
     private static readonly Parser<char, Markup> CodeBlock = (
-        from language in CodeBlockStart
+        from language in TryOneOf(CodeBlockWithLanguageStart, CodeBlockWithoutLanguageStart)
         from code in Try(CodeBlockCode).Optional()
         from end in CodeBlockEnd
         select (Markup)new CodeBlockMarkup(code.GetValueOrDefault(""), language.TrimEnd())

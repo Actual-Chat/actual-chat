@@ -13,10 +13,13 @@ public static class PhoneFormatterExt
         if (phoneCode is null)
             return $"+{phone.Code} {phone.Number}";
 
-        var sb = new StringBuilder(phoneCode.DisplayCode);
+        var sb = StringBuilderExt.Acquire();
         const int areaCodeLength = 3;
         const int defaultGroupSize = 3;
-        sb.Append(" (").Append(phone.Number.AsSpan(0, areaCodeLength)).Append(") ");
+        sb.Append(phoneCode.DisplayCode);
+        sb.Append(" (")
+            .Append(phone.Number.AsSpan(0, areaCodeLength))
+            .Append(") ");
 
         var tailLength = ((phone.Number.Length - areaCodeLength) % defaultGroupSize) switch {
             1 => 4, // tail: ...-11-11
@@ -26,7 +29,7 @@ public static class PhoneFormatterExt
 
         Append(areaCodeLength, defaultGroupSize, tailLength);
         Append(phone.Number.Length - tailLength, 2, 0);
-        return sb.ToString();
+        return sb.ToStringAndRelease();
 
         void Append(int startIdx, int groupSize, int skipTailLength)
         {

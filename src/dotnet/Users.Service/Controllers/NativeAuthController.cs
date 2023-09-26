@@ -4,6 +4,7 @@ using System.Text;
 using ActualChat.Users.Module;
 using ActualChat.Web;
 using AspNet.Security.OAuth.Apple;
+using Cysharp.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
@@ -169,11 +170,11 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
 
     private static async Task<string> Format(HttpResponseMessage response)
     {
-        var output = new StringBuilder();
-        output.Append("Status: " + response.StatusCode + "; ");
-        output.Append("Headers: " + response.Headers + "; ");
+        using var sb = ZString.CreateStringBuilder();
+        sb.Append("Status: " + response.StatusCode + "; ");
+        sb.Append("Headers: " + response.Headers + "; ");
         var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-        output.Append("Body: " + body);
-        return output.ToString();
+        sb.Append("Body: " + body);
+        return sb.ToString();
     }
 }
