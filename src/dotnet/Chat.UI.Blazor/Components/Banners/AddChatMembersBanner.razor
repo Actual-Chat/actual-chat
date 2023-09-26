@@ -52,6 +52,8 @@
             return false;
         if (!Chat.Rules.CanInvite())
             return false;
+        if (Chat.HasSingleAuthor)
+            return false;
         var dismissed = await _dismissed.Use(cancellationToken);
         if (dismissed)
             return false;
