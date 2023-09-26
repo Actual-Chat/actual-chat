@@ -1,7 +1,13 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
+using ActualChat.Audio;
+using ActualChat.Chat;
 using ActualChat.Commands;
+using ActualChat.Feedback;
 using ActualChat.Hosting;
+using ActualChat.Kubernetes;
+using ActualChat.Notification;
+using ActualChat.Users;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
@@ -16,6 +22,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Stl.Diagnostics;
+using Stl.Fusion.EntityFramework;
 using Stl.IO;
 using Stl.Rpc.Server;
 
@@ -218,6 +225,16 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
                 .AddSource(AppTrace.Name)
                 .AddSource(typeof(IComputed).GetActivitySource().Name) // Fusion trace
                 .AddSource(typeof(ICommand).GetActivitySource().Name) // Commander trace
+                .AddSource(typeof(IAuthBackend).GetActivitySource().Name) // DB Session Info trim
+                .AddSource(typeof(DbKey).GetActivitySource().Name) // DB Entity resolver
+                .AddSource(typeof(AudioProcessor).GetActivitySource().Name)
+                .AddSource(typeof(Chats).GetActivitySource().Name)
+                .AddSource(typeof(Contacts.Contacts).GetActivitySource().Name)
+                .AddSource(typeof(Feedbacks).GetActivitySource().Name)
+                .AddSource(typeof(Notifications).GetActivitySource().Name)
+                .AddSource(typeof(Accounts).GetActivitySource().Name)
+                .AddSource(typeof(Constants).GetActivitySource().Name)
+                .AddSource(typeof(KubeServices).GetActivitySource().Name)
                 .AddSource(ActivitySourceExt.Unknown.Name) // Unknown meter
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {
