@@ -119,6 +119,7 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
     @apply text-headline-1 text-02;
 }
 .chat-list .navbar-item-content > .c-container > .c-description > .c-last-message {
+    @apply flex-x gap-x-1;
     @apply truncate;
     @apply text-xs text-03;
 }
