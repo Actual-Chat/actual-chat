@@ -1,6 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Contacts;
-using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using Stl.Interception;
@@ -11,6 +9,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 {
     public static readonly int ActiveItemCountWhenLoading = 0;
     public static readonly int AllItemCountWhenLoading = 14;
+    private static readonly TimeSpan MinNotificationInterval = TimeSpan.FromSeconds(5);
 
     private readonly List<ChatId> _activeItems = new List<ChatId>().AddMany(default, ActiveItemCountWhenLoading);
     private readonly List<ChatId> _allItems = new List<ChatId>().AddMany(default, AllItemCountWhenLoading);
@@ -26,6 +25,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private IContacts? _contacts;
     private SearchUI? _searchUI;
     private LoadingUI? _loadingUI;
+    private TuneUI? _tuneUI;
 
     private Session Session { get; }
     private IContacts Contacts => _contacts ??= Services.GetRequiredService<IContacts>();
@@ -34,9 +34,10 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
     private SearchUI SearchUI => _searchUI ??= Services.GetRequiredService<SearchUI>();
     private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
+    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
     private AccountSettings AccountSettings { get; }
+    private MomentClockSet Clocks { get; }
     private IStateFactory StateFactory { get; }
-    private HostInfo HostInfo { get; }
 
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
@@ -44,6 +45,8 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     public IServiceProvider Services { get; }
     public IMutableState<ChatListSettings> Settings => _settings;
     public Task WhenLoaded => _settings.WhenRead;
+
+    private Moment Now => Clocks.SystemClock.Now;
     public IState<Trimmed<int>> UnreadChatCount { get; private set; } = null!;
 
     public ChatListUI(IServiceProvider services)
@@ -54,7 +57,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         Session = services.Session();
         AccountSettings = services.AccountSettings();
         StateFactory = services.StateFactory();
-        HostInfo = services.GetRequiredService<HostInfo>();
+        Clocks = services.Clocks();
 
         var type = GetType();
         // var isClient = HostInfo.AppKind.IsClient();

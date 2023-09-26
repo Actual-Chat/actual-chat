@@ -28,6 +28,7 @@ public class TuneUI(IServiceProvider services) : ITuneUIBackend, INotifyInitiali
         [Tune.StopRealtimePlayback] = new (new[] { 20 }/*, "stop-realtime-playback"*/),
         // Chat UI
         [Tune.PinUnpinChat] = new (new[] { 50 }/*, "pin-unpin-chat"*/),
+        [Tune.NotifyOnNewMessageInApp] = new (new[] { 20 }, "notify-on-new-message-in-app"),
         // ChatMessageEditor
         [Tune.SendMessage] = new (new[] { 50 }/*, "send-message"*/),
         [Tune.EditMessage] = new (new[] { 20 }/*, "edit-message"*/),
@@ -101,6 +102,7 @@ public enum Tune
     StopHistoricalPlayback,
     StopRealtimePlayback,
     PinUnpinChat,
+    NotifyOnNewMessageInApp,
     SendMessage,
     EditMessage,
     ReplyMessage,
