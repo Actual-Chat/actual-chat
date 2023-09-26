@@ -9,7 +9,7 @@ public sealed partial class UrlMapper
     private static partial Regex IsAbsoluteUrlRegexFactory();
 
     private static readonly Regex IsAbsoluteUrlRegex = IsAbsoluteUrlRegexFactory();
-    private static readonly char[] UriPathEndChar = new[] { '#', '?' };
+    private static readonly char[] UriPathEndChar = { '#', '?' };
 
     private readonly string _baseUrlWithoutBackslash;
 
