@@ -26,6 +26,7 @@ public partial class ChatAudioUI
             AsyncChainExt.From(InvalidateHistoricalPlaybackDependencies),
             AsyncChainExt.From(PushRecordingState),
             AsyncChainExt.From(PushRealtimePlaybackState),
+            AsyncChainExt.From(StopHistoricalPlaybackWhenRecordingStarts),
             AsyncChainExt.From(StopListeningWhenIdle),
             AsyncChainExt.From(StopRecordingOnAwake),
             AsyncChainExt.From(ReconnectOnRpcReconnect),
@@ -119,6 +120,26 @@ public partial class ChatAudioUI
                 Log, $"{nameof(RecordChat)} failed",
                 cancellationToken
                 ).SilentAwait(false);
+        }
+    }
+
+    // TODO: get rid of this workaround when playback state is refactored and put this logic to PushPlaybackState
+    private async Task StopHistoricalPlaybackWhenRecordingStarts(CancellationToken cancellationToken)
+    {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        var cRecordingState = await Computed
+            .Capture(() => GetRecordingState(cancellationToken))
+            .ConfigureAwait(false);
+        while (!cancellationToken.IsCancellationRequested) {
+            cRecordingState = await cRecordingState
+                .When(x => !x.ChatId.IsNone, FixedDelayer.ZeroUnsafe, cancellationToken)
+                .ConfigureAwait(false);
+            var chatId = cRecordingState.Value.ChatId;
+            if (ChatPlayers.PlaybackState.Value is HistoricalPlaybackState historicalPlaybackState && historicalPlaybackState.ChatId != chatId)
+                ChatPlayers.StopPlayback();
+            cRecordingState = await cRecordingState.When(x => x.ChatId.IsNone || x.ChatId != chatId, cancellationToken).ConfigureAwait(false);
         }
     }
 
