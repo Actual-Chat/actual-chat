@@ -1,3 +1,4 @@
+export * from './Components/ChatAudioPanel/playback-toggle-svg.lit';
 export * from './Components/ChatAudioPanel/recorder-toggle';
 export * from './Components/ChatMessageEditor/attachment-list';
 export * from './Components/ChatMessageEditor/chat-message-editor';
