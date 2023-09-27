@@ -20,7 +20,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     private DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
     private VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
-    private VirtualListData<TItem> Data => State.Value;
+    private VirtualListData<TItem> Data => State.LastNonErrorValue;
     private VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
     private VirtualListItemVisibility LastReportedItemVisibility { get; set; } = VirtualListItemVisibility.Empty;
 
@@ -105,15 +105,16 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     protected override async Task<VirtualListData<TItem>> ComputeState(CancellationToken cancellationToken)
     {
         var query = Query;
-        VirtualListData<TItem> response;
+        VirtualListData<TItem> data;
         try {
-            response = await DataSource.GetData(query, LastData, cancellationToken);
+            var lastComputedData = Data ?? LastData;
+            data = await DataSource.GetData(query, lastComputedData, cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);
             throw;
         }
-        return response;
+        return data;
     }
 
     private bool IsEmpty(VirtualListData<TItem> data)
