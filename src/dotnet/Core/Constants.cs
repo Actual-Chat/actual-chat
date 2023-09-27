@@ -6,7 +6,7 @@ public static partial class Constants
 {
     public static class Api
     {
-        public static string Version { get; } = "0.8.2-alpha";
+        public static string Version { get; } = "0.9.0-alpha";
     }
 
     public static class Chat
