@@ -15,7 +15,7 @@ Before release:
 - ~~Onboarding: use stored phone number [Frol]~~
 - ~~Service worker / asset caching [EK]~~
 - ~~Push-to-talk must not change the playback state [AY]~~
-- Stop historical playback in other chats when recording starts [Frol]
+- ~~Stop historical playback in other chats when recording starts [Frol]~~
 - ~~Don't update SelectedChat when MiddlePanel isn't visible~~
 - ~~Fade out loading overlay [AY]~~
 - ~~New Active Chats UX [AY]~~
@@ -36,7 +36,6 @@ Before release:
     - Investigate white screen issue [AY]
 - Important, but not critical bugs:
     - Chat: scrolling issues [AK]
-    - Audio: use MediaStreamAudioSourceNode for EAC workaround instead of Audio element [AK]
 
 Next week:
 
@@ -69,7 +68,7 @@ Mid-term (team):
 - "Join as guest": think of how key walk-through items should look like after this / onboarding
 - "New message [in another chat]" notification banner
 - Sound on any message, + different sound for voice messages w/ more intensive throttling
-- Fix "Paste" action - there are almost always extra empty lines
+- ~~Fix "Paste" action - there are almost always extra empty lines~~
 - Think of how how & when to push a person who joined chat as guest to leave contact info. Ideally, show some dialog after his first message allowing him to sign in or leave this info.
 
 Backlog (team):
