@@ -70,6 +70,9 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply border-icons-02;
 }
 
+.playback-wrapper .btn.btn-round.on .btn-content {
+    @apply bg-[#C9E3FF];
+}
 .playback-wrapper.listen-off-to-on,
 .playback-wrapper.listen-on {
     @apply outline outline-1 outline-accent outline-offset-0;

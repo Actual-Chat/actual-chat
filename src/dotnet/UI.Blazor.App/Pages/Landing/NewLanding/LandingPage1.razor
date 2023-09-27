@@ -14,26 +14,27 @@
 
 <div class="c-content">
     <div class="main-text">
-        <div class="c-title">Discover Chat 2.0</div>
-        <div class="flex-y gap-y-2 title-text main">
-            <Checkmark Checked="true">efficiency of texting</Checkmark>
-            <Checkmark Checked="true">focus of calls</Checkmark>
-            <Checkmark>drawbacks of either</Checkmark>
+        <div class="main-text-wrapper">
+            <div class="c-title">Discover Chat 2.0</div>
+            <div class="flex-y gap-y-2 title-text main">
+                <Checkmark Checked="true">efficiency of texting</Checkmark>
+                <Checkmark Checked="true">focus of calls</Checkmark>
+                <Checkmark>drawbacks of either</Checkmark>
+            </div>
+            <p class="c-description">
+                @if (!ScreenSize.IsNarrow()) {
+                    <span>We fuse real-time audio, live transcription,</span>
+                    <span>and AI assistance to let you communicate </span>
+                    <span>with <strong>utmost efficiency</strong>.</span>
+                } else {
+                    <span>
+                        We fuse real-time audio, live transcription,
+                        and AI assistance to let you communicate
+                        with <strong>utmost efficiency</strong>.
+                    </span>
+                }
+            </p>
         </div>
-        <p class="c-description">
-            @if (!ScreenSize.IsNarrow()) {
-                <span>We fuse real-time audio, live transcription,</span>
-                <span>and AI assistance to let you communicate </span>
-                <span>with <strong>utmost efficiency</strong>.</span>
-            } else {
-                <span>
-                    We fuse real-time audio, live transcription,
-                    and AI assistance to let you communicate
-                    with <strong>utmost efficiency</strong>.
-                </span>
-            }
-
-        </p>
         <div class="c-btn-group">
             @if (!isMaui) {
                 <DownloadButton

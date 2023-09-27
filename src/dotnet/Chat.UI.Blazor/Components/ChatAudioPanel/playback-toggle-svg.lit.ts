@@ -4,111 +4,105 @@ import {css, html, LitElement} from "lit";
 @customElement('playback-toggle-svg')
 class PlaybackToggleSvg extends LitElement {
     @property()
-    size = "32";
+    size = "24";
     @property()
-    viewBox = "-3 -4 30 30";
+    viewBox = "0 0 24 24";
     @property({ type: Boolean })
     isAnimated = false;
+    @property({ type: Boolean })
+    isOn = false;
 
     protected render(): unknown {
+        if (this.isOn)
+            return html`
+                <svg width="${this.size}" height="${this.size}" viewBox="${this.viewBox}" fill="${this.isOn ? "#007AFF" : "#898989"}" xmlns="http://www.w3.org/2000/svg">
+                    <path id="playback-toggle-3" d="M12 3C6.5 3 2 7.7 2 13.4V18C2 20.2 3.8 22 6 22C6.7 22 7.3 21.8 7.8 21.5C7.9 21.5 7.9 21.4 8 21.4C8.3 21.2 8.5 20.9 8.5 20.5V15.3C8.5 14.9 8.3 14.6 8 14.5C7.9 14.5 7.9 14.4 7.8 14.4C7.3 14.2 6.6 14 6 14C5.3 14 4.6 14.2 4 14.6V13.4C4 8.8 7.6 5 12 5C16.4 5 20 8.8 20 13.4V14.6C19.4 14.3 18.7 14 18 14C17.4 14 16.7 14.2 16.2 14.4C16.1 14.4 16.1 14.5 16 14.5C15.7 14.7 15.5 15 15.5 15.3V20.5C15.5 20.9 15.7 21.2 16 21.4C16.1 21.4 16.1 21.5 16.2 21.5C16.7 21.8 17.4 22 18 22C20.2 22 22 20.2 22 18V13.4C22 7.7 17.5 3 12 3ZM6 16C6.2 16 6.3 16 6.4 16.1V20C6.3 20 6.2 20 6 20C4.9 20 4 19.1 4 18C4 16.9 4.9 16 6 16ZM18 20C17.8 20 17.7 20 17.6 19.9V16C17.7 16 17.9 15.9 18 15.9C19.1 15.9 20 16.8 20 17.9C20 19 19.1 20 18 20Z">
+                        <animateTransform
+                            href="#playback-toggle-3"
+                            attributeName="transform"
+                            type="rotate"
+                            attributeType="XML"
+                            dur="0.25s"
+                            repeatCount="1"
+                            values="
+                                0 12 12;
+                                360 12 12"
+                        />
+                        <animate
+                            href="#playback-toggle-3"
+                            attributeName="fill"
+                            dur="0.4s"
+                            repeatCount="1"
+                            values="
+                                #898989FF;
+                                #898989FF;
+                                #4582C4FF;
+                                #227EE2FF;
+                                #007AFF;"
+                        />
+                    </path>
+                </svg>
+            `
+
         if (!this.isAnimated)
             return html`
-            <svg width="${this.size}" height="${this.size}" viewBox="${this.viewBox}" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path id="listen-svg-arrow" fill-rule="evenodd" clip-rule="evenodd" d="M12.707 12.2923C12.322 11.9063 11.699 11.9033 11.305 12.2793L8.30502 15.1763C7.90802 15.5603 7.89702 16.1923 8.28102 16.5903C8.66502 16.9873 9.29802 17.0003 9.69502 16.6153L11 15.3553V20.9993C11 21.5523 11.448 21.9993 12 21.9993C12.552 21.9993 13 21.5523 13 20.9993V15.4133L14.293 16.7063C14.488 16.9013 14.744 16.9993 15 16.9993C15.256 16.9993 15.512 16.9013 15.707 16.7063C16.098 16.3153 16.098 15.6833 15.707 15.2923L12.707 12.2923Z" fill="#007AFF">
-                </path>
-                <path id="listen-svg-1" d="M5 12C5 7.13401 8.13401 4 12 4C15.866 4 19 7.13401 19 12" stroke="#898989" stroke-width="2">
-                </path>
-                <path id="listen-svg-2" d="M2 15.5C2 17.433 3.34315 19 5 19L5 12C3.34315 12 2 13.567 2 15.5Z" stroke="#898989" stroke-width="2" stroke-linejoin="round">
-                </path>
-                <path id="listen-svg-3" d="M22 15.5C22 13.567 20.6569 12 19 12L19 19C20.6569 19 22 17.433 22 15.5Z" stroke="#898989" stroke-width="2" stroke-linejoin="round">
-                </path>
-            </svg>`
+                <svg width="${this.size}" height="${this.size}" viewBox="${this.viewBox}" fill="#898989" xmlns="http://www.w3.org/2000/svg">
+                    <path id="playback-toggle-2" d="M12 3C6.5 3 2 7.7 2 13.4V18C2 20.2 3.8 22 6 22C6.7 22 7.3 21.8 7.8 21.5C7.9 21.5 7.9 21.4 8 21.4C8.3 21.2 8.5 20.9 8.5 20.5V15.3C8.5 14.9 8.3 14.6 8 14.5C7.9 14.5 7.9 14.4 7.8 14.4C7.3 14.2 6.6 14 6 14C5.3 14 4.6 14.2 4 14.6V13.4C4 8.8 7.6 5 12 5C16.4 5 20 8.8 20 13.4V14.6C19.4 14.3 18.7 14 18 14C17.4 14 16.7 14.2 16.2 14.4C16.1 14.4 16.1 14.5 16 14.5C15.7 14.7 15.5 15 15.5 15.3V20.5C15.5 20.9 15.7 21.2 16 21.4C16.1 21.4 16.1 21.5 16.2 21.5C16.7 21.8 17.4 22 18 22C20.2 22 22 20.2 22 18V13.4C22 7.7 17.5 3 12 3ZM6 16C6.2 16 6.3 16 6.4 16.1V20C6.3 20 6.2 20 6 20C4.9 20 4 19.1 4 18C4 16.9 4.9 16 6 16ZM18 20C17.8 20 17.7 20 17.6 19.9V16C17.7 16 17.9 15.9 18 15.9C19.1 15.9 20 16.8 20 17.9C20 19 19.1 20 18 20Z" fill="#898989">
+                    </path>
+                </svg>
+            `
 
         return html`
-            <svg width="${this.size}" height="${this.size}" viewBox="${this.viewBox}" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path id="listen-svg-arrow" fill-rule="evenodd" clip-rule="evenodd" d="M12.707 12.2923C12.322 11.9063 11.699 11.9033 11.305 12.2793L8.30502 15.1763C7.90802 15.5603 7.89702 16.1923 8.28102 16.5903C8.66502 16.9873 9.29802 17.0003 9.69502 16.6153L11 15.3553V20.9993C11 21.5523 11.448 21.9993 12 21.9993C12.552 21.9993 13 21.5523 13 20.9993V15.4133L14.293 16.7063C14.488 16.9013 14.744 16.9993 15 16.9993C15.256 16.9993 15.512 16.9013 15.707 16.7063C16.098 16.3153 16.098 15.6833 15.707 15.2923L12.707 12.2923Z" fill="#007AFF">
+            <svg width="${this.size}" height="${this.size}" viewBox="${this.viewBox}" fill="#898989" xmlns="http://www.w3.org/2000/svg">
+                <path id="playback-toggle-1" d="M12 3C6.5 3 2 7.7 2 13.4V18C2 20.2 3.8 22 6 22C6.7 22 7.3 21.8 7.8 21.5C7.9 21.5 7.9 21.4 8 21.4C8.3 21.2 8.5 20.9 8.5 20.5V15.3C8.5 14.9 8.3 14.6 8 14.5C7.9 14.5 7.9 14.4 7.8 14.4C7.3 14.2 6.6 14 6 14C5.3 14 4.6 14.2 4 14.6V13.4C4 8.8 7.6 5 12 5C16.4 5 20 8.8 20 13.4V14.6C19.4 14.3 18.7 14 18 14C17.4 14 16.7 14.2 16.2 14.4C16.1 14.4 16.1 14.5 16 14.5C15.7 14.7 15.5 15 15.5 15.3V20.5C15.5 20.9 15.7 21.2 16 21.4C16.1 21.4 16.1 21.5 16.2 21.5C16.7 21.8 17.4 22 18 22C20.2 22 22 20.2 22 18V13.4C22 7.7 17.5 3 12 3ZM6 16C6.2 16 6.3 16 6.4 16.1V20C6.3 20 6.2 20 6 20C4.9 20 4 19.1 4 18C4 16.9 4.9 16 6 16ZM18 20C17.8 20 17.7 20 17.6 19.9V16C17.7 16 17.9 15.9 18 15.9C19.1 15.9 20 16.8 20 17.9C20 19 19.1 20 18 20Z" fill="#898989">
+                    <animateTransform
+                        id="ring"
+                        href="#playback-toggle-1"
+                        attributeName="transform"
+                        type="rotate"
+                        attributeType="XML"
+                        begin="0s;ring.end+30s"
+                        dur="1.8s"
+                        repeatCount="1"
+                        values="0 10 0; 10 14 10; 0 10 0; -10 14 10; 0 10 0;
+                                0 10 0; 10 14 10; 0 10 0; -10 14 10; 0 10 0;
+                                0 10 0; 10 14 10; 0 10 0; -10 14 10; 0 10 0;
+                                0 10 0; 10 14 10; 0 10 0; -10 14 10; 0 10 0;
+                                0 10 0; 10 14 10; 0 10 0; -10 14 10; 0 10 0;
+                                0 10 0; 10 14 10; 0 10 0; -10 14 10; 0 10 0;"
+                    />
                     <animateMotion
-                        href="#listen-svg-arrow"
-                        begin="0s"
-                        dur="0.75s"
-                        repeatCount="2"
-                        values="0 0 0; 0 -1 0; 0 0 0; 0 0 0; 0 0 0"
-                    >
-                    </animateMotion>
-                </path>
-                <path id="listen-svg-1" d="M5 12C5 7.13401 8.13401 4 12 4C15.866 4 19 7.13401 19 12" stroke="#898989" stroke-width="2">
+                        id="up"
+                        href="#playback-toggle-1"
+                        begin="0s;up.end+30s"
+                        dur="1.8s"
+                        repeatCount="1"
+                        values="0 0 0; 0 0 0; 0 0 0;
+                                0 0 0; 0 0 0; 0 0 0;
+                                0 0 0; 0 0 0; 0 0 0;
+                                0 0 0; 0 -2 0; 0 0 0;
+                                0 0 0; 0 -2 0; 0 0 0;
+                                0 0 0; 0 -2 0; 0 0 0;"
+                    />
                     <animate
-                        href="#listen-svg-1"
-                        attributeName="d"
-                        attributeType="XML"
-                        begin="0s"
-                        dur="0.75s"
-                        repeatCount="2"
+                        id="color"
+                        href="#playback-toggle-1"
+                        attributeName="fill"
+                        begin="0s;color.end+30s"
+                        dur="1.8s"
+                        repeatCount="1"
                         values="
-                        M5 12C5 7.13401 8.13401 4 12 4C15.866 4 19 7.13401 19 12;
-                         M2 12C5 7.13401 8.13401 4 12 4C15.866 4 19 7.13401 22 12;
-                         M3 12C5 7.13401 8.13401 4 12 4C15.866 4 19 7.13401 21 12;
-                          M5 12C5 7.13401 8.13401 4 12 4C15.866 4 19 7.13401 19 12;
-                          M5 12C5 7.13401 8.13401 4 12 4C15.866 4 19 7.13401 19 12;"
+                            #898989FF;
+                            #6785A7FF;
+                            #4582C4FF;
+                            #227EE2FF;
+                            #007AFF;
+                            #007AFF;
+                            #227EE2FF;
+                            #4582C4FF;
+                            #6785A7FF;
+                            #898989FF;"
                     />
-                    <animateMotion
-                        href="#listen-svg-1"
-                        begin="0s"
-                        dur="0.75s"
-                        repeatCount="2"
-                        values="0 0 0; 0 -5 0; 0 -3 0; 0 0 0; 0 0 0"
-                    >
-                    </animateMotion>
-                </path>
-                <path id="listen-svg-2" d="M2 15.5C2 17.433 3.34315 19 5 19L5 12C3.34315 12 2 13.567 2 15.5Z" stroke="#898989" stroke-width="2" stroke-linejoin="round">
-                    <animateTransform
-                        href="#listen-svg-2"
-                        attributeName="transform"
-                        type="rotate"
-                        attributeType="XML"
-                        begin="0s"
-                        dur="0.75s"
-                        repeatCount="2"
-                        values="
-                        0 10 0;
-                           10 14 0;
-                           10 14 0;
-                           0 10 0;
-                             0 10 0"
-                    />
-                    <animateMotion
-                        href="#listen-svg-2"
-                        begin="0s"
-                        dur="0.75s"
-                        repeatCount="2"
-                        values="0 0 0; 0 -5 0; 0 -3 0; 0 0 0; 0 0 0"
-                    >
-                    </animateMotion>
-                </path>
-                <path id="listen-svg-3" d="M22 15.5C22 13.567 20.6569 12 19 12L19 19C20.6569 19 22 17.433 22 15.5Z" stroke="#898989" stroke-width="2" stroke-linejoin="round">
-                    <animateTransform
-                        href="#listen-svg-3"
-                        attributeName="transform"
-                        type="rotate"
-                        attributeType="XML"
-                        begin="0s"
-                        dur="0.75s"
-                        repeatCount="2"
-                        values="
-                        0 10 0;
-                           -10 14 0;
-                           -10 14 0;
-                           0 10 0;
-                             0 10 0"
-                    />
-                    <animateMotion
-                        href="#listen-svg-3"
-                        begin="0s"
-                        dur="0.75s"
-                        repeatCount="2"
-                        values="0 0 0; 0 -5 0; 0 -3 0; 0 0 0; 0 0 0"
-                    >
-                    </animateMotion>
                 </path>
             </svg>
         `;
