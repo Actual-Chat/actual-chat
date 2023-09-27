@@ -1,0 +1,192 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits Step;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+<div class="set-chats-step">
+    <p class="text-title-1 text-center">Set default chats</p>
+    <div class="set-chats-step-chat-list">
+        <div class="set-chats-step-chat-list-item">
+            <img draggable="false"
+                 class="set-chats-step-icon"
+                 crossorigin="anonymous"
+                 alt="Notes"
+                 src="/dist/images/onboarding/notes.svg"/>
+            <div class="set-chats-step-chat-list-item-body">
+                <div class="set-chats-step-chat-list-item-title">
+                    Notes
+                </div>
+                <div class="set-chats-step-chat-list-item-subtitle">
+                    Chat with yourself for notes & bookmarks
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="true"
+                Class="!flex-none"
+                IsDisabled="true"/>
+        </div>
+        <div class="set-chats-step-chat-list-item"
+             @onclick="CreateFamilyChatClick">
+            <img draggable="false"
+                 class="set-chats-step-icon"
+                 crossorigin="anonymous"
+                 alt="Family"
+                 src="/dist/images/onboarding/family.svg"/>
+            <div class="set-chats-step-chat-list-item-body">
+                <div class="set-chats-step-chat-list-item-title">
+                    Family
+                </div>
+                <div class="set-chats-step-chat-list-item-subtitle">
+                    Chat with your family members
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_stepModel.CreateFamilyChat"
+                Class="!flex-none"
+                Change="CreateFamilyChatClick"/>
+        </div>
+        <div class="set-chats-step-chat-list-item"
+             @onclick="CreateCoworkersChatClick">
+            <img draggable="false"
+                 class="set-chats-step-icon"
+                 crossorigin="anonymous"
+                 alt="Coworkers"
+                 src="/dist/images/onboarding/coworkers.svg"/>
+            <div class="set-chats-step-chat-list-item-body">
+                <div class="set-chats-step-chat-list-item-title">
+                    Coworkers
+                </div>
+                <div class="set-chats-step-chat-list-item-subtitle">
+                    Chat with your coworkers
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_stepModel.CreateCoworkersChat"
+                Class="!flex-none"
+                Change="CreateCoworkersChatClick"/>
+        </div>
+        <div class="set-chats-step-chat-list-item"
+             @onclick="CreateFriendsChatClick">
+            <img draggable="false"
+                 class="set-chats-step-icon"
+                 crossorigin="anonymous"
+                 alt="Friends"
+                 src="/dist/images/onboarding/friends.svg"/>
+            <div class="set-chats-step-chat-list-item-body">
+                <div class="set-chats-step-chat-list-item-title">
+                    Friends
+                </div>
+                <div class="set-chats-step-chat-list-item-subtitle">
+                    Chat with your close friends
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_stepModel.CreateFriendsChat"
+                Class="!flex-none"
+                Change="CreateFriendsChatClick"/>
+        </div>
+        <div class="set-chats-step-chat-list-item"
+             @onclick="CreateAlumniChatClick">
+            <img draggable="false"
+                 class="set-chats-step-icon"
+                 crossorigin="anonymous"
+                 alt="Alumni"
+                 src="/dist/images/onboarding/alumni.svg"/>
+            <div class="set-chats-step-chat-list-item-body">
+                <div class="set-chats-step-chat-list-item-title">
+                    Alumni
+                </div>
+                <div class="set-chats-step-chat-list-item-subtitle">
+                    Chat with your alumni community
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_stepModel.CreateAlumniChat"
+                Class="!flex-none"
+                Change="CreateAlumniChatClick"/>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly SetChatsStepModel _stepModel = new();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    public override bool IsCompleted => OnboardingUI.Settings.Value.IsSetChatsStepCompleted;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsSetChatsStepCompleted = true });
+
+    protected override Task<bool> Validate() {
+        return Task.FromResult(true);
+    }
+
+    protected override async Task<bool> Save() {
+        if (_stepModel.CreateFamilyChat) {
+            await CreateChat("Family", "system-icons:family");
+        }
+
+        if (_stepModel.CreateCoworkersChat) {
+            await CreateChat("Coworkers", "system-icons:coworkers");
+        }
+
+        if (_stepModel.CreateFriendsChat) {
+            await CreateChat("Friends", "system-icons:friends");
+        }
+
+        if (_stepModel.CreateAlumniChat) {
+            await CreateChat("Alumni", "system-icons:alumni");
+        }
+
+        return true;
+    }
+
+    private async Task CreateChat(string title, string mediaId) {
+        var command = new Chats_Change(
+            Session,
+            default,
+            null,
+            new()
+            {
+                Create = new ChatDiff
+                {
+                    Title = title,
+                    Kind = ChatKind.Group,
+                    MediaId = new MediaId(mediaId),
+                    IsPublic = false,
+                    AllowGuestAuthors = false,
+                    AllowAnonymousAuthors = false,
+                },
+            });
+        await UICommander.Run(command);
+    }
+
+    private void CreateFamilyChatClick() {
+        _stepModel.CreateFamilyChat = !_stepModel.CreateFamilyChat;
+    }
+
+    private void CreateCoworkersChatClick() {
+        _stepModel.CreateCoworkersChat = !_stepModel.CreateCoworkersChat;
+    }
+
+    private void CreateFriendsChatClick() {
+        _stepModel.CreateFriendsChat = !_stepModel.CreateFriendsChat;
+    }
+
+    private void CreateAlumniChatClick() {
+        _stepModel.CreateAlumniChat = !_stepModel.CreateAlumniChat;
+    }
+
+    public class SetChatsStepModel {
+        public bool CreateFamilyChat { get; set; }
+        public bool CreateCoworkersChat { get; set; }
+        public bool CreateFriendsChat { get; set; }
+        public bool CreateAlumniChat { get; set; }
+    }
+}

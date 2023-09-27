@@ -1,3 +1,22 @@
 .onboarding-modal.modal-frame {
     @apply p-0 h-full md:min-w-90 md:max-w-90 md:min-h-160 md:max-h-160;
 }
+.set-chats-step-chat-list {
+    @apply mt-6 flex-y gap-y-4;
+}
+.set-chats-step-chat-list-item {
+    @apply flex-x gap-x-4;
+    @apply pl-4 pt-2 pb-2 pr-4;
+    @apply bg-03;
+    @apply rounded-lg;
+}
+.set-chats-step-chat-list-item-body {
+    @apply flex-y grow;
+}
+.set-chats-step-chat-list-item-title {
+    @apply truncate;
+    @apply text-headline-1;
+}
+.set-chats-step-chat-list-item-subtitle {
+    @apply text-03 text-caption-2;
+}

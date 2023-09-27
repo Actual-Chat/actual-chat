@@ -12,11 +12,13 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(1)] public bool IsAvatarStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(2)] public Moment LastShownAt { get; init; }
     [DataMember, MemoryPackOrder(3)] public string Origin { get; init; } = "";
+    [DataMember, MemoryPackOrder(4)] public bool IsSetChatsStepCompleted { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasUncompletedSteps
         => this is not {
             IsAvatarStepCompleted: true,
             IsPhoneStepCompleted: true,
+            IsSetChatsStepCompleted: true,
         };
 }
