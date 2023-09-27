@@ -255,9 +255,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             && chatMessages.Count == oldData.Items.Count
             && chatMessages
                 .Zip(oldData.Items)
-                .TakeWhile(pair => ReferenceEquals(pair.First, pair.Second))
-                .Count()
-            == chatMessages.Count;
+                .All(pair => ReferenceEquals(pair.First, pair.Second));
 
         var result = isResultTheSame && OrdinalEquals(scrollToKey, oldData.ScrollToKey)
             ? oldData
@@ -327,11 +325,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Extend requested range if it's close to chat Id range
         var isCloseToTheEnd = queryRange.End >= chatIdRange.End - (PageSize / 2);
         var isCloseToTheStart = queryRange.Start <= chatIdRange.Start + (PageSize / 2);
-        var isClientRequest = !query.IsNone;
         var extendedRange = (closeToTheStart: isCloseToTheStart, closeToTheEnd: isCloseToTheEnd) switch {
             (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
-            (_, true) when isClientRequest => new Range<long>(queryRange.Start, chatIdRange.End + 2),
-            (_, true) => new Range<long>(chatIdRange.End - (2 * PageSize), chatIdRange.End + 2),
+            (_, true) => new Range<long>(queryRange.Start, chatIdRange.End + 2),
             (true, _) => new Range<long>(chatIdRange.Start, queryRange.End),
             _ => queryRange,
         };
@@ -449,9 +445,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         if (data == VirtualListData<ChatMessageModel>.None)
             return false;
+
         var items = data.Items;
-        if (items.Count == 0)
-            return true;
-        return items.All(c => c.DateLine.HasValue || c.Entry.IsSystemEntry);
+        return items.Count == 0
+            || items.All(c => c.DateLine.HasValue || c.Entry.IsSystemEntry);
     }
 }

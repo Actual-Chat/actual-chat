@@ -81,8 +81,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     protected override bool ShouldRender()
         => !ReferenceEquals(Data, LastData) // Data changed
-            || RenderIndex == 0 // OR it's our very first render
-            || (Data.Items.Count > 0 && LastReportedItemVisibility.IsEmpty); // Or there are items to display & no reported item visibility yet
+            || RenderIndex <= 1; // OR it's our first render with data; 0 - very first sync render without data loaded
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -107,7 +106,9 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         var query = Query;
         VirtualListData<TItem> data;
         try {
-            var lastComputedData = Data ?? LastData;
+            var lastComputedData = Data == VirtualListData<TItem>.None
+                ? LastData
+                : Data;
             data = await DataSource.GetData(query, lastComputedData, cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
@@ -121,8 +122,10 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     {
         if (IsEmptyTest != null)
             return IsEmptyTest(data);
+
         if (data == VirtualListData<TItem>.None)
             return false;
+
         return data.Items.Count == 0;
     }
 }
