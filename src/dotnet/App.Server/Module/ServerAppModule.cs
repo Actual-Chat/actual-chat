@@ -3,10 +3,13 @@ using System.IO.Compression;
 using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Commands;
+using ActualChat.Contacts;
 using ActualChat.Feedback;
 using ActualChat.Hosting;
+using ActualChat.Invite;
 using ActualChat.Kubernetes;
 using ActualChat.Notification;
+using ActualChat.Transcription;
 using ActualChat.Users;
 using ActualChat.Web.Module;
 using Microsoft.AspNetCore.DataProtection;
@@ -227,12 +230,14 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
                 .AddSource(typeof(ICommand).GetActivitySource().Name) // Commander trace
                 .AddSource(typeof(IAuthBackend).GetActivitySource().Name) // DB Session Info trim
                 .AddSource(typeof(DbKey).GetActivitySource().Name) // DB Entity resolver
-                .AddSource(typeof(AudioProcessor).GetActivitySource().Name)
-                .AddSource(typeof(Chats).GetActivitySource().Name)
-                .AddSource(typeof(Contacts.Contacts).GetActivitySource().Name)
-                .AddSource(typeof(Feedbacks).GetActivitySource().Name)
-                .AddSource(typeof(Notifications).GetActivitySource().Name)
-                .AddSource(typeof(Accounts).GetActivitySource().Name)
+                .AddSource(typeof(IAudioStreamer).GetActivitySource().Name)
+                .AddSource(typeof(IChats).GetActivitySource().Name)
+                .AddSource(typeof(IContacts).GetActivitySource().Name)
+                .AddSource(typeof(IFeedbacks).GetActivitySource().Name)
+                .AddSource(typeof(IInvites).GetActivitySource().Name)
+                .AddSource(typeof(ITranscriber).GetActivitySource().Name)
+                .AddSource(typeof(INotifications).GetActivitySource().Name)
+                .AddSource(typeof(IAccounts).GetActivitySource().Name)
                 .AddSource(typeof(Constants).GetActivitySource().Name)
                 .AddSource(typeof(KubeServices).GetActivitySource().Name)
                 .AddSource(ActivitySourceExt.Unknown.Name) // Unknown meter
