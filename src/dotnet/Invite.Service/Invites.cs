@@ -72,7 +72,8 @@ internal class Invites : IInvites
 
         void AutoInvalidate(Invite invite1) {
             var delay = invite1.ExpiresOn - Clocks.SystemClock.Now - minInviteLifespan + TimeSpan.FromSeconds(1);
-            delay = TimeSpanExt.Min(TimeSpan.FromMinutes(10), delay); // We don't want to reference Computed<T> for too long
+            // We don't want to reference Computed<T> for too long
+            delay = delay.Clamp(TimeSpan.FromSeconds(1), TimeSpan.FromMinutes(10));
             Computed.GetCurrent()!.Invalidate(delay);
         }
     }
