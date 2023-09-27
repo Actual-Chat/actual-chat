@@ -54,7 +54,7 @@ public static class ChatOperations
         var inviteId = Symbol.Empty;
         if (!isPublicChat) {
             // to join private chat we need to generate invite code
-            var invite = Invite.Invite.New(10, new ChatInviteOption(chatId));
+            var invite = Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chatId));
             invite = await commander.Call(new Invites_Generate(session, invite));
             inviteId = invite.Id;
         }

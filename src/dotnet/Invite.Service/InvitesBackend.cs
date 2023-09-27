@@ -77,8 +77,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
         await using var __ = dbContext.ConfigureAwait(false);
 
         var expiresOn = command.Invite.ExpiresOn;
-        if (expiresOn == Moment.EpochStart)
-            expiresOn = Clocks.SystemClock.Now + TimeSpan.FromDays(7);
+        if (expiresOn == default)
+            expiresOn = Clocks.SystemClock.Now + Constants.Invites.Defaults.ExpiresIn;
         var invite = command.Invite with {
             Id = DbInvite.IdGenerator.Next(),
             Version = VersionGenerator.NextVersion(),

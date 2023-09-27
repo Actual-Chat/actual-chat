@@ -78,7 +78,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
             var author = await Authors
                 .EnsureJoined(record.Session, record.ChatId, cancellationToken)
                 .ConfigureAwait(false);
-            var recordedAt = Moment.EpochStart + TimeSpan.FromSeconds(record.ClientStartOffset);
+            var recordedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
             var audio = new AudioSource(
                 new Moment(recordedAt),
                 AudioSource.DefaultFormat with { PreSkipFrames = preSkipFrames },

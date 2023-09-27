@@ -274,7 +274,7 @@
 
     private async Task OnNewInviteClick() {
         // TODO: make it configurable
-        var invite = Invite.New(10000, new ChatInviteOption(ChatId));
+        var invite = Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(ChatId));
         invite = await UICommander.Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
     }

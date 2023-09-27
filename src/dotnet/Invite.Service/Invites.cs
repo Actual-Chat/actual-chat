@@ -58,28 +58,21 @@ internal class Invites : IInvites
             return null;
 
         var invites = await ListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
-        var threshold = Clocks.SystemClock.Now - TimeSpan.FromMinutes(10);
-        invites = invites
-            .Where(c => c.ExpiresOn > threshold)
-            .OrderByDescending(c => c.ExpiresOn)
-            .ToApiArray();
-
-        if (invites.Count > 0) {
-            var invite = invites[0];
-            AutoInvalidate(invite);
-            return invite;
+        var minInviteLifespan = TimeSpan.FromHours(1);
+        var minExpiresAt = Clocks.SystemClock.Now - minInviteLifespan;
+        var invite = invites.Where(x => x.ExpiresOn > minExpiresAt && x.Remaining >= 1).MaxBy(c => c.ExpiresOn);
+        if (invite == null) {
+            invite = Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(chatId));
+            invite = await Commander
+                .Call(new Invites_Generate(session, invite), true, cancellationToken)
+                .ConfigureAwait(false);
         }
+        AutoInvalidate(invite);
+        return invite;
 
-        var newInvite = Invite.New(10000, new ChatInviteOption(chatId));
-        newInvite = await Commander.Call(new Invites_Generate(session, newInvite), true, cancellationToken).ConfigureAwait(false);
-        AutoInvalidate(newInvite);
-        return newInvite;
-
-        void AutoInvalidate(Invite invite)
-        {
-            var expiresIn = invite.ExpiresOn - Clocks.SystemClock.Now;
-            var delay = expiresIn > TimeSpan.FromHours(1) ? TimeSpan.FromHours(1) : expiresIn;
-            delay = delay.Add(TimeSpan.FromMinutes(5).Negate());
+        void AutoInvalidate(Invite invite1) {
+            var delay = invite1.ExpiresOn - Clocks.SystemClock.Now - minInviteLifespan + TimeSpan.FromSeconds(1);
+            delay = TimeSpanExt.Min(TimeSpan.FromMinutes(10), delay); // We don't want to reference Computed<T> for too long
             Computed.GetCurrent()!.Invalidate(delay);
         }
     }

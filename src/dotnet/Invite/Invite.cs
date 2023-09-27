@@ -26,6 +26,7 @@ public sealed partial record Invite(
     {
         if (Remaining < useCount)
             throw StandardError.Unauthorized("The invite link is already used.");
+
         return this with {
             Version = versionGenerator.NextVersion(Version),
             Remaining = Remaining - useCount,
@@ -36,6 +37,7 @@ public sealed partial record Invite(
     {
         if (Remaining <= 0)
             throw StandardError.Constraint("The invite link is no active already.");
+
         return this with {
             Version = versionGenerator.NextVersion(Version),
             Remaining = 0,
@@ -45,7 +47,7 @@ public sealed partial record Invite(
     public Invite Mask()
         => this with {
             CreatedBy = Symbol.Empty,
-            ExpiresOn = Moment.EpochStart,
+            ExpiresOn = default,
             Remaining = 0,
         };
 }

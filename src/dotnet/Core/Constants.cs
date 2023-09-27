@@ -53,6 +53,16 @@ public static partial class Constants
         public static int TestBotCount { get; } = 30;
     }
 
+    public static class Invites
+    {
+        public static class Defaults
+        {
+            public static readonly int ChatRemaining = 10_000;
+            public static readonly int UserRemaining = 10;
+            public static readonly TimeSpan ExpiresIn = TimeSpan.FromDays(30);
+        }
+    }
+
     public static class Team
     {
         public static string EmailSuffix => "@actual.chat";
