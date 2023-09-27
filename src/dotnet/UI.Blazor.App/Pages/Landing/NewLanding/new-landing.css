@@ -343,33 +343,50 @@ body.narrow .landing.new .page-links .page-links-wrapper {
     @apply bg-[url('/dist/images/ellipses-mobile.svg')];
 }
 .landing.new .page-1 > .c-content .main-text {
-    @apply flex-y gap-y-8 ;
-    @apply p-0;
-    @apply md:text-3xl font-normal text-04;
+    @apply gap-y-8;
+    @apply pt-0;
 }
 body.narrow .landing.new .page-1 > .c-content .main-text {
+    @apply gap-y-4;
+}
+.landing.new .page-1 > .c-content .main-text {
+    @apply md:items-center;
+}
+.landing.new .page-1 > .c-content .main-text .main-text-wrapper {
+    @apply flex-y gap-y-8 ;
+    @apply p-0;
+    @apply w-auto md:w-100 lg:w-120;
+    @apply md:text-3xl font-normal text-04;
+}
+body.narrow .landing.new .page-1 > .c-content .main-text .main-text-wrapper {
     @apply justify-center gap-y-4;
     @apply w-auto;
 }
-.landing.new .page-1 > .c-content .main-text > .c-title {
+.landing.new .page-1 > .c-content .main-text .main-text-wrapper .c-title {
     @apply text-3.5xl md:text-headline-4 lg:text-headline-3;
 }
-.landing.new .page-1 .main-text .c-description {
+.landing.new .page-1 .main-text .main-text-wrapper .c-description {
     @apply flex-y;
     @apply pt-0;
     @apply md:leading-9;
 }
-.landing.new .page-1 > .c-content .main-text > p {
+.landing.new .page>.c-content .main-text .main-text-wrapper > p {
+    @apply text-base leading-4.5 font-normal;
+    @apply md:text-xl md:leading-6;
+    @apply lg:text-3.5xl lg:leading-9;
+}
+.landing.new .page-1 > .c-content .main-text .main-text-wrapper > p {
     @apply lg:text-2xl lg:leading-8;
 }
 body.narrow .landing.new .page-1 .main-text .c-description {
     @apply text-base;
 }
-.landing.new .page-1 .main-text .c-description > .bolder {
+.landing.new .page-1 .main-text .main-text-wrapper .c-description > .bolder {
     @apply font-semibold;
 }
 .landing.new .page-1 .main-text .c-btn-group {
     @apply flex-y lg:flex-x gap-4;
+    @apply w-auto md:w-100 lg:w-120;
     @apply py-4;
 }
 .landing.new .page-1 > .c-content .main-image {
@@ -377,13 +394,13 @@ body.narrow .landing.new .page-1 .main-text .c-description {
     @apply max-w-1/3;
     max-height: 85vh;
 }
-body.narrow .landing.new .page-1 .main-text .c-btn-group {
+body.narrow .landing.new .page-1 .main-text .main-text-wrapper .c-btn-group {
     @apply flex-y;
 }
-.landing.new .page-1 .main-text .c-btn-group .lg-icon i {
+.landing.new .page-1 .main-text .main-text-wrapper .c-btn-group .lg-icon i {
     @apply md:hidden lg:flex;
 }
-.landing.new .page-1 .main-text .c-btn-group .btn-download.web-signin > i {
+.landing.new .page-1 .main-text .main-text-wrapper .c-btn-group .btn-download.web-signin > i {
     @apply md:text-01;
 }
 .landing.new .page-1 .bg-wrapper {

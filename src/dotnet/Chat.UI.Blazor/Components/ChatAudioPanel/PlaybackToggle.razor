@@ -28,7 +28,8 @@
         TooltipPosition="FloatingPosition.Top"
         MustKeepAwake="@(!audioState.IsListening)">
         @* <i class="icon-listen-2 text-3xl"></i> *@
-        <playback-toggle-svg isAnimated="@m.IsAnimated"/>
+        <playback-toggle-svg isAnimated="@m.IsAnimated" isOn="@audioState.IsListening"/>
+
     </ButtonRound>
     @* Temporarily disabled switch between loud speaker and earpiece *@
     @* to have single audio channel controlled with volume buttons  *@
