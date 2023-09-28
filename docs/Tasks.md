@@ -39,8 +39,8 @@ Before release:
 
 Next week:
 
-- Onboarding: pre-create chats page
-- Onboarding: request mic access permission
+- Onboarding: pre-create chats page [EK]
+- Onboarding: request mic access permission [EK]
 - Onboarding: request notification permission
 - Onboarding: request contacts permission
 - Check what's off w/ tracing / activities
