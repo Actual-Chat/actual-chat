@@ -771,6 +771,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     Title = "Notes",
                     Kind = ChatKind.Group,
                     IsPublic = false,
+                    MediaId = new MediaId("system-icons:notes"),
                     IsTemplate = false,
                     AllowGuestAuthors = false,
                     AllowAnonymousAuthors = false,
