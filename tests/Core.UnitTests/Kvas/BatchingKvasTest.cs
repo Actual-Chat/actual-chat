@@ -105,7 +105,7 @@ public class BatchingKvasTest : TestBase
 
         var s2a = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
         await s2a.WhenRead;
-        await Task.Yield();
+        await Task.Yield(); // NOTE(AY): W/o this it triggers flaky error on the next line - to investigate later
         s2a.Value.Should().Be("b");
         s2a.Value = "c";
         s2a.Value.Should().Be("c");
