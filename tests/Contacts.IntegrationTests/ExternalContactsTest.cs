@@ -290,11 +290,10 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         await Add(externalContact);
-        await Task.Delay(100);
-        var contacts = await ListContacts();
-
-        // assert
-        contacts.Should().BeEmpty("no matching phones or emails");
+        await TestExt.WhenMetAsync(async () => {
+            var contacts = await ListContacts();
+            contacts.Should().BeEmpty("no matching phones or emails");
+        }, TimeSpan.FromSeconds(1));
     }
 
     [Theory]
