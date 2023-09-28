@@ -27,6 +27,7 @@ using OpenTelemetry.Trace;
 using Stl.Diagnostics;
 using Stl.Fusion.EntityFramework;
 using Stl.IO;
+using Stl.Rpc;
 using Stl.Rpc.Server;
 
 namespace ActualChat.App.Server.Module;
@@ -209,9 +210,11 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
                 .AddAspNetCoreInstrumentation()
+                .AddMeter(typeof(RpcHub).GetMeter().Name) // Stl.Rpc
+                .AddMeter(typeof(ICommand).GetMeter().Name) // Stl.Commander
+                .AddMeter(typeof(IComputed).GetMeter().Name) // Stl.Fusion
+                // Our own meters (one per assembly)
                 .AddMeter(AppMeter.Name)
-                .AddMeter(typeof(IComputed).GetMeter().Name) // Fusion meter
-                .AddMeter(typeof(ICommand).GetMeter().Name) // Commander meters
                 .AddMeter(MeterExt.Unknown.Name) // Unknown meter
                 .AddPrometheusExporter(cfg => { // OtlpExporter doesn't work for metrics ???
                     cfg.ScrapeEndpointPath = "/metrics";
@@ -225,11 +228,13 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
             Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
             otelBuilder = otelBuilder.WithTracing(builder => builder
                 .SetErrorStatusOnException()
+                .AddSource(typeof(RpcHub).GetActivitySource().Name) // Stl.Rpc
+                .AddSource(typeof(ICommand).GetActivitySource().Name) // Stl.Commander
+                .AddSource(typeof(IComputed).GetActivitySource().Name) // Stl.Fusion
+                .AddSource(typeof(IAuthBackend).GetActivitySource().Name) // Stl.Fusion.Ext.Services - auth, etc.
+                .AddSource(typeof(DbKey).GetActivitySource().Name) // Stl.Fusion.EntityFramework
+                // Our own activity sources (one per assembly)
                 .AddSource(AppTrace.Name)
-                .AddSource(typeof(IComputed).GetActivitySource().Name) // Fusion trace
-                .AddSource(typeof(ICommand).GetActivitySource().Name) // Commander trace
-                .AddSource(typeof(IAuthBackend).GetActivitySource().Name) // DB Session Info trim
-                .AddSource(typeof(DbKey).GetActivitySource().Name) // DB Entity resolver
                 .AddSource(typeof(IAudioStreamer).GetActivitySource().Name)
                 .AddSource(typeof(IChats).GetActivitySource().Name)
                 .AddSource(typeof(IContacts).GetActivitySource().Name)

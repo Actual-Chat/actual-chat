@@ -8,6 +8,7 @@ using Stl.Fusion.Server;
 using Stl.Fusion.Server.Middlewares;
 using Stl.Fusion.Server.Rpc;
 using Stl.Rpc;
+using Stl.Rpc.Diagnostics;
 
 namespace ActualChat.Web.Module;
 
@@ -25,6 +26,11 @@ public sealed class WebModule : HostModule, IWebModule
         var fusion = services.AddFusion();
         var rpc = fusion.Rpc;
         fusion.AddWebServer();
+
+        // Add RpcMethodActivityTracer
+        services.AddSingleton<RpcMethodTracerFactory>(method => new RpcMethodActivityTracer(method) {
+            UseCounters = true,
+        });
 
         // Remove SessionMiddleware - we use SessionCookies directly instead
         services.RemoveAll<SessionMiddleware.Options>();
