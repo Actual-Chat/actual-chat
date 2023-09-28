@@ -1,0 +1,29 @@
+@using ActualChat.Chat.UI.Blazor.Module
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@if (Count == 10) {
+    <li class="attachment-wrapper flex justify-center min-w-34 last-element">
+        <ButtonRound Class="add-attachment" Click="@AddClick">
+            <i class="icon-plus text-2xl text-icons-01"></i>
+        </ButtonRound>
+    </li>
+} else if (Count < 10) {
+    <li class="attachment-wrapper c-double last-element">
+        <button class="c-add" @onclick=@AddClick data-tooltip="Add">
+            <div class="c-content">
+                <i class="icon-plus"></i>
+            </div>
+        </button>
+        <button class="c-send" @onclick="SendClick" data-tooltip="Send">
+            <div class="c-content">
+                <i class="icon-paper-plane"></i>
+            </div>
+        </button>
+    </li>
+}
+
+@code {
+    [Parameter] public int Count { get; set; }
+    [Parameter] public EventCallback AddClick { get; set; }
+    [Parameter] public EventCallback SendClick { get; set; }
+}
