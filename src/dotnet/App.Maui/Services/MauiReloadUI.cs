@@ -19,7 +19,7 @@ public class MauiReloadUI : ReloadUI
                 // terminate recording, playback and all markup
                 var request = new EvaluateJavaScriptAsyncRequest("window.ui.BrowserInit.terminate()");
                 MainPage.Current?.PlatformWebView?.EvaluateJavaScript(request);
-                await request.Task;
+                await request.Task.ConfigureAwait(true);
 
                 DiscardScopedServices();
                 MainPage.Current?.RecreateWebView(); // No MainPage.Current = no reload needed

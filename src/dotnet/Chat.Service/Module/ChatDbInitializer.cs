@@ -32,10 +32,12 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         // await FixCorruptedReadPositions(cancellationToken).ConfigureAwait(false);
     }
 
-    public override async Task VerifyData(CancellationToken cancellationToken)
+    public override Task VerifyData(CancellationToken cancellationToken)
     {
-        if (!DbInfo.ShouldVerifyDb)
-            return;
+        return Task.CompletedTask;
+
+        // if (!DbInfo.ShouldVerifyDb)
+        //     return;
 
         // There is no code there
         // previously we were verifying uniqueness of local Ids for chat entries

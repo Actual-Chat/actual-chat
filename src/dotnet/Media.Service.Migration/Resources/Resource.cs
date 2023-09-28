@@ -17,6 +17,6 @@ public class Resource(string name)
         if (stream != null)
             return stream;
 
-        throw StandardError.Internal($"Resource is not found: {name}.");
+        throw StandardError.Internal($"Resource is not found: {Name}.");
     }
 }

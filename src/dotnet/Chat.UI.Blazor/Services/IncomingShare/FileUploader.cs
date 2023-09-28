@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Net.Http.Json;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -14,6 +15,7 @@ public class FileUploader(IServiceProvider services)
     private IHttpClientFactory HttpClientFactory
         => _httpClientFactory ??= services.GetRequiredService<IHttpClientFactory>();
 
+    [RequiresUnreferencedCode("Uses ReadFromJsonAsync")]
     public async Task<MediaContent> Upload(ChatId chatId, Stream file, string? contentType, string? fileName, CancellationToken cancellationToken = default)
     {
         using var formData = new MultipartFormDataContent();

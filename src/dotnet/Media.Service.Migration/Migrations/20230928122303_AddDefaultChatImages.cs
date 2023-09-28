@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
+#pragma warning disable VSTHRD002
 
 namespace ActualChat.Media.Migrations
 {
@@ -22,9 +23,7 @@ namespace ActualChat.Media.Migrations
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
-        {
-
-        }
+        { }
 
         private async Task UpAsync(MigrationBuilder migrationBuilder)
         {

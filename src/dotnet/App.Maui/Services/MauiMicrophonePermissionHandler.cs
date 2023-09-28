@@ -49,9 +49,9 @@ public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
     protected override Task<bool> Troubleshoot(CancellationToken cancellationToken)
         => Dispatcher.InvokeAsync(async () => {
             var model = new GuideModal.Model(false, GuideType.WebChrome);
-            var modalRef = await ModalUI.Show(model, cancellationToken);
+            var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
             try {
-                await modalRef.WhenClosed.WaitAsync(cancellationToken);
+                await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);
             }
             catch (OperationCanceledException) {
                 return false;

@@ -9,7 +9,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
         => ReferenceEquals(this, None);
 
     public Range<string> KeyRange
-        => items.Count > 0
+        => Items.Count > 0
             ? new Range<string>(Items[0].Key, Items[^1].Key)
             : default;
 

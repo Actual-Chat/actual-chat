@@ -50,8 +50,11 @@ public partial class MauiBlazorWebViewHandler
             const string contentTypeKey = "Content-Type";
             const string cacheControlKey = "Cache-Control";
 
-            if (request?.Url?.Host == AppHostAddress && ContentDownloader.CanHandlePath(request.Url.EncodedPath!)) {
-                var (stream, mimeType) = ContentDownloader.OpenInputStream(request.Url.EncodedPath!);
+            var requestUrl = request?.Url;
+            if (request != null && requestUrl != null
+                && OrdinalEquals(requestUrl.Host, AppHostAddress)
+                && ContentDownloader.CanHandlePath(requestUrl.EncodedPath)) {
+                var (stream, mimeType) = ContentDownloader.OpenInputStream(requestUrl.EncodedPath!);
                 if (stream == null)
                     return null;
                 // Prevent response caching by WebView
@@ -65,7 +68,7 @@ public partial class MauiBlazorWebViewHandler
             if (resourceResponse == null)
                 return null;
 
-            if (request?.Url?.Host == AppHostAddress)
+            if (OrdinalEquals(requestUrl?.Host, AppHostAddress))
                 return resourceResponse;
 
             resourceResponse.ResponseHeaders?.Remove(cacheControlKey);
