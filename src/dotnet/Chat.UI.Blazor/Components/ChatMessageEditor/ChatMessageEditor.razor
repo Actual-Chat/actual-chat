@@ -26,7 +26,8 @@
     <MentionListManager @key="@MentionListManagerKey" SearchProvider="@ChatMarkupHub.MentionSearchProvider">
         <AttachmentList
             @key="AttachmentListKey"
-            @ref="AttachmentListRef"/>
+            @ref="AttachmentListRef"
+            OnSendClick="@(() => Post())"/>
         @if (ScreenSize.IsWide()) {
             <RelatedChatEntryPanel/>
         }

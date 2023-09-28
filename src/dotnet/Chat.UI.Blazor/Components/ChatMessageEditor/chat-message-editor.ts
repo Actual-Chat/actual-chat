@@ -3,6 +3,7 @@ import {
     takeUntil,
     debounceTime,
     tap,
+    fromEvent
 } from 'rxjs';
 import { preventDefaultForEvent } from 'event-handling';
 import { throttle } from 'promises';
@@ -59,10 +60,23 @@ export class ChatMessageEditor {
         ScreenSize.event$
             .pipe(takeUntil(this.disposed$))
             .subscribe(this.updateLayoutThrottled);
-        this.input.addEventListener('paste', this.onInputPaste);
-        this.postPanelDiv.addEventListener('click', this.onPostPanelClick);
-        this.attachButton.addEventListener('click', this.onAttachButtonClick);
-        this.notifyPanel.addEventListener('click', this.onNotifyPanelClick);
+
+        fromEvent(this.input, 'paste')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: ClipboardEvent) => this.onInputPaste(event));
+
+        fromEvent(this.postPanelDiv, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: MouseEvent) => this.onPostPanelClick(event));
+
+        fromEvent(this.attachButton, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: MouseEvent) => this.onAttachButtonClick(event));
+
+        fromEvent(this.notifyPanel, 'click')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: Event) => this.onNotifyPanelClick(event));
+
         this.backupRequired$.pipe(debounceTime(1000), tap(() => this.saveDraft())).subscribe();
 
         this.attachmentListObserver = new MutationObserver(this.updateAttachmentListState);
@@ -84,10 +98,6 @@ export class ChatMessageEditor {
         this.backupRequired$.complete();
         this.disposed$.next();
         this.disposed$.complete();
-        this.input.removeEventListener('paste', this.onInputPaste);
-        this.postPanelDiv.removeEventListener('click', this.onPostPanelClick);
-        this.attachButton.removeEventListener('click', this.onAttachButtonClick);
-        this.notifyPanel.removeEventListener('click', this.onNotifyPanelClick);
         if (this.attachmentListElement != null) {
             this.attachmentListElement.removeEventListener('wheel', this.onHorizontalScroll);
         }
@@ -97,6 +107,26 @@ export class ChatMessageEditor {
 
     // Public methods
 
+    private addAttachmentsObserver() {
+        let lastElement = this.attachmentListElement.querySelector('.last-element');
+        const callback = (mutationList, observer) => {
+            mutationList.forEach(m => {
+                m.addedNodes.forEach(e => {
+                    if (e.className == 'attachment-item') {
+                        lastElement.scrollIntoView({ behavior: 'smooth' });
+                    }
+                })
+            })
+        };
+        let observer = new MutationObserver(callback);
+        observer.observe(this.attachmentListElement, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+        });
+
+    }
+
     private updateAttachmentListState = (mutationList, observer) => {
         mutationList.forEach(m => {
             m.addedNodes.forEach(element => {
@@ -105,7 +135,16 @@ export class ChatMessageEditor {
                         this.editorDiv.classList.add('attachment-mode');
                     }
                     this.attachmentListElement = this.editorDiv.querySelector('.attachment-list')
-                    this.attachmentListElement.addEventListener('wheel', this.onHorizontalScroll);
+                    this.addAttachmentsObserver();
+                    fromEvent(this.attachmentListElement, 'wheel')
+                        .pipe(takeUntil(this.disposed$))
+                        .subscribe((event: WheelEvent) => this.onHorizontalScroll(event));
+                }
+                if (element.className == 'attachment-list') {
+                    console.log('attachment list added');
+                }
+                if (element.className == 'attachment-item') {
+                    console.log('attachment item added.');
                 }
             });
             m.removedNodes.forEach(element => {
@@ -119,7 +158,7 @@ export class ChatMessageEditor {
         })
     };
 
-    private onHorizontalScroll = ((event: WheelEvent & { target: Element; }) => {
+    private onHorizontalScroll = ((event: WheelEvent) => {
         preventDefaultForEvent(event);
         this.attachmentListElement.scrollBy({ left: event.deltaY < 0 ? -30 : 30, });
     });
@@ -171,15 +210,15 @@ export class ChatMessageEditor {
         }
     });
 
-    private onNotifyPanelClick = (async (event: Event & { target: Element; }) => {
-        if (event.target == this.notifyPanel || event.target.classList.contains('notify-call-content')) {
+    private onNotifyPanelClick = (async (event: Event) => {
+        if (event.target as HTMLElement == this.notifyPanel || (event.target as HTMLElement).classList.contains('notify-call-content')) {
             if (this.notifyPanel.classList.contains('panel-opening')) {
                 await this.blazorRef.invokeMethodAsync('CloseNotifyPanel');
             }
         }
     });
 
-    private onInputPaste = async (event: ClipboardEvent & { target: Element; }) => {
+    private onInputPaste = async (event: ClipboardEvent) => {
         // Get pasted data via clipboard API
         // We need to handle only files pasting.
         // Text pasting is controlled by markup editor.

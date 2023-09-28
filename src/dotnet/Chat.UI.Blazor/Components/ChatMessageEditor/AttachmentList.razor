@@ -9,7 +9,7 @@
     <div class="attachment-list-wrapper">
         <div class="flex-1 flex-x justify-between p-2 pb-0">
             <span class="flex font-medium items-center min-h-6">
-                @_attachments.Count file@(_attachments.Count == 0 ? "" : "s")
+                @_attachments.Count file@(_attachments.Count < 2 ? "" : "s")
             </span>
             <Button Class="btn-sm clear-attachments-btn" Click="_ => Clear()">
                 Remove all
@@ -56,13 +56,10 @@
                     </div>
                 </li>
             }
-            @if (_attachments.Count < 10) {
-                <li class="attachment-wrapper flex min-w-34 justify-center">
-                    <ButtonRound Class="add-attachment" Click="@OnAddClick">
-                        <i class="icon-plus text-2xl text-icons-01"></i>
-                    </ButtonRound>
-                </li>
-            }
+            <SendOrAddAttachmentButton
+                Count="@_attachments.Count"
+                AddClick="@OnAddClick"
+                SendClick="@OnSendClick"/>
         </ul>
     </div>
 }
@@ -78,6 +75,8 @@
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
+
+    [Parameter] public EventCallback OnSendClick { get; set; }
 
     public IJSObjectReference JSRef { get; private set; } = null!;
     public Task WhenReady => _whenReadySource.Task;
