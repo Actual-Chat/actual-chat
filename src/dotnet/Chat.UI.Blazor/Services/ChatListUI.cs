@@ -22,6 +22,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private ActiveChatsUI? _activeChatsUI;
     private bool _isFirstLoad = true;
 
+    private IAuthors? _authors;
     private IContacts? _contacts;
     private SearchUI? _searchUI;
     private LoadingUI? _loadingUI;
@@ -30,6 +31,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private Session Session { get; }
     private IContacts Contacts => _contacts ??= Services.GetRequiredService<IContacts>();
     private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
+    private IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
     private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
 
     private SearchUI SearchUI => _searchUI ??= Services.GetRequiredService<SearchUI>();

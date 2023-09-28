@@ -90,20 +90,36 @@ public partial class ChatListUI
     {
         var cChatInfoMap = await Computed.Capture(() => ListAllUnorderedRaw(cancellationToken)).ConfigureAwait(false);
         var previous = await cChatInfoMap.Use(cancellationToken).ConfigureAwait(false);
-        var lastPlayedAt = Moment.MinValue;
+        var lastPlayedAt = Clocks.SystemClock.Now; // Skip tune after loading
         await foreach (var change in cChatInfoMap.Changes(cancellationToken).ConfigureAwait(false))
-            OnChange(change.Value);
+            await OnChange(change.Value).ConfigureAwait(false);
+        return;
 
-        void OnChange(IReadOnlyDictionary<ChatId, ChatInfo> chatInfoMap)
+        async Task OnChange(IReadOnlyDictionary<ChatId, ChatInfo> chatInfoMap)
         {
+            var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            var otherChatInfoItems = chatInfoMap.Where(x => x.Key != selectedChatId);
             if (lastPlayedAt + MinNotificationInterval <= Now)
-                foreach (var pair in chatInfoMap.Where(x => x.Key != ChatUI.SelectedChatId.Value))
-                    if (!previous.TryGetValue(pair.Key, out var prevChatInfo)
-                        || prevChatInfo.UnmutedUnreadCount < pair.Value.UnmutedUnreadCount) {
+                foreach (var (chatId, chatInfo) in otherChatInfoItems) {
+                    var isAlreadyExists = previous.TryGetValue(chatId, out var prevChatInfo);
+                    if (!isAlreadyExists) {
+                        // notify on new chat
                         _ = TuneUI.Play(Tune.NotifyOnNewMessageInApp);
                         lastPlayedAt = Now;
                         break;
                     }
+
+                    var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+                    var hasNewUnreadMessages = prevChatInfo!.UnmutedUnreadCount < chatInfo.UnmutedUnreadCount;
+                    var isLastMessageOwn = chatInfo.LastTextEntry?.AuthorId == ownAuthor?.Id;
+                    if (!hasNewUnreadMessages || isLastMessageOwn)
+                        continue;
+
+                    // notify on new message from other authors
+                    _ = TuneUI.Play(Tune.NotifyOnNewMessageInApp);
+                    lastPlayedAt = Now;
+                    break;
+                }
             previous = chatInfoMap;
         }
     }
