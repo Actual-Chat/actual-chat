@@ -321,7 +321,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     .Select(x => x.c)
                     .FirstOrDefaultAsync(cancellationToken)
                     .ConfigureAwait(false);
-
                 if (existingDbChat != null)
                     return existingDbChat.ToModel();
             }
@@ -691,28 +690,25 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }
 
-            // remove attachments
+            // Remove attachments
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId && ce.HasAttachments)
                 .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // remove reaction summaries
+            // Remove reaction summaries
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
                 .Join(dbContext.ReactionSummaries, ce => ce.Id, rs => rs.EntryId, (_, rs) => rs)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // remove reactions
+            // Remove reactions
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
                 .Join(dbContext.Reactions, ce => ce.Id, rs => rs.EntryId, (_, rs) => rs)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // mentions
+            // Remove mentions
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
                 .Join(dbContext.Mentions.Where(m => m.ChatId == chatId), ce => ce.LocalId, rs => rs.EntryId, (_, rs) => rs)
@@ -725,10 +721,9 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 .Select(ce => ce.LocalId)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
-
             chatEntriesToInvalidate.Add(chatId, lastAuthorEntryId);
 
-            // entries
+            // Remove entries
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.AuthorId == authorId)
                 .ExecuteDeleteAsync(cancellationToken)
