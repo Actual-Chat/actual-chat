@@ -229,11 +229,11 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply border-0;
 }
 .narrow-panel.narrow .chat-audio-panel .playback-button {
-    @apply w-20;
+    @apply min-w-20 max-w-20;
     @apply m-0;
 }
 .narrow-panel.narrow .chat-audio-panel .playback-button .playback-wrapper {
-    @apply h-12;
+    @apply min-h-12 max-h-12;
 }
 .narrow-panel.narrow .chat-audio-panel .playback-button .playback-wrapper .btn {
     @apply left-4;
@@ -247,7 +247,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply translate-x-10;
 }
 .narrow-panel.narrow .playback-wrapper.listen-off {
-    @apply w-20;
+    @apply min-w-20 max-w-20;
 }
 .narrow-panel.narrow .playback-wrapper.listen-off .loud-btn.btn.btn-round {
     @apply absolute;
@@ -283,11 +283,14 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply font-semibold text-lg text-icons-01 md:text-base;
 }
 .wide .chat-audio-panel .playback-button {
-    @apply w-12;
+    @apply min-w-12 max-w-12;
     @apply rounded-full;
 }
 .wide .playback-wrapper .loud-btn {
     @apply hidden;
+}
+.chat-audio-panel .playback-button .btn-content-inner > * {
+    @apply relative top-[0.09rem] left-0; /* Fix headphones position */
 }
 
 /* Recorder button animation */
