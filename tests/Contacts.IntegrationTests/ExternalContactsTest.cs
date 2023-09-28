@@ -157,6 +157,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         var bobContacts = await ListContacts();
 
         jack = await _tester.SignIn(Jack);
+        await Task.Delay(100);
         var jackContacts = await ListContacts();
 
         // assert
@@ -188,6 +189,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         var jackContacts = await ListContacts();
 
         bob = await _tester.SignIn(Bob);
+        await Task.Delay(100);
         bobContacts = await ListContacts();
 
         // assert
@@ -218,6 +220,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         var jackContacts = await ListContacts();
 
         bob = await _tester.SignIn(Bob);
+        await Task.Delay(100);
         bobContacts = await ListContacts();
 
         // assert
@@ -239,6 +242,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         await Add(externalContact);
+        await Task.Delay(100);
         var contacts = await ListContacts();
 
         // assert
@@ -262,6 +266,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         var bobContacts = await ListContacts();
 
         var jack = await _tester.SignIn(Jack);
+        await Task.Delay(100);
         var jackContacts = await ListContacts();
 
         // assert
@@ -285,6 +290,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         await Add(externalContact);
+        await Task.Delay(100);
         var contacts = await ListContacts();
 
         // assert
