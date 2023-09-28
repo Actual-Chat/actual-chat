@@ -44,7 +44,7 @@ public abstract class DbInitializer<TDbContext>(IServiceProvider services)
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
             var mustMigrate = false;
             if (isTestServer)
-                mustMigrate = Random.Shared.Next(10) < 1; // 10% migration probability in tests
+                mustMigrate = Random.Shared.Next(30) < 1; // 3% migration probability in tests
             if (mustMigrate)
                 await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
             else
