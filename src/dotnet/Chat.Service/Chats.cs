@@ -158,8 +158,10 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var dbEntry = await dbContext.ChatEntries.OrderByDescending(x => x.LocalId)
-            .FirstOrDefaultAsync(x => (startEntryId == null || x.LocalId < startEntryId) && x.Content.Contains(text), cancellationToken)
+        var dbEntry = await dbContext.ChatEntries
+            .Where(c => c.ChatId == chatId && c.Content.Contains(text) && (startEntryId == null || c.LocalId < startEntryId))
+            .OrderByDescending(x => x.LocalId)
+            .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbEntry?.ToModel();
     }

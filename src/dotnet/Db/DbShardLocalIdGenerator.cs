@@ -52,7 +52,7 @@ public class DbShardLocalIdGenerator<
         if (maxLocalId == 0) {
             var shardFilterExpr = CreateShardFilterExpression(shardKey);
             _maxLocalIdCache[idSequenceKey] = maxLocalId =
-                await _dbSetExtractor((TDbContext)dbContext).ForUpdate() // To serialize inserts
+                await _dbSetExtractor((TDbContext)dbContext)
                     .Where(shardFilterExpr)
                     .OrderByDescending(_localIdSelector)
                     .Select(_localIdSelector)
