@@ -8,6 +8,7 @@ using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Diagnostics;
 using banditoth.MAUI.DeviceId;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
@@ -26,6 +27,7 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
+        OtelDiagnostics.SetupConditionalPropagator();
         FusionSettings.Mode = FusionMode.Client;
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();

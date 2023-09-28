@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.Services;
+using Sentry;
 
 namespace ActualChat.App.Maui;
 
@@ -27,6 +28,13 @@ public class App : Application
         MainPage = mainPage;
     }
 
+    protected override Window CreateWindow(IActivationState? activationState)
+    {
+        var window = base.CreateWindow(activationState);
+        window.Destroying += (_, _) => FlushSentryData();
+        return window;
+    }
+
     protected override void OnAppLinkRequestReceived(Uri uri)
     {
         Log.LogInformation("OnAppLinkRequestReceived: {Uri}", uri);
@@ -46,5 +54,14 @@ public class App : Application
     {
         MustMinimizeOnQuit = false;
         base.Quit();
+    }
+
+    private void FlushSentryData()
+    {
+        using (MauiDiagnostics.Tracer.Region()) {
+            MauiDiagnostics.TracerProvider?.DisposeSilently();
+            if (SentrySdk.IsEnabled)
+                SentrySdk.Flush();
+        }
     }
 }
