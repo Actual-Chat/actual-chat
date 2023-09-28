@@ -317,7 +317,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 // Chats with system tags should be unique per user.
                 var existingDbChat = await dbContext.Chats
                     .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
-                    .Where(x => x.a.UserId == ownerId && x.c.SystemTag == (string)Constants.Chat.Tags.Notes)
+                    .Where(x => x.a.UserId == ownerId && x.c.SystemTag == dbChat.SystemTag)
                     .Select(x => x.c)
                     .FirstOrDefaultAsync(cancellationToken)
                     .ConfigureAwait(false);
@@ -424,50 +424,43 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     new Change<Media.Media> { Remove = true });
                 await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }
-            // remove attachments
+            // Remove attachments
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.HasAttachments)
                 .Join(dbContext.TextEntryAttachments, ce => ce.Id, ea => ea.EntryId, (_, ea) => ea)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // remove reaction summaries
+            // Remove reaction summaries
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId)
                 .Join(dbContext.ReactionSummaries, ce => ce.Id, rs => rs.EntryId, (_, rs) => rs)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // remove reactions
+            // Remove reactions
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId)
                 .Join(dbContext.Reactions, ce => ce.Id, rs => rs.EntryId, (_, rs) => rs)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // mentions
+            // Remove mentions
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId)
                 .Join(dbContext.Mentions.Where(m => m.ChatId == chatId), ce => ce.LocalId, rs => rs.EntryId, (_, rs) => rs)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // entries
+            // Remove entries
             await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // roles
+            // Remove roles
             await dbContext.Roles
                 .Where(r => r.ChatId == chatId)
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            // authors
+            // Remove authors
             var removeAuthorsCommand = new AuthorsBackend_Remove(chatId, AuthorId.None, UserId.None);
             await Commander.Call(removeAuthorsCommand, false, cancellationToken).ConfigureAwait(false);
-
             dbContext.Remove(dbChat);
         }
 
@@ -480,8 +473,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             .EnqueueOnCompletion();
         return chat;
 
-        Chat ApplyDiff(Chat originalChat, ChatDiff? diff)
-        {
+        Chat ApplyDiff(Chat originalChat, ChatDiff? diff) {
             // Update
             var newChat = DiffEngine.Patch(originalChat, diff) with {
                 Version = VersionGenerator.NextVersion(originalChat.Version),
@@ -757,7 +749,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         var hasNotesChat = await dbContext.Chats
             .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
-            .AnyAsync(x => x.a.UserId == userId && x.c.SystemTag == (string)Constants.Chat.Tags.Notes, cancellationToken)
+            .AnyAsync(x => x.a.UserId == userId && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value, cancellationToken)
             .ConfigureAwait(false);
 
         if (hasNotesChat)
@@ -775,7 +767,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     IsTemplate = false,
                     AllowGuestAuthors = false,
                     AllowAnonymousAuthors = false,
-                    SystemTag = Constants.Chat.Tags.Notes,
+                    SystemTag = Constants.Chat.SystemTags.Notes,
                 },
             },
             userId);

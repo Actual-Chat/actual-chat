@@ -155,7 +155,7 @@ public class ChatOperationsTest : AppHostTestBase
 
         var dbChat = await dbContext.Chats
             .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
-            .Where(x => x.a.UserId == account.Id && x.c.SystemTag == (string)Constants.Chat.Tags.Notes)
+            .Where(x => x.a.UserId == account.Id && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value)
             .Select(x => x.c)
             .FirstOrDefaultAsync();
 

@@ -109,14 +109,14 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         var dbContext = DbHub.CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        // Get users that don't have Notes chat
+        // Get users who don't have Notes chat
         var userIds = await dbContext.Authors
             .Where(a => a.HasLeft == false && a.IsAnonymous == false)
             .Select(a => a.UserId)
             .Distinct()
             .Where(uid => !dbContext.Chats
                 .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
-                .Any(x => x.a.UserId == uid && x.c.SystemTag == (string)Constants.Chat.Tags.Notes))
+                .Any(x => x.a.UserId == uid && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

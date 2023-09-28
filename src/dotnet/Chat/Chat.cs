@@ -41,7 +41,7 @@ public sealed partial record Chat(
     public ChatKind Kind => Id.Kind;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool HasSingleAuthor => SystemTag == Constants.Chat.Tags.Notes;
+    public bool HasSingleAuthor => SystemTag == Constants.Chat.SystemTags.Notes;
 
     // This record relies on referential equality
     public bool Equals(Chat? other) => ReferenceEquals(this, other);

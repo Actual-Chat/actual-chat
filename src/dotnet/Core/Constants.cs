@@ -24,11 +24,14 @@ public static partial class Constants
         public const int ReactionFirstAuthorIdsLimit = 10;
         public const int ImageRowCapacity = 4;
 
-        public static class Tags
+        public static class SystemTags
         {
             public static readonly Symbol Notes = "notes";
             public static readonly Symbol Family = "family";
             public static readonly Symbol Friends = "friends";
+            public static readonly Symbol Classmates = "classmates";
+            public static readonly Symbol Alumni = "alumni";
+            public static readonly Symbol Coworkers = "coworkers";
         }
     }
 

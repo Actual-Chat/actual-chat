@@ -8,6 +8,7 @@
 <div class="set-chats-step">
     <p class="text-title-1 text-center">Set default chats</p>
     <div class="set-chats-step-chat-list">
+        @*
         <div class="set-chats-step-chat-list-item">
             <img draggable="false"
                  class="set-chats-step-icon"
@@ -27,6 +28,7 @@
                 Class="!flex-none"
                 IsDisabled="true"/>
         </div>
+        *@
         <div class="set-chats-step-chat-list-item"
              @onclick="CreateFamilyChatClick">
             <img draggable="false"
@@ -46,26 +48,6 @@
                 IsChecked="@_stepModel.CreateFamilyChat"
                 Class="!flex-none"
                 Change="CreateFamilyChatClick"/>
-        </div>
-        <div class="set-chats-step-chat-list-item"
-             @onclick="CreateCoworkersChatClick">
-            <img draggable="false"
-                 class="set-chats-step-icon"
-                 crossorigin="anonymous"
-                 alt="Coworkers"
-                 src="/dist/images/onboarding/coworkers.svg"/>
-            <div class="set-chats-step-chat-list-item-body">
-                <div class="set-chats-step-chat-list-item-title">
-                    Coworkers
-                </div>
-                <div class="set-chats-step-chat-list-item-subtitle">
-                    Chat with your coworkers
-                </div>
-            </div>
-            <Checkbox
-                IsChecked="@_stepModel.CreateCoworkersChat"
-                Class="!flex-none"
-                Change="CreateCoworkersChatClick"/>
         </div>
         <div class="set-chats-step-chat-list-item"
              @onclick="CreateFriendsChatClick">
@@ -88,6 +70,26 @@
                 Change="CreateFriendsChatClick"/>
         </div>
         <div class="set-chats-step-chat-list-item"
+             @onclick="CreateClassmatesChatClick">
+            <img draggable="false"
+                 class="set-chats-step-icon"
+                 crossorigin="anonymous"
+                 alt="Classmates"
+                 src="/dist/images/onboarding/alumni.svg"/>
+            <div class="set-chats-step-chat-list-item-body">
+                <div class="set-chats-step-chat-list-item-title">
+                    Classmates
+                </div>
+                <div class="set-chats-step-chat-list-item-subtitle">
+                    Chat with your classmates
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_stepModel.CreateClassmatesChat"
+                Class="!flex-none"
+                Change="CreateClassmatesChatClick"/>
+        </div>
+        <div class="set-chats-step-chat-list-item"
              @onclick="CreateAlumniChatClick">
             <img draggable="false"
                  class="set-chats-step-icon"
@@ -96,7 +98,7 @@
                  src="/dist/images/onboarding/alumni.svg"/>
             <div class="set-chats-step-chat-list-item-body">
                 <div class="set-chats-step-chat-list-item-title">
-                    Alumni
+                    Classmates / Alumni
                 </div>
                 <div class="set-chats-step-chat-list-item-subtitle">
                     Chat with your alumni community
@@ -106,6 +108,26 @@
                 IsChecked="@_stepModel.CreateAlumniChat"
                 Class="!flex-none"
                 Change="CreateAlumniChatClick"/>
+        </div>
+        <div class="set-chats-step-chat-list-item"
+             @onclick="CreateCoworkersChatClick">
+            <img draggable="false"
+                 class="set-chats-step-icon"
+                 crossorigin="anonymous"
+                 alt="Coworkers"
+                 src="/dist/images/onboarding/coworkers.svg"/>
+            <div class="set-chats-step-chat-list-item-body">
+                <div class="set-chats-step-chat-list-item-title">
+                    Coworkers
+                </div>
+                <div class="set-chats-step-chat-list-item-subtitle">
+                    Chat with your coworkers
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_stepModel.CreateCoworkersChat"
+                Class="!flex-none"
+                Change="CreateCoworkersChatClick"/>
         </div>
     </div>
 </div>
@@ -128,65 +150,57 @@
     }
 
     protected override async Task<bool> Save() {
-        if (_stepModel.CreateFamilyChat) {
-            await CreateChat("Family", "system-icons:family");
-        }
-
-        if (_stepModel.CreateCoworkersChat) {
-            await CreateChat("Coworkers", "system-icons:coworkers");
-        }
-
-        if (_stepModel.CreateFriendsChat) {
-            await CreateChat("Friends", "system-icons:friends");
-        }
-
-        if (_stepModel.CreateAlumniChat) {
-            await CreateChat("Alumni", "system-icons:alumni");
-        }
+        if (_stepModel.CreateFamilyChat)
+            await CreateChat("Family", Constants.Chat.SystemTags.Family);
+        if (_stepModel.CreateFriendsChat)
+            await CreateChat("Friends", Constants.Chat.SystemTags.Friends);
+        if (_stepModel.CreateClassmatesChat)
+            await CreateChat("Classmates", Constants.Chat.SystemTags.Classmates, "system-icons:alumni");
+        if (_stepModel.CreateAlumniChat)
+            await CreateChat("Alumni", Constants.Chat.SystemTags.Alumni);
+        if (_stepModel.CreateCoworkersChat)
+            await CreateChat("Coworkers", Constants.Chat.SystemTags.Coworkers);
 
         return true;
     }
 
-    private async Task CreateChat(string title, string mediaId) {
+    private async Task CreateChat(string title, Symbol systemTag, string? mediaId = null) {
         var command = new Chats_Change(
             Session,
             default,
             null,
-            new()
-            {
-                Create = new ChatDiff
-                {
+            new() {
+                Create = new ChatDiff {
                     Title = title,
                     Kind = ChatKind.Group,
-                    MediaId = new MediaId(mediaId),
+                    MediaId = new MediaId(mediaId ?? $"system-icons:{systemTag.Value}"),
                     IsPublic = false,
-                    AllowGuestAuthors = false,
-                    AllowAnonymousAuthors = false,
+                    SystemTag = systemTag,
                 },
             });
         await UICommander.Run(command);
     }
 
-    private void CreateFamilyChatClick() {
-        _stepModel.CreateFamilyChat = !_stepModel.CreateFamilyChat;
-    }
+    private void CreateFamilyChatClick()
+        => _stepModel.CreateFamilyChat = !_stepModel.CreateFamilyChat;
 
-    private void CreateCoworkersChatClick() {
-        _stepModel.CreateCoworkersChat = !_stepModel.CreateCoworkersChat;
-    }
+    private void CreateFriendsChatClick()
+        => _stepModel.CreateFriendsChat = !_stepModel.CreateFriendsChat;
 
-    private void CreateFriendsChatClick() {
-        _stepModel.CreateFriendsChat = !_stepModel.CreateFriendsChat;
-    }
+    private void CreateClassmatesChatClick()
+        => _stepModel.CreateClassmatesChat = !_stepModel.CreateClassmatesChat;
 
-    private void CreateAlumniChatClick() {
-        _stepModel.CreateAlumniChat = !_stepModel.CreateAlumniChat;
-    }
+    private void CreateAlumniChatClick()
+        => _stepModel.CreateAlumniChat = !_stepModel.CreateAlumniChat;
+
+    private void CreateCoworkersChatClick()
+        => _stepModel.CreateCoworkersChat = !_stepModel.CreateCoworkersChat;
 
     public class SetChatsStepModel {
-        public bool CreateFamilyChat { get; set; }
-        public bool CreateCoworkersChat { get; set; }
-        public bool CreateFriendsChat { get; set; }
+        public bool CreateFamilyChat { get; set; } = true;
+        public bool CreateFriendsChat { get; set; } = true;
+        public bool CreateClassmatesChat { get; set; }
         public bool CreateAlumniChat { get; set; }
+        public bool CreateCoworkersChat { get; set; }
     }
 }
