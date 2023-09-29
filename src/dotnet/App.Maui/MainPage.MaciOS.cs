@@ -1,3 +1,4 @@
+using ActualChat.Permissions;
 using AVFoundation;
 using Foundation;
 using Microsoft.AspNetCore.Components.WebView;
@@ -63,10 +64,12 @@ public partial class MainPage
     }
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e)
-        => PlatformWebView!.UIDelegate = new UIDelegate();
+        => PlatformWebView!.UIDelegate = new UIDelegate(Services);
 
-    private sealed class UIDelegate : WKUIDelegate
+    private sealed class UIDelegate(IServiceProvider services) : WKUIDelegate
     {
+        private IServiceProvider Services { get; } = services;
+
         public override void RequestMediaCapturePermission(WKWebView webView, WKSecurityOrigin origin, WKFrameInfo frame, WKMediaCaptureType type, Action<WKPermissionDecision> decisionHandler)
         {
             if (IsMediaCaptureGranted(origin, type)) {
@@ -74,7 +77,23 @@ public partial class MainPage
                 return;
             }
 
-            base.RequestMediaCapturePermission(webView, origin, frame, type, decisionHandler);
+            var permissionHandler = Services.GetRequiredService<MicrophonePermissionHandler>();
+            var resultValueTask = permissionHandler.CheckOrRequest(true);
+            if (resultValueTask.IsCompleted) {
+                var result = resultValueTask.Result
+                    ? WKPermissionDecision.Grant
+                    : WKPermissionDecision.Prompt;
+                decisionHandler(result);
+            }
+            else
+                resultValueTask
+                    .AsTask()
+                    .ContinueWith(t => {
+                        var result = t.Result
+                            ? WKPermissionDecision.Grant
+                            : WKPermissionDecision.Prompt;
+                        decisionHandler(result);
+                    });
         }
 
         private bool IsMediaCaptureGranted(
@@ -92,8 +111,8 @@ public partial class MainPage
                 _ => false,
             };
 
-            bool IsGranted(AVAuthorizationMediaType type)
-                => AVCaptureDevice.GetAuthorizationStatus(type) == AVAuthorizationStatus.Authorized;
+            bool IsGranted(AVAuthorizationMediaType type1)
+                => AVCaptureDevice.GetAuthorizationStatus(type1) == AVAuthorizationStatus.Authorized;
         }
     }
 }
