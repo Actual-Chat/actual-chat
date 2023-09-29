@@ -60,6 +60,7 @@
 }
 
 .virtual-list > ul.c-virtual-container > li.item.anchor {
-    overflow-anchor: auto;
+    /*temporarily disable native scroll pivots as it doesn't work well on chromium 117*/
+    overflow-anchor: none;
 }
 
