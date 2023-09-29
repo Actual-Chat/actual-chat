@@ -1212,8 +1212,8 @@ export class VirtualList {
         const keyRange = new Range(firstItem.key, lastItem.key);
         const virtualRange = new NumberRange(firstItem.range.start - startGap, lastItem.range.end + endGap);
         const query = new VirtualListDataQuery(keyRange, virtualRange);
-        query.expandStartBy = expandStartBy / responseFulfillmentRatio;
-        query.expandEndBy = expandEndBy / responseFulfillmentRatio;
+        query.expandStartBy = Math.ceil(expandStartBy / responseFulfillmentRatio);
+        query.expandEndBy = Math.ceil(expandEndBy / responseFulfillmentRatio);
 
         return query;
     }
