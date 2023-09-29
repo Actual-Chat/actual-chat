@@ -1,5 +1,6 @@
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.UI.Blazor;
+using AppInfo = Microsoft.Maui.ApplicationModel.AppInfo;
 using Dispatcher = Microsoft.AspNetCore.Components.Dispatcher;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
@@ -24,6 +25,9 @@ public class MauiContactPermissions(IServiceProvider services) : IContactPermiss
             _ = GetState();
         return ToPermissionState(status);
     }
+
+    public Task OpenSettings()
+        => Dispatcher.InvokeAsync(AppInfo.Current.ShowSettingsUI);
 
     private static PermissionState ToPermissionState(PermissionStatus status)
         => status switch {
