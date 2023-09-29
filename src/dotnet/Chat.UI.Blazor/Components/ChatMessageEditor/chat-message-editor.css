@@ -209,16 +209,21 @@ body.wide .attachment-mode .btn.btn-round.post-message {
     @apply my-1 p-2;
     @apply overflow-x-auto;
 }
-.clear-attachments-btn.btn {
+
+.attachment-list-btn.btn {
     @apply min-h-6 max-h-6;
     @apply border-transparent;
 }
-body.hoverable .clear-attachments-btn.btn:hover {
-    @apply border-error;
+.attachment-list-btn.btn .btn-content {
+    @apply text-accent font-medium;
 }
-.clear-attachments-btn.btn .btn-content {
-    @apply text-error font-medium;
+.attachment-list-btn.btn:hover .btn-content {
+    @apply brightness-125;
 }
+.attachment-list-btn.btn.danger .btn-content {
+    @apply text-error;
+}
+
 .attachment-wrapper {
     @apply relative;
     @apply p-px;
@@ -281,7 +286,7 @@ body.hoverable .remove-attachment-btn.btn:hover .btn-content {
     @apply flex-y justify-between;
     @apply min-w-18;
     @apply overflow-hidden;
-    @apply bg-01 ;
+    @apply bg-01;
 
 }
 .c-double .c-add,

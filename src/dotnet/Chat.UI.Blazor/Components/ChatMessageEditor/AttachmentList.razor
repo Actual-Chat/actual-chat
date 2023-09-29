@@ -8,11 +8,11 @@
 @if (_attachments.Count > 0) {
     <div class="attachment-list-wrapper">
         <div class="flex-1 flex-x justify-between p-2 pb-0">
-            <span class="flex font-medium items-center min-h-6">
-                @_attachments.Count file@(_attachments.Count < 2 ? "" : "s")
-            </span>
-            <Button Class="btn-sm clear-attachments-btn" Click="_ => Clear()">
+            <Button Class="btn-sm attachment-list-btn danger c-remove" Click="_ => Clear()">
                 Remove all
+            </Button>
+            <Button Class="btn-sm attachment-list-btn c-send" Click="OnSendClick">
+                Send @_attachments.Count @("file".Pluralize(_attachments.Count))
             </Button>
         </div>
         <ul class="attachment-list custom-scrollbar-x">
@@ -58,8 +58,7 @@
             }
             <SendOrAddAttachmentButton
                 Count="@_attachments.Count"
-                AddClick="@OnAddClick"
-                SendClick="@OnSendClick"/>
+                AddClick="@OnAddClick"/>
         </ul>
     </div>
 }
