@@ -438,7 +438,7 @@ export class VisualMediaViewer {
                 let savedEvent = this.points.find(e => e.pointerId == event.pointerId);
                 if (savedEvent != null
                     && (event.timeStamp - savedEvent.timeStamp < 500)
-                    && !this.isMovementStarted) {
+                    && this.isSameCoords(event, savedEvent)) {
                     if (this.isRequiredClass(target)) {
                         this.toggleFooterHeaderVisibility();
                     } else if (!this.footer.contains(target) && !this.header.contains(target)) {
