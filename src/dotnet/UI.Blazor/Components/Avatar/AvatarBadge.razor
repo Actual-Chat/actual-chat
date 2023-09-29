@@ -4,7 +4,7 @@
 @inherits FusionComponentBase
 
 <div class="avatar-badge @Class" @onclick="@Click">
-    <AvatarCircle Avatar="@Avatar" Size="@Size" Presence="@Presence" Click="@Click"/>
+    <AvatarCircle Avatar="@Avatar" Size="@Size" Presence="@Presence" />
     <div class="c-name">
         <AvatarName Avatar="@Avatar" Class="@NameClass"/>
         @if (ShowStatusText && !_statusText.IsNullOrEmpty()) {
