@@ -80,20 +80,23 @@ public partial class MainPage
             var permissionHandler = Services.GetRequiredService<MicrophonePermissionHandler>();
             var resultValueTask = permissionHandler.CheckOrRequest(true);
             if (resultValueTask.IsCompleted) {
+ #pragma warning disable VSTHRD002
                 var result = resultValueTask.Result
+ #pragma warning restore VSTHRD002
                     ? WKPermissionDecision.Grant
                     : WKPermissionDecision.Prompt;
                 decisionHandler(result);
             }
             else
-                resultValueTask
+                _ = resultValueTask
                     .AsTask()
                     .ContinueWith(t => {
-                        var result = t.Result
-                            ? WKPermissionDecision.Grant
-                            : WKPermissionDecision.Prompt;
-                        decisionHandler(result);
-                    });
+                            var result = t.Result
+                                ? WKPermissionDecision.Grant
+                                : WKPermissionDecision.Prompt;
+                            decisionHandler(result);
+                        },
+                        TaskScheduler.Default);
         }
 
         private bool IsMediaCaptureGranted(
