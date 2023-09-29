@@ -765,6 +765,12 @@ export class VirtualList {
             };
             pivots.push(pivot);
         }
+        if (this._query.isNone || !this._query.keyRange) {
+            if (pivots.length)
+                this._pivots = pivots;
+            return;
+        }
+
         const itemKeys = [this._query.keyRange.start, this._query.keyRange.end];
         for (let itemKey of itemKeys) {
             const pivotRef = this.getItemRef(itemKey);
