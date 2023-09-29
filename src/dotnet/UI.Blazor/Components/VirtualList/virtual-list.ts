@@ -17,7 +17,7 @@ import { BrowserInfo } from "../../Services/BrowserInfo/browser-info";
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
-const UpdateViewportInterval: number = 640;
+const UpdateViewportInterval: number = 320;
 const UpdateItemVisibilityInterval: number = 250;
 const IronPantsHandlePeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
@@ -961,7 +961,7 @@ export class VirtualList {
                 let shouldResync = false;
 
                 // measure scroll position
-                // await fastReadRaf();
+                await fastReadRaf();
                 const pivotOffset = pivot.offset;
                 const itemRect = pivotRef.getBoundingClientRect();
                 const currentPivotOffset = itemRect.top;
