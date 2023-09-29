@@ -208,14 +208,20 @@ export class VisualMediaViewer {
             .subscribe((event: PointerEvent) => this.onFooterMediaItemPointerDown(event));
     }
 
-    private toggleFooterHeaderVisibility() {
-        this.isFooterAndHeaderShown = !this.isFooterAndHeaderShown;
-        if (this.isFooterAndHeaderShown) {
-            this.footer.style.display = 'flex';
-            this.header.style.display = 'flex';
-        } else {
+    private toggleFooterHeaderVisibility(hide: boolean = false) {
+        if (hide) {
             this.footer.style.display = 'none';
             this.header.style.display = 'none';
+            this.isFooterAndHeaderShown = false;
+        } else {
+            this.isFooterAndHeaderShown = !this.isFooterAndHeaderShown;
+            if (this.isFooterAndHeaderShown) {
+                this.footer.style.display = 'flex';
+                this.header.style.display = 'flex';
+            } else {
+                this.footer.style.display = 'none';
+                this.header.style.display = 'none';
+            }
         }
     }
 
@@ -438,7 +444,8 @@ export class VisualMediaViewer {
                 let savedEvent = this.points.find(e => e.pointerId == event.pointerId);
                 if (savedEvent != null
                     && (event.timeStamp - savedEvent.timeStamp < 500)
-                    && this.isSameCoords(event, savedEvent)) {
+                    && this.isSameCoords(event, savedEvent)
+                    && this.isDownAndUpEvents(savedEvent, event)) {
                     if (this.isRequiredClass(target)) {
                         this.toggleFooterHeaderVisibility();
                     } else if (!this.footer.contains(target) && !this.header.contains(target)) {
@@ -584,6 +591,9 @@ export class VisualMediaViewer {
         this.media.style.height = this.imageViewer.style.height = newImageHeight + 'px';
         this.curState.imageRect = this.curState.viewerRect = this.media.getBoundingClientRect();
         this.centerImage();
+        if (this.curState.imageRect.height > this.footerTop - this.headerBottom) {
+            this.toggleFooterHeaderVisibility(true);
+        }
     }
 
     private canMoveImage(rect: DOMRect) : boolean {
@@ -649,6 +659,10 @@ export class VisualMediaViewer {
         if (deltaX < 10 && deltaY < 10)
             result = true;
         return result;
+    }
+
+    private isDownAndUpEvents(event1: PointerEvent, event2: PointerEvent) : boolean {
+        return event1.type == "pointerdown" && event2.type == "pointerup";
     }
 
     private controlButtonsVisibilityToggle() {

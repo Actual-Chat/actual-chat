@@ -69,6 +69,10 @@ module.exports = {
       backdropBlur: {
         xs: '2px',
       },
+      backdropBrightness: {
+        40: '.4',
+        30: '.3',
+      },
       colors: {
         'counter': 'var(--counter)',
         'counter-navgroup': 'var(--counter-navgroup)',

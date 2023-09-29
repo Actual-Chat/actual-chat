@@ -7,6 +7,7 @@
     @apply rounded-none;
     @apply bg-transparent;
     @apply backdrop-blur-sm;
+    @apply backdrop-brightness-30;
     height: calc(var(--vh, 1vh) * 100);
     min-height: calc(var(--vh, 1vh) * 100);
 }
@@ -117,8 +118,8 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
 .image-viewer-modal .c-previous,
 .image-viewer-modal .c-next {
     @apply absolute;
-    @apply flex items-center;
-    @apply h-full;
+    @apply flex items-center justify-center;
+    @apply h-full w-12;
     @apply cursor-pointer;
 }
 body.narrow .image-viewer-modal .c-previous,
@@ -127,7 +128,12 @@ body.narrow .image-viewer-modal .c-next {
 }
 .image-viewer-modal .c-previous i,
 .image-viewer-modal .c-next i {
-    @apply text-[#9294E1];
+    @apply text-04;
+}
+.image-viewer-modal .c-previous:hover i,
+.image-viewer-modal .c-next:hover i {
+    text-shadow: 0 0 20px #FFFFFF;
+    transition: all 0.2s ease-in;
 }
 .image-viewer-modal .c-previous {
     @apply left-0;
@@ -136,8 +142,4 @@ body.narrow .image-viewer-modal .c-next {
 .image-viewer-modal .c-next {
     @apply right-0;
     @apply rounded-l-lg;
-}
-.image-viewer-modal .c-previous:hover,
-.image-viewer-modal .c-next:hover {
-    @apply backdrop-blur-sm brightness-125;
 }
