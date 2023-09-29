@@ -39,7 +39,7 @@ public static class TestHostFactory
         string? serverUrls = null)
     {
         var manifestPath = GetManifestPath();
-        var appHost = new AppHost {
+        var appHost = new TestAppHost {
             ServerUrls = serverUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
             HostConfigurationBuilder = cfg => {
                 cfg.Sources.Insert(0,
