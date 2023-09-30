@@ -211,7 +211,7 @@ public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
             if (chat.HasSingleAuthor) {
                 var totalAuthors = existingAuthorIds.Count + addedAuthorIds.Count;
                 if (totalAuthors > 1)
-                    throw StandardError.Constraint("There can only be one author in this chat.");
+                    throw StandardError.Constraint("There can be only one author in this chat.");
             }
 
             foreach (var authorId in addedAuthorIds)

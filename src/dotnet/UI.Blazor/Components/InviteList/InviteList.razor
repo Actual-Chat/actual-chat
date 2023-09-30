@@ -82,7 +82,7 @@
                 // The code here is ~ a copy of ShareUIExt.GetModel(ChatId...) - we can't reference it here, so...
                 var chats = Services.GetRequiredService<IChats>();
                 var chat = await chats.Get(Services.Session(), chatDetails.ChatId, default);
-                if (chat == null || chat.HasSingleAuthor || chat.Id.IsPeerChat(out _))
+                if (chat == null || !chat.CanInvite())
                     return;
 
                 var title = "Share private chat join link";

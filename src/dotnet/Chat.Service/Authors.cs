@@ -257,7 +257,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
 
         var (session, chatId, userIds) = command;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Require(ChatPermissions.Invite);
+        chat.CanInvite().RequireTrue("You can't invite members in this chat.");
 
         foreach (var userId in userIds) {
             var author = await Backend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);

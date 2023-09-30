@@ -4,7 +4,7 @@
 @inherits ComputedStateComponent<RightPanelChatInfo.Model>
 @{
     var m = State.Value;
-    if (m.Title == null)
+    if (ReferenceEquals(m, Model.Loading))
         return;
 
     var isPublicGroupChat = Chat is { Kind: ChatKind.Group, IsPublic: true };
@@ -12,7 +12,7 @@
 
 <div class="c-chat-info">
     <RightPanelChatInfoItem
-        Content="@m.Title"
+        Content="@Chat.Title"
         Hint="@(isPublicGroupChat ? "Public" : "Private")">
         <Icon>
             <ChatIcon Chat="Chat" Size="SquareSize.Size16"/>
@@ -44,7 +44,7 @@
         </RightPanelChatInfoItem>
     }
 
-    @if (m.Rules.CanInvite()) {
+    @if (Chat.CanInvite()) {
         <RightPanelChatInfoItem
             Click="@OnInviteClick"
             ContentClass="text-accent"
@@ -72,20 +72,17 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.None,
+            InitialValue = Model.Loading,
             Category = GetStateCategory(),
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var rules = await Chats.GetRules(Session, Chat.Id, default);
         var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
         var shareModel = await ShareUI.GetModel(Chat.Id, cancellationToken);
         return new() {
-            Title = Chat.Title,
             ShareModel = shareModel,
             NotificationMode = userChatSettings.NotificationMode,
             HideNotificationsToggle = Chat.HasSingleAuthor,
-            Rules = rules,
         };
     }
 
@@ -105,12 +102,10 @@
         => ShareUI.Share(shareModel);
 
     public sealed record Model {
-        public static readonly Model None = new();
+        public static readonly Model Loading = new();
 
-        public string? Title { get; init; }
         public ShareModalModel? ShareModel { get; init; }
         public ChatNotificationMode NotificationMode { get; init; }
         public bool HideNotificationsToggle { get; init; }
-        public AuthorRules Rules { get; init; } = null!;
     }
 }

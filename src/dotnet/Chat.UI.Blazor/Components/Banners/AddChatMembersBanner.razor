@@ -49,15 +49,13 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         if (!_dismissed.WhenRead.IsCompleted)
             await _dismissed.WhenRead;
-        if (Chat.Id.IsPeerChat(out _))
+        if (!Chat.CanInvite())
             return false;
-        if (!Chat.Rules.CanInvite())
-            return false;
-        if (Chat.HasSingleAuthor)
-            return false;
+
         var dismissed = await _dismissed.Use(cancellationToken);
         if (dismissed)
             return false;
+
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
         var ownerIds = await Roles.ListOwnerIds(Session, Chat.Id, cancellationToken);
         var hasRegularMembers = allAuthorIds.Except(ownerIds).Any();

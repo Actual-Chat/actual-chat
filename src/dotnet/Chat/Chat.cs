@@ -42,6 +42,13 @@ public sealed partial record Chat(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasSingleAuthor => SystemTag == Constants.Chat.SystemTags.Notes;
 
+    public bool CanInvite()
+        // Technically it should be:
+        // => Rules.CanInvite() && !HasSingleAuthor && !Id.IsPeerChat(out _) &&;
+        // But since we can't manage other roles than Owner yet,
+        // we let only Owners to invite people to chat.
+        => Rules.IsOwner() && !HasSingleAuthor && !Id.IsPeerChat(out _);
+
     // This record relies on referential equality
     public bool Equals(Chat? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

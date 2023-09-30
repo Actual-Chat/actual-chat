@@ -21,7 +21,7 @@ public static class ShareUIExt
         var session = services.Session();
         var chats = services.GetRequiredService<IChats>();
         var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null || chat.HasSingleAuthor)
+        if (chat?.HasSingleAuthor != false)
             return null;
 
         if (chat.Id.IsPeerChat(out var peerChatId)) {

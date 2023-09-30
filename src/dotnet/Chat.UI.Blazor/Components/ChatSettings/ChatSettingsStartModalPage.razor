@@ -6,15 +6,17 @@
 
 @{
     var m = State.Value;
-    if (m.Rules == null)
+    if (ReferenceEquals(m, ComputedModel.Loading))
         return;
-    if (!m.Rules.CanEditProperties()) {
+
+    if (m.Chat == null || !m.Chat.Rules.CanEditProperties()) {
         Context.Close();
         return;
     }
     if (_form == null)
         return;
-    Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
+
+    Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -89,27 +91,20 @@
                 </TileItem>
             </FormBlock>
         }
-    } else {
-        var canInvite = m.Rules.CanInvite();
-        var displayLinks = canInvite || m.Invites.Count > 0;
-        var title = canInvite ? "Manage links" : "Private links";
-        @if (displayLinks) {
-            <FormBlock Title="@title">
-                @if (m.Invites.Count > 0) {
-                    <InviteList
-                        Invites="m.Invites"
-                        LinkFormat="@InviteLinkFormat.PrivateChat"
-                        NewInviteId="@_newInviteId"
-                        AllowRevoke="true"/>
-                }
-                @if (canInvite) {
-                    <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
-                        <i class="icon-plus text-xl"></i>
-                        New private join link
-                    </Button>
-                }
-            </FormBlock>
-        }
+    } else if (m.Chat.CanInvite()) {
+        <FormBlock Title="Private join links">
+            @if (m.Invites.Count > 0) {
+                <InviteList
+                    Invites="m.Invites"
+                    LinkFormat="@InviteLinkFormat.PrivateChat"
+                    NewInviteId="@_newInviteId"
+                    AllowRevoke="true"/>
+            }
+            <Button IsDisabled="@(m.Invites.Count >= MaxInvitesCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
+                <i class="icon-plus text-xl"></i>
+                New private join link
+            </Button>
+        </FormBlock>
     }
 
     <FormBlock>
@@ -163,7 +158,7 @@
         </FormBlock>
     }
 
-    @if (m.Rules.CanEditMembers()) {
+    @if (m.Chat.Rules.CanEditMembers()) {
         <FormBlock>
             <TileItem Class="item-manage-members" Click="OnManageMembersClick">
                 <Icon>
@@ -177,7 +172,7 @@
                 </Right>
             </TileItem>
 
-            @if (m.Rules.IsOwner()) {
+            @if (m.Chat.Rules.IsOwner()) {
                 <TileItem Class="item-leave-group" Click="@(() => OnLeaveGroupClick(m))">
                     <Icon><i class="icon-log-out"></i></Icon>
                     <Content>Leave group</Content>
@@ -239,27 +234,27 @@
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {
-            InitialValue = ComputedModel.None,
+            InitialValue = ComputedModel.Loading,
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
-        var rules = await Chats.GetRules(Session, chatId, cancellationToken);
-        if (!rules.CanEditProperties())
-            return new ComputedModel { Rules = rules };
-        var allAuthorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken);
-        var invites = await Invites.ListChatInvites(Session, chatId, cancellationToken);
+        var chat = await Chats.Get(Session, ChatId, cancellationToken);
+        if (chat == null || !chat.Rules.CanEditProperties())
+            return new ComputedModel { Chat = chat };
+
+        var allAuthorIds = await Authors.ListAuthorIds(Session, ChatId, cancellationToken);
+        var invites = await Invites.ListChatInvites(Session, ChatId, cancellationToken);
         var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
         invites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToApiArray();
-        var link = Links.Chat(chatId).ToDisplayUrl(UrlMapper);
+        var link = Links.Chat(ChatId).ToDisplayUrl(UrlMapper);
         var allowEditIsTemplateChat = await Features.Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
         return new() {
-            Rules = rules,
+            Chat = chat,
             Link = link,
             Invites = invites,
             AllowEditIsTemplate = allowEditIsTemplateChat,
@@ -283,9 +278,12 @@
         => Context.StepIn(DiveInDialogPage.New<EditMembersModalPage>(ChatId));
 
     private async void OnLeaveGroupClick(ComputedModel m) {
+        if (m.Chat == null)
+            return;
+
         var roles = Services.GetRequiredService<IRoles>();
         var ownerIds = await roles.ListOwnerIds(Session, ChatId, default);
-        var ownAuthorId = m.Rules!.Author!.Id;
+        var ownAuthorId = m.Chat?.Rules.Author!.Id;
         var hasAnotherOwner = ownerIds.Any(c => c.Id != ownAuthorId);
         if (!hasAnotherOwner) {
             var message = "You can't leave this chat because you are its only owner. Please add another chat owner first.";
@@ -360,9 +358,9 @@
     }
 
     public sealed record ComputedModel {
-        public static readonly ComputedModel None = new();
+        public static readonly ComputedModel Loading = new();
 
-        public AuthorRules? Rules { get; init; }
+        public Chat? Chat { get; init; }
         public DisplayUrl? Link { get; init; }
         public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
         public bool AllowEditIsTemplate { get; init; }

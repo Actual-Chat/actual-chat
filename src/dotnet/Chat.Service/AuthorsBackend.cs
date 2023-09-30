@@ -210,7 +210,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .AnyAsync(a => a.ChatId == chatId && a.UserId != userId, cancellationToken)
                     .ConfigureAwait(false);
                 if (alreadyHasAuthor)
-                    throw StandardError.Constraint("There can only be one author in this chat.");
+                    throw StandardError.Constraint("There can be only one author in this chat.");
             }
             var account = await AccountsBackend.Get(userId, cancellationToken).Require().ConfigureAwait(false);
 
