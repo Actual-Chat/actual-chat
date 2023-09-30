@@ -252,12 +252,12 @@
             .OrderByDescending(c => c.ExpiresOn)
             .ToApiArray();
         var link = Links.Chat(ChatId).ToDisplayUrl(UrlMapper);
-        var allowEditIsTemplateChat = await Features.Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
+        var allowEditIsTemplate = await Features.Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
         return new() {
             Chat = chat,
             Link = link,
             Invites = invites,
-            AllowEditIsTemplate = allowEditIsTemplateChat,
+            AllowEditIsTemplate = allowEditIsTemplate,
             MembersCount = allAuthorIds.Count,
         };
     }
