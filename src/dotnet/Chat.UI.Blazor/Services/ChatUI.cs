@@ -213,6 +213,13 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     public virtual async Task<bool> IsEmpty(ChatId chatId, CancellationToken cancellationToken)
     {
         var idRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        if (idRange.End - idRange.Start > 100) {
+            // Heuristics, it may produce false negatives - e.g. if the chat was cleaned up,
+            // but it's still better than to scan a lot. Prob better to implement an actual check
+            // on the server side for this (keep the cached false intact until any removal happens).
+            return false;
+        }
+
         var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
         await foreach (var entry in reader.Read(idRange, cancellationToken).ConfigureAwait(false))
             if (!entry.IsSystemEntry)
