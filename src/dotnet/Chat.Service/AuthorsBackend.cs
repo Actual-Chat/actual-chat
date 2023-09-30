@@ -203,6 +203,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             // Create author, + we know here it's not a peer chat
             if (userId.IsNone)
                 throw new ArgumentOutOfRangeException(nameof(command), "UserId is required to create a new author.");
+
             var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
             if (chat == null || chat.HasSingleAuthor) {
                 var alreadyHasAuthor = await dbContext.Authors

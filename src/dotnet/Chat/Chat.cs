@@ -39,7 +39,6 @@ public sealed partial record Chat(
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatKind Kind => Id.Kind;
-
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasSingleAuthor => SystemTag == Constants.Chat.SystemTags.Notes;
 
