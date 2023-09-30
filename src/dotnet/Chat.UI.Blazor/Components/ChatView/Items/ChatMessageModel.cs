@@ -69,7 +69,7 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
     public static List<ChatMessageModel> FromEntries(
         List<ChatEntry> chatEntries,
         IReadOnlyCollection<ChatMessageModel> oldItems,
-        long? lastReadEntryId,
+        long lastReadEntryId,
         bool hasVeryFirstItem,
         bool addWelcomeMessage,
         TimeZoneConverter timeZoneConverter)
@@ -93,7 +93,7 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
             var isForward = !entry.ForwardedAuthorId.IsNone;
             var forwardFromOtherChat = prevForwardChatId != entry.ForwardedChatEntryId.ChatId;
             var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || forwardFromOtherChat));
-            var isUnread = entry.LocalId > (lastReadEntryId ?? 0);
+            var isUnread = entry.LocalId > lastReadEntryId;
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
             var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
             if (hasDateLine) {

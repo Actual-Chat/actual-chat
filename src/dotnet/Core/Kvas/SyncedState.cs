@@ -94,6 +94,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
         _disposeTokenSource.CancelAndDisposeSilently();
         if (!WhenFirstTimeRead.IsCompleted)
             _whenFirstTimeReadSource.TrySetCanceled(DisposeToken);
+        ReadState.Dispose();
     }
 
     public async Task WhenWritten(CancellationToken cancellationToken = default)

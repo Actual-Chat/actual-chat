@@ -15,12 +15,12 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private readonly List<ChatId> _allItems = new List<ChatId>().AddMany(default, AllItemCountWhenLoading);
     private readonly IMutableState<bool> _isSelectedChatUnlisted;
     private readonly IStoredState<ChatListSettings> _settings;
-    // Delayed load-related
     private readonly IMutableState<int> _loadLimit;
 
     private ChatUI? _chatUI;
     private ActiveChatsUI? _activeChatsUI;
     private bool _isFirstLoad = true;
+    private IComputedState<Trimmed<int>>? _unreadChatCount;
 
     private IAuthors? _authors;
     private IContacts? _contacts;
@@ -46,10 +46,10 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
     public IServiceProvider Services { get; }
     public IMutableState<ChatListSettings> Settings => _settings;
+    public IState<Trimmed<int>> UnreadChatCount => _unreadChatCount!;
     public Task WhenLoaded => _settings.WhenRead;
 
     private Moment Now => Clocks.SystemClock.Now;
-    public IState<Trimmed<int>> UnreadChatCount { get; private set; } = null!;
 
     public ChatListUI(IServiceProvider services)
     {
@@ -76,13 +76,19 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
     void INotifyInitialized.Initialized()
     {
-        UnreadChatCount = StateFactory.NewComputed(
+        _unreadChatCount = StateFactory.NewComputed(
             new ComputedState<Trimmed<int>>.Options() {
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(UnreadChatCount)),
             },
             ComputeUnreadChatsCount);
         this.Start();
+    }
+
+    protected override Task DisposeAsyncCore()
+    {
+        _unreadChatCount?.Dispose();
+        return base.DisposeAsyncCore();
     }
 
     public int GetCountWhenLoading(ChatListKind listKind)
