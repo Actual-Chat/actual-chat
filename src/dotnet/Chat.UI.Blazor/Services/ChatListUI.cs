@@ -252,8 +252,11 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private async Task IncreaseLoadLimit()
     {
         await Task.Delay(TimeSpan.FromSeconds(0.5)).ConfigureAwait(false);
-        _ = Services.UICommander().RunNothing(); // No UI update delays in near term
+        if (_loadLimit.Value == int.MaxValue)
+            return;
+
         _loadLimit.Value = int.MaxValue;
+        _ = Services.UICommander().RunNothing(); // No UI update delays in near term
         using (Computed.Invalidate())
             _ = ListAllUnorderedRaw(default);
     }
