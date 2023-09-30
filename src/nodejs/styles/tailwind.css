@@ -155,6 +155,11 @@
         @apply w-1.5;
         @apply h-1.5;
     }
+    body.narrow .custom-scrollbar::-webkit-scrollbar,
+    body.narrow .custom-scrollbar-x::-webkit-scrollbar {
+        @apply w-0.5;
+        @apply h-0.5;
+    }
     .custom-scrollbar-hide::-webkit-scrollbar {
         @apply w-0;
         @apply h-0;

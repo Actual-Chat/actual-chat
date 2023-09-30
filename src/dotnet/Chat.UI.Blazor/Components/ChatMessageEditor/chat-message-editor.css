@@ -206,7 +206,7 @@ body.wide .attachment-mode .btn.btn-round.post-message {
 }
 .attachment-list {
     @apply flex-1 flex-x justify-start gap-x-4;
-    @apply my-1 p-2;
+    @apply p-1 md:p-2;
     @apply overflow-x-auto;
 }
 
@@ -230,16 +230,29 @@ body.wide .attachment-mode .btn.btn-round.post-message {
     @apply rounded-lg;
     @apply bg-03;
 }
+.attachment-wrapper.last-element {
+    @apply flex justify-center;
+    @apply min-w-34;
+}
+body.narrow .attachment-wrapper.last-element {
+    @apply min-w-30;
+}
 .attachment-item {
-    @apply relative flex-y justify-center gap-x-1;
-    @apply min-h-34 max-h-34 min-w-34 max-w-34;
+    @apply flex-none relative flex-y justify-center gap-x-1;
+    @apply h-34 w-34;
     @apply mt-auto;
     @apply rounded-t-lg;
     @apply overflow-hidden;
 }
 .attachment-item > img, .attachment-item > video {
-    @apply min-h-34;
-    @apply object-contain;
+    @apply h-34;
+    @apply object-cover;
+}
+body.narrow .attachment-item {
+    @apply h-30 w-30;
+}
+body.narrow .attachment-item > img, .attachment-item > video {
+    @apply min-h-30;
 }
 .remove-attachment-btn.btn {
     @apply absolute;
@@ -269,6 +282,9 @@ body.hoverable .remove-attachment-btn.btn:hover .btn-content {
     @apply bg-01;
     @apply text-03 text-xs font-medium;
 }
+body.narrow .attachment-filename {
+    @apply max-w-30;
+}
 .attachment-upload-progress {
     @apply h-[5px];
     @apply bg-[#0ea5e9];
@@ -280,41 +296,6 @@ body.hoverable .remove-attachment-btn.btn:hover .btn-content {
 }
 .attachment-upload-failed {
     @apply bg-[#ED0000];
-}
-
-.attachment-wrapper.c-double {
-    @apply flex-y justify-between;
-    @apply min-w-18;
-    @apply overflow-hidden;
-    @apply bg-01;
-
-}
-.c-double .c-add,
-.c-double .c-send {
-    @apply flex items-center justify-center;
-    @apply w-18 h-18;
-    @apply rounded-lg;
-    @apply bg-03;
-}
-
-.c-double .c-add .c-content,
-.c-double .c-send .c-content {
-    @apply flex items-center justify-center;
-    @apply w-12 h-12;
-    @apply rounded-full;
-    @apply bg-04;
-}
-.c-double .c-add:hover,
-.c-double .c-send:hover {
-    @apply opacity-80;
-}
-.c-double .c-add i,
-.c-double .c-send i {
-    @apply text-2xl text-icons-01;
-}
-.c-double .c-add:hover i,
-.c-double .c-send:hover i {
-    @apply text-accent;
 }
 
 .add-attachment.btn .btn-content {
