@@ -35,8 +35,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter] // NOTE(AY): Putting EditorRequired here triggers a warning in Rider (likely their issue)
     public RenderFragment<TItem> Item { get; set; } = null!;
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
-    [Parameter] public RenderFragment? Empty { get; set; }
-    [Parameter] public Func<VirtualListData<TItem>, bool>? IsEmptyTest { get; set; }
     [Parameter] public int SkeletonCount { get; set; } = 10;
     [Parameter] public double SpacerSize { get; set; } = 200;
     [Parameter] public IComparer<string> KeyComparer { get; set; } = StringComparer.Ordinal;
@@ -116,16 +114,5 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
             throw;
         }
         return data;
-    }
-
-    private bool IsEmpty(VirtualListData<TItem> data)
-    {
-        if (IsEmptyTest != null)
-            return IsEmptyTest(data);
-
-        if (data == VirtualListData<TItem>.None)
-            return false;
-
-        return data.Items.Count == 0;
     }
 }

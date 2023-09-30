@@ -1,24 +1,23 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Invite
-@inherits ComputedStateComponent<ChatWelcomeMessage.Model?>
+@inherits ComputedStateComponent<ChatWelcomeBlock.Model?>
 @{
     var m = State.ValueOrDefault;
     if (m == null)
         return;
-
-    var chat = m.Chat;
 }
 
+<EmptyChatContent ChatContext="@ChatContext"/>
 <div class="message-wrapper">
-    <div class="chat-welcome-message">
+    <div class="chat-welcome-block">
         <div class="c-header">
             <div class="c-chat-icon">
-                <ChatIcon Chat="@chat"/>
+                <ChatIcon Chat="@Chat"/>
             </div>
-            <div class="c-chat-title">@chat.Title</div>
+            <div class="c-chat-title">@Chat.Title</div>
         </div>
         <div class="c-content">
-            Welcome! Share the link to this chat to invite more people here:
+            @m.Message
         </div>
         @if (m.ShareModel is { } shareModel) {
             var link = shareModel.Request.Link.GetValueOrDefault();
@@ -55,25 +54,26 @@
 
 @code {
     // Shortcuts
-    private Session Session => Context.Session;
-    private History History => Context.History;
-    private IAuthors Authors => Context.Authors;
-    private IChats Chats => Context.Chats;
-    private ChatUI ChatUI => Context.ChatUI;
-    private ShareUI ShareUI => Context.ShareUI;
-    private UrlMapper UrlMapper => Context.UrlMapper;
+    private Session Session => ChatContext.Session;
+    private Chat Chat => ChatContext.Chat;
+    private IInvites Invites => ChatContext.Invites;
+    private IAuthors Authors => ChatContext.Authors;
+    private ChatUI ChatUI => ChatContext.ChatUI;
+    private ShareUI ShareUI => ChatContext.ShareUI;
+    private UrlMapper UrlMapper => ChatContext.UrlMapper;
+    private History History => ChatContext.History;
 
-    [Inject] private IInvites Invites { get; init; } = null!;
-
-    [Parameter, EditorRequired] public ChatContext Context { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var chat = await Chats.Get(Session, Context.ChatId, cancellationToken);
-        if (chat == null)
-            return null;
+        var message = "Welcome! Share the link to this chat to invite more people here:";
+        if (Chat.HasSingleAuthor && Chat.SystemTag == Constants.Chat.SystemTags.Notes)
+            message = "Welcome! You can store your notes in this chat, including recorded ones.";
 
-        var shareModel = await ShareUI.GetModel(chat.Id, cancellationToken).ConfigureAwait(false);
-        return new Model(chat, shareModel);
+        var shareModel = await ShareUI.GetModel(Chat.Id, cancellationToken).ConfigureAwait(false);
+        if (shareModel is { Kind: ShareKind.Contact })
+            message = $"To share {shareModel.TargetTitle}'s contact, use:";
+        return new Model(message, shareModel);
     }
 
     private void OnShareClick(ShareModalModel shareModel)
@@ -82,6 +82,6 @@
     // Nested types
 
     public sealed record Model(
-        Chat Chat,
+        string Message,
         ShareModalModel? ShareModel = null);
 }

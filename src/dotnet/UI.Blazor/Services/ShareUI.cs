@@ -9,6 +9,6 @@ public sealed class ShareUI(IServiceProvider services) : IHasServices
 
     public Task<ModalRef> Share(ShareModalModel model)
         => ModalUI.Show(model);
-    public Task<ModalRef> Share(string title, ShareRequest request)
-        => ModalUI.Show(new ShareModalModel(title, request));
+    public Task<ModalRef> Share(ShareKind kind, string title, string targetTitle, ShareRequest request)
+        => ModalUI.Show(new ShareModalModel(kind, title, targetTitle, request));
 }

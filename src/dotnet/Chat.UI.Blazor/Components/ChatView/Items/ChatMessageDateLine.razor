@@ -1,13 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-
 @{
     var date = Date.ToString("d MMMM yyyy");
 }
+
 <Separator Title="@date" TitleClass="translate-z-0"/>
 
 @code {
-
-    [Parameter]
-    public DateOnly Date { get; set; }
-
+    [Parameter, EditorRequired] public DateOnly Date { get; set; }
 }

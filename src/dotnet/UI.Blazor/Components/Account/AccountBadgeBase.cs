@@ -41,7 +41,7 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
         Account Account,
         Presence Presence = Presence.Unknown
     ) {
-        public static Model None { get; } = new(Account.None);
-        public static Model Loading { get; } = new(Account.Loading); // Should differ by ref. from None
+        public static readonly Model None = new(Account.None);
+        public static readonly Model Loading = new(Account.Loading); // Should differ by ref. from None
     }
 }

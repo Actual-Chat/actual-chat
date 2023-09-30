@@ -9,8 +9,8 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public const int MaxUnreadCount = 1000;
     public const int MaxLastTextEntryContentLength = 100;
 
-    public static ChatInfo None { get; } = new(SpecialContact.Unavailable);
-    public static ChatInfo Loading { get; } = new(SpecialContact.Loading);
+    public static readonly ChatInfo None = new(SpecialContact.Unavailable);
+    public static readonly ChatInfo Loading = new(SpecialContact.Loading);
 
     public ChatNews News { get; init; }
     public UserChatSettings UserSettings { get; init; } = UserChatSettings.Default;

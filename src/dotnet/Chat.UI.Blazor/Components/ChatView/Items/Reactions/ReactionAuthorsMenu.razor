@@ -14,8 +14,9 @@
     private string _emoji = "";
     private ImmutableList<AuthorId> _firstAuthorIds = ImmutableList<AuthorId>.Empty;
 
-    [Inject] private IReactions Reactions { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    private Session Session => ChatHub.Session;
+    private IReactions Reactions => ChatHub.Reactions;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var sEntryId, var emoji ])

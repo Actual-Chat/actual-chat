@@ -182,8 +182,8 @@
     }
 
     public sealed record Model {
-        public static Model None { get; } = new() { Account = AccountFull.None };
-        public static Model Loading { get; } = new() { Account = AccountFull.Loading }; // Should differ by ref. from None
+        public static readonly Model None = new() { Account = AccountFull.None };
+        public static readonly Model Loading = new() { Account = AccountFull.Loading }; // Should differ by ref. from None
 
         public SessionInfo? SessionInfo { get; init; }
         public AccountFull Account { get; init; } = null!;

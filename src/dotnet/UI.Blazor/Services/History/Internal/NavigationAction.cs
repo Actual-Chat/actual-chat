@@ -5,7 +5,7 @@ public readonly record struct NavigationAction(
     Action Action
     ) : ICanBeNone<NavigationAction>
 {
-    public static Action NoAction { get; } = () => { };
+    public static readonly Action NoAction = () => { };
     public static NavigationAction None { get; } = default;
 
     private readonly string _description = Description;

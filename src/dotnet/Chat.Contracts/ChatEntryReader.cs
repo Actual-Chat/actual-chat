@@ -1,25 +1,21 @@
 namespace ActualChat.Chat;
 
-public sealed class ChatEntryReader
+public sealed class ChatEntryReader(
+    IChats chats,
+    Session session,
+    ChatId chatId,
+    ChatEntryKind entryKind,
+    TileLayer<long>? idTileLayer = null)
 {
     public static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
-    public IChats Chats { get; }
-    public Session Session { get; init; }
-    public ChatId ChatId { get; init; }
-    public ChatEntryKind EntryKind { get; init; }
-    public TileLayer<long> IdTileLayer { get; init; }
+    public IChats Chats { get; } = chats;
+    public Session Session { get; init; } = session;
+    public ChatId ChatId { get; init; } = chatId;
+    public ChatEntryKind EntryKind { get; init; } = entryKind;
+    public TileLayer<long> IdTileLayer { get; init; } = idTileLayer ?? IdTileStack.FirstLayer;
     public TimeSpan MaxBeginsAtDisorder { get; init; } = TimeSpan.FromSeconds(15);
     public int MaxEntryCountDisorder { get; init; } = 1000;
-
-    public ChatEntryReader(IChats chats, Session session, ChatId chatId, ChatEntryKind entryKind, TileLayer<long>? idTileLayer = null)
-    {
-        Chats = chats;
-        Session = session;
-        ChatId = chatId;
-        EntryKind = entryKind;
-        IdTileLayer = idTileLayer ?? IdTileStack.FirstLayer;
-    }
 
     public async ValueTask<ChatEntry?> Get(long id, CancellationToken cancellationToken)
     {

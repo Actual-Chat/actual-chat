@@ -50,7 +50,7 @@
                             Id="message-input"
                             Class="message-input -flex-y"
                             Autofocus="Autofocus"
-                            Placeholder="Write a message"
+                            Placeholder="Write a message - or simply record it!"
                             Post="text => Post(text)"
                             Cancel="@(() => OnCancel())"
                             OpenPrevious="OnOpenPrevious"/>
@@ -95,20 +95,21 @@
     private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
     private SentAttachmentsStorage? AttachmentsStorage { get; set; } = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IContacts Contacts { get; init; } = null!;
-    [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
-    [Inject] private ActiveChatsUI ActiveChatsUI { get; init; } = null!;
-    [Inject] private TuneUI TuneUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    private Session Session => ChatHub.Session;
+    private IChats Chats => ChatHub.Chats;
+    private IAuthors Authors => ChatHub.Authors;
+    private IContacts Contacts => ChatHub.Contacts;
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => ChatHub.ChatMarkupHubFactory;
+    private ChatUI ChatUI => ChatHub.ChatUI;
+    private ChatEditorUI ChatEditorUI => ChatHub.ChatEditorUI;
+    private ActiveChatsUI ActiveChatsUI => ChatHub.ActiveChatsUI;
+    private PanelsUI PanelsUI => ChatHub.PanelsUI;
+    private TuneUI TuneUI => ChatHub.TuneUI;
+    private UICommander UICommander => ChatHub.UICommander;
+    private MomentClockSet Clocks => ChatHub.Clocks;
+    private HostInfo HostInfo => ChatHub.HostInfo;
+    private IJSRuntime JS => ChatHub.JS;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -151,7 +152,7 @@
             await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
             await UpdateChatId();
             await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
-            AttachmentsStorage = Services.GetRequiredService<SentAttachmentsStorage>();
+            AttachmentsStorage = ChatHub.GetRequiredService<SentAttachmentsStorage>();
             if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.Urls.Length > 0)
                 await SetAttachments(AttachmentsStorage);
             AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;
@@ -240,7 +241,7 @@
 
         async Task Handle() {
             await SetAttachments(attachmentsStorage);
-            Services.GetRequiredService<PanelsUI>().HidePanels();
+            PanelsUI.HidePanels();
         }
     }
 

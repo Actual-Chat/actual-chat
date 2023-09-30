@@ -128,17 +128,18 @@
 </div>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private ToastUI ToastUI { get; init; } = null!;
-    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
-    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
-    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    private Session Session => ChatHub.Session;
+    private IChats Chats => ChatHub.Chats;
+    private ChatUI ChatUI => ChatHub.ChatUI;
+    private ModalUI ModalUI => ChatHub.ModalUI;
+    private ToastUI ToastUI => ChatHub.ToastUI;
+    private SelectionUI SelectionUI => ChatHub.SelectionUI;
+    private ChatEditorUI ChatEditorUI => ChatHub.ChatEditorUI;
+    private ClipboardUI ClipboardUI => ChatHub.ClipboardUI;
+    private UICommander UICommander => ChatHub.UICommander;
+    private UrlMapper UrlMapper => ChatHub.UrlMapper;
+    private History History => ChatHub.History;
 
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
     [Parameter, EditorRequired] public string? ClickedLinkUrl { get; set; }

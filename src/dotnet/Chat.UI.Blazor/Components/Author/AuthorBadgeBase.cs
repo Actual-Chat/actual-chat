@@ -111,7 +111,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         Presence Presence = Presence.Unknown,
         bool IsOwn = false)
     {
-        public static Model None { get; } = new(Author.None);
-        public static Model Loading { get; } = new(Author.Loading); // Should differ by ref. from None
+        public static readonly Model None = new(Author.None);
+        public static readonly Model Loading = new(Author.Loading); // Should differ by ref. from None
     }
 }

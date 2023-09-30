@@ -18,11 +18,12 @@
     private ChatEntry? _lastFoundEntry;
     private string? _lastSearchText;
 
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    private Session Session => ChatHub.Session;
+    private IChats Chats => ChatHub.Chats;
+    private ChatUI ChatUI => ChatHub.ChatUI;
+    private UIEventHub UIEventHub => ChatHub.UIEventHub;
+    private Features Features => ChatHub.Features;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 

@@ -70,19 +70,16 @@
 
     <ul @key="@VirtualListSpecialKeys.Container"
         class="c-virtual-container">
-        @if (IsEmpty(Data)) {
-            @Empty
-        }
         @foreach (var item in items) {
             @if (item.CountAs != 1) {
-                <li id="@item.Key"
+                <li id="@item.Key.Value"
                     @key="@item.Key"
                     class="item"
-                    data-count-as="@item.CountAs">
+                    data-count-as="@item.CountAs.Format()">
                     @Item(item)
                 </li>
             } else {
-                <li id="@item.Key"
+                <li id="@item.Key.Value"
                     @key="@item.Key"
                     class="item">
                     @Item(item)

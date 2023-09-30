@@ -3,9 +3,11 @@
 @layout BaseLayout
 @{
     var m = Rendered = State.Value;
-    var chat = m.Chat;
-    var hasChat = !m.Chat.Id.IsNone;
-    // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
+
+    var chatContext = m.ChatContext;
+    var chat = m.ChatContext.Chat;
+    var chatKey = chat.Id.Value;
+    // Log.LogDebug("Rendered for #{ChatId}", chat.Id);
 }
 
 <div class="page-with-header-and-footer">
@@ -13,17 +15,21 @@
         <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
             <div class="list-view-layout">
                 <div class="layout-header">
-                    <ChatHeader @key="@chat.Id.Value" Chat="@chat" IsLeftNavigateButtonVisible="@false" IsRightNavigateButtonVisible="@false" />
+                    <ChatHeader
+                        @key="@chatKey"
+                        ChatContext="@chatContext"
+                        IsLeftNavigateButtonVisible="@false"
+                        IsRightNavigateButtonVisible="@false" />
                 </div>
                 <div class="layout-subheader">
-                    @if (hasChat) {
-                        <Banners @key="@chat.Id.Value" Chat="@chat"/>
+                    @if (chatContext.HasChat) {
+                        <Banners @key="@chatKey" ChatContext="@chatContext"/>
                     }
                 </div>
                 <div class="layout-body-wrapper">
                     <div class="c-container">
                         <div class="layout-footer">
-                            <ChatFooter ChatPageModel="@m" />
+                            <ChatFooter @key="@chatKey" ChatContext="@chatContext" Model="m.FooterModel" />
                         </div>
                         <div class="layout-subfooter">
                             <RenderStack Name="SubFooter"/>
@@ -34,9 +40,9 @@
                             } else if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
                                 <NoChatSelected/>
                             } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
-                                <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
+                                <ChatNotFound ShowSignIn="@(!chatContext.OwnAccount.IsActive())"/>
                             } else {
-                                <ChatView @ref="ChatViewRef" @key="@chat.Id.Value" Chat="@chat"/>
+                                <ChatView @ref="ChatViewRef" @key="@chatKey" ChatContext="@chatContext"/>
                             }
                         </div>
                     </div>
@@ -47,8 +53,6 @@
 </div>
 
 @code {
-    [Inject] private UICommander UICommander { get; init; } = null!;
-
     protected override void OnInitialized() {
         PanelsUI.Left.SetIsVisible(false);
         PanelsUI.Right.SetIsVisible(false);
@@ -65,7 +69,12 @@
         // computed.Invalidated += c => {
         //     Log.LogDebug("Invalidated: {Computed}", c.DebugDump());
         // };
+
+        await ChatUI.WhenLoaded.WaitAsync(cancellationToken);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
+        var lastState = State.ValueOrDefault;
+        var lastContext = lastState?.ChatContext;
+        var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         var account = await Accounts.GetOwn(Session, cancellationToken);
@@ -76,31 +85,36 @@
                 chat ??= SpecialChat.Unavailable;
             }
             if (chat is not { IsTemplate: true }) {
-                var footer = await GetFooterModel(chat, account, cancellationToken);
-                return new (chat, account, footer);
+                var footerModel = await GetFooterModel(chat, account, cancellationToken);
+                var chatContext = ChatContext.New(Services, Session, chat, account, lastContext);
+                return new Model(chatContext, footerModel);
             }
 
-            // create new chat based on a template and redirect to the new clone
-            var command = new Chats_GetOrCreateFromTemplate(Session, chatId);
-            var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None);
-            if (createChatError != null)
-                throw StandardError.Unavailable("Unable to create new chat from template");
+            // Create new chat based on a template and redirect to the new clone
+            {
+                var command = new Chats_GetOrCreateFromTemplate(Session, chatId);
+                var (newChat, createChatError) = await UICommander.Run(command, CancellationToken.None);
+                if (createChatError != null)
+                    throw StandardError.Unavailable("Unable to create new chat from template");
 
-            // Short delay to process invalidation
-            await Task.Delay(TimeSpan.FromSeconds(0.25), cancellationToken);
+                // Short delay to process the invalidation
+                await Task.Delay(TimeSpan.FromSeconds(0.25), cancellationToken);
 
-            // Set new ChatId
-            ChatSid = newChat.Id;
-            await SelectChat(ChatSid);
+                // Set new ChatSid
+                ChatSid = newChat.Id;
+                await SelectChat(ChatSid);
 
-            // Subscribe to chat changes
-            newChat = await Chats.Get(Session, newChat.Id, cancellationToken);
-            var newChatFooter = await GetFooterModel(newChat!, account, cancellationToken);
-            return new (newChat!, account, newChatFooter);
+                // Subscribe to chat changes
+                chat = await Chats.Get(Session, newChat.Id, cancellationToken);
+                var footerModel = await GetFooterModel(chat, account, cancellationToken);
+                var chatContext = ChatContext.New(Services, Session, chat, account, lastContext);
+                return new Model(chatContext, footerModel);
+            }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-            return new Model(SpecialChat.Unavailable, account, new());
+            this.NotifyStateHasChanged();
+            return Model.Unavailable(Services, Session, account, lastContext);
         }
     }
 }

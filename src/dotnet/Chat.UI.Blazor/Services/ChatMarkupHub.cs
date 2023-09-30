@@ -3,7 +3,7 @@ using ActualChat.Search;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatMarkupHub : IChatMarkupHub
+public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMarkupHub
 {
     private IMarkupParser? _parser;
     private static IMarkupTrimmer? _trimmer;
@@ -12,8 +12,8 @@ public class ChatMarkupHub : IChatMarkupHub
     private IMentionNamer? _mentionNamer;
     private static IMarkupFormatter? _editorHtmlConverter;
 
-    public IServiceProvider Services { get; }
-    public ChatId ChatId { get; }
+    public IServiceProvider Services { get; } = services;
+    public ChatId ChatId { get; } = chatId;
 
     public IMarkupParser Parser
         => _parser ??= Services.GetRequiredService<IMarkupParser>();
@@ -32,10 +32,4 @@ public class ChatMarkupHub : IChatMarkupHub
 
     public IMarkupFormatter EditorHtmlConverter
         => _editorHtmlConverter ??= new MarkupEditorHtmlConverter();
-
-    public ChatMarkupHub(IServiceProvider services, ChatId chatId)
-    {
-        Services = services;
-        ChatId = chatId;
-    }
 }

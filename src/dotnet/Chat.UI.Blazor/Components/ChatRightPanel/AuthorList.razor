@@ -41,13 +41,13 @@
 </div>
 
 @code {
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IRoles Roles { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AuthorUI AuthorUI { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    private Session Session => ChatContext.Session;
+    private Chat Chat => ChatContext.Chat;
+    private IRoles Roles => ChatContext.Roles;
+    private IAuthors Authors => ChatContext.Authors;
+    private AuthorUI AuthorUI => ChatContext.AuthorUI;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -89,7 +89,6 @@
         offlineAuthors.Sort(comparison);
 
         var ownAuthor = await Authors.GetOwn(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
-
         return new() {
             AllAuthorIds = allAuthorIds,
             OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
@@ -100,7 +99,8 @@
     }
 
     public sealed class Model {
-        public static Model None { get; } = new();
+        public static readonly Model None = new();
+
         public AuthorId OwnAuthorId { get; init; } = AuthorId.None;
         public ApiArray<AuthorId> AllAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;
         public ApiArray<AuthorId> OwnerAuthorIds { get; init; } = ApiArray<AuthorId>.Empty;

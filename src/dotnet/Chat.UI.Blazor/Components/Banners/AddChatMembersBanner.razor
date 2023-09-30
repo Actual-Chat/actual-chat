@@ -19,17 +19,18 @@
 
 @code {
     private IStoredState<bool> _dismissed = null!;
+    private ILogger? _log;
 
-    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IRoles Roles { get; init; } = null!;
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
-    [Inject] private ILogger<AddChatMembersBanner> Log { get; init; } = null!;
+    private Session Session => ChatContext.Session;
+    private Chat Chat => ChatContext.Chat;
+    private IRoles Roles => ChatContext.Roles;
+    private IAuthors Authors => ChatContext.Authors;
+    private AccountSettings AccountSettings => ChatContext.AccountSettings;
+    private ChatListUI ChatListUI => ChatContext.ChatListUI;
+    private ModalUI ModalUI => ChatContext.ModalUI;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    private ModalUI ModalUI => Services.GetRequiredService<ModalUI>();
-
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override void OnInitialized() {
         var chatId = Chat.Id;

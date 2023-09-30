@@ -22,20 +22,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private bool _suppressNewMessagesEntry;
     private IMutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private IComputedState<bool>? _isViewportAboveUnreadEntry = null;
-    private ChatContext _context = null!;
+    private ILogger? _log;
 
-    [Inject] private ILogger<ChatView> Log { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
-    [Inject] private IStateFactory StateFactory { get; init; } = null!;
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-    private Dispatcher Dispatcher => History.Dispatcher;
+    private IServiceProvider Services => ChatContext.Services;
+    private Session Session => ChatContext.Session;
+    private Chat Chat => ChatContext.Chat;
+    private ChatUI ChatUI => ChatContext.ChatUI;
+    private IChats Chats => ChatContext.Chats;
+    private IAuthors Authors => ChatContext.Authors;
+    private NavigationManager Nav => ChatContext.Nav;
+    private History History => ChatContext.History;
+    private TimeZoneConverter TimeZoneConverter => ChatContext.TimeZoneConverter;
+    private IStateFactory StateFactory => ChatContext.StateFactory;
+    private Dispatcher Dispatcher => ChatContext.Dispatcher;
     private CancellationToken DisposeToken => _disposeTokenSource.Token;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
     private SyncedStateLease<ReadPosition> ReadPositionState { get; set; } = null!;
@@ -44,13 +45,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public IState<ChatViewItemVisibility> ItemVisibility => _itemVisibility;
     public Task WhenInitialized => _whenInitializedSource.Task;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
     protected override async Task OnInitializedAsync()
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
-        _context = new ChatContext(Services, Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
             NavigateToEntryLid = StateFactory.NewMutable(
@@ -250,14 +250,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 _suppressNewMessagesEntry = true;
         }
 
-        var isOwner = chat.Rules.IsOwner();
-        var addWelcomeMessage = isOwner && hasVeryFirstItem && !chat.Id.IsPeerChat(out _);
+        if (chatEntries.Count == 0)
+            return new VirtualListData<ChatMessageModel>(ChatMessageModel.FromEmpty(Chat.Id)) {
+                HasVeryFirstItem = true,
+                HasVeryLastItem = true,
+                ScrollToKey = null,
+                RequestedStartExpansion = null,
+                RequestedEndExpansion = null,
+            };
+
         var chatMessages = ChatMessageModel.FromEntries(
             chatEntries,
             oldData.Items,
             _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid,
             hasVeryFirstItem,
-            addWelcomeMessage,
             TimeZoneConverter);
 
         var isResultTheSame = !oldData.IsNone
@@ -442,15 +448,5 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var isVisible = RegionVisibility.IsVisible.Value;
         if (!DisposeToken.IsCancellationRequested)
             _getDataSuspender.IsSuspended = !isVisible;
-    }
-
-    private bool IsEmpty(VirtualListData<ChatMessageModel> data)
-    {
-        if (data == VirtualListData<ChatMessageModel>.None)
-            return false;
-
-        var items = data.Items;
-        return items.Count == 0
-            || items.All(c => c.DateLine.HasValue || c.Entry.IsSystemEntry);
     }
 }

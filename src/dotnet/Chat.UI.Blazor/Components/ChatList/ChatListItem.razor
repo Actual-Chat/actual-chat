@@ -146,8 +146,8 @@ else {
     }
 
     public sealed record Model {
-        public static Model Loading { get; } = new() { ChatState = ChatState.Loading };
-        public static Model None { get; } = new() { ChatState = ChatState.None };
+        public static readonly Model Loading = new() { ChatState = ChatState.Loading };
+        public static readonly Model None = new() { ChatState = ChatState.None };
 
         public ChatState ChatState { get; init; } = ChatState.None;
         public bool IsLastItemInBlock { get; init; }

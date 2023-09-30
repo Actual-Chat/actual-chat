@@ -25,13 +25,14 @@
 </div>
 
 @code {
-    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    private Session Session => ChatContext.Session;
+    private Chat Chat => ChatContext.Chat;
+    private IChats Chats => ChatContext.Chats;
+    private FeedbackUI FeedbackUI => ChatContext.FeedbackUI;
+    private PanelsUI PanelsUI => ChatContext.PanelsUI;
+    private ModalUI ModalUI => ChatContext.ModalUI;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override ComputedState<AuthorRules>.Options GetStateOptions()
         => new() {

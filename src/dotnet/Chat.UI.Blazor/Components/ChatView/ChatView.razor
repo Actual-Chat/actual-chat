@@ -9,14 +9,10 @@
     DataSource="@this"
     Identity="@Chat.Id"
     KeyComparer="@LongAsStringKeyComparer.Default"
-    ItemVisibilityChanged="@OnItemVisibilityChanged"
-    IsEmptyTest="IsEmpty" >
+    ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
-        <ChatMessage Context="_context" Message="@context" />
+        <ChatMessage ChatContext="@ChatContext" Message="@context" />
     </Item>
-    <Empty>
-        <EmptyChatContent Chat="@Chat"/>
-    </Empty>
     <Skeleton>
         <chat-message-skeleton />
     </Skeleton>
@@ -24,6 +20,6 @@
 
 <RenderIntoStack Name="SubFooter" Order="-1000_000" Key="NavigateToEndSubFooter">
     <NavigateToUnreadOrEnd
-        ChatSid="@Chat.Id"
+        ChatContext="@ChatContext"
         ChatView="@this" />
 </RenderIntoStack>
