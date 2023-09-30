@@ -221,7 +221,7 @@ body.wide .attachment-mode .btn.btn-round.post-message {
     @apply brightness-125;
 }
 .attachment-list-btn.btn.danger .btn-content {
-    @apply text-error;
+    @apply text-icons-04;
 }
 
 .attachment-wrapper {

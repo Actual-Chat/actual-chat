@@ -39,6 +39,7 @@ export class VisualMediaViewer {
     private deltaX: number = 0;
     private prevY: number = 0;
     private prevX: number = 0;
+    private touchStartCoords: number[] = [0, 0];
     private isMovementStarted: boolean = false;
     private startDistance: number = 0;
     private startImageRect: DOMRect;
@@ -399,6 +400,7 @@ export class VisualMediaViewer {
                 this.imageViewer.style.touchAction = 'none';
                 this.overlay.style.touchAction = 'none';
                 this.points.push(event);
+                this.touchStartCoords = [event.x, event.y];
                 this.startImageRect = this.media.getBoundingClientRect();
                 let imageRect = this.startImageRect;
                 let viewerRect = this.imageViewer.getBoundingClientRect();
@@ -444,8 +446,7 @@ export class VisualMediaViewer {
                 let savedEvent = this.points.find(e => e.pointerId == event.pointerId);
                 if (savedEvent != null
                     && (event.timeStamp - savedEvent.timeStamp < 500)
-                    && this.isSameCoords(event, savedEvent)
-                    && this.isDownAndUpEvents(savedEvent, event)) {
+                    && this.isSameTouchCoords(event)) {
                     if (this.isRequiredClass(target)) {
                         this.toggleFooterHeaderVisibility();
                     } else if (!this.footer.contains(target) && !this.header.contains(target)) {
@@ -661,8 +662,10 @@ export class VisualMediaViewer {
         return result;
     }
 
-    private isDownAndUpEvents(event1: PointerEvent, event2: PointerEvent) : boolean {
-        return event1.type == "pointerdown" && event2.type == "pointerup";
+    private isSameTouchCoords(event: PointerEvent) : boolean {
+        let deltaX = Math.abs(event.x - this.touchStartCoords[0]);
+        let deltaY = Math.abs(event.y - this.touchStartCoords[1]);
+        return deltaX < 10 && deltaY < 10;
     }
 
     private controlButtonsVisibilityToggle() {
