@@ -121,15 +121,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     public void NavigateToEntry(long entryLid)
     {
-        // reset to ensure navigation will happen
+        // Reset to ensure navigation will happen
         _lastNavigateToEntryId = null;
-        NavigateToEntryLid.Value = null;
         NavigateToEntryLid.Value = entryLid;
+        NavigateToEntryLid.Invalidate();
     }
 
     public void TryNavigateToEntry()
     {
-        // ignore location changed events if already disposed
+        // Ignore location changed events if already disposed
         if (DisposeToken.IsCancellationRequested)
             return;
 
@@ -212,11 +212,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             mustScrollToEntry = true;
         }
 
-        var isHighlighted = false;
+        var isNavigatingToEntry = false;
         // Handle NavigateToEntry
         var navigateToEntryId = await NavigateToEntryLid.Use(cancellationToken);
         if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
-            isHighlighted = true;
+            isNavigatingToEntry = true;
             _lastNavigateToEntryId = navigateToEntryId;
             entryLid = navigateToEntryId.Value;
             if (!ItemVisibility.Value.IsFullyVisible(navigateToEntryId.Value))
@@ -235,13 +235,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
             .Collect();
 
-        var chatEntries = chatTiles
+        var entries = chatTiles
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Kind == ChatEntryKind.Text)
             .ToList();
 
         var scrollToKey = mustScrollToEntry
-            ? GetScrollToKey(chatEntries, entryLid)
+            ? GetScrollToKey(entries, entryLid)
             : null;
 
         // Do not show '-new-' separator after view is scrolled to the end anchor.
@@ -250,7 +250,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 _suppressNewMessagesEntry = true;
         }
 
-        if (chatEntries.Count == 0)
+        if (entries.Count == 0)
             return new VirtualListData<ChatMessageModel>(ChatMessageModel.FromEmpty(Chat.Id)) {
                 HasVeryFirstItem = true,
                 HasVeryLastItem = true,
@@ -259,22 +259,22 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 RequestedEndExpansion = null,
             };
 
-        var chatMessages = ChatMessageModel.FromEntries(
-            chatEntries,
+        var messages = ChatMessageModel.FromEntries(
+            entries,
             oldData.Items,
             _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid,
             hasVeryFirstItem,
             TimeZoneConverter);
 
-        var isResultTheSame = !oldData.IsNone
-            && chatMessages.Count == oldData.Items.Count
-            && chatMessages
+        var areSameMessages = !oldData.IsNone
+            && messages.Count == oldData.Items.Count
+            && messages
                 .Zip(oldData.Items)
                 .All(pair => ReferenceEquals(pair.First, pair.Second));
 
-        var result = isResultTheSame && OrdinalEquals(scrollToKey, oldData.ScrollToKey)
+        var result = areSameMessages && OrdinalEquals(scrollToKey, oldData.ScrollToKey) && !isNavigatingToEntry
             ? oldData
-            : new VirtualListData<ChatMessageModel>(chatMessages) {
+            : new VirtualListData<ChatMessageModel>(messages) {
                 HasVeryFirstItem = hasVeryFirstItem,
                 HasVeryLastItem = hasVeryLastItem,
                 ScrollToKey = scrollToKey,
@@ -291,15 +291,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (visibility != ChatViewItemVisibility.Empty
             && visibility.IsEndAnchorVisible
             && hasVeryLastItem
-            && chatEntries.Count > 0) {
-            var lastEntryLid = chatEntries[^1].Id.LocalId;
+            && entries.Count > 0) {
+            var lastEntryLid = entries[^1].Id.LocalId;
             if (lastEntryLid > readEntryLid)
                 ReadPositionState.Value = new ReadPosition(chatId,  lastEntryLid);
             else if (readEntryLid >= chatIdRange.End)
                 ReadPositionState.Value = new ReadPosition(chatId,chatIdRange.End - 1);
         }
 
-        if (isHighlighted) {
+        if (isNavigatingToEntry) {
             // highlight entry when it has already been loaded
             var highlightedEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, entryLid, AssumeValid.Option);
             ChatUI.HighlightEntry(highlightedEntryId, navigate: false);
