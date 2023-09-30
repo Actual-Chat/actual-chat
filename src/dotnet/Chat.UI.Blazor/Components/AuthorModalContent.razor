@@ -68,8 +68,10 @@
 
 @code {
 
-    [Inject] private IServiceProvider Services { get; set; } = null!;
-    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
+    [Inject] private ChatHub ChatHub { get; set; } = null!;
+    private Session Session => ChatHub.Session;
+    private IAuthors Authors => ChatHub.Authors;
+    private ShareUI ShareUI => ChatHub.ShareUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
@@ -81,8 +83,7 @@
             return;
         }
 
-        var authors = Services.GetRequiredService<IAuthors>();
-        var account = await authors.GetAccount(Services.Session(), Author.ChatId, Author.Id, default);
+        var account = await Authors.GetAccount(Session, Author.ChatId, Author.Id, default);
         if (account != null)
             _ = ShareUI.Share(account.Id);
     }

@@ -360,7 +360,7 @@
     }
 
     public sealed record ComputedModel {
-        public static ComputedModel None { get; } = new();
+        public static readonly ComputedModel None = new();
 
         public AuthorRules? Rules { get; init; }
         public DisplayUrl? Link { get; init; }

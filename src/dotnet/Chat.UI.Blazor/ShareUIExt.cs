@@ -39,7 +39,9 @@ public static class ShareUIExt
         var title = "Share chat";
         var text = $"\"{chat.Title}\" on Actual Chat";
         if (chat.IsPublic)
-            return new ShareModalModel(title, new(text, Links.Chat(chat.Id)));
+            return new ShareModalModel(
+                ShareKind.Chat, title, chat.Title,
+                new(text, Links.Chat(chat.Id)));
 
         var invites = services.GetRequiredService<IInvites>();
         var invite = await invites.GetOrGenerateChatInvite(session, chat.Id, cancellationToken).ConfigureAwait(false);
@@ -47,6 +49,8 @@ public static class ShareUIExt
             return null;
 
         title = "Share private chat join link";
-        return new ShareModalModel(title, new(text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)));
+        return new ShareModalModel(
+            ShareKind.ChatInvite, title, chat.Title,
+            new(text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)));
     }
 }

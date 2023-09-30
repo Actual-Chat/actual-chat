@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.UI.Blazor;
 
 public sealed class UIEventHub : IHasServices

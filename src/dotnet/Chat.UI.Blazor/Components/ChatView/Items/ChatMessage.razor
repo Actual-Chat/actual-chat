@@ -28,20 +28,24 @@
     var selectedClass = m.IsSelected ? "replied-message" : "";
     var mentionClass = m.IsOwnAuthorMentioned && !isReplyToOwnMessage ? "mention" : "";
     var cls = $"{systemClass} {forwardedClass} {forwardedBorderClass} {ownMessageClass} {mentionClass} {marginClass} {highlightClass} {repliedClass} {selectedClass} message-wrapper";
+
+    switch (message.ReplacementKind) {
+    case ChatMessageReplacementKind.None:
+        break;
+    case ChatMessageReplacementKind.DateLine:
+        <ChatMessageDateLine Date="@message.DateLineDate"/>
+        return;;
+    case ChatMessageReplacementKind.NewMessagesLine:
+        <Separator Title="New messages" TitleClass="new-separator-title"/>
+        return;;
+    case ChatMessageReplacementKind.WelcomeBlock:
+        <ChatWelcomeBlock ChatContext="@ChatContext" />
+        return;;
+    default:
+        throw new ArgumentOutOfRangeException();
+    }
 }
 
-@if (message.DateLine.HasValue) {
-    <ChatMessageDateLine Date="@message.DateLine.GetValueOrDefault()"/>
-    return;
-}
-@if (message.IsFirstUnreadSeparator) {
-    <Separator Title="New messages" TitleClass="new-separator-title"/>
-    return;
-}
-@if (message.IsWelcome) {
-    <ChatWelcomeMessage Context="@Context" />
-    return;
-}
 @if (isSystem) {
     <div class="@cls"
          data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.TrueString))"
@@ -131,10 +135,10 @@
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (entry.IsStreaming) {
-                    <ChatMessageTranscript Model="@message" ShowEntryKind="@Message.ShowEntryKind"/>
+                    <ChatMessageTranscript Model="@message" ShowEntryKind="@Message.HasEntryKindSign"/>
                 } else {
                     <p class="chat-message-markup">
-                        @if (message.ShowEntryKind) {
+                        @if (message.HasEntryKindSign) {
                             <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
                         }
                         <CascadingValue Value="@entry" IsFixed="true">
@@ -165,7 +169,6 @@
     private Model? _rendered;
     private ChatMessageModel? _renderedMessage;
     private Markup? _renderedMarkup;
-    private IChatMarkupHub _chatMarkupHub = null!;
     private ValueTask<Markup> _markupTask;
     private Markup _markup = Markup.Empty;
     private ChatMessageModel? _lastMessage;
@@ -173,40 +176,29 @@
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
     private ChatId ChatId => Message.Entry.ChatId;
-    private Session Session => Context.Session;
-    private History History => Context.History;
-    private IAuthors Authors => Context.Authors;
-    private IChats Chats => Context.Chats;
-    private ChatUI ChatUI => Context.ChatUI;
-    private AuthorUI AuthorUI => Context.AuthorUI;
-    private ShareUI ShareUI => Context.ShareUI;
-    private ModalUI ModalUI => Context.ModalUI;
-    private TimeZoneConverter TimeZoneConverter => Context.TimeZoneConverter;
+    private Session Session => ChatContext.Session;
+    private History History => ChatContext.History;
+    private IAuthors Authors => ChatContext.Authors;
+    private IChats Chats => ChatContext.Chats;
+    private ChatUI ChatUI => ChatContext.ChatUI;
+    private AuthorUI AuthorUI => ChatContext.AuthorUI;
+    private ShareUI ShareUI => ChatContext.ShareUI;
+    private ModalUI ModalUI => ChatContext.ModalUI;
+    private TimeZoneConverter TimeZoneConverter => ChatContext.TimeZoneConverter;
+    private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
 
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
-    [Parameter, EditorRequired] public ChatContext Context { get; set; } = null!;
 
     protected override async Task OnParametersSetAsync()
     {
-        var mustReset = _chatMarkupHub == null!;
-        mustReset |= Message != _lastMessage;
-        /*
-        if (mustReset)
-            Log.LogInformation("+ {EntryId}", Entry.Id);
-        else {
-            var changed = Message != _lastMessage;
-            if (changed)
-                Log.LogInformation("* {EntryId}", Entry.Id);
-            mustReset = changed;
-        }
-        */
-        if (mustReset) {
-            _lastMessage = Message;
-            _chatMarkupHub = Context.ChatMarkupHubFactory[ChatId];
-            _markupTask = _chatMarkupHub.GetMarkup(Entry, MarkupConsumer.MessageView, default);
-            _markup = await _markupTask;
-            await base.OnParametersSetAsync(); // Triggers recompute
-        }
+        if (Message == _lastMessage)
+            return;
+
+        _lastMessage = Message;
+        _markupTask = ChatMarkupHub.GetMarkup(Entry, MarkupConsumer.MessageView, default);
+        _markup = await _markupTask;
+        await base.OnParametersSetAsync(); // Triggers recompute
     }
 
     protected override bool ShouldRender() {
@@ -242,7 +234,7 @@
         var repliedEntry = await GetRepliedEntry(cancellationToken);
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
-        var relatedChatEntry = await Context.ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
+        var relatedChatEntry = await ChatContext.ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken);
         var forwardedChat = !entry.ForwardedChatEntryId.IsNone
@@ -251,7 +243,7 @@
         var forwardedAuthor = !entry.ForwardedChatEntryId.IsNone && !entry.ForwardedAuthorId.IsNone
             ? await Authors.Get(Session, entry.ForwardedChatEntryId.ChatId, entry.ForwardedAuthorId, cancellationToken)
             : null;
-        var selectedChatEntries = await Context.SelectionUI.Selection.Use(cancellationToken);
+        var selectedChatEntries = await ChatContext.SelectionUI.Selection.Use(cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,

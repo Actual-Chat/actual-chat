@@ -9,8 +9,7 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired]
-    public List<TextEntryAttachment> ImageList { get; set; } = null!;
+    [Parameter, EditorRequired] public List<TextEntryAttachment> ImageList { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
 
     private IEnumerable<ImageRow> GetRows() {

@@ -8,15 +8,16 @@
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View
 }
-<AddToContactsBanner Chat="@Chat"/>
-<AddChatMembersBanner Chat="@Chat"/>
+<AddToContactsBanner ChatContext="@ChatContext"/>
+<AddChatMembersBanner ChatContext="@ChatContext"/>
 <PermissionBannerSwitch/>
 
 @code {
     private const int MaxCount = 2;
-    [Inject] private BannerUI BannerUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    private BannerUI BannerUI => ChatContext.BannerUI;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => new() {

@@ -11,31 +11,19 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
     public Symbol Key => _key ??= GetKey();
 
     public ChatEntry Entry { get; } = entry;
-    public DateOnly? DateLine { get; init; }
     public bool IsBlockStart { get; init; }
     public bool IsBlockEnd { get; init; }
     public bool IsForwardBlockStart { get; init; }
+    public bool HasEntryKindSign { get; init; }
     public int CountAs { get; init; } = 1;
-    public bool IsFirstUnreadSeparator { get; init; }
-    public bool ShowEntryKind { get; init; }
-    public bool IsWelcome { get; init; }
+    public ChatMessageReplacementKind ReplacementKind { get; init; }
+    public DateOnly DateLineDate { get; init; }
 
     public override string ToString()
         => $"(#{Key} -> {Entry})";
 
     private Symbol GetKey()
-    {
-        var key = Entry.LocalId.Format();
-        if (DateLine != null)
-            return $"{key}-date-{DateLine.Value.ToString("yyyyMMdd", CultureInfo.InvariantCulture)}";
-        if (IsWelcome)
-            return $"{key}-welcome-message";
-
-        if (IsFirstUnreadSeparator)
-            return $"{key}-new-messages";
-
-        return key;
-    }
+        => Entry.LocalId.Format() + ReplacementKind.GetKeySuffix();
 
     // Equality
 
@@ -50,28 +38,46 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
             return true;
 
         return Entry.VersionEquals(other.Entry)
-            && Nullable.Equals(DateLine, other.DateLine)
             && IsBlockStart == other.IsBlockStart
             && IsBlockEnd == other.IsBlockEnd
-            && IsFirstUnreadSeparator == other.IsFirstUnreadSeparator
-            && ShowEntryKind == other.ShowEntryKind
+            && HasEntryKindSign == other.HasEntryKindSign
+            && DateLineDate == other.DateLineDate
+            && ReplacementKind == other.ReplacementKind
             && Entry.Attachments.SequenceEqual(other.Entry.Attachments);
     }
 
     public override int GetHashCode()
-        => HashCode.Combine(Entry, DateLine, IsBlockStart, IsBlockEnd);
+        => HashCode.Combine(
+            Entry,
+            IsBlockStart,
+            IsBlockEnd,
+            HasEntryKindSign,
+            DateLineDate,
+            ReplacementKind,
+            Entry.Attachments.Count); // Fine to have something that's fast here
 
     public static bool operator ==(ChatMessageModel? left, ChatMessageModel? right) => Equals(left, right);
     public static bool operator !=(ChatMessageModel? left, ChatMessageModel? right) => !Equals(left, right);
 
     // Static helpers
 
+    public static List<ChatMessageModel> FromEmpty(ChatId chatId)
+    {
+        var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0L, AssumeValid.Option);
+        var chatEntry = new ChatEntry(chatEntryId);
+        var chatMessageModel = new ChatMessageModel(chatEntry) {
+            IsBlockStart = true,
+            IsBlockEnd = true,
+            ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
+        };
+        return new List<ChatMessageModel>() { chatMessageModel };
+    }
+
     public static List<ChatMessageModel> FromEntries(
         List<ChatEntry> chatEntries,
         IReadOnlyCollection<ChatMessageModel> oldItems,
         long lastReadEntryId,
         bool hasVeryFirstItem,
-        bool addWelcomeMessage,
         TimeZoneConverter timeZoneConverter)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
@@ -82,52 +88,42 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
         var isPrevForward = false;
         var prevForwardChatId = ChatId.None;
         var oldItemsMap = oldItems.ToDictionary(i => i.Key, i => i);
+        var addWelcomeBlock = hasVeryFirstItem;
         for (var index = 0; index < chatEntries.Count; index++) {
             var entry = chatEntries[index];
             var isLastEntry = index == chatEntries.Count - 1;
             var nextEntry = isLastEntry ? null : chatEntries[index + 1];
 
             var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
-            var hasDateLine = date != lastDate && (hasVeryFirstItem || index != 0);
             var isBlockEnd = ShouldSplit(entry, nextEntry);
             var isForward = !entry.ForwardedAuthorId.IsNone;
-            var forwardFromOtherChat = prevForwardChatId != entry.ForwardedChatEntryId.ChatId;
-            var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || forwardFromOtherChat));
+            var isForwardFromOtherChat = prevForwardChatId != entry.ForwardedChatEntryId.ChatId;
+            var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
             var isUnread = entry.LocalId > lastReadEntryId;
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
             var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
-            if (hasDateLine) {
-                var item = new ChatMessageModel(entry) {
-                    DateLine = date,
-                };
-                var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
-                if (oldItem != null && oldItem.Entry.Version == item.Entry.Version)
-                    result.Add(oldItem);
-                else
-                    result.Add(item);
-                if (addWelcomeMessage) {
-                    result.Add(new ChatMessageModel(entry) {
-                        IsWelcome = true
-                    });
-                    addWelcomeMessage = false;
-                }
+            var addDateLine = date != lastDate && (hasVeryFirstItem || index != 0);
+            if (addWelcomeBlock) {
+                result.Add(new ChatMessageModel(entry) {
+                    ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
+                });
+                addWelcomeBlock = false;
             }
-            if (isUnread && !isPrevUnread) {
-                var item = new ChatMessageModel(entry) {
-                    IsFirstUnreadSeparator = true,
-                };
-                var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
-                if (oldItem != null && oldItem.Entry.Version == item.Entry.Version)
-                    result.Add(oldItem);
-                else
-                    result.Add(item);
-            }
+            if (isUnread && !isPrevUnread)
+                AddItem(new ChatMessageModel(entry) {
+                    ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
+                });
+            if (addDateLine)
+                AddItem(new ChatMessageModel(entry) {
+                    ReplacementKind = ChatMessageReplacementKind.DateLine,
+                    DateLineDate = date,
+                });
 
             {
                 var item = new ChatMessageModel(entry) {
                     IsBlockStart = isBlockStart,
                     IsBlockEnd = isBlockEnd,
-                    ShowEntryKind = isEntryKindChanged || (isBlockStart && isAudio),
+                    HasEntryKindSign = isEntryKindChanged || (isBlockStart && isAudio),
                     IsForwardBlockStart = isForwardBlockStart,
                 };
                 var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
@@ -146,6 +142,13 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
         }
 
         return result;
+
+        void AddItem(ChatMessageModel item) {
+            var oldItem = oldItemsMap!.GetValueOrDefault(item.Key);
+            if (oldItem != null && oldItem.Equals(item))
+                item = oldItem;
+            result!.Add(item);
+        }
 
         bool ShouldSplit(
             ChatEntry entry,

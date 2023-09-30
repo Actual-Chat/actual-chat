@@ -8,30 +8,31 @@
     if (_isVeryFirstLoad && !PanelsUI.Middle.IsVisible.Value)
         return;
 
-    var chat = m.Chat;
-    var hasChat = !chat.Id.IsNone;
-    // Log.LogDebug("Rendered for #{ChatId}", m.ChatId);
+    var chatContext = m.ChatContext;
+    var chat = m.ChatContext.Chat;
+    var chatKey = chat.Id.Value;
+    // Log.LogDebug("Rendered for #{ChatId}", chat.Id);
 }
 
 <RenderIntoSlot Name="MainHeader">
-    <ChatHeader @key="@chat.Id.Value" Chat="@chat" />
+    <ChatHeader @key="@chatKey" ChatContext="@chatContext" />
 </RenderIntoSlot>
 
 <RenderIntoSlot Name="MainFooter">
-    <ChatFooter ChatPageModel="@m" />
+    <ChatFooter @key="@chatKey" ChatContext="@chatContext" Model="m.FooterModel" />
 </RenderIntoSlot>
 
 <RenderIntoStack Name="SubHeader" Order="1000_000" Key="BannersSubHeader">
-    @if (hasChat) {
-        <Banners @key="@chat.Id.Value" Chat="@chat"/>
+    @if (chatContext.HasChat) {
+        <Banners @key="@chatKey" ChatContext="@chatContext"/>
     } else {
         <AlwaysVisibleBanners/>
     }
 </RenderIntoStack>
 
 <RenderIntoSlot Name="MainRightDrawer">
-    @if (hasChat) {
-        <ChatRightPanel @key="@chat.Id.Value" Chat="@chat"/>
+    @if (chatContext.HasChat) {
+        <ChatRightPanel @key="@chatKey" ChatContext="@chatContext"/>
     }
 </RenderIntoSlot>
 
@@ -42,9 +43,9 @@
 @if (ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
     <NoChatSelected/>
 } else if (ReferenceEquals(chat, SpecialChat.Unavailable)) {
-    <ChatNotFound ShowSignIn="@(!m.Account.IsActive())"/>
+    <ChatNotFound ShowSignIn="@(!chatContext.OwnAccount.IsActive())"/>
 } else {
-    <ChatView @ref="ChatViewRef" @key="@chat.Id.Value" Chat="@chat"/>
+    <ChatView @ref="ChatViewRef" @key="@chatKey" ChatContext="@chatContext"/>
 }
 
 @code {
@@ -52,24 +53,27 @@
     protected static TimeSpan LoadTimeout = TimeSpan.FromSeconds(1);
     protected static TimeSpan LoadTimeoutToReloadDelay = TimeSpan.FromSeconds(2);
     private static bool _isVeryFirstLoad = true;
+    private ILogger? _log;
 
     protected Model? Rendered;
     protected ChatView ChatViewRef = null!;
 
-    [Inject] protected Session Session { get; init; } = null!;
-    [Inject] protected IAccounts Accounts { get; init; } = null!;
-    [Inject] protected IChats Chats { get; init; } = null!;
-    [Inject] protected IAvatars Avatars { get; init; } = null!;
-    [Inject] protected ChatUI ChatUI { get; init; } = null!;
-    [Inject] protected ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] protected PanelsUI PanelsUI { get; init; } = null!;
-    [Inject] protected BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject] protected ILogger<ChatPage> Log { get; init; } = null!;
+    [Inject] protected ChatHub ChatHub { get; init; } = null!;
+    protected Session Session => ChatHub.Session;
+    protected IChats Chats => ChatHub.Chats;
+    protected IAccounts Accounts => ChatHub.Accounts;
+    protected IAvatars Avatars => ChatHub.Avatars;
+    protected ChatUI ChatUI => ChatHub.ChatUI;
+    protected AccountUI AccountUI => ChatHub.AccountUI;
+    protected PanelsUI PanelsUI => ChatHub.PanelsUI;
+    protected BrowserInfo BrowserInfo => ChatHub.BrowserInfo;
+    protected UICommander UICommander => ChatHub.UICommander;
+    protected ILogger Log => _log ??= Services.LogFor(GetType());
 
     [Parameter] public string? ChatSid { get; set; }
 
     protected override void OnInitialized() {
-        ChatAudioUI.Enable();
+        Services.GetRequiredService<ChatAudioUI>().Enable();
         // We need to call SelectChat() before ComputeState starts working,
         // coz ComputeState relies on ChatUI.SelectedChatId, which is set there.
         _ = SelectChat(ChatSid);
@@ -83,7 +87,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.Loading,
+            InitialValue = Model.Loading(Services, Session),
             Category = GetStateCategory(),
         };
 
@@ -96,7 +100,8 @@
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
         var lastState = State.ValueOrDefault;
-        var lastChatId = lastState?.Chat.Id ?? ChatId.None;
+        var lastContext = lastState?.ChatContext;
+        var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         if (_isVeryFirstLoad) {
@@ -116,9 +121,9 @@
 
         var account = AccountFull.Loading;
         try {
-            account = await Accounts
-                .GetOwn(Session, cancellationToken)
-                .WaitAsync(LoadTimeout, cancellationToken);
+            if (!AccountUI.WhenLoaded.IsCompleted)
+                await AccountUI.WhenLoaded.WaitAsync(LoadTimeout, cancellationToken);
+            account = await AccountUI.OwnAccount.Use(cancellationToken);
             var chat = SpecialChat.NoChatSelected;
             if (!chatId.IsNone) {
                 if (OSInfo.IsAndroid) {
@@ -133,24 +138,28 @@
                     .WaitAsync(LoadTimeout, cancellationToken);
                 chat ??= SpecialChat.Unavailable;
             }
-            var footer = await GetFooterModel(chat, account, cancellationToken);
-            return new Model(chat, account, footer);
+            var footerModel = await GetFooterModel(chat, account, cancellationToken);
+            var chatContext = ChatContext.New(Services, Session, chat, account, lastContext);
+            return new Model(chatContext, footerModel);
         }
         catch (TimeoutException) {
             Computed.GetCurrent()?.Invalidate(LoadTimeoutToReloadDelay);
             this.NotifyStateHasChanged();
-            if (lastState != null && chatId == lastChatId)
-                return lastState;
-            return Model.Loading;
+            return lastState != null && chatId == lastChatId
+                ? lastState
+                : Model.Loading(Services, Session, lastContext);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
             this.NotifyStateHasChanged();
-            return new Model(SpecialChat.Unavailable, account, new());
+            return Model.Unavailable(Services, Session, account, lastContext);
         }
     }
 
-    protected async Task<FooterModel> GetFooterModel(Chat chat, Account account, CancellationToken cancellationToken) {
+    protected async ValueTask<FooterModel> GetFooterModel(Chat chat, Account account, CancellationToken cancellationToken) {
+        if (chat.Id.IsNone)
+            return FooterModel.None;
+
         var otherUserId = chat.Id.IsPeerChat(out var peerChatId)
             ? peerChatId.UserIds.OtherThan(account.Id)
             : default;
@@ -201,15 +210,23 @@
     // Nested types
 
     public sealed record Model(
-        Chat Chat,
-        AccountFull Account,
-        FooterModel Footer
+        ChatContext ChatContext,
+        FooterModel FooterModel
     ) {
-        public static Model Loading { get; } =
-            new(SpecialChat.Loading, AccountFull.Loading, new FooterModel());
+        public static Model Loading(IServiceProvider services, Session session, ChatContext? lastContext = null) {
+            var chatContext = ChatContext.New(services, session, SpecialChat.Loading, AccountFull.Loading, lastContext);
+            return new(chatContext, FooterModel.None);
+        }
+
+        public static Model Unavailable(IServiceProvider services, Session session, AccountFull account, ChatContext? lastContext = null) {
+            var chatContext = ChatContext.New(services, session, SpecialChat.Unavailable, account, lastContext);
+            return new(chatContext, new FooterModel());
+        }
     }
 
     public sealed record FooterModel {
+        public static readonly FooterModel None = new();
+
         public UserId OtherUserId { get; init; }
         public bool IsGuest { get; init; }
         public bool CanPost { get; init; }

@@ -8,8 +8,8 @@ public sealed record ChatState(
     ChatAudioState AudioState = default
     ) : IHasId<ChatId>
 {
-    public static ChatState None { get; } = new(ChatInfo.None);
-    public static ChatState Loading { get; } = new(ChatInfo.Loading);
+    public static readonly ChatState None = new(ChatInfo.None);
+    public static readonly ChatState Loading = new(ChatInfo.Loading);
 
     public bool IsSelected { get; init; }
     public Presence Presence { get; init; } = Presence.Unknown;

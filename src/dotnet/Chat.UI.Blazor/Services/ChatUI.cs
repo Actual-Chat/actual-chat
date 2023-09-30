@@ -209,6 +209,17 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         return chatInfo?.UnreadCount ?? new();
     }
 
+    [ComputeMethod]
+    public virtual async Task<bool> IsEmpty(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var idRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
+        await foreach (var entry in reader.Read(idRange, cancellationToken).ConfigureAwait(false))
+            if (!entry.IsSystemEntry)
+                return false;
+        return true;
+    }
+
     // SetXxx & Add/RemoveXxx
 
     public ValueTask Pin(ChatId chatId) => SetPinState(chatId, true);

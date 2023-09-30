@@ -12,9 +12,10 @@
 </p>
 
 @code {
-    [Inject] private ILogger<ChatMessageTranscript> Log { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
     [Inject] private ITranscriptStreamer TranscriptStreamer { get; init; } = null!;
-    [Inject] private BlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] private ILogger<ChatMessageTranscript> Log { get; init; } = null!;
+    private Dispatcher Dispatcher => ChatHub.Dispatcher;
 
     [Parameter, EditorRequired] public ChatMessageModel Model { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
@@ -31,9 +32,6 @@
     }
 
     protected override void OnParametersSet() {
-        if (CircuitContext.IsPrerendering)
-            return;
-
         RestartCts?.CancelAndDisposeSilently();
         RestartCts = new();
         var cancellationToken = RestartCts.Token;
@@ -47,13 +45,12 @@
         try {
             var entry = model.Entry;
             var diffs = TranscriptStreamer.GetTranscriptDiffStream(entry.StreamId, cancellationToken);
-            var circuitDispatcher = CircuitContext.Dispatcher;
             var transcripts = diffs.ToTranscripts();
             var lastText = "";
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
                 var text = transcript.Text;
                 var commonPrefixLength = lastText.GetCommonPrefixLength(text);
-                await circuitDispatcher.InvokeAsync(() => {
+                await Dispatcher.InvokeAsync(() => {
                     Transcript = transcript;
                     RetainedPart = text[..commonPrefixLength];
                     ChangedPart = text[commonPrefixLength..];

@@ -1,7 +1,7 @@
 @using ActualChat.Contacts
 @inherits ComputedStateComponent<bool>
 @{
-    var chat = Chat;
+    var chat = ChatContext.Chat;
     var hasSelection = State.Value;
 }
 
@@ -9,7 +9,6 @@
     <div class="c-content">
         <SelectionHeader />
     </div>
-
     return;
 }
 
@@ -41,14 +40,7 @@
 </div>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
-
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
 
@@ -59,11 +51,11 @@
         };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await SelectionUI.HasSelection.Use(cancellationToken);
+        => await ChatContext.SelectionUI.HasSelection.Use(cancellationToken);
 
     private void OnSwitchRightPanelClick()
-        => PanelsUI.Right.Toggle();
+        => ChatContext.PanelsUI.Right.Toggle();
 
     private void OnOpenLeftPanelClick()
-        => PanelsUI.Left.SetIsVisible(true);
+        => ChatContext.PanelsUI.Left.SetIsVisible(true);
 }

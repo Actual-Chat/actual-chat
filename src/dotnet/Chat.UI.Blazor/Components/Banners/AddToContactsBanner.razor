@@ -17,11 +17,12 @@
 </Banner>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IContacts Contacts { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    private Session Session => ChatContext.Session;
+    private Chat Chat => ChatContext.Chat;
+    private IContacts Contacts => ChatContext.Contacts;
+    private UICommander UICommander => ChatContext.UICommander;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

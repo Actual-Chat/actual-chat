@@ -9,8 +9,9 @@
     private ChatMessageModel? _chatMessageModel;
     private bool _isSystem;
 
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    private Session Session => ChatHub.Session;
+    private IChats Chats => ChatHub.Chats;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var sEntryId, var sIsSystem ])

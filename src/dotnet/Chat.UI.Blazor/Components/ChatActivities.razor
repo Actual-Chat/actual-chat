@@ -48,7 +48,7 @@
     }
 
     public sealed class Model {
-        public static Model None { get; } = new();
+        public static readonly Model None = new();
 
         public ApiArray<string> RecordingAuthorSids { get; init; } = ApiArray<string>.Empty;
     }

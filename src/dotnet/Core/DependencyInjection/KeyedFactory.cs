@@ -1,17 +1,14 @@
 namespace ActualChat.DependencyInjection;
 
-public class KeyedFactory<TService, TKey> : IHasServices
+public class KeyedFactory<TService, TKey>(
+    IServiceProvider services,
+    Func<IServiceProvider, TKey, TService>? factory = null
+    ) : IHasServices
     where TService : class
 {
-    public IServiceProvider Services { get; }
+    public IServiceProvider Services { get; } = services;
     public TService this[TKey key] => Factory.Invoke(Services, key);
-    public Func<IServiceProvider, TKey, TService> Factory { get; init; }
-
-    public KeyedFactory(IServiceProvider services, Func<IServiceProvider, TKey, TService>? factory = null)
-    {
-        Services = services;
-        Factory = factory ?? DefaultFactory;
-    }
+    public Func<IServiceProvider, TKey, TService> Factory { get; init; } = factory ?? DefaultFactory;
 
     public KeyedFactory<TService, TKey> ToGeneric()
         => this;
@@ -25,14 +22,13 @@ public class KeyedFactory<TService, TKey> : IHasServices
         => (TService)typeof(TService).CreateInstance(services, key);
 }
 
-public sealed class KeyedFactory<TService, TKey, TImplementation> : KeyedFactory<TService, TKey>
+public sealed class KeyedFactory<TService, TKey, TImplementation>(
+    IServiceProvider services,
+    Func<IServiceProvider, TKey, TImplementation>? factory
+    ) : KeyedFactory<TService, TKey>(services, factory ?? DefaultFactory)
     where TService : class
     where TImplementation : class, TService
 {
-    public KeyedFactory(IServiceProvider services, Func<IServiceProvider, TKey, TImplementation>? factory)
-        : base(services, factory ?? DefaultFactory)
-    { }
-
     // Private methods
 
     private static new TImplementation DefaultFactory(IServiceProvider services, TKey key)

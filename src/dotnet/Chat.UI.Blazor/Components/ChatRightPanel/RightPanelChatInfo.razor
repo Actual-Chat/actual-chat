@@ -57,17 +57,17 @@
 </div>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IRoles Roles { get; init; } = null!;
-    [Inject] private IInvites Invites { get; init; } = null!;
-    [Inject] private ShareUI ShareUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    private ModalUI ModalUI => ShareUI.ModalUI;
+    private Session Session => ChatContext.Session;
+    private Chat Chat => ChatContext.Chat;
+    private IChats Chats => ChatContext.Chats;
+    private IInvites Invites => ChatContext.Invites;
+    private IAccounts Accounts => ChatContext.Accounts;
+    private AccountSettings AccountSettings => ChatContext.AccountSettings;
+    private ShareUI ShareUI => ChatContext.ShareUI;
+    private ModalUI ModalUI => ChatContext.ModalUI;
+    private UICommander UICommander => ChatContext.UICommander;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -105,7 +105,7 @@
         => ShareUI.Share(shareModel);
 
     public sealed record Model {
-        public static Model None { get; } = new();
+        public static readonly Model None = new();
 
         public string? Title { get; init; }
         public ShareModalModel? ShareModel { get; init; }

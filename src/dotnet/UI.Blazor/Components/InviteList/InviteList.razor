@@ -75,7 +75,7 @@
         switch (invite.Details.Option) {
             case UserInviteOption: {
                 var request = new ShareRequest("Your Actual Chat invite", link);
-                _ = ShareUI.Share("Share Actual Chat invite", request);
+                _ = ShareUI.Share(ShareKind.ActualChatInvite, "Share Actual Chat invite", "", request);
                 return;
             }
             case ChatInviteOption chatDetails: {
@@ -87,7 +87,9 @@
 
                 var title = "Share private chat join link";
                 var text = $"\"{chat.Title}\" on Actual Chat";
-                var shareModel = new ShareModalModel(title, new(text, link));
+                var shareModel = new ShareModalModel(
+                    ShareKind.ChatInvite, title, chat.Title,
+                    new(text, link));
                 _ = ShareUI.Share(shareModel);
                 return;
             }

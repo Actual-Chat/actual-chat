@@ -31,7 +31,7 @@
     <Footer>
         <EmbeddedMessageEditor
             Text="@_comment"
-            Placeholder="Add comment (optional)"
+            Placeholder="Add your comment (optional)"
             TextChanged="OnCommentChanged" />
         @if (ModalModel.Request.HasLink(out var link)) {
             <input type="hidden" @ref="@_copyTextSourceRef" value="@RequestWithComment.GetShareTextAndLink(UrlMapper)" />

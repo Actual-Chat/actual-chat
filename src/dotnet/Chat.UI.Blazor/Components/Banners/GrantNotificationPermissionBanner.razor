@@ -37,11 +37,11 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private LocalSettings LocalSettings { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
+    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
 
     protected override void OnInitialized() {
         _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, nameof(_dismissedAt)));

@@ -16,11 +16,12 @@
 </ButtonRound>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    private Session Session => ChatHub.Session;
+    private AccountSettings AccountSettings => ChatHub.AccountSettings;
+    private LanguageUI LanguageUI => ChatHub.LanguageUI;
+    private ModalUI ModalUI => ChatHub.ModalUI;
+    private UICommander UICommander => ChatHub.UICommander;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 

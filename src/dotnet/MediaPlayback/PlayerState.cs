@@ -8,7 +8,6 @@ public sealed record PlayerState
     public bool IsEnded { get; init; }
     public Exception? Error { get; init; }
 
-    // TODO: do we need this?
     // This record relies on referential equality
     public bool Equals(PlayerState? other)
         => ReferenceEquals(this, other);

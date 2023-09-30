@@ -1,21 +1,13 @@
 namespace ActualChat.Chat.UI.Blazor.Testing;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
-public sealed class TestListItemRef : IVirtualListItem
+public sealed class TestListItemRef(int id, int rangeSeed, int? contentSeed) : IVirtualListItem
 {
-    public int Id { get; }
-    public int RangeSeed { get; }
-    public int? ContentSeed { get; }
+    public int Id { get; } = id;
+    public int RangeSeed { get; } = rangeSeed;
+    public int? ContentSeed { get; } = contentSeed;
 
-    public Symbol Key { get; }
+    public Symbol Key { get; } = id.Format();
     public int CountAs { get; init; } = 1;
     public bool IsFirstTimeRendered { get; } = true;
-
-    public TestListItemRef(int id, int rangeSeed, int? contentSeed)
-    {
-        Id = id;
-        Key = id.Format();
-        RangeSeed = rangeSeed;
-        ContentSeed = contentSeed;
-    }
 }

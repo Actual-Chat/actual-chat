@@ -1,8 +1,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Pages
-@inherits ComputedStateComponent<EmptyChatContent.Model>
+@inherits ComputedStateComponent<EmptyChatContent.Model?>
 @{
     var m = State.Value;
+    if (ReferenceEquals(m, null))
+        return;
 }
 
 <div class="empty-chat-content">
@@ -18,25 +20,25 @@
 </div>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
+    private Session Session => ChatContext.Session;
+    private Chat Chat => ChatContext.Chat;
+    private IAccounts Accounts => ChatContext.Accounts;
+    private ChatUI ChatUI => ChatContext.ChatUI;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
-        => new() {
-            InitialValue = Model.None,
-            Category = GetStateCategory(),
-        };
+    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        var isEmpty = await ChatUI.IsEmpty(Chat.Id, cancellationToken);
+        if (!isEmpty || Chat.HasSingleAuthor)
+            return null;
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (!Chat.Id.IsPeerChat(out var peerChatId))
-            return Model.None;
+            return Model.NoPeerAccount;
 
-        var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
+        var ownAccount = ChatContext.OwnAccount;
         var peerAccountId = peerChatId.UserIds.OtherThanOrDefault(ownAccount.Id);
         if (peerAccountId.IsNone)
-            return Model.None;
+            return Model.NoPeerAccount;
 
         var peerAccount = await Accounts.Get(Session, peerAccountId, cancellationToken);
         return new Model() { PeerAccount = peerAccount };
@@ -45,7 +47,7 @@
     // Nested types
 
     public sealed record Model {
-        public static Model None { get; } = new();
+        public static readonly Model NoPeerAccount = new();
 
         public Account? PeerAccount { get; init; }
     }

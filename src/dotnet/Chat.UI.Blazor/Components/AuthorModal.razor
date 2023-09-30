@@ -87,8 +87,8 @@
     }
 
     public sealed record ComputedModel {
-        public static ComputedModel None { get; } = new() { Author = Author.None, OwnAccount = AccountFull.None };
-        public static ComputedModel Loading { get; } = new() { Author = Author.Loading, OwnAccount = AccountFull.Loading }; // Should differ by ref. from None
+        public static readonly ComputedModel None = new() { Author = Author.None, OwnAccount = AccountFull.None };
+        public static readonly ComputedModel Loading = new() { Author = Author.Loading, OwnAccount = AccountFull.Loading }; // Should differ by ref. from None
 
         public Author Author { get; init; } = null!;
         public Account? Account { get; init; }

@@ -6,7 +6,7 @@ public sealed class Tracer
 {
     private readonly CpuTimestamp _startedAt;
 
-    public static Tracer None { get; } = new("None", null);
+    public static readonly Tracer None = new("None", null);
     public static Tracer Default { get; set; } =
 #if DEBUG
         new("Default", static x => Console.WriteLine("@ " + x.Format()));

@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.Components;
 public sealed class VirtualListData<TItem>(IReadOnlyList<TItem> items)
     where TItem : IVirtualListItem
 {
-    public static VirtualListData<TItem> None { get; } = new(Array.Empty<TItem>());
+    public static readonly VirtualListData<TItem> None = new(Array.Empty<TItem>());
 
     public bool IsNone
         => ReferenceEquals(this, None);

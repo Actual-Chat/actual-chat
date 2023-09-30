@@ -37,7 +37,7 @@
 
     public sealed record Model
     {
-        public static Model None { get; } = new();
+        public static readonly Model None = new();
 
         public User? ClientUser { get; init; }
         public Moment ServerTime { get; init; }

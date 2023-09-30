@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text;
@@ -6,7 +5,6 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
 using Cysharp.Text;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 
