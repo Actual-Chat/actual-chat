@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public class MiddlePanel
+public class MiddlePanel : IDisposable
 {
     private readonly IComputedState<bool> _isVisible;
 
@@ -20,6 +20,9 @@ public class MiddlePanel
             },
             ComputeIsVisible);
     }
+
+    public void Dispose()
+        => _isVisible.Dispose();
 
     private async Task<bool> ComputeIsVisible(IComputedState<bool> state, CancellationToken cancellationToken)
     {

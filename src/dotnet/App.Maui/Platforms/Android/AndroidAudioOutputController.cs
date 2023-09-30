@@ -11,18 +11,20 @@ using static Android.Media.AudioManager;
 
 namespace ActualChat.App.Maui;
 
-public sealed class AndroidAudioOutputController : IAudioOutputController
+public sealed class AndroidAudioOutputController : IAudioOutputController, IDisposable
 {
     private const string AndroidAudioOutput = nameof(AndroidAudioOutput);
     private readonly AudioSwitch _audioSwitch;
     private readonly AudioManager _audioManager;
     private readonly IMutableState<bool> _isAudioOn;
     private readonly IStoredState<bool> _isSpeakerphoneOnStored;
+    private readonly IComputedState<bool> _isSpeakerphoneOn;
     private readonly object _lock = new();
 
-    public IState<bool> IsAudioOn => _isAudioOn;
-    public IState<bool> IsSpeakerphoneOn { get; }
     private ILogger Log { get; }
+
+    public IState<bool> IsAudioOn => _isAudioOn;
+    public IState<bool> IsSpeakerphoneOn => _isSpeakerphoneOn;
 
     public AndroidAudioOutputController(IServiceProvider services)
     {
@@ -55,7 +57,7 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
                 InitialValue = false,
                 Category = StateCategories.Get(type, nameof(_isSpeakerphoneOnStored)),
             });
-        IsSpeakerphoneOn = stateFactory.NewComputed(
+        _isSpeakerphoneOn = stateFactory.NewComputed(
             new ComputedState<bool>.Options() {
                 ComputedOptions = new ComputedOptions() {
                     AutoInvalidationDelay = TimeSpan.FromSeconds(5),
@@ -65,6 +67,9 @@ public sealed class AndroidAudioOutputController : IAudioOutputController
             },
             (_, _) => Task.FromResult(IsSpeakerphoneActuallyOn(true)));
     }
+
+    public void Dispose()
+        => _isSpeakerphoneOn.Dispose();
 
     // TODO(DF):
     // We need an audio player that can playback OPUS audio with
