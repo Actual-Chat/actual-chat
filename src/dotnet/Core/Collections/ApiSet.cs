@@ -8,6 +8,7 @@ namespace ActualChat.Collections;
 public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
 {
     public static readonly ApiSet<T> Empty = new(Array.Empty<T>());
+
     public ApiSet() { }
     public ApiSet(IEnumerable<T> collection) : base(collection) { }
     public ApiSet(IEnumerable<T> collection, IEqualityComparer<T>? comparer) : base(collection, comparer) { }

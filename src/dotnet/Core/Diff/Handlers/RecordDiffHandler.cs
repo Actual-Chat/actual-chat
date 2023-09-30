@@ -48,19 +48,15 @@ public class RecordDiffHandler<
 
     // Nested types
 
-    public abstract class RecordDiffPropertyInfo
+    public abstract class RecordDiffPropertyInfo(
+        DiffEngine engine,
+        PropertyInfo diffProperty,
+        PropertyInfo recordProperty)
     {
-        public DiffEngine Engine { get; }
-        public PropertyInfo DiffProperty { get; }
-        public PropertyInfo RecordProperty { get; }
+        public DiffEngine Engine { get; } = engine;
+        public PropertyInfo DiffProperty { get; } = diffProperty;
+        public PropertyInfo RecordProperty { get; } = recordProperty;
         public abstract IDiffHandler UntypedHandler { get; }
-
-        protected RecordDiffPropertyInfo(DiffEngine engine, PropertyInfo diffProperty, PropertyInfo recordProperty)
-        {
-            Engine = engine;
-            DiffProperty = diffProperty;
-            RecordProperty = recordProperty;
-        }
 
         public abstract void Diff(TRecord source, TRecord target, TDiff diff);
         public abstract void Apply(TRecord source, TRecord target, TDiff diff);

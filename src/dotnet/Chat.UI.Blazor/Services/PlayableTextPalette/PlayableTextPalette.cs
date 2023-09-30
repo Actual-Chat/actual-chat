@@ -3,7 +3,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class PlayableTextPalette
 {
     private const int HistoryLength = 10;
-    private static readonly ApiArray<PlayableTextColor> _colors = new(
+    private static readonly ApiArray<PlayableTextColor> _colors = ApiArray.New(
         PlayableTextColor.Blue,
         PlayableTextColor.Purple,
         PlayableTextColor.Cyan,

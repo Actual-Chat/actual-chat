@@ -7,6 +7,10 @@ namespace ActualChat.Collections;
 public static class ApiArray
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ApiArray<T> Empty<T>()
+        => ApiArray<T>.Empty;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ApiArray<T> New<T>(params T[] items)
         => new(items);
 }
@@ -14,40 +18,56 @@ public static class ApiArray
 [JsonConverter(typeof(ApiArrayJsonConverter))]
 [Newtonsoft.Json.JsonConverter(typeof(ApiArrayNewtonsoftJsonConverter))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArray<T>>, IEquatable<ApiArray<T>>
+[method: MemoryPackConstructor]
+public readonly partial struct ApiArray<T>(T[] items)
+    : IReadOnlyList<T>, ICloneable<ApiArray<T>>, IEquatable<ApiArray<T>>
 {
-    public static readonly ApiArray<T> Empty = new(Array.Empty<T>());
+    private static readonly T[] EmptyItems = Array.Empty<T>();
+    public static readonly ApiArray<T> Empty = new(EmptyItems);
 
-    private readonly T[]? _items;
+    private readonly T[]? _items = items.Length == 0 ? EmptyItems : items;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public T[] Items => _items ?? Array.Empty<T>();
+    public T[] Items {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _items ?? EmptyItems;
+    }
+
     [MemoryPackIgnore]
-    public int Count => _items?.Length ?? 0;
+    public int Count {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Items.Length;
+    }
+
     [MemoryPackIgnore]
-    public bool IsEmpty => _items == null;
+    public bool IsEmpty {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Items.Length == 0;
+    }
 
-    public T this[int index]
-        => _items == null
-            ? throw new ArgumentOutOfRangeException(nameof(index))
-            : _items[index];
+    public T this[int index] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Items[index];
+    }
 
-    public ApiArray<T> this[Range range]
-        => new(Items[range]);
+    public ApiArray<T> this[Range range] {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => new (Items[range]);
+    }
 
-    [MemoryPackConstructor]
-    public ApiArray(params T[]? items)
-        => _items = items?.Length > 0 ? items : default;
-    public ApiArray(List<T>? source)
-        => _items = source == null || source.Count == 0 ? null : source.ToArray();
-    public ApiArray(IEnumerable<T>? source)
-        : this(source?.ToArray()) { }
+    public ApiArray(List<T> source)
+        : this(source.Count == 0 ? EmptyItems : source.ToArray())
+    { }
+
+    public ApiArray(IEnumerable<T> source)
+        : this(source.ToArray())
+    { }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)Items).GetEnumerator();
 
     object ICloneable.Clone() => Clone();
-    public ApiArray<T> Clone() => new(_items?.ToArray());
+    public ApiArray<T> Clone() => new(IsEmpty ? EmptyItems : Items.ToArray());
 
     public override string ToString()
     {
@@ -81,14 +101,14 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
             return false;
         }
 
-        existingItem = _items![index];
+        existingItem = Items[index];
         return true;
     }
 
     public int IndexOf(T item)
     {
-        var items = _items;
-        if (items == null || items.Length == 0)
+        var items = Items;
+        if (items.Length == 0)
             return -1;
 
         for (var i = 0; i < items.Length; i++) {
@@ -101,8 +121,8 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
 
     public int LastIndexOf(T item)
     {
-        var items = _items;
-        if (items == null || items.Length == 0)
+        var items = Items;
+        if (items.Length == 0)
             return -1;
 
         for (var i = items.Length - 1; i >= 0; i--) {
@@ -140,25 +160,26 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
             return Add(item, addInFront);
 
         var copy = Clone();
-        copy.Items[index] = updater(copy.Items[index]);
+        copy.Items[index] = updater.Invoke(copy.Items[index]);
         return copy;
     }
 
     public ApiArray<T> UpdateWhere(Func<T, bool> where, Func<T, T> updater)
     {
         ApiArray<T>? copy = null;
-        for (var i = 0; i < Items.Length; i++)
-            if (where(Items[i])) {
+        var items = Items;
+        for (var i = 0; i < items.Length; i++)
+            if (where.Invoke(items[i])) {
                 copy ??= Clone();
-                copy.Value.Items[i] = updater(copy.Value.Items[i]);
+                copy.Value.Items[i] = updater.Invoke(copy.Value.Items[i]);
             }
         return copy ?? this;
     }
 
     public ApiArray<T> RemoveAll(T item)
     {
-        var items = _items;
-        if (items == null || items.Length == 0)
+        var items = Items;
+        if (items.Length == 0)
             return this;
 
         var list = new List<T>(items.Length);
@@ -168,13 +189,13 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
         }
         return list.Count == items.Length
             ? this
-            : new ApiArray<T>(list.ToArray());
+            : new ApiArray<T>(list);
     }
 
     public ApiArray<T> RemoveAll(Func<T, bool> predicate)
     {
-        var items = _items;
-        if (items == null || items.Length == 0)
+        var items = Items;
+        if (items.Length == 0)
             return this;
 
         var list = new List<T>(items.Length);
@@ -184,13 +205,13 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
         }
         return list.Count == items.Length
             ? this
-            : new ApiArray<T>(list.ToArray());
+            : new ApiArray<T>(list);
     }
 
     public ApiArray<T> RemoveAll(Func<T, int, bool> predicate)
     {
-        var items = _items;
-        if (items == null || items.Length == 0)
+        var items = Items;
+        if (items.Length == 0)
             return this;
 
         var list = new List<T>(items.Length);
@@ -201,16 +222,18 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
         }
         return list.Count == items.Length
             ? this
-            : new ApiArray<T>(list.ToArray());
+            : new ApiArray<T>(list);
     }
 
     public ApiArray<T> Trim(int maxCount)
     {
         if (maxCount < 0)
             throw new ArgumentOutOfRangeException(nameof(maxCount));
+        if (maxCount == 0)
+            return Empty;
 
-        var items = _items;
-        if (items == null || items.Length <= maxCount)
+        var items = Items;
+        if (items.Length <= maxCount)
             return this;
 
         var copy = new T[maxCount];
@@ -220,9 +243,9 @@ public readonly partial struct ApiArray<T> : IReadOnlyList<T>, ICloneable<ApiArr
 
     // Equality
 
-    public bool Equals(ApiArray<T> other) => Equals(_items, other._items);
+    public bool Equals(ApiArray<T> other) => Equals(Items, other.Items);
     public override bool Equals(object? obj) => obj is ApiArray<T> other && Equals(other);
-    public override int GetHashCode() => _items?.GetHashCode() ?? 0;
+    public override int GetHashCode() => Items.GetHashCode();
 
     public static bool operator ==(ApiArray<T> left, ApiArray<T> right) => left.Equals(right);
     public static bool operator !=(ApiArray<T> left, ApiArray<T> right) => !left.Equals(right);

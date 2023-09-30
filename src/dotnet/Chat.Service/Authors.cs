@@ -235,9 +235,9 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
                 new Change<RoleDiff> {
                     Update = new RoleDiff {
                         AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
-                            RemovedItems = new ApiArray<AuthorId>(author.Id)
-                        }
-                    }
+                            RemovedItems = ApiArray.New(author.Id),
+                        },
+                    },
                 });
 
             await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
@@ -362,9 +362,9 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             new Change<RoleDiff> {
                 Update = new RoleDiff {
                     AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
-                        AddedItems = new ApiArray<AuthorId>(authorId)
-                    }
-                }
+                        AddedItems = ApiArray.New(authorId),
+                    },
+                },
             });
 
         await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);

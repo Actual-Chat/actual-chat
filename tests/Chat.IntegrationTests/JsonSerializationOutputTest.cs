@@ -13,10 +13,10 @@ public class JsonSerializationOutputTest : TestBase
     {
         Dump(new ThemeSettings(Theme.Dark));
         Dump(new UserLanguageSettings() { Primary = Languages.French });
-        Dump(new ApiArray<ActiveChat>(new ActiveChat(ChatId.ParseOrNone("dpwo1tm0tw"))));
+        Dump(ApiArray.New(new ActiveChat(ChatId.ParseOrNone("dpwo1tm0tw"))));
         Dump(new UserOnboardingSettings() { IsAvatarStepCompleted = true });
         Dump(new ChatListSettings(ChatListOrder.ByAlphabet));
-        Dump(new UserBubbleSettings() { ReadBubbles = new ApiArray<string>("x") });
+        Dump(new UserBubbleSettings() { ReadBubbles = ApiArray.New("x") });
     }
 
     private void Dump<T>(T instance)
