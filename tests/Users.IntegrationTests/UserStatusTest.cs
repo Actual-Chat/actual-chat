@@ -54,11 +54,12 @@ public class UserStatusTest : AppHostTestBase
         foreach (var newStatus in newStatuses) {
             var newAccount = account with { Status = newStatus };
             await _tester.Commander.Call(new Accounts_Update(_adminSession, newAccount, account.Version));
-            await Task.Delay(100);
 
             // assert
-            account = await GetOwnAccount();
-            account.Status.Should().Be(newStatus);
+            await TestExt.WhenMetAsync(async () => {
+                account = await GetOwnAccount();
+                account.Status.Should().Be(newStatus);
+            }, TimeSpan.FromSeconds(1));
         }
     }
 
