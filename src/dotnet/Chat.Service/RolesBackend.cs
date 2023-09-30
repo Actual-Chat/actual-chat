@@ -5,21 +5,16 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class RolesBackend : DbServiceBase<ChatDbContext>, IRolesBackend
+public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IRolesBackend
 {
     private IChatsBackend? _chatsBackend;
 
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IDbEntityResolver<string, DbRole> DbRoleResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbRole>>();
     private IDbShardLocalIdGenerator<DbRole, string> DbRoleIdGenerator { get; }
-    private DiffEngine DiffEngine { get; }
-
-    public RolesBackend(IServiceProvider services) : base(services)
-    {
-        DbRoleResolver = services.GetRequiredService<IDbEntityResolver<string, DbRole>>();
-        DbRoleIdGenerator = services.GetRequiredService<IDbShardLocalIdGenerator<DbRole, string>>();
-        DiffEngine = services.GetRequiredService<DiffEngine>();
-    }
+        = services.GetRequiredService<IDbShardLocalIdGenerator<DbRole, string>>();
+    private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
 
     // [ComputeMethod]
     public virtual async Task<Role?> Get(ChatId chatId, RoleId roleId, CancellationToken cancellationToken)
