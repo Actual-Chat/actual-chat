@@ -5,6 +5,9 @@
 
 <OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
 <div class="left-panel-content">
+    <div class="c-banner">
+        <DownloadAppBanner CanBeClosed="true"/>
+    </div>
     <div class="c-search">
         <SearchBox
             @ref="_searchBoxRef"
