@@ -90,7 +90,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    [ComputeMethod(MinCacheDuration = 300)]
+    [ComputeMethod(MinCacheDuration = 300, InvalidationDelay = 0.1)]
     public virtual async Task<ChatInfo?> Get(ChatId chatId, CancellationToken cancellationToken = default)
     {
         DebugLog?.LogDebug("Get: {ChatId}", chatId.Value);
