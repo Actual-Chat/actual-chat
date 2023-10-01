@@ -1,0 +1,20 @@
+.download-tiles {
+    @apply grid grid-cols-2 gap-8;
+    @apply w-auto;
+}
+body.narrow .download-tiles {
+    @apply grid-cols-1 gap-4;
+    @apply w-full;
+}
+.download-tiles .web-app {
+    @apply flex-x items-center gap-2;
+    @apply px-2 py-1;
+    @apply rounded-lg;
+    @apply bg-black;
+}
+.download-tiles .web-app > span {
+    @apply text-base font-medium text-04;
+}
+.download-tiles .web-app > i {
+    @apply text-2xl text-04 font-thin;
+}

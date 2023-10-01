@@ -1260,12 +1260,8 @@ body.narrow .page-links .page-title {
     @apply mt-0 mb-4;
     @apply text-2xl;
 }
-.page-links .c-tiles {
-    @apply grid grid-cols-2 gap-8;
-    @apply w-auto;
-}
-body.narrow .page-links .c-tiles {
-    @apply grid-cols-1 gap-4;
+.btn-to-main-page {
+    @apply mt-4;
     @apply w-full;
 }
 body.wide .page-links .btn-to-main-page {

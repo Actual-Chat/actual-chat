@@ -4,60 +4,14 @@
             <div class="page-title">
                 Get Actual Chat
             </div>
-            <div class="c-tiles">
-                <LandingDownloadTile Link="@(Links.Apps.Android)">
-                    <Title>Android App</Title>
-                    <Text>Mobile, Tablet</Text>
-                    <Brand>
-                        <img draggable="false" src="/dist/images/landing/google-play.svg" alt="Google Play">
-                    </Brand>
-                    <QrCode>
-                        <img draggable="false" src="/dist/images/landing/google-play-qr.svg" alt="QR Google Play">
-                    </QrCode>
-                </LandingDownloadTile>
-                <LandingDownloadTile Link="@(Links.Apps.iOS)">
-                    <Title>iOS App</Title>
-                    <Text>Mobile, Tablet</Text>
-                    <Brand>
-                        <img draggable="false" src="/dist/images/landing/app-store.svg" alt="App Store">
-                    </Brand>
-                    <QrCode>
-                        <img draggable="false" src="/dist/images/landing/app-store-qr.svg" alt="App Store QR">
-                    </QrCode>
-                </LandingDownloadTile>
-                <LandingDownloadTile Link="@(Links.Apps.Windows)">
-                    <Title>Windows App</Title>
-                    <Text>Desktop</Text>
-                    <Brand>
-                        <img draggable="false" src="/dist/images/landing/microsoft-store.svg" alt="Microsoft Store">
-                    </Brand>
-                    <QrCode>
-                        <img draggable="false" src="/dist/images/landing/microsoft-store-qr.svg" alt="Microsoft Store QR">
-                    </QrCode>
-                </LandingDownloadTile>
-                <LandingDownloadTile OnClick="@SignIn">
-                    <Title>Web App</Title>
-                    <Text>Mobile, Desktop</Text>
-                    <Brand>
-                        <div class="web-app">
-                            <span>Sign-in to web app</span>
-                            <i class="icon-monitor"></i>
-                        </div>
-                    </Brand>
-                </LandingDownloadTile>
-                <button class="btn-download transparent btn-to-main-page" @onclick="@BackToMainPageClick">
-                    Back to Main page
-                </button>
-            </div>
+            <DownloadTiles/>
+            <button class="btn-download transparent btn-to-main-page" @onclick="@BackToMainPageClick">
+                Back to Main page
+            </button>
         </div>
     </div>
 </div>
 
 @code {
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-
     [Parameter] public EventCallback BackToMainPageClick { get; set; }
-
-    private Task SignIn()
-        => ModalUI.Show(new SignInModal.Model());
 }
