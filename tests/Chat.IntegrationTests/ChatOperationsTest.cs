@@ -138,7 +138,10 @@ public class ChatOperationsTest : AppHostTestBase
     [Fact]
     public async Task NotesChatCreatedOnSignIn()
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost(configureServices:c => c.AddChatDbDataInitialization(
+            o => {
+                o.AddAnnouncementsChat = true;
+            }));
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         var account = await tester.SignIn(new User("", "Notes"));
@@ -152,13 +155,11 @@ public class ChatOperationsTest : AppHostTestBase
         var dbHub = services.DbHub<ChatDbContext>();
         var dbContext = dbHub.CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
-
         var dbChat = await dbContext.Chats
             .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
             .Where(x => x.a.UserId == account.Id && x.c.SystemTag == Constants.Chat.SystemTags.Notes.Value)
             .Select(x => x.c)
             .FirstOrDefaultAsync();
-
         dbChat.Should().NotBeNull();
         var chat = await chatsBackend.Get(ChatId.Parse(dbChat!.Id), CancellationToken.None);
         chat.Require();

@@ -1,18 +1,14 @@
 using ActualChat.App.Server;
+using ActualChat.Chat.Module;
 using ActualChat.Blobs.Internal;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
-using Stl.Fusion.Server;
 using Stl.Fusion.Server.Authentication;
 using Stl.IO;
-using Stl.Rpc;
-using Stl.Testing.Output;
-using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Testing.Host;
 
@@ -63,6 +59,15 @@ public static class TestHostFactory
                 services.AddSingleton(output);
                 services.AddSingleton<PostgreSqlPoolCleaner>();
                 services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
+
+                services.AddSingleton<ChatDbInitializer.InitializeDataOptions>(c => {
+                    var options = new ChatDbInitializer.InitializeDataOptions();
+                    options.DisableAll();
+                    var configurators = c.GetRequiredService<IEnumerable<Action<ChatDbInitializer.InitializeDataOptions>>>();
+                    foreach (var configurator in configurators)
+                        configurator(options);
+                    return options;
+                });
             },
             AppConfigurationBuilder = builder => {
                 ConfigureTestApp(builder, output);
