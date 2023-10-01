@@ -11,7 +11,7 @@
     @apply text-04 text-headline-1;
 }
 .download-app-banner-download-button .icon-download {
-    @apply text-04;
+    @apply text-2xl font-thin text-04;
 }
 .download-app-banner-download-button .icon-close {
     @apply text-04;
