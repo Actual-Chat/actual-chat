@@ -15,7 +15,11 @@
     </div>
     <i class="icon-download"></i>
     @if (CanBeClosed) {
-        <i class="icon-close" @onclick="@OnClose"></i>
+        <i class="icon-close"
+           @onclick="@OnClose"
+           @onclick:stopPropagation="true"
+           @onclick:preventDefault="true">
+        </i>
     }
 </div>
 
