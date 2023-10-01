@@ -50,5 +50,5 @@
     @apply border-b border-bg-04;
 }
 .left-panel-content > .c-banner {
-    @apply px-2 pt-2;
+    @apply px-2 py-2 md:py-0 md:pt-2;
 }
