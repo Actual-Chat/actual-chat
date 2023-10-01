@@ -1260,7 +1260,7 @@ body.narrow .page-links .page-title {
     @apply mt-0 mb-4;
     @apply text-2xl;
 }
-.btn-to-main-page {
+body.narrow .btn-to-main-page {
     @apply mt-4;
     @apply w-full;
 }
