@@ -90,6 +90,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
             .Add<ForwardMessageModal.Model, ForwardMessageModal>()
             .Add<ShareModalModel, ShareModal>()
             .Add<IncomingShareModal.Model, IncomingShareModal>()
+            .Add<DownloadAppModal.Model, DownloadAppModal>()
         );
         // IBannerViews
         services.AddTypeMap<IBannerView>(map => map

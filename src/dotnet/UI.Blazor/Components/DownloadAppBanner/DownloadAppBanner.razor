@@ -23,6 +23,7 @@
     private IStoredState<bool> _dismissed = null!;
 
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [Parameter] public bool CanBeClosed { get; set; } = true;
 
@@ -31,12 +32,11 @@
         base.OnInitialized();
     }
 
-    private void OnDownload() {
-    }
+    private void OnDownload()
+        => ModalUI.Show(new DownloadAppModal.Model());
 
-    private void OnClose() {
-        _dismissed.Value = true;
-    }
+    private void OnClose()
+        => _dismissed.Value = true;
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         if (!CanBeClosed)

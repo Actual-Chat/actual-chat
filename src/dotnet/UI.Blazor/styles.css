@@ -11,6 +11,7 @@
 @import './Components/ConfirmModal/confirm.css';
 @import './Components/Dropdown/dropdown.css';
 @import './Components/DownloadAppBanner/download-app-banner.css';
+@import './Components/DownloadAppModal/download-app-modal.css';
 @import './Components/DownloadTile/download-tile.css';
 @import './Components/DownloadTiles/download-tiles.css';
 @import './Components/ErrorBarrier/error-barrier.css';

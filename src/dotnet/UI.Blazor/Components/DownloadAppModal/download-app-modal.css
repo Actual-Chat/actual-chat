@@ -1,0 +1,3 @@
+.download-app-modal.modal-frame {
+    @apply md:min-w-200 md:max-w-200 md:min-h-110 md:max-h-110;
+}

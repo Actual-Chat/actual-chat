@@ -2,7 +2,7 @@
     @apply flex-x justify-between gap-4;
     @apply p-4;
     @apply rounded-lg;
-    @apply bg-01;
+    @apply bg-03;
     @apply overflow-hidden;
 }
 body.hoverable .download-tile:hover {
