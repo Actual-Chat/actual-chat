@@ -51,6 +51,9 @@
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="@Class settings-panel @cls" data-settings-panel="@attr">
         <div class="c-tabs" role="tablist">
+            <div class="c-banner">
+                <DownloadAppBanner CanBeClosed="false"/>
+            </div>
             <div class="c-header">
                 <SettingsHeader Title="@Title" ArrowClick="CloseModalClick"/>
             </div>
