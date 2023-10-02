@@ -1,42 +1,42 @@
 namespace ActualChat.Diff.Handlers;
 
-public class SetDiffHandler<TCollection, TItem> : DiffHandlerBase<TCollection, SetDiff<TCollection, TItem>>
-    where TCollection : IReadOnlyCollection<TItem>
+public class SetDiffHandler<TSet, TItem> : DiffHandlerBase<TSet, SetDiff<TSet, TItem>>
+    where TSet : IReadOnlyCollection<TItem>
 {
-    private readonly Type _collectionType;
-    private readonly Type? _collectionGenericType;
+    private readonly Type _setType;
+    private readonly Type? _setGenericType;
 
     public SetDiffHandler(DiffEngine engine) : base(engine)
     {
-        _collectionType = typeof(TCollection);
-        _collectionGenericType = _collectionType.IsConstructedGenericType
-            ? _collectionType.GetGenericTypeDefinition()
+        _setType = typeof(TSet);
+        _setGenericType = _setType.IsConstructedGenericType
+            ? _setType.GetGenericTypeDefinition()
             : null;
     }
 
-    public override SetDiff<TCollection, TItem> Diff(TCollection source, TCollection target)
+    public override SetDiff<TSet, TItem> Diff(TSet source, TSet target)
     {
         var added = target.Except(source).ToApiArray();
         var removed = source.Except(target).ToApiArray();
-        return new SetDiff<TCollection, TItem>(added, removed);
+        return new SetDiff<TSet, TItem>(added, removed);
     }
 
-    public override TCollection Patch(TCollection source, SetDiff<TCollection, TItem> diff)
+    public override TSet Patch(TSet source, SetDiff<TSet, TItem> diff)
     {
         var removedItems = diff.RemovedItems.ToHashSet();
         var target = source
             .Where(i => !removedItems.Contains(i))
             .Concat(diff.AddedItems);
-        if (_collectionGenericType == null)
-            return (TCollection)_collectionType.CreateInstance(target);
-        if (_collectionGenericType == typeof(ApiArray<>))
-            return (TCollection)(object)new ApiArray<TItem>(target);
-        if (_collectionGenericType == typeof(ImmutableArray<>))
-            return (TCollection)(object)ImmutableArray.Create(target);
-        if (_collectionGenericType == typeof(ImmutableList<>))
-            return (TCollection)(object)ImmutableList.Create(target);
-        if (_collectionGenericType == typeof(ImmutableHashSet<>))
-            return (TCollection)(object)ImmutableHashSet.Create(target);
-        return (TCollection)_collectionType.CreateInstance(target);
+        if (_setGenericType == null)
+            return (TSet)_setType.CreateInstance(target);
+        if (_setGenericType == typeof(ApiArray<>))
+            return (TSet)(object)new ApiArray<TItem>(target);
+        if (_setGenericType == typeof(ImmutableArray<>))
+            return (TSet)(object)ImmutableArray.Create(target);
+        if (_setGenericType == typeof(ImmutableList<>))
+            return (TSet)(object)ImmutableList.Create(target);
+        if (_setGenericType == typeof(ImmutableHashSet<>))
+            return (TSet)(object)ImmutableHashSet.Create(target);
+        return (TSet)_setType.CreateInstance(target);
     }
 }
