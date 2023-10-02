@@ -6,11 +6,7 @@
 
 <OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
 <div class="left-panel-content">
-    @if (HostInfo.AppKind != AppKind.MauiApp) {
-        <div class="c-banner">
-            <DownloadAppBanner CanBeClosed="true"/>
-        </div>
-    }
+    <DownloadAppBanner CanBeClosed="true"/>
     <div class="c-search">
         <SearchBox
             @ref="_searchBoxRef"
@@ -38,7 +34,6 @@
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private SearchUI SearchUI { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 

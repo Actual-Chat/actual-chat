@@ -1,26 +1,33 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Kvas
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Hosting
 @inherits ComputedStateComponent<bool>
+
+@if (HostInfo.AppKind == AppKind.MauiApp) {
+    return;
+}
 
 @if (!State.Value) {
     return;
 }
 
-<div
-    class="download-app-banner-download-button"
-    @onclick="@OnDownload">
-    <div class="download-app-banner-title">
-        Download App
+<div class="download-app-banner">
+    <div
+        class="download-app-banner-button"
+        @onclick="@OnDownload">
+        <div class="download-app-banner-title">
+            Download App
+        </div>
+        <i class="icon-download"></i>
+        @if (CanBeClosed) {
+            <i class="icon-close"
+               @onclick="@OnClose"
+               @onclick:stopPropagation="true"
+               @onclick:preventDefault="true">
+            </i>
+        }
     </div>
-    <i class="icon-download"></i>
-    @if (CanBeClosed) {
-        <i class="icon-close"
-           @onclick="@OnClose"
-           @onclick:stopPropagation="true"
-           @onclick:preventDefault="true">
-        </i>
-    }
 </div>
 
 @code {
@@ -28,6 +35,7 @@
 
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter] public bool CanBeClosed { get; set; } = true;
 

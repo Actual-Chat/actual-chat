@@ -51,11 +51,6 @@
 <CascadingValue Value="@this" IsFixed="true" >
     <div class="@Class settings-panel @cls" data-settings-panel="@attr">
         <div class="c-tabs" role="tablist">
-            @if (HostInfo.AppKind != AppKind.MauiApp) {
-                <div class="c-banner">
-                    <DownloadAppBanner CanBeClosed="false"/>
-                </div>
-            }
             <div class="c-header">
                 <SettingsHeader Title="@Title" ArrowClick="CloseModalClick"/>
             </div>
@@ -82,6 +77,7 @@
                     </div>
                 }
             </div>
+            <DownloadAppBanner CanBeClosed="false"/>
             <div class="p-2">
                 <LinkTileItem/>
             </div>
