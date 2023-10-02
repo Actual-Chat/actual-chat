@@ -250,14 +250,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 _suppressNewMessagesEntry = true;
         }
 
-        if (entries.Count == 0)
-            return new VirtualListData<ChatMessageModel>(ChatMessageModel.FromEmpty(Chat.Id)) {
-                HasVeryFirstItem = true,
-                HasVeryLastItem = true,
-                ScrollToKey = null,
-                RequestedStartExpansion = null,
-                RequestedEndExpansion = null,
-            };
+        if (entries.Count == 0) {
+            var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
+            if (isEmpty)
+                return new VirtualListData<ChatMessageModel>(ChatMessageModel.FromEmpty(Chat.Id)) {
+                    HasVeryFirstItem = true,
+                    HasVeryLastItem = true,
+                    ScrollToKey = null,
+                    RequestedStartExpansion = null,
+                    RequestedEndExpansion = null,
+                };
+        }
 
         var messages = ChatMessageModel.FromEntries(
             entries,
