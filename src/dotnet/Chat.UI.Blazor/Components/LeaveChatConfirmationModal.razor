@@ -3,9 +3,11 @@
     var action = ModalModel.IsDelete
         ? "delete"
         : "leave";
+
+    var title = $"{action.Capitalize()} chat";
 }
 
-<DialogFrame Title="Leave chat" Class="modal-xs">
+<DialogFrame Title="@title" Class="modal-xs">
     <Body>
     <FormBlock>
         <p>Are you sure you want to @action this chat?</p>

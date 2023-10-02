@@ -16,9 +16,9 @@
     if (_form == null)
         return;
 
-    var leaveTitle = m.IsOwner && m.MembersCount == 1
-        ? "Delete group"
-        : "Leave group";
+    var leaveTitle = m is { IsOwner: true, MembersCount: 1 }
+        ? "Delete chat"
+        : "Leave chat";
     Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
 }
 
