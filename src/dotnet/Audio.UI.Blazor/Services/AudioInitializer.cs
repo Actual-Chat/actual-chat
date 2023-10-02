@@ -63,6 +63,6 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
 
         // only recent versions of apple hw have decent performance to run NN with WASM SIMD for VAD
         return int.TryParse(match.Groups["version"].Value, CultureInfo.InvariantCulture, out var hwVersion)
-            && hwVersion >= 13;
+            && hwVersion >= 12;
     }
 }

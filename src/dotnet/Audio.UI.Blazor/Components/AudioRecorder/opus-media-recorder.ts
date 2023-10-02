@@ -14,6 +14,8 @@ import { Log } from 'logging';
 import { RecorderStateChanged, RecorderStateEventHandler } from "./opus-media-recorder-contracts";
 import * as signalR from "@microsoft/signalr";
 import { AudioInitializer } from "../../Services/audio-initializer";
+import {BrowserInfo} from "../../../UI.Blazor/Services/BrowserInfo/browser-info";
+import {BrowserInit} from "../../../UI.Blazor/Services/BrowserInit/browser-init";
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -71,7 +73,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     }
 
     public async init(baseUri: string, canUseNNVad: boolean): Promise<void> {
-        debugLog?.log(`-> init()`);
+        debugLog?.log(`-> init()`, baseUri, canUseNNVad);
         this.initStarted = true;
         if (this.whenInitialized.isCompleted())
             return;
@@ -380,8 +382,16 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     private async ensureInitialized(): Promise<void> {
         if (this.initStarted)
             await this.whenInitialized;
-        else
-            throw Error('OpusMediaRecorder init has not been called');
+        else {
+            const origin = window.location.origin;
+            const isMaui = origin.includes('0.0.0.0');
+            let baseUri = origin.replace(/\/?$/, '/');
+            if (isMaui) {
+                await BrowserInit.whenInitialized;
+                baseUri = BrowserInit.baseUri;
+            }
+            await this.init(baseUri, true);
+        }
     }
 
     private recordingFailedDebounced = debounce(() => this.recordingFailed(), RecordingFailedInterval);
