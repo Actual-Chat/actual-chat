@@ -32,6 +32,6 @@ public sealed partial record ExternalContactDiff : RecordDiff
     [DataMember, MemoryPackOrder(3)] public string? MiddleName { get; init; }
     [DataMember, MemoryPackOrder(4)] public string? NamePrefix { get; init; }
     [DataMember, MemoryPackOrder(5)] public string? NameSuffix { get; init; }
-    [DataMember, MemoryPackOrder(6)] public SetDiff<ApiSet<Phone>, Phone> Phones { get; init; } = SetDiff<ApiSet<Phone>, Phone>.Unchanged;
-    [DataMember, MemoryPackOrder(7)] public SetDiff<ApiSet<string>, string> Emails { get; init; } = SetDiff<ApiSet<string>, string>.Unchanged;
+    [DataMember, MemoryPackOrder(6)] public SetDiff<ApiSet<Phone>, Phone> Phones { get; init; }
+    [DataMember, MemoryPackOrder(7)] public SetDiff<ApiSet<string>, string> Emails { get; init; }
 }

@@ -118,7 +118,7 @@ public partial class ChatsUpgradeBackend
                     Update = new RoleDiff {
                         AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
                             AddedItems = ownerAuthorIds,
-                        }
+                        },
                     },
                 });
             await Commander.Call(changeOwnerRoleCmd, cancellationToken).ConfigureAwait(false);
@@ -469,7 +469,7 @@ public partial class ChatsUpgradeBackend
                     Update = new RoleDiff {
                         AuthorIds = new SetDiff<ApiArray<AuthorId>, AuthorId> {
                             AddedItems = ownerAuthorIds,
-                        }
+                        },
                     },
                 });
             await Commander.Call(changeOwnerRoleCmd, cancellationToken).ConfigureAwait(false);

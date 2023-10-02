@@ -2,22 +2,20 @@ using MemoryPack;
 
 namespace ActualChat.Diff;
 
+[StructLayout(LayoutKind.Sequential)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record SetDiff<TCollection, TItem> : IDiff
+[method: MemoryPackConstructor]
+public readonly partial struct SetDiff<TCollection, TItem>(
+    ApiArray<TItem> addedItems,
+    ApiArray<TItem> removedItems = default
+    ) : IDiff
     where TCollection : IReadOnlyCollection<TItem>
 {
-    public static SetDiff<TCollection, TItem> Unchanged { get; } = new();
+    public static readonly SetDiff<TCollection, TItem> Unchanged = default;
 
-    [DataMember, MemoryPackOrder(0)] public ApiArray<TItem> AddedItems { get; init; }
-    [DataMember, MemoryPackOrder(1)] public ApiArray<TItem> RemovedItems { get; init; } = ApiArray<TItem>.Empty;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsEmpty => AddedItems.IsEmpty && RemovedItems.IsEmpty;
 
-    [MemoryPackConstructor]
-    public SetDiff() { }
-    public SetDiff(ApiArray<TItem> addedItems, ApiArray<TItem> removedItems)
-    {
-        AddedItems = addedItems;
-        RemovedItems = removedItems;
-    }
-
-    public bool IsEmpty() => AddedItems.IsEmpty && RemovedItems.IsEmpty;
+    [DataMember(Order = 0), MemoryPackOrder(0)] public ApiArray<TItem> AddedItems { get; init; } = addedItems;
+    [DataMember(Order = 1), MemoryPackOrder(1)] public ApiArray<TItem> RemovedItems { get; init; } = removedItems;
 }

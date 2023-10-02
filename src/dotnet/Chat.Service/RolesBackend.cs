@@ -185,7 +185,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         }
 
         // Processing update.AuthorIds
-        if (!update.AuthorIds.IsEmpty() && !change.IsRemove()) {
+        if (!update.AuthorIds.IsEmpty && !change.IsRemove()) {
             if (role.SystemRole is not SystemRole.None and not SystemRole.Owner)
                 throw StandardError.Constraint("This system role uses automatic membership rules.");
 
@@ -215,7 +215,10 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     DbAuthorId = authorId,
                 });
             // Removing items
-            var removedAuthorIds = update.AuthorIds.RemovedItems.Distinct().Select(i => i.Value).ToList();
+            var removedAuthorIds = update.AuthorIds.RemovedItems
+                .Distinct()
+                .Select(i => i.Value)
+                .ToList();
             if (removedAuthorIds.Any()) {
  #pragma warning disable MA0002
                 var dbAuthorRoles = await dbContext.AuthorRoles

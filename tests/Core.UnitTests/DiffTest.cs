@@ -77,7 +77,6 @@ public class DiffTest : TestBase
         public string? Name { get; init; }
         public Option<string?> AltName { get; init; }
         public int? LegCount { get; init; }
-        public SetDiff<ApiArray<Symbol>, Symbol> Tags { get; init; } =
-            SetDiff<ApiArray<Symbol>, Symbol>.Unchanged;
+        public SetDiff<ApiArray<Symbol>, Symbol> Tags { get; init; }
     }
 }

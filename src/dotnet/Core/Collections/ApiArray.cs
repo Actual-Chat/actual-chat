@@ -23,9 +23,9 @@ public readonly partial struct ApiArray<T>(T[] items)
     : IReadOnlyList<T>, ICloneable<ApiArray<T>>, IEquatable<ApiArray<T>>
 {
     private static readonly T[] EmptyItems = Array.Empty<T>();
-    public static readonly ApiArray<T> Empty = new(EmptyItems);
+    public static readonly ApiArray<T> Empty = default;
 
-    private readonly T[]? _items = items.Length == 0 ? EmptyItems : items;
+    private readonly T[]? _items = items.Length == 0 ? null : items;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public T[] Items {
@@ -64,7 +64,7 @@ public readonly partial struct ApiArray<T>(T[] items)
     { }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    public IEnumerator<T> GetEnumerator() => (IEnumerator<T>)Items.GetEnumerator();
+    public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)Items).GetEnumerator();
 
     object ICloneable.Clone() => Clone();
     public ApiArray<T> Clone() => IsEmpty ? Empty : new(Items.ToArray());
