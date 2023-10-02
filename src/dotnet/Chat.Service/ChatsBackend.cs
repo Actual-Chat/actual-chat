@@ -389,6 +389,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                                     | ChatPermissions.Leave,
                             },
                         });
+                    Log.LogInformation("Weird command: {Command}", createAnyoneRoleCmd);
                     await Commander.Call(createAnyoneRoleCmd, cancellationToken).ConfigureAwait(false);
                 }
             }
