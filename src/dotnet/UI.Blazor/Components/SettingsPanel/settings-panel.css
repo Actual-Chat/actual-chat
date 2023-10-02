@@ -23,6 +23,9 @@
     @apply overflow-hidden;
 
 }
+.settings-panel > .c-tabs > .c-banner {
+    @apply px-2 pt-2;
+}
 .settings-header-title {
     @apply flex-1 flex-x justify-start items-center gap-x-4;
     @apply px-4;

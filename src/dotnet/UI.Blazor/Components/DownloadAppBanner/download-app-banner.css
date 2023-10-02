@@ -1,0 +1,22 @@
+.download-app-banner-download-button {
+    @apply relative flex flex-x gap-x-4 items-center justify-center;
+    @apply w-full h-10;
+    @apply px-6;
+    @apply rounded-lg;
+    @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
+    @apply hover:cursor-pointer;
+}
+.download-app-banner-download-button .download-app-banner-title {
+    @apply flex items-center;
+    @apply text-04 text-headline-1;
+}
+.download-app-banner-download-button .icon-download {
+    @apply text-2xl font-thin text-04;
+}
+.download-app-banner-download-button .icon-close {
+    @apply text-04;
+    @apply absolute;
+    @apply right-4;
+    @apply rounded-full;
+    @apply hover:opacity-80;
+}

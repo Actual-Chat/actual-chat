@@ -1,0 +1,36 @@
+.download-tile {
+    @apply flex-x justify-between gap-4;
+    @apply p-4;
+    @apply rounded-lg;
+    @apply bg-03;
+    @apply overflow-hidden;
+}
+body.hoverable .download-tile:hover {
+    @apply bg-accent;
+}
+body.hoverable .download-tile:hover .c-title,
+body.hoverable .download-tile:hover .c-text {
+    @apply text-04;
+}
+.download-tile .c-title {
+    @apply flex justify-start;
+    @apply text-xl font-semibold;
+}
+.download-tile .c-text {
+    @apply flex justify-start;
+    @apply text-text-1;
+}
+.download-tile .c-brand {
+    @apply md:mt-4;
+}
+.download-tile .c-qrcode {
+    @apply hidden md:flex;
+    @apply w-20 h-20;
+    @apply m-4;
+}
+.download-tile .c-content {
+    @apply flex-1 flex-y justify-between;
+}
+body.narrow .download-tile .c-content {
+    @apply flex-x justify-between;
+}

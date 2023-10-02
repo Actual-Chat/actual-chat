@@ -1,0 +1,52 @@
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="download-tiles">
+    <DownloadTile Link="@(Links.Apps.Android)">
+        <Title>Android App</Title>
+        <Text>Mobile, Tablet</Text>
+        <Brand>
+            <img draggable="false" src="/dist/images/landing/google-play.svg" alt="Google Play">
+        </Brand>
+        <QrCode>
+            <img draggable="false" src="/dist/images/landing/google-play-qr.svg" alt="QR Google Play">
+        </QrCode>
+    </DownloadTile>
+    <DownloadTile Link="@(Links.Apps.iOS)">
+        <Title>iOS App</Title>
+        <Text>Mobile, Tablet</Text>
+        <Brand>
+            <img draggable="false" src="/dist/images/landing/app-store.svg" alt="App Store">
+        </Brand>
+        <QrCode>
+            <img draggable="false" src="/dist/images/landing/app-store-qr.svg" alt="App Store QR">
+        </QrCode>
+    </DownloadTile>
+    <DownloadTile Link="@(Links.Apps.Windows)">
+        <Title>Windows App</Title>
+        <Text>Desktop</Text>
+        <Brand>
+            <img draggable="false" src="/dist/images/landing/microsoft-store.svg" alt="Microsoft Store">
+        </Brand>
+        <QrCode>
+            <img draggable="false" src="/dist/images/landing/microsoft-store-qr.svg" alt="Microsoft Store QR">
+        </QrCode>
+    </DownloadTile>
+    <DownloadTile OnClick="@SignIn">
+        <Title>Web App</Title>
+        <Text>Mobile, Desktop</Text>
+        <Brand>
+            <div class="web-app">
+                <span>Sign-in to web app</span>
+                <i class="icon-monitor"></i>
+            </div>
+        </Brand>
+    </DownloadTile>
+</div>
+
+@code {
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    private Task SignIn()
+        => ModalUI.Show(new SignInModal.Model());
+}
