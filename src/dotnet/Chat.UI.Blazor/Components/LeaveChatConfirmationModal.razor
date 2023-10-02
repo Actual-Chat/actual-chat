@@ -1,14 +1,19 @@
 @implements IModalView<LeaveChatConfirmationModal.Model>
+@{
+    var action = ModalModel.IsDelete
+        ? "delete"
+        : "leave";
+}
 
 <DialogFrame Title="Leave chat" Class="modal-xs">
     <Body>
     <FormBlock>
-        <p>Are you sure you want to leave this chat?</p>
+        <p>Are you sure you want to @action this chat?</p>
     </FormBlock>
     </Body>
     <Buttons>
         <Button Class="btn-modal btn-cancel" Click="OnCancel">Cancel</Button>
-        <Button Class="btn-modal danger" Click="OnLeave">Leave</Button>
+        <Button Class="btn-modal danger" Click="OnLeave">@action.Capitalize()</Button>
     </Buttons>
 </DialogFrame>
 
@@ -26,7 +31,9 @@
 
     private async Task OnLeave(MouseEventArgs arg) {
         var isSelectedChat = ModalModel.Chat.Id.Equals(ChatUI.SelectedChatId.Value);
-        var command = new Authors_Leave(Session, ModalModel.Chat.Id);
+        var command = ModalModel.IsDelete
+            ? (ICommand) new Chats_Change(Session, ModalModel.Chat.Id, null, Change.Remove<ChatDiff>())
+            : new Authors_Leave(Session, ModalModel.Chat.Id);
         var result = await UICommander.Run(command);
         if (!result.HasError) {
             Modal.Close();
@@ -35,5 +42,7 @@
         }
     }
 
-    public sealed record Model(Chat Chat);
+    public sealed record Model(Chat Chat) {
+        public bool IsDelete { get; init; }
+    }
 }

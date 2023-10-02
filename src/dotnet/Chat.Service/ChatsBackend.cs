@@ -410,7 +410,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 var removeMediaCommand = new MediaBackend_Change(
                     new MediaId(dbChat.MediaId),
                     new Change<Media.Media> { Remove = true });
-                await Commander.Call(removeMediaCommand, cancellationToken).ConfigureAwait(false);
+                await Commander.Call(removeMediaCommand, true, cancellationToken).ConfigureAwait(false);
             }
             var attachmentMediaIds = await dbContext.ChatEntries
                 .Where(ce => ce.ChatId == chatId && ce.HasAttachments)

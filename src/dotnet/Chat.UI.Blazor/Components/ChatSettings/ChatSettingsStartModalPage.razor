@@ -16,6 +16,9 @@
     if (_form == null)
         return;
 
+    var leaveTitle = m.IsOwner && m.MembersCount == 1
+        ? "Delete group"
+        : "Leave group";
     Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
 }
 
@@ -175,7 +178,7 @@
             @if (m.Chat.Rules.IsOwner()) {
                 <TileItem Class="item-leave-group" Click="@(() => OnLeaveGroupClick(m))">
                     <Icon><i class="icon-log-out"></i></Icon>
-                    <Content>Leave group</Content>
+                    <Content>@leaveTitle</Content>
                 </TileItem>
             }
         </FormBlock>
@@ -192,15 +195,16 @@
     private DialogButtonInfo _submitButtonInfo = null!;
 
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IInvites Invites { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    // [Inject] private IAuthors Authors { get; init; } = null!;
+    // [Inject] private IChats Chats { get; init; } = null!;
+    // [Inject] private IInvites Invites { get; init; } = null!;
+    // [Inject] private Features Features { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    // [Inject] private UICommander UICommander { get; init; } = null!;
+    // [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    // [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -219,7 +223,7 @@
         _form = Context.PageDataBag.Get<FormModel>(formBagKey);
         if (_form != null)
             return;
-        var chat = await Chats.Get(Session, ChatId, default).Require();
+        var chat = await ChatHub.Chats.Get(Session, ChatId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             Title = chat.Title,
             Picture = chat.Picture?.ToPicture(),
@@ -240,24 +244,28 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chat = await Chats.Get(Session, ChatId, cancellationToken);
+        var chat = await ChatHub.Chats.Get(Session, ChatId, cancellationToken);
         if (chat == null || !chat.Rules.CanEditProperties())
             return new ComputedModel { Chat = chat };
 
-        var allAuthorIds = await Authors.ListAuthorIds(Session, ChatId, cancellationToken);
-        var invites = await Invites.ListChatInvites(Session, ChatId, cancellationToken);
-        var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
+        var ownerIds = await ChatHub.Roles.ListOwnerIds(Session, ChatId, cancellationToken);
+        var ownAuthorId = chat.Rules.Author!.Id;
+        var allAuthorIds = await ChatHub.Authors.ListAuthorIds(Session, ChatId, cancellationToken);
+        var invites = await ChatHub.Invites.ListChatInvites(Session, ChatId, cancellationToken);
+        var threshold = ChatHub.Clocks.SystemClock.Now - TimeSpan.FromDays(3);
         invites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToApiArray();
-        var link = Links.Chat(ChatId).ToDisplayUrl(UrlMapper);
-        var allowEditIsTemplate = await Features.Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
+        var link = Links.Chat(ChatId).ToDisplayUrl(ChatHub.UrlMapper);
+        var allowEditIsTemplate = await ChatHub.Features.Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
         return new() {
             Chat = chat,
             Link = link,
             Invites = invites,
             AllowEditIsTemplate = allowEditIsTemplate,
+            IsOwner = ownerIds.Contains(ownAuthorId),
+            OwnersCount = ownerIds.Count,
             MembersCount = allAuthorIds.Count,
         };
     }
@@ -270,7 +278,7 @@
     private async Task OnNewInviteClick() {
         // TODO: make it configurable
         var invite = Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(ChatId));
-        invite = await UICommander.Run(new Invites_Generate(Session, invite));
+        invite = await ChatHub.UICommander.Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
     }
 
@@ -281,17 +289,18 @@
         if (m.Chat == null)
             return;
 
-        var roles = Services.GetRequiredService<IRoles>();
-        var ownerIds = await roles.ListOwnerIds(Session, ChatId, default);
-        var ownAuthorId = m.Chat?.Rules.Author!.Id;
-        var hasAnotherOwner = ownerIds.Any(c => c.Id != ownAuthorId);
-        if (!hasAnotherOwner) {
-            var message = "You can't leave this chat because you are its only owner. Please add another chat owner first.";
+        var hasAnotherOwner = m is { IsOwner: true, OwnersCount: > 1 };
+        var hasMembers = m.MembersCount > 1;
+        if (!hasAnotherOwner && hasMembers) {
+            const string message = "You can't leave this chat because you are its only owner. Please add another chat owner first.";
             Services.UICommander().ShowError(StandardError.Constraint(message));
-        } else {
-            var chat = await Chats.Get(Session, ChatId, default);
-            var modalUI = Services.GetRequiredService<ModalUI>();
-            _ = modalUI.Show(new LeaveChatConfirmationModal.Model(chat!));
+        } else if (!hasAnotherOwner) {
+            var chat = await ChatHub.Chats.Get(Session, ChatId, default);
+            _ = ChatHub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!) { IsDelete = true });
+        }
+        else {
+            var chat = await ChatHub.Chats.Get(Session, ChatId, default);
+            _ = ChatHub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!));
         }
     }
 
@@ -305,7 +314,7 @@
     }
 
     private async Task Save() {
-        var chat = await Chats.Get(Session, ChatId, default).Require();
+        var chat = await ChatHub.Chats.Get(Session, ChatId, default).Require();
         var newChat = chat with {
             Title = _form!.Title,
             IsPublic = _form.IsPublic,
@@ -317,7 +326,7 @@
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
-        await UICommander.Run(command);
+        await ChatHub.UICommander.Run(command);
     }
 
     public sealed class FormModel {
@@ -364,6 +373,8 @@
         public DisplayUrl? Link { get; init; }
         public ApiArray<Invite> Invites { get; init; } = ApiArray.New<Invite>();
         public bool AllowEditIsTemplate { get; init; }
+        public bool IsOwner { get; init; }
         public int MembersCount { get; init; }
+        public int OwnersCount { get; init; }
     }
 }
