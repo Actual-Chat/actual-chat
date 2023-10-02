@@ -159,9 +159,9 @@ public readonly partial struct ApiArray<T>(T[] items)
         if (index < 0)
             return Add(item, addInFront);
 
-        var copy = Clone();
-        copy.Items[index] = updater.Invoke(copy.Items[index]);
-        return copy;
+        var newItems = Items.ToArray();
+        newItems[index] = updater.Invoke(newItems[index]);
+        return new(newItems);
     }
 
     public ApiArray<T> UpdateWhere(Func<T, bool> where, Func<T, T> updater)
@@ -241,9 +241,9 @@ public readonly partial struct ApiArray<T>(T[] items)
         if (items.Length <= maxCount)
             return this;
 
-        var copy = new T[maxCount];
-        Array.Copy(items, 0, copy, 0, maxCount);
-        return new ApiArray<T>(copy);
+        var newItems = new T[maxCount];
+        Array.Copy(items, 0, newItems, 0, maxCount);
+        return new ApiArray<T>(newItems);
     }
 
     // Equality
