@@ -33,7 +33,7 @@ public class ApiArrayJsonConverter : JsonConverterFactory
             var list = new List<T>();
             while (reader.Read()) {
                 if (reader.TokenType == JsonTokenType.EndArray)
-                    return new(list.ToArray());
+                    return new(list);
 
                 list.Add(valueConverter.Read(ref reader, typeof(T), options)!);
             }
