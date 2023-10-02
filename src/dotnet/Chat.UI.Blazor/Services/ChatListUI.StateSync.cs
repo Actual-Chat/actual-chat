@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -88,6 +89,9 @@ public partial class ChatListUI
 
     private async Task PlayTuneOnNewMessages(CancellationToken cancellationToken)
     {
+        if (ChatHub.HostInfo.AppKind.IsMauiApp())
+            return; // skip tune notifications for MAUI
+
         var cChatInfoMap = await Computed.Capture(() => ListAllUnorderedRaw(cancellationToken)).ConfigureAwait(false);
         var previous = await cChatInfoMap.Use(cancellationToken).ConfigureAwait(false);
         var lastPlayedAt = Clocks.SystemClock.Now; // Skip tune after loading

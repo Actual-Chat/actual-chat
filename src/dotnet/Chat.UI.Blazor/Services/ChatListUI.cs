@@ -40,6 +40,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private AccountSettings AccountSettings { get; }
     private MomentClockSet Clocks { get; }
     private IStateFactory StateFactory { get; }
+    private ChatHub ChatHub { get; }
 
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
@@ -60,6 +61,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         AccountSettings = services.AccountSettings();
         StateFactory = services.StateFactory();
         Clocks = services.Clocks();
+        ChatHub = services.GetRequiredService<ChatHub>();
 
         var type = GetType();
         // var isClient = HostInfo.AppKind.IsClient();
