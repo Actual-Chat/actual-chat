@@ -8,7 +8,7 @@ public partial record SetDiff<TCollection, TItem> : IDiff
 {
     public static SetDiff<TCollection, TItem> Unchanged { get; } = new();
 
-    [DataMember, MemoryPackOrder(0)] public ApiArray<TItem> AddedItems { get; init; } = ApiArray<TItem>.Empty;
+    [DataMember, MemoryPackOrder(0)] public ApiArray<TItem> AddedItems { get; init; }
     [DataMember, MemoryPackOrder(1)] public ApiArray<TItem> RemovedItems { get; init; } = ApiArray<TItem>.Empty;
 
     [MemoryPackConstructor]

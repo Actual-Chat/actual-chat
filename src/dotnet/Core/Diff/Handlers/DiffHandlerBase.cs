@@ -1,11 +1,9 @@
 namespace ActualChat.Diff.Handlers;
 
-public abstract class DiffHandlerBase<T, TDiff> : IDiffHandler<T, TDiff>
+public abstract class DiffHandlerBase<T, TDiff>(DiffEngine engine)
+    : IDiffHandler<T, TDiff>
 {
-    public DiffEngine Engine { get; }
-
-    protected DiffHandlerBase(DiffEngine engine)
-        => Engine = engine;
+    public DiffEngine Engine { get; } = engine;
 
     public object Diff(object? source, object? target)
         // ReSharper disable once HeapView.PossibleBoxingAllocation

@@ -24,17 +24,19 @@ public class SetDiffHandler<TCollection, TItem> : DiffHandlerBase<TCollection, S
     public override TCollection Patch(TCollection source, SetDiff<TCollection, TItem> diff)
     {
         var removedItems = diff.RemovedItems.ToHashSet();
-        var target = source.Where(i => !removedItems.Contains(i)).Concat(diff.AddedItems);
+        var target = source
+            .Where(i => !removedItems.Contains(i))
+            .Concat(diff.AddedItems);
         if (_collectionGenericType == null)
             return (TCollection)_collectionType.CreateInstance(target);
         if (_collectionGenericType == typeof(ApiArray<>))
-            return (TCollection)(object)new ApiArray<TItem>(target.ToArray());
+            return (TCollection)(object)new ApiArray<TItem>(target);
         if (_collectionGenericType == typeof(ImmutableArray<>))
-            return (TCollection)(object)ImmutableArray.Create(target.ToArray());
+            return (TCollection)(object)ImmutableArray.Create(target);
         if (_collectionGenericType == typeof(ImmutableList<>))
-            return (TCollection)(object)ImmutableList.Create(target.ToArray());
+            return (TCollection)(object)ImmutableList.Create(target);
         if (_collectionGenericType == typeof(ImmutableHashSet<>))
-            return (TCollection)(object)ImmutableHashSet.Create(target.ToArray());
+            return (TCollection)(object)ImmutableHashSet.Create(target);
         return (TCollection)_collectionType.CreateInstance(target);
     }
 }

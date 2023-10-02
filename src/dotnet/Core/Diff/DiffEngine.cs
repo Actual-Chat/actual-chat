@@ -2,7 +2,10 @@ using ActualChat.Diff.Handlers;
 
 namespace ActualChat.Diff;
 
-public class DiffEngine : IHasServices
+public class DiffEngine(
+    IServiceProvider services,
+    TypeMapper<IDiffHandler>? diffHandlerFinder = null
+    ) : IHasServices
 {
     private static volatile Lazy<DiffEngine> _defaultLazy;
 
@@ -13,8 +16,11 @@ public class DiffEngine : IHasServices
 
     private readonly ConcurrentDictionary<(Type SourceType, Type DiffType), IDiffHandler> _cachedHandlers = new();
 
-    public IServiceProvider Services { get; }
+    public IServiceProvider Services { get; } = services;
     public TypeMapper<IDiffHandler> DiffHandlerResolver { get; }
+        = diffHandlerFinder
+        ?? services.GetService<TypeMapper<IDiffHandler>>()
+        ?? new TypeMap<IDiffHandler>(DefaultTypeMapBuilder);
 
     static DiffEngine()
         => _defaultLazy = new Lazy<DiffEngine>(() => {
@@ -25,24 +31,17 @@ public class DiffEngine : IHasServices
             return services.GetRequiredService<DiffEngine>();
         });
 
-    public DiffEngine(IServiceProvider services, TypeMapper<IDiffHandler>? diffHandlerFinder = null)
-    {
-        Services = services;
-        DiffHandlerResolver = diffHandlerFinder
-            ?? services.GetService<TypeMapper<IDiffHandler>>()
-            ?? new TypeMap<IDiffHandler>(DefaultTypeMapBuilder);
-    }
-
     // GetHandler
 
     public IDiffHandler<T, TDiff> GetHandler<T, TDiff>()
         => (IDiffHandler<T, TDiff>) GetHandler(typeof(T), typeof(TDiff));
 
     public IDiffHandler GetHandler(Type sourceType, Type diffType)
-        => _cachedHandlers.GetOrAdd((sourceType, diffType), static (key, self) => {
-            var (tSource, tDiff) = key;
-            return self.CreateHandler(tSource, tDiff);
-        }, this);
+        => _cachedHandlers.GetOrAdd((sourceType, diffType),
+            static (key, self) => {
+                var (tSource, tDiff) = key;
+                return self.CreateHandler(tSource, tDiff);
+            }, this);
 
     // Diff & Patch
 

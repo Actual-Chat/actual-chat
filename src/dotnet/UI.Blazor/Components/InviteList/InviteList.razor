@@ -48,7 +48,7 @@
 
     private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
 
-    [Parameter, EditorRequired] public ApiArray<Invite> Invites { get; set; } = ApiArray<Invite>.Empty;
+    [Parameter, EditorRequired] public ApiArray<Invite> Invites { get; set; }
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
     [Parameter] public bool AllowRevoke { get; init; }
     [Parameter] public string NewInviteId { get; init; } = "";

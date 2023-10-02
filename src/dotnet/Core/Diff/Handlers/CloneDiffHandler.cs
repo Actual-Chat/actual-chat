@@ -10,6 +10,7 @@ public class CloneDiffHandler<T> : DiffHandlerBase<T, T>
     {
         if (!_isClass)
             return target;
+
         return EqualityComparer<T>.Default.Equals(source, target) ? default! : target;
     }
 
@@ -17,6 +18,7 @@ public class CloneDiffHandler<T> : DiffHandlerBase<T, T>
     {
         if (!_isClass)
             return diff;
+
         return ReferenceEquals(diff, null) ? source : diff;
     }
 }

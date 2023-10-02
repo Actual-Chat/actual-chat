@@ -8,7 +8,7 @@ public class RecordDiffHandler<
     where TRecord : class
     where TDiff : RecordDiff, new()
 {
-    public ApiArray<RecordDiffPropertyInfo> Properties { get; init; }
+    public RecordDiffPropertyInfo[] Properties { get; init; }
     public Func<TRecord, TRecord> Cloner { get; init; }
 
     public RecordDiffHandler(DiffEngine engine) : base(engine)
@@ -21,12 +21,13 @@ public class RecordDiffHandler<
             var pRecord = tRecord.GetProperty(pDiff.Name, BindingFlags.Instance | BindingFlags.Public);
             if (pRecord == null)
                 continue; // We omit extra properties in diff assuming they're handled manually
+
             var property = (RecordDiffPropertyInfo) typeof(RecordDiffPropertyInfo<,>)
                 .MakeGenericType(typeof(TRecord), typeof(TDiff), pDiff.PropertyType, pRecord.PropertyType)
                 .CreateInstance(Engine, pDiff, pRecord);
             properties.Add(property);
         }
-        Properties = properties.ToApiArray();
+        Properties = properties.ToArray();
         Cloner = ObjectExt.GetCloner<TRecord>();
     }
 

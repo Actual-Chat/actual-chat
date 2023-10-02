@@ -19,10 +19,7 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
 
     protected override ComputedState<ApiArray<Invite>>.Options GetStateOptions()
-        => new() {
-            InitialValue = ApiArray<Invite>.Empty,
-            Category = GetStateCategory(),
-        };
+        => new() { Category = GetStateCategory() };
 
     protected override Task<ApiArray<Invite>> ComputeState(CancellationToken cancellationToken)
         => Invites.ListUserInvites(Session, cancellationToken);

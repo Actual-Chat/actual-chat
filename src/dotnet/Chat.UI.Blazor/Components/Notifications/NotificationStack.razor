@@ -67,6 +67,6 @@
     public sealed record Model {
         public static readonly Model None = new();
 
-        public ApiArray<ActualChat.Notification.Notification> Notifications { get; init; } = ApiArray<ActualChat.Notification.Notification>.Empty;
+        public ApiArray<ActualChat.Notification.Notification> Notifications { get; init; }
     }
 }

@@ -96,7 +96,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return ApiArray<AuthorId>.Empty;
+            return default;
 
         if (chatId.IsPeerChat(out var peerChatId))
             return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToApiArray();
@@ -116,7 +116,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
     public virtual async Task<ApiArray<UserId>> ListUserIds(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
-            return ApiArray<UserId>.Empty;
+            return default;
 
         if (chatId.IsPeerChat(out var peerChatId))
             return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToApiArray();

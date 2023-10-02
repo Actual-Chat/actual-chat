@@ -40,6 +40,28 @@ public class DiffTest : TestBase
         animal2a.Tags.Should().BeEquivalentTo(animal2.Tags);
     }
 
+    [Fact]
+    public void SetDiffTest()
+    {
+        var rnd = new Random();
+        var authorIds = Enumerable.Range(0, 50)
+            .Select(i => new AuthorId(new ChatId("chatid"), i, AssumeValid.Option))
+            .ToArray();
+        var engine = DiffEngine.Default;
+        for (var count = 2; count < 20; count++) {
+            for (var i = 0; i < 100; i++) {
+                var set1 = authorIds.Shuffle().Take(rnd.Next(count)).ToApiArray();
+                var set2 = authorIds.Shuffle().Take(rnd.Next(count)).ToApiArray();
+                var diff = engine.Diff<ApiArray<AuthorId>, SetDiff<ApiArray<AuthorId>, AuthorId>>(set1, set2);
+                var set2a = engine.Patch(set1, diff);
+                if (set2a.Count != set2.Count)
+                    Assert.Fail();
+                if (!set2a.All(x => set2.Contains(x)))
+                    Assert.Fail();
+            }
+        }
+    }
+
     // Nested types
 
     public record Animal
@@ -47,7 +69,7 @@ public class DiffTest : TestBase
         public string Name { get; init; } = "";
         public string? AltName { get; init; }
         public int LegCount { get; init; }
-        public ApiArray<Symbol> Tags { get; init; } = ApiArray<Symbol>.Empty;
+        public ApiArray<Symbol> Tags { get; init; }
     }
 
     public record AnimalDiff : RecordDiff

@@ -56,6 +56,6 @@ public sealed partial record RoleDiff : RecordDiff
     [DataMember, MemoryPackOrder(1)] public SystemRole? SystemRole { get; init; }
     [DataMember, MemoryPackOrder(2)] public string? Picture { get; init; }
     [DataMember, MemoryPackOrder(3)] public ChatPermissions? Permissions { get; init; }
-    [DataMember, MemoryPackOrder(4)] public SetDiff<ApiArray<AuthorId>, AuthorId> AuthorIds { get; init; } =
-        SetDiff<ApiArray<AuthorId>, AuthorId>.Unchanged;
+    [DataMember, MemoryPackOrder(4)] public SetDiff<ApiArray<AuthorId>, AuthorId> AuthorIds { get; init; }
+        = SetDiff<ApiArray<AuthorId>, AuthorId>.Unchanged;
 }

@@ -41,7 +41,6 @@ public class ActiveChatsUI
 
         _activeChats = StateFactory.NewKvasStored<ApiArray<ActiveChat>>(
             new (LocalSettings, nameof(ActiveChats)) {
-                InitialValue = ApiArray<ActiveChat>.Empty,
                 Corrector = FixStoredActiveChats,
                 Category = StateCategories.Get(GetType(), nameof(ActiveChats)),
             });

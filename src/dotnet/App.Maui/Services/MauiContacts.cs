@@ -33,15 +33,15 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
                 return deviceContacts.Select(x => ToExternalContact(account.Id, x)).ToApiArray();
             case PermissionState.Denied:
                 Log.LogError("Contact permission is missing");
-                return ApiArray<ExternalContact>.Empty;
+                return default;
             default:
                 Log.LogError("Unexpected contact permission status {Status}", permissionState);
-                return ApiArray<ExternalContact>.Empty;
+                return default;
             }
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to read contacts from device");
-            return ApiArray<ExternalContact>.Empty;
+            return default;
         }
     }
 

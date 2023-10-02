@@ -8,6 +8,7 @@ public class CollectionSerializationTest : TestBase
     public void ApiArrayTest()
     {
         ApiArray<string>.Empty.Should().BeEmpty();
+        default(ApiArray<string>).Should().BeEmpty();
 
         for (var length = 0; length < 10; length++) {
             var c = Enumerable.Range(0, length).ToApiArray();

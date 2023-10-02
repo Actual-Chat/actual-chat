@@ -71,7 +71,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return ApiArray<Role>.Empty;
+            return default;
 
         await PseudoList(chatId).ConfigureAwait(false);
 
@@ -92,7 +92,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat == null)
-            return ApiArray<AuthorId>.Empty;
+            return default;
 
         await PseudoList(chatId).ConfigureAwait(false);
 

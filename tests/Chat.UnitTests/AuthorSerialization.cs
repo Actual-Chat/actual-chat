@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.Chat.UnitTests;
 
-public class AuthorSerialization
+public class AuthorSerializationTest
 {
     [Fact]
     public void BasicTest()

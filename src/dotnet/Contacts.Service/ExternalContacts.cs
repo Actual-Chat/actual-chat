@@ -13,7 +13,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
-            return ApiArray<ExternalContact>.Empty;
+            return default;
 
         return await Backend.List(account.Id, deviceId, cancellationToken).ConfigureAwait(false);
     }

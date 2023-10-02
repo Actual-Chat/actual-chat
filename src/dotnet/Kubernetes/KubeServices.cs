@@ -82,11 +82,7 @@ public class KubeServices : IKubeInfo
             Kube = kube;
             KubeService = kubeService;
 
-            var initialValue = new KubeServiceEndpoints(
-                kubeService,
-                ApiArray<KubeEndpoint>.Empty,
-                ApiArray<KubeEndpoint>.Empty,
-                ApiArray<KubePort>.Empty);
+            var initialValue = new KubeServiceEndpoints(kubeService);
             _state = services.StateFactory().NewMutable(initialValue);
             this.Start();
         }

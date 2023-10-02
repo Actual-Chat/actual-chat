@@ -52,7 +52,7 @@ public readonly partial struct ApiArray<T>(T[] items)
 
     public ApiArray<T> this[Range range] {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => new (Items[range]);
+        get => new(Items[range]);
     }
 
     public ApiArray(List<T> source)
@@ -64,10 +64,10 @@ public readonly partial struct ApiArray<T>(T[] items)
     { }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)Items).GetEnumerator();
+    public IEnumerator<T> GetEnumerator() => (IEnumerator<T>)Items.GetEnumerator();
 
     object ICloneable.Clone() => Clone();
-    public ApiArray<T> Clone() => new(IsEmpty ? EmptyItems : Items.ToArray());
+    public ApiArray<T> Clone() => IsEmpty ? Empty : new(Items.ToArray());
 
     public override string ToString()
     {
@@ -166,14 +166,19 @@ public readonly partial struct ApiArray<T>(T[] items)
 
     public ApiArray<T> UpdateWhere(Func<T, bool> where, Func<T, T> updater)
     {
-        ApiArray<T>? copy = null;
         var items = Items;
-        for (var i = 0; i < items.Length; i++)
-            if (where.Invoke(items[i])) {
-                copy ??= Clone();
-                copy.Value.Items[i] = updater.Invoke(copy.Value.Items[i]);
+        if (items.Length == 0)
+            return this;
+
+        T[]? copy = null;
+        for (var i = 0; i < items.Length; i++) {
+            var item = items[i];
+            if (where.Invoke(item)) {
+                copy ??= items.ToArray();
+                copy[i] = updater.Invoke(item);
             }
-        return copy ?? this;
+        }
+        return copy == null ? this : new ApiArray<T>(copy);
     }
 
     public ApiArray<T> RemoveAll(T item)

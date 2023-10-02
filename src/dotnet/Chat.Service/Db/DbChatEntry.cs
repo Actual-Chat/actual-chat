@@ -95,7 +95,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ForwardedAuthorName = ForwardedAuthorName,
             ForwardedChatEntryId = new ChatEntryId(ForwardedChatEntryId),
             ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt,
-            Attachments = attachments?.ToApiArray() ?? ApiArray<TextEntryAttachment>.Empty,
+            Attachments = attachments?.ToApiArray() ?? default,
 #pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null

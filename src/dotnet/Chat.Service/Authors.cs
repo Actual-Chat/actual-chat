@@ -105,7 +105,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     {
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ApiArray<AuthorId>.Empty;
+            return default;
 
         return await Backend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
     }
@@ -115,7 +115,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
     {
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ApiArray<UserId>.Empty;
+            return default;
 
         return await Backend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
     }

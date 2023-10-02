@@ -38,7 +38,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is null or { HasLeft: true })
-            return ApiArray<Role>.Empty;
+            return default;
 
         var isGuest = account.IsGuestOrNone;
         var isAnonymous = author is { IsAnonymous: true };
@@ -53,7 +53,7 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
     {
         var isOwner = await IsOwner(session, chatId, cancellationToken).ConfigureAwait(false);
         if (!isOwner)
-            return ApiArray<AuthorId>.Empty;
+            return default;
 
         // If we're here, current user is either admin or is in owner role
         return await Backend.ListAuthorIds(chatId, roleId, cancellationToken).ConfigureAwait(false);
@@ -65,12 +65,12 @@ public class Roles : DbServiceBase<ChatDbContext>, IRoles
     {
         var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (ownAuthor == null)
-            return ApiArray<AuthorId>.Empty;
+            return default;
 
         var principalId = new PrincipalId(ownAuthor.Id, AssumeValid.Option);
         var rules = await ChatsBackend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
         if (!rules.CanSeeMembers())
-            return ApiArray<AuthorId>.Empty;
+            return default;
 
         var ownerRole = await Backend
             .GetSystem(chatId, SystemRole.Owner, cancellationToken)
