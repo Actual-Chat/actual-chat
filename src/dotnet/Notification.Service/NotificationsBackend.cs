@@ -317,7 +317,7 @@ public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotif
     {
         var devices = await ListDevices(userId, cancellationToken1).ConfigureAwait(false);
         if (devices.Count == 0) {
-            Log.LogInformation("No recipient devices found found for notification #{NotificationId}", notification.Id);
+            Log.LogInformation("No recipient devices found for notification #{NotificationId}", notification.Id);
             return;
         }
 
