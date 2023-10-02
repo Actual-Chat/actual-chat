@@ -37,7 +37,12 @@ public static class Links
     public static class Apps
     {
         public static readonly string Android = "https://play.google.com/store/apps/details?id=chat.actual.app";
-        public static readonly string iOS = "https://testflight.apple.com/join/5JP64q4v";
+        public static readonly string iOS = "https://apps.apple.com/us/app/actual-chat/id6450874551";
         public static readonly string Windows = "https://www.microsoft.com/store/apps/9N6RWRD9FMS2";
+
+        public static class TestBuilds
+        {
+            public static readonly string iOS = "https://testflight.apple.com/join/5JP64q4v";
+        }
     }
 }
