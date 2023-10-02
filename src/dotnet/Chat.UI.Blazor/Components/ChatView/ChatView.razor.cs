@@ -324,7 +324,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .AsLongRange()
                 .Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),
         };
-        var scrollToEntryRange = scrollToEntryLid > 0
+
+        // Last read position might point to already deleted entries, OR it might be corrupted!
+        var scrollToEntryRange = scrollToEntryLid > 0 && chatIdRange.Contains(scrollToEntryLid)
             ? new Range<long>(
                 scrollToEntryLid - PageSize,
                 scrollToEntryLid + (2 * PageSize))
