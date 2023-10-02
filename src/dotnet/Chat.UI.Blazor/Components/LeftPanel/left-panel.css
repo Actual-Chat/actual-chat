@@ -49,6 +49,6 @@
     @apply justify-center;
     @apply border-b border-bg-04;
 }
-.left-panel-content > .c-banner {
+.left-panel-content > .download-app-banner {
     @apply px-2 py-2 md:py-0 md:pt-2;
 }
