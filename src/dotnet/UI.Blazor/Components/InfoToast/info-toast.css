@@ -3,13 +3,13 @@
 .info-container {
     @apply fixed z-error-container;
     @apply inset-x-0 md:inset-x-auto md:right-0;
-    @apply bottom-0;
+    @apply md:bottom-0;
     @apply h-auto;
     @apply overflow-y-auto;
 }
 .info-container > .c-content {
     @apply relative;
-    @apply flex-y gap-y-4;
+    @apply -flex-y md:flex-y gap-y-4;
     @apply h-full;
     @apply p-4;
     @apply overflow-y-auto custom-scrollbar;
