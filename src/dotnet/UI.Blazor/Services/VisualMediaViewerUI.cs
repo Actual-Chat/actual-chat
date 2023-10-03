@@ -8,13 +8,9 @@ public class VisualMediaViewerUI(IServiceProvider services)
     public async Task Show(
         string url,
         string? altText = null,
-        string? cachedImageUrl = null,
-        int? width = null,
-        int? height = null,
-        ChatEntry? chatEntry = null,
-        bool isVideo = false)
+        ChatEntry? chatEntry = null)
     {
-        var model = new VisualMediaViewerModal.Model(url, cachedImageUrl, altText, width, height, chatEntry, isVideo);
+        var model = new VisualMediaViewerModal.Model(url, altText, chatEntry);
         var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
         await modalRef.WhenClosed.ConfigureAwait(false);
     }
