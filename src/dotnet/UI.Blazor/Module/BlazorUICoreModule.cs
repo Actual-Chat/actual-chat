@@ -86,6 +86,8 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // UI services
         services.AddScoped(c => new ReloadUI(c));
+
+        services.AddScoped<IBackgroundStateHandler>(c => c.GetRequiredService<BackgroundUI>());
         services.AddScoped(c => new LoadingUI(c));
         services.AddScoped(c => new ReconnectUI(c));
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
@@ -106,6 +108,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new BubbleUI(c));
         services.AddScoped(c => new ShareUI(c));
         services.AddScoped(_ => new ToastUI());
+        fusion.AddService<BackgroundUI>(ServiceLifetime.Scoped);
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
 
         // Actual Chat-specific UI services
