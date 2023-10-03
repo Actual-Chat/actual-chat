@@ -89,8 +89,8 @@ public partial class ChatListUI
 
     private async Task PlayTuneOnNewMessages(CancellationToken cancellationToken)
     {
-        if (ChatHub.HostInfo.AppKind.IsMauiApp())
-            return; // skip tune notifications for MAUI
+        if (ChatHub.HostInfo.IsMobileMauiApp())
+            return; // skip tune notifications for mobile MAUI
 
         var cChatInfoMap = await Computed.Capture(() => ListAllUnorderedRaw(cancellationToken)).ConfigureAwait(false);
         var previous = await cChatInfoMap.Use(cancellationToken).ConfigureAwait(false);
