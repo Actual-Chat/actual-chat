@@ -163,6 +163,7 @@ public class AppServiceStarter
                 await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
                 await StartHostedServices().ConfigureAwait(false);
             }
+            (Services.GetRequiredService<BackgroundUI>() as INotifyInitialized).Initialized();
             if (!HostInfo.IsProductionInstance)
                 Services.GetRequiredService<DebugUI>();
         }

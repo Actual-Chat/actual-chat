@@ -20,6 +20,7 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
     private IJSRuntime JS { get; }
     private UrlMapper UrlMapper { get; }
     private HostInfo HostInfo { get; }
+    private BackgroundUI BackgroundUI { get; }
 
     public Task WhenInitialized { get; }
 
@@ -31,6 +32,7 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
         JS = services.JSRuntime();
         UrlMapper = services.GetRequiredService<UrlMapper>();
         HostInfo = services.GetRequiredService<HostInfo>();
+        BackgroundUI = services.GetRequiredService<BackgroundUI>();
         WhenInitialized = Initialize();
     }
 

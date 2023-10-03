@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using CoreSpotlight;
 using Foundation;
 using UIKit;
@@ -20,6 +21,21 @@ public class AppDelegate : MauiUIApplicationDelegate
     {
         CheckForAppLink(userActivity);
         return base.ContinueUserActivity(application, userActivity, completionHandler);
+    }
+
+    public override void OnActivated(UIApplication application)
+    {
+        var backgroundStateHandler = Services.GetRequiredService<IBackgroundStateHandler>();
+        backgroundStateHandler.SetBackgroundState(false);
+        base.OnActivated(application);
+    }
+
+    public override void DidEnterBackground(UIApplication application)
+    {
+        var backgroundStateHandler = Services.GetRequiredService<IBackgroundStateHandler>();
+        backgroundStateHandler.SetBackgroundState(true);
+        base.OnActivated(application);
+        base.DidEnterBackground(application);
     }
 
     private void CheckForAppLink(NSUserActivity userActivity)
