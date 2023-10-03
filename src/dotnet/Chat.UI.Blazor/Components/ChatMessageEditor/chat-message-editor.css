@@ -204,6 +204,13 @@ body.wide .attachment-mode .btn.btn-round.post-message {
     @apply px-2;
     @apply border-y bg-01;
 }
+.attachment-list-wrapper > .c-btn-group {
+    @apply flex-1 flex-x justify-between;
+    @apply pt-1;
+}
+body.narrow .attachment-list-wrapper > .c-btn-group {
+    @apply pb-1;
+}
 .attachment-list {
     @apply flex-1 flex-x justify-start gap-x-4;
     @apply p-1 md:p-2;
@@ -212,7 +219,11 @@ body.wide .attachment-mode .btn.btn-round.post-message {
 
 .attachment-list-btn.btn {
     @apply min-h-6 max-h-6;
+    @apply px-0;
     @apply border-transparent;
+}
+body.narrow .attachment-list-btn.btn {
+    @apply px-0;
 }
 .attachment-list-btn.btn .btn-content {
     @apply text-accent font-medium;

@@ -105,8 +105,6 @@ export class VisualMediaViewer {
                 .subscribe((event: PointerEvent) => this.onNextButtonClick(event));
         }
 
-
-
         fromEvent(this.overlay, 'wheel')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: WheelEvent) => this.onWheel(event));
@@ -122,6 +120,10 @@ export class VisualMediaViewer {
         fromEvent(window, 'pointercancel')
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: PointerEvent) => this.onPointerUp(event));
+
+        fromEvent(document, 'keydown')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: KeyboardEvent) => this.onKeyDown(event));
     }
 
     public dispose() {
@@ -170,6 +172,9 @@ export class VisualMediaViewer {
                 mediaHeight = screenHeight;
                 mediaWidth = mediaWidth * multiplier;
             }
+            if (mediaWidth == 0 || mediaHeight == 0) {
+                [mediaWidth, mediaHeight] = this.zeroSizeHandler(mediaWidth, mediaHeight);
+            }
             if (mediaWidth != this.round(Number(this.media.getAttribute('width')))) {
                 mediaWidth = this.round(mediaWidth);
                 mediaHeight = this.round(mediaHeight);
@@ -184,6 +189,12 @@ export class VisualMediaViewer {
         } else {
             return false;
         }
+    }
+
+    private zeroSizeHandler(width: number, height: number) : [newWidth: number, newHeight: number] {
+        let h = this.footerTop - this.headerBottom;
+        let w = window.innerWidth;
+        return [this.round(w * 0.75), this.round(h * 0.75)];
     }
 
     private centerMedia(width: number, height: number) {
@@ -333,46 +344,7 @@ export class VisualMediaViewer {
     // Event handlers
 
     private onWheel = (event: WheelEvent) => {
-        const viewerRect = this.imageViewer.getBoundingClientRect();
-        const delta = event.deltaY;
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        const width = this.media.getBoundingClientRect().width;
-        const height = this.media.getBoundingClientRect().height;
-        let newWidth = width;
-        let newHeight = height;
-        preventDefaultForEvent(event);
-        if (delta < 0) {
-            // up
-            newWidth = width * this.multiplier;
-            newHeight = height * this.multiplier;
-            if (newWidth / windowWidth <= 1.03 && newWidth / windowWidth >= 0.97) {
-                newWidth = windowWidth;
-            }
-            if ((newHeight > windowHeight * 3 || newWidth > windowWidth * 3)) {
-                return;
-            } else {
-                this.media.style.height = this.imageViewer.style.height = this.round(newHeight) + 'px';
-                this.media.style.width = this.imageViewer.style.width = this.round(newWidth) + 'px';
-                this.centerImageX(viewerRect);
-                this.centerImageY(viewerRect);
-            }
-        } else {
-            // down
-            newWidth = width / this.multiplier;
-            newHeight = height / this.multiplier;
-            if (newWidth / windowWidth < 1.03 && newWidth / windowWidth > 0.97) {
-                newWidth = windowWidth;
-            }
-            if (newWidth < 100 && newHeight < 100) {
-                return;
-            } else {
-                this.media.style.height = this.imageViewer.style.height = this.round(newHeight) + 'px';
-                this.media.style.width = this.imageViewer.style.width = this.round(newWidth) + 'px';
-                this.centerImageX(viewerRect);
-                this.centerImageY(viewerRect);
-            }
-        }
+        this.wheelAndKeyboardScale(event,event.deltaY < 0);
     };
 
     private onPointerDown = (event: PointerEvent) => {
@@ -482,6 +454,42 @@ export class VisualMediaViewer {
         }
         this.curState.imageRect = this.curState.viewerRect = this.prevState.imageRect = this.prevState.viewerRect = this.media.getBoundingClientRect();
     };
+
+    private onKeyDown(event: KeyboardEvent): void {
+        if (event.ctrlKey) {
+            if (event.key == "ArrowDown") {
+                this.wheelAndKeyboardScale(event, false);
+            } else if (event.key == "ArrowUp") {
+                this.wheelAndKeyboardScale(event, true);
+            }
+        } else {
+            if (event.key == "ArrowDown" || event.key == "PageDown" || event.key == "ArrowRight") {
+                this.getNextMedia();
+            } else if (event.key == "ArrowUp" || event.key == "PageUp" || event.key == "ArrowLeft") {
+                this.getPreviousMedia();
+            } else {
+                return;
+            }
+        }
+    }
+
+    private getPreviousMedia() {
+        let currentMediaIndex = this.mediaArray.indexOf(this.media);
+        if (currentMediaIndex == 0)
+            return;
+        let newMedia = this.mediaArray[currentMediaIndex - 1] as HTMLElement;
+        let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
+        this.changeMedia(footerMedia, newMedia, newMedia);
+    }
+
+    private getNextMedia() {
+        let currentMediaIndex = this.mediaArray.indexOf(this.media);
+        if (currentMediaIndex == this.mediaArray.length - 1)
+            return;
+        let newMedia = this.mediaArray[currentMediaIndex + 1] as HTMLElement;
+        let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
+        this.changeMedia(footerMedia, newMedia, newMedia);
+    }
 
     private isClickToClose(target: HTMLElement, savedTarget: HTMLElement) : boolean {
         if (this.footer.contains(target))
@@ -695,21 +703,11 @@ export class VisualMediaViewer {
     }
 
     private onPreviousButtonClick = (event: PointerEvent) => {
-        let currentMediaIndex = this.mediaArray.indexOf(this.media);
-        if (currentMediaIndex == 0)
-            return;
-        let newMedia = this.mediaArray[currentMediaIndex - 1] as HTMLElement;
-        let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
-        this.changeMedia(footerMedia, newMedia, newMedia);
+        this.getPreviousMedia();
     }
 
     private onNextButtonClick = (event: PointerEvent) => {
-        let currentMediaIndex = this.mediaArray.indexOf(this.media);
-        if (currentMediaIndex == this.mediaArray.length - 1)
-            return;
-        let newMedia = this.mediaArray[currentMediaIndex + 1] as HTMLElement;
-        let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
-        this.changeMedia(footerMedia, newMedia, newMedia)
+        this.getNextMedia();
     }
 
     private changeMedia(footerMedia: HTMLElement, newFooterMedia: HTMLElement, newMedia: HTMLElement) {
@@ -722,6 +720,46 @@ export class VisualMediaViewer {
         this.getOriginWidthAndHeight();
         this.controlButtonsVisibilityToggle();
         this.blazorRef.invokeMethodAsync('ChangeMedia', newMediaId);
+    }
+
+    private wheelAndKeyboardScale(event: Event, scaleUp: boolean) {
+        const viewerRect = this.imageViewer.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const width = this.media.getBoundingClientRect().width;
+        const height = this.media.getBoundingClientRect().height;
+        let newWidth = width;
+        let newHeight = height;
+        preventDefaultForEvent(event);
+        if (scaleUp) {
+            newWidth = width * this.multiplier;
+            newHeight = height * this.multiplier;
+            if (newWidth / windowWidth <= 1.03 && newWidth / windowWidth >= 0.97) {
+                newWidth = windowWidth;
+            }
+            if ((newHeight > windowHeight * 3 || newWidth > windowWidth * 3)) {
+                return;
+            } else {
+                this.media.style.height = this.imageViewer.style.height = this.round(newHeight) + 'px';
+                this.media.style.width = this.imageViewer.style.width = this.round(newWidth) + 'px';
+                this.centerImageX(viewerRect);
+                this.centerImageY(viewerRect);
+            }
+        } else {
+            newWidth = width / this.multiplier;
+            newHeight = height / this.multiplier;
+            if (newWidth / windowWidth < 1.03 && newWidth / windowWidth > 0.97) {
+                newWidth = windowWidth;
+            }
+            if (newWidth < 100 && newHeight < 100) {
+                return;
+            } else {
+                this.media.style.height = this.imageViewer.style.height = this.round(newHeight) + 'px';
+                this.media.style.width = this.imageViewer.style.width = this.round(newWidth) + 'px';
+                this.centerImageX(viewerRect);
+                this.centerImageY(viewerRect);
+            }
+        }
     }
 }
 

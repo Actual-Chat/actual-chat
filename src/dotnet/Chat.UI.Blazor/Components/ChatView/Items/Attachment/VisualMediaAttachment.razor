@@ -15,7 +15,7 @@
     <a class="cursor-pointer"
        href="@url"
        role="button"
-       @onclick="@(_ => VisualMediaViewerUI.Show(url, null, previewUrl, attachment.Media.Width, attachment.Media.Height, ChatEntry, attachment.IsVideo()))"
+       @onclick="@(_ => VisualMediaViewerUI.Show(url, null, ChatEntry))"
        @onclick:preventDefault="true">
         @if (attachment.IsVideo()) {
             <video preload="auto" oncanplay="this.muted = true; this.play()"

@@ -140,12 +140,6 @@ export class ChatMessageEditor {
                         .pipe(takeUntil(this.disposed$))
                         .subscribe((event: WheelEvent) => this.onHorizontalScroll(event));
                 }
-                if (element.className == 'attachment-list') {
-                    console.log('attachment list added');
-                }
-                if (element.className == 'attachment-item') {
-                    console.log('attachment item added.');
-                }
             });
             m.removedNodes.forEach(element => {
                 if (element.className == 'attachment-list-wrapper') {
