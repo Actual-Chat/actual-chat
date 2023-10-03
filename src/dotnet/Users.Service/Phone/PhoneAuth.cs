@@ -68,7 +68,8 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     {
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
-            var userId = context.Operation().Items.GetOrDefault(UserId.None);
+            // TODO(AY): support UserId (any non-string/non-int) type for multi-instance deployment
+            var userId = new UserId(context.Operation().Items.GetOrDefault(""));
             if (!userId.IsNone)
                 _ = AuthBackend.GetUser(default, userId, cancellationToken);
             return default;
@@ -102,7 +103,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             throw StandardError.Unauthorized("Phone number has already been taken by another account.");
 
         UserConverter.UpdateEntity(user, dbUser);
-        context.Operation().Items.Set(account.Id);
+        context.Operation().Items.Set(account.Id.Value);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return true;
