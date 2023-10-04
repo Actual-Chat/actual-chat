@@ -123,4 +123,35 @@ public partial class History : IHasServices, IDisposable
             }
         }
     }
+
+    public void FixDefaultState<TState>(
+        TState defaultState,
+        TState fixedState)
+        where TState : HistoryState
+    {
+        lock (Lock) {
+            var stateType = typeof(TState);
+            if (!_defaultItem.States.ContainsKey(stateType))
+                throw StandardError.Internal($"History state of type '{stateType.GetName()}' is not registered.");
+
+            _defaultItem = _defaultItem.With(fixedState);
+            var currentItem = _currentItem;
+            foreach (var kv in _itemById.List(true).ToList()) {
+                var item = kv.Value;
+                var existingState = item[stateType];
+                if (ReferenceEquals(existingState, defaultState)) {
+                    var newItem = item.With(fixedState);
+                    _itemById[kv.Key] = newItem;
+                    if (ReferenceEquals(_currentItem, item))
+                        _currentItem = newItem;
+                }
+            }
+            if (ReferenceEquals(currentItem, _currentItem)) {
+                Log.LogError("CurrentItem doesn't exist in item list");
+                var existingState = _currentItem[stateType];
+                if (ReferenceEquals(existingState, defaultState))
+                    _currentItem = _currentItem.With(fixedState);
+            }
+        }
+    }
 }
