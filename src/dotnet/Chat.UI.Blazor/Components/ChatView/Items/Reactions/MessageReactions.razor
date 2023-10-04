@@ -23,6 +23,7 @@
 @code {
     [Inject] private IReactions Reactions { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private TuneUI TuneUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
 
@@ -48,6 +49,7 @@
     }
 
     private Task ToggleReaction(Symbol emojiId) {
+        _ = TuneUI.Play(Tune.React);
         return UICommander.Run(new Reactions_React(Session, new Reaction {
             EntryId = Entry.Id.ToTextEntryId(),
             EmojiId = emojiId,

@@ -17,6 +17,7 @@
     private Emoji[] _emojis = null!;
 
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private TuneUI TuneUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
 
@@ -33,6 +34,7 @@
             EntryId = Entry.Id.ToTextEntryId(),
             EmojiId = emojiId,
         });
+        _ = TuneUI.Play(Tune.React);
         return UICommander.Run(command);
     }
 }

@@ -29,6 +29,7 @@ public class TuneUI(IServiceProvider services) : ITuneUIBackend, INotifyInitiali
         // Chat UI
         [Tune.PinUnpinChat] = new (new[] { 50 }/*, "pin-unpin-chat"*/),
         [Tune.NotifyOnNewMessageInApp] = new (new[] { 20 }, "notify-on-new-message-in-app"),
+        [Tune.React] = new (new[] { 20, 10, 20 }),
         // ChatMessageEditor
         [Tune.SendMessage] = new (new[] { 50 }/*, "send-message"*/),
         [Tune.EditMessage] = new (new[] { 20 }/*, "edit-message"*/),
@@ -110,6 +111,7 @@ public enum Tune
     SelectPrimaryLanguage,
     SelectSecondaryLanguage,
     ShowMenu,
+    React,
 }
 
 public record TuneInfo(int[] Vibration, string Sound = "");

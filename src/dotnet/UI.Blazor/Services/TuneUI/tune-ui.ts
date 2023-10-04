@@ -31,6 +31,7 @@ export enum Tune
     SelectPrimaryLanguage,
     SelectSecondaryLanguage,
     ShowMenu,
+    React,
 }
 
 export type TuneName = keyof typeof Tune;
