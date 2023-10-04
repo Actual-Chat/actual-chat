@@ -7,18 +7,18 @@
 
 <div class="permissions-step">
     <p class="text-title-1 text-center">Permissions needed</p>
-    <div class="set-chats-step-chat-lists">
-        <div class="set-chats-step-chat-list-item"
+    <div class="step-tiles">
+        <div class="step-tile"
              @onclick="OnMicrophonePermissionClick">
             <img draggable="false"
-                 class="set-chats-step-icon"
+                 class="step-tile-icon"
                  alt="Mic"
                  src="/dist/images/onboarding/mic.svg"/>
-            <div class="set-chats-step-chat-list-item-body">
-                <div class="set-chats-step-chat-list-item-title">
+            <div class="step-tile-body">
+                <div class="step-tile-title">
                     Microphone
                 </div>
-                <div class="set-chats-step-chat-list-item-subtitle">
+                <div class="step-tile-subtitle">
                     Allow us to use your mic to enjoy recording voice messages
                 </div>
             </div>
@@ -27,17 +27,17 @@
                 Class="!flex-none"
                 Change="OnMicrophonePermissionClick"/>
         </div>
-        <div class="set-chats-step-chat-list-item"
+        <div class="step-tile"
              @onclick="OnNotificationsPermissionClick">
             <img draggable="false"
-                 class="set-chats-step-icon"
+                 class="step-tile-icon"
                  alt="Friends"
                  src="/dist/images/onboarding/bell.svg"/>
-            <div class="set-chats-step-chat-list-item-body">
-                <div class="set-chats-step-chat-list-item-title">
+            <div class="step-tile-body">
+                <div class="step-tile-title">
                     Notifications
                 </div>
-                <div class="set-chats-step-chat-list-item-subtitle">
+                <div class="step-tile-subtitle">
                     Allow us to send notifications of new messages in chats
                 </div>
             </div>
