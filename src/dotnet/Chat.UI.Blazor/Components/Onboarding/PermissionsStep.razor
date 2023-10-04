@@ -1,0 +1,96 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits Step;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+<div class="permissions-step">
+    <p class="text-title-1 text-center">Permissions needed</p>
+    <div class="set-chats-step-chat-lists">
+        <div class="set-chats-step-chat-list-item"
+             @onclick="OnMicrophonePermissionClick">
+            <img draggable="false"
+                 class="set-chats-step-icon"
+                 alt="Mic"
+                 src="/dist/images/onboarding/mic.svg"/>
+            <div class="set-chats-step-chat-list-item-body">
+                <div class="set-chats-step-chat-list-item-title">
+                    Microphone
+                </div>
+                <div class="set-chats-step-chat-list-item-subtitle">
+                    Allow us to use your mic to enjoy recording voice messages
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_stepModel.RequestMicrophonePermissions"
+                Class="!flex-none"
+                Change="OnMicrophonePermissionClick"/>
+        </div>
+        <div class="set-chats-step-chat-list-item"
+             @onclick="OnNotificationsPermissionClick">
+            <img draggable="false"
+                 class="set-chats-step-icon"
+                 alt="Friends"
+                 src="/dist/images/onboarding/bell.svg"/>
+            <div class="set-chats-step-chat-list-item-body">
+                <div class="set-chats-step-chat-list-item-title">
+                    Notifications
+                </div>
+                <div class="set-chats-step-chat-list-item-subtitle">
+                    Allow us to send notifications of new messages in chats
+                </div>
+            </div>
+            <Checkbox
+                IsChecked="@_stepModel.RequestNotificationsPermissions"
+                Class="!flex-none"
+                Change="OnNotificationsPermissionClick"/>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly SetChatsStepModel _stepModel = new();
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    public override bool IsCompleted => OnboardingUI.Settings.Value.IsPermissionsStepCompleted;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsPermissionsStepCompleted = true });
+
+    protected override Task<bool> Validate() {
+        return Task.FromResult(true);
+    }
+
+    protected override async Task<bool> Save() {
+        if (_stepModel.RequestMicrophonePermissions)
+            await RequestMicrophonePermissions();
+        if (_stepModel.RequestNotificationsPermissions)
+            await RequestNotificationsPermissions();
+
+        return true;
+    }
+
+    private async Task RequestMicrophonePermissions() {
+
+    }
+
+    private async Task RequestNotificationsPermissions() {
+
+    }
+
+    private void OnMicrophonePermissionClick()
+        => _stepModel.RequestMicrophonePermissions = !_stepModel.RequestMicrophonePermissions;
+
+    private void OnNotificationsPermissionClick()
+        => _stepModel.RequestNotificationsPermissions = !_stepModel.RequestNotificationsPermissions;
+
+    public class SetChatsStepModel {
+        public bool RequestMicrophonePermissions { get; set; } = true;
+        public bool RequestNotificationsPermissions { get; set; } = true;
+    }
+}
