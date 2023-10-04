@@ -26,10 +26,19 @@ public class RightPanel
                 Corrector = (isVisible, _) => new ValueTask<bool>(isVisible && Owner.IsWide()),
                 Category = StateCategories.Get(GetType(), nameof(IsVisible)),
             });
-        History.Register(new OwnHistoryState(this, false));
+        var initialState = new OwnHistoryState(this, false);
+        History.Register(initialState);
         _ = _isVisible.WhenRead.ContinueWith(_1 => {
             var isVisible = _isVisible.Value;
-            _ = History.Dispatcher.InvokeAsync(() => SetIsVisible(isVisible));
+            if (initialState.IsVisible != isVisible)
+                // Handles special case:
+                // Right panel is open in wide view after loading.
+                // Open modal.
+                // Close modal.
+                // Closing modal should invoke GoBack navigation but adds a new state instead.
+                // To workaround this issue we should correct default state for right panel.
+                _ = History.Dispatcher.InvokeAsync(
+                    () => History.FixDefaultState(initialState, new OwnHistoryState(this, isVisible)));
         }, TaskScheduler.Default);
     }
 
