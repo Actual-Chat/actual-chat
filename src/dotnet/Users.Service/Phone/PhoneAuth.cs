@@ -13,7 +13,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private ISmsGateway Sms { get; } = services.GetRequiredService<ISmsGateway>();
+    private ITextMessageGateway TextMessage { get; } = services.GetRequiredService<ITextMessageGateway>();
     private Rfc6238AuthenticationService Totps { get; } = services.GetRequiredService<Rfc6238AuthenticationService>();
     private TotpRandomSecrets RandomSecrets { get; } = services.GetRequiredService<TotpRandomSecrets>();
     private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
@@ -38,7 +38,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var expiresAt = Clocks.SystemClock.UtcNow + Settings.TotpUIThrottling;
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
-        await Sms.Send(phone, $"Actual Chat: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
+        await TextMessage.Send(phone, $"Actual Chat: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
         return expiresAt;
     }
 

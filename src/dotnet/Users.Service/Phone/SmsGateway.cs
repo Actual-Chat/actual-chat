@@ -4,16 +4,16 @@ using Twilio.Rest.Api.V2010.Account;
 
 namespace ActualChat.Users;
 
-public interface ISmsGateway
+public interface ITextMessageGateway
 {
     Task Send(Phone phone, string text);
 }
 
-public class TwilioSmsGateway(IServiceProvider services) : ISmsGateway
+public class TwilioTextMessageGateway(IServiceProvider services) : ITextMessageGateway
 {
     private ITwilioRestClient Client { get; } = services.GetRequiredService<ITwilioRestClient>();
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
-    private ILogger Log { get; } = services.LogFor<TwilioSmsGateway>();
+    private ILogger Log { get; } = services.LogFor<TwilioTextMessageGateway>();
 
     public async Task Send(Phone phone, string text)
     {
@@ -26,20 +26,20 @@ public class TwilioSmsGateway(IServiceProvider services) : ISmsGateway
                 .ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to send sms");
-            throw StandardError.External("Failed to deliver sms.");
+            Log.LogError(e, "Failed to send test message");
+            throw StandardError.External("We couldn't deliver text message to this phone number. Please try to use another authentication method.");
         }
     }
 }
 
-public class LocalSmsGateway(IServiceProvider services) : ISmsGateway
+public class LocalTextMessageGateway(IServiceProvider services) : ITextMessageGateway
 {
-    private ILogger Log { get; } = services.LogFor<LocalSmsGateway>();
+    private ILogger Log { get; } = services.LogFor<LocalTextMessageGateway>();
 
     public Task Send(Phone phone, string text)
     {
         // just for debugging purpose
-        Log.LogWarning("!!!!!!!!!!!! SMS send to {Phone}: {Text}", phone.ToInternational(), text);
+        Log.LogWarning("!!!!!!!!!!!! Text message send to {Phone}: {Text}", phone.ToInternational(), text);
         return Task.CompletedTask;
     }
 }

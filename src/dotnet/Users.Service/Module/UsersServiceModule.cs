@@ -187,9 +187,9 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             return TwilioClient.GetRestClient();
         });
         if (IsDevelopmentInstance && !Settings.IsTwilioEnabled)
-            services.AddTransient<ISmsGateway, LocalSmsGateway>();
+            services.AddTransient<ITextMessageGateway, LocalTextMessageGateway>();
         else
-            services.AddTransient<ISmsGateway, TwilioSmsGateway>();
+            services.AddTransient<ITextMessageGateway, TwilioTextMessageGateway>();
 
         // Mobile-related module's own services
         fusion.AddService<IMobileSessions, MobileSessions>();
