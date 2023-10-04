@@ -16,6 +16,7 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [DataMember, MemoryPackOrder(4)] public bool IsSetChatsStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(5)] public bool IsEmailStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(6)] public bool IsVerifyPhoneStepCompleted { get; init; }
+    [DataMember, MemoryPackOrder(7)] public bool IsPermissionsStepCompleted { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasUncompletedSteps
@@ -24,5 +25,6 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
             IsVerifyPhoneStepCompleted: true,
             IsSetChatsStepCompleted: true,
             IsEmailStepCompleted: true,
+            IsPermissionsStepCompleted: true,
         };
 }
