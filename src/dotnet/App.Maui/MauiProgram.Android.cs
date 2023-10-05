@@ -1,6 +1,7 @@
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Microsoft.JSInterop;
@@ -19,6 +20,7 @@ public static partial class MauiProgram
 
         services.AddSingleton<AndroidContentDownloader>();
         services.AddAlias<IIncomingShareFileDownloader, AndroidContentDownloader>();
+        services.AddScoped<IVisualMediaViewerFileDownloader, AndroidVisualMediaViewerFileDownloader>();
 
         services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
         // Temporarily disabled switch between loud speaker and earpiece
