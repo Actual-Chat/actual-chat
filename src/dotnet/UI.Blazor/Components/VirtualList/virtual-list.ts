@@ -1059,8 +1059,8 @@ export class VirtualList {
             return;
 
         const query = this.getDataQuery(getRidOfOldItems);
-        if (!this.isDataRequestRequired(query, getRidOfOldItems)) {
-            debugLog?.log(`requestData: data request is not required`);
+        if (!this.mustRequestData(query, getRidOfOldItems)) {
+            debugLog?.log(`requestData: request is unnecessary`);
             return;
         }
         if (query.isNone)
@@ -1118,11 +1118,11 @@ export class VirtualList {
         this._lastQuery = this._query;
     }
 
-    private isDataRequestRequired(query: VirtualListDataQuery, getRidOfOldItems: boolean): boolean
+    private mustRequestData(query: VirtualListDataQuery, canRemoveItems: boolean): boolean
     {
-        const currentItemRange = this._itemRange;
-        const queryItemRange = query.virtualRange;
-        if (!currentItemRange || !queryItemRange)
+        const itemRange = this._itemRange;
+        const queryRange = query.virtualRange;
+        if (!itemRange || !queryRange)
             return false;
 
         if (!this._viewport)
@@ -1132,18 +1132,18 @@ export class VirtualList {
             return false;
 
         const viewportSize = this._viewport.size;
-        const intersection = currentItemRange.intersectWith(queryItemRange);
-        if (intersection.isEmpty)
+        const commonRange = itemRange.intersectWith(queryRange);
+        if (commonRange.isEmpty)
             return true;
 
-        const requiresMoreData = intersection.start - queryItemRange.start > viewportSize
-            || queryItemRange.end - intersection.end > viewportSize
-            || this._isNearSkeleton && (intersection.start > queryItemRange.start || queryItemRange.end > intersection.end);
+        const mustExpand =
+            commonRange.start - queryRange.start > viewportSize
+            || queryRange.end - commonRange.end > viewportSize
+            || this._isNearSkeleton && (commonRange.start > queryRange.start || queryRange.end > commonRange.end);
+        // NOTE(AY): The condition below checks just one side
+        const mustContract = itemRange.end - commonRange.end > viewportSize;
 
-        // if old items area is big enough or more data is required - rerender
-        if (getRidOfOldItems)
-            return requiresMoreData || currentItemRange.end - intersection.end > viewportSize;
-        return requiresMoreData;
+        return mustExpand || (canRemoveItems && mustContract);
     }
 
     private getDataQuery(getRidOfOldItems: boolean): VirtualListDataQuery {

@@ -15,14 +15,11 @@ export class Range<T> {
 }
 
 export class NumberRange extends Range<number> {
-
     constructor(start: number, end: number) {
         super(start, end);
     }
 
-    public get size(): number {
-        return this.end - this.start;
-    }
+    public get size(): number { return this.end - this.start; }
 
     public contains(containedRange: Range<number>): boolean;
     public contains(item: number): boolean;
