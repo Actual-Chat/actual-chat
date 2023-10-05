@@ -19,16 +19,14 @@
 </DialogFrame>
 
 @code {
-    [Inject] private History History { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private async Task OnClick() {
+    private void OnClick() {
         Modal.Close();
-        await History.WhenNavigationCompleted();
         _ = UIEventHub.Publish(new ShowSettingsEvent());
     }
 

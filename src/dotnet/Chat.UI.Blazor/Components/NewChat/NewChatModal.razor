@@ -66,7 +66,6 @@
         await Modal.Ref.WhenClosed;
         if (_chat == null)
             return;
-        await History.WhenNavigationCompleted();
         _ = History.NavigateTo(Links.Chat(_chat.Id));
     }
 

@@ -11,6 +11,7 @@ public partial class History : IHasServices, IDisposable
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.History.init";
 
     public static readonly TimeSpan MaxNavigationDuration = TimeSpan.FromSeconds(1.5);
+    public static readonly TimeSpan AwaitNavigationDuration = TimeSpan.FromSeconds(5);
     public const int MaxItemCount = 200;
 
     private Session? _session;
