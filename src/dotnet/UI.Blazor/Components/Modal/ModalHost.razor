@@ -34,7 +34,7 @@
 
     [Inject] private ModalUI ModalUI { get; set; } = null!;
     [Inject] private TuneUI TuneUI { get; set; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    [Inject] internal History History { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] internal HistoryStepper HistoryStepper { get; init; } = null!;
 

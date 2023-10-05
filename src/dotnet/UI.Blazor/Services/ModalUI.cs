@@ -40,6 +40,7 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
         where TModel : class
     {
         await WhenReady.ConfigureAwait(true);
+        await Host.History.WhenNavigationCompletedWithDefaultTimeout().ConfigureAwait(true);
         var content = new RenderFragment(builder => {
             builder.OpenComponent(0, componentType);
             builder.AddAttribute(1, nameof(IModalView<TModel>.ModalModel), model);

@@ -1,5 +1,3 @@
-using ActualChat.UI.Blazor.Module;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
@@ -7,9 +5,28 @@ public partial class History
     public Task WhenNavigationCompleted(CancellationToken cancellationToken = default)
         => NavigationQueue.WhenAllEntriesCompleted(cancellationToken);
 
-    [JSInvokable]
-    public Task NavigateTo(string uri, bool mustReplace = false, bool force = false, bool addInFront = false)
+    public async Task WhenNavigationCompletedWithDefaultTimeout()
     {
+        var cts = new CancellationTokenSource(AwaitNavigationDuration);
+        try {
+            await WhenNavigationCompleted(cts.Token).ConfigureAwait(true);
+        }
+        catch (Exception e) {
+            if (e is TimeoutException || e is OperationCanceledException)
+                Log.LogDebug(e, "WhenNavigationCompletedWithDefaultTimeout exceeded timeout");
+            else
+                throw;
+        }
+        finally {
+            cts.CancelAndDisposeSilently();
+        }
+    }
+
+    [JSInvokable]
+    public async Task NavigateTo(string uri, bool mustReplace = false, bool force = false, bool addInFront = false)
+    {
+        await WhenNavigationCompletedWithDefaultTimeout().ConfigureAwait(true);
+
         var fixedUri = new LocalUrl(uri).Value;
         if (!OrdinalEquals(uri, fixedUri)) {
             Log.LogWarning("NavigateTo: {Uri} is fixed to {FixedUri}", uri, fixedUri);
@@ -32,7 +49,7 @@ public partial class History
             });
             return itemId;
         });
-        return entry.WhenCompleted;
+        await entry.WhenCompleted.ConfigureAwait(false);
     }
 
     public ValueTask ForceReload(string eventName, string url, bool mustReplace = true)

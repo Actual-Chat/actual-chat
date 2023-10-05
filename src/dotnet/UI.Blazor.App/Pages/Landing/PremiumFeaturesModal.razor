@@ -160,17 +160,14 @@
 </DialogFrame>
 
 @code {
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private async Task DownloadClick() {
+    private void DownloadClick() {
         Modal.Close();
-        await History.WhenNavigationCompleted();
         ModalModel.DownloadClick();
     }
     private void OnOkClick()

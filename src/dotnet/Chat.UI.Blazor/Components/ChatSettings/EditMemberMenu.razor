@@ -90,7 +90,6 @@
 
     private async Task OnPromoteToOwnerClick(Model m) {
         await WhenClosed;
-        await Host.History.WhenNavigationCompleted();
 
         var authorName = m.Author.Avatar.Name;
         _ = await ModalUI.Show(new ConfirmModal.Model(

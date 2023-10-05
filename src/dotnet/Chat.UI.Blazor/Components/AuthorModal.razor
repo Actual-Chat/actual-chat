@@ -20,7 +20,7 @@
         @if (m.IsOwn) {
             <Button Class="btn-modal" Click="OnSettingsClick">Edit profile</Button>
             if (!m.Author.IsAnonymous) {
-                <Button Class="btn-modal" Click="OnAuthorClicked">Change avatar</Button>
+                <Button Class="btn-modal" Click="OnChangeAvatarClicked">Change avatar</Button>
             } else if (m.EnableIncompleteUI) {
                 <Button Class="btn-modal danger" Click="OnRevealClicked">Reveal</Button>
             }
@@ -47,7 +47,6 @@
     [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
@@ -106,9 +105,8 @@
     private Task OnRevealClicked()
         => FeedbackUI.AskFeatureRequestFeedback("reveal-author", "Reveal yourself");
 
-    private async Task OnAuthorClicked() {
+    private async Task OnChangeAvatarClicked() {
         Modal.Close();
-        await History.WhenNavigationCompleted();
         await ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, false, OnAvatarSelected));
     }
 
@@ -120,9 +118,8 @@
         await UICommander.Run(command);
     }
 
-    private async Task OnSettingsClick() {
+    private void OnSettingsClick() {
         Modal.Close();
-        await History.WhenNavigationCompleted();
         _ = UIEventHub.Publish(new ShowSettingsEvent());
     }
 }

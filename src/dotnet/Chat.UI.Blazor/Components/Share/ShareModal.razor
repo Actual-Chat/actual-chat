@@ -99,7 +99,6 @@
         Modal.Close(true);
         if (selectedChatIds.Count != 0) {
             var history = Services.GetRequiredService<History>();
-            await history.WhenNavigationCompleted();
             await history.NavigateTo(Links.Chat(selectedChatIds.First()));
         }
     }
