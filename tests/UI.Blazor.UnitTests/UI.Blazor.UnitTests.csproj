@@ -5,4 +5,8 @@
     <ProjectReference Include="..\..\src\dotnet\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Stl.Generators" />
+  </ItemGroup>
+
 </Project>
