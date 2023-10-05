@@ -3,8 +3,10 @@ using Stl.Time.Testing;
 
 namespace ActualChat.Core.UnitTests.Channels;
 
-public class AsyncEnumerableExtTest
+public class AsyncEnumerableExtTest : TestBase
 {
+    public AsyncEnumerableExtTest(ITestOutputHelper @out) : base(@out)
+    { }
 
     [Fact]
     public async Task BasicMergeTest()
@@ -22,6 +24,7 @@ public class AsyncEnumerableExtTest
         var right = Right();
         var result = left.Merge(right);
         var resultList = await result.ToListAsync();
+        Out.WriteLine(resultList.ToDelimitedString(", "));
         resultList.Should().BeEquivalentTo(new[] { 0, 1, 2, 10, 3, 4, 5, 20, 6, 30 }, options => options.WithStrictOrdering());
 
 
@@ -152,6 +155,8 @@ public class AsyncEnumerableExtTest
 
         var sum = await source.Merge(otherSourceArray).SumAsync(i => i, cancellationToken: cts.Token);
         sum.Should().Be((otherSourceLength + 1) * (sequenceLength - 1) * sequenceLength / 2);
+
+        Out.WriteLine($"Count is {count}");
     }
 
     private async IAsyncEnumerable<int> GenerateRandomUniqueSequence(
@@ -165,7 +170,8 @@ public class AsyncEnumerableExtTest
             .OrderBy(x => x.random)
             .Select(x => x.i);
         foreach (var number in randomNumbers) {
-            await delayClock.Delay(random.Next(100), cancellationToken).ConfigureAwait(false);
+            if (random.Next(3) != 0)
+                await delayClock.Delay(random.Next(50), cancellationToken).ConfigureAwait(false);
             yield return number;
         }
     }
