@@ -9,6 +9,7 @@ using Stl.Fusion.Server.Middlewares;
 using Stl.Fusion.Server.Rpc;
 using Stl.Rpc;
 using Stl.Rpc.Diagnostics;
+using Stl.Rpc.Testing;
 
 namespace ActualChat.Web.Module;
 
@@ -31,6 +32,13 @@ public sealed class WebModule : HostModule, IWebModule
         services.AddSingleton<RpcMethodTracerFactory>(method => new RpcMethodActivityTracer(method) {
             UseCounters = true,
         });
+
+        // Add Rpc
+#if DEBUG && false
+        rpc.AddInboundMiddleware(c => new RpcRandomDelayMiddleware(c) {
+            Delay = new(0.2, 0.2), // 0 .. 0.4s
+        });
+#endif
 
         // Remove SessionMiddleware - we use SessionCookies directly instead
         services.RemoveAll<SessionMiddleware.Options>();

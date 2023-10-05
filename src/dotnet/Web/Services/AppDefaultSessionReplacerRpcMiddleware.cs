@@ -6,11 +6,11 @@ public class AppDefaultSessionReplacerRpcMiddleware : RpcInboundMiddleware
 {
     public AppDefaultSessionReplacerRpcMiddleware(IServiceProvider services) : base(services) { }
 
-    public override void BeforeCall(RpcInboundCall call)
+    public override Task OnBeforeCall(RpcInboundCall call)
     {
         var connection = call.Context.Peer.ConnectionState.Value.Connection as AppRpcConnection;
         if (connection == null)
-            return;
+            return Task.CompletedTask;
 
         var arguments = call.Arguments;
         var tItem0 = arguments!.GetType(0);
@@ -31,5 +31,6 @@ public class AppDefaultSessionReplacerRpcMiddleware : RpcInboundMiddleware
             else
                 session.RequireValid();
         }
+        return Task.CompletedTask;
     }
 }
