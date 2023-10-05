@@ -597,8 +597,8 @@ export class VirtualList {
         }
     }
 
-    private readonly updateViewportThrottled = throttle((getRidOfOldItems?: boolean) => this.updateViewport(getRidOfOldItems), UpdateViewportInterval, 'default', 'updateViewport');
-    private async updateViewport(getRidOfOldItems?: boolean): Promise<void> {
+    private readonly updateViewportThrottled = throttle((canContract?: boolean) => this.updateViewport(canContract), UpdateViewportInterval, 'default', 'updateViewport');
+    private async updateViewport(canContract?: boolean): Promise<void> {
         const rs = this._renderState;
         if (this._isDisposed || this._isRendering)
             return;
@@ -659,7 +659,7 @@ export class VirtualList {
             }
 
             this._viewport = viewport;
-            await this.requestData(getRidOfOldItems);
+            await this.requestData(canContract);
         }
     }
 
@@ -1054,12 +1054,12 @@ export class VirtualList {
         return true;
     }
 
-    private async requestData(getRidOfOldItems: boolean = false): Promise<void> {
+    private async requestData(canContract: boolean = false): Promise<void> {
         if (this._isRendering || !this._viewport || !this._itemRange)
             return;
 
-        const query = this.getDataQuery(getRidOfOldItems);
-        if (!this.mustRequestData(query, getRidOfOldItems)) {
+        const query = this.getDataQuery(canContract);
+        if (!this.mustRequestData(query, canContract)) {
             debugLog?.log(`requestData: request is unnecessary`);
             return;
         }
@@ -1080,7 +1080,7 @@ export class VirtualList {
         });
         this._whenUpdateCompleted = newWhenUpdateCompleted;
 
-        if (getRidOfOldItems) {
+        if (canContract) {
             const items = this._orderedItems;
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
@@ -1118,7 +1118,7 @@ export class VirtualList {
         this._lastQuery = this._query;
     }
 
-    private mustRequestData(query: VirtualListDataQuery, canRemoveItems: boolean): boolean
+    private mustRequestData(query: VirtualListDataQuery, canContract: boolean): boolean
     {
         const itemRange = this._itemRange;
         const queryRange = query.virtualRange;
@@ -1142,11 +1142,10 @@ export class VirtualList {
             || this._isNearSkeleton && (commonRange.start > queryRange.start || queryRange.end > commonRange.end);
         // NOTE(AY): The condition below checks just one side
         const mustContract = itemRange.end - commonRange.end > viewportSize;
-
-        return mustExpand || (canRemoveItems && mustContract);
+        return mustExpand || (canContract && mustContract);
     }
 
-    private getDataQuery(getRidOfOldItems: boolean): VirtualListDataQuery {
+    private getDataQuery(canContract: boolean): VirtualListDataQuery {
         const rs = this._renderState;
         const itemSize = this._statistics.itemSize;
         const responseFulfillmentRatio = this._statistics.responseFulfillmentRatio;
@@ -1172,7 +1171,7 @@ export class VirtualList {
             return this._lastQuery;
         if (this._items.size == 0) // No entries -> nothing to "align" the query to
             return this._lastQuery;
-        if (!getRidOfOldItems && alreadyLoaded.contains(loadZone)) {
+        if (!canContract && alreadyLoaded.contains(loadZone)) {
             // debug helper
             // console.warn('already!', viewport, alreadyLoaded, loadZone);
             return this._lastQuery;
@@ -1190,7 +1189,7 @@ export class VirtualList {
                 if (startIndex < 0)
                     startIndex = i;
             } else if (startIndex >= 0) {
-                if (getRidOfOldItems && item.isOld)
+                if (canContract && item.isOld)
                     break;
                 endIndex = i;
             }
