@@ -56,9 +56,10 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             Width = size?.Width ?? 0,
             Height = size?.Height ?? 0,
         };
-        using var stream = new MemoryStream(processedFile.Content);
-        var content = new Content(media.ContentId, file.ContentType, stream);
-        await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
+        using (var stream = new MemoryStream(processedFile.Content)) {
+            var content = new Content(media.ContentId, file.ContentType, stream);
+            await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
+        }
 
         var changeCommand = new MediaBackend_Change(
             mediaId,

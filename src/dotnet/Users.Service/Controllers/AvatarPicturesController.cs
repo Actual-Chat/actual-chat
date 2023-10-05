@@ -50,9 +50,10 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
         };
 
         var stream = file.OpenReadStream();
-        await using var _ = stream.ConfigureAwait(false);
-        var content = new Content(media.ContentId, file.ContentType, stream);
-        await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
+        await using (var _ = stream.ConfigureAwait(false)) {
+            var content = new Content(media.ContentId, file.ContentType, stream);
+            await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
+        }
 
         var changeCommand = new MediaBackend_Change(
             mediaId,
