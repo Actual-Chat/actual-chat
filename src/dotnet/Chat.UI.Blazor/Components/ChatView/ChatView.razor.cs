@@ -166,8 +166,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // which should never happen, coz it doesn't create any dependencies.
         await _getDataSuspender.WhenResumed();  // No need for .ConfigureAwait(false) here
 
+        using var activity = BlazorUITrace.StartActivity("ChatView.GetVirtualListData");
+
         var chat = Chat;
         var chatId = chat.Id;
+        activity?.SetTag("AC." + nameof(ChatId), chatId);
 
         var authorTask = Authors.GetOwn(Session, chatId, cancellationToken);
         var chatIdRangeTask = Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken);
@@ -225,6 +228,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         // If we are scrolling somewhere - let's load the date near the entryId
         var idRangeToLoad = GetIdRangeToLoad(query, oldData, mustScrollToEntry ? entryLid : 0, chatIdRange);
+
+        activity?.SetTag("AC." + "IdRange", chatIdRange.AsOneLineString());
+        activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
+        activity?.SetTag("AC." + "IdRangeToLoad", idRangeToLoad.AsOneLineString());
 
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End + 1 >= chatIdRange.End;

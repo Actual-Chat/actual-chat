@@ -15,6 +15,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     private readonly AsyncLock _stateLock = AsyncLock.New(LockReentryMode.Unchecked);
     private readonly IMutableState<AudioRecorderState> _state;
+    private Activity? _recordingActivity;
     private IJSObjectReference _jsRef = null!;
 
     private ILogger Log { get; }
@@ -151,6 +152,13 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             IsConnected = isConnected,
             IsVoiceActive = isVoiceActive,
         };
+        _recordingActivity
+            ?.AddSentrySimulatedEvent(new ActivityEvent("Recording state changed",
+                tags: new ActivityTagsCollection {
+                    { "AC." + nameof(AudioRecorderState.IsRecording), isRecording },
+                    { "AC." + nameof(AudioRecorderState.IsConnected), isConnected },
+                    { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
+                }));
         DebugLog?.LogDebug("Chat #{ChatId}: recording state changed: {State}", state.ChatId, state);
     }
 
@@ -211,6 +219,16 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             IsConnected = isConnected,
             IsVoiceActive = isVoiceActive,
         };
+        _recordingActivity = BlazorUITrace.StartActivity("AudioRecording");
+        _recordingActivity
+            ?.SetTag("AC." + nameof(ChatId), chatId)
+            .AddSentrySimulatedEvent(new ActivityEvent("Recoding is starting",
+                tags: new ActivityTagsCollection {
+                    { "AC." + nameof(AudioRecorderState.IsRecording), isRecording },
+                    { "AC." + nameof(AudioRecorderState.IsConnected), isConnected },
+                    { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
+                }));
+
         DebugLog?.LogDebug("Chat #{ChatId}: recording is starting", chatId);
     }
 
@@ -223,6 +241,14 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             IsConnected = isConnected,
             IsVoiceActive = isVoiceActive,
         };
+        _recordingActivity
+            ?.AddSentrySimulatedEvent(new ActivityEvent("Recording is stopped",
+                tags: new ActivityTagsCollection {
+                    { "AC." + nameof(AudioRecorderState.IsRecording), isRecording },
+                    { "AC." + nameof(AudioRecorderState.IsConnected), isConnected },
+                    { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
+                }));
+        _recordingActivity?.Dispose();
         DebugLog?.LogDebug("Recording is stopped");
     }
 }

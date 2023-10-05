@@ -3,11 +3,14 @@ using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 // ReSharper disable once RedundantUsingDirective
-using ActualChat.UI.Blazor.App; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
+using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.Diagnostics;
+using ActualChat.UI.Blazor.Services; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 // ReSharper disable once RedundantUsingDirective
 using Microsoft.Extensions.Configuration; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenTelemetry.Trace;
 using Sentry;
 using Stl.CommandR.Interception;
 using Stl.Fusion.Client.Interception;
@@ -15,6 +18,7 @@ using Stl.Fusion.Interception;
 using Stl.Interception.Interceptors;
 using Stl.Interception.Internal;
 using Stl.Rpc.Infrastructure;
+using Tracer = ActualChat.Performance.Tracer;
 
 namespace ActualChat.App.Wasm;
 
@@ -36,14 +40,16 @@ public static class Program
         Tracer = Tracer.Default = new Tracer("WasmApp", x => Console.WriteLine("@ " + x.Format()));
 #endif
         Tracer.Point($"{nameof(Main)} started");
+        OtelDiagnostics.SetupConditionalPropagator();
 
         FusionSettings.Mode = FusionMode.Client;
 
         // NOTE(AY): This thing takes 1 second on Windows!
         var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp);
         var sentrySdkDisposable = isSentryEnabled
-            ? SentrySdk.Init(options => options.ConfigureForApp())
+            ? SentrySdk.Init(options => options.ConfigureForApp(true))
             : null;
+        IDisposable? traceProvider = null;
         try {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<Microsoft.AspNetCore.Components.Web.HeadOutlet>("head::after");
@@ -58,6 +64,8 @@ public static class Program
             Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
             if (Constants.DebugMode.WebMReader)
                 WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
+            if (sentrySdkDisposable != null)
+                CreateClientSentryTraceProvider(host.Services, c => traceProvider = c);
 
             await host.RunAsync().ConfigureAwait(false);
         }
@@ -70,6 +78,7 @@ public static class Program
             throw;
         }
         finally {
+            traceProvider.DisposeSilently();
             sentrySdkDisposable.DisposeSilently();
         }
     }
@@ -98,5 +107,34 @@ public static class Program
         });
 
         AppStartup.ConfigureServices(services, AppKind.WasmApp);
+    }
+
+    private static void CreateClientSentryTraceProvider(IServiceProvider services, Action<TracerProvider?> saveTracerProvider)
+    {
+        var urlMapper = services.GetRequiredService<UrlMapper>();
+        if (!urlMapper.IsActualChat) {
+            CreateAndSaveTracerProvider();
+            return;
+        }
+
+        _ = BackgroundTask.Run(async () => {
+            try {
+                var accountUI = services.GetRequiredService<AccountUI>();
+                await accountUI.WhenLoaded.ConfigureAwait(false);
+                var ownAccount = await accountUI.OwnAccount.Use().ConfigureAwait(false);
+                if (!ownAccount.IsAdmin)
+                    return;
+
+                CreateAndSaveTracerProvider();
+            }
+            catch (Exception e) {
+                await Console.Error.WriteLineAsync("Failed to access AccountUI: " + e)
+                    .ConfigureAwait(false);
+            }
+        });
+
+        void  CreateAndSaveTracerProvider() {
+            saveTracerProvider(OtelDiagnostics.CreateClientSentryTraceProvider("WasmApp"));
+        }
     }
 }

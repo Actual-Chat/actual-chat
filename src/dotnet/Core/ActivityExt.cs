@@ -29,4 +29,22 @@ public static class ActivityExt
             }
         }
     }
+
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Activity AddSentrySimulatedEvent(this Activity activity, ActivityEvent e)
+    {
+        // Sentry does not export events from an Activity.
+        // To get around this limitation we create inner spans with min duration.
+        var currentActivity = Activity.Current;
+        try {
+            Activity.Current = activity;
+            using var innerSpan = activity.Source.StartActivity(e.Name, ActivityKind.Internal, (ActivityContext)default, e.Tags);
+            innerSpan?.SetEndTime(innerSpan.StartTimeUtc.AddTicks(1));
+        }
+        finally {
+            Activity.Current = currentActivity;
+        }
+        return activity;
+    }
 }

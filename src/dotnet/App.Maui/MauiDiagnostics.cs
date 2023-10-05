@@ -3,7 +3,9 @@ using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
+using OpenTelemetry.Trace;
 using Sentry;
 using Sentry.Maui.Internal;
 using Sentry.Serilog;
@@ -12,6 +14,7 @@ using Serilog.Events;
 using Serilog.Extensions.Logging;
 using Stl.IO;
 using ILogger = Serilog.ILogger;
+using Tracer = ActualChat.Performance.Tracer;
 
 namespace ActualChat.App.Maui;
 
@@ -32,6 +35,7 @@ public static class MauiDiagnostics
 
     public static readonly ILoggerFactory LoggerFactory;
     public static readonly Tracer Tracer;
+    public static TracerProvider? TracerProvider { get; private set; }
 
     static MauiDiagnostics()
     {
@@ -46,7 +50,11 @@ public static class MauiDiagnostics
         if (_sentryOptions != null)
             _ = LoadingUI.WhenAppRendered
                 .WithDelay(SentryStartDelay)
-                .ContinueWith(_ => InitSentrySdk(_sentryOptions), TaskScheduler.Default);
+                .ContinueWith(_ => {
+                        InitSentrySdk(_sentryOptions);
+                        var _1 = CreateClientSentryTraceProvider();
+                    },
+                    TaskScheduler.Default);
     }
 
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)
@@ -105,7 +113,7 @@ public static class MauiDiagnostics
 
     private static void ConfigureSentrySerilog(SentrySerilogOptions options)
     {
-        options.ConfigureForApp();
+        options.ConfigureForApp(true);
         // We'll initialize the SDK later after app is loaded.
         options.InitializeSdk = false;
 
@@ -137,6 +145,21 @@ public static class MauiDiagnostics
         // Register the return value from initializing the SDK with the disposer.
         // This will ensure that it gets disposed when the service provider is disposed.
         disposer.Register(disposable);
+    }
+
+    private static async Task CreateClientSentryTraceProvider()
+    {
+        // Initialize client trace provider only in development environment or for admin users.
+        var urlMapper = AppServices.GetRequiredService<UrlMapper>();
+        if (urlMapper.IsActualChat) {
+            var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
+            var accountUI = scopedServices.GetRequiredService<AccountUI>();
+            await accountUI.WhenLoaded.ConfigureAwait(false);
+            var ownAccount = await accountUI.OwnAccount.Use().ConfigureAwait(false);
+            if (!ownAccount.IsAdmin)
+                return;
+        }
+        TracerProvider = OtelDiagnostics.CreateClientSentryTraceProvider("MauiApp");
     }
 
     public static ILoggingBuilder AddFilteringSerilog(
