@@ -53,7 +53,7 @@ namespace ActualChat.Media.Migrations
                 Resource resource)
             {
                 var mediaId = new MediaId(id);
-                var hashCode = mediaId.Id.ToString().GetSHA256HashCode();
+                var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
                 var resourceStream = resource.GetStream();
                 var extension = Path.GetExtension(resource.Name);
                 var type = contentTypeProvider.TryGetContentType(resource.Name, out var contentType)

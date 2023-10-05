@@ -96,16 +96,7 @@ public class AudioHub(IServiceProvider services) : Hub
     public Task<string> Ping()
         => Task.FromResult("Pong");
 
-    private Session? GetSessionFromToken(string recorderToken)
-    {
-        // [Obsolete("2023.07: Legacy clients use 'default' value.")]
-        if (recorderToken.IsNullOrEmpty() || OrdinalEquals(recorderToken, "default"))
-            return null;
-
-        // [Obsolete("2023.07: Legacy clients may use Session.Id instead of session token.")]
-        if (!SecureToken.HasValidPrefix(recorderToken))
-            return new Session(recorderToken).RequireValid();
-
-        return SecureTokensBackend.ParseSessionToken(recorderToken);
-    }
+    private Session? GetSessionFromToken(string sessionToken)
+        => sessionToken.IsNullOrEmpty() ? null
+            : SecureTokensBackend.ParseSessionToken(sessionToken);
 }

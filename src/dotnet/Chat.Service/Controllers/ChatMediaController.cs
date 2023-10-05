@@ -1,45 +1,53 @@
 using ActualChat.Media;
+using ActualChat.Security;
+using ActualChat.Users;
+using ActualChat.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Chat.Controllers;
 
 [ApiController, Route("api/chat-media")]
-public sealed class ChatMediaController(
-    IContentSaver contentSaver,
-    IEnumerable<IUploadProcessor> uploadProcessors,
-    ICommander commander
-    ) : ControllerBase
+public sealed class ChatMediaController(IServiceProvider services) : ControllerBase
 {
-    private IContentSaver ContentSaver { get; } = contentSaver;
-    private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; } = uploadProcessors.ToList();
-    private ICommander Commander { get; } = commander;
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IContentSaver ContentSaver { get; } = services.GetRequiredService<IContentSaver>();
+    private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; }
+        = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
+    private ICommander Commander { get; } = services.Commander();
 
     [HttpPost("{chatId}/upload")]
     public async Task<ActionResult<MediaContent>> Upload(ChatId chatId, CancellationToken cancellationToken)
     {
-        // TODO(AY): Uncomment this when obsolete routes above are removed
-        // var session = HttpContext.GetSessionFromHeader(SessionFormat.Token);
+        try {
+            // NOTE(AY): Header is used by clients, cookie is used by SSB
+            var session = HttpContext.TryGetSessionFromHeader(SessionFormat.Token)
+                ?? HttpContext.GetSessionFromCookie();
+            await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            return BadRequest(e.Message);
+        }
 
         var httpRequest = HttpContext.Request;
         if (!httpRequest.HasFormContentType || httpRequest.Form.Files.Count == 0)
-            return BadRequest("No file content found");
+            return BadRequest("No file found.");
 
         if (httpRequest.Form.Files.Count > 1)
-            return BadRequest("Too many files");
+            return BadRequest("Too many files.");
 
         var file = httpRequest.Form.Files[0];
         if (file.Length == 0)
-            return BadRequest("File is empty");
+            return BadRequest("File is empty.");
 
         if (file.Length > Constants.Attachments.FileSizeLimit)
-            return BadRequest("File is too big");
+            return BadRequest("File is too big.");
 
         var fileInfo = await ReadFileContent(file, cancellationToken).ConfigureAwait(false);
         var (processedFile, size) = await ProcessFile(fileInfo, cancellationToken).ConfigureAwait(false);
 
         var mediaId = new MediaId(chatId, Generate.Option);
-        var hashCode = mediaId.Id.ToString().GetSHA256HashCode();
+        var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
         var media = new Media.Media(mediaId) {
             ContentId = $"media/{hashCode}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
             FileName = fileInfo.FileName,
@@ -48,6 +56,9 @@ public sealed class ChatMediaController(
             Width = size?.Width ?? 0,
             Height = size?.Height ?? 0,
         };
+        using var stream = new MemoryStream(processedFile.Content);
+        var content = new Content(media.ContentId, file.ContentType, stream);
+        await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new MediaBackend_Change(
             mediaId,
@@ -55,10 +66,6 @@ public sealed class ChatMediaController(
                 Create = media,
             });
         await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-
-        using var stream = new MemoryStream(processedFile.Content);
-        var content = new Content(media.ContentId, file.ContentType, stream);
-        await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
         return Ok(new MediaContent(media.Id, media.ContentId));
     }
 

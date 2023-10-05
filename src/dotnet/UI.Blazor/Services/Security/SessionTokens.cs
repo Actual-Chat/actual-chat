@@ -4,7 +4,7 @@ using Stl.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class SessionTokens : WorkerBase, IComputeService
+public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComputeService
 {
     public const string HeaderName = "Session";
 
@@ -12,37 +12,38 @@ public sealed class SessionTokens : WorkerBase, IComputeService
 
     private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.Unchecked);
     private volatile SecureToken? _current;
+    private Session? _session;
+    private ISecureTokens? _secureTokens;
+    private DeviceAwakeUI? _deviceAwakeUI;
+    private IJSRuntime? _js;
+    private IServerClock? _clock;
+    private ILogger? _log;
 
-    private Session Session { get; }
-    private ISecureTokens SecureTokens { get; }
-    private IJSRuntime JS { get; }
-    private IMomentClock Clock { get; }
-    private ILogger Log { get; }
+    private IServiceProvider Services { get; } = services;
+    private Session Session => _session ??= Services.Session();
+    private ISecureTokens SecureTokens => _secureTokens ??= Services.GetRequiredService<ISecureTokens>();
+    private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
+    private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
+    private IMomentClock Clock => _clock ??= Services.Clocks().ServerClock;
+    private ILogger Log => _log ??= Services.LogFor(GetType());
     private Moment Now => Clock.Now;
 
-    public TimeSpan AsGoodAsNewLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(1);
-    public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(10);
-    public TimeSpan RefreshReserve { get; init; } = TimeSpan.FromSeconds(30);
+    public TimeSpan RefreshLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(5);
+    public TimeSpan NoRefreshLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(1);
     public SecureToken? Current => _current;
 
-    public SessionTokens(IServiceProvider services)
-    {
-        Session = services.Session();
-        SecureTokens = services.GetRequiredService<ISecureTokens>();
-        JS = services.JSRuntime();
-        Clock = services.Clocks().ServerClock;
-        Log = services.LogFor(GetType());
-    }
-
     public ValueTask<SecureToken> Get(CancellationToken cancellationToken = default)
-        => Get(MinLifespan, cancellationToken);
+        => Get(RefreshLifespan, cancellationToken);
 
     public async ValueTask<SecureToken> Get(TimeSpan minLifespan, CancellationToken cancellationToken = default)
     {
-        minLifespan = minLifespan.Clamp(MinLifespan, AsGoodAsNewLifespan);
+        minLifespan = minLifespan.Clamp(default, NoRefreshLifespan);
+        var minExpiresAt = Now + minLifespan;
         var result = _current;
-        if (result == null || result.ExpiresAt < Now + minLifespan)
-            result = await GetNew(cancellationToken).ConfigureAwait(false);
+        if (result != null && result.ExpiresAt >= minExpiresAt)
+            return result;
+
+        result = await GetNew(cancellationToken).ConfigureAwait(false);
         return result;
     }
 
@@ -50,7 +51,7 @@ public sealed class SessionTokens : WorkerBase, IComputeService
     {
         using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         var result = _current;
-        if (result != null && result.ExpiresAt >= Now + AsGoodAsNewLifespan)
+        if (result != null && result.ExpiresAt >= Now + NoRefreshLifespan)
             return result;
 
         result = await SecureTokens.CreateSessionToken(Session, cancellationToken).ConfigureAwait(false);
@@ -71,12 +72,18 @@ public sealed class SessionTokens : WorkerBase, IComputeService
 
     private async Task AutoRefresh(CancellationToken cancellationToken)
     {
-        var minLifespan = MinLifespan + RefreshReserve;
+        var jsToken = "";
+        var minLifespan = RefreshLifespan;
         while (!cancellationToken.IsCancellationRequested) {
             var current = await Get(minLifespan, cancellationToken).ConfigureAwait(false);
-            await JS.InvokeVoidAsync(JSSetCurrentMethod, cancellationToken, current.Token).ConfigureAwait(false);
-            var refreshAt = current.ExpiresAt - minLifespan;
-            await Clock.Delay(refreshAt, cancellationToken).ConfigureAwait(false);
+            if (!OrdinalEquals(jsToken, current.Token)) {
+                await JS.InvokeVoidAsync(JSSetCurrentMethod, cancellationToken, current.Token).ConfigureAwait(false);
+                jsToken = current.Token;
+            }
+
+            await DeviceAwakeUI
+                .SleepUntil(Clock, current.ExpiresAt - minLifespan, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }

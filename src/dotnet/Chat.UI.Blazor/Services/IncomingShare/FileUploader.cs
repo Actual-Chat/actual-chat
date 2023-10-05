@@ -1,17 +1,20 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Json;
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class FileUploader(IServiceProvider services)
 {
-    private UrlMapper? _urlMapper;
+    private HostInfo? _hostInfo;
     private SessionTokens? _sessionTokens;
+    private UrlMapper? _urlMapper;
     private IHttpClientFactory? _httpClientFactory;
 
-    private UrlMapper UrlMapper => _urlMapper ??= services.GetRequiredService<UrlMapper>();
     private SessionTokens SessionTokens => _sessionTokens ??= services.GetRequiredService<SessionTokens>();
+    private HostInfo HostInfo => _hostInfo ??= services.GetRequiredService<HostInfo>();
+    private UrlMapper UrlMapper => _urlMapper ??= services.GetRequiredService<UrlMapper>();
     private IHttpClientFactory HttpClientFactory
         => _httpClientFactory ??= services.GetRequiredService<IHttpClientFactory>();
 
@@ -23,8 +26,13 @@ public class FileUploader(IServiceProvider services)
         if (contentType != null)
             streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
         formData.Add(streamContent, "file", fileName.NullIfEmpty() ?? "Upload");
+
         var httpClient = HttpClientFactory.CreateClient("UploadFile.Client");
-        httpClient.DefaultRequestHeaders.Add(SessionTokens.HeaderName, SessionTokens.Current!.Token);
+        if (HostInfo.AppKind.IsClient()) {
+            var sessionToken = await SessionTokens.Get(cancellationToken).ConfigureAwait(false);
+            httpClient.DefaultRequestHeaders.Add(SessionTokens.HeaderName, sessionToken.Token);
+        }
+
         var url = UrlMapper.ApiBaseUrl + "chat-media/"+ chatId + "/upload";
         try {
             var response = await httpClient.PostAsync(url, formData, cancellationToken)

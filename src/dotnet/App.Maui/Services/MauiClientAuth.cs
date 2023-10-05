@@ -5,19 +5,18 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
-internal sealed class MauiClientAuth : IClientAuth
+internal sealed class MauiClientAuth(IServiceProvider services) : IClientAuth
 {
-    private ILogger? _log;
+    private SessionTokens? _sessionTokens;
     private HostInfo? _hostInfo;
     private History? _history;
+    private ILogger? _log;
 
-    private IServiceProvider Services { get; }
+    private IServiceProvider Services { get; } = services;
+    private SessionTokens SessionTokens => _sessionTokens ??= Services.GetRequiredService<SessionTokens>();
     private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     private History History => _history ??= Services.GetRequiredService<History>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    public MauiClientAuth(IServiceProvider services)
-        => Services = services;
 
     public async Task SignIn(string schema)
     {
@@ -75,8 +74,7 @@ internal sealed class MauiClientAuth : IClientAuth
     {
         var isSignIn = endpoint.OrdinalIgnoreCaseStartsWith("sign-in");
         try {
-            var secureTokens = Services.GetRequiredService<SessionTokens>();
-            var sessionToken = await secureTokens.Get(secureTokens.AsGoodAsNewLifespan).ConfigureAwait(true);
+            var sessionToken = await SessionTokens.Get().ConfigureAwait(true);
             var url = $"{MauiSettings.BaseUrl}maui-auth/{endpoint}?s={sessionToken.Token.UrlEncode()}";
             if (MauiSettings.WebAuth.UseSystemBrowser) {
                 await Browser.Default.OpenAsync(url, BrowserLaunchMode.SystemPreferred).ConfigureAwait(false);

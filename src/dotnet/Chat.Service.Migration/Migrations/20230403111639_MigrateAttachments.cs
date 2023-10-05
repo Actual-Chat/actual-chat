@@ -57,7 +57,7 @@ namespace ActualChat.Chat.Migrations
 
                     var attachment = dbAttachment.ToModel();
                     var mediaId = new MediaId(attachment.ChatId, Generate.Option);
-                    var hashCode = mediaId.Id.ToString().GetSHA256HashCode();
+                    var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
                     var media = new Media.Media {
                         Id = mediaId,
                         MetadataJson = dbAttachment.MetadataJson,

@@ -2,13 +2,10 @@
 
 namespace ActualChat.Chat;
 
-public class ContentSaverBackend : IContentSaverBackend
+public class ContentSaverBackend(IServiceProvider services) : IContentSaverBackend
 {
-    private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
-    private IContentSaver ContentSaver { get; }
-
-    public ContentSaverBackend(IServiceProvider services)
-        => ContentSaver = services.GetRequiredService<IContentSaver>();
+    private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new();
+    private IContentSaver ContentSaver { get; } = services.GetRequiredService<IContentSaver>();
 
     public virtual async Task SaveContent(ContentSaverBackend_SaveContent command, CancellationToken cancellationToken)
     {

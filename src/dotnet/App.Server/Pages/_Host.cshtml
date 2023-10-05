@@ -24,20 +24,8 @@
     var isBlazorServer = isNewSession || BlazorModeEndpoint.IsBlazorServer(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
     var blazorMaxReconnectRetries = 10_000_000;
-    var blazorScriptsHash = GetBlazorScriptsHash();
+    var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : HostHelper.GetBlazorScriptSuffix();
     Layout = null;
-
-    string GetBlazorScriptsHash()
-    {
-        if (HostInfo.IsDevelopmentInstance)
-            return "";
-
-        var version = typeof(ComponentsWebAssemblyApplicationBuilderExtensions)
-            .Assembly
-            .GetInformationalVersion()
-            .RequireNonEmpty("Blazor extensions assembly version");
-        return "." + version.GetSHA1HashCode().ToLower();
-    }
 }
 
 <!DOCTYPE html>
@@ -192,7 +180,7 @@
     <div id="app-connection-state" class="reconnect-overlay" style="display: none"></div>
 
     @if (isBlazorServer) {
-        <script src="_framework/blazor.server@(blazorScriptsHash).js" autostart="false"></script>
+        <script src="_framework/blazor.server@(blazorScriptSuffix).js" autostart="false"></script>
         <script>
             Blazor.start({
                 reconnectionOptions: {
@@ -203,7 +191,7 @@
             </script>
     }
     else {
-        <script src="_framework/blazor.webassembly@(blazorScriptsHash).js"></script>
+        <script src="_framework/blazor.webassembly@(blazorScriptSuffix).js"></script>
     }
 }
 </body>

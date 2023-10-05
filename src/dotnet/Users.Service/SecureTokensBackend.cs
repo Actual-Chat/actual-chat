@@ -5,20 +5,15 @@ using Stl.Generators;
 
 namespace ActualChat.Users;
 
-public class SecureTokensBackend : ISecureTokensBackend
+public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBackend
 {
     private static readonly RandomStringGenerator AugmentedPartGenerator = Alphabet.AlphaNumeric64.Generator16;
 
     private ITimeLimitedDataProtector DataProtector { get; }
-    private IMomentClock Clock { get; }
-
-    public SecureTokensBackend(IServiceProvider services)
-    {
-        DataProtector = services.GetRequiredService<IDataProtectionProvider>()
+        = services.GetRequiredService<IDataProtectionProvider>()
             .CreateProtector(nameof(SecureTokensBackend))
             .ToTimeLimitedDataProtector();
-        Clock = services.Clocks().CoarseSystemClock;
-    }
+    private IMomentClock Clock { get; } = services.Clocks().SystemClock;
 
     public ValueTask<SecureToken> Create(string value, CancellationToken cancellationToken = default)
     {

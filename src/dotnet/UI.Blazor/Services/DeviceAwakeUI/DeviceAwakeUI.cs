@@ -51,6 +51,25 @@ public class DeviceAwakeUI : ISleepDurationProvider, IDeviceAwakeUIBackend, IDis
         }
     }
 
+    public async Task SleepUntil(IMomentClock clock, Moment until, CancellationToken cancellationToken = default)
+    {
+        while (true) {
+            var delay = until - clock.Now;
+            if (delay <= TimeSpan.Zero)
+                return;
+
+            var cts = cancellationToken.CreateLinkedTokenSource();
+            try {
+                var delayTask = clock.Delay(delay, cts.Token);
+                var whenSleepCompletedTask = TotalSleepDuration.Computed.WhenInvalidated(cts.Token);
+                await Task.WhenAny(delayTask, whenSleepCompletedTask).ConfigureAwait(false);
+            }
+            finally {
+                cts.CancelAndDisposeSilently();
+            }
+        }
+    }
+
     [JSInvokable]
     public void OnDeviceAwake(double totalSleepDurationMs)
         => _totalSleepDuration.Value = TimeSpan.FromMilliseconds(totalSleepDurationMs);

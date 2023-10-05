@@ -4,9 +4,19 @@ internal class ContentSaver(IBlobStorageProvider blobStorageProvider) : IContent
 {
     private readonly IBlobStorage _blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
 
-    public Task Save(Content content, CancellationToken cancellationToken)
-        => _blobStorage.Write(content.ContentId, content.Stream, content.ContentType, cancellationToken);
+    public TimeSpan PostOperationDelay { get; init; } = TimeSpan.FromMilliseconds(250);
 
-    public Task Remove(string contentId, CancellationToken cancellationToken)
-        => _blobStorage.Delete(contentId, cancellationToken);
+    public async Task Save(Content content, CancellationToken cancellationToken)
+    {
+        await _blobStorage
+            .Write(content.ContentId, content.Stream, content.ContentType, cancellationToken)
+            .ConfigureAwait(false);
+        await Task.Delay(PostOperationDelay, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    public async Task Remove(string contentId, CancellationToken cancellationToken)
+    {
+        await _blobStorage.Delete(contentId, cancellationToken).ConfigureAwait(false);
+        await Task.Delay(PostOperationDelay, CancellationToken.None).ConfigureAwait(false);
+    }
 }

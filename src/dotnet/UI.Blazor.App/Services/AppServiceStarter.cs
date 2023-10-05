@@ -151,14 +151,15 @@ public class AppServiceStarter
 
             // Starting less important UI services
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
-            if (HostInfo.AppKind.IsClient())
+            var appKind = HostInfo.AppKind;
+            if (appKind.IsClient())
                 Services.GetRequiredService<SessionTokens>().Start();
             (Services.GetRequiredService<TuneUI>() as INotifyInitialized).Initialized();
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client
             Services.GetRequiredService<ContactSync>().Start();
-            if (HostInfo.AppKind.IsClient()) {
+            if (appKind.IsClient()) {
                 await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
                 await StartHostedServices().ConfigureAwait(false);
             }

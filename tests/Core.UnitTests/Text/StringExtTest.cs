@@ -1,5 +1,3 @@
-using Microsoft.Toolkit.HighPerformance;
-
 namespace ActualChat.Core.UnitTests.Text;
 
 public class StringExtTest
@@ -18,12 +16,5 @@ public class StringExtTest
         "1st".ToSentenceCase().Should().Be("1st");
         "1X".ToSentenceCase().Should().Be("1 X");
         "xUI".ToSentenceCase().Should().Be("x UI");
-    }
-
-    [Fact]
-    public void EmptyHashCodeTest()
-    {
-        "".GetDjb2HashCode();
-        "".GetSHA1HashCode();
     }
 }

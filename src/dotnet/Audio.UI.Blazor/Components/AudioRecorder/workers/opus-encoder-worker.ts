@@ -22,7 +22,6 @@ import {OpusEncoderWorklet} from '../worklets/opus-encoder-worklet-contract';
 import {VoiceActivityChange} from './audio-vad-contract';
 import {Log} from 'logging';
 import {RecorderStateEventHandler} from "../opus-media-recorder-contracts";
-import {SessionTokens} from "../../../../UI.Blazor/Services/Security/session-tokens";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
