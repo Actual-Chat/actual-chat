@@ -2,12 +2,14 @@ using System.Text.RegularExpressions;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
+using Stl.Interception;
 
 namespace ActualChat.Audio.UI.Blazor.Services;
 
-public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
+public sealed partial class AudioInitializer : WorkerBase, IAudioInfoBackend, INotifyInitialized
 {
     private static readonly string JSInitMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.init";
+    private static readonly string JSUpdateBackgroundStateMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.updateBackgroundState";
 
     [GeneratedRegex(@"^(?<type>mac|iPhone|iPad)(?:(?<version>\d+),\d*)?$")]
     private static partial Regex IOSDeviceRegexFactory();
@@ -36,8 +38,29 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
         WhenInitialized = Initialize();
     }
 
-    public void Dispose()
-        => _backendRef.DisposeSilently();
+    void INotifyInitialized.Initialized()
+        => this.Start();
+
+    protected override async Task DisposeAsyncCore()
+    {
+        _backendRef?.DisposeSilently();
+        await base.DisposeAsyncCore();
+    }
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+    {
+        Log.LogWarning("AudioInitializer - ON RUN");
+        var baseChains = new[] {
+            AsyncChainExt.From(UpdateBackgroundState),
+        };
+        var retryDelays = RetryDelaySeq.Exp(0.5, 3);
+        return (
+            from chain in baseChains
+            select chain
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log)
+            ).RunIsolated(cancellationToken);
+    }
 
     private Task Initialize()
         => new AsyncChain(nameof(Initialize), async ct => {
@@ -48,6 +71,7 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
                 var canUseNNVad = HostInfo.ClientKind != ClientKind.Ios || IsIOSDeviceFastEnoughToRunNNVad(deviceModel);
                 var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
                 await JS.InvokeVoidAsync(JSInitMethod, ct, backendRef, UrlMapper.BaseUrl, canUseNNVad).ConfigureAwait(false);
+                this.Start();
             })
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
@@ -66,5 +90,18 @@ public sealed partial class AudioInitializer : IAudioInfoBackend, IDisposable
         // only recent versions of apple hw have decent performance to run NN with WASM SIMD for VAD
         return int.TryParse(match.Groups["version"].Value, CultureInfo.InvariantCulture, out var hwVersion)
             && hwVersion >= 12;
+    }
+
+    private async Task UpdateBackgroundState(CancellationToken cancellationToken)
+    {
+        var previousState = BackgroundState.Foreground;
+        var stateChanges = BackgroundUI.State.Computed.Changes(cancellationToken);
+        await foreach (var cState in stateChanges) {
+            var state = cState.Value;
+            if (state.IsActive() != previousState.IsActive())
+                await JS.InvokeVoidAsync(JSUpdateBackgroundStateMethod, cancellationToken, state.ToString()).ConfigureAwait(false);
+
+            previousState = state;
+        }
     }
 }

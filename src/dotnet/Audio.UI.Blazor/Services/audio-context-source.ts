@@ -12,7 +12,7 @@ import { OnDeviceAwake } from 'on-device-awake';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
-import { Subject } from 'rxjs';
+import { Subject, Observable } from 'rxjs';
 import { AudioContextDestinationFallback } from "./audio-context-destination-fallback";
 
 const { logScope, debugLog, warnLog } = Log.get('AudioContextSource');
@@ -38,8 +38,9 @@ export class AudioContextSource {
     private readonly refCounts: Map<string, number> = new Map<string, number>();
     private readonly fallbackDestination?: AudioContextDestinationFallback;
     private readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
-    private readonly _contextClosing$: Subject<AudioContext> = new Subject<AudioContext>();
+    private readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
 
+    private _isActive = false;
     private _context: AudioContext | null = null;
     private onDeviceAwakeHandler: EventHandler<number>;
     private deviceWokeUpAt = 0;
@@ -49,16 +50,18 @@ export class AudioContextSource {
     private whenInitializedInteractively: Promise<void> | null = null;
     private _refCount = 0;
     private _whenReady = new PromiseSource<AudioContext | null>();
+    // private _whenClosed = new PromiseSource<AudioContext | null>();
     private _whenNotReady = new PromiseSource<void>();
     private isTerminated = false;
 
-    public readonly contextCreated$ = this._contextCreated$.asObservable();
-    public readonly contextClosing$ = this._contextClosing$.asObservable();
+    public readonly contextCreated$: Observable<AudioContext> = this._contextCreated$.asObservable();
+    public readonly contextClosed$: Observable<AudioContext> = this._contextClosed$.asObservable();
 
     // Key properties
     public get context(): AudioContext { return this._context; }
     public get destination(): AudioNode { return this.fallbackDestination?.destination ?? this._context.destination; }
     public get refCount(): number { return this._refCount }
+    public get isActive(): boolean { return this._isActive }
 
     constructor() {
         this.onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
@@ -115,11 +118,27 @@ export class AudioContextSource {
 
     public async terminate(): Promise<void> {
         this.isTerminated = true;
+        this._isActive = false;
         await this.closeSilently(this._context);
+    }
+
+    public async resumeAudio(): Promise<void> {
+        debugLog?.log(`resumeAudio:`, this._isActive);
+        if (!this._isActive)
+            void this.maintain();
+    }
+
+    public async suspendAudio(): Promise<void> {
+        debugLog?.log(`suspendAudio:`, this._isActive);
+        this._isActive = false;
+        this.markNotReady();
     }
 
     // Must be private, but good to keep it near markNotReady
     private markReady(context: AudioContext | null) {
+        if (!this._isActive)
+            return;
+
         // Invariant it maintains on exit:
         // - _context != null
         // - _whenReady is completed
@@ -172,11 +191,12 @@ export class AudioContextSource {
     // Protected methods
 
     protected async maintain(): Promise<void> {
+        this._isActive = true;
         // The only case this method starts is application start,
         // so it makes sense let other tasks to make some progress first.
         await delayAsync(300);
         // noinspection InfiniteLoopJS
-        for (;;) { // Renew loop
+        while (this._isActive) { // Renew loop
             let context: AudioContext = null;
             try {
                 let whenInitializedInteractively = this.whenInitializedInteractively as PromiseSource<void>;
@@ -202,7 +222,7 @@ export class AudioContextSource {
                 let lastTestAt = Date.now();
 
                 // noinspection InfiniteLoopJS
-                for (;;) { // Fix loop
+                while (this._isActive) { // Fix loop
                     const minDelay = lastTestAt + MaintainCyclePeriodMs - Date.now();
                     if (minDelay > 0) {
                         await delayAsync(minDelay);
@@ -237,7 +257,7 @@ export class AudioContextSource {
                         this.markNotReady();
                     }
 
-                    for(;;) {
+                    while (this._isActive) {
                         if (this.isTerminated)
                             return;
 
@@ -264,6 +284,8 @@ export class AudioContextSource {
                 await this.closeSilently(context);
             }
         }
+        if (this._context?.state !== 'closed')
+            await this.closeSilently(this._context);
     }
 
     protected async create(isAlreadyInteractiveToResume = false): Promise<AudioContext> {
@@ -312,6 +334,8 @@ export class AudioContextSource {
 
     protected async warmup(context: AudioContext): Promise<void> {
         debugLog?.log(`warmup, AudioContext:`, Log.ref(context));
+        if (!this._isActive)
+            return;
 
         const warmUpWorkletPath = Versioning.mapPath('/dist/warmUpWorklet.js');
         await context.audioWorklet.addModule(warmUpWorkletPath);
@@ -347,6 +371,9 @@ export class AudioContextSource {
     }
 
     protected async test(context: AudioContext, isLongTest = false): Promise<void> {
+        if (!this._isActive)
+            return;
+
         if (context.state !== 'running')
             throw new Error(`${logScope}.test: AudioContext isn't running.`);
         if (context[Debug.brokenKey])
@@ -526,11 +553,13 @@ export class AudioContextSource {
         if (this.fallbackDestination)
             this.fallbackDestination.detach();
         try {
-            this._contextClosing$.next(context);
             await context.close();
         }
         catch (e) {
             warnLog?.log(`close: failed to close AudioContext:`, e)
+        }
+        finally {
+            this._contextClosed$.next(context);
         }
     }
 
