@@ -60,24 +60,31 @@ public sealed class DbModule : HostModule<DbSettings>
 
         // Adding services
         if (dbKind == DbKind.PostgreSql)
-            services.AddHealthChecks();//.AddNpgSql(connectionStringSuffix, name: $"db_{contextName}", failureStatus:HealthStatus.Degraded, tags: new[] { HealthTags.Ready });
+            services.AddHealthChecks();
+        /*
+            .AddNpgSql(
+                connectionStringSuffix,
+                name: $"db_{contextName}",
+                failureStatus: HealthStatus.Degraded,
+                tags: new[] { HealthTags.Ready });
+        */
 
         services.AddSingleton(dbInfo);
-        services.AddTransientDbContextFactory<TDbContext>(builder => {
+        services.AddTransientDbContextFactory<TDbContext>(db => {
             switch (dbKind) {
             case DbKind.InMemory:
                 Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).GetName());
-                builder.UseInMemoryDatabase(dbInfo.ConnectionString);
-                builder.ConfigureWarnings(warnings => { warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning); });
+                db.UseInMemoryDatabase(dbInfo.ConnectionString);
+                db.ConfigureWarnings(warnings => { warnings.Ignore(InMemoryEventId.TransactionIgnoredWarning); });
                 break;
             case DbKind.PostgreSql:
-                builder.UseNpgsql(dbInfo.ConnectionString, npgsql => {
+                db.UseNpgsql(dbInfo.ConnectionString, npgsql => {
                     npgsql.CommandTimeout(CommandTimeout);
                     npgsql.EnableRetryOnFailure(0);
                     npgsql.MaxBatchSize(16); // NOTE(AY): Was 1 - not sure why, prob. related to old concurrency issues
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");
                 });
-                builder.UseNpgsqlHintFormatter();
+                db.UseNpgsqlHintFormatter();
                 // To be enabled later (requires migrations):
                 // builder.UseValidationCheckConstraints(c => c.UseRegex(false));
                 break;
@@ -85,7 +92,8 @@ public sealed class DbModule : HostModule<DbSettings>
                 throw StandardError.NotSupported("Unsupported database kind.");
             }
             if (IsDevelopmentInstance)
-                builder.EnableSensitiveDataLogging();
+                db.EnableSensitiveDataLogging();
+            db.AddInterceptors(new DbConnectionConfigurator(dbKind));
         });
         services.AddDbContextServices<TDbContext>(db => {
             services.AddSingleton(new CompletionProducer.Options {
