@@ -8,7 +8,7 @@ public sealed class AudioSettings
     public TimeSpan IdleRecordingTimeout { get; set; } = TimeSpan.FromMinutes(3);
     public TimeSpan IdleRecordingTimeoutBeforeCountdown { get; set; } = TimeSpan.FromMinutes(2.5);
     public TimeSpan IdleRecordingCheckInterval { get; set; } = TimeSpan.FromSeconds(1);
-    public TimeSpan IdleListeningTimeout { get; set; } = TimeSpan.FromMinutes(5);
+    public TimeSpan IdleListeningTimeout { get; set; } = TimeSpan.FromSeconds(30);
     public TimeSpan IdleListeningCheckInterval { get; set; } = TimeSpan.FromSeconds(3); // not critical to stop at exact time for playback
     public TimeSpan RecordingBeepInterval { get; set; } = TimeSpan.FromMinutes(1);
     public TimeSpan RecordingAggressiveBeepInterval { get; set; } = TimeSpan.FromSeconds(10);
