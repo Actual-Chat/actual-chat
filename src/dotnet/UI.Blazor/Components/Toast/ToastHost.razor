@@ -61,10 +61,16 @@
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
         var url = History.LocalUrl;
-        if (_lastUrl != url) {
-            _lastUrl = url;
-            Failures.Clear();
-        }
+        if (_lastUrl == url)
+            return;
+
+        _lastUrl = url;
+        if (_failureGroups.Count == 0)
+            return;
+
+        SuppressOnFailuresChanged(() => Failures.Clear());
+        _failureGroups.Clear();
+        _lastFailureOrder = 0;
         StateHasChanged();
     }
 
@@ -95,16 +101,22 @@
         });
 
     private void DismissFailureGroup(FailureGroup failureGroup) {
+        SuppressOnFailuresChanged(() => {
+            foreach (var failure in failureGroup.Failures)
+                Failures.Remove(failure);
+        });
+        StateHasChanged();
+    }
+
+    private void SuppressOnFailuresChanged(Action action) {
         var oldSuppressOnFailuresChanged = _suppressOnFailuresChanged;
         _suppressOnFailuresChanged = true;
         try {
-            foreach (var failure in failureGroup.Failures)
-                Failures.Remove(failure);
+            action.Invoke();
         }
         finally {
             _suppressOnFailuresChanged = oldSuppressOnFailuresChanged;
         }
-        StateHasChanged();
     }
 
     // Nested types
