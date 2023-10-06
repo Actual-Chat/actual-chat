@@ -1,4 +1,5 @@
-﻿using ActualChat.UI.Blazor.Services;
+﻿using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Services;
 using Stl.Time.Testing;
 using Stl.Versioning.Providers;
 
@@ -13,6 +14,12 @@ public class BackgroundUITest: TestBase
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton<IStateFactory>(c => new StateFactory(c))
             .AddSingleton(_ => LTagVersionGenerator.Default)
+            .AddSingleton(_ => new HostInfo {
+                AppKind = AppKind.MauiApp,
+                ClientKind = ClientKind.Ios,
+                Environment = HostInfo.DevelopmentEnvironment,
+                IsTested = true,
+            })
             .AddSingleton<IBackgroundActivityProvider>(c => c.GetRequiredService<BackgroundActivityProviderStub>())
             .ConfigureLogging(Out)
             .AddFusion()
