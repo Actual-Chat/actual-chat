@@ -1,43 +1,11 @@
 @inherits LayoutComponentBase
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
-@implements IDisposable
-@{
-    var failures = UIActionFailureTracker.Items;
-    var toasts = ToastUI.Items.Items;
-}
 
 <div class="base-layout">
     <div class="base-layout-body">
         <div class="c-layout-content">
-            @if (failures.Count != 0) {
-                <div class="error-container custom-scrollbar">
-                    <div class="c-content">
-                        @foreach (var failure in failures) {
-                            <Error @key="@failure"
-                                   Title="Action failed!"
-                                   Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
-                                @failure.Error!.Message
-                            </Error>
-                        }
-                    </div>
-                </div>
-            }
-            @if (toasts.Count > 0) {
-                <div class="info-container custom-scrollbar">
-                    <div class="c-content">
-                        @foreach (var toast in toasts) {
-                            <InfoToast @key="toast"
-                                Icon="@toast.Icon"
-                                Text="@toast.Info"
-                                ActionClick="@toast.Action"
-                                ActionText="@toast.ActionText"
-                                AutoDismissDelay="@toast.AutoDismissDelay"
-                                Dismissed="@(() => ToastUI.Dismiss(toast))" />
-                        }
-                    </div>
-                </div>
-            }
+            <ToastHost @key="@ToastHostKey"/>
             <NoComponent @key="@BodyKey">
                 <ErrorBarrier>@Body</ErrorBarrier>
             </NoComponent>
@@ -47,40 +15,15 @@
 
 @code {
     private static readonly object BodyKey = new();
+    private static readonly object ToastHostKey = new();
 
-    [Inject] private ToastUI ToastUI { get; init; } = null!;
-    [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
     [Inject] private RenderModeSelector RenderModeSelector { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    protected override void OnInitialized() {
-        Nav.LocationChanged += OnLocationChanged;
-        UIActionFailureTracker.Changed += OnCommandFailureListChanged;
-        ToastUI.Items.Changed += OnToastListChanged;
-    }
 
     protected override async Task OnInitializedAsync() {
         if (BlazorModeHelper.IsBlazorServer && !RenderModeSelector.IsPrerendering)
             await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
     }
-
-    public void Dispose() {
-        Nav.LocationChanged -= OnLocationChanged;
-        UIActionFailureTracker.Changed -= OnCommandFailureListChanged;
-        ToastUI.Items.Changed -= OnToastListChanged;
-    }
-
-    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
-        UIActionFailureTracker.Clear();
-        StateHasChanged();
-    }
-
-    private void OnCommandFailureListChanged()
-        => InvokeAsync(StateHasChanged);
-
-    private void OnToastListChanged()
-        => InvokeAsync(StateHasChanged);
 }

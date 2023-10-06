@@ -130,11 +130,11 @@
     --gradient-stop-01: #FFFFFF;
     --gradient-stop-02: #EEEEEE;
 
+    --toast-body: #444444E0;
+    --toast-text: #FFFFFF;
+    --toast-action: #6BCAFF;
     --error-toast-body: #FFBFBF;
     --error-toast-text: #fafafa;
-    --info-toast-body: #444444E0;
-    --info-toast-text: #FFFFFF;
-    --info-toast-action: #6BCAFF;
 
     --glow-max: rgb(255, 255, 255);
     --glow-mid: rgb(181, 240, 255);

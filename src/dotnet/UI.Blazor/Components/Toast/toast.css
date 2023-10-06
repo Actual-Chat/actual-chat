@@ -1,13 +1,13 @@
-﻿/* Info container */
+﻿/* Toast container */
 
-.info-container {
+.toast-container {
     @apply fixed z-error-container;
     @apply inset-x-0 md:inset-x-auto md:right-0;
     @apply md:bottom-0;
     @apply h-auto;
     @apply overflow-y-auto;
 }
-.info-container > .c-content {
+.toast-container > .c-content {
     @apply relative;
     @apply -flex-y md:flex-y gap-y-4;
     @apply h-full;
@@ -15,28 +15,28 @@
     @apply overflow-y-auto custom-scrollbar;
 }
 
-/* Info toast */
+/* Toast */
 
-.info-toast {
+.toast {
     @apply flex-x items-center z-50;
     @apply py-1 px-4 gap-x-4 overflow-hidden;
     @apply min-h-10 md:w-110;
-    @apply rounded;
-    @apply text-info-toast-text;
-    @apply bg-info-toast-body;
+    @apply rounded-lg;
+    @apply text-toast-text;
+    @apply bg-toast-body;
 }
-.info-toast i {
-    @apply text-info-toast-text;
+.toast i {
+    @apply text-toast-text;
 }
-.info-toast .toast-content {
+.toast > .c-content {
     @apply flex grow;
     @apply text-base font-normal;
     @apply break-words;
 }
-.info-toast .toast-action {
+.toast > .c-content > .c-action {
     @apply -mr-4;
-    @apply text-info-toast-action;
+    @apply text-toast-action;
 }
-.info-toast .toast-action .btn {
+.toast > .c-content > .c-action .btn {
     @apply min-w-20;
 }

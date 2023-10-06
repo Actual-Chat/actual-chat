@@ -1,15 +1,15 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 
 @if (!_isDismissed) {
-    <div class="@Class info-toast">
+    <div class="@Class toast">
         @if (!Icon.IsNullOrEmpty()) {
-            <div class="toast-icon">
+            <div class="c-icon">
                 <i class="@Icon text-xl"></i>
             </div>
         }
-        <div class="toast-content">@Text</div>
+        <div class="c-content">@Text</div>
         @if (ActionClick != null) {
-            <div class="toast-action">
+            <div class="c-action">
                 <Button
                     Class="btn-transparent btn-sm"
                     Click="@(_ => Act())">
@@ -26,8 +26,8 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Icon { get; set; } = "";
     [Parameter] public string ActionText { get; set; } = "";
-    [Parameter] public double? AutoDismissDelay { get; set; }
     [Parameter] public string Text { get; set; } = "";
+    [Parameter] public double? AutoDismissDelay { get; set; }
     [Parameter] public Action? Dismissed { get; set; }
     [Parameter] public Action? ActionClick { get; set; }
 

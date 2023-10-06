@@ -20,7 +20,6 @@
 @import './Components/Form/form.css';
 @import './Components/Form/toggle.css';
 @import './Components/InviteList/invite-list.css';
-@import './Components/InfoToast/info-toast.css';
 @import './Components/Lines/lines.css';
 @import './Components/Menu/menu.css';
 @import './Components/Modal/modal.css';
@@ -40,6 +39,7 @@
 @import './Components/Stepper/stepper.css';
 @import './Components/TabPanel/tab-panel.css';
 @import './Components/TextBox/text-box.css';
+@import './Components/Toast/toast.css';
 @import './Components/Tooltip/tooltip.css';
 @import './Components/TotpInput/totp-input.css';
 @import './Components/VirtualList/virtual-list.css';

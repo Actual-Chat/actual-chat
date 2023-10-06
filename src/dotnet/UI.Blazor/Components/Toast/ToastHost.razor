@@ -1,0 +1,71 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.UI.Blazor.Services
+@implements IDisposable
+@{
+    var failures = UIActionFailureTracker.Items;
+    var toasts = ToastUI.Items.Items;
+}
+
+@if (failures.Count != 0) {
+    <div class="error-container custom-scrollbar">
+        <div class="c-content">
+            @foreach (var failure in failures) {
+                <Error @key="@failure"
+                       Title="Action failed!"
+                       Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
+                    @failure.Error!.Message
+                </Error>
+            }
+        </div>
+    </div>
+}
+@if (toasts.Count > 0) {
+    <div class="toast-container custom-scrollbar">
+        <div class="c-content">
+            @foreach (var toast in toasts) {
+                <Toast @key="toast"
+                       Icon="@toast.Icon"
+                       Text="@toast.Info"
+                       ActionClick="@toast.Action"
+                       ActionText="@toast.ActionText"
+                       AutoDismissDelay="@toast.AutoDismissDelay"
+                       Dismissed="@(() => ToastUI.Dismiss(toast))" />
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private LocalUrl _lastUrl;
+
+    [Inject] private ToastUI ToastUI { get; init; } = null!;
+    [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        History.LocationChanged += OnLocationChanged;
+        UIActionFailureTracker.Changed += OnActionFailureListChanged;
+        ToastUI.Items.Changed += OnToastListChanged;
+    }
+
+    public void Dispose() {
+        ToastUI.Items.Changed -= OnToastListChanged;
+        UIActionFailureTracker.Changed -= OnActionFailureListChanged;
+        History.LocationChanged -= OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) {
+        var url = History.LocalUrl;
+        if (_lastUrl != url) {
+            _lastUrl = url;
+            UIActionFailureTracker.Clear();
+        }
+        StateHasChanged();
+    }
+
+    private void OnActionFailureListChanged()
+        => InvokeAsync(StateHasChanged);
+
+    private void OnToastListChanged()
+        => InvokeAsync(StateHasChanged);
+}

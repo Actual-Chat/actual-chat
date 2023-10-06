@@ -1,12 +1,10 @@
 ﻿namespace ActualChat.UI.Blazor.Services;
 
-public enum ToastDismissDelay { Short, Long }
-
 public class ToastUI
 {
-    private readonly MutableList<InfoToastModel> _items = new ();
+    private readonly MutableList<ToastModel> _items = new();
 
-    public IReadOnlyMutableList<InfoToastModel> Items => _items;
+    public IReadOnlyMutableList<ToastModel> Items => _items;
 
     public void Show(string info, ToastDismissDelay autoDismissDelay)
         => ShowInternal(info, "", null, "", autoDismissDelay);
@@ -20,11 +18,13 @@ public class ToastUI
     public void Show(string info, string icon, Action action, string actionText, ToastDismissDelay autoDismissDelay)
         => ShowInternal(info, icon, action, actionText, autoDismissDelay);
 
-    public bool Dismiss(InfoToastModel toastInfo)
-        => _items.Remove(toastInfo);
+    public bool Dismiss(ToastModel toast)
+        => _items.Remove(toast);
+
+    // Private methods
 
     private void ShowInternal(string info, string icon, Action? action, string actionText, ToastDismissDelay autoDismissDelay)
-        => _items.Add(new InfoToastModel(info, icon, action, actionText, GetDelay(autoDismissDelay)));
+        => _items.Add(new ToastModel(info, icon, action, actionText, GetDelay(autoDismissDelay)));
 
     private double? GetDelay(ToastDismissDelay autoDismissDelay)
         => autoDismissDelay switch {
@@ -32,22 +32,3 @@ public class ToastUI
             _ => 5
         };
 }
-
-// Must be class, not record, to avoid issue with blazor @key comparison.
-public class InfoToastModel
-{
-    public string Info { get; }
-    public string Icon { get; }
-    public string ActionText { get;  }
-    public Action? Action { get; }
-    public double? AutoDismissDelay { get; }
-
-    public InfoToastModel(string info, string icon, Action? action, string actionText, double? autoDismissDelay)
-    {
-        Info = info;
-        Icon = icon;
-        ActionText = actionText;
-        Action = action;
-        AutoDismissDelay = autoDismissDelay;
-    }
-};
