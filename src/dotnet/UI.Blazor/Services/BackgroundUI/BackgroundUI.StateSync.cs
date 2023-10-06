@@ -2,8 +2,6 @@
 
 public partial class BackgroundUI
 {
-    private static readonly TimeSpan ChangeBufferDuration = TimeSpan.FromMilliseconds(500);
-
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var baseChains = new[] {
@@ -24,13 +22,13 @@ public partial class BackgroundUI
             .Capture(() => GetState(cancellationToken))
             .ConfigureAwait(false);
 
-        var stateChanges = cGetState.Changes(FixedDelayer.Get(ChangeBufferDuration), cancellationToken);
+        var stateChanges = cGetState.Changes(FixedDelayer.Instant, cancellationToken);
         await foreach (var cState in stateChanges) {
             var state = cState.Value;
+            Log.LogDebug("PushActivityState: {OldState} -> {State}", _state.Value, state);
             if (_state.Value == state)
                 continue;
 
-            Log.LogDebug("PushActivityState: {State}", state);
             _state.Value = state;
         }
     }
@@ -40,11 +38,13 @@ public partial class BackgroundUI
     {
         var isActive = await BackgroundActivityProvider.GetIsActive(cancellationToken).ConfigureAwait(false);
         var isBackground = await GetIsBackground(cancellationToken).ConfigureAwait(false);
+        Log.LogDebug("GetState: {IsActive} {IsBackground}", isActive, isBackground);
         var state = (isActive, isBackground) switch {
             (true, true) => BackgroundState.BackgroundActive,
             (_, true) => BackgroundState.BackgroundIdle,
             (_, false) => BackgroundState.Foreground,
         };
+        Log.LogDebug("GetState: {State}", state);
         return state;
     }
 }
