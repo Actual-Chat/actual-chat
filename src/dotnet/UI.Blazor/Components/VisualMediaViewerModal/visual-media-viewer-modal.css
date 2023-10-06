@@ -55,6 +55,18 @@
 body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-content {
     @apply bg-06 text-04;
 }
+.image-viewer-header.hide-to-show {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 300ms ease-in-out;
+}
+.image-viewer-header.show-to-hide {
+    opacity: 0;
+    transform: translateY(-3.5rem);
+    transition: all 300ms ease-in-out;
+}
+
+/* Footer gallery */
 
 .footer-gallery {
     @apply flex-x justify-center items-end gap-x-0.5;
@@ -97,6 +109,16 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
     @apply hover:text-04;
     @apply bg-transparent;
     @apply cursor-pointer;
+}
+.image-viewer-footer.hide-to-show {
+    opacity: 1;
+    transform: translateY(0);
+    transition: all 300ms ease-in-out;
+}
+.image-viewer-footer.show-to-hide {
+    opacity: 0;
+    transform: translateY(3.5rem);
+    transition: all 300ms ease-in-out;
 }
 
 /* Image viewer content */
