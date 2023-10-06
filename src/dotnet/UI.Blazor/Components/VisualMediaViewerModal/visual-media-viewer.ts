@@ -3,6 +3,7 @@ import { fromEvent, Subject, takeUntil, debounceTime } from 'rxjs';
 
 import { Log } from 'logging';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
+import { setTimeout } from 'timerQueue';
 
 const { debugLog } = Log.get('VisualMediaViewer');
 
@@ -32,6 +33,12 @@ export class VisualMediaViewer {
     private nextButton: HTMLElement = null;
     private prevButton: HTMLElement = null;
     private mediaArray: Element[] = null;
+    private movePoints: PointerEvent[] = null;
+    private stopMovement: boolean = true;
+    private readonly fadingRate: number = 1.05;
+    private readonly stopInertialRate: number = 1;
+    private speedX: number;
+    private speedY: number;
     private readonly multiplier: number = 1.25;
     private startY: number = 0;
     private startX: number = 0;
@@ -77,7 +84,9 @@ export class VisualMediaViewer {
         this.headerBottom = this.round(this.header.getBoundingClientRect().bottom);
         this.footer = this.overlay.querySelector('.image-viewer-footer');
         this.footerTop = this.round(this.footer.getBoundingClientRect().top);
-        this.toggleFooterHeaderVisibility();
+        setTimeout(() => {
+            this.toggleFooterHeaderVisibility()
+        }, 500);
         this.maxHeight = window.innerHeight * 3;
         this.maxWidth = window.innerWidth * 3;
 
@@ -185,6 +194,8 @@ export class VisualMediaViewer {
             this.media.style.height = this.imageViewer.style.height = mediaHeight + 'px';
             this.centerMedia(mediaWidth, mediaHeight);
             this.imageViewer.classList.remove('invisible');
+            this.minWidth = Math.round(mediaWidth * 0.8);
+            this.minHeight = Math.round(mediaHeight * 0.8);
             return true;
         } else {
             return false;
@@ -220,19 +231,30 @@ export class VisualMediaViewer {
             .subscribe((event: PointerEvent) => this.onFooterMediaItemPointerDown(event));
     }
 
+    private hideHeaderAndFooter() {
+        this.header.classList.remove('hide-to-show');
+        this.header.classList.add('show-to-hide');
+        this.footer.classList.remove('hide-to-show');
+        this.footer.classList.add('show-to-hide');
+    }
+
+    private showHeaderAndFooter() {
+        this.header.classList.remove('show-to-hide');
+        this.header.classList.add('hide-to-show');
+        this.footer.classList.remove('show-to-hide');
+        this.footer.classList.add('hide-to-show');
+    }
+
     private toggleFooterHeaderVisibility(hide: boolean = false) {
         if (hide) {
-            this.footer.style.display = 'none';
-            this.header.style.display = 'none';
+            this.hideHeaderAndFooter();
             this.isFooterAndHeaderShown = false;
         } else {
             this.isFooterAndHeaderShown = !this.isFooterAndHeaderShown;
             if (this.isFooterAndHeaderShown) {
-                this.footer.style.display = 'flex';
-                this.header.style.display = 'flex';
+                this.hideHeaderAndFooter();
             } else {
-                this.footer.style.display = 'none';
-                this.header.style.display = 'none';
+                this.showHeaderAndFooter();
             }
         }
     }
@@ -361,13 +383,17 @@ export class VisualMediaViewer {
                     if (viewerTop < 0 || viewerBottom > window.innerHeight || viewerLeft < 0 || viewerRight > window.innerWidth) {
                         this.getImageAndMouseX(event, viewerRect);
                         this.getImageAndMouseY(event, viewerRect);
-                        window.addEventListener('pointermove', this.onPointerMove);
+                        fromEvent(window, 'pointermove')
+                            .pipe(takeUntil(this.disposed$))
+                            .subscribe((event: PointerEvent) => this.onPointerMove(event));
                     } else {
                         preventDefaultForEvent(event);
                     }
                 }
                 break;
             case 'touch':
+                this.stopMovement = true;
+                this.movePoints = null;
                 this.media.style.touchAction = 'none';
                 this.imageViewer.style.touchAction = 'none';
                 this.overlay.style.touchAction = 'none';
@@ -378,7 +404,9 @@ export class VisualMediaViewer {
                 let viewerRect = this.imageViewer.getBoundingClientRect();
                 this.curState = new MoveState(imageRect, viewerRect, 0);
                 this.prevState = new MoveState(imageRect, viewerRect, 0);
-                window.addEventListener('pointermove', this.onTouchableMove);
+                fromEvent(window, 'pointermove')
+                    .pipe(takeUntil(this.disposed$))
+                    .subscribe((event: PointerEvent) => this.onTouchableMove(event));
 
                 if (this.points.length === 2) {
                     this.startDistance = this.getDistance();
@@ -410,8 +438,7 @@ export class VisualMediaViewer {
     };
 
     private onPointerUp = (event: PointerEvent) => {
-        window.removeEventListener('pointermove', this.onPointerMove);
-        window.removeEventListener('pointermove', this.onTouchableMove);
+        this.stopMovement = false;
         if (event.pointerType === 'touch') {
             if (this.points.length === 1) {
                 let target = event.target as HTMLElement;
@@ -426,12 +453,15 @@ export class VisualMediaViewer {
                     }
                 }
                 this.isMovementStarted = false;
+                if (this.curState.imageRect.width > window.innerWidth || this.curState.imageRect.height > window.innerHeight) {
+                    this.inertialMotionHandler(event);
+                }
             }
             this.removeEvent(event);
 
             let imageWidth = this.round(this.media.getBoundingClientRect().width);
             let imageHeight = this.round(this.media.getBoundingClientRect().height);
-            if (imageWidth < this.minWidth || imageHeight < this.minHeight) {
+            if (imageWidth < this.minWidth && imageHeight < this.minHeight) {
                 this.media.style.width = this.minWidth + 'px';
                 this.imageViewer.style.width = this.minWidth + 'px';
                 let rect = this.media.getBoundingClientRect();
@@ -535,6 +565,7 @@ export class VisualMediaViewer {
             // one touch on image (move image)
             let viewer = this.imageViewer;
             if (this.canMoveImage(this.startImageRect)) {
+                this.updateMovementPoints(event);
                 let rect = this.media.getBoundingClientRect();
                 let imageTop = this.round(rect.top);
                 let imageRight = this.round(rect.right);
@@ -589,11 +620,97 @@ export class VisualMediaViewer {
         }
     }
 
+    private updateMovementPoints(event: PointerEvent) {
+        if (this.movePoints == null) {
+            this.movePoints = new Array(event);
+        } else {
+            if (this.movePoints.length >= 10)
+                this.movePoints.shift();
+            if (this.movePoints[this.movePoints.length - 1].timeStamp != event.timeStamp)
+                this.movePoints.push(event);
+        }
+    }
+
+    private inertialMotionHandler(event: PointerEvent) {
+        let moves = this.movePoints;
+        if (moves == null)
+            return;
+        let startX = moves[0].x;
+        let startY = moves[0].y;
+        let startTime = moves[0].timeStamp;
+        let endX = moves[moves.length - 1].x;
+        let endY = moves[moves.length - 1].y;
+        let endTime = moves[moves.length - 1].timeStamp;
+
+        let timeDelta = endTime - startTime;
+        if (timeDelta == 0)
+            return;
+        let deltaX = endX - startX;
+        let deltaY = endY - startY;
+        this.speedX = (deltaX / timeDelta) * 10;
+        this.speedY = (deltaY / timeDelta) * 10;
+        this.inertialMotion();
+    }
+
+    private inertialMotion() {
+        let timer = setInterval(() => {
+            let timeToStop = Math.abs(this.speedX) < this.stopInertialRate && Math.abs(this.speedY) < this.stopInertialRate;
+            let isAnotherTouch = this.stopMovement;
+
+            if (timeToStop || isAnotherTouch) {
+                clearInterval(timer);
+                this.movePoints = null;
+                return;
+            }
+
+            let rect = this.curState.viewerRect;
+            if (rect.width > window.innerWidth) {
+                if (rect.left >= 0) {
+                    clearInterval(timer);
+                    this.imageViewer.style.left = 0 + 'px';
+                    return;
+                }
+                if (rect.right <= window.innerWidth) {
+                    clearInterval(timer);
+                    this.imageViewer.style.left = (window.innerWidth - rect.width) + 'px';
+                    return;
+                }
+            } else {
+                this.speedX = 0;
+            }
+            if (rect.height >= window.innerHeight) {
+                if (rect.top > 0) {
+                    clearInterval(timer);
+                    this.imageViewer.style.top = 0 + 'px';
+                    return;
+                }
+                if (rect.bottom <= window.innerHeight) {
+                    clearInterval(timer);
+                    this.imageViewer.style.top = (window.innerHeight - rect.height) + 'px';
+                    return;
+                }
+            } else {
+                this.speedY = 0;
+            }
+            this.moveImageViewer();
+        }, 20);
+    }
+
+    private moveImageViewer() {
+        let rect = this.curState.viewerRect;
+        this.speedX = this.speedX / this.fadingRate;
+        this.speedY = this.speedY / this.fadingRate;
+        this.imageViewer.style.left = (rect.left + this.speedX) + 'px';
+        this.imageViewer.style.top = (rect.top + this.speedY) + 'px';
+        this.curState.viewerRect = this.imageViewer.getBoundingClientRect();
+        this.curState.imageRect = this.media.getBoundingClientRect();
+    }
+
     private scaleImage(scale: number) {
         this.prevState.imageRect = this.prevState.viewerRect = this.curState.imageRect;
         let newImageWidth = this.round(this.startImageRect.width * scale);
         let newImageHeight = this.round(this.startImageRect.height * scale);
-        if (newImageHeight < this.minHeight || newImageWidth < this.minWidth) {
+        if (newImageHeight < this.minHeight && newImageWidth < this.minWidth) {
             return;
         }
         this.media.style.width = this.imageViewer.style.width = newImageWidth + 'px';
