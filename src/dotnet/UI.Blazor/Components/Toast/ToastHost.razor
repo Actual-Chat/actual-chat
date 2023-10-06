@@ -109,8 +109,13 @@
 
     // Nested types
 
-    private record FailureGroup(int Order, string Title) {
+    // Must be ref-comparable to have no issues with Blazor @key
+    private sealed record FailureGroup(int Order, string Title) {
         public HashSet<IUIActionResult> Failures { get; } = new();
         public int Count => Failures.Count;
+
+        // This record relies on referential equality
+        public bool Equals(FailureGroup? other) => ReferenceEquals(this, other);
+        public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
     }
 }
