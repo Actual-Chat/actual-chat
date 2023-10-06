@@ -41,7 +41,7 @@ import {BrowserInit} from "../../../UI.Blazor/Services/BrowserInit/browser-init"
                                    └─────────────┘
  */
 
-const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusMediaRecorder');
+const { logScope, infoLog, debugLog, warnLog, errorLog } = Log.get('OpusMediaRecorder');
 const RecordingFailedInterval = 500;
 
 export class OpusMediaRecorder implements RecorderStateEventHandler {
@@ -67,6 +67,26 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
     public stream?: MediaStream;
+
+    public static async stopStreamTracks(stream?: MediaStream): Promise<void> {
+        if (!stream)
+            return;
+
+        infoLog?.log('-> stopStreamTracks()');
+        const tracks = new Array<MediaStreamTrack>()
+        tracks.push(...stream.getAudioTracks());
+        tracks.push(...stream.getVideoTracks());
+        for (let track of tracks) {
+            try {
+                track.stop();
+                stream.removeTrack(track);
+            }
+            catch (e) {
+                warnLog?.log('stopStreamTracks(): track.stop() error:', e);
+            }
+        }
+        infoLog?.log('<- stopStreamTracks()');
+    }
 
     constructor() {
         this.whenInitialized = new PromiseSource<void>();
@@ -154,6 +174,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             this.vadWorklet = null;
 
             await this.stopMicrophoneStream();
+            debugLog?.log(`start.detach(): microphone stream has been closed`);
 
             await catchErrors(
                 () => this.encoderWorker?.stop(),
@@ -165,6 +186,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
                 () => this.source?.disconnect(),
                 e => warnLog?.log('start.detach source.disconnect error:', e));
             this.source = null;
+            this.stream = null;
         }
 
         const attach = async (context: AudioContext) => {
@@ -400,30 +422,16 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     }
 
     private async stopMicrophoneStream(): Promise<void> {
-        warnLog?.log('stopMicrophoneStream()');
-        if (this.source)
-            this.source.disconnect();
-        this.source = null;
-
+        infoLog?.log('stopMicrophoneStream()');
         const stream = this.stream;
-        this.stream = null;
-        await OpusMediaRecorder.stopStreamTracks(stream);
-    }
-
-    private static async stopStreamTracks(stream?: MediaStream): Promise<void> {
-        if (!stream)
-            return;
-
-        const tracks = new Array<MediaStreamTrack>()
-        tracks.push(...stream.getAudioTracks());
-        tracks.push(...stream.getVideoTracks());
-        for (let track of tracks) {
-            await catchErrors(
-                () => track.stop(),
-                e => warnLog?.log('stopStreamTracks(): track.stop() error:', e));
-            await catchErrors(
-                () => stream.removeTrack(track),
-                e => warnLog?.log('stopStreamTracks(): stream.removeTrack() error:', e));
+        try {
+            if (this.source)
+                this.source.disconnect();
+            this.source = null;
+            this.stream = null;
+        }
+        finally {
+            await OpusMediaRecorder.stopStreamTracks(stream);
         }
     }
 
@@ -434,7 +442,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
          */
         let stream: MediaStream = null;
         try {
-            warnLog?.log('-> getMicrophoneStream');
+            infoLog?.log('-> getMicrophoneStream');
             function getConstraints(): MediaStreamConstraints & any {
                 return {
                     audio: {
@@ -481,7 +489,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
                 throw new Error('UnknownError, media track not found.');
             }
 
-            warnLog?.log(
+            infoLog?.log(
                 '<- getMicrophoneStream(), active:', stream.active,
                  ', constraints:', audioTrack.getConstraints(),
                  ', settings:', audioTrack.getSettings());
@@ -489,7 +497,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         }
         catch (e) {
             await OpusMediaRecorder.stopStreamTracks(stream);
-            warnLog?.log('Error getting microphone stream', e);
+            errorLog?.log('Error getting microphone stream', e);
             throw e;
         }
     }

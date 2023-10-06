@@ -2,7 +2,7 @@ import DetectRTC from 'detectrtc';
 import { Log } from 'logging';
 import { PromiseSource } from 'promises';
 import { DeviceInfo } from 'device-info';
-import { opusMediaRecorder } from './opus-media-recorder';
+import { OpusMediaRecorder, opusMediaRecorder } from './opus-media-recorder';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
 import { BrowserInit } from "../../../UI.Blazor/Services/BrowserInit/browser-init";
 import { EventHandler } from "event-handling";
@@ -128,13 +128,8 @@ export class AudioRecorder {
                     return false;
                 }
                 finally {
-                    if (stream) {
-                        const audioTracks = stream.getAudioTracks();
-                        const videoTracks = stream.getVideoTracks();
-                        debugLog?.log(`requestPermission: found `, audioTracks.length, 'audio tracks, ', videoTracks.length, 'video tracks to stop, stopping...');
-                        audioTracks.forEach(t => t.stop());
-                        videoTracks.forEach(t => t.stop());
-                    }
+                    await OpusMediaRecorder.stopStreamTracks(stream);
+                    stream = null;
                 }
 
                 return true;
