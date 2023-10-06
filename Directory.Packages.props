@@ -16,7 +16,7 @@
     <NpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</NpgsqlVersion>
     <RedisVersion>2.6.122</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>6.4.59</StlFusionVersion>
+    <StlFusionVersion>6.4.60</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.5.1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>
@@ -26,8 +26,8 @@
     <MessagePackVersion>2.4.59</MessagePackVersion>
   </PropertyGroup>
   <ItemGroup Label="Nupkg Versions">
-    <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="7.0.3" />
-    <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="7.0.0" />
+    <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="7.0.4" />
+    <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="7.1.0" />
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
     <PackageVersion Include="FFMpegCore" Version="5.1.0" />
@@ -111,7 +111,7 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(EntityFrameworkCoreNpgsqlVersion)" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageVersion Include="RestEase" Version="1.6.4" />
-    <PackageVersion Include="Pidgin" Version="3.2.1" />
+    <PackageVersion Include="Pidgin" Version="3.2.2" />
     <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.8" />
     <PackageVersion Include="Polly" Version="7.2.4" />
     <PackageVersion Include="Sentry" Version="$(SentryVersion)" />
@@ -181,7 +181,7 @@
     <!-- Build / test time only -->
     <PackageVersion Include="bunit" Version="1.22.19" />
     <PackageVersion Include="FluentAssertions" Version="6.12.0" />
-    <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.2" />
+    <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.3" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.7.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
@@ -197,9 +197,9 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Analyzers -->
     <PackageVersion Include="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.6.40" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.81" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Roslynator.Analyzers" Version="4.4.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.7.30" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.92" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Roslynator.Analyzers" Version="4.5.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="xunit.analyzers" Version="1.3.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->
     <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.4" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
