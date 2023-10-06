@@ -28,7 +28,10 @@ public abstract class Step : ComponentBase
         if (!isValid)
             return false;
 
-        await Save();
+        var isSaved = await Save();
+        if (!isSaved)
+            return false;
+
         MarkCompleted();
         return true;
     }
