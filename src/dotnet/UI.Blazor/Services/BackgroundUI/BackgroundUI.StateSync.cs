@@ -24,13 +24,13 @@ public partial class BackgroundUI
             .Capture(() => GetState(cancellationToken))
             .ConfigureAwait(false);
 
-        var stateChanges = cGetState.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
-        var throttledChanges = stateChanges.Throttle(ChangeBufferDuration, cancellationToken);
-        await foreach (var cState in throttledChanges) {
+        var stateChanges = cGetState.Changes(FixedDelayer.Get(ChangeBufferDuration), cancellationToken);
+        await foreach (var cState in stateChanges) {
             var state = cState.Value;
             if (_state.Value == state)
                 continue;
 
+            Log.LogDebug("PushActivityState: {State}", state);
             _state.Value = state;
         }
     }

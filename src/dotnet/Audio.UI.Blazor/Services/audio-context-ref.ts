@@ -7,9 +7,9 @@ import {
     waitAsync,
 } from 'promises';
 import { nextTickAsync } from 'timeout';
+import { firstValueFrom } from 'rxjs';
 import { AudioContextSource } from './audio-context-source';
 import { Log } from 'logging';
-import {AudioContextDestinationFallback} from "./audio-context-destination-fallback";
 
 const { debugLog, errorLog } = Log.get('AudioContextRef');
 
@@ -66,7 +66,19 @@ export class AudioContextRef implements AsyncDisposable {
         try {
             while (!this.whenDisposeRequested.isCompleted()) {
                 debugLog?.log(`${this.name}: awaiting whenReady`);
-                this.context = await this.source.whenReady(this.whenDisposeRequested);
+                const whenContextClosed = firstValueFrom(this.source.contextClosed$);
+                const context = await Promise.race([this.source.whenReady(this.whenDisposeRequested), whenContextClosed]);
+                if (context.state === 'closed') {
+                    if (this.context === context) {
+                        debugLog?.log(`${this.name}: detach, context:`, Log.ref(context));
+                        this.context = null;
+                        lastContext = null;
+                        await this.options.detach?.(context);
+                    }
+                    continue;
+                }
+
+                this.context = context;
                 if (lastContext === this.context) {
                     debugLog?.log(`${this.name}: ready, context:`, Log.ref(this.context));
                     await this.options.ready?.(this.context);
@@ -87,6 +99,8 @@ export class AudioContextRef implements AsyncDisposable {
                 await this.source.whenNotReady(this.context, this.whenDisposeRequested);
                 debugLog?.log(`${this.name}: unready, context:`, Log.ref(this.context));
                 await this.options.unready?.(this.context);
+                if (!this.source.isActive || this.context.state === 'closed')
+                    await this.options.detach?.(this.context);
             }
         }
         catch (e) {

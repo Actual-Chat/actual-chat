@@ -1,4 +1,5 @@
-﻿using Stl.Interception;
+﻿using ActualChat.Hosting;
+using Stl.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -20,20 +21,26 @@ public partial class BackgroundUI(IServiceProvider services) : WorkerBase,
 
     private ILogger Log { get; } = services.LogFor(typeof(BackgroundUI));
     private IBackgroundActivityProvider BackgroundActivityProvider => _backgroundActivityProvider ??= services.GetRequiredService<IBackgroundActivityProvider>();
-    private MomentClockSet Clocks { get; } = services.Clocks();
+    private HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
+    private BrowserInfo BrowserInfo { get; } = services.GetRequiredService<BrowserInfo>();
 
     public IState<BackgroundState> State => _state;
 
     [ComputeMethod]
-    protected virtual Task<bool> GetIsBackground(CancellationToken cancellationToken)
-        => Task.FromResult(_isBackground != 0);
+    protected virtual async Task<bool> GetIsBackground(CancellationToken cancellationToken)
+    {
+        if (HostInfo.AppKind == AppKind.MauiApp && BrowserInfo.IsMobile)
+            return _isBackground != 0;
+
+        var isVisible = await BrowserInfo.IsVisible.Use(cancellationToken).ConfigureAwait(false);
+        return !isVisible;
+    }
 
     void INotifyInitialized.Initialized()
         => this.Start();
 
     void IBackgroundStateHandler.SetBackgroundState(bool isBackground)
     {
-        Log.LogWarning("BackgroundUI-SET");
         var newIsBackground = isBackground ? 1 : 0;
         var oldIsBackground = Interlocked.Exchange(ref _isBackground, newIsBackground);
         if (newIsBackground == oldIsBackground)
