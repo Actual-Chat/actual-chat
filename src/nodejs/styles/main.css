@@ -30,6 +30,11 @@ input.input-imprinted {
     @apply border-0 bg-04;
 }
 
+input.input-underlined {
+    @apply border-b border-placeholder;
+    @apply bg-transparent;
+}
+
 /* Sections */
 
 h1.section, h2.section, h3.section, h4.section {
@@ -63,42 +68,6 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .stack > *:nth-child(1) {
     transform: translateY(0) scale(1);
     z-index: 3;
-}
-
-/* Error toast */
-
-input.input-underlined {
-    @apply border-b border-placeholder;
-    @apply bg-transparent;
-}
-
-.error-toast {
-    @apply flex-x z-50 items-start gap-x-4 overflow-hidden;
-    @apply md:w-110;
-    @apply p-2 pl-4;
-    @apply drop-shadow-md shadow-shadow-main rounded-3.5xl;
-    @apply text-02;
-    @apply bg-error-toast-body;
-}
-.error-toast * {
-    @apply bg-error-toast-body;
-}
-.error-toast i {
-    @apply text-error;
-}
-.error-toast .header-title {
-    @apply flex;
-    @apply text-headline-1;
-}
-.error-toast .toast-content {
-    @apply flex;
-    @apply text-base font-normal;
-    @apply break-words;
-}
-.error-toast .btn.btn-x {
-    @apply flex-none;
-    @apply self-start;
-    @apply my-1;
 }
 
 /* Layouts */

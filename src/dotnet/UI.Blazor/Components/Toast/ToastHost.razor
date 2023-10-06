@@ -2,19 +2,20 @@
 @using ActualChat.UI.Blazor.Services
 @implements IDisposable
 @{
-    var failures = UIActionFailureTracker.Items;
     var toasts = ToastUI.Items.Items;
 }
 
-@if (failures.Count != 0) {
+@if (_failureGroups.Count > 0) {
     <div class="error-container custom-scrollbar">
         <div class="c-content">
-            @foreach (var failure in failures) {
-                <Error @key="@failure"
-                       Title="Action failed!"
-                       Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
-                    @failure.Error!.Message
-                </Error>
+            @foreach (var failureGroup in _failureGroups.Values.OrderBy(g => g.Order)) {
+                <ErrorToast
+                    @key="@failureGroup"
+                    Title="Action failed!"
+                    Count="@failureGroup.Count"
+                    Dismissed="@(() => DismissFailureGroup(failureGroup))">
+                    @failureGroup.Title
+                </ErrorToast>
             }
         </div>
     </div>
@@ -23,13 +24,14 @@
     <div class="toast-container custom-scrollbar">
         <div class="c-content">
             @foreach (var toast in toasts) {
-                <Toast @key="toast"
-                       Icon="@toast.Icon"
-                       Text="@toast.Info"
-                       ActionClick="@toast.Action"
-                       ActionText="@toast.ActionText"
-                       AutoDismissDelay="@toast.AutoDismissDelay"
-                       Dismissed="@(() => ToastUI.Dismiss(toast))" />
+                <Toast
+                    @key="toast"
+                    Icon="@toast.Icon"
+                    Text="@toast.Info"
+                    ActionClick="@toast.Action"
+                    ActionText="@toast.ActionText"
+                    AutoDismissDelay="@toast.AutoDismissDelay"
+                    Dismissed="@(() => ToastUI.Dismiss(toast))" />
             }
         </div>
     </div>
@@ -37,20 +39,23 @@
 
 @code {
     private LocalUrl _lastUrl;
+    private Dictionary<string, FailureGroup> _failureGroups = new();
+    private int _lastFailureOrder;
+    private bool _suppressOnFailuresChanged;
 
+    [Inject] private UIActionFailureTracker Failures { get; init; } = null!;
     [Inject] private ToastUI ToastUI { get; init; } = null!;
-    [Inject] private UIActionFailureTracker UIActionFailureTracker { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
     protected override void OnInitialized() {
         History.LocationChanged += OnLocationChanged;
-        UIActionFailureTracker.Changed += OnActionFailureListChanged;
-        ToastUI.Items.Changed += OnToastListChanged;
+        Failures.Changed += OnFailuresChanged;
+        ToastUI.Items.Changed += OnToastsChanged;
     }
 
     public void Dispose() {
-        ToastUI.Items.Changed -= OnToastListChanged;
-        UIActionFailureTracker.Changed -= OnActionFailureListChanged;
+        ToastUI.Items.Changed -= OnToastsChanged;
+        Failures.Changed -= OnFailuresChanged;
         History.LocationChanged -= OnLocationChanged;
     }
 
@@ -58,14 +63,54 @@
         var url = History.LocalUrl;
         if (_lastUrl != url) {
             _lastUrl = url;
-            UIActionFailureTracker.Clear();
+            Failures.Clear();
         }
         StateHasChanged();
     }
 
-    private void OnActionFailureListChanged()
+    private void OnToastsChanged()
         => InvokeAsync(StateHasChanged);
 
-    private void OnToastListChanged()
-        => InvokeAsync(StateHasChanged);
+    private void OnFailuresChanged()
+        => InvokeAsync(() => {
+            if (_suppressOnFailuresChanged)
+                return;
+
+            var isChanged = false;
+            foreach (var failure in Failures) {
+                var message = failure.Error?.Message ?? "Unknown error.";
+                var group = _failureGroups.GetValueOrDefault(message);
+                if (group == null) {
+                    group = new FailureGroup(++_lastFailureOrder, message);
+                    group.Failures.Add(failure);
+                    _failureGroups.Add(message, group);
+                    isChanged = true;
+                }
+                else {
+                    isChanged |= group.Failures.Add(failure);
+                }
+            }
+            if (isChanged)
+                StateHasChanged();
+        });
+
+    private void DismissFailureGroup(FailureGroup failureGroup) {
+        var oldSuppressOnFailuresChanged = _suppressOnFailuresChanged;
+        _suppressOnFailuresChanged = true;
+        try {
+            foreach (var failure in failureGroup.Failures)
+                Failures.Remove(failure);
+        }
+        finally {
+            _suppressOnFailuresChanged = oldSuppressOnFailuresChanged;
+        }
+        StateHasChanged();
+    }
+
+    // Nested types
+
+    private record FailureGroup(int Order, string Title) {
+        public HashSet<IUIActionResult> Failures { get; } = new();
+        public int Count => Failures.Count;
+    }
 }

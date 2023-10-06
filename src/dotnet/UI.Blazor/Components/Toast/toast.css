@@ -40,3 +40,44 @@
 .toast > .c-content > .c-action .btn {
     @apply min-w-20;
 }
+
+/* Error toast */
+
+.error-toast {
+    @apply flex-x z-50 items-start gap-x-4 overflow-hidden;
+    @apply md:w-110;
+    @apply p-2 pl-4;
+    @apply drop-shadow-md shadow-shadow-main rounded-3.5xl;
+    @apply text-02;
+    @apply bg-error-toast-body;
+}
+.error-toast * {
+    @apply bg-error-toast-body;
+}
+.error-toast i {
+    @apply text-error;
+}
+.error-toast > .c-icon {
+    @apply my-1;
+}
+.error-toast > .c-content {
+    @apply flex-1 flex-y;
+    @apply break-words;
+}
+.error-toast > .c-content > .c-title {
+    @apply flex;
+    @apply text-headline-1;
+}
+.error-toast > .c-content > .c-title > .c-count {
+    @apply font-bold;
+}
+.error-toast > .c-content > .c-message {
+    @apply flex;
+    @apply text-base font-normal;
+    @apply break-words;
+}
+.error-toast .btn.btn-x {
+    @apply flex-none;
+    @apply self-start;
+    @apply my-1;
+}

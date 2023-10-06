@@ -18,9 +18,9 @@
         var title = HostInfo.IsDevelopmentInstance
             ? $"Error ({error.GetType().GetName()}):"
             : "Error:";
-        <Error @key="@requirement"
+        <ErrorToast @key="@requirement"
                Title="@title"
-               Dismissed="@(_ => RequirementChecker.Remove(requirement))">@error.Message</Error>
+               Dismissed="@(_ => RequirementChecker.Remove(requirement))">@error.Message</ErrorToast>
     }
 </LayoutView>
 

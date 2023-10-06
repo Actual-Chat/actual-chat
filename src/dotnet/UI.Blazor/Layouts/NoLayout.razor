@@ -11,11 +11,11 @@
                 <div class="error-container custom-scrollbar">
                     <div class="c-content">
                         @foreach (var failure in failures) {
-                            <Error @key="@failure"
+                            <ErrorToast @key="@failure"
                                    Title="Action failed!"
                                    Dismissed="@(_ => UIActionFailureTracker.Remove(failure))">
                                 @failure.Error!.Message
-                            </Error>
+                            </ErrorToast>
                         }
                     </div>
                 </div>

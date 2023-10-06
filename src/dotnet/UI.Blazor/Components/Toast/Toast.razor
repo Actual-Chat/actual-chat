@@ -36,6 +36,11 @@
             _ = AutoDismiss(TimeSpan.FromSeconds(autoDismissDelay));
     }
 
+    private async Task AutoDismiss(TimeSpan delay) {
+        await Task.Delay(delay);
+        Dismiss();
+    }
+
     private void Act() {
         Dismiss();
         ActionClick?.Invoke();
@@ -46,10 +51,5 @@
             return;
         _isDismissed = true;
         Dismissed?.Invoke();
-    }
-
-    private async Task AutoDismiss(TimeSpan delay) {
-        await Task.Delay(delay);
-        Dismiss();
     }
 }

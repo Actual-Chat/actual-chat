@@ -1,11 +1,18 @@
+@namespace ActualChat.UI.Blazor.Components
+
 @if (!_isDismissed) {
     <div class="@Class error-toast">
-        <div class="my-1">
+        <div class="c-icon">
             <i class="icon-alert-circle text-2xl"></i>
         </div>
-        <div class="flex-1 flex-y break-words">
-            <div class="header-title">@Title</div>
-            <div class="toast-content">@ChildContent</div>
+        <div class="c-content">
+            <div class="c-title">
+                @Title
+                @if (Count > 1) {
+                    <span class="c-count">&nbsp;×@Count</span>
+                }
+            </div>
+            <div class="c-message">@ChildContent</div>
         </div>
         <ButtonX
             Class="btn-transparent btn-sm"
@@ -19,16 +26,14 @@
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "Error";
+    [Parameter] public int Count { get; set; } = 1;
     [Parameter] public double? AutoDismissDelay { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback Dismissed { get; set; }
 
-    private async Task Dismiss()
-    {
-        if (_isDismissed)
-            return;
-        _isDismissed = true;
-        await Dismissed.InvokeAsync(null);
+    protected override void OnInitialized() {
+        if (AutoDismissDelay is { } autoDismissDelay)
+            _ = AutoDismiss(TimeSpan.FromSeconds(autoDismissDelay));
     }
 
     private async Task AutoDismiss(TimeSpan delay) {
@@ -36,8 +41,13 @@
         await Dismiss().ConfigureAwait(false);
     }
 
-    protected override void OnInitialized() {
-        if (AutoDismissDelay is { } autoDismissDelay)
-            _ = AutoDismiss(TimeSpan.FromSeconds(autoDismissDelay));
+    private async Task Dismiss()
+    {
+        if (_isDismissed)
+            return;
+
+        _isDismissed = true;
+        await Dismissed.InvokeAsync();
     }
+
 }

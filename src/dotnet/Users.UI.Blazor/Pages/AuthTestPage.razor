@@ -1,5 +1,5 @@
 @page "/test/auth"
-@using Error = ActualChat.UI.Blazor.Components.Error
+@using Error = ActualChat.UI.Blazor.Components.ErrorToast
 @inherits ComputedStateComponent<AuthTestPage.Model>
 @{
     var m = State.Value;
@@ -12,7 +12,7 @@
 <MainHeader>Authentication Test Page</MainHeader>
 
 @if (error != null) {
-    <Error Title="Update error" Class="mb-3">@error.Message</Error>
+    <ErrorToast Title="Update error" Class="mb-3">@error.Message</ErrorToast>
 }
 
 <h3 class="section border-0">Session</h3>

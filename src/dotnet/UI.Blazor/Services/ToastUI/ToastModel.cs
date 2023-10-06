@@ -7,7 +7,7 @@ public enum ToastDismissDelay
 }
 
 // Must be ref-comparable to have no issues with Blazor @key
-public sealed record ToastModel(
+public record ToastModel(
     string Info,
     string Icon,
     Action? Action,
@@ -15,6 +15,6 @@ public sealed record ToastModel(
     double? AutoDismissDelay)
 {
     // This record relies on referential equality
-    public bool Equals(ToastModel? other) => ReferenceEquals(this, other);
+    public virtual bool Equals(ToastModel? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 };

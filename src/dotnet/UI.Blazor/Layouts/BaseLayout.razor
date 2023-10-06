@@ -5,7 +5,9 @@
 <div class="base-layout">
     <div class="base-layout-body">
         <div class="c-layout-content">
-            <ToastHost @key="@ToastHostKey"/>
+            @if (!RenderModeSelector.IsPrerendering) {
+                <ToastHost @key="@ToastHostKey"/>
+            }
             <NoComponent @key="@BodyKey">
                 <ErrorBarrier>@Body</ErrorBarrier>
             </NoComponent>
