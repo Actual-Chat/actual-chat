@@ -219,7 +219,7 @@ class FileUpload {
                     this.whenCompletedSource.reject(this.xhr.responseText);
             }
         };
-        const url = this.getUrl(`api/chat-media/${this.chatId}/upload`);
+        const url = BrowserInit.getUrl(`api/chat-media/${this.chatId}/upload`);
         this.xhr.open('post', url, true);
         this.xhr.setRequestHeader(SessionTokens.headerName, SessionTokens.current);
         this.xhr.send(formData);
@@ -228,11 +228,5 @@ class FileUpload {
     public cancel() {
         this.isCancelled = true;
         this.xhr.abort();
-    }
-
-    private getUrl(url: string) {
-        // @ts-ignore
-        const baseUri = BrowserInit.baseUri;
-        return baseUri ? new URL(url, baseUri).toString() : url;
     }
 }

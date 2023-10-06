@@ -23,7 +23,7 @@ export class FileUpload implements Disposable {
         private readonly blazorRef: DotNet.DotNetObject,
         private readonly options: Options)
     {
-        let url = this.getUrl(options.uploadUrl);
+        let url = BrowserInit.getUrl(options.uploadUrl);
 
         fromEvent(input, 'change')
             .pipe(
@@ -62,11 +62,5 @@ export class FileUpload implements Disposable {
 
         this.disposed$.next();
         this.disposed$.complete();
-    }
-
-    private getUrl(url: string) {
-        // @ts-ignore
-        const baseUri = BrowserInit.baseUri;
-        return baseUri ? new URL(url, baseUri).toString() : url;
     }
 }
