@@ -117,7 +117,7 @@ public static class ChatMarkupHubExt
         };
         var videoText = videoCount switch {
             0 => "",
-            1 => "an video",
+            1 => "a video",
             _ => $"{videoCount.Format()} videos",
         };
         var fileText = fileCount switch {
