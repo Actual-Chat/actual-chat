@@ -6,6 +6,7 @@ using ActualChat.Media.Resources;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Stl.Fusion.EntityFramework;
 
 #nullable disable
 #pragma warning disable VSTHRD002
@@ -48,10 +49,7 @@ namespace ActualChat.Media.Migrations
 
             log.LogInformation("Uploading chat pictures: done");
 
-            async Task AddMedia(
-                string id,
-                Resource resource)
-            {
+            async Task AddMedia(string id, Resource resource) {
                 var mediaId = new MediaId(id);
                 var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
                 var resourceStream = resource.GetStream();
@@ -60,8 +58,7 @@ namespace ActualChat.Media.Migrations
                     ? contentType
                     : throw StandardError.Internal($"Unknown content type: {resource.Name}.");
                 var contentId = $"media/{hashCode}/{mediaId.LocalId}{extension}";
-                var media = new Media(mediaId)
-                {
+                var media = new Media(mediaId) {
                     ContentId = contentId,
                     FileName = resource.Name,
                     Length = resourceStream.Length,
@@ -70,13 +67,18 @@ namespace ActualChat.Media.Migrations
                     Height = 0,
                 };
 
-                dbContext.Media.Add(new DbMedia(media));
+                var existingMedia = await dbContext.Media
+                    .FindAsync(DbKey.Compose(mediaId.Value))
+                    .ConfigureAwait(false);
+                if (existingMedia != null)
+                    existingMedia.UpdateFrom(media);
+                else
+                    dbContext.Media.Add(new DbMedia(media));
 
                 var mediaExists = await blobStorage.Exists(media.ContentId, default).ConfigureAwait(false);
                 if (mediaExists) {
                     await blobStorage.Delete(media.ContentId, default).ConfigureAwait(false);
                 }
-
                 await blobStorage.Write(media.ContentId, resourceStream, media.ContentType, default).ConfigureAwait(false);
             }
         }
