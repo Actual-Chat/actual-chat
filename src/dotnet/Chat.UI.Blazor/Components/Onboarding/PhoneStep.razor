@@ -24,13 +24,20 @@
             Class="grow"
             IsLabelInsideInput="true"
             IsRequired="@(!_hasPhoneIdentity)">
-            <InputText
-                id="phone"
-                @bind-Value="_stepModel.Phone"
-                autocomplete="tel"
-                type="tel"
-                inputmode="tel"
-                disabled="@_hasPhoneIdentity"/>
+            <ChildContent>
+                <InputText
+                    id="phone"
+                    @bind-Value="_stepModel.Phone"
+                    autocomplete="tel"
+                    type="tel"
+                    inputmode="tel"
+                    disabled="@_hasPhoneIdentity"/>
+            </ChildContent>
+            <Right>
+                @if (_showPhoneVerificationStatus) {
+                    <VerificationStatus IsVerified="_hasPhoneIdentity" Class="w-8 h-8" />
+                }
+            </Right>
         </FormSection>
 
         <FormSection
@@ -55,11 +62,13 @@
     private Form? _formRef;
     private bool _hasPhoneIdentity;
     private bool _hasEmail;
+    private bool _showPhoneVerificationStatus;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     public override bool IsCompleted => OnboardingUI.Settings.Value.IsPhoneStepCompleted;
 
@@ -69,6 +78,7 @@
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
         _hasPhoneIdentity = account.User.HasPhoneIdentity();
+        _showPhoneVerificationStatus = _hasPhoneIdentity;
         _hasEmail = !account.Email.IsNullOrEmpty();
         _stepModel.Email = account.Email;
         if (!account.Phone.IsNone) {
@@ -82,18 +92,31 @@
     }
 
     protected override async Task<bool> Save() {
-        // TODO: verify email for phone sign in
         // TODO: verify phone for email signin
+        var phone = PhoneFormatterExt.FromReadable(_stepModel.Phone);
         var account = await Accounts.GetOwn(Session, default);
         var command = new Accounts_Update(
             Session,
             account with {
-                Phone = PhoneFormatterExt.FromReadable(_stepModel.Phone),
+                Phone = phone,
                 Email = _hasEmail ? account.Email : _stepModel.Email,
-            },
+                },
             account.Version);
         var (_, error) = await UICommander.Run(command);
-        return error is null;
+        if (error is not null)
+            return false;
+
+        if (!account.HasVerifiedPhone()) {
+            var verificationModel = new PhoneVerificationModal.Model(phone);
+            var modalRef = await ModalUI.Show(verificationModel);
+            await modalRef.WhenClosed;
+            _hasPhoneIdentity = verificationModel.IsVerified;
+            if (verificationModel is { IsVerified: false, CanSkip: false })
+                return false;
+            _showPhoneVerificationStatus = true;
+        }
+
+        return true;
     }
 
     public class PhoneStepModel {

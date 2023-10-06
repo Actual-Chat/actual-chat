@@ -35,6 +35,8 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public TotpPurpose Purpose { get; set; }
     [Parameter] public EventCallback Verified { get; set; }
+    [Parameter] public EventCallback Error { get; set; }
+    [Parameter] public EventCallback IncorrectCodeEntered { get; set; }
 
     private TimeSpan TotpTtl
         => _totpExpiresAt != null
@@ -58,9 +60,9 @@
 
         var (isValid, error) = await UICommander.Run(cmd);
         if (error != null) {
-            UICommander.ShowError(error);
             if (_totpInput != null)
                 await _totpInput.Clear();
+            await Error.InvokeAsync();
 
             return;
         }
@@ -69,6 +71,7 @@
             _ = TuneUI.Play(Tune.ShowInputError);
             await _totpInput.Clear();
             await _totpInput.ShowError();
+            await IncorrectCodeEntered.InvokeAsync();
             return;
         }
 
@@ -82,7 +85,6 @@
     {
         var (expiresAt, error) = await UICommander.Run(new PhoneAuth_SendTotp(Session, new Phone(Phone), Purpose));
         if (error != null) {
-            UICommander.ShowError(error);
             return;
         }
 
