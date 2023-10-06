@@ -25,16 +25,31 @@ public class AppDelegate : MauiUIApplicationDelegate
 
     public override void OnActivated(UIApplication application)
     {
-        var backgroundStateHandler = Services.GetRequiredService<IBackgroundStateHandler>();
-        backgroundStateHandler.SetBackgroundState(false);
+        var scopedServicesTask = ScopedServicesTask;
+        if (scopedServicesTask.IsCompletedSuccessfully) {
+            var backgroundStateHandler = ScopedServices.GetRequiredService<IBackgroundStateHandler>();
+            backgroundStateHandler.SetBackgroundState(false);
+        }
+        else
+            scopedServicesTask.ContinueWith(_ => {
+                var backgroundStateHandler = ScopedServices.GetRequiredService<IBackgroundStateHandler>();
+                backgroundStateHandler.SetBackgroundState(false);
+            });
         base.OnActivated(application);
     }
 
     public override void DidEnterBackground(UIApplication application)
     {
-        var backgroundStateHandler = Services.GetRequiredService<IBackgroundStateHandler>();
-        backgroundStateHandler.SetBackgroundState(true);
-        base.OnActivated(application);
+        var scopedServicesTask = ScopedServicesTask;
+        if (scopedServicesTask.IsCompletedSuccessfully) {
+            var backgroundStateHandler = ScopedServices.GetRequiredService<IBackgroundStateHandler>();
+            backgroundStateHandler.SetBackgroundState(true);
+        }
+        else
+            scopedServicesTask.ContinueWith(_ => {
+                var backgroundStateHandler = ScopedServices.GetRequiredService<IBackgroundStateHandler>();
+                backgroundStateHandler.SetBackgroundState(true);
+            });
         base.DidEnterBackground(application);
     }
 
