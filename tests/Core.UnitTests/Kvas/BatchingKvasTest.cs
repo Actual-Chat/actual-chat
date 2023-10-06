@@ -99,13 +99,18 @@ public class BatchingKvasTest : TestBase
 
         var s2 = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
         s2.Value = "b";
+        await Task.Delay(300); // Let it flush
 
-        await Task.Delay(400);
+        // Let's wait it can be actually read
         kvas.ClearReadCache();
+        var s2t = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
+        await s2t.Computed.When(x => x == "b").WaitAsync(TimeSpan.FromSeconds(5));
 
+        // And try to fetch it anew
         var s2a = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
         await s2a.WhenRead;
         s2a.Value.Should().Be("b");
+
         s2a.Value = "c";
         s2a.Value.Should().Be("c");
     }
