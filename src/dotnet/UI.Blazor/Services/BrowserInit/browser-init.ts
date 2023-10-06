@@ -60,6 +60,12 @@ export class BrowserInit {
         }
     }
 
+    public static getUrl(url: string) {
+        // @ts-ignore
+        const baseUri = BrowserInit.baseUri;
+        return baseUri ? new URL(url, baseUri).toString() : url;
+    }
+
     public static resetAppConnectionState(): void {
         if (this.connectionState === "")
             return; // Already reset
@@ -272,7 +278,8 @@ export class BrowserInit {
 
     public static async tryReload(): Promise<void> {
         try {
-            let response = await fetch('');
+            const url = BrowserInit.getUrl('/favicon.ico');
+            const response = await fetch(url);
             if (response.ok)
                 void BrowserInit.reload();
         }

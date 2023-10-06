@@ -1,5 +1,4 @@
 using ActualChat.Audio.UI.Blazor.Services;
-using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
