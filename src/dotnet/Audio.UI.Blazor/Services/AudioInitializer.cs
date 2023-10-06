@@ -95,11 +95,16 @@ public sealed partial class AudioInitializer : WorkerBase, IAudioInfoBackend, IN
     private async Task UpdateBackgroundState(CancellationToken cancellationToken)
     {
         var previousState = BackgroundState.Foreground;
-        var stateChanges = BackgroundUI.State.Computed.Changes(cancellationToken);
-        await foreach (var cState in stateChanges) {
+        var stateChanges = BackgroundUI.State.Changes(cancellationToken);
+        await foreach (var cState in stateChanges.ConfigureAwait(false)) {
             var state = cState.Value;
-            if (state.IsActive() != previousState.IsActive())
-                await JS.InvokeVoidAsync(JSUpdateBackgroundStateMethod, cancellationToken, state.ToString()).ConfigureAwait(false);
+            if (state.IsActive() != previousState.IsActive()) {
+                Log.LogInformation("Activity state has changed. {OldState} -> {State}", previousState, state);
+                await JS.InvokeVoidAsync(JSUpdateBackgroundStateMethod, cancellationToken, state.ToString())
+                    .ConfigureAwait(false);
+            }
+            else
+                Log.LogInformation("Activity state change skipped. {OldState} -> {State}", previousState, state);
 
             previousState = state;
         }

@@ -29,11 +29,16 @@ public partial class BackgroundUI(IServiceProvider services) : WorkerBase,
     [ComputeMethod]
     protected virtual async Task<bool> GetIsBackground(CancellationToken cancellationToken)
     {
-        if (HostInfo.AppKind == AppKind.MauiApp && BrowserInfo.IsMobile)
-            return _isBackground != 0;
+        var isBackground = _isBackground != 0;
+        if (HostInfo.IsMobileMauiApp()) {
+            Log.LogDebug("GetIsBackground(Mobile): {IsBackground}", isBackground);
+            return isBackground;
+        }
 
         var isVisible = await BrowserInfo.IsVisible.Use(cancellationToken).ConfigureAwait(false);
-        return !isVisible;
+        isBackground = !isVisible;
+        Log.LogDebug("GetIsBackground(Browser): {IsBackground}", isBackground);
+        return isBackground;
     }
 
     void INotifyInitialized.Initialized()
@@ -41,6 +46,8 @@ public partial class BackgroundUI(IServiceProvider services) : WorkerBase,
 
     void IBackgroundStateHandler.SetBackgroundState(bool isBackground)
     {
+        Log.LogDebug("SetBackgroundState: {IsBackground}", isBackground);
+
         var newIsBackground = isBackground ? 1 : 0;
         var oldIsBackground = Interlocked.Exchange(ref _isBackground, newIsBackground);
         if (newIsBackground == oldIsBackground)

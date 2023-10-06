@@ -22,6 +22,7 @@ public class MainApplication : MauiApplication, ILifecycleObserver
     [Export, Lifecycle.Event.OnStop]
     public void OnAppBackgrounded()
     {
+        Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnAppBackgrounded");
         var backgroundStateHandler = Services.GetRequiredService<IBackgroundStateHandler>();
         backgroundStateHandler.SetBackgroundState(true);
     }
@@ -29,6 +30,7 @@ public class MainApplication : MauiApplication, ILifecycleObserver
     [Export, Lifecycle.Event.OnStart]
     public void OnAppForegrounded()
     {
+        Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnAppForegrounded");
         var backgroundStateHandler = Services.GetRequiredService<IBackgroundStateHandler>();
         backgroundStateHandler.SetBackgroundState(false);
     }
