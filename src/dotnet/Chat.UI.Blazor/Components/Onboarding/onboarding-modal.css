@@ -20,3 +20,9 @@
 .set-chats-step-chat-list-item-subtitle {
     @apply text-03 text-caption-2;
 }
+.onboarding-modal .stepper-footer .btn-group {
+    @apply max-w-none md:max-w-none;
+}
+.onboarding-modal .stepper-footer .btn-group .btn {
+    @apply max-w-none md:max-w-none;
+}

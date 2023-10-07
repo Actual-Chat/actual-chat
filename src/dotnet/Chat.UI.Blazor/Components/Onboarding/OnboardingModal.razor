@@ -1,6 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<OnboardingModal.Model>
-@implements IDisposable
+@inherits ComputedStateComponent<AccountFull>
+@{
+    var m = State.Value;
+    if (m.IsGuestOrNone) {
+        Modal.Close(true);
+        return;
+    }
+}
 
 <DialogFrame
     Class="onboarding-modal"
@@ -9,7 +16,12 @@
     <Body>
         <Stepper Context="stepper">
             <Steps>
-                <PhoneStep/>
+                @if (!m.HasVerifiedPhone()) {
+                    <PhoneStep/>
+                }
+                @if (!m.HasVerifiedEmail()) {
+                    <EmailStep/>
+                }
                 <AvatarStep/>
                 <SetChatsStep/>
             </Steps>
@@ -29,16 +41,20 @@
                 }
             </Header>
             <Footer>
-                <Button
-                    Class="btn-primary btn-w-full"
-                    Click="() => OnMoveForwardClick(stepper)">
-
-                    @if (stepper.CurrentStepIndex == stepper.LastStepIndex) {
-                        <span>Start messaging</span>
-                    } else if (stepper.CanMoveForward) {
-                        <span>Next</span>
+                <div class="btn-group">
+                    @if (stepper.CurrentStep?.CanSkip == true) {
+                        <Button Class="" Click="@(_ => OnSkipClick(stepper))">Skip</Button>
                     }
-                </Button>
+                    <Button
+                        Class="btn-primary"
+                        Click="() => OnMoveForwardClick(stepper)">
+                        @if (stepper.CurrentStepIndex == stepper.LastStepIndex) {
+                            <span>Start messaging</span>
+                        } else if (stepper.CanMoveForward) {
+                            <span>Next</span>
+                        }
+                    </Button>
+                </div>
                 <div class="flex w-full justify-center mt-6">
                     <LineProgress
                         StepCount="stepper.StepCount"
@@ -46,50 +62,19 @@
                         Decoration="LineProgress.LineProgressDecoration.Blue">
                     </LineProgress>
                 </div>
-                @* RoundProgress example *@
-                @* <div class="flex w-full justify-center mt-6"> *@
-                @*     <RoundProgress *@
-                @*         TotalSteps="stepper.TotalSteps" *@
-                @*         CurrentStep="stepper.CurrentStepIndex"> *@
-                @*         @if (stepper.IsLast) { *@
-                @*             <ButtonRound *@
-                @*                 Class="absolute text-xl" *@
-                @*                 ContentClass="!bg-08" *@
-                @*                 Click="() => OnLastStepComplete(stepper)"> *@
-                @*                 <i class="icon-arrow-right text-2xl text-04"></i> *@
-                @*             </ButtonRound> *@
-                @*         } else if (stepper.CanMoveForward) { *@
-                @*             <ButtonRound *@
-                @*                 Class="transparent absolute text-xl" *@
-                @*                 Click="stepper.MoveForward"> *@
-                @*                 <i class="icon-arrow-right text-2xl text-primary"></i> *@
-                @*             </ButtonRound> *@
-                @*         } *@
-                @*     </RoundProgress> *@
-                @* </div> *@
             </Footer>
         </Stepper>
     </Body>
 </DialogFrame>
 
 @code {
-    private readonly CancellationTokenSource _disposeTokenSource = new();
-
     [Inject] private AccountUI AccountUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public void Dispose()
-        => _disposeTokenSource.CancelAndDisposeSilently();
-
-    protected override void OnInitialized() {
-        var cancellationToken = _disposeTokenSource.Token;
-        _ = ForegroundTask.Run(async () => {
-            await AccountUI.OwnAccount.When(x => x.IsGuestOrNone, cancellationToken);
-            Modal.Close(true);
-        }, cancellationToken);
-    }
+    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
+        => AccountUI.OwnAccount.Use(cancellationToken).AsTask();
 
     // Event handlers
 
@@ -98,6 +83,15 @@
         if (!await stepper.TryMoveForward())
             return;
 
+        if (wasAtTheLastStep) {
+            ModalModel.CanBeClosed = true;
+            Modal.Close(true);
+        }
+    }
+
+    private async Task OnSkipClick(Stepper stepper) {
+        var wasAtTheLastStep = stepper.CurrentStepIndex == stepper.LastStepIndex;
+        await stepper.Skip();
         if (wasAtTheLastStep) {
             ModalModel.CanBeClosed = true;
             Modal.Close(true);

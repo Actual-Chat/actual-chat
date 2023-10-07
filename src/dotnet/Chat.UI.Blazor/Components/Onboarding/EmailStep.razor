@@ -1,0 +1,74 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using System.ComponentModel.DataAnnotations
+@inherits Step;
+
+@if (CurrentStep != this) {
+    return;
+}
+
+<div>
+    @if (Stepper.CurrentStepIndex == 0) {
+        <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+    }
+    <p class="text-headline-1 mt-6">
+        Please confirm your email.
+        We collect this information to help you find your friends here.
+    </p>
+    <Form
+        @ref="_formRef"
+        Class="mt-6"
+        Model="@_stepModel">
+        <DataAnnotationsValidator/>
+        <FormSection
+            For="() => _stepModel.Email"
+            InputId="email"
+            Label="Email"
+            IsRequired="true"
+            IsLabelInsideInput="true">
+            <InputText
+                id="email"
+                @bind-Value="_stepModel.Email"
+                autocomplete="email"
+                type="email"
+                inputmode="email"/>
+        </FormSection>
+    </Form>
+</div>
+
+@code {
+    private readonly Model _stepModel = new();
+    private Form? _formRef;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+
+    public override bool CanSkip => true;
+    public override bool IsCompleted => OnboardingUI.Settings.Value.IsPhoneStepCompleted;
+
+    protected override void MarkCompleted()
+        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsPhoneStepCompleted = true });
+
+    protected override async Task OnInitializedAsync() {
+        var account = await AccountUI.OwnAccount.Use();
+        _stepModel.Email = account.Email;
+    }
+
+    protected override Task<bool> Validate() {
+        var isValid = _formRef?.EditContext?.Validate() ?? false;
+        return Task.FromResult(isValid);
+    }
+
+    protected override async Task<bool> Save() {
+        // TODO: verify email for phone signin
+        var account = await AccountUI.OwnAccount.Use();
+        var command = new Accounts_Update(Session, account with {Email = _stepModel.Email,}, account.Version);
+        var (_, error) = await UICommander.Run(command);
+        return error is null;
+    }
+
+    public class Model {
+        [Required, EmailAddress] public string Email { get; set; } = "";
+    }
+}
