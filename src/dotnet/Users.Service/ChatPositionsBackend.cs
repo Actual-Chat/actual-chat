@@ -6,12 +6,11 @@ using Stl.Fusion.EntityFramework;
 namespace ActualChat.Users;
 
 [SuppressMessage("Usage", "MA0006:Use String.Equals instead of equality operator")]
-public class ChatPositionsBackend: DbServiceBase<UsersDbContext>, IChatPositionsBackend
+public class ChatPositionsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services),
+    IChatPositionsBackend
 {
     private IDbEntityResolver<string, DbChatPosition> DbChatPositionResolver { get; }
-
-    public ChatPositionsBackend(IServiceProvider services) : base(services)
-        => DbChatPositionResolver = services.GetRequiredService<IDbEntityResolver<string, DbChatPosition>>();
+        = services.GetRequiredService<IDbEntityResolver<string, DbChatPosition>>();
 
     // [ComputeMethod]
     public virtual async Task<ChatPosition> Get(

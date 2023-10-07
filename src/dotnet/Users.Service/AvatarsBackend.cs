@@ -6,16 +6,12 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class AvatarsBackend : DbServiceBase<UsersDbContext>, IAvatarsBackend
+public class AvatarsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAvatarsBackend
 {
     private IDbEntityResolver<string, DbAvatar> DbAvatarResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbAvatar>>();
     private IMediaBackend MediaBackend { get; }
-
-    public AvatarsBackend(IServiceProvider services) : base(services)
-    {
-        DbAvatarResolver = services.GetRequiredService<IDbEntityResolver<string, DbAvatar>>();
-        MediaBackend = services.GetRequiredService<IMediaBackend>();
-    }
+        = services.GetRequiredService<IMediaBackend>();
 
     // [ComputeMethod]
     public virtual async Task<AvatarFull?> Get(Symbol avatarId, CancellationToken cancellationToken)

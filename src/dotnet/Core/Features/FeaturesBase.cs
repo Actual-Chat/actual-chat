@@ -10,21 +10,21 @@ public interface IFeatures : IComputeService
     Task<byte[]> GetData(TypeRef featureTypeRef, CancellationToken cancellationToken);
 }
 
-public abstract class FeaturesBase : IFeatures
+public abstract class FeaturesBase(
+    IFeatureDefRegistry registry,
+    IServiceProvider services
+    ) : SafeAsyncDisposableBase, IFeatures
 {
     private ILogger? _log;
 
     protected IByteSerializer Serializer { get; set; } = ByteSerializer.Default;
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public IServiceProvider Services { get; }
-    public IFeatureDefRegistry Registry { get; }
+    public IServiceProvider Services { get; } = services;
+    public IFeatureDefRegistry Registry { get; } = registry;
 
-    protected FeaturesBase(IFeatureDefRegistry registry, IServiceProvider services)
-    {
-        Registry = registry;
-        Services = services;
-    }
+    protected override Task DisposeAsync(bool disposing)
+        => Task.CompletedTask;
 
     // [ComputeMethod]
     public virtual async Task<object?> Get(Type featureType, CancellationToken cancellationToken)

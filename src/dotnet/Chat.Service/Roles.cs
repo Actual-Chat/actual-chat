@@ -4,20 +4,12 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class Roles : DbServiceBase<ChatDbContext>, IRoles
+public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IRoles
 {
-    private IAccounts Accounts { get; }
-    private IChatsBackend ChatsBackend { get; }
-    private IAuthors Authors { get; }
-    private IRolesBackend Backend { get; }
-
-    public Roles(IServiceProvider services) : base(services)
-    {
-        Accounts = services.GetRequiredService<IAccounts>();
-        ChatsBackend = services.GetRequiredService<IChatsBackend>();
-        Authors = services.GetRequiredService<IAuthors>();
-        Backend = services.GetRequiredService<IRolesBackend>();
-    }
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
+    private IRolesBackend Backend { get; } = services.GetRequiredService<IRolesBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Role?> Get(

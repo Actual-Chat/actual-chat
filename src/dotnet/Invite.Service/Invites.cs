@@ -4,25 +4,18 @@ using ActualChat.Users;
 
 namespace ActualChat.Invite;
 
-internal class Invites : IInvites
+internal class Invites(IServiceProvider services) : IInvites
 {
     private IChats? _chats;
+    private IAccounts? _accounts;
     private MomentClockSet? _clocks;
 
-    private IServiceProvider Services { get; }
-    private IAccounts Accounts { get; }
+    private IServiceProvider Services { get; } = services;
+    private IInvitesBackend Backend { get; } = services.GetRequiredService<IInvitesBackend>();
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private ICommander Commander { get; }
-    private IInvitesBackend Backend { get; }
+    private IAccounts Accounts => _accounts ??= services.GetRequiredService<IAccounts>();
+    private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks => _clocks ??= Services.GetRequiredService<MomentClockSet>();
-
-    public Invites(IServiceProvider services)
-    {
-        Services = services;
-        Accounts = services.GetRequiredService<IAccounts>();
-        Commander = services.Commander();
-        Backend = services.GetRequiredService<IInvitesBackend>();
-    }
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<Invite>> ListUserInvites(

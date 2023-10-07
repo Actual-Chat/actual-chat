@@ -10,38 +10,27 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public class NotificationsBackend : DbServiceBase<NotificationDbContext>, INotificationsBackend
+public class NotificationsBackend(IServiceProvider services) : DbServiceBase<NotificationDbContext>(services),
+    INotificationsBackend
 {
-    private readonly IMemoryCache _recentChatsWithNotifications;
+    private readonly IMemoryCache _recentChatsWithNotifications = new MemoryCache(new MemoryCacheOptions {
+        CompactionPercentage = 0.1,
+        SizeLimit = 10_000,
+        ExpirationScanFrequency = TimeSpan.FromSeconds(5),
+    });
 
-    private IAuthorsBackend AuthorsBackend { get; }
-    private IChatsBackend ChatsBackend { get; }
-    private IServerKvasBackend ServerKvasBackend { get; }
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
     private IDbEntityResolver<string, DbNotification> DbNotificationResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
 
+    private IUserPresences UserPresences { get; } = services.GetRequiredService<IUserPresences>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; }
-    private UrlMapper UrlMapper { get; }
-    private IUserPresences UserPresences { get; }
+        = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
-
-    public NotificationsBackend(IServiceProvider services) : base(services)
-    {
-        AuthorsBackend = services.GetRequiredService<IAuthorsBackend>();
-        ChatsBackend = services.GetRequiredService<IChatsBackend>();
-        ServerKvasBackend = services.GetRequiredService<IServerKvasBackend>();
-        DbNotificationResolver = services.GetRequiredService<IDbEntityResolver<string, DbNotification>>();
-
-        ChatMarkupHubFactory = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
-        UrlMapper = services.GetRequiredService<UrlMapper>();
-        UserPresences = services.GetRequiredService<IUserPresences>();
-        FirebaseMessagingClient = services.GetRequiredService<FirebaseMessagingClient>();
-
-        _recentChatsWithNotifications = new MemoryCache(new MemoryCacheOptions {
-            CompactionPercentage = 0.1,
-            SizeLimit = 10_000,
-            ExpirationScanFrequency = TimeSpan.FromSeconds(5),
-        });
-    }
+        = services.GetRequiredService<FirebaseMessagingClient>();
+    private UrlMapper UrlMapper { get; } = services.GetRequiredService<UrlMapper>();
 
     // [ComputeMethod]
     public virtual async Task<Notification?> Get(

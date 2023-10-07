@@ -2,22 +2,19 @@ using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Hosting;
 
-public abstract class HostModule
+public abstract class HostModule(IServiceProvider moduleServices)
 {
     private HostInfo? _hostInfo;
     private IConfiguration? _cfg;
     private ILogger? _log;
 
-    protected IServiceProvider ModuleServices { get; }
+    protected IServiceProvider ModuleServices { get; } = moduleServices;
     protected HostInfo HostInfo => _hostInfo ??= ModuleServices.GetRequiredService<HostInfo>();
     protected bool IsDevelopmentInstance => HostInfo.IsDevelopmentInstance;
     protected IConfiguration Cfg => _cfg ??= ModuleServices.GetRequiredService<IConfiguration>();
     protected ILogger Log => _log ??= ModuleServices.LogFor(GetType());
 
     protected ModuleHost Host { get; private set; } = null!;
-
-    protected HostModule(IServiceProvider moduleServices)
-        => ModuleServices = moduleServices;
 
     protected internal void Initialize(ModuleHost host)
         => Host = host;

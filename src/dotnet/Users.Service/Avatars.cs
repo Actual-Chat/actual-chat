@@ -2,20 +2,12 @@
 
 namespace ActualChat.Users;
 
-public class Avatars : IAvatars
+public class Avatars(IServiceProvider services) : IAvatars
 {
-    private IAccounts Accounts { get; }
-    private IAvatarsBackend Backend { get; }
-    private IServerKvas ServerKvas { get; }
-    private ICommander Commander { get; }
-
-    public Avatars(IServiceProvider services)
-    {
-        Accounts = services.GetRequiredService<IAccounts>();
-        Backend = services.GetRequiredService<IAvatarsBackend>();
-        ServerKvas = services.ServerKvas();
-        Commander = services.Commander();
-    }
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IAvatarsBackend Backend { get; } = services.GetRequiredService<IAvatarsBackend>();
+    private IServerKvas ServerKvas { get; } = services.ServerKvas();
+    private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
     public virtual async Task<AvatarFull?> GetOwn(Session session, Symbol avatarId, CancellationToken cancellationToken)

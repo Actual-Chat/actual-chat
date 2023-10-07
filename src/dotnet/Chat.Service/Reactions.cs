@@ -1,19 +1,11 @@
 namespace ActualChat.Chat;
 
-internal class Reactions : IReactions
+internal class Reactions(IServiceProvider services) : IReactions
 {
-    private IReactionsBackend Backend { get; }
-    private ICommander Commander { get; }
-    private IChats Chats { get; }
-    private IAuthors Authors { get; }
-
-    public Reactions(IReactionsBackend backend, ICommander commander, IChats chats, IAuthors authors)
-    {
-        Backend = backend;
-        Commander = commander;
-        Chats = chats;
-        Authors = authors;
-    }
+    private IReactionsBackend Backend { get; } = services.GetRequiredService<IReactionsBackend>();
+    private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
+    private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
     public virtual async Task<Reaction?> Get(Session session, TextEntryId entryId, CancellationToken cancellationToken)

@@ -134,13 +134,13 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new NotificationBlazorUIModule(moduleServices),
                 new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
                 // This module should be the last one
-                new ServerAppModule(moduleServices)
+                new AppServerModule(moduleServices)
             ).Build(services);
     }
 
     public void Configure(IApplicationBuilder app)
     {
-        var appHostModule = ModuleHost.GetModule<ServerAppModule>();
+        var appHostModule = ModuleHost.GetModule<AppServerModule>();
         appHostModule.ConfigureApp(app); // This module must be the first one in ConfigureApp call sequence
 
         ModuleHost.Modules

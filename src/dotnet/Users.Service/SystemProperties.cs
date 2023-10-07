@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using Stl.Fusion.EntityFramework;
 
@@ -6,7 +5,6 @@ namespace ActualChat.Users;
 
 public class SystemProperties : DbServiceBase<UsersDbContext>, ISystemProperties
 {
-    private static readonly Task<string?> NullStringTask = Task.FromResult((string?)null);
     private static readonly Task<string> ApiVersionTask = Task.FromResult(Constants.Api.Version);
 
     public SystemProperties(IServiceProvider services) : base(services) { }

@@ -3,12 +3,15 @@ namespace ActualChat.UI.Blazor.Services;
 public class LiveTime(
     TimeZoneConverter timeZoneConverter,
     MomentClockSet clocks
-    ) : IComputeService
+    ) : SafeAsyncDisposableBase, IComputeService
 {
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
 
     private TimeZoneConverter TimeZoneConverter { get; } = timeZoneConverter;
     private MomentClockSet Clocks { get; } = clocks;
+
+    protected override Task DisposeAsync(bool disposing)
+        => Task.CompletedTask;
 
     [ComputeMethod]
     public virtual Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)

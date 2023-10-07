@@ -11,12 +11,15 @@ using ActualChat.Kubernetes;
 using ActualChat.Notification;
 using ActualChat.Transcription;
 using ActualChat.Users;
+using ActualChat.Web.Internal;
 using ActualChat.Web.Module;
+using ActualChat.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Rewrite;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using OpenTelemetry;
@@ -26,23 +29,27 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Stl.Diagnostics;
 using Stl.Fusion.EntityFramework;
+using Stl.Fusion.Server;
+using Stl.Fusion.Server.Middlewares;
+using Stl.Fusion.Server.Rpc;
 using Stl.IO;
 using Stl.Rpc;
+using Stl.Rpc.Diagnostics;
 using Stl.Rpc.Server;
 
 namespace ActualChat.App.Server.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
+public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
 {
     public static string AppVersion { get; } =
-        typeof(ServerAppModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
+        typeof(AppServerModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
 
     private IWebHostEnvironment? _env;
 
     public IWebHostEnvironment Env => _env ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
 
-    public ServerAppModule(IServiceProvider moduleServices) : base(moduleServices) { }
+    public AppServerModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     public void ConfigureApp(IApplicationBuilder app)
     {
@@ -142,6 +149,33 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
         services.AddLocalCommandQueues();
         services.AddCommandQueueScheduler();
 
+        // Fusion server + Rpc configuration
+        var fusion = services.AddFusion();
+        var rpc = fusion.Rpc;
+        fusion.AddWebServer();
+
+        // Remove SessionMiddleware - we use SessionCookies directly instead
+        services.RemoveAll<SessionMiddleware.Options>();
+        services.RemoveAll<SessionMiddleware>();
+        // Replace RpcServerConnectionFactory with AppRpcConnectionFactory
+        services.AddSingleton(_ => new AppRpcServerConnectionFactory());
+        services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<AppRpcServerConnectionFactory>().Invoke);
+        // Replace DefaultSessionReplacerRpcMiddleware with AppDefaultSessionReplacerRpcMiddleware
+        rpc.RemoveInboundMiddleware<DefaultSessionReplacerRpcMiddleware>();
+        rpc.AddInboundMiddleware<AppDefaultSessionReplacerRpcMiddleware>();
+
+        // Add RpcMethodActivityTracer
+        services.AddSingleton<RpcMethodTracerFactory>(method => new RpcMethodActivityTracer(method) {
+            UseCounters = true,
+        });
+
+        // Debug: add RpcRandomDelayMiddleware if you'd like to check how it works w/ delays
+#if DEBUG && false
+        rpc.AddInboundMiddleware(c => new RpcRandomDelayMiddleware(c) {
+            Delay = new(0.2, 0.2), // 0 .. 0.4s
+        });
+#endif
+
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
         var dataProtection = Settings.DataProtection.NullIfEmpty() ?? binPath & "data-protection-keys";
@@ -193,10 +227,22 @@ public sealed class ServerAppModule : HostModule<HostSettings>, IWebModule
             o.Providers.Add<BrotliCompressionProvider>();
         });
 
+        // Controllers, etc.
         services.AddRouting();
-        services.AddMvc().AddApplicationPart(Assembly.GetExecutingAssembly());
+        var mvc = services.AddMvc(options => {
+            options.ModelBinderProviders.Add(new ModelBinderProvider());
+            options.ModelMetadataDetailsProviders.Add(new ValidationMetadataProvider());
+        });
+        mvc.AddApplicationPart(Assembly.GetExecutingAssembly());
         services.AddServerSideBlazor(o => {
-            o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(2); // Default is 3 min.
+            if (HostInfo.IsDevelopmentInstance) {
+                o.DisconnectedCircuitMaxRetained = 5;
+                o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(1);
+            }
+            else { // Production
+                o.DisconnectedCircuitMaxRetained = 100; // Default is 100
+                o.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(2); // Default is 3 min.
+            }
             o.MaxBufferedUnacknowledgedRenderBatches = 1000; // Default is 10
             o.DetailedErrors = true;
         }).AddHubOptions(o => {

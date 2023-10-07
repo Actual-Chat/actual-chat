@@ -1,5 +1,4 @@
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using Stl.Rpc;

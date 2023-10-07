@@ -6,16 +6,10 @@ namespace ActualChat.Users;
 
 #pragma warning disable CS0618
 
-public class MobileSessions : IMobileSessions
+public class MobileSessions(IServiceProvider services) : IMobileSessions
 {
-    private IAuth Auth { get; }
-    private ICommander Commander { get; }
-
-    public MobileSessions(IServiceProvider services)
-    {
-        Auth = services.GetRequiredService<IAuth>();
-        Commander = services.Commander();
-    }
+    private IAuth Auth { get; } = services.GetRequiredService<IAuth>();
+    private ICommander Commander { get; } = services.Commander();
 
     // Not a [ComputeMethod]!
     public async Task<Session> CreateSession(CancellationToken cancellationToken)

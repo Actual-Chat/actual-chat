@@ -3,12 +3,9 @@ using Stl.Time.Testing;
 
 namespace ActualChat.Core.UnitTests.Commands;
 
-public class DedicatedEventHandler : IComputeService
+public class DedicatedEventHandler(ScheduledCommandTestService testService) : IComputeService
 {
-    private ScheduledCommandTestService TestService { get; }
-
-    public DedicatedEventHandler(ScheduledCommandTestService testService)
-        => TestService = testService;
+    private ScheduledCommandTestService TestService { get; } = testService;
 
     [EventHandler]
     public virtual async Task OnTestEvent2(TestEvent2 event2, CancellationToken cancellationToken)

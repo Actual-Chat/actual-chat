@@ -4,12 +4,10 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class ServerKvasBackend : DbServiceBase<UsersDbContext>, IServerKvasBackend
+public class ServerKvasBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IServerKvasBackend
 {
     private IDbEntityResolver<string, DbKvasEntry> DbKvasEntryResolver { get; }
-
-    public ServerKvasBackend(IServiceProvider services) : base(services)
-        => DbKvasEntryResolver = services.GetRequiredService<IDbEntityResolver<string, DbKvasEntry>>();
+        = services.GetRequiredService<IDbEntityResolver<string, DbKvasEntry>>();
 
     // [ComputeMethod]
     public virtual async Task<byte[]?> Get(string prefix, string key, CancellationToken cancellationToken = default)

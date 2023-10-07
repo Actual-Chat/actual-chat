@@ -6,17 +6,10 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public class Notifications : DbServiceBase<NotificationDbContext>, INotifications
+public class Notifications(IServiceProvider services) : DbServiceBase<NotificationDbContext>(services), INotifications
 {
-    private IAccounts Accounts { get; }
-    private INotificationsBackend Backend { get; }
-
-    public Notifications(IServiceProvider services)
-        : base(services)
-    {
-        Accounts = services.GetRequiredService<IAccounts>();
-        Backend = services.GetRequiredService<INotificationsBackend>();
-    }
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private INotificationsBackend Backend { get; } = services.GetRequiredService<INotificationsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Notification?> Get(

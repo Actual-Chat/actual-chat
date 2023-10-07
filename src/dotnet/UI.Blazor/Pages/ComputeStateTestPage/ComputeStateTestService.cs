@@ -2,7 +2,7 @@
 
 namespace ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
 
-public class ComputeStateTestService : IHasServices, IComputeService, INotifyInitialized
+public class ComputeStateTestService : SafeAsyncDisposableBase, IHasServices, IComputeService, INotifyInitialized
 {
     private readonly IMutableState<string> _state;
 
@@ -18,6 +18,9 @@ public class ComputeStateTestService : IHasServices, IComputeService, INotifyIni
 
     public void Initialized()
     { }
+
+    protected override Task DisposeAsync(bool disposing)
+        => Task.CompletedTask;
 
     [ComputeMethod]
     public virtual Task<string> GetValue(CancellationToken cancellationToken)

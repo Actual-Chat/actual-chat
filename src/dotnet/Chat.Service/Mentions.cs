@@ -3,15 +3,10 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-internal class Mentions : DbServiceBase<ChatDbContext>, IMentions {
-    private IMentionsBackend Backend { get; }
-    private IAuthors Authors { get; }
-
-    public Mentions(IServiceProvider services, IMentionsBackend backend, IAuthors authors) : base(services)
-    {
-        Backend = backend;
-        Authors = authors;
-    }
+internal class Mentions(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IMentions
+{
+    private IMentionsBackend Backend { get; } = services.GetRequiredService<IMentionsBackend>();
+    private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
 
     // [ComputeMethod]
     public virtual async Task<Mention?> GetLastOwn(

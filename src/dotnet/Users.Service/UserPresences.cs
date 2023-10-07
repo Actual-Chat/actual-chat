@@ -1,22 +1,12 @@
 namespace ActualChat.Users;
 
-public class UserPresences : IUserPresences
+public class UserPresences(IServiceProvider services) : IUserPresences
 {
-    private IUserPresencesBackend Backend { get; }
-    private IAuth Auth { get; }
-    private IAccounts Accounts { get; }
-    private ICommander Commander { get; }
-    private MomentClockSet Clocks { get; }
+    private IUserPresencesBackend Backend { get; } = services.GetRequiredService<IUserPresencesBackend>();
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private ICommander Commander { get; } = services.Commander();
+    private MomentClockSet Clocks { get; } = services.Clocks();
     private Moment Now => Clocks.SystemClock.Now;
-
-    public UserPresences(IServiceProvider services)
-    {
-        Backend = services.GetRequiredService<IUserPresencesBackend>();
-        Auth = services.GetRequiredService<IAuth>();
-        Accounts = services.GetRequiredService<IAccounts>();
-        Commander = services.Commander();
-        Clocks = services.Clocks();
-    }
 
     // [ComputeMethod]
     public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)

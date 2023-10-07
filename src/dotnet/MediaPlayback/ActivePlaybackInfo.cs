@@ -1,9 +1,12 @@
 namespace ActualChat.MediaPlayback;
 
-public class ActivePlaybackInfo : IComputeService
+public class ActivePlaybackInfo : SafeAsyncDisposableBase, IComputeService
 {
     private readonly ConcurrentDictionary<Symbol, TrackInfo> _trackInfos = new();
     private readonly ConcurrentDictionary<Symbol, PlayerState> _trackPlaybackStates = new();
+
+    protected override Task DisposeAsync(bool disposing)
+        => Task.CompletedTask;
 
     [ComputeMethod]
     public virtual Task<PlayerState?> GetTrackPlaybackState(

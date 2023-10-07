@@ -3,18 +3,12 @@ namespace ActualChat;
 public interface IServerFeaturesClient : IServerFeatures
 { }
 
-public class ServerFeaturesClient : IServerFeatures
+public class ServerFeaturesClient(IServiceProvider services) : IServerFeatures
 {
     protected IByteSerializer Serializer { get; set; } = ByteSerializer.Default;
 
-    public IServiceProvider Services { get; }
-    public IServerFeaturesClient Client { get; }
-
-    public ServerFeaturesClient(IServiceProvider services)
-    {
-        Services = services;
-        Client = services.GetRequiredService<IServerFeaturesClient>();
-    }
+    public IServiceProvider Services { get; } = services;
+    public IServerFeaturesClient Client { get; } = services.GetRequiredService<IServerFeaturesClient>();
 
     // [ComputeMethod]
     public virtual async Task<object?> Get(Type featureType, CancellationToken cancellationToken)

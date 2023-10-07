@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Options;
 using Stl.Fusion.Extensions;
+using Stl.Fusion.Internal;
 using Stl.Generators;
 using Stl.Mathematics.Internal;
 using Stl.Rpc;
@@ -42,6 +43,8 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
     {
         base.InjectServices(services);
         var appKind = HostInfo.AppKind;
+        var isServer = appKind.IsServer();
+        var isClient = appKind.IsClient();
 
         // Common services
         services.AddTracer();
@@ -73,13 +76,13 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // Fusion
         var fusion = services.AddFusion();
-        if (appKind.IsServer()) {
+        if (isServer) {
             // It's quite important to make sure fusion.WithServiceMode call follows the very first
             // services.AddFusion call, otherwise every fusion.AddService(...) call that happens earlier
             // won't be affected by this mode change!
             fusion = fusion.WithServiceMode(RpcServiceMode.Server, true);
         }
-        else if (appKind.IsClient()) {
+        else if (isClient) {
             services.AddScoped<ISessionResolver>(c => new DefaultSessionResolver(c));
             if (appKind.IsMauiApp())
                 services.AddSingleton(c => new TrueSessionResolver(c));
@@ -97,16 +100,18 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
             else
                 RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.None;
         }
-        fusion.AddComputedGraphPruner();
+        fusion.AddComputedGraphPruner(_ => new ComputedGraphPruner.Options() {
+            CheckPeriod = TimeSpan.FromMinutes(isClient || IsDevelopmentInstance ? 5 : 10).ToRandom(0.1),
+        });
         fusion.AddFusionTime();
 
         // Features
         services.AddScoped(c => new Features(c));
         fusion.AddService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
 
-        if (appKind.IsServer())
+        if (isServer)
             InjectServerServices(services);
-        if (appKind.IsClient())
+        if (isClient)
             InjectClientServices(services);
     }
 

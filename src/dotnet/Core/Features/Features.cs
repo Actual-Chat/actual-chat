@@ -1,17 +1,15 @@
 namespace ActualChat;
 
-public class Features : IFeatures
+public class Features(IServiceProvider services) : IFeatures
 {
-    public IServiceProvider Services { get; }
-    public IClientFeatures ClientFeatures { get; }
-    public IServerFeatures ServerFeatures { get; }
+    private IClientFeatures? _clientFeatures;
+    private IServerFeatures? _serverFeatures;
 
-    public Features(IServiceProvider services)
-    {
-        Services = services;
-        ClientFeatures = services.GetRequiredService<IClientFeatures>();
-        ServerFeatures = services.GetRequiredService<IServerFeatures>();
-    }
+    public IServiceProvider Services { get; } = services;
+    public IClientFeatures ClientFeatures
+        => _clientFeatures ??= Services.GetRequiredService<IClientFeatures>();
+    public IServerFeatures ServerFeatures
+        => _serverFeatures ??= Services.GetRequiredService<IServerFeatures>();
 
     public Task<object?> Get(Type featureType, CancellationToken cancellationToken)
         => typeof(IClientFeatureDef).IsAssignableFrom(featureType)

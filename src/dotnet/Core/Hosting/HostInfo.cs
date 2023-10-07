@@ -11,9 +11,9 @@ public sealed record HostInfo
     private string _baseUrl = "";
     private ImmutableHashSet<Symbol>? _requiredServiceScopes;
 
-    public static Symbol ProductionEnvironment { get; } = Environments.Production;
-    public static Symbol StagingEnvironment { get; } = Environments.Staging;
-    public static Symbol DevelopmentEnvironment { get; } = Environments.Development;
+    public static readonly Symbol ProductionEnvironment = Environments.Production;
+    public static readonly Symbol StagingEnvironment = Environments.Staging;
+    public static readonly Symbol DevelopmentEnvironment = Environments.Development;
 
     public AppKind AppKind { get; init; }
     public ClientKind ClientKind { get; init; }

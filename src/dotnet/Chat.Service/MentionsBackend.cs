@@ -6,16 +6,10 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-internal class MentionsBackend : DbServiceBase<ChatDbContext>, IMentionsBackend
+internal class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IMentionsBackend
 {
-    private IMarkupParser MarkupParser { get; }
-    private IChatsBackend ChatsBackend { get; }
-
-    public MentionsBackend(IServiceProvider services, IMarkupParser markupParser, IChatsBackend chatsBackend) : base(services)
-    {
-        MarkupParser = markupParser;
-        ChatsBackend = chatsBackend;
-    }
+    private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
 
     // [ComputeMethod]
     public virtual async Task<Mention?> GetLast(

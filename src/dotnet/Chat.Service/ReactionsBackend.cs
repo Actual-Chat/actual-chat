@@ -9,7 +9,6 @@ namespace ActualChat.Chat;
 internal class ReactionsBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), IReactionsBackend
 {
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
 

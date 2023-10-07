@@ -143,7 +143,6 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             });
         });
         var fusionWebServer = fusion.AddWebServer();
-        fusionWebServer.AddMvc().AddControllers();
         services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
         fusionWebServer.ConfigureAuthEndpoint(_ => new() {
             DefaultScheme = GoogleDefaults.AuthenticationScheme,
