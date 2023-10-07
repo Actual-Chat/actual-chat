@@ -1,17 +1,14 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public class LiveTime : IComputeService
+public class LiveTime(
+    TimeZoneConverter timeZoneConverter,
+    MomentClockSet clocks
+    ) : IComputeService
 {
     private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
 
-    private TimeZoneConverter TimeZoneConverter { get; }
-    private MomentClockSet Clocks { get; }
-
-    public LiveTime(TimeZoneConverter timeZoneConverter, MomentClockSet clocks)
-    {
-        TimeZoneConverter = timeZoneConverter;
-        Clocks = clocks;
-    }
+    private TimeZoneConverter TimeZoneConverter { get; } = timeZoneConverter;
+    private MomentClockSet Clocks { get; } = clocks;
 
     [ComputeMethod]
     public virtual Task<string> GetDeltaText(Moment time, CancellationToken cancellationToken)
