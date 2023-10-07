@@ -4,6 +4,7 @@ import { Log } from "logging";
 import { AudioRecorder } from "../../../Audio.UI.Blazor/Components/AudioRecorder/audio-recorder";
 import { AudioPlayer } from "../../../Audio.UI.Blazor/Components/AudioPlayer/audio-player";
 import { audioContextSource } from "../../../Audio.UI.Blazor/Services/audio-context-source";
+import { DeviceInfo } from 'device-info';
 
 const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
@@ -33,6 +34,8 @@ export class BrowserInit {
             this.apiVersion = apiVersion;
             this.baseUri = baseUri;
             this.sessionHash = sessionHash;
+            if (DeviceInfo.isIos)
+                document.body.classList.add("zoom-ios");
             this.initWindowId();
             this.initAndroid();
             calls = Array.from(calls);

@@ -24,6 +24,12 @@ body {
     }
 }
 
+/* Zoom */
+
+body.zoom-ios {
+    /* zoom: 1.125; */
+}
+
 /* Styled inputs */
 
 input.input-imprinted {

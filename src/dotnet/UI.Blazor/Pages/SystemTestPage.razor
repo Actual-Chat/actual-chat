@@ -2,6 +2,7 @@
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
+@using Stl.Fusion.Internal
 
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>System Test Page</MainHeader>
@@ -15,6 +16,11 @@
     <Button Click="@(_ => OnInvalidateEverythingClick(false))">On this front-end</Button>
     <Button Click="@(_ => OnInvalidateEverythingClick(true))">Everywhere</Button>
 </p>
+<p>Prune Computed&lt;T&gt; graph:
+    <Button Click="@OnPruneComputedGraphLocallyClick">Locally</Button>
+    <Button Click="@(_ => OnPruneComputedGraphClick(false))">On this front-end</Button>
+    <Button Click="@(_ => OnPruneComputedGraphClick(true))">Everywhere</Button>
+</p>
 <p>Garbage collection:
     <Button Click="@OnGCCollectClick">GC.Collect() x 3</Button>
 </p>
@@ -26,6 +32,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AgentInfo AgentInfo { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private ComputedGraphPruner ComputedGraphPruner { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ReloadUI ReloadUI { get; init; } = null!;
 
@@ -36,6 +43,15 @@
 
     private async Task OnInvalidateEverythingClick(bool everywhere) {
         var command = new SystemProperties_InvalidateEverything(Session, everywhere);
+        await UICommander.Run(command);
+    }
+
+    private Task OnPruneComputedGraphLocallyClick() {
+        return ComputedGraphPruner.PruneOnce(CancellationToken.None);
+    }
+
+    private async Task OnPruneComputedGraphClick(bool everywhere) {
+        var command = new SystemProperties_PruneComputedGraph(Session, everywhere);
         await UICommander.Run(command);
     }
 
