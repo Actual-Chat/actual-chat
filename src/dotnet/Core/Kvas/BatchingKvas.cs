@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.Kvas;
 
-public class BatchingKvas : IKvas, IAsyncDisposable
+public class BatchingKvas : SafeAsyncDisposableBase, IKvas
 {
     public record Options
     {
@@ -53,8 +53,11 @@ public class BatchingKvas : IKvas, IAsyncDisposable
         };
     }
 
-    public virtual ValueTask DisposeAsync()
-        => Writer.DisposeAsync();
+    protected override async Task DisposeAsync(bool disposing)
+    {
+        await Writer.DisposeAsync().ConfigureAwait(false);
+        await Reader.DisposeAsync().ConfigureAwait(false);
+    }
 
     public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
     {

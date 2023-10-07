@@ -1,14 +1,24 @@
+using ActualChat.Hosting;
+
 namespace ActualChat.UI.Blazor.Services;
 
-public class LiveTime(
-    TimeZoneConverter timeZoneConverter,
-    MomentClockSet clocks
-    ) : SafeAsyncDisposableBase, IComputeService
+public class LiveTime : SafeAsyncDisposableBase, IComputeService
 {
-    private static readonly TimeSpan MaxInvalidationDelay = TimeSpan.FromMinutes(10);
+    private readonly TimeSpan _maxInvalidationDelay;
 
-    private TimeZoneConverter TimeZoneConverter { get; } = timeZoneConverter;
-    private MomentClockSet Clocks { get; } = clocks;
+    private HostInfo HostInfo { get; }
+    private TimeZoneConverter TimeZoneConverter { get; }
+    private MomentClockSet Clocks { get; }
+
+    public LiveTime(IServiceProvider services)
+    {
+        HostInfo = services.GetRequiredService<HostInfo>();
+        TimeZoneConverter = services.GetRequiredService<TimeZoneConverter>();
+        Clocks = services.Clocks();
+        _maxInvalidationDelay = HostInfo.IsDevelopmentInstance
+            ? TimeSpan.FromSeconds(30)
+            : TimeSpan.FromMinutes(HostInfo.AppKind.IsClient() ? 10 : 5);
+    }
 
     protected override Task DisposeAsync(bool disposing)
         => Task.CompletedTask;
@@ -82,5 +92,5 @@ public class LiveTime(
     }
 
     private TimeSpan TrimInvalidationDelay(TimeSpan delay)
-        => TimeSpanExt.Min(delay, MaxInvalidationDelay);
+        => TimeSpanExt.Min(delay, _maxInvalidationDelay);
 }

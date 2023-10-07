@@ -48,7 +48,7 @@ public class LazyWriter<T> : WorkerBase
             _commands.Writer.TryWrite(new FlushCommand());
             _commands.Writer.Complete();
             // ReSharper disable once AccessToDisposedClosure
-            Task.Delay(DisposeTimeout, CancellationToken.None)
+            _ = Task.Delay(DisposeTimeout, CancellationToken.None)
                 .ContinueWith(_ => abortCts.CancelAndDisposeSilently(), TaskScheduler.Default);
         }).ConfigureAwait(false);
 
