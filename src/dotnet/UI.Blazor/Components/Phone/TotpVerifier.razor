@@ -6,7 +6,7 @@
 <div class="totp-verifier @Class" @onclick="@(() => Focus())">
     <span class="c-description">
         Enter the code we've sent to <span class="whitespace-nowrap">@(new Phone(Phone).ToReadable())</span>
-        to verify you own this phone number.
+        @PurposeText
     </span>
     <TotpInput @ref="_totpInput" Completed="OnInputCompleted"/>
 
@@ -34,6 +34,7 @@
     [Parameter, EditorRequired] public string Phone { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public TotpPurpose Purpose { get; set; }
+    [Parameter] public string PurposeText { get; set; } = "to verify you own this phone number.";
     [Parameter] public EventCallback Verified { get; set; }
     [Parameter] public EventCallback Error { get; set; }
     [Parameter] public EventCallback IncorrectCodeEntered { get; set; }

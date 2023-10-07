@@ -4,7 +4,12 @@
 
 <div class="phone-verifier @Class">
     @if (_phoneUnderVerification == Phone) {
-        <TotpVerifier @ref="_totpVerifier" Purpose="TotpPurpose.VerifyPhone" Phone="@Phone" Class="c-totp-verifier" Verified="Verified"/>
+        <TotpVerifier
+            @ref="_totpVerifier"
+            Purpose="TotpPurpose.VerifyPhone"
+            Phone="@Phone"
+            Class="c-totp-verifier"
+            Verified="Verified"/>
     } else {
         <div class="c-verify">
             <Button Class="btn-outline c-verify-btn" Click="OnVerifyPhoneClick">Verify by SMS</Button>
