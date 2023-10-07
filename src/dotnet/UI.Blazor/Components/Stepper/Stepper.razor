@@ -32,9 +32,8 @@
 
     public void AddStep(Step step) {
         _steps.Add(step);
-        if (_steps.Count == 1) {
+        if (_steps.Count == 1)
             _currentStep = step;
-        }
         StateHasChanged();
     }
 
@@ -44,6 +43,14 @@
     public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
     public bool CanMoveBack => CurrentStepIndex > 0;
     public Step? CurrentStep => _currentStep;
+
+    public async ValueTask Skip() {
+        if (_currentStep is null)
+            return;
+
+        await _currentStep.Skip();
+        Move(1);
+    }
 
     public async ValueTask<bool> TryMoveForward() {
         if (_currentStep is null || !await _currentStep.TryComplete())

@@ -7,9 +7,11 @@
 }
 
 <div>
-    <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+    @if (Stepper.CurrentStepIndex == 0) {
+        <p class="text-title-1 text-center">Welcome to Actual Chat!</p>
+    }
     <p class="text-headline-1 mt-6">
-        Please confirm your country code and enter your phone number.
+        Please confirm your phone number.
         We collect this information to help you find your friends here.
     </p>
     <Form
@@ -23,46 +25,29 @@
             Label="Phone"
             Class="grow"
             IsLabelInsideInput="true"
-            IsRequired="@(!_hasPhoneIdentity)">
+            IsRequired="true">
             <ChildContent>
                 <InputText
                     id="phone"
                     @bind-Value="_stepModel.Phone"
                     autocomplete="tel"
                     type="tel"
-                    inputmode="tel"
-                    disabled="@_hasPhoneIdentity"/>
+                    inputmode="tel"/>
             </ChildContent>
             <Right>
-                @if (_showPhoneVerificationStatus) {
-                    <VerificationStatus IsVerified="_hasPhoneIdentity" Class="w-8 h-8" />
+                @if (_showVerificationStatus) {
+                    <VerificationStatus IsVerified="_isVerified" Class="w-8 h-8" />
                 }
             </Right>
-        </FormSection>
-
-        <FormSection
-            For="() => _stepModel.Email"
-            InputId="email"
-            Label="Email"
-            IsRequired="@(!_hasEmail)"
-            IsLabelInsideInput="true">
-            <InputText
-                id="email"
-                @bind-Value="_stepModel.Email"
-                disabled="@(_hasEmail)"
-                autocomplete="email"
-                type="email"
-                inputmode="email"/>
         </FormSection>
     </Form>
 </div>
 
 @code {
-    private readonly PhoneStepModel _stepModel = new();
+    private readonly Model _stepModel = new();
     private Form? _formRef;
-    private bool _hasPhoneIdentity;
-    private bool _hasEmail;
-    private bool _showPhoneVerificationStatus;
+    private bool _showVerificationStatus;
+    private bool _isVerified;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -70,20 +55,18 @@
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    public override bool IsCompleted => OnboardingUI.Settings.Value.IsPhoneStepCompleted;
+    public override bool CanSkip => true;
+    // check _isVerified in case  Skip and Back were pressed
+    public override bool IsCompleted => OnboardingUI.Settings.Value.IsPhoneStepCompleted && _isVerified;
 
     protected override void MarkCompleted()
         => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsPhoneStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
-        _hasPhoneIdentity = account.User.HasPhoneIdentity();
-        _showPhoneVerificationStatus = _hasPhoneIdentity;
-        _hasEmail = !account.Email.IsNullOrEmpty();
-        _stepModel.Email = account.Email;
-        if (!account.Phone.IsNone) {
+        _showVerificationStatus = !account.HasVerifiedPhone();
+        if (!account.Phone.IsNone)
             _stepModel.Phone = account.Phone.ToReadable();
-        }
     }
 
     protected override Task<bool> Validate() {
@@ -92,16 +75,9 @@
     }
 
     protected override async Task<bool> Save() {
-        // TODO: verify phone for email signin
         var phone = PhoneFormatterExt.FromReadable(_stepModel.Phone);
         var account = await Accounts.GetOwn(Session, default);
-        var command = new Accounts_Update(
-            Session,
-            account with {
-                Phone = phone,
-                Email = _hasEmail ? account.Email : _stepModel.Email,
-                },
-            account.Version);
+        var command = new Accounts_Update(Session, account with {Phone = phone,}, account.Version);
         var (_, error) = await UICommander.Run(command);
         if (error is not null)
             return false;
@@ -110,17 +86,17 @@
             var verificationModel = new PhoneVerificationModal.Model(phone);
             var modalRef = await ModalUI.Show(verificationModel);
             await modalRef.WhenClosed;
-            _hasPhoneIdentity = verificationModel.IsVerified;
+            _showVerificationStatus = verificationModel.IsVerified;
+            _isVerified = verificationModel.IsVerified;
             if (verificationModel is { IsVerified: false, CanSkip: false })
                 return false;
-            _showPhoneVerificationStatus = true;
+            _showVerificationStatus = true;
         }
 
         return true;
     }
 
-    public class PhoneStepModel {
+    public class Model {
         [Required, PhoneNumber] public string Phone { get; set; } = PhoneCodes.Default.DisplayCode;
-        [Required, EmailAddress] public string Email { get; set; } = "";
     }
 }

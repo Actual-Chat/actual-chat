@@ -2,6 +2,7 @@ namespace ActualChat.UI.Blazor.Components;
 
 public abstract class Step : ComponentBase
 {
+    public virtual bool CanSkip => false;
     public abstract bool IsCompleted { get; }
     public Step? CurrentStep => Stepper.CurrentStep;
 
@@ -18,6 +19,8 @@ public abstract class Step : ComponentBase
     protected abstract Task<bool> Validate();
     protected abstract Task<bool> Save();
     protected abstract void MarkCompleted();
+    protected virtual ValueTask OnSkip()
+        => ValueTask.CompletedTask;
 
     public async ValueTask<bool> TryComplete()
     {
@@ -34,5 +37,14 @@ public abstract class Step : ComponentBase
 
         MarkCompleted();
         return true;
+    }
+
+    public async ValueTask Skip()
+    {
+        if (IsCompleted)
+            return;
+
+        await OnSkip();
+        MarkCompleted();
     }
 }
