@@ -1,6 +1,5 @@
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
-import { PromiseSource } from 'promises';
 import { createWebRtcAecStream, isWebRtcAecRequired } from './web-rtc-aec';
 import { Disposable } from 'disposable';
 
@@ -26,6 +25,10 @@ export class AudioContextDestinationFallback {
         this.audio.loop = false;
         this.audio.hidden = true;
         this.audio.muted = false;
+        this.audio.controls = false;
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'none';
+        }
         document.body.append(this.audio);
     }
 
@@ -58,7 +61,8 @@ export class AudioContextDestinationFallback {
         try {
             debugLog?.log('detach(): removing audio.srcObject');
             this.audio.pause();
-            this.audio.srcObject = null;
+            this.audio.srcObject = undefined;
+            this.audio.src = undefined;
             if (this.destinationNode) {
                 this.destinationNode.stream.getAudioTracks().forEach(x => x.stop());
                 this.destinationNode.stream.getVideoTracks().forEach(x => x.stop());
