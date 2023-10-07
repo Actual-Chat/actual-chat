@@ -42,7 +42,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
-        fusion.AddService<IBackgroundActivityProvider, BackgroundActivityProvider>(ServiceLifetime.Scoped);
+        fusion.AddService<IBackgroundActivities, BackgroundActivities>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c));
         services.AddScoped(c => new ActiveChatsUI(c));
         services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));

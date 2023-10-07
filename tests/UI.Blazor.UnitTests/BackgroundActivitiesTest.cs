@@ -5,11 +5,11 @@ using Stl.Versioning.Providers;
 
 namespace ActualChat.UI.Blazor.UnitTests;
 
-public class BackgroundUITest: TestBase
+public class BackgroundActivitiesTest: TestBase
 {
     private ServiceProvider Services { get; }
 
-    public BackgroundUITest(ITestOutputHelper @out) : base(@out)
+    public BackgroundActivitiesTest(ITestOutputHelper @out) : base(@out)
         => Services = new ServiceCollection()
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton<IStateFactory>(c => new StateFactory(c))
@@ -20,11 +20,11 @@ public class BackgroundUITest: TestBase
                 Environment = HostInfo.DevelopmentEnvironment,
                 IsTested = true,
             })
-            .AddSingleton<IBackgroundActivityProvider>(c => c.GetRequiredService<BackgroundActivityProviderStub>())
+            .AddSingleton<IBackgroundActivities>(c => c.GetRequiredService<BackgroundActivitiesStub>())
             .ConfigureLogging(Out)
             .AddFusion()
             .AddService<BackgroundUI>()
-            .AddService<BackgroundActivityProviderStub>()
+            .AddService<BackgroundActivitiesStub>()
             .Services
             .BuildServiceProvider();
 
@@ -36,10 +36,10 @@ public class BackgroundUITest: TestBase
         backgroundUI.State.Value.Should().Be(BackgroundState.Foreground);
 
         var backgroundHandler = backgroundUI as IBackgroundStateHandler;
-        var activityHandler = (BackgroundActivityProviderStub)Services.GetRequiredService<IBackgroundActivityProvider>();
+        var activityHandler = (BackgroundActivitiesStub)Services.GetRequiredService<IBackgroundActivities>();
 
         backgroundHandler.SetBackgroundState(true);
-        activityHandler.SetIsActive(true);
+        activityHandler.SetIsActiveInBackground(true);
 
         backgroundUI.State.Value.Should().Be(BackgroundState.Foreground);
 
@@ -55,12 +55,12 @@ public class BackgroundUITest: TestBase
     {
         var testClock = new TestClock();
         var random = Random.Shared;
-        var log = Services.LogFor<BackgroundUITest>();
+        var log = Services.LogFor<BackgroundActivitiesTest>();
         var backgroundUI = Services.GetRequiredService<BackgroundUI>();
         backgroundUI.State.Value.Should().Be(BackgroundState.Foreground);
 
         var backgroundHandler = backgroundUI as IBackgroundStateHandler;
-        var activityHandler = (BackgroundActivityProviderStub)Services.GetRequiredService<IBackgroundActivityProvider>();
+        var activityHandler = (BackgroundActivitiesStub)Services.GetRequiredService<IBackgroundActivities>();
 
         backgroundUI.Start();
         var cts = new CancellationTokenSource();
@@ -76,7 +76,7 @@ public class BackgroundUITest: TestBase
         _ = BackgroundTask.Run(async () => {
             for (int i = 0; i < 10; i++) {
                 await testClock.Delay(random.Next(10,200), cancellationToken: cts.Token);
-                activityHandler.SetIsActive(random.Next(2) == 1);
+                activityHandler.SetIsActiveInBackground(random.Next(2) == 1);
 
             }
         }, cts.Token);
@@ -97,19 +97,14 @@ public class BackgroundUITest: TestBase
 }
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Local
-internal class BackgroundActivityProviderStub(IServiceProvider services): IBackgroundActivityProvider
+internal class BackgroundActivitiesStub(IServiceProvider services) : IBackgroundActivities
 {
-    private readonly IMutableState<bool> _state = services.StateFactory().NewMutable<bool>();
+    private readonly IMutableState<bool> _isActiveInBackground = services.StateFactory().NewMutable<bool>();
 
     [ComputeMethod]
-    public virtual async Task<bool> GetIsActive(CancellationToken cancellationToken)
-        => await _state.Use(cancellationToken).ConfigureAwait(false);
+    public virtual async Task<bool> IsActiveInBackground(CancellationToken cancellationToken)
+        => await _isActiveInBackground.Use(cancellationToken).ConfigureAwait(false);
 
-    public void SetIsActive(bool state)
-    {
-        if (_state.Value == state)
-            return;
-
-        _state.Value = state;
-    }
+    public void SetIsActiveInBackground(bool value)
+        => _isActiveInBackground.Value = value;
 }

@@ -17,15 +17,15 @@ public partial class BackgroundUI(IServiceProvider services) : WorkerBase,
             BackgroundState.Foreground,
             StateCategories.Get(typeof(BackgroundUI), nameof(State)));
 
-    private IBackgroundActivityProvider? _backgroundActivityProvider;
+    private IBackgroundActivities? _backgroundActivityProvider;
     private BrowserInfo? _browserInfo;
 
     private ILogger Log { get; } = services.LogFor(typeof(BackgroundUI));
     private HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
     private BrowserInfo BrowserInfo => _browserInfo ??= services.GetRequiredService<BrowserInfo>();
 
-    private IBackgroundActivityProvider BackgroundActivityProvider => _backgroundActivityProvider
-        ??= services.GetRequiredService<IBackgroundActivityProvider>();
+    private IBackgroundActivities BackgroundActivities => _backgroundActivityProvider
+        ??= services.GetRequiredService<IBackgroundActivities>();
 
     public IState<BackgroundState> State => _state;
 

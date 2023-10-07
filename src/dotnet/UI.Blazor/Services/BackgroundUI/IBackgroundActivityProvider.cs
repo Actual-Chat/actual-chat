@@ -1,7 +1,7 @@
 ﻿namespace ActualChat.UI.Blazor.Services;
 
-public interface IBackgroundActivityProvider: IComputeService
+public interface IBackgroundActivities : IComputeService
 {
     [ComputeMethod]
-    Task<bool> GetIsActive(CancellationToken cancellationToken);
+    Task<bool> IsActiveInBackground(CancellationToken cancellationToken);
 }

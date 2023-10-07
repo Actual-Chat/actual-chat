@@ -36,7 +36,7 @@ public partial class BackgroundUI
     [ComputeMethod]
     protected virtual async Task<BackgroundState> GetState(CancellationToken cancellationToken)
     {
-        var isActive = await BackgroundActivityProvider.GetIsActive(cancellationToken).ConfigureAwait(false);
+        var isActive = await BackgroundActivities.IsActiveInBackground(cancellationToken).ConfigureAwait(false);
         var isBackground = await GetIsBackground(cancellationToken).ConfigureAwait(false);
         Log.LogDebug("GetState: {IsActive} {IsBackground}", isActive, isBackground);
         var state = (isActive, isBackground) switch {
