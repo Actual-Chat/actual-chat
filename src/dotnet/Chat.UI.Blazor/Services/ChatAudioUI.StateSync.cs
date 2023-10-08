@@ -296,7 +296,18 @@ public partial class ChatAudioUI
     {
         var stopListening = true;
         try {
-            await foreach (var _ in WatchIdleAudioBoundaries(chatId, options, cancellationToken).ConfigureAwait(false)) { }
+            while (!cancellationToken.IsCancellationRequested) {
+                var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
+                if (chatId == recordingChatId) {
+                    // reset countdown since we are still recording in the chat
+                    await Task
+                        .Delay(options.IdleInterval, cancellationToken)
+                        .ConfigureAwait(false);
+                    continue;
+                }
+                await foreach (var _ in WatchIdleAudioBoundaries(chatId, options, cancellationToken).ConfigureAwait(false)) { }
+                break;
+            }
         }
         catch (Exception e) {
             if (cancellationToken.IsCancellationRequested) {
