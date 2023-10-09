@@ -2,7 +2,7 @@
 @using ActualChat.Chat.UI.Blazor.Pages
 @inherits ComputedStateComponent<EmptyChatContent.Model?>
 @{
-    var m = State.Value;
+    var m = State.ValueOrDefault; // Intended: Error != null when chat is not found
     if (ReferenceEquals(m, null))
         return;
 }
