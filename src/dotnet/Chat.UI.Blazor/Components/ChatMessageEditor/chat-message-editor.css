@@ -31,7 +31,7 @@
 .post-panel {
     @apply flex-auto flex-x justify-between items-center;
     @apply min-h-12;
-    @apply py-1 md:py-0;
+    @apply py-1 md:py-0 px-1.5;
     @apply border-bg-01  md:rounded-3xl outline-none;
     @apply bg-07 md:bg-03;
     @apply overflow-hidden;
@@ -65,6 +65,21 @@
     @apply text-toggle-on;
 }
 
+/* Post panel buttons */
+.post-panel-btn {
+    @apply flex-none flex items-center justify-center;
+    @apply h-12 w-10;
+    @apply bg-transparent;
+    @apply text-icons-01;
+}
+body.narrow .post-panel-btn {
+    @apply text-icons-02;
+}
+body.hoverable .post-panel-btn:hover {
+    @apply brightness-125;
+}
+
+
 [contenteditable=true]:empty:not(:focus):before {
     @apply truncate;
     @apply text-placeholder text-base;
@@ -78,8 +93,8 @@
     @apply right-2;
     @apply bg-transparent;
 }
-.btn.btn-round.notify-call-toggle,
-.panel-closed .btn.btn-round.notify-call-toggle {
+.post-panel-btn.notify-call-toggle,
+.panel-closed .post-panel-btn.notify-call-toggle {
     @apply flex-none flex-x;
     @apply h-12;
     @apply self-end;
@@ -88,12 +103,6 @@
     @apply scale-100;
     @apply bg-07 md:bg-03;
     @apply text-05 md:text-icons-01;
-}
-.btn.btn-round.notify-call-toggle .btn-content {
-    @apply min-w-12 min-h-12;
-    @apply rounded-full;
-    @apply bg-transparent;
-
 }
 .notify-call-content,
 .panel-closed .notify-call-content {
@@ -175,24 +184,26 @@
     @apply animate-notify-panel-closing;
 }
 
-.btn.btn-round.post-message {
+.post-panel-btn.post-message {
     @apply hidden flex-none;
-    @apply w-12;
     @apply self-end;
-    @apply p-2;
     @apply outline-none;
     @apply text-05;
 }
 
-.text-mode .btn.btn-round.post-message {
+.text-mode .post-panel-btn.post-message {
     @apply flex md:hidden;
     @apply animate-display-from-left;
 }
-body.wide .attachment-mode .btn.btn-round.post-message {
+body.wide .attachment-mode .post-panel-btn.post-message {
     @apply flex;
-    @apply min-w-12;
-    @apply text-icons-01;
     @apply animate-display-from-left;
+}
+.attachment-mode .post-panel-btn.post-message {
+    @apply text-accent;
+}
+body.narrow .attachment-mode .post-panel-btn.post-message {
+    @apply brightness-125;
 }
 
 .text-mode .recorder-buttons .btn {
@@ -309,20 +320,6 @@ body.narrow .attachment-filename {
     @apply bg-[#ED0000];
 }
 
-.add-attachment.btn .btn-content {
-    @apply bg-04;
-}
-body.hoverable .add-attachment.btn:hover .btn-content {
-    @apply bg-03;
-}
-.attach-btn.btn.btn-round {
-    @apply self-start;
-}
-.attach-btn.btn.btn-round .btn-content {
-    @apply bg-07 md:bg-03;
-    @apply text-05 md:text-icons-01;
-}
-
 .related-chat-entry-panel {
     @apply flex-x;
     @apply h-10;
@@ -332,7 +329,6 @@ body.hoverable .add-attachment.btn:hover .btn-content {
 }
 body.narrow .related-chat-entry-panel {
     @apply h-auto;
-    /*@apply mt-2 mx-1;*/
     @apply p-1 -mb-0.5;
     @apply overflow-hidden;
     @apply bg-07;

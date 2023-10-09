@@ -23,10 +23,6 @@
     @apply bg-transparent;
 }
 
-.btn-round.attach-btn {
-    @apply self-start;
-}
-
 .people-group {
     @apply gap-x-12;
 }
