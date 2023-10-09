@@ -10,7 +10,7 @@
     <FocusTrap @ref="@_focusTrap" IsActive="@(Ref.Options.UseFocusTrap ?? false)">
         <div class="@Ref.Options.Class" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
             <div class="modal-content">
-                <ErrorBarrier>
+                <ErrorBarrier Name="Modal">
                     <CascadingValue Value="this">
                         @Content
                     </CascadingValue>

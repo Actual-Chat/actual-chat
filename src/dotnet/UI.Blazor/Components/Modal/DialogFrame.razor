@@ -2,10 +2,11 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @{
-    var settings = NarrowViewSettings;
-    var hideButtonsInNarrowView = settings.ShouldHideButtons.GetValueOrDefault(settings.ShouldUseInteractiveHeader);
-    var showButtons = ScreenSize.IsWide() || !hideButtonsInNarrowView;
-    var positionClass = settings.Position == DialogFramePosition.Bottom
+    var narrowViewSettings = NarrowViewSettings;
+    var narrowViewShouldHideButtons = narrowViewSettings.ShouldHideButtons
+        ?? narrowViewSettings.ShouldUseInteractiveHeader;
+    var showButtons = ScreenSize.IsWide() || !narrowViewShouldHideButtons;
+    var positionClass = narrowViewSettings.Position == DialogFramePosition.Bottom
         ? "narrow-view__modal__position-bottom"
         : "narrow-view__modal__position-stretch";
     var cls = Class + " " + positionClass;

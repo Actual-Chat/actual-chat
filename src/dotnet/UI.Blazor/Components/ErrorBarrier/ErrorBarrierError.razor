@@ -13,11 +13,16 @@
         var remaining = (long) (_reloadAt - Now).TotalSeconds;
         buttonText += $" in {remaining}s";
     }
-    var cls = Kind == ErrorBarrierKind.Full ? "full" : "compact";
+    var cls = Kind switch {
+        ErrorBarrierKind.Full => "full",
+        ErrorBarrierKind.Medium => "medium",
+        ErrorBarrierKind.Compact => "compact",
+        _ => throw new ArgumentOutOfRangeException(nameof(Kind)),
+        };
 }
 
 <div class="error-barrier @cls">
-    @if (Kind == ErrorBarrierKind.Full) {
+    @if (Kind != ErrorBarrierKind.Compact) {
         <div class="c-image"></div>
     }
     <div class="c-text">

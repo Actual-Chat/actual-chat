@@ -1,42 +1,42 @@
 @using ActualChat.UI.Blazor.Services
 <div class="page-with-header-and-footer">
-    <ErrorBarrier>
-        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Left.IsVisible">
+    <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Left.IsVisible">
+        <ErrorBarrier Name="PageWithHeaderAndFooter-LeftDrawer" Kind="@ErrorBarrierKind.Medium">
             @LeftDrawer
-        </RegionVisibilityProvider>
-    </ErrorBarrier>
-    <ErrorBarrier>
-        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
-            <div class="@Class">
-                <div class="layout-header">
-                    @Header
-                </div>
-                <div class="layout-subheader">
-                    @SubHeader
-                </div>
-                <div class="layout-body-wrapper">
-                    <div class="c-container">
-                        <div class="layout-footer">
-                            @Footer
-                        </div>
-                        <div class="layout-subfooter">
-                            @SubFooter
-                        </div>
-                        <div class="layout-body">
-                            <ErrorBarrier>
-                                @Body
-                            </ErrorBarrier>
-                        </div>
+        </ErrorBarrier>
+    </RegionVisibilityProvider>
+    <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Middle.IsVisible">
+        <ErrorBarrier Name="PageWithHeaderAndFooter-Content">
+        <div class="@Class">
+            <div class="layout-header">
+                @Header
+            </div>
+            <div class="layout-subheader">
+                @SubHeader
+            </div>
+            <div class="layout-body-wrapper">
+                <div class="c-container">
+                    <div class="layout-footer">
+                        @Footer
+                    </div>
+                    <div class="layout-subfooter">
+                        @SubFooter
+                    </div>
+                    <div class="layout-body">
+                        <ErrorBarrier Name="PageWithHeaderAndFooter-Body">
+                            @Body
+                        </ErrorBarrier>
                     </div>
                 </div>
             </div>
-        </RegionVisibilityProvider>
-    </ErrorBarrier>
-    <ErrorBarrier>
-        <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Right.IsVisible">
+        </div>
+        </ErrorBarrier>
+    </RegionVisibilityProvider>
+    <RegionVisibilityProvider IsRegionVisible="@PanelsUI.Right.IsVisible">
+        <ErrorBarrier Name="PageWithHeaderAndFooter-RightDrawer" Kind="@ErrorBarrierKind.Medium">
             @RightDrawer
-        </RegionVisibilityProvider>
-    </ErrorBarrier>
+        </ErrorBarrier>
+    </RegionVisibilityProvider>
 </div>
 
 @code {

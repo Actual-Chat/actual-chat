@@ -6,7 +6,7 @@
 
 <ModalChrome Class="@cls" HasEscapeHandler="@HasEscapeHandler">
     @Header
-    <ErrorBarrier>@ChildContent</ErrorBarrier>
+    <ErrorBarrier Name="ModalFrame">@ChildContent</ErrorBarrier>
 </ModalChrome>
 
 @code {

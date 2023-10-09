@@ -1,6 +1,7 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 @implements IDisposable
+
 <ErrorBoundary @ref="_errorBoundary">
     <ChildContent>
         @{
@@ -10,28 +11,33 @@
     </ChildContent>
     <ErrorContent>
         @{
+            Log.LogError(context, "ErrorBarrier {Name} captured an error", Name);
             var now = Now;
             if (now - _childContentRenderedAt < SameFailurePeriod)
                 _errorCount++;
             else
                 _errorCount = 1;
         }
-        <ErrorBarrierError Barrier="this" Kind="Kind" ErrorCount="_errorCount" MustAutoReload="MustAutoReload"/>
+        <ErrorBarrierError Barrier="@this" Kind="@Kind" ErrorCount="@_errorCount" MustAutoReload="@MustAutoReload"/>
     </ErrorContent>
 </ErrorBoundary>
 
 @code {
     private static readonly TimeSpan SameFailurePeriod = TimeSpan.FromSeconds(3);
 
+    private ILogger? _log;
     private ErrorBoundary? _errorBoundary;
     private Moment _childContentRenderedAt;
     private int _errorCount;
 
+    private ILogger Log => _log ?? Services.LogFor(GetType());
     private Moment Now => Clocks.CpuClock.Now;
 
+    [Inject] IServiceProvider Services { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public ErrorBarrierKind Kind { get; set; } = ErrorBarrierKind.Full;
     [Parameter] public bool MustAutoReload { get; set; } = true;
     [Parameter] public RenderFragment? ChildContent { get; set; }

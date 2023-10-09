@@ -4,29 +4,34 @@
 <MainHeader>ErrorBarrier Test Page</MainHeader>
 
 <div class="flex-x justify-start items-center">
-    <ErrorBarrier Kind="ErrorBarrierKind.Full" MustAutoReload="false">
+    <ErrorBarrier Name="Test-Full" Kind="ErrorBarrierKind.Full" MustAutoReload="false">
         <FailingTestTimer Modulo="1000" Boundary="1000"/>
     </ErrorBarrier>
 </div>
 <div class="flex-x justify-start items-center">
-    <ErrorBarrier Kind="ErrorBarrierKind.Compact" MustAutoReload="true">
+    <ErrorBarrier Name="Test-Medium"  Kind="ErrorBarrierKind.Medium" MustAutoReload="true">
         <FailingTestTimer Modulo="1000" Boundary="1000"/>
     </ErrorBarrier>
 </div>
 <div class="flex-x justify-start items-center">
-    <ErrorBarrier Kind="ErrorBarrierKind.Compact">
+    <ErrorBarrier Name="Test-Compact" Kind="ErrorBarrierKind.Compact" MustAutoReload="true">
+        <FailingTestTimer Modulo="1000" Boundary="1000"/>
+    </ErrorBarrier>
+</div>
+<div class="flex-x justify-start items-center">
+    <ErrorBarrier Name="Test-Compact-2" Kind="ErrorBarrierKind.Compact">
         <b>1:&nbsp;</b>
         <FailingTestTimer Modulo="25_000" Boundary="7000"/>
     </ErrorBarrier>
 </div>
 <div class="flex-x justify-start items-center">
-    <ErrorBarrier Kind="ErrorBarrierKind.Compact">
+    <ErrorBarrier Name="Test-Compact-3" Kind="ErrorBarrierKind.Compact">
         <b>2:&nbsp;</b>
         <FailingTestTimer Modulo="10_000" Boundary="300"/>
     </ErrorBarrier>
 </div>
 <div class="flex-x justify-start items-center">
-    <ErrorBarrier Kind="ErrorBarrierKind.Full">
+    <ErrorBarrier Name="Test-Full-2" Kind="ErrorBarrierKind.Full">
         <b>3:&nbsp;</b>
         <FailingTestTimer Modulo="55_000" Boundary="1000"/>
     </ErrorBarrier>

@@ -4,12 +4,15 @@
     @apply text-icons-01;
     @apply overflow-hidden;
 }
+.error-barrier.full {
+    min-width: 260px;
+}
+.error-barrier.medium {
+    min-width: 100px;
+}
 .error-barrier.compact {
     @apply flex-x gap-x-2 p-1;
     @apply min-h-12 max-h-12;
-}
-.error-barrier.full {
-    min-width: 260px;
 }
 
 .error-barrier > .c-image {
@@ -18,10 +21,17 @@
     background-image: url('/dist/images/error-barrier-image.svg');
     background-repeat: no-repeat;
 }
+.error-barrier.medium > .c-image {
+    height: 166px;
+    width: 166px;
+}
 
 .error-barrier > .c-text {
     @apply flex-y justify-center items-center;
     @apply my-2;
+}
+.error-barrier.medium > .c-text {
+    @apply my-1;
 }
 
 .error-barrier > .c-text p {
