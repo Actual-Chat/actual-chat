@@ -87,6 +87,13 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
         }
     }
 
+    protected override Task OnStop()
+    {
+        foreach (var entry in _activeEntries)
+            RemoveActiveEntry(entry);
+        return Task.CompletedTask;
+    }
+
     private void AddActiveEntry(ChatEntry entry)
     {
         int thisAuthorEntryCount;

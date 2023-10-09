@@ -2,22 +2,16 @@ using ActualChat.Pooling;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatRecordingActivityReplica : IChatRecordingActivity
+public class ChatRecordingActivityReplica(SharedResourcePool<ChatId, ChatRecordingActivity>.Lease lease)
+    : IChatRecordingActivity
 {
-    private readonly SharedResourcePool<ChatId, ChatRecordingActivity>.Lease _lease;
-    private readonly IChatRecordingActivity _source;
+    private readonly IChatRecordingActivity _source = lease.Resource;
 
     public ChatActivity Owner => _source.Owner;
     public ChatId ChatId => _source.ChatId;
 
-    public ChatRecordingActivityReplica(SharedResourcePool<ChatId, ChatRecordingActivity>.Lease lease)
-    {
-        _lease = lease;
-        _source = lease.Resource;
-    }
-
     public void Dispose()
-        => _lease.Dispose();
+        => lease.Dispose();
 
     public Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken)
         => _source.GetActiveChatEntries(cancellationToken);

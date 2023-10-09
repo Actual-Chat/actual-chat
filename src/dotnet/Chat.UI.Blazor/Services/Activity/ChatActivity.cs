@@ -38,7 +38,7 @@ public class ChatActivity
 
         var chatRecordingActivity = Services.GetRequiredService<ChatRecordingActivity>();
         chatRecordingActivity.ChatId = chatId;
-        _ = chatRecordingActivity.Run();
+        chatRecordingActivity.Start();
         return Task.FromResult(chatRecordingActivity);
     }
 }
