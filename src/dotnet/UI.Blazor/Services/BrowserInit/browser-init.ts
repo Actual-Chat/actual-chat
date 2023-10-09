@@ -281,8 +281,7 @@ export class BrowserInit {
 
     public static async tryReload(): Promise<void> {
         try {
-            const url = BrowserInit.getUrl('/favicon.ico');
-            const response = await fetch(url);
+            const response = await fetch('/favicon.ico');
             if (response.ok)
                 void BrowserInit.reload();
         }
