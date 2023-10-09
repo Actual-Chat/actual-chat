@@ -8,10 +8,11 @@ public abstract class Step : ComponentBase
 
     [CascadingParameter] public Stepper Stepper { get; set; } = null!;
 
-    protected override void OnInitialized()
-    {
-        if (IsCompleted)
+    protected override void OnInitialized() {
+        if (IsCompleted) {
+            MarkCompleted();
             return;
+        }
 
         Stepper.AddStep(this);
     }
@@ -22,8 +23,7 @@ public abstract class Step : ComponentBase
     protected virtual ValueTask OnSkip()
         => ValueTask.CompletedTask;
 
-    public async ValueTask<bool> TryComplete()
-    {
+    public async ValueTask<bool> TryComplete() {
         if (IsCompleted)
             return true;
 
@@ -39,8 +39,7 @@ public abstract class Step : ComponentBase
         return true;
     }
 
-    public async ValueTask Skip()
-    {
+    public async ValueTask Skip() {
         if (IsCompleted)
             return;
 

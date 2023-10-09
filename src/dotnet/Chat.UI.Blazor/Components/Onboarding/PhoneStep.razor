@@ -38,7 +38,9 @@
             </ChildContent>
             <Right>
                 @if (_showVerificationStatus) {
-                    <VerificationStatus IsVerified="_isVerified" Class="w-8 h-8" />
+                    <VerificationStatus
+                        IsVerified="_isVerified ?? false"
+                        Class="w-8 h-8" />
                 }
             </Right>
         </FormSection>
@@ -49,7 +51,8 @@
     private readonly Model _stepModel = new();
     private Form? _formRef;
     private bool _showVerificationStatus;
-    private bool _isVerified;
+    private bool? _isVerified;
+    private bool? _skipped;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -57,12 +60,29 @@
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    public override bool CanSkip => true;
-    // check _isVerified in case  Skip and Back were pressed
-    public override bool IsCompleted => OnboardingUI.Settings.Value.IsPhoneStepCompleted && _isVerified;
+    [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
+
+    public override bool CanSkip => _isVerified is null or false;
+
+    public override bool IsCompleted {
+        get {
+            if (Account.HasVerifiedPhone())
+                return true;
+
+            // Can move forward if already verified in case when Skip and Back were pressed
+            if (_isVerified is true)
+                return true;
+
+            // Can't move forward if skipped in case when Skip and Back were pressed
+            if (_skipped is true)
+                return false;
+
+            return OnboardingUI.Settings.Value.IsVerifyPhoneStepCompleted;
+        }
+    }
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsPhoneStepCompleted = true });
+        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsVerifyPhoneStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
@@ -76,10 +96,15 @@
         return Task.FromResult(isValid);
     }
 
+    protected override ValueTask OnSkip() {
+        _skipped = true;
+        return ValueTask.CompletedTask;
+    }
+
     protected override async Task<bool> Save() {
         var phone = PhoneFormatterExt.FromReadable(_stepModel.Phone);
         var account = await Accounts.GetOwn(Session, default);
-        var command = new Accounts_Update(Session, account with {Phone = phone,}, account.Version);
+        var command = new Accounts_Update(Session, account with { Phone = phone }, account.Version);
         var (_, error) = await UICommander.Run(command);
         if (error is not null)
             return false;
