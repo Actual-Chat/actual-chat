@@ -1,10 +1,10 @@
 @implements IModalView<NewChatModal.Model>
 @inherits FusionComponentBase
 @namespace ActualChat.Chat.UI.Blazor.Components
-
 @{
     var title = _chat != null ? _chat.Title : "New chat";
 }
+
 <DialogFrame
     Class="new-chat-modal"
     Title="@title"
@@ -15,13 +15,14 @@
             <NewChatModalProps
                 ButtonsSlotName="@_buttonsSlotName"
                 ChatCreated="OnChatCreated"
-                CloseRequested="OnClose" />
+                Cancelled="Close" />
         }
         else if (_page == Page.Members){
             <NewChatModalMembers
                 ButtonsSlotName="@_buttonsSlotName"
                 ChatSid="@_chat!.Id"
-                Closed="OnClose" />
+                Skipped="Close"
+                Completed="Close" />
         }
     </Body>
     <Buttons>
@@ -30,8 +31,10 @@
 </DialogFrame>
 
 @code {
-    private readonly DialogFrameNarrowViewSettings _narrowViewSettings =
-        DialogFrameNarrowViewSettings.Stretch with { UseInteractiveHeader = true, ShouldHideButtons = false};
+    private readonly DialogFrameNarrowViewSettings _narrowViewSettings = DialogFrameNarrowViewSettings.Stretch with {
+        UseInteractiveHeader = true,
+        ShouldHideButtons = false,
+    };
     private readonly string _buttonsSlotName = Guid.NewGuid().ToString();
 
     private Chat? _chat;
@@ -51,7 +54,7 @@
         var peopleContacts = await ChatListUI.ListAllUnordered(ChatListFilter.People);
         if (peopleContacts.Count == 0) {
             // If there is no people to add, close the dialog.
-            OnClose();
+            Close();
         } else {
             _page = Page.Members;
             // Re-render component to show Add members page.
@@ -59,15 +62,18 @@
         }
     }
 
-    private void OnClose()
-        => Modal.Close();
-
     private async Task NavigateToChatWhenClosed() {
         await Modal.Ref.WhenClosed;
         if (_chat == null)
             return;
+
         _ = History.NavigateTo(Links.Chat(_chat.Id));
     }
+
+    private void Close()
+        => Modal.Close();
+
+    // Nested types
 
     public sealed record Model;
     private enum Page { Props, Members }

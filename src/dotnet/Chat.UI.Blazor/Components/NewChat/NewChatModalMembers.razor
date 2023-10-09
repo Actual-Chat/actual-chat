@@ -31,7 +31,7 @@
     } else {
         <Button
             Class="btn-modal btn-primary"
-            Click="@(() => Closed.InvokeAsync(false))">
+            Click="@(() => Skipped.InvokeAsync(false))">
             Skip
         </Button>
     }
@@ -52,7 +52,8 @@
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
-    [Parameter, EditorRequired] public EventCallback<bool> Closed { get; set; }
+    [Parameter, EditorRequired] public EventCallback<bool> Skipped { get; set; }
+    [Parameter, EditorRequired] public EventCallback<bool> Completed { get; set; }
 
     private void OnFilter(string filter) {
         _searchPhrase = filter.ToSearchPhrase(true, false);
@@ -72,7 +73,6 @@
             if (error != null)
                 return;
         }
-
-        await Closed.InvokeAsync(true);
+        await Completed.InvokeAsync(true);
     }
 }

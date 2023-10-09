@@ -96,7 +96,7 @@
 <RenderIntoSlot Name="@ButtonsSlotName">
     @if (ScreenSize.IsWide()) {
         <Button
-            Click="@(() => CloseRequested())"
+            Click="@(() => Cancelled())"
             Class="btn-modal">
             Cancel
         </Button>
@@ -123,7 +123,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public Action<Chat> ChatCreated { get; set; } = null!;
-    [Parameter, EditorRequired] public Action CloseRequested { get; set; } = null!;
+    [Parameter, EditorRequired] public Action Cancelled { get; set; } = null!;
 
     protected override void OnInitialized()
         => _form = new(ComponentIdGenerator);
