@@ -34,7 +34,7 @@
     private async Task OnLeave(MouseEventArgs arg) {
         var isSelectedChat = ModalModel.Chat.Id.Equals(ChatUI.SelectedChatId.Value);
         var command = ModalModel.IsDelete
-            ? (ICommand) new Chats_Change(Session, ModalModel.Chat.Id, null, Change.Remove<ChatDiff>())
+            ? (ICommand)new Chats_Change(Session, ModalModel.Chat.Id, null, Change.Remove<ChatDiff>())
             : new Authors_Leave(Session, ModalModel.Chat.Id);
         var result = await UICommander.Run(command);
         if (!result.HasError) {
