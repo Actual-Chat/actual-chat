@@ -73,12 +73,15 @@ export class SideNav extends DisposableBag {
             SideNav.left = this;
         else
             SideNav.right = this;
+        const sideNav = this;
+
         const pullGestureDisposer = SideNavPullDetectGesture.use(this);
         this.addDisposables(pullGestureDisposer, { dispose() {
-            if (SideNav.left === this)
+            if (SideNav.left === sideNav)
                 SideNav.left = null;
-            else if (SideNav.right === this)
+            else if (SideNav.right === sideNav)
                 SideNav.right = null;
+            document.body.classList.remove(sideNav.bodyClassWhenOpen)
             stateObserver.disconnect();
         }});
         this.updateBodyClassList();
