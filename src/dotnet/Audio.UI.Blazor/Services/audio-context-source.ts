@@ -12,7 +12,7 @@ import { OnDeviceAwake } from 'on-device-awake';
 import { Log } from 'logging';
 import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
-import { Subject, Observable } from 'rxjs';
+import { Subject, Observable, firstValueFrom } from 'rxjs';
 import { AudioContextDestinationFallback } from "./audio-context-destination-fallback";
 
 const { logScope, debugLog, warnLog } = Log.get('AudioContextSource');
@@ -196,6 +196,7 @@ export class AudioContextSource {
         // so it makes sense let other tasks to make some progress first.
         await delayAsync(300);
         // noinspection InfiniteLoopJS
+        let retryCount = 0;
         while (this._isActive) { // Renew loop
             let context: AudioContext = null;
             try {
@@ -206,6 +207,7 @@ export class AudioContextSource {
                         this.whenInitializedInteractively = whenInitializedInteractively;
                         context = await this.create();
                         await this.warmup(context);
+                        retryCount = 0;
                         this.markReady(context);
                     }
                     finally {
@@ -248,6 +250,7 @@ export class AudioContextSource {
                             await this.test(context, true);
                         }
                         // See the description of markReady/markNotReady to understand the invariant it maintains
+                        retryCount = 0;
                         this.markReady(context);
                         continue;
                     }
@@ -272,11 +275,18 @@ export class AudioContextSource {
                             await delayAsync(FixCyclePeriodMs);
                         }
                     }
+                    retryCount = 0;
                     this.markReady(context);
                 }
             }
             catch (e) {
                 warnLog?.log(`maintain: error:`, e);
+                if (retryCount++ > 1) {
+                    // wait for the next user interaction to prevent creating broken AudioContexts
+                    warnLog?.log(`maintain: waiting for user interaction...`);
+                    await firstValueFrom(Interactive.interactionEvent$);
+                    warnLog?.log(`maintain: resuming maintain cycle`);
+                }
             }
             finally {
                 if (!this.isTerminated)
