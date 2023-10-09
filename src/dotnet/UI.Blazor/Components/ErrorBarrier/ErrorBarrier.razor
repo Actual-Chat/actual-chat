@@ -30,7 +30,7 @@
     private Moment _childContentRenderedAt;
     private int _errorCount;
 
-    private ILogger Log => _log ?? Services.LogFor(GetType());
+    private ILogger Log => _log ??= Services.LogFor(GetType());
     private Moment Now => Clocks.CpuClock.Now;
 
     [Inject] IServiceProvider Services { get; init; } = null!;

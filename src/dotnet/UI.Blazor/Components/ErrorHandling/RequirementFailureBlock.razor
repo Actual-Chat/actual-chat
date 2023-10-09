@@ -7,7 +7,7 @@
 @{
     var needsSignIn = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;
     if (needsSignIn) {
-        History.NavigateTo(Links.Home);
+        _ = History.NavigateTo(Links.Home);
         return;
     }
 }
