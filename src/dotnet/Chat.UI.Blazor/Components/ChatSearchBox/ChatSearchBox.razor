@@ -67,8 +67,8 @@
 
     private bool CanBeTriggered => !_isBusy && !_text.IsNullOrEmpty();
 
-    protected override void OnParametersSet() =>
-        _isCollapsed ??= IsCollapsed;
+    protected override void OnParametersSet()
+        => _isCollapsed ??= IsCollapsed;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_needsFocus) {

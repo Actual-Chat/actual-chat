@@ -10,11 +10,6 @@
 
     [Parameter, EditorRequired] public ChatEntryKind Kind { get; set; }
 
-    protected override void OnParametersSet() {
-        if (_lastKind == Kind)
-            return;
-
-        _lastKind = Kind;
-        StateHasChanged();
-    }
+    protected override void OnParametersSet()
+        => _lastKind = Kind;
 }

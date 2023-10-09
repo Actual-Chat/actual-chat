@@ -40,9 +40,8 @@
     public IJSObjectReference JSRef { get; private set; } = null!;
     public Task WhenReady => _whenReadySource.Task;
 
-    public MarkupEditor() {
-        _onMentionSelected = mention => _ = InsertMention(mention);
-    }
+    public MarkupEditor()
+        => _onMentionSelected = mention => _ = InsertMention(mention);
 
     public async ValueTask DisposeAsync() {
         _whenReadySource.TrySetCanceled();
