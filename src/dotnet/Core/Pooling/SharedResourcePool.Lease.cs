@@ -1,7 +1,8 @@
-using Stl.Concurrency;
 using Stl.Pooling;
 
 namespace ActualChat.Pooling;
+
+#pragma warning disable VSTHRD002
 
 public partial class SharedResourcePool<TKey, TResource>
 {
@@ -15,12 +16,11 @@ public partial class SharedResourcePool<TKey, TResource>
 
         public SharedResourcePool<TKey, TResource> Pool { get; }
         public TKey Key { get; }
-#pragma warning disable VSTHRD002
         public TResource Resource => _resourceTask.Result;
-#pragma warning restore VSTHRD002
         public bool IsRented {
             get {
-                lock (Lock) return _renterCount > 0;
+                lock (Lock)
+                    return _renterCount > 0;
             }
         }
 

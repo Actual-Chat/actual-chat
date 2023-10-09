@@ -1,23 +1,17 @@
 namespace ActualChat.Pooling;
 
-public partial class SharedResourcePool<TKey, TResource>
+public partial class SharedResourcePool<TKey, TResource>(
+    Func<TKey, CancellationToken, Task<TResource>> resourceFactory,
+    Func<TKey, TResource, ValueTask>? resourceDisposer = null)
     where TKey : notnull
     where TResource : class
 {
     private readonly ConcurrentDictionary<TKey, Lease> _leases = new ();
-    private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; }
-    private Func<TKey, TResource, ValueTask> ResourceDisposer { get; }
+    private Func<TKey, CancellationToken, Task<TResource>> ResourceFactory { get; } = resourceFactory;
+    private Func<TKey, TResource, ValueTask> ResourceDisposer { get; } = resourceDisposer ?? DefaultResourceDisposer;
 
     public TimeSpan ResourceDisposeDelay { get; init; } = TimeSpan.FromSeconds(10);
     public ILogger Log { get; init; } = NullLogger.Instance;
-
-    public SharedResourcePool(
-        Func<TKey, CancellationToken, Task<TResource>> resourceFactory,
-        Func<TKey, TResource, ValueTask>? resourceDisposer = null)
-    {
-        ResourceFactory = resourceFactory;
-        ResourceDisposer = resourceDisposer ?? DefaultResourceDisposer;
-    }
 
     public async ValueTask<Lease> Rent(TKey key, CancellationToken cancellationToken = default)
     {

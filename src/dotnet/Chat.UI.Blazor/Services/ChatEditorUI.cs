@@ -103,7 +103,9 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
         if (author == null)
             return;
 
-        var chatIdRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None).ConfigureAwait(false);
+        var chatIdRange = await Chats
+            .GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None)
+            .ConfigureAwait(false);
         var idTileLayer = ChatEntryReader.IdTileStack.Layers[1]; // 5*4 = scan by 20 entries
         var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text, idTileLayer);
         var lastEditableEntry = await chatEntryReader.GetLast(
