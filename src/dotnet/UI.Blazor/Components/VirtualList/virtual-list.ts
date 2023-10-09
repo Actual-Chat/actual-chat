@@ -464,14 +464,14 @@ export class VirtualList {
     };
 
     private turnOffIsNearSkeletonDebounced = debounce(() => this.turnOffIsNearSkeleton(), ScrollDebounce);
-    private turnOffIsNearSkeleton() {
+    private turnOffIsNearSkeleton(): void {
         this._isNearSkeleton = false;
         // debug helper
         // console.warn("skeleton os off");
     }
 
     private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce);
-    private turnOffIsEndAnchorVisible() {
+    private turnOffIsEndAnchorVisible(): void {
         this._isEndAnchorVisible = false;
         if (this._stickyEdge?.edge === VirtualListEdge.End) {
             this.setStickyEdge(null);
@@ -481,11 +481,23 @@ export class VirtualList {
     }
 
     private turnOnIsEndAnchorVisibleDebounced = debounce(() => this.turnOnIsEndAnchorVisible(), ScrollDebounce);
-    private turnOnIsEndAnchorVisible() {
+    private async turnOnIsEndAnchorVisible(): Promise<void> {
+        // double-check visibility to prevent issues with scroll-to-the-last-item button
+        await fastReadRaf();
+
+        const isEndAnchorRefVisible = this.isItemPartiallyVisible(this._endAnchorRef);
+        const isEndSpacerRefVisible = this.isItemPartiallyVisible(this._endSpacerRef)
+            && this._endSpacerRef.getBoundingClientRect().height > VisibilityEpsilon;
+        const isEndAnchorVisible = isEndAnchorRefVisible && !isEndSpacerRefVisible;
+        if (!isEndAnchorVisible) {
+            this._isEndAnchorVisible = false;
+            return;
+        }
+
         this._isEndAnchorVisible = true;
         if (this._renderState.hasVeryLastItem) {
             const edgeKey = this.getLastItemKey();
-            this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
+            this.setStickyEdge({itemKey: edgeKey, edge: VirtualListEdge.End});
         }
         this.updateVisibleKeysThrottled();
     }
@@ -901,6 +913,12 @@ export class VirtualList {
         return itemRect.top >= viewRect.top && itemRect.top <= viewRect.bottom
             && itemRect.bottom >= viewRect.top && itemRect.bottom <= viewRect.bottom
             && itemRect.height > 0;
+    }
+
+    private isItemPartiallyVisible(itemRef: HTMLElement): boolean {
+        const itemRect = itemRef.getBoundingClientRect();
+        const viewRect = this._ref.getBoundingClientRect();
+        return itemRect.bottom > viewRect.top && itemRect.top < viewRect.bottom;
     }
 
     private forceReflow(): void {
