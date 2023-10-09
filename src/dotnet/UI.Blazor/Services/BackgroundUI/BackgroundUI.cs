@@ -29,6 +29,9 @@ public partial class BackgroundUI(IServiceProvider services) : WorkerBase,
 
     public IState<BackgroundState> State => _state;
 
+    void INotifyInitialized.Initialized()
+        => this.Start();
+
     [ComputeMethod]
     protected virtual async Task<bool> GetIsBackground(CancellationToken cancellationToken)
     {
@@ -43,9 +46,6 @@ public partial class BackgroundUI(IServiceProvider services) : WorkerBase,
         Log.LogDebug("GetIsBackground(Browser): {IsBackground}", isBackground);
         return isBackground;
     }
-
-    void INotifyInitialized.Initialized()
-        => this.Start();
 
     void IBackgroundStateHandler.SetBackgroundState(bool isBackground)
     {

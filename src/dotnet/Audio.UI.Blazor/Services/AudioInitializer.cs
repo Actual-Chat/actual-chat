@@ -2,54 +2,49 @@ using System.Text.RegularExpressions;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
-using Stl.Interception;
 
 namespace ActualChat.Audio.UI.Blazor.Services;
 
-public sealed partial class AudioInitializer : WorkerBase, IAudioInfoBackend, INotifyInitialized
+public sealed partial class AudioInitializer : WorkerBase, IAudioInfoBackend
 {
     private static readonly string JSInitMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.init";
     private static readonly string JSUpdateBackgroundStateMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.updateBackgroundState";
 
     [GeneratedRegex(@"^(?<type>mac|iPhone|iPad)(?:(?<version>\d+),\d*)?$")]
-    private static partial Regex IOSDeviceRegexFactory();
-    private static readonly Regex IOSDeviceRegex = IOSDeviceRegexFactory();
+    private static partial Regex IosDeviceRegexFactory();
+    private static readonly Regex IosDeviceRegex = IosDeviceRegexFactory();
 
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
+    private BackgroundUI? _backgroundUI;
+    private HostInfo? _hostInfo;
+    private IJSRuntime? _js;
+    private UrlMapper? _urlMapper;
+    private ILogger? _log;
 
     private IServiceProvider Services { get; }
-    private ILogger Log { get; }
-    private IJSRuntime JS { get; }
-    private UrlMapper UrlMapper { get; }
-    private HostInfo HostInfo { get; }
-    private BackgroundUI BackgroundUI { get; }
+    private IJSRuntime JS => _js ??= Services.JSRuntime();
+    private UrlMapper UrlMapper => _urlMapper ??= Services.UrlMapper();
+    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    private BackgroundUI BackgroundUI => _backgroundUI ??= Services.GetRequiredService<BackgroundUI>();
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public Task WhenInitialized { get; }
 
     public AudioInitializer(IServiceProvider services)
     {
         Services = services;
-        Log = services.LogFor(GetType());
-
-        JS = services.JSRuntime();
-        UrlMapper = services.GetRequiredService<UrlMapper>();
-        HostInfo = services.GetRequiredService<HostInfo>();
-        BackgroundUI = services.GetRequiredService<BackgroundUI>();
         WhenInitialized = Initialize();
     }
 
-    void INotifyInitialized.Initialized()
-        => this.Start();
-
-    protected override async Task DisposeAsyncCore()
+    protected override Task DisposeAsyncCore()
     {
         _backendRef?.DisposeSilently();
-        await base.DisposeAsyncCore();
+        return base.DisposeAsyncCore();
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        Log.LogWarning("AudioInitializer - ON RUN");
+        Log.LogInformation("AudioInitializer: started");
         var baseChains = new[] {
             AsyncChainExt.From(UpdateBackgroundState),
         };
@@ -80,7 +75,7 @@ public sealed partial class AudioInitializer : WorkerBase, IAudioInfoBackend, IN
     // ReSharper disable once InconsistentNaming
     private static bool IsIOSDeviceFastEnoughToRunNNVad(string deviceModel)
     {
-        var match = IOSDeviceRegex.Match(deviceModel);
+        var match = IosDeviceRegex.Match(deviceModel);
         if (!match.Success)
             return false;
 
@@ -99,12 +94,12 @@ public sealed partial class AudioInitializer : WorkerBase, IAudioInfoBackend, IN
         await foreach (var cState in stateChanges.ConfigureAwait(false)) {
             var state = cState.Value;
             if (state.IsActive() != previousState.IsActive()) {
-                Log.LogInformation("Activity state has changed. {OldState} -> {State}", previousState, state);
+                Log.LogInformation("Activity state has changed: {OldState} -> {State}", previousState, state);
                 await JS.InvokeVoidAsync(JSUpdateBackgroundStateMethod, cancellationToken, state.ToString())
                     .ConfigureAwait(false);
             }
             else
-                Log.LogInformation("Activity state change skipped. {OldState} -> {State}", previousState, state);
+                Log.LogInformation("Activity state change ignored: {OldState} -> {State}", previousState, state);
 
             previousState = state;
         }

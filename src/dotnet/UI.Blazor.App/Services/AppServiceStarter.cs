@@ -1,3 +1,4 @@
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Chat;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Contacts;
@@ -5,7 +6,6 @@ using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
-using Stl.Interception;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -154,16 +154,17 @@ public class AppServiceStarter
             var appKind = HostInfo.AppKind;
             if (appKind.IsClient())
                 Services.GetRequiredService<SessionTokens>().Start();
-            (Services.GetRequiredService<TuneUI>() as INotifyInitialized).Initialized();
+            Services.GetRequiredService<AudioInitializer>().Start();
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client
             Services.GetRequiredService<ContactSync>().Start();
+            Services.GetRequiredService<TuneUI>(); // Auto-starts on construction
             if (appKind.IsClient()) {
                 await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
                 await StartHostedServices().ConfigureAwait(false);
             }
-            (Services.GetRequiredService<BackgroundUI>() as INotifyInitialized).Initialized();
+            Services.GetRequiredService<BackgroundUI>(); // Auto-starts on construction
             if (!HostInfo.IsProductionInstance)
                 Services.GetRequiredService<DebugUI>();
         }
@@ -187,6 +188,7 @@ public class AppServiceStarter
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
+#if false
     private void WarmupSystemJsonSerializer()
     {
         Read<ThemeSettings>("{\"theme\":1,\"origin\":\"\"}");
@@ -206,4 +208,5 @@ public class AppServiceStarter
             }
         }
     }
+#endif
 }

@@ -1,14 +1,12 @@
 using ActualChat.UI.Blazor.Module;
-using Stl.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class TuneUI(IServiceProvider services) : ITuneUIBackend, INotifyInitialized, IDisposable
+public class TuneUI : ITuneUIBackend, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.init";
     private static readonly string JSPlayMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.play";
     private static readonly string JSPlayAndWaitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.playAndWait";
-    private DotNetObjectReference<ITuneUIBackend> _blazorRef = null!;
 
     protected static readonly Dictionary<Tune, TuneInfo> Tunes = new () {
         // General actions
@@ -40,23 +38,32 @@ public class TuneUI(IServiceProvider services) : ITuneUIBackend, INotifyInitiali
         [Tune.ShowMenu] = new (new[] { 20 }/*, "show-menu"*/),
     };
 
-    protected virtual bool UseJsVibration => true;
-    private IJSRuntime JS { get; } = services.JSRuntime();
-    private ILogger Log { get; } = services.LogFor<TuneUI>();
+    private DotNetObjectReference<ITuneUIBackend> _blazorRef = null!;
+    private ILogger? _log;
 
-    private async ValueTask InvokeInit()
+    protected virtual bool UseJsVibration => true;
+
+    private IServiceProvider Services { get; }
+    private IJSRuntime JS { get; }
+    private ILogger Log => _log ??= Services.LogFor<TuneUI>();
+
+    public TuneUI(IServiceProvider services)
+    {
+        Services = services;
+        JS = services.JSRuntime();
+        _ = Initialize();
+    }
+
+    public async ValueTask Initialize()
     {
         try {
             _blazorRef = DotNetObjectReference.Create<ITuneUIBackend>(this);
             await JS.InvokeVoidAsync(JSInitMethod, _blazorRef, Tunes, UseJsVibration).ConfigureAwait(false);
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to init TuneUI");
+            Log.LogError(e, "Initialize failed");
         }
     }
-
-    void INotifyInitialized.Initialized()
-        => _ = InvokeInit();
 
     public virtual void Dispose()
         => _blazorRef.DisposeSilently();
