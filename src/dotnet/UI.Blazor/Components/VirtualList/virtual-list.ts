@@ -132,7 +132,7 @@ export class VirtualList {
                 root: this._ref,
                 // Extend visibility outside of the viewport.
                 rootMargin: `${VisibilityEpsilon}px`,
-                threshold: [0, 0.9, 1],
+                threshold: visibilityThresholds,
             });
         this._scrollPivotObserver = new IntersectionObserver(
             this.onScrollPivotVisibilityChange,
@@ -327,6 +327,8 @@ export class VirtualList {
 
         let hasChanged = false;
         const rs = this._renderState;
+        const lastItemKey = this.getLastItemKey();
+        const firstItemKey = this.getFirstItemKey();
         for (const entry of entries) {
             const itemRef = entry.target as HTMLElement;
             const key = getItemKey(itemRef);
@@ -351,6 +353,11 @@ export class VirtualList {
                 hasChanged ||= !this._visibleItems.has(key);
                 this._visibleItems.add(key);
             }
+            else if (key === lastItemKey && entry.isIntersecting && rs.hasVeryLastItem && this._isEndAnchorVisible) {
+                // the last item is bigger than viewport, but we see the end anchor - so let's mark it visible
+                hasChanged ||= !this._visibleItems.has(key);
+                this._visibleItems.add(key);
+            }
 
             this._lastVisibleItem = key;
             this._top = entry.rootBounds.top + VisibilityEpsilon;
@@ -358,16 +365,14 @@ export class VirtualList {
         if (hasChanged) {
             let hasStickyEdge = false;
             if (rs.hasVeryLastItem) {
-                const edgeKey = this.getLastItemKey();
-                if (this._visibleItems.has(edgeKey) || this._isEndAnchorVisible) {
-                    this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.End });
+                if (this._visibleItems.has(lastItemKey) || this._isEndAnchorVisible) {
+                    this.setStickyEdge({ itemKey: lastItemKey, edge: VirtualListEdge.End });
                     hasStickyEdge = true;
                 }
             }
             if (!hasStickyEdge && rs.hasVeryFirstItem) {
-                const edgeKey = this.getFirstItemKey();
-                if (this._visibleItems.has(edgeKey)) {
-                    this.setStickyEdge({ itemKey: edgeKey, edge: VirtualListEdge.Start });
+                if (this._visibleItems.has(firstItemKey)) {
+                    this.setStickyEdge({ itemKey: firstItemKey, edge: VirtualListEdge.Start });
                     hasStickyEdge = true;
                 }
             }
