@@ -24,6 +24,7 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     private SelectionUI? _selectionUI;
     private ChatEditorUI? _chatEditorUI;
     private ChatListUI? _chatListUI;
+    private ChatPlayers? _chatPlayers;
     private ClipboardUI? _clipboardUI;
     private PanelsUI? _panelsUI;
     private ShareUI? _shareUI;
@@ -65,6 +66,7 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public SelectionUI SelectionUI => _selectionUI ??= Services.GetRequiredService<SelectionUI>();
     public ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
     public ChatListUI ChatListUI => _chatListUI ??= Services.GetRequiredService<ChatListUI>();
+    public ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     public ClipboardUI ClipboardUI => _clipboardUI ??= Services.GetRequiredService<ClipboardUI>();
     public PanelsUI PanelsUI => _panelsUI ??= Services.GetRequiredService<PanelsUI>();
     public ShareUI ShareUI => _shareUI ??= Services.GetRequiredService<ShareUI>();

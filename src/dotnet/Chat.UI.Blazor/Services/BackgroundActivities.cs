@@ -10,7 +10,8 @@ public class BackgroundActivities(ChatHub chatHub) : SafeAsyncDisposableBase, IB
     // [ComputeMethod]
     public virtual async Task<bool> IsActiveInBackground(CancellationToken cancellationToken)
     {
+        var playbackState = await chatHub.ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         var activeChats = await chatHub.ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
-        return activeChats.Any(ac => ac.IsListening || ac.IsRecording);
+        return activeChats.Any(ac => ac.IsListening || ac.IsRecording) || !ReferenceEquals(playbackState, null);
     }
 }
