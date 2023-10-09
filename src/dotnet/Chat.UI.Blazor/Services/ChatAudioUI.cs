@@ -14,6 +14,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private AudioSettings? _audioSettings;
     private AudioRecorder? _audioRecorder;
     private ChatPlayers? _chatPlayers;
+    private ChatActivity? _chatActivity;
     private IChats? _chats;
     private ActiveChatsUI? _activeChatsUI;
     private TuneUI? _tuneUI;
@@ -31,6 +32,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
+    private ChatActivity ChatActivity => _chatActivity ??= Services.GetRequiredService<ChatActivity>();
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
     private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();

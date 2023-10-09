@@ -436,29 +436,20 @@ public partial class ChatAudioUI
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
-        var clock = Clocks.SystemClock;
-        var lastEntryAt = clock.Now; // Recording just started
+        var lastEntryAt = Now;
         yield return null;
 
         // No need to check last entry since monitoring has just started
         await Task.Delay(options.CountdownInterval, cancellationToken).ConfigureAwait(false);
 
-        ChatEntry? prevLastEntry = null;
+        using var recordingActivity = await ChatActivity.GetRecordingActivity(chatId, cancellationToken).ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
-            var lastEntry = await GetLastTranscribedEntry(chatId,
-                    prevLastEntry?.LocalId,
-                    lastEntryAt,
-                    cancellationToken)
-                .ConfigureAwait(false);
-            if (lastEntry != null) {
-                // When entry is finalized and EndsAt is lower than we expect we keep previous lastEntryAt
-                lastEntryAt = Moment.Max(lastEntryAt, GetEndsAt(lastEntry));
-            }
-
+            var lastTranscribedAt = await recordingActivity.LastTranscribedAt.Use(cancellationToken).ConfigureAwait(false) ?? Now;
+            lastEntryAt = Moment.Max(lastEntryAt, lastTranscribedAt);
             var willBeIdleAt = lastEntryAt + options.IdleInterval;
-            var timeToStop = (willBeIdleAt - clock.Now).Positive();
+            var timeToStop = (willBeIdleAt - Now).Positive();
             var timeToCountdown =
-                (lastEntryAt + options.CountdownInterval - clock.Now).Positive();
+                (lastEntryAt + options.CountdownInterval - Now).Positive();
             if (timeToStop <= Epsilon) {
                 // Notify is idle and stop counting down
                 yield return null;
@@ -476,33 +467,8 @@ public partial class ChatAudioUI
                 yield return null;
                 await Task.Delay(timeToCountdown, cancellationToken).ConfigureAwait(false);
             }
-            prevLastEntry = lastEntry;
         }
     }
-
-    private async Task<ChatEntry?> GetLastTranscribedEntry(
-        ChatId chatId,
-        long? startFrom,
-        Moment minEndsAt,
-        CancellationToken cancellationToken)
-    {
-        var idRange = await Chats
-            .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
-            .ConfigureAwait(false);
-        if (startFrom != null)
-            idRange = (startFrom.Value, idRange.End);
-        var reader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
-        return await reader.GetLastWhile(idRange,
-                x => x.HasAudioEntry || x.IsStreaming,
-                x => GetEndsAt(x.ChatEntry) >= minEndsAt && x.SkippedCount < 100,
-                cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    private Moment GetEndsAt(ChatEntry lastEntry)
-        => lastEntry.IsStreaming
-            ? Clocks.SystemClock.Now
-            : lastEntry.EndsAt ?? lastEntry.ContentEndsAt ?? lastEntry.BeginsAt;
 
     // Nested types
 

@@ -83,10 +83,7 @@ public sealed class ChatEntryReader(
         return null;
     }
 
-    public ValueTask<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
-        => GetLastWhile(idRange, filter, x => x.SkippedCount < filterLimit, cancellationToken);
-
-    public async ValueTask<ChatEntry?> GetLastWhile(Range<long> idRange, Func<ChatEntry, bool> filter, Predicate<(ChatEntry ChatEntry, int SkippedCount)> @while, CancellationToken cancellationToken)
+    public async ValueTask<ChatEntry?> GetLast(Range<long> idRange, Func<ChatEntry, bool> filter, int filterLimit, CancellationToken cancellationToken)
     {
         var (minId, maxIdExclusive) = idRange;
         var skippedCount = 0;
@@ -101,7 +98,7 @@ public sealed class ChatEntryReader(
                     if (filter(entry))
                         return entry;
 
-                    if (!@while((entry, ++skippedCount)))
+                    if (++skippedCount >= filterLimit)
                         break;
                 }
             }

@@ -9,6 +9,7 @@ public class ChatRecordingActivityReplica(SharedResourcePool<ChatId, ChatRecordi
 
     public ChatActivity Owner => _source.Owner;
     public ChatId ChatId => _source.ChatId;
+    public IState<Moment?> LastTranscribedAt => _source.LastTranscribedAt;
 
     public void Dispose()
         => lease.Dispose();

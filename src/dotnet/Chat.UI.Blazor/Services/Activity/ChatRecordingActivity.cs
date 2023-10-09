@@ -6,6 +6,7 @@ public interface IChatRecordingActivity : IDisposable
 {
     ChatActivity Owner { get; }
     ChatId ChatId { get; }
+    IState<Moment?> LastTranscribedAt { get; }
 
     [ComputeMethod]
     Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken);
@@ -21,17 +22,26 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
     public static TimeSpan ExtraActivityDuration { get; } = TimeSpan.FromMilliseconds(250);
 
     private readonly ILogger _log;
+    private readonly IMutableState<Moment?> _lastTranscribedAt;
     private ChatEntryReader? _entryReader;
     private volatile ImmutableList<ChatEntry> _activeEntries = ImmutableList<ChatEntry>.Empty;
 
     public ChatActivity Owner { get; }
+    public MomentClockSet Clocks { get; }
     public ChatId ChatId { get; internal set; }
+    // ReSharper disable once InconsistentlySynchronizedField
+    public IState<Moment?> LastTranscribedAt => _lastTranscribedAt;
+    private Moment Now => Clocks.SystemClock.Now;
+
     public ChatEntryReader EntryReader
         => _entryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryKind.Audio);
 
     public ChatRecordingActivity(ChatActivity owner)
     {
         Owner = owner;
+        Clocks = owner.Services.Clocks();
+         _lastTranscribedAt = owner.Services.StateFactory()
+            .NewMutable((Moment?)Moment.MinValue, StateCategories.Get(GetType(), nameof(LastTranscribedAt)));
         _log = owner.Services.LogFor(GetType());
     }
 
@@ -98,6 +108,7 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
     {
         int thisAuthorEntryCount;
         lock (Lock) {
+            _lastTranscribedAt.Value = null;
             _activeEntries = _activeEntries.Add(entry);
             thisAuthorEntryCount = _activeEntries.Count(e => e.AuthorId == entry.AuthorId);
         }
@@ -115,6 +126,8 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
         int thisAuthorEntryCount;
         lock (Lock) {
             _activeEntries = _activeEntries.Remove(entry);
+            if (_activeEntries.IsEmpty)
+                _lastTranscribedAt.Value = Now;
             thisAuthorEntryCount = _activeEntries.Count(e => e.AuthorId == entry.AuthorId);
         }
         using (Computed.Invalidate()) {
