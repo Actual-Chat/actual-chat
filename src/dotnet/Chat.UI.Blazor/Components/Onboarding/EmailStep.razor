@@ -46,11 +46,21 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
 
+    [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
+
     public override bool CanSkip => true;
-    public override bool IsCompleted => OnboardingUI.Settings.Value.IsPhoneStepCompleted;
+
+    public override bool IsCompleted {
+        get {
+            if (Account.HasVerifiedEmail())
+                return true;
+
+            return OnboardingUI.Settings.Value.IsEmailStepCompleted;
+        }
+    }
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsPhoneStepCompleted = true });
+        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsEmailStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await AccountUI.OwnAccount.Use();
@@ -63,9 +73,8 @@
     }
 
     protected override async Task<bool> Save() {
-        // TODO: verify email for phone signin
         var account = await AccountUI.OwnAccount.Use();
-        var command = new Accounts_Update(Session, account with {Email = _stepModel.Email,}, account.Version);
+        var command = new Accounts_Update(Session, account with { Email = _stepModel.Email }, account.Version);
         var (_, error) = await UICommander.Run(command);
         return error is null;
     }

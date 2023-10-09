@@ -2,8 +2,8 @@
 @implements IModalView<OnboardingModal.Model>
 @inherits ComputedStateComponent<AccountFull>
 @{
-    var m = State.Value;
-    if (m.IsGuestOrNone) {
+    var account = State.Value;
+    if (account.IsGuestOrNone) {
         Modal.Close(true);
         return;
     }
@@ -12,16 +12,11 @@
 <DialogFrame
     Class="onboarding-modal"
     HasHeader="false">
-
     <Body>
         <Stepper Context="stepper">
             <Steps>
-                @if (!m.HasVerifiedPhone()) {
-                    <PhoneStep/>
-                }
-                @if (!m.HasVerifiedEmail()) {
-                    <EmailStep/>
-                }
+                <PhoneStep Account="account"/>
+                <EmailStep Account="account"/>
                 <AvatarStep/>
                 <SetChatsStep/>
             </Steps>
@@ -33,7 +28,6 @@
                     <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
                 }
                 <div class="grow"></div>
-
                 @if (ModalModel.CanBeClosed) {
                     <HeaderButton Click="() => Modal.Close()">
                         <i class="icon-close"></i>
@@ -42,8 +36,12 @@
             </Header>
             <Footer>
                 <div class="btn-group">
-                    @if (stepper.CurrentStep?.CanSkip == true) {
-                        <Button Class="" Click="@(_ => OnSkipClick(stepper))">Skip</Button>
+                    @if (stepper.CanSkip) {
+                        <Button
+                            Class=""
+                            Click="() => OnSkipClick(stepper)">
+                            Skip
+                        </Button>
                     }
                     <Button
                         Class="btn-primary"

@@ -30,19 +30,20 @@
     [Parameter] public RenderFragment<Stepper>? Footer { get; set; }
     [Parameter] public RenderFragment<Stepper>? Steps { get; set; }
 
+    public int StepCount => _steps.Count;
+    public int LastStepIndex => Math.Max(0, _steps.Count - 1);
+    public int CurrentStepIndex => _currentStep is { } currentStep ? _steps.IndexOf(currentStep) : -1;
+    public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
+    public bool CanMoveBack => CurrentStepIndex > 0;
+    public bool CanSkip => _currentStep is { CanSkip: true };
+    public Step? CurrentStep => _currentStep;
+
     public void AddStep(Step step) {
         _steps.Add(step);
         if (_steps.Count == 1)
             _currentStep = step;
         StateHasChanged();
     }
-
-    public int StepCount => _steps.Count;
-    public int LastStepIndex => Math.Max(0, _steps.Count - 1);
-    public int CurrentStepIndex => _currentStep is { } currentStep ? _steps.IndexOf(currentStep) : -1;
-    public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
-    public bool CanMoveBack => CurrentStepIndex > 0;
-    public Step? CurrentStep => _currentStep;
 
     public async ValueTask Skip() {
         if (_currentStep is null)
