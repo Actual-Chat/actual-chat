@@ -73,6 +73,12 @@ export class AudioContextSource {
                 void this.fallbackDestination.play();
             });
         }
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = 'none';
+        }
+        if ('audioSession' in navigator) {
+            navigator.audioSession['type'] = 'play-and-record'; // 'playback'
+        }
         void this.maintain();
     }
 

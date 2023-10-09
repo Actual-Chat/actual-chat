@@ -118,6 +118,9 @@ export class AudioRecorder {
                 let stream: MediaStream = null;
                 try {
                     debugLog?.log(`requestPermission: detecting active tracks to stop`);
+                    if ('audioSession' in navigator) {
+                        navigator.audioSession['type'] = 'play-and-record'; // 'playback'
+                    }
                     stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
 
                     // update DetectRTC with new microphone permission if granted
