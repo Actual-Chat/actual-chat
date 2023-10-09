@@ -485,7 +485,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             switch (newChat.Kind) {
             case ChatKind.Group:
                 if (newChat.Title.IsNullOrEmpty())
-                    throw StandardError.Constraint("Group chat title cannot be empty.");
+                    throw StandardError.Constraint("Chat title cannot be empty.");
                 break;
             case ChatKind.Peer:
                 if (!newChat.Title.IsNullOrEmpty())
