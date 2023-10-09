@@ -194,3 +194,17 @@ body.hoverable .author-modal .tile:hover {
     @apply max-h-max;
     @apply whitespace-normal;
 }
+
+.chat-not-found-container {
+    @apply flex items-center justify-center;
+    @apply h-full;
+}
+.chat-not-found-container > .c-wrapper {
+    @apply relative;
+    @apply flex-y items-center justify-center;
+}
+.chat-not-found-container > .c-wrapper > .text-wrapper {
+    @apply absolute bottom-0;
+    @apply flex-y items-center;
+    @apply text-headline-6 text-icons-01 ;
+}
