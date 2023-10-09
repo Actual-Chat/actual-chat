@@ -16,7 +16,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private readonly Suspender _getDataSuspender = new();
 
-    private long? _lastNavigateToEntryId;
+    private NavigationAnchor? _lastNavigationAnchor;
     private long _lastReadEntryLid;
     private bool _itemVisibilityUpdateReceived;
     private bool _suppressNewMessagesEntry;
@@ -38,7 +38,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private CancellationToken DisposeToken => _disposeTokenSource.Token;
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    private IMutableState<long?> NavigateToEntryLid { get; set; } = null!;
+    private IMutableState<NavigationAnchor?> NavigationAnchorState { get; set; } = null!;
     private SyncedStateLease<ReadPosition> ReadPositionState { get; set; } = null!;
 
     public IState<bool> IsViewportAboveUnreadEntry => _isViewportAboveUnreadEntry!;
@@ -53,9 +53,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
-            NavigateToEntryLid = StateFactory.NewMutable(
-                (long?)null,
-                StateCategories.Get(GetType(), nameof(NavigateToEntryLid)));
+            NavigationAnchorState = StateFactory.NewMutable(
+                (NavigationAnchor?)null,
+                StateCategories.Get(GetType(), nameof(NavigationAnchorState)));
             _itemVisibility = StateFactory.NewMutable(
                 ChatViewItemVisibility.Empty,
                 StateCategories.Get(GetType(), nameof(ItemVisibility)));
@@ -116,15 +116,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         // Reset to ensure the navigation will happen
         _lastReadEntryLid = navigateToEntryLid;
-        NavigateToEntry(navigateToEntryLid);
+        NavigateToEntry(navigateToEntryLid, true);
     }
 
-    public void NavigateToEntry(long entryLid)
+    public void NavigateToEntry(long entryLid, bool isNext = false)
     {
         // Reset to ensure navigation will happen
-        _lastNavigateToEntryId = null;
-        NavigateToEntryLid.Value = entryLid;
-        NavigateToEntryLid.Invalidate();
+        _lastNavigationAnchor = null;
+        NavigationAnchorState.Value = new NavigationAnchor(entryLid, isNext);
+        NavigationAnchorState.Invalidate();
     }
 
     public void TryNavigateToEntry()
@@ -217,12 +217,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var isNavigatingToEntry = false;
         // Handle NavigateToEntry
-        var navigateToEntryId = await NavigateToEntryLid.Use(cancellationToken);
-        if (navigateToEntryId.HasValue && navigateToEntryId != _lastNavigateToEntryId) {
+        var navigationAnchor = await NavigationAnchorState.Use(cancellationToken);
+        if (navigationAnchor != null && navigationAnchor != _lastNavigationAnchor) {
             isNavigatingToEntry = true;
-            _lastNavigateToEntryId = navigateToEntryId;
-            entryLid = navigateToEntryId.Value;
-            if (!ItemVisibility.Value.IsFullyVisible(navigateToEntryId.Value))
+            _lastNavigationAnchor = navigationAnchor;
+            // even if we must navigate to the next item - it's fine to use previous item there
+            entryLid = navigationAnchor!.EntryLid;
+            if (!ItemVisibility.Value.IsFullyVisible(entryLid))
                 mustScrollToEntry = true;
         }
 
@@ -246,6 +247,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .SelectMany(chatTile => chatTile.Entries)
             .Where(e => e.Kind == ChatEntryKind.Text)
             .ToList();
+
+        if (isNavigatingToEntry && navigationAnchor!.MoveNext) {
+            // update navigate target with the requested next item
+            var nextEntry = entries
+                .SkipWhile(e => e.Id.LocalId <= entryLid)
+                .FirstOrDefault();
+            if (nextEntry != null)
+                entryLid = nextEntry.Id.LocalId;
+        }
 
         var scrollToKey = mustScrollToEntry
             ? GetScrollToKey(entries, entryLid)
@@ -461,4 +471,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (!DisposeToken.IsCancellationRequested)
             _getDataSuspender.IsSuspended = !isVisible;
     }
+
+    private record NavigationAnchor(long EntryLid, bool MoveNext = false);
 }
