@@ -22,21 +22,24 @@
     // [Inject] private Dispatcher Dispatcher { get; init; } = null!;
 
     protected override void OnInitialized() {
-#if false // NOTE(AY): Debouncing workaround seems unnecessary, but keeping it just in case for now
-        _isOpenDebouncer = new Debouncer<Unit>(
-            TimeSpan.FromMicroseconds(50),
-            _ => Dispatcher.InvokeAsync(() => {
-                _isOpen = PanelsUI.Left.IsVisible.Value;
-                StateHasChanged();
-            }));
-        _leftPanelVisibilityChanged = () => _isOpenDebouncer.Debounce(default);
-#endif
         _isOpen = PanelsUI.Left.IsVisible.Value;
-        _leftPanelVisibilityChanged = () => {
-            _isOpen = PanelsUI.Left.IsVisible.Value;
-            StateHasChanged();
-        };
+#if false
+        var isOpenDebouncer = new Debouncer<Unit>(
+            TimeSpan.FromMicroseconds(30),
+            _ => Dispatcher.InvokeAsync(OnLeftPanelVisibilityChanged));
+        _leftPanelVisibilityChanged = () => isOpenDebouncer.Debounce(default);
+#endif
+        _leftPanelVisibilityChanged = OnLeftPanelVisibilityChanged;
         PanelsUI.Left.VisibilityChanged += _leftPanelVisibilityChanged;
+    }
+
+    private void OnLeftPanelVisibilityChanged() {
+        var isOpen = PanelsUI.Left.IsVisible.Value;
+        if (_isOpen == isOpen)
+            return;
+
+        _isOpen = isOpen;
+        StateHasChanged();
     }
 
     public void Dispose()
