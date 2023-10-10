@@ -200,6 +200,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\fast-raf.ts = src\nodejs\src\fast-raf.ts
 		src\nodejs\src\kvas.ts = src\nodejs\src\kvas.ts
 		src\nodejs\src\service-worker.ts = src\nodejs\src\service-worker.ts
+		src\nodejs\src\font-size-init.ts = src\nodejs\src\font-size-init.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"

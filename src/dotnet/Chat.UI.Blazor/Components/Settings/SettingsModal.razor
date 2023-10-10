@@ -13,6 +13,7 @@
     var showNotification = !isGuestOrNone && _enableIncompleteUI;
     var showLanguages = true;
     var showThemeToggle = _enableIncompleteUI;
+    var showUserInterface = _enableIncompleteUI;
     var showLogout = !isGuestOrNone;
     var showQuit = HostInfo.AppKind.IsMauiApp() && HostInfo.ClientKind == ClientKind.Windows;
 }
@@ -64,6 +65,12 @@
                 <TitleContent>
                     <ThemeToggle/>
                 </TitleContent>
+            </SettingsTab>
+        }
+
+        @if (showUserInterface) {
+            <SettingsTab @key="7" Title="User interface" Id="userInterface" IconTitle="sort-by-alphabet">
+                <UserInterface/>
             </SettingsTab>
         }
 

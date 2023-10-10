@@ -1,7 +1,12 @@
 /* Body */
 
+:root {
+    --font-size: 16px;
+}
+
 html {
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
+    font-size: var(--font-size);
 }
 body {
     @apply select-none;

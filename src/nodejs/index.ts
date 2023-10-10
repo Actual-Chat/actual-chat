@@ -6,6 +6,8 @@ import './styles/index.css';
 
 // Logging init
 import 'logging-init';
+// FontSize init
+import 'font-size-init';
 // Critical init logic - should go right after logging-init
 import './src/init'
 

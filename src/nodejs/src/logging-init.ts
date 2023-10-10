@@ -73,6 +73,7 @@ export type LogScope =
     | 'ChatMessageEditor'
     | 'CodeBlockMarkupView'
     | 'CopyTrigger'
+    | 'FontSizeInit'
     | 'Landing'
     | 'LandingLeftMenu'
     | 'MarkupEditor'
@@ -81,6 +82,7 @@ export type LogScope =
     | 'SelectionHost'
     | 'TextBox'
     | 'TooltipHost'
+    | 'UserInterface'
     | 'VisualMediaViewer';
 
 const GlobalThisKey = 'logLevels';
