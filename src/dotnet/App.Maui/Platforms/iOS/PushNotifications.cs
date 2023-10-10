@@ -16,18 +16,14 @@ namespace ActualChat.App.Maui;
 public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificationPermissions, IDisposable
 {
     private NotificationUI? _notificationUI;
-    private LoadingUI? _loadingUI;
     private History? _history;
     private NavigationManager? _nav;
-    private HistoryItemIdFormatter? _itemIdFormatter;
 
     public IServiceProvider Services { get; }
     private IFirebaseCloudMessaging Messaging { get; }
     private History History  => _history ??= Services.GetRequiredService<History>();
     private UrlMapper UrlMapper => History.UrlMapper;
     private NavigationManager Nav => _nav ??= Services.GetRequiredService<NavigationManager>();
-    private HistoryItemIdFormatter ItemIdFormatter => _itemIdFormatter ??= Services.GetRequiredService<HistoryItemIdFormatter>();
-    private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     private NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
     private UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
     private ILogger Log { get; }
@@ -95,16 +91,27 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         NotificationUI.SetPermissionState(state);
     }
 
-    private void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
+    private static void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
     {
-        if (!e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.Link, out var url)) {
+        var notificationUrl = null as string;
+        if (e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.Link, out var url))
+            notificationUrl = url;
+
+        if (ScopedServicesTask.IsCompleted)
+            ScopedServices.GetRequiredService<PushNotifications>()
+                .HandleNotificationTap(notificationUrl);
+        else
+            ScopedServicesTask.ContinueWith(_ => ScopedServices.GetRequiredService<PushNotifications>()
+                .HandleNotificationTap(notificationUrl));
+    }
+
+    private void HandleNotificationTap(string? url)
+    {
+        if (url.IsNullOrEmpty()) {
             Log.LogWarning("No message link received within notification");
             return;
         }
-        Log.LogInformation("OnNotificationTapped: {Url}", url);
-
-        if (url.IsNullOrEmpty())
-            return;
+        Log.LogInformation("HandleNotificationTap: {Url}", url);
 
         // TODO(AK): resolve notification hang issue when code below is used
         // var autoNavigationTasks = AppServices.GetRequiredService<AutoNavigationTasks>();
@@ -121,10 +128,9 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
 
         Log.LogInformation("OnNotificationTapped: navigating to {LocalUrl}", localUrl);
 
-        Nav.NavigateTo(localUrl, new NavigationOptions() {
+        Nav.NavigateTo(localUrl, new NavigationOptions {
             ForceLoad = false,
             ReplaceHistoryEntry = false,
-            HistoryEntryState = ItemIdFormatter.Format(100500),
         });
     }
 }
