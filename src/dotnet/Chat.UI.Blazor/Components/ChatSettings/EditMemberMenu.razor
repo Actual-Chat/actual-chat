@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedMenuBase<EditMemberMenu.Model?>
+@inherits ComputedMenuBase<EditMemberModel?>
 
 @{
     var m = State.Value;
@@ -16,10 +16,10 @@
         ShowStatusText="@(statusText != null)"
         StatusText="@statusText"/>
 
-    @if (m.CanPromoteToOwner && !m.IsOwner) {
+    @if (m.CanPromoteToOwner) {
         <MenuEntry
             Icon="icon-star"
-            Click="@(() => OnPromoteToOwnerClick(m))">
+            Click="@(() => OnPromoteToOwnerClick(m.Author))">
             <TextContent>
                 <div class="flex-y">
                     <div>Promote to Owner</div>
@@ -29,27 +29,20 @@
         </MenuEntry>
     }
 
-    @if (!m.IsOwn) {
+    @if (!m.CanRemoveFromGroup) {
         <MenuEntrySeparator/>
         <MenuEntry
             Class="warning-item"
             Icon="icon-minus-circle"
             Text="Remove from group"
-            Click="@(() => OnRemoveFromGroupClick(m))">
+            Click="@(() => OnRemoveFromGroupClick(m.Author))">
         </MenuEntry>
     }
 
 </div>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private IAuthors Author { get; init; } = null!;
-    [Inject] private IRoles Roles { get; init; } = null!;
-    [Inject] private UICommander Commander { get; init; } = null!;
-
-    private ToastUI ToastUI => Services.GetRequiredService<ToastUI>();
-    private ModalUI ModalUI => Services.GetRequiredService<ModalUI>();
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
 
     private AuthorId AuthorId { get; set; }
 
@@ -61,58 +54,14 @@
         await base.OnParametersSetAsync();
     }
 
-    protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        var chatId = AuthorId.ChatId;
-        var author = await Author.Get(Session, chatId, AuthorId, cancellationToken);
-        if (author == null)
-            return null;
-        var chat = await Chats.Get(Session, chatId, cancellationToken);
-        var ownerIds = await Roles.ListOwnerIds(Session, chatId, cancellationToken);
-        var ownAuthor = await Author.GetOwn(Session, chatId, cancellationToken);
-        var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
-        var isOwner = ownerIds.Contains(author.Id);
-        var canPromoteToOwner = chat != null && chat.Rules.IsOwner();
-        return new Model(author, isOwner, isOwn, canPromoteToOwner);
-    }
+    protected override Task<EditMemberModel?> ComputeState(CancellationToken cancellationToken)
+        => EditMemberCommands.ComputeState(ChatHub, AuthorId, cancellationToken);
 
-    private async Task OnRemoveFromGroupClick(Model m) {
-        var result = await Commander.Run(new Authors_Exclude(Session, AuthorId));
-        if (result.HasError)
-            return;
-        var authorName = m.Author.Avatar.Name;
-        ToastUI.Show($"{authorName} removed", "icon-minus-circle", Undo, "Undo", ToastDismissDelay.Long);
+    private Task OnRemoveFromGroupClick(Author author)
+        => EditMemberCommands.OnRemoveFromGroupClick(ChatHub, author);
 
-        void Undo() {
-            var undoCommand = new Authors_Restore(Session, AuthorId);
-            _ = Commander.Run(undoCommand);
-        }
-    }
-
-    private async Task OnPromoteToOwnerClick(Model m) {
+    private async Task OnPromoteToOwnerClick(Author author) {
         await WhenClosed;
-
-        var authorName = m.Author.Avatar.Name;
-        _ = await ModalUI.Show(new ConfirmModal.Model(
-            false,
-            $"Are you sure you want to promote '{authorName}' to Owner? This action cannot be undone.",
-            () => _ = OnPromoteToOwnerConfirmed(authorName)) {
-                Title = "Promote to Owner"
-            });
+        await EditMemberCommands.OnPromoteToOwnerClick(ChatHub, author);
     }
-
-    private async Task OnPromoteToOwnerConfirmed(string authorName) {
-        var result = await Commander.Run(new Authors_PromoteToOwner(Session, AuthorId));
-        if (result.HasError)
-            return;
-
-        ToastUI.Show($"{authorName} is promoted to Owner", "icon-star", ToastDismissDelay.Short);
-    }
-
-    // Nested types
-
-    public sealed record Model(
-        Author Author,
-        bool IsOwner,
-        bool IsOwn,
-        bool CanPromoteToOwner);
 }

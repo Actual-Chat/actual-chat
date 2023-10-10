@@ -1,6 +1,7 @@
 @import './Components/components.css';
 @import './Components/AvatarSelect/avatar-select.css';
 @import './Components/AccountDropdown/account-dropdown.css';
+@import './Components/AccountModal/account-modal.css';
 @import './Components/Author/author.css';
 @import './Components/Banners/banners.css';
 @import './Components/ContactSelector/contact-selector.css';

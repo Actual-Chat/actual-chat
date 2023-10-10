@@ -1,0 +1,63 @@
+﻿body.wide .author-modal {
+    @apply w-82;
+}
+.author-modal .form-block {
+    @apply py-0;
+}
+.author-modal .header-tile-item .tile-item-body-content {
+    @apply max-h-8;
+    @apply text-title-1 text-02;
+}
+.author-modal .header-tile-item {
+    @apply h-8 md:h-10;
+}
+.author-modal .tile-item-body-content {
+    @apply text-01;
+    @apply max-h-6;
+}
+.author-modal .first-tile-item {
+    @apply gap-x-4;
+}
+.author-modal .first-tile-item .tile-item-icon {
+    @apply max-w-fit;
+}
+body.hoverable .author-modal .tile,
+body.hoverable .author-modal .tile:hover {
+    @apply p-0;
+    @apply shadow-none;
+}
+.author-modal .tile {
+    @apply p-0;
+    @apply shadow-none;
+}
+.author-modal .anonymous-bio * {
+    @apply text-icons-04;
+}
+.author-modal .anonymous-bio .tile-item-body-content {
+    @apply max-h-max;
+    @apply whitespace-normal;
+}
+.author-modal .anonymous-bio * {
+    @apply text-icons-04;
+}
+
+.author-modal .separator {
+    @apply border-b border-bg-04;
+}
+
+.author-modal .tile-promote-to-owner {
+    @apply h-auto;
+}
+.author-modal .tile-promote-to-owner .tile-item-body {
+    @apply max-h-none;
+}
+.author-modal .tile-promote-to-owner .tile-item-body-content {
+    @apply max-h-max;
+    @apply whitespace-normal;
+    @apply text-02;
+}
+
+.author-modal .tile-remove-from-group .tile-item-icon,
+.author-modal .tile-remove-from-group .tile-item-body-content {
+    @apply text-icons-04;
+}

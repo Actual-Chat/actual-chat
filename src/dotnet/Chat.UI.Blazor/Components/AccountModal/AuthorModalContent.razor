@@ -1,4 +1,6 @@
 @using ActualChat.Users.UI.Blazor
+@namespace ActualChat.Chat.UI.Blazor.Components
+
 <Tile>
     <TileItem IsHoverable="false" Class="first-tile-item my-2">
         <Icon>
@@ -64,6 +66,37 @@
             </TileItem>
         </div>
     }
+
+    @{ var m = EditMemberModel; }
+
+    @if (m != null && (m.CanPromoteToOwner|| m.CanRemoveFromGroup)) {
+        <div class="separator"></div>
+    }
+
+    @if (m != null && m.CanPromoteToOwner) {
+        <TileItem Class="tile-promote-to-owner" Click="@OnPromoteToOwner">
+            <Icon>
+                <i class="icon-star text-xl"></i>
+            </Icon>
+            <Content>
+                Promote to Owner
+            </Content>
+            <Caption>
+                Can appoint new owners, change the community name and URL, delete community
+            </Caption>
+        </TileItem>
+    }
+
+    @if (m != null && m.CanRemoveFromGroup) {
+        <TileItem Class="tile-remove-from-group" Click="@OnRemoveFromGroupClick">
+            <Icon>
+                <i class="icon-minus-circle text-xl"></i>
+            </Icon>
+            <Content>
+                Remove from group
+            </Content>
+        </TileItem>
+    }
 </Tile>
 
 @code {
@@ -76,6 +109,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
+    [Parameter, EditorRequired] public EditMemberModel? EditMemberModel { get; set; }
 
     private async Task OnShareClick() {
         if (IsOwn) {
@@ -87,4 +121,10 @@
         if (account != null)
             _ = ShareUI.Share(account.Id);
     }
+
+    private Task OnPromoteToOwner()
+        => EditMemberCommands.OnPromoteToOwnerClick(ChatHub, Author);
+
+    private Task OnRemoveFromGroupClick()
+        => EditMemberCommands.OnRemoveFromGroupClick(ChatHub, Author);
 }

@@ -1,4 +1,5 @@
 @using ActualChat.UI.Blazor.Events
+@namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<AuthorModal.Model>
 @inherits ComputedStateComponent<AuthorModal.ComputedModel>
 @{
@@ -13,7 +14,7 @@
 <DialogFrame Title="@title" Class="author-modal modal-sm" HasCloseButton="true">
     <Body>
     <FormBlock>
-        <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn"/>
+        <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn" EditMemberModel="@m.EditMemberModel" />
     </FormBlock>
     </Body>
     <Buttons>
@@ -25,10 +26,10 @@
                 <Button Class="btn-modal danger" Click="OnRevealClicked">Reveal</Button>
             }
         } else if (m.Author.IsAnonymous) {
-            <Button Class="btn-modal" Click="OnCancel">OK</Button>
+            <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                <Button Class="btn-modal" Click="OnStartPeerChat">
+                <Button Class="btn-modal btn-primary" Click="OnStartPeerChat">
                     <i class="icon-message-ellipse text-xl"></i>
                     Chat with @m.Author.Avatar.Name
                 </Button>
@@ -40,15 +41,7 @@
 </DialogFrame>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private AuthorUI AuthorUI { get; init; } = null!;
-    [Inject] private FeedbackUI FeedbackUI { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
 
     private AuthorId AuthorId => ModalModel.AuthorId;  // Shortcut
     private ChatId ChatId => AuthorId.ChatId; // Shortcut
@@ -67,14 +60,22 @@
             return ComputedModel.None;
 
         var chatId = AuthorId.ChatId;
-        var author = await Authors.Get(Session, chatId, AuthorId, cancellationToken);
+        var session = ChatHub.Session;
+        var author = await ChatHub.Authors.Get(session, chatId, AuthorId, cancellationToken);
         if (author == null)
             return ComputedModel.None;
 
-        var ownAccount = await Accounts.GetOwn(Session, cancellationToken);
-        var account = await Authors.GetAccount(Session, ChatId, AuthorId, cancellationToken);
-        var canStartPeerChat = await AuthorUI.CanStartPeerChat(AuthorId, cancellationToken);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var chat = await ChatHub.Chats.Get(session, chatId, cancellationToken);
+
+        var ownAccount = await ChatHub.Accounts.GetOwn(session, cancellationToken);
+        var account = await ChatHub.Authors.GetAccount(session, ChatId, AuthorId, cancellationToken);
+        var canStartPeerChat = await ChatHub.AuthorUI.CanStartPeerChat(AuthorId, cancellationToken);
+        var enableIncompleteUI = await ChatHub.Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+
+        EditMemberModel? editMemberModel = null;
+        var canEditMembers = chat != null && chat.Rules.CanEditMembers();
+        if (canEditMembers)
+            editMemberModel = await EditMemberCommands.ComputeState(ChatHub, AuthorId, cancellationToken);
 
         return new ComputedModel() {
             Author = author,
@@ -82,7 +83,32 @@
             OwnAccount = ownAccount,
             CanStartPeerChat = canStartPeerChat,
             EnableIncompleteUI = enableIncompleteUI,
+            EditMemberModel = editMemberModel
         };
+    }
+
+    private void OnCancel()
+        => Modal.Close();
+
+    private Task OnRevealClicked()
+        => ChatHub.FeedbackUI.AskFeatureRequestFeedback("reveal-author", "Reveal yourself");
+
+    private async Task OnChangeAvatarClicked() {
+        Modal.Close();
+        await ChatHub.ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, false, OnAvatarSelected));
+    }
+
+    private async Task OnStartPeerChat()
+        => await ChatHub.AuthorUI.StartPeerChat(AuthorId);
+
+    private async Task OnAvatarSelected(AvatarFull avatar) {
+        var command = new Authors_SetAvatar(ChatHub.Session, AuthorId.ChatId, avatar.Id);
+        await ChatHub.UICommander.Run(command);
+    }
+
+    private void OnSettingsClick() {
+        Modal.Close();
+        _ = ChatHub.UIEventHub.Publish(new ShowSettingsEvent());
     }
 
     public sealed record ComputedModel {
@@ -95,31 +121,8 @@
         public bool IsOwn => Account?.Id == OwnAccount.Id;
         public bool CanStartPeerChat { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public EditMemberModel? EditMemberModel { get; init; }
     }
 
     public sealed record Model(AuthorId AuthorId);
-
-    private void OnCancel()
-        => Modal.Close();
-
-    private Task OnRevealClicked()
-        => FeedbackUI.AskFeatureRequestFeedback("reveal-author", "Reveal yourself");
-
-    private async Task OnChangeAvatarClicked() {
-        Modal.Close();
-        await ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, false, OnAvatarSelected));
-    }
-
-    private async Task OnStartPeerChat()
-        => await AuthorUI.StartPeerChat(AuthorId);
-
-    private async Task OnAvatarSelected(AvatarFull avatar) {
-        var command = new Authors_SetAvatar(Session, AuthorId.ChatId, avatar.Id);
-        await UICommander.Run(command);
-    }
-
-    private void OnSettingsClick() {
-        Modal.Close();
-        _ = UIEventHub.Publish(new ShowSettingsEvent());
-    }
 }
