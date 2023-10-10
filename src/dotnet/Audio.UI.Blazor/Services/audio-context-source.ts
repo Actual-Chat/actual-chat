@@ -435,6 +435,7 @@ export class AudioContextSource {
         debugLog?.log(`interactiveResume:`, Log.ref(context));
         if (context && this.isRunning(context)) {
             debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
+            await this.fallbackDestination?.play();
             return;
         }
 
@@ -468,7 +469,7 @@ export class AudioContextSource {
                         warnLog?.log(reason, 'resume() failed with an error');
                         resumeTask.reject(reason);
                     });
-            this.fallbackDestination?.play();
+            void this.fallbackDestination?.play();
         });
         try {
             const timerTask = delayAsync(MaxInteractionWaitTimeMs).then(() => false);

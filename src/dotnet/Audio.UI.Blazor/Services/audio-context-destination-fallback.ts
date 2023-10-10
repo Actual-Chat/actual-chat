@@ -85,11 +85,6 @@ export class AudioContextDestinationFallback {
     public async play(): Promise<void> {
         debugLog?.log('-> play()', this.audio?.paused);
         try {
-            if (!this.audio) {
-                errorLog?.log('play(): audio element does not exist.');
-                return;
-            }
-
             this.audio.muted = false;
             if (this.audio.paused)
                 await this.audio.play();
