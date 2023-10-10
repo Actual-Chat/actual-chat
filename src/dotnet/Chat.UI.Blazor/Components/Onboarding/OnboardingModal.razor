@@ -46,10 +46,12 @@
                     <Button
                         Class="btn-primary"
                         Click="() => OnMoveForwardClick(stepper)">
-                        @if (stepper.CurrentStepIndex == stepper.LastStepIndex) {
+                        @if (stepper.IsLastStep) {
                             <span>Start messaging</span>
                         } else if (stepper.CanMoveForward) {
                             <span>Next</span>
+                        } else {
+                            Modal.Close(true);
                         }
                     </Button>
                 </div>

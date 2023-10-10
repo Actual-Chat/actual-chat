@@ -33,6 +33,7 @@
     public int StepCount => _steps.Count;
     public int LastStepIndex => Math.Max(0, _steps.Count - 1);
     public int CurrentStepIndex => _currentStep is { } currentStep ? _steps.IndexOf(currentStep) : -1;
+    public bool IsLastStep => CurrentStepIndex == LastStepIndex;
     public bool CanMoveForward => CurrentStepIndex is var i and >= 0 && i < LastStepIndex;
     public bool CanMoveBack => CurrentStepIndex > 0;
     public bool CanSkip => _currentStep is { CanSkip: true };
