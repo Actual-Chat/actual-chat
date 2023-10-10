@@ -73,6 +73,11 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
+    protected override ComputedState<AccountFull>.Options GetStateOptions() => new() {
+        InitialValue = AccountFull.Loading,
+        Category = GetStateCategory(),
+    };
+
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => AccountUI.OwnAccount.Use(cancellationToken).AsTask();
 
