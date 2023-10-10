@@ -10,7 +10,7 @@ export class AudioContextDestinationFallback {
     private destinationNode?: MediaStreamAudioDestinationNode = null;
     private aecStream: MediaStream & Disposable = null;
 
-    public static get isRequired() { return isWebRtcAecRequired; }
+    public static get isRequired() { return isWebRtcAecRequired || DeviceInfo.isIos && DeviceInfo.isWebKit; }
 
     public get destination() { return this.destinationNode; }
 
@@ -21,6 +21,7 @@ export class AudioContextDestinationFallback {
             return;
 
         this.audio = new Audio();
+        this.audio.id = 'audio-context-destination';
         this.audio.preload = "none";
         this.audio.loop = false;
         this.audio.hidden = true;
@@ -29,7 +30,6 @@ export class AudioContextDestinationFallback {
         if ('mediaSession' in navigator) {
             navigator.mediaSession.playbackState = 'none';
         }
-        document.body.append(this.audio);
     }
 
     public async attach(context: AudioContext): Promise<void> {
@@ -37,8 +37,9 @@ export class AudioContextDestinationFallback {
             return;
 
         debugLog?.log('-> attach(): ', Log.ref(context));
-
         try {
+            document.body.append(this.audio);
+
             if (!this.destinationNode || this.destinationNode.context !== context) {
                 this.destinationNode = context.createMediaStreamDestination();
                 this.destinationNode.channelInterpretation = 'speakers';
@@ -63,6 +64,8 @@ export class AudioContextDestinationFallback {
             this.audio.pause();
             this.audio.srcObject = undefined;
             this.audio.src = undefined;
+            document.body.removeChild(this.audio);
+
             if (this.destinationNode) {
                 this.destinationNode.stream.getAudioTracks().forEach(x => x.stop());
                 this.destinationNode.stream.getVideoTracks().forEach(x => x.stop());
@@ -80,14 +83,19 @@ export class AudioContextDestinationFallback {
     }
 
     public async play(): Promise<void> {
-        debugLog?.log('-> play()', this.audio.paused);
+        debugLog?.log('-> play()', this.audio?.paused);
         try {
+            if (!this.audio) {
+                errorLog?.log('play(): audio element does not exist.');
+                return;
+            }
+
             this.audio.muted = false;
             if (this.audio.paused)
                 await this.audio.play();
         } catch (e) {
             errorLog?.log('play(): failed to resume:', e);
         }
-        debugLog?.log('<- play()', this.audio.paused);
+        debugLog?.log('<- play()', this.audio?.paused);
     }
 }
