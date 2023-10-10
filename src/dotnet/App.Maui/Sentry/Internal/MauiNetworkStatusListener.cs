@@ -42,12 +42,13 @@ internal class MauiNetworkStatusListener : INetworkStatusListener
 
         _connectivity.ConnectivityChanged += OnConnectivityChanged;
 
+        var registration = cancellationToken.Register(() => tcs.TrySetCanceled());
         try {
-            cancellationToken.Register(() => tcs.TrySetCanceled());
             await tcs.Task.ConfigureAwait(false);
         }
         finally {
             _connectivity.ConnectivityChanged -= OnConnectivityChanged;
+            await registration.DisposeAsync().ConfigureAwait(false);
         }
     }
 

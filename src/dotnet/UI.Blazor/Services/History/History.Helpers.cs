@@ -5,16 +5,18 @@ public partial class History
     public HistoryChangeTracker TrackChanges(Action<HistoryItem> onChange)
         => new HistoryChangeTracker(this, onChange).Start();
 
-    public Task When(Func<HistoryItem, bool> predicate, CancellationToken cancellationToken = default)
+    public async Task When(Func<HistoryItem, bool> predicate, CancellationToken cancellationToken = default)
     {
         var tcs = TaskCompletionSourceExt.New<Unit>();
         if (cancellationToken.IsCancellationRequested) {
             tcs.TrySetCanceled(cancellationToken);
-            return tcs.Task;
+            await tcs.Task.ConfigureAwait(false);
+            return;
         }
         if (predicate.Invoke(CurrentItem)) {
             tcs.TrySetResult(default);
-            return tcs.Task;
+            await tcs.Task.ConfigureAwait(false);
+            return;
         }
 
         var cts = cancellationToken.CreateLinkedTokenSource();
@@ -25,12 +27,17 @@ public partial class History
                     cts.CancelAndDisposeSilently();
                 }
             });
-        cts.Token.Register(() => {
+        var registration = cts.Token.Register(() => {
             tcs.TrySetCanceled();
             tracker.Dispose();
         });
         tracker.Start();
-        return tcs.Task;
+        try {
+            await tcs.Task.ConfigureAwait(false);
+        }
+        finally {
+            await registration.DisposeAsync().ConfigureAwait(false);
+        }
     }
 
     public void CancelWhen(CancellationTokenSource cancellationTokenSource, Func<HistoryItem, bool> predicate)
