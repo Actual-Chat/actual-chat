@@ -47,8 +47,8 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
             builder.CloseComponent();
         });
         var modalRef = Host.Show(options, model, content);
-        cancellationToken.Register(() => modalRef.Close(true), true);
-
+        var registration = cancellationToken.Register(() => modalRef.Close(true), true);
+        modalRef.WhenClosed.SilentAwait(false).OnCompleted(registration.Dispose);
         return modalRef;
     }
 
