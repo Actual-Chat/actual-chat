@@ -1,0 +1,100 @@
+@using ActualChat.Users.UI.Blazor
+@using ActualChat.Chat.UI.Blazor.Module
+
+<Tile>
+    <div @ref="Ref" class="ui-settings">
+        <Form Model="@_formModel">
+            <DataAnnotationsValidator/>
+            <ValidationSummary/>
+
+            <FormBlock>
+                <FormSection
+                    Class="field-transcription-primary-language"
+                    For="() => _formModel.UserFontSizeFormId"
+                    InputId="@_formModel.UserFontSizeFormId"
+                    IsLabelInsideInput="true"
+                    Label="Select font size">
+                    <InputSelect Value="_formModel.UserFontSizeFormId"
+                                 ValueExpression="@(() => _rootSize)"
+                                 ValueChanged="@(async (string fontTitle) => await OnFontSizeChanged(fontTitle))">
+                        @if (_sizes != null) {
+                            foreach (var size in _sizes) {
+                                if (size.Key == _rootSize) {
+                                    <option selected value="@size.Key">@size.Key</option>
+                                } else {
+                                    <option value="@size.Key">@size.Key</option>
+                                }
+                            }
+                        }
+                    </InputSelect>
+                </FormSection>
+
+            </FormBlock>
+        </Form>
+    </div>
+</Tile>
+
+@code {
+    private FormModel _formModel = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<UserInterface> BlazorRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+    private string? _rootSize = "Medium";
+    private Dictionary<string, string>? _sizes;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private IAvatars Avatars { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private ILogger<UserInterface> Log { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _formModel = new FormModel(ComponentIdGenerator);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>($"{ChatBlazorUIModule.ImportName}.UserInterface.create",
+                Ref, BlazorRef);
+            await GetRootSize();
+            await GetFontSizes();
+            StateHasChanged();
+        }
+    }
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    public async ValueTask GetFontSizes() {
+        _sizes = await JSRef
+            .InvokeAsync<Dictionary<string, string>>("getFontSizes");
+    }
+
+    public async ValueTask GetRootSize() {
+        _rootSize = await JSRef
+            .InvokeAsync<string>("getRootSize");
+    }
+
+    private async ValueTask OnFontSizeChanged(string fontTitle) {
+        var result = await JSRef.InvokeAsync<bool>("setRootSize", fontTitle);
+        if (result)
+            StateHasChanged();
+    }
+
+    public sealed class FormModel {
+        private string FormId { get; }
+        public string UserFontSizeFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("font-size-form");
+            UserFontSizeFormId = $"{FormId}-user-font-size";
+        }
+    }
+}
