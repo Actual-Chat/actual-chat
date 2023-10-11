@@ -73,7 +73,7 @@ export type LogScope =
     | 'ChatMessageEditor'
     | 'CodeBlockMarkupView'
     | 'CopyTrigger'
-    | 'FontSizeInit'
+    | 'FontSizes'
     | 'Landing'
     | 'LandingLeftMenu'
     | 'MarkupEditor'

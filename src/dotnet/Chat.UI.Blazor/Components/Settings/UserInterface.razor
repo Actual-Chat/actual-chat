@@ -2,7 +2,7 @@
 @using ActualChat.Chat.UI.Blazor.Module
 
 <Tile>
-    <div @ref="Ref" class="ui-settings">
+    <div class="ui-settings">
         <Form Model="@_formModel">
             <DataAnnotationsValidator/>
             <ValidationSummary/>
@@ -13,13 +13,14 @@
                     For="() => _formModel.UserFontSizeFormId"
                     InputId="@_formModel.UserFontSizeFormId"
                     IsLabelInsideInput="true"
-                    Label="Select font size">
-                    <InputSelect Value="_formModel.UserFontSizeFormId"
-                                 ValueExpression="@(() => _rootSize)"
-                                 ValueChanged="@(async (string fontTitle) => await OnFontSizeChanged(fontTitle))">
-                        @if (_sizes != null) {
-                            foreach (var size in _sizes) {
-                                if (size.Key == _rootSize) {
+                    Label="Font size">
+                    <InputSelect
+                        Value="_formModel.UserFontSizeFormId"
+                        ValueExpression="@(() => _fontSize)"
+                        ValueChanged="@(async (string fontTitle) => await OnFontSizeChanged(fontTitle))">
+                        @if (_fontSizes != null) {
+                            foreach (var size in _fontSizes) {
+                                if (size.Key == _fontSize) {
                                     <option selected value="@size.Key">@size.Key</option>
                                 } else {
                                     <option value="@size.Key">@size.Key</option>
@@ -35,12 +36,11 @@
 </Tile>
 
 @code {
+    private static readonly string JSFontSizesClassName = $"{ChatBlazorUIModule.ImportName}.UserInterface.fontSizes";
+
     private FormModel _formModel = null!;
-    private IJSObjectReference JSRef { get; set; } = null!;
-    private DotNetObjectReference<UserInterface> BlazorRef { get; set; } = null!;
-    private ElementReference Ref { get; set; }
-    private string? _rootSize = "Medium";
-    private Dictionary<string, string>? _sizes;
+    private string? _fontSize;
+    private Dictionary<string, string>? _fontSizes;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
@@ -50,42 +50,20 @@
     [Inject] private ILogger<UserInterface> Log { get; init; } = null!;
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         _formModel = new FormModel(ComponentIdGenerator);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            BlazorRef = DotNetObjectReference.Create(this);
-            JSRef = await JS.InvokeAsync<IJSObjectReference>($"{ChatBlazorUIModule.ImportName}.UserInterface.create",
-                Ref, BlazorRef);
-            await GetRootSize();
-            await GetFontSizes();
+            _fontSizes = await JS.InvokeAsync<Dictionary<string, string>>($"{JSFontSizesClassName}.list");
+            _fontSize = await JS.InvokeAsync<string>($"{JSFontSizesClassName}.get");
             StateHasChanged();
         }
     }
 
-    public async ValueTask DisposeAsync() {
-        await JSRef.DisposeSilentlyAsync("dispose");
-        JSRef = null!;
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
-    }
-
-    public async ValueTask GetFontSizes() {
-        _sizes = await JSRef
-            .InvokeAsync<Dictionary<string, string>>("getFontSizes");
-    }
-
-    public async ValueTask GetRootSize() {
-        _rootSize = await JSRef
-            .InvokeAsync<string>("getRootSize");
-    }
-
-    private async ValueTask OnFontSizeChanged(string fontTitle) {
-        var result = await JSRef.InvokeAsync<bool>("setRootSize", fontTitle);
-        if (result)
-            StateHasChanged();
+    private async ValueTask OnFontSizeChanged(string fontSize) {
+        await JS.InvokeAsync<string>($"{JSFontSizesClassName}.set", fontSize);
+        StateHasChanged();
     }
 
     public sealed class FormModel {
