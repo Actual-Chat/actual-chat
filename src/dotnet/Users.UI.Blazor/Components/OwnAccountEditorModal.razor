@@ -115,6 +115,7 @@
             account with {
                 Name = _form.Name,
                 LastName = _form.LastName,
+                Phone = PhoneFormatterExt.FromReadable(_form.Phone),
             },
             account.Version);
         var (_, error) = await UICommander.Run(updateAccountCommand);
@@ -134,8 +135,8 @@
     private Task OnDeleteAccountClick()
         => ModalUI.Show(new DeleteAccountModal.Model());
 
-    public sealed class FormModel : FormModel<FormModel> {
-
+    public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
+        : FormModel<FormModel>("own-account-editor", componentIdGenerator) {
         [Required, MinLength(4, ErrorMessage = "Name must be at least 4 characters.")]
         public string Name { get; set; } = "";
         public string NameFieldId { get; set; } = "";
@@ -143,12 +144,8 @@
         public string LastNameFieldId { get; set; } = "";
         public string Email { get; set; } = "";
         public string EmailFieldId { get; set; } = "";
-        public string Phone { get; set; } = "";
+        [PhoneNumber] public string Phone { get; set; } = "";
         public string PhoneFieldId { get; set; } = "";
-
-        public FormModel(ComponentIdGenerator? componentIdGenerator)
-            : base("own-account-editor", componentIdGenerator)
-        { }
     }
 
     public sealed record Model {
