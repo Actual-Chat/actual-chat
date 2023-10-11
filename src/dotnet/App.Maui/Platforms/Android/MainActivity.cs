@@ -97,14 +97,13 @@ public partial class MainActivity : MauiAppCompatActivity
             new ActivityResultContracts.RequestPermission(),
             new AndroidActivityResultCallback(result => {
                 var isGranted = (bool)result!;
-                var notificationState = isGranted
+                var permissionState = isGranted
                     ? PermissionState.Granted
                     : PermissionState.Denied;
-                _ = Task.Run(async () => {
-                    var scopedServices1 = await ScopedServicesTask.ConfigureAwait(false);
+                _ = DispatchToBlazor(scopedServices1 => {
                     var notificationUI = scopedServices1.GetRequiredService<NotificationUI>();
-                    notificationUI.SetPermissionState(notificationState);
-                });
+                    notificationUI.SetPermissionState(permissionState);
+                }, $"NotificationUI.SetPermissionState({permissionState})");
             }));
         CreateNotificationChannel();
         TryHandleNotificationTap(Intent);
@@ -166,15 +165,14 @@ public partial class MainActivity : MauiAppCompatActivity
             var (_, notificationGrant) = permissions
                 .Zip(grantResults)
                 .FirstOrDefault(tuple => OrdinalEquals(tuple.First, Manifest.Permission.PostNotifications));
-            var notificationState = notificationGrant switch {
+            var permissionState = notificationGrant switch {
                 Permission.Granted => PermissionState.Granted,
                 _ => PermissionState.Denied,
             };
-            _ = Task.Run(async () => {
-                var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
+            _ = DispatchToBlazor(scopedServices => {
                 var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
-                notificationUI.SetPermissionState(notificationState);
-            });
+                notificationUI.SetPermissionState(permissionState);
+            }, $"NotificationUI.SetPermissionState({permissionState})");
         }
     }
 
@@ -224,11 +222,9 @@ public partial class MainActivity : MauiAppCompatActivity
             return;
 
         var autoNavigationTasks = AppServices.GetRequiredService<AutoNavigationTasks>();
-        autoNavigationTasks.Add(ForegroundTask.Run(async () => {
-            var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
-            var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
-            await notificationUI.HandleNotificationNavigation(url).ConfigureAwait(false);
-        }, Log, "Failed to handle notification tap"));
+        autoNavigationTasks.Add(DispatchToBlazor(
+            c => c.GetRequiredService<NotificationUI>().HandleNotificationNavigation(url),
+            $"NotificationUI.HandleNotificationNavigation(\"{url}\")"));
     }
 
     public class SplashScreenExitAnimationListener : GenericAnimatorListener, ISplashScreenOnExitAnimationListener

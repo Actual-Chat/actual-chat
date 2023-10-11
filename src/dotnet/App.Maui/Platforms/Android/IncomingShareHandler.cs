@@ -72,24 +72,23 @@ public class IncomingShareHandler
         }
     }
 
-    private async Task HandlePlainTextSend(string? text)
+    private Task HandlePlainTextSend(string? text)
     {
         if (text.IsNullOrEmpty()) {
             Log.LogWarning("No text to send");
-            return;
+            return Task.CompletedTask;
         }
         Log.LogInformation("About to send text: '{Text}'", text);
-        await InvokeAsync(services => {
-            var incomingShareUI = services.GetRequiredService<IncomingShareUI>();
-            incomingShareUI.ShareText(text);
-        }).ConfigureAwait(false);
+        return DispatchToBlazor(
+            c => c.GetRequiredService<IncomingShareUI>().ShareText(text),
+            "IncomingShareUI.ShareText(...)", true);
     }
 
-    private async Task HandleFilesSend(string mimeType, ICollection<Uri> uris)
+    private Task HandleFilesSend(string mimeType, ICollection<Uri> uris)
     {
         Log.LogInformation("About to send {Count} files of type '{MimeType}'", uris.Count, mimeType);
-        await InvokeAsync(services => {
-            var incomingShareUI = services.GetRequiredService<IncomingShareUI>();
+        return DispatchToBlazor(scopedServices => {
+            var incomingShareUI = scopedServices.GetRequiredService<IncomingShareUI>();
             var fileInfos = uris
                 .Select(c => {
                     var url = c.ToString()!;
@@ -101,15 +100,6 @@ public class IncomingShareHandler
                 .SkipNullItems()
                 .ToArray();
             incomingShareUI.ShareFiles(fileInfos);
-        }).ConfigureAwait(false);
-    }
-
-    private async Task InvokeAsync(Action<IServiceProvider> workItem)
-    {
-        var services = await ScopedServicesTask.ConfigureAwait(false);
-        var loadingUI = services.GetRequiredService<LoadingUI>();
-        await loadingUI.WhenRendered.ConfigureAwait(false);
-        var historyUI = services.GetRequiredService<History>();
-        await historyUI.Dispatcher.InvokeAsync(() => workItem(services)).ConfigureAwait(false);
+        }, "IncomingShareUI.ShareFiles(...)", true);
     }
 }

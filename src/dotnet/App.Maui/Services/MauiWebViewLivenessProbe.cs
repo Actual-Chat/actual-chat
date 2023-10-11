@@ -45,8 +45,8 @@ public class MauiWebViewLivenessProbe(IServiceProvider services)
         var cts1 = new CancellationTokenSource(TimeSpan.FromMilliseconds(2000));
         var cts2 = cancellationToken.LinkWith(cts1.Token);
         try {
-            var services = await ScopedServicesTask.WaitAsync(cts2.Token).ConfigureAwait(false);
-            var jsRuntime = services.GetRequiredService<IJSRuntime>();
+            var scopedServices = await WhenScopedServicesReady(cts2.Token).ConfigureAwait(false);
+            var jsRuntime = scopedServices.GetRequiredService<IJSRuntime>();
             _ = MainThread.InvokeOnMainThreadAsync(() => {
                 cts2.CancelAfter(TimeSpan.FromMilliseconds(300));
             });
