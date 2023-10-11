@@ -162,7 +162,9 @@
                 <MessageReactions Entry="@entry"/>
             }
             @if (m.ShowLinkPreview) {
-                <LinkPreviewView Entry="@entry" Markup="@markup"/>
+                <div class="message-link-preview">
+                    <LinkPreviewView Entry="@entry" Markup="@markup"/>
+                </div>
             }
         </div>
     </div>
