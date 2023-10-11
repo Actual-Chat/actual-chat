@@ -40,7 +40,8 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         await using var _ = dbContext.ConfigureAwait(false);
 
         var links = GetLinks().ToList();
-        var externalContactIds = await dbContext.ExternalContactLinks.Where(x => links.Contains(x.Value))
+        var externalContactIds = await dbContext.ExternalContactLinks
+            .Where(x => links.Contains(x.Value))
             .Select(x => x.DbExternalContactId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
