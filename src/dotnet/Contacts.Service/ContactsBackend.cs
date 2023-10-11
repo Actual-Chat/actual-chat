@@ -231,7 +231,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         var referencingUserIds = await ExternalContactsBackend.ListReferencingUserIds(userToGreetId, cancellationToken)
             .ConfigureAwait(false);
-        await referencingUserIds.Select(CreateContact).Collect().ConfigureAwait(false);
+        await referencingUserIds
+            .Where(userId => userId != account.Id)
+            .Select(CreateContact)
+            .Collect()
+            .ConfigureAwait(false);
 
         var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);
         await Commander.Call(completeCmd, true, cancellationToken).ConfigureAwait(false);
