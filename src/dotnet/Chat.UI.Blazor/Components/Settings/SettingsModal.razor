@@ -52,8 +52,14 @@
             </SettingsTab>
         }
 
+        @if (showUserInterface) {
+            <SettingsTab @key="5" Title="User interface" Id="userInterface" IconTitle="sort-by-alphabet">
+                <UserInterface/>
+            </SettingsTab>
+        }
+
         @if (NativeAppSettings != null) {
-            <SettingsTab @key="5" Title="Application" Id="app" IconTitle="settings">
+            <SettingsTab @key="6" Title="Application" Id="app" IconTitle="settings">
                 <ChildContent>
                     <AppSettingsView NativeAppSettings="@NativeAppSettings"></AppSettingsView>
                 </ChildContent>
@@ -61,16 +67,10 @@
         }
 
         @if (showThemeToggle) {
-            <SettingsTab @key="6" Title="Dark theme" TitleComment="Work in progress" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
+            <SettingsTab @key="90" Title="Dark theme" TitleComment="Work in progress" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
                 <TitleContent>
                     <ThemeToggle/>
                 </TitleContent>
-            </SettingsTab>
-        }
-
-        @if (showUserInterface) {
-            <SettingsTab @key="7" Title="User interface" Id="userInterface" IconTitle="sort-by-alphabet">
-                <UserInterface/>
             </SettingsTab>
         }
 
