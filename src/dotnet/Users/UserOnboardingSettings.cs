@@ -8,6 +8,7 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
 {
     public const string KvasKey = nameof(UserOnboardingSettings);
 
+    [Obsolete("Use IsVerifyPhoneStepCompleted")]
     [DataMember, MemoryPackOrder(0)] public bool IsPhoneStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(1)] public bool IsAvatarStepCompleted { get; init; }
     [DataMember, MemoryPackOrder(2)] public Moment LastShownAt { get; init; }
