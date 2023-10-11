@@ -5,17 +5,22 @@ import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-si
 const { debugLog } = Log.get('FontSizeInit');
 
 const FontSize : {[title: string]: string} = {
-    'Small': '14px',
-    'Medium': '16px',
-    'Large': '18px',
-    'XL': '20px',
-    'XXL': '24px',
+    '14px': '14px',
+    '16px': '16px',
+    '18px': '18px',
+    '20px': '20px',
+    '24px': '24px',
 }
 
 export class FontSizeInit {
-    private static fontSize= FontSize['Medium'];
+    private static fontSize = FontSize['16px'];
 
     public static init(): void {
+        this.initInternal();
+        ScreenSize.change$.subscribe(_ => this.initInternal());
+    }
+
+    private static initInternal() : void {
         debugLog?.log(`init`);
 
         const root = document.querySelector(':root');
@@ -25,50 +30,34 @@ export class FontSizeInit {
         const localFontSize = localStorage.getItem('font-size');
 
         if (localFontSize == null) {
-            this.isLocalFontSizeNull();
+            this.setDefaultFontSize();
         } else {
             if (rootFontSize != localFontSize) {
-                if (!this.checkLocalFontSizeValues(localFontSize)) {
-                    // get default
-                    this.isLocalFontSizeNull();
-                } else {
+                if (!this.isValidFontSizeValue(localFontSize))
+                    this.setDefaultFontSize();
+                else
                     this.fontSize = localFontSize;
-                }
             }
         }
 
-        if (localFontSize != this.fontSize) {
+        if (localFontSize != this.fontSize)
             localStorage.setItem('font-size', this.fontSize);
-        }
-        if (rootFontSize != this.fontSize) {
+        if (rootFontSize != this.fontSize)
             (root as HTMLElement).style.setProperty('--font-size', this.fontSize);
-        }
-
-        ScreenSize.change$.subscribe(_ => this.init());
     }
 
-    private static isLocalFontSizeNull() {
-        if (DeviceInfo.isIos) {
-            this.fontSize = FontSize['Large'];
-        } else {
-            this.fontSize = FontSize['Medium'];
-        }
+    private static setDefaultFontSize() {
+        if (DeviceInfo.isIos)
+            this.fontSize = FontSize['18px'];
+        else
+            this.fontSize = FontSize['16px'];
     }
 
-    private static checkLocalFontSizeValues(fontValue: string) : boolean {
+    private static isValidFontSizeValue(fontValue: string) : boolean {
         let result = false;
         Object.values(FontSize).forEach(v => {
-            console.log('v: ', v);
             if (v == fontValue)
                 result = true;
-        });
-        return result;
-    }
-
-    private static reverseFontSize() {
-        const result : {[size: string]: string}  = {};
-        Object.entries(FontSize).forEach(([key, value]) => {
-            result[value] = key;
         });
         return result;
     }
@@ -81,7 +70,11 @@ export class FontSizeInit {
         const root = document.querySelector(':root');
         const rs = window.getComputedStyle(root);
         const fontSize = rs.getPropertyValue('--font-size');
-        return this.reverseFontSize()[fontSize];
+        const reversed : {[size: string]: string}  = {};
+        Object.entries(FontSize).forEach(([key, value]) => {
+            reversed[value] = key;
+        });
+        return reversed[fontSize];
     }
 
     public static setRootFontSize(fontTitle: string) : boolean {
