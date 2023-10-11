@@ -46,13 +46,11 @@ public class App : Application
         if (!OrdinalIgnoreCaseEquals(uri.Host, MauiSettings.Host))
             return;
 
+        var url = new LocalUrl(uri.PathAndQuery + uri.Fragment);
         var autoNavigationTasks = Services.GetRequiredService<AutoNavigationTasks>();
-        autoNavigationTasks.Add(ForegroundTask.Run(async () => {
-            var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
-            var url = new LocalUrl(uri.PathAndQuery + uri.Fragment);
-            var autoNavigationUI = scopedServices.GetRequiredService<AutoNavigationUI>();
-            await autoNavigationUI.DispatchNavigateTo(url, AutoNavigationReason.AppLink).ConfigureAwait(false);
-        }, Log, "Failed to handle AppLink request"));
+        autoNavigationTasks.Add(DispatchToBlazor(
+            c => c.GetRequiredService<AutoNavigationUI>().DispatchNavigateTo(url, AutoNavigationReason.AppLink),
+            $"AutoNavigationUI.DispatchNavigateTo(\"{url}\", AppLink)"));
     }
 
     public new void Quit()

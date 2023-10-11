@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebView;
 
 namespace ActualChat.App.Maui.Services;
@@ -95,9 +94,8 @@ public class MauiNavigationInterceptor
             try {
                 // MainPage.Current!.NavigateTo(uri);
                 // break;
-                var services = await ScopedServicesTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+                var services = await WhenScopedServicesReady(cancellationToken).ConfigureAwait(false);
                 var blazorCircuitContext = services.GetRequiredService<AppBlazorCircuitContext>();
-                await blazorCircuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
                 await blazorCircuitContext.Dispatcher.InvokeAsync(async () => {
                     var history = services.GetRequiredService<History>();
                     if (mustReload)

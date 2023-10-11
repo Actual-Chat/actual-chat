@@ -1,5 +1,7 @@
 using ActualChat.App.Maui.Services;
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
 using Stl.Internal;
 
@@ -7,16 +9,16 @@ namespace ActualChat.App.Maui;
 
 public class AppServicesAccessor
 {
+    private static readonly TimeSpan WhenRenderedTimeout = TimeSpan.FromSeconds(3);
+
     private static readonly object _lock = new();
     private static ILogger? _log;
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
-    private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesTask =
+    private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesSource =
         TaskCompletionSourceExt.New<IServiceProvider>();
 
     private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
-
-    public static Task<IServiceProvider> ScopedServicesTask => _scopedServicesTask.Task;
 
     public static IServiceProvider AppServices {
         get => _appServices ?? throw Errors.NotInitialized(nameof(AppServices));
@@ -47,7 +49,7 @@ public class AppServicesAccessor
                     throw Errors.AlreadyInitialized(nameof(ScopedServices));
 
                 _scopedServices = value;
-                _scopedServicesTask.TrySetResult(value);
+                _scopedServicesSource.TrySetResult(value);
                 Log.LogDebug("ScopedServices ready");
             }
         }
@@ -59,6 +61,92 @@ public class AppServicesAccessor
         return scopedServices != null;
     }
 
+    public static Task<IServiceProvider> WhenScopedServicesReady(CancellationToken cancellationToken = default)
+        => WhenScopedServicesReady(false, cancellationToken);
+    public static Task<IServiceProvider> WhenScopedServicesReady(bool whenRendered, CancellationToken cancellationToken = default)
+    {
+        var scopedServicesTask = _scopedServicesSource.Task;
+        if (scopedServicesTask.IsCompletedSuccessfully) {
+            var c = scopedServicesTask.Result;
+            var blazorCircuitContext = c.GetRequiredService<AppBlazorCircuitContext>();
+            if (blazorCircuitContext.WhenReady.IsCompletedSuccessfully) {
+                if (!whenRendered)
+                    return scopedServicesTask;
+
+                var loadingUI = c.GetRequiredService<LoadingUI>();
+                if (loadingUI.WhenRendered.IsCompletedSuccessfully)
+                    return scopedServicesTask;
+            }
+        }
+
+        return WhenScopedServicesReadyAsync(whenRendered, cancellationToken);
+
+        static async Task<IServiceProvider> WhenScopedServicesReadyAsync(bool whenRendered, CancellationToken cancellationToken) {
+            while (true) {
+                var c = await _scopedServicesSource.Task.SuppressCancellationAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                if (c == null!)
+                    continue;
+
+                if (whenRendered) {
+                    var loadingUI = c.GetRequiredService<LoadingUI>();
+                    await loadingUI.WhenRendered
+                        .WaitAsync(WhenRenderedTimeout, cancellationToken)
+                        .SilentAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (loadingUI.WhenRendered.IsCompletedSuccessfully)
+                        return c;
+                }
+                else {
+                    var blazorCircuitContext = c.GetRequiredService<AppBlazorCircuitContext>();
+                    await blazorCircuitContext.WhenReady
+                        .WaitAsync(WhenRenderedTimeout, cancellationToken)
+                        .SilentAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (blazorCircuitContext.WhenReady.IsCompletedSuccessfully)
+                        return c;
+                }
+            }
+        }
+    }
+
+    public static Task DispatchToBlazor(Action<IServiceProvider> workItem, string name, bool whenRendered = false)
+        => DispatchToBlazor(c => _ = ForegroundTask.Run(() => {
+            workItem.Invoke(c);
+            return Task.CompletedTask;
+        }, Log, $"{name} failed"));
+
+    public static Task DispatchToBlazor(Func<IServiceProvider, Task> workItem, string name, bool whenRendered = false)
+        => DispatchToBlazor(c => ForegroundTask.Run(
+            async () => await workItem.Invoke(c).ConfigureAwait(false),
+            Log, $"{name} failed"));
+
+    public static Task DispatchToBlazor<T>(Func<IServiceProvider, Task<T>> workItem, string name, bool whenRendered = false)
+        => DispatchToBlazor(c => ForegroundTask.Run(
+            async () => await workItem.Invoke(c).ConfigureAwait(false),
+            Log, $"{name} failed"));
+
+    public static async Task DispatchToBlazor(Action<IServiceProvider> workItem, bool whenRendered = false)
+    {
+        var scopedServices = await WhenScopedServicesReady(whenRendered).ConfigureAwait(false);
+        var dispatcher = scopedServices.GetRequiredService<Dispatcher>();
+        await dispatcher.DispatchAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
+    }
+
+    public static async Task DispatchToBlazor(Func<IServiceProvider, Task> workItem, bool whenRendered = false)
+    {
+        var scopedServices = await WhenScopedServicesReady(whenRendered).ConfigureAwait(false);
+        var dispatcher = scopedServices.GetRequiredService<Dispatcher>();
+        await dispatcher.DispatchAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
+    }
+
+    public static async Task<T> DispatchToBlazor<T>(Func<IServiceProvider, Task<T>> workItem, bool whenRendered = false)
+    {
+        var scopedServices = await WhenScopedServicesReady(whenRendered).ConfigureAwait(false);
+        var dispatcher = scopedServices.GetRequiredService<Dispatcher>();
+        return await dispatcher.DispatchAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
+    }
+
     public static void DiscardScopedServices(IServiceProvider? expectedScopedServices = null)
     {
         lock (_lock) {
@@ -68,8 +156,8 @@ public class AppServicesAccessor
             if (expectedScopedServices != null && !ReferenceEquals(scopedServices, expectedScopedServices))
                 return;
 
-            _scopedServicesTask.TrySetCanceled();
-            _scopedServicesTask = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
+            _scopedServicesSource.TrySetCanceled();
+            _scopedServicesSource = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
             _scopedServices = null;
             try {
                 if (scopedServices.GetService<IJSRuntime>() is SafeJSRuntime js)

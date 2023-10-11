@@ -1,8 +1,6 @@
-using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using ActualChat.UI.Blazor.Services.Internal;
 using Foundation;
 using Microsoft.AspNetCore.Components;
 using Plugin.Firebase.CloudMessaging;
@@ -96,13 +94,9 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         var notificationUrl = null as string;
         if (e.Notification.Data.TryGetValue(Constants.Notification.MessageDataKeys.Link, out var url))
             notificationUrl = url;
-
-        if (ScopedServicesTask.IsCompleted)
-            ScopedServices.GetRequiredService<PushNotifications>()
-                .HandleNotificationTap(notificationUrl);
-        else
-            ScopedServicesTask.ContinueWith(_ => ScopedServices.GetRequiredService<PushNotifications>()
-                .HandleNotificationTap(notificationUrl));
+        _ = DispatchToBlazor(
+            c => c.GetRequiredService<PushNotifications>().HandleNotificationTap(notificationUrl),
+            $"PushNotifications.HandleNotificationTap(\"{url}\")");
     }
 
     private void HandleNotificationTap(string? url)

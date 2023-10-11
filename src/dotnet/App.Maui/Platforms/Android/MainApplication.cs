@@ -23,32 +23,18 @@ public class MainApplication : MauiApplication, ILifecycleObserver
     public void OnAppBackgrounded()
     {
         Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnAppBackgrounded");
-        var scopedServicesTask = ScopedServicesTask;
-        if (scopedServicesTask.IsCompletedSuccessfully) {
-            var backgroundStateHandler = ScopedServices.GetRequiredService<IBackgroundStateHandler>();
-            backgroundStateHandler.SetBackgroundState(true);
-        }
-        else
-            scopedServicesTask.ContinueWith(_ => {
-                var backgroundStateHandler = ScopedServices.GetRequiredService<IBackgroundStateHandler>();
-                backgroundStateHandler.SetBackgroundState(true);
-            });
+        _ = DispatchToBlazor(
+            c => c.GetRequiredService<IBackgroundStateHandler>().SetBackgroundState(true),
+            "IBackgroundStateHandler.SetBackgroundState(true)");
     }
 
     [Export, Lifecycle.Event.OnStart]
     public void OnAppForegrounded()
     {
         Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnAppForegrounded");
-        var scopedServicesTask = ScopedServicesTask;
-        if (scopedServicesTask.IsCompletedSuccessfully) {
-            var backgroundStateHandler = ScopedServices.GetRequiredService<IBackgroundStateHandler>();
-            backgroundStateHandler.SetBackgroundState(false);
-        }
-        else
-            scopedServicesTask.ContinueWith(_ => {
-                var backgroundStateHandler = ScopedServices.GetRequiredService<IBackgroundStateHandler>();
-                backgroundStateHandler.SetBackgroundState(false);
-            });
+        _ = DispatchToBlazor(
+            c => c.GetRequiredService<IBackgroundStateHandler>().SetBackgroundState(false),
+            "IBackgroundStateHandler.SetBackgroundState(false)");
     }
 
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();

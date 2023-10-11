@@ -152,7 +152,7 @@ public static class MauiDiagnostics
         // Initialize client trace provider only in development environment or for admin users.
         var urlMapper = AppServices.GetRequiredService<UrlMapper>();
         if (urlMapper.IsActualChat) {
-            var scopedServices = await ScopedServicesTask.ConfigureAwait(false);
+            var scopedServices = await WhenScopedServicesReady().ConfigureAwait(false);
             var accountUI = scopedServices.GetRequiredService<AccountUI>();
             await accountUI.WhenLoaded.ConfigureAwait(false);
             var ownAccount = await accountUI.OwnAccount.Use().ConfigureAwait(false);
