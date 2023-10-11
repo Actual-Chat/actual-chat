@@ -46,7 +46,9 @@
                     <Button
                         Class="btn-primary"
                         Click="() => OnMoveForwardClick(stepper)">
-                        @if (stepper.IsLastStep) {
+                        @if (stepper.CanSkip) {
+                            <span>Verify</span>
+                        } else if (stepper.IsLastStep) {
                             <span>Start messaging</span>
                         } else if (stepper.CanMoveForward) {
                             <span>Next</span>

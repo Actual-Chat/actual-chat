@@ -9,5 +9,5 @@
     @apply px-4;
 }
 .stepper-footer {
-    @apply mt-8 px-4;
+    @apply mt-8;
 }
