@@ -1,15 +1,9 @@
 namespace ActualChat.Kvas;
 
-public class ServerKvasClient : IKvas
+public class ServerKvasClient(IServerKvas serverKvas, Session session) : IKvas
 {
-    public IServerKvas ServerKvas { get; }
-    public Session Session { get; }
-
-    public ServerKvasClient(IServerKvas serverKvas, Session session)
-    {
-        ServerKvas = serverKvas;
-        Session = session;
-    }
+    public IServerKvas ServerKvas { get; } = serverKvas;
+    public Session Session { get; } = session;
 
     public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
         => ServerKvas.Get(Session, key, cancellationToken).ToValueTask();
