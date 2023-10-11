@@ -627,10 +627,6 @@ export class VirtualList {
 
                 // ensure scroll position and size are recalculated
                 await fastWriteRaf();
-
-                // suspicious, but it helps to avoid scroll jumps on WASM
-                if (BrowserInfo.appKind === "WasmApp")
-                    await this.restoreScrollPosition(time);
             }
             else {
                 warnLog?.log(`onRenderEnd: there are no pivots`);
