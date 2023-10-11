@@ -23,7 +23,7 @@ public partial class BackgroundUI
             .ConfigureAwait(false);
 
         var stateChanges = cGetState.Changes(FixedDelayer.Instant, cancellationToken);
-        await foreach (var cState in stateChanges) {
+        await foreach (var cState in stateChanges.ConfigureAwait(false)) {
             var state = cState.Value;
             Log.LogDebug("PushActivityState: {OldState} -> {State}", _state.Value, state);
             if (_state.Value == state)
