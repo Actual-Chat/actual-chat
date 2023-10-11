@@ -1,0 +1,42 @@
+.link-preview {
+    @apply flex-y md:flex-x h-60 md:h-34;
+    @apply rounded-lg border border-solid border-counter;
+    @apply overflow-hidden;
+}
+.link-preview:not(:has(.c-thumbnail)) {
+    @apply h-20 md:h-32;
+}
+.link-preview:not(:has(.c-thumbnail)):not(:has(.c-description)) {
+    @apply h-16 md:h-20;
+}
+.link-preview.compact {
+    @apply flex-x h-20 md:h-30 flex-x mb-2;
+}
+.link-preview .c-info {
+    @apply flex-1 flex-y p-4 justify-between;
+}
+.link-preview:not(:has(.c-thumbnail)) .c-info {
+    @apply py-2;
+}
+.link-preview:has(.c-description) .c-info {
+    @apply py-2;
+}
+.link-preview .c-thumbnail {
+    @apply w-max md:max-w-34 lg:max-w-60 object-cover;
+}
+.link-preview .c-thumbnail.compact {
+    @apply max-w-20 md:max-w-30;
+}
+.link-preview .c-title {
+    @apply text-xs md:text-base text-accent font-semibold;
+    @apply line-clamp-1 md:line-clamp-2;
+}
+.link-preview .c-description {
+    @apply text-xs md:text-base text-02;
+    @apply line-clamp-1 md:line-clamp-2;
+}
+
+.link-preview .c-domain {
+    @apply text-xs md:text-sm text-icons-02;
+    @apply truncate;
+}

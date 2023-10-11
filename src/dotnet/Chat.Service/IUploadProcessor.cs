@@ -8,4 +8,4 @@ public interface IUploadProcessor
 
 public sealed record ProcessedFileInfo(FileInfo File, Size? Size);
 
-public sealed record FileInfo(string FileName, string ContentType, long Length, byte[] Content);
+public sealed record FileInfo(string FileName, string ContentType, long Length, byte[] Content); // TODO: calc length from bytes?

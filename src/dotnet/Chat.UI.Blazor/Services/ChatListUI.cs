@@ -11,6 +11,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     public static readonly int AllItemCountWhenLoading = 14;
     private static readonly TimeSpan MinNotificationInterval = TimeSpan.FromSeconds(5);
 
+    // modified implicitly after returned by GetItems
     private readonly List<ChatId> _activeItems = new List<ChatId>().AddMany(default, ActiveItemCountWhenLoading);
     private readonly List<ChatId> _allItems = new List<ChatId>().AddMany(default, AllItemCountWhenLoading);
     private readonly IMutableState<bool> _isSelectedChatUnlisted;

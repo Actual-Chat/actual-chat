@@ -314,6 +314,7 @@ module.exports = {
       22: '5.5rem',
       24: '6rem',
       28: '7rem',
+      29.5: '7.375rem',
       30: '7.5rem',
       32: '8rem',
       34: '8.5rem',
@@ -1631,6 +1632,10 @@ module.exports = {
       'bubble': '900',
       'tooltip': '999',
     },
+    lineClamp: {
+      1: '1',
+      2: '2',
+    }
   },
   variantOrder: [
     'first',

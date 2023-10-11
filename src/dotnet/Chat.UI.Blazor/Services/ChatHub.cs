@@ -92,6 +92,9 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public BlazorCircuitContext CircuitContext => _circuitContext ??= Services.GetRequiredService<BlazorCircuitContext>();
     public HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     public IJSRuntime JS => _js ??= Services.JSRuntime();
+    private IComputedState<bool>? _showLinkPreview;
+    public IState<bool> ShowLinkPreview => _showLinkPreview ??=
+        StateFactory.NewComputed<bool>((_, ct) => Features.Get<Features_EnableLinkPreview, bool>(ct).AsTask());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public object? GetService(Type serviceType)

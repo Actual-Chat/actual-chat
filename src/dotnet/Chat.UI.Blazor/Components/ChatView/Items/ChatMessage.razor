@@ -161,6 +161,9 @@
             @if (entry.HasReactions) {
                 <MessageReactions Entry="@entry"/>
             }
+            @if (m.ShowLinkPreview) {
+                <LinkPreviewView Entry="@entry" Markup="@markup"/>
+            }
         </div>
     </div>
 </div>
@@ -217,6 +220,7 @@
             initialValue = new Model {
                 OwnAuthorId = ownAuthorId,
                 RepliedEntry = repliedEntry,
+                ShowLinkPreview = Entry.ShowLinkPreview && ChatContext.ShowLinkPreview.Value,
             };
         return new() {
             InitialValue = initialValue,
@@ -244,6 +248,7 @@
             ? await Authors.Get(Session, entry.ForwardedChatEntryId.ChatId, entry.ForwardedAuthorId, cancellationToken)
             : null;
         var selectedChatEntries = await ChatContext.SelectionUI.Selection.Use(cancellationToken);
+        var showLinkPreview = Entry.ShowLinkPreview && await ChatContext.ShowLinkPreview.Use(cancellationToken); // TODO: read ui settings to decide dismiss links or not
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
@@ -253,6 +258,7 @@
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
             ForwardedAuthor = forwardedAuthor,
+            ShowLinkPreview = showLinkPreview,
         };
         return result.Equals(_rendered) ? _rendered! : result;
     }
@@ -319,5 +325,6 @@
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; init; }
         public Author? ForwardedAuthor { get; init; }
+        public bool ShowLinkPreview { get; set; }
     }
 }

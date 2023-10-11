@@ -91,9 +91,14 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddService<IReactions, Reactions>();
         fusion.AddService<IReactionsBackend, ReactionsBackend>();
 
+        // Links
+        fusion.AddService<ILinkPreviews, LinkPreviews>();
+        fusion.AddService<ILinkPreviewsBackend, LinkPreviewsBackend>();
+        services.AddHttpClient(nameof(LinkPreviewsBackend))
+            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));
+
         // ContentSaver
         services.AddResponseCaching();
-        commander.AddService<IContentSaverBackend, ContentSaverBackend>();
         services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
         services.AddSingleton<IUploadProcessor, VideoUploadProcessor>();
 
