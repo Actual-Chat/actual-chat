@@ -1,4 +1,5 @@
 import { DeviceInfo } from 'device-info';
+import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Log } from 'logging';
 
 const { debugLog } = Log.get('FontSizes');
@@ -23,19 +24,27 @@ export class FontSizes {
     }
 
     public static get() : string {
-        const root = document.querySelector(':root');
-        const rootStyle = window.getComputedStyle(root);
+        const root = document?.querySelector(':root');
+        const rootStyle = window?.getComputedStyle(root);
+        if (!rootStyle)
+            return; // Nothing to do: there is no UI
+
         const size = rootStyle.getPropertyValue('--font-size');
         return getValidOrDefault(size);
     }
 
     public static set(size: string) : void {
+        const root = document?.querySelector(':root');
+        const rootStyle = window?.getComputedStyle(root);
+        if (!rootStyle)
+            return; // Nothing to do: there is no UI
+
         size = getValidOrDefault(size);
-        const root = document.querySelector(':root');
-        const rootStyle = window.getComputedStyle(root);
         const rootFontSize = rootStyle.getPropertyValue('--font-size');
-        if (rootFontSize != size)
+        if (rootFontSize != size) {
             (root as HTMLElement).style.setProperty('--font-size', size);
+            ScreenSize.notifyChanged();
+        }
         save(size);
     }
 }
@@ -44,12 +53,8 @@ function getDefault() {
     return DeviceInfo.isIos ? '18px' : '16px';
 }
 
-function isValid(size: string) : boolean {
-    return !!AvailableSizes[size];
-}
-
 function getValidOrDefault(size: string) : string {
-    return isValid(size) ? size : getDefault();
+    return AvailableSizes[size] ?? getDefault();
 }
 
 function load() : string | null {
