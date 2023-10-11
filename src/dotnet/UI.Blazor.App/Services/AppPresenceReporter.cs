@@ -101,12 +101,13 @@ public class AppPresenceReporter : WorkerBase, IComputeService
             await Commander.Call(new UserPresences_CheckIn(Session, isActive), cancellationToken).ConfigureAwait(false);
             _lastCheckInAt.Value = Now;
         }
-        catch (TimeoutException) {
-            Log.LogInformation("CheckIn postponed (disconnected)");
-            _lastCheckInAt.Value += Constants.Presence.CheckInRetryDelay;
-        }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogError(e, "CheckIn failed");
+            var failureKind = e switch {
+                DisconnectedException => "disconnected",
+                TimeoutException => "timed out",
+                _ => "failed",
+            };
+            Log.LogError(e, "CheckIn postponed ({FailureKind})", failureKind);
             _lastCheckInAt.Value += Constants.Presence.CheckInRetryDelay;
         }
     }
