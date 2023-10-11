@@ -22,13 +22,13 @@
     <ButtonX Click="OnCloseClick"/>
     <SettingsPanel Title="Settings" CloseModalClick="OnCloseClick">
         @if (showMyAccount) {
-            <SettingsTab @key="1" Title="Your account" Id="account" IconTitle="person">
+            <SettingsTab @key="1" Title="Your Account" Id="account" IconTitle="person">
                 <YourAccount/>
             </SettingsTab>
         }
 
         @if (showChatFolder) {
-            <SettingsTab @key="2" Title="Chat folder" Id="chatFolder" IconTitle="folder">
+            <SettingsTab @key="2" Title="Chat Folder" Id="chatFolder" IconTitle="folder">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>
@@ -53,7 +53,7 @@
         }
 
         @if (showUserInterface) {
-            <SettingsTab @key="5" Title="User interface" Id="userInterface" IconTitle="sort-by-alphabet">
+            <SettingsTab @key="5" Title="User Interface" Id="userInterface" IconTitle="sort-by-alphabet">
                 <UserInterface/>
             </SettingsTab>
         }
@@ -67,7 +67,7 @@
         }
 
         @if (showThemeToggle) {
-            <SettingsTab @key="90" Title="Dark theme" TitleComment="Work in progress" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
+            <SettingsTab @key="90" Title="Dark Theme" TitleComment="Work in progress" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
                 <TitleContent>
                     <ThemeToggle/>
                 </TitleContent>
