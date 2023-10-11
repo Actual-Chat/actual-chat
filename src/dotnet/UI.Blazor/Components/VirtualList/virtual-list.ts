@@ -413,7 +413,7 @@ export class VirtualList {
             .sort((l, r) => r.time - l.time)
             .map((entry): Pivot => ({
                 itemKey: getItemKey(entry.target as HTMLElement),
-                offset: Math.ceil(entry.boundingClientRect.top),
+                offset: Math.ceil(entry.boundingClientRect.bottom),
                 time,
             }));
 
@@ -822,7 +822,7 @@ export class VirtualList {
             const itemRect = pivotRef.getBoundingClientRect();
             const pivot: Pivot = {
                 itemKey,
-                offset: Math.ceil(itemRect.top),
+                offset: Math.ceil(itemRect.bottom),
                 time,
             };
             pivots.push(pivot);
@@ -848,7 +848,7 @@ export class VirtualList {
             const itemRect = pivotRef.getBoundingClientRect();
             const pivot: Pivot = {
                 itemKey,
-                offset: Math.ceil(itemRect.top),
+                offset: Math.ceil(itemRect.bottom),
                 time,
             };
             pivots.push(pivot);
@@ -990,11 +990,11 @@ export class VirtualList {
                 await fastReadRaf();
                 const pivotOffset = pivot.offset;
                 const itemRect = pivotRef.getBoundingClientRect();
-                const currentPivotOffset = itemRect.top;
+                const currentPivotOffset = itemRect.bottom;
                 const dPivotOffset = pivotOffset - currentPivotOffset;
                 scrollTop = this._ref.scrollTop;
                 if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
-                    debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`, pivot);
+                    debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${itemRect.bottom} + ${dPivotOffset}`, pivot);
                     scrollTop -= dPivotOffset;
                     shouldResync = true;
                 }
