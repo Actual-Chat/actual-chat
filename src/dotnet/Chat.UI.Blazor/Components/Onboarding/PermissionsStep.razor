@@ -1,4 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Components
 @inherits Step;
 
 @if (CurrentStep != this) {
@@ -56,6 +57,7 @@
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
 
     public override bool IsCompleted => OnboardingUI.Settings.Value.IsPermissionsStepCompleted;
 
@@ -67,16 +69,16 @@
     }
 
     protected override async Task<bool> Save() {
-        if (_stepModel.RequestMicrophonePermissions)
-            await RequestMicrophonePermissions();
+        if (_stepModel.RequestMicrophonePermissions) {
+            var isMicAccessGranted = await AudioRecorder.MicrophonePermission.CheckOrRequest();
+            if (!isMicAccessGranted)
+                return false;
+        }
+
         if (_stepModel.RequestNotificationsPermissions)
             await RequestNotificationsPermissions();
 
         return true;
-    }
-
-    private async Task RequestMicrophonePermissions() {
-
     }
 
     private async Task RequestNotificationsPermissions() {
