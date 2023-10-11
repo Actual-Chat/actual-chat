@@ -62,7 +62,6 @@ export class VirtualList {
     private _pivots: Pivot[] = [];
     private _oldPivots: Pivot[][] = [];
     private _top: number;
-    private _lastVisibleItem: string | null = null;
 
     private _renderStartedAt: number | null = null;
     private _isRendering: boolean = false;
@@ -120,9 +119,6 @@ export class VirtualList {
         this._renderEndObserver.observe(this._containerRef, { childList: true });
         this._renderEndObserver.observe(this._renderStateRef, { subtree: true, characterData: true, childList: true });
         this._sizeObserver = new ResizeObserver(this.onResize);
-        // An array of numbers between 0.0 and 1.0, specifying a ratio of intersection area to total bounding box area for the observed target.
-        // Trigger callbacks as early as it can on any intersection change, even 1 percent
-        const visibilityThresholds = [...Array(101).keys() ].map(i => i / 100);
         this._visibilityObserver = new IntersectionObserver(
             this.onItemVisibilityChange,
             {
@@ -130,7 +126,7 @@ export class VirtualList {
                 root: this._ref,
                 // Extend visibility outside of the viewport.
                 rootMargin: `${VisibilityEpsilon}px`,
-                threshold: visibilityThresholds,
+                threshold: 0,
             });
         this._scrollPivotObserver = new IntersectionObserver(
             this.onScrollPivotVisibilityChange,
@@ -349,7 +345,6 @@ export class VirtualList {
                 this._visibleItems.add(key);
             }
 
-            this._lastVisibleItem = key;
             this._top = entry.rootBounds.top + VisibilityEpsilon;
         }
         if (hasChanged) {
@@ -374,9 +369,7 @@ export class VirtualList {
         }
     };
 
-    private async validateVisibleItems(): Promise<void> {
-        await fastReadRaf();
-
+    private async ensureVisibleItemsAreValid(): Promise<void> {
         const visibleItems = [...this._visibleItems];
         for (const itemKey of visibleItems) {
             const itemRef = this.getItemRef(itemKey);
@@ -388,6 +381,25 @@ export class VirtualList {
             const isItemVisible = this.isItemPartiallyVisible(itemRef);
             if (!isItemVisible)
                 this._visibleItems.delete(itemKey);
+        }
+        if (this._visibleItems.size == 0 && this._itemRefs.length) {
+            // find visible items
+            const visibilityStartIndex = binarySearch(this._itemRefs, itemRef => {
+                const itemRect = itemRef.getBoundingClientRect();
+                const viewRect = this._ref.getBoundingClientRect();
+                return itemRect.bottom >= viewRect.top;
+            });
+            const visibilityEndIndex = binarySearch(this._itemRefs, itemRef => {
+                const itemRect = itemRef.getBoundingClientRect();
+                const viewRect = this._ref.getBoundingClientRect();
+                return itemRect.top >= viewRect.bottom;
+            });
+            for (let i = visibilityStartIndex; i < visibilityEndIndex; i++) {
+                const itemRef = this._itemRefs[i];
+                const itemKey = getItemKey(itemRef);
+                if (itemKey)
+                    this._visibleItems.add(itemKey);
+            }
         }
     }
 
@@ -451,7 +463,22 @@ export class VirtualList {
             this._oldPivots.push(pivots);
             if (this._oldPivots.length > 4)
                 this._oldPivots.shift();
-            this._pivots = pivots;
+
+            const itemKeys = [this._query.keyRange?.start, this._query.keyRange?.end];
+            const currentHasExistingEdges = this._pivots.some(p => itemKeys.includes(p.itemKey));
+            const newHasExistingEdges = pivots.some(p => itemKeys.includes(p.itemKey));
+            if (currentHasExistingEdges && !newHasExistingEdges) {
+                // keep existing edge pivots and schedule update for pivots
+                const edgePivots = this._pivots.filter(p => itemKeys.includes(p.itemKey));
+                pivots.push(...edgePivots);
+                this._pivots = pivots;
+                fastRaf(() => {
+                    void this.updateCurrentPivots();
+                });
+            }
+            else {
+                this._pivots = pivots;
+            }
         }
 
         this.updateViewportThrottled();
@@ -630,12 +657,14 @@ export class VirtualList {
         if (rs.renderIndex === -1)
             return;
 
+        await fastReadRaf();
+
         const prevViewportSize = this._viewport?.size ?? Number.MAX_SAFE_INTEGER;
         const rangeStarts = new Array<number>();
         const rangeEnds = new Array<number>();
-        const visibleItems = this._visibleItems.size > 0
-            ? this._visibleItems
-            : new Array(1).fill(this._lastVisibleItem);
+        if (this._visibleItems.size == 0)
+            await this.ensureVisibleItemsAreValid();
+        const visibleItems = this._visibleItems;
         for (const key of visibleItems.values()) {
             const item = this._items.get(key);
             if (!item) {
@@ -646,6 +675,10 @@ export class VirtualList {
                 rangeStarts.push(item.range.start);
                 rangeEnds.push(item.range.end);
             }
+            else {
+                if (this.ensureItemRangeCalculated(false))
+                    return await this.updateViewport();
+            }
         }
 
         let viewport: NumberRange | null = (!this.fullRange || rangeStarts.length === 0)
@@ -654,13 +687,12 @@ export class VirtualList {
 
         if (viewport && viewport.size > prevViewportSize + MinViewPortSize) {
             // probably we have invalid visible items that provide wrong viewport size
-            void this.validateVisibleItems();
+            void this.ensureVisibleItemsAreValid();
             viewport = null;
         }
 
         if (!viewport && this.fullRange) {
             // fallback viewport calculation
-            await fastReadRaf();
             const viewportHeight = this._ref.clientHeight - this._endAnchorRef.getBoundingClientRect().height;
             const scrollHeight = this._ref.scrollHeight;
             const scrollTop = this._ref.scrollTop + scrollHeight - viewportHeight;
@@ -676,8 +708,9 @@ export class VirtualList {
 
         // update item range
         const isViewportUnknown = viewport == null;
-        if (!this.ensureItemRangeCalculated(isViewportUnknown) && !this._itemRange)
+        if (!this.ensureItemRangeCalculated(isViewportUnknown) && !this._itemRange) {
             this.updateViewportThrottled();
+        }
         else if (isViewportUnknown)
             await this.updateViewport();
         else {
@@ -698,7 +731,8 @@ export class VirtualList {
         if (this._isDisposed)
             return;
 
-        await this.validateVisibleItems();
+        await fastReadRaf();
+        await this.ensureVisibleItemsAreValid();
         const visibleItems = [...this._visibleItems].sort(this._keySortCollator.compare);
         debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, this._isEndAnchorVisible);
         await this._blazorRef.invokeMethodAsync('UpdateItemVisibility', this._identity, visibleItems, this._isEndAnchorVisible);
@@ -805,6 +839,9 @@ export class VirtualList {
 
         const itemKeys = [this._query.keyRange.start, this._query.keyRange.end];
         for (let itemKey of itemKeys) {
+            if (pivots.some(p => p.itemKey === itemKey))
+                continue;
+
             const pivotRef = this.getItemRef(itemKey);
             if (!pivotRef)
                 continue;
@@ -959,7 +996,7 @@ export class VirtualList {
                 const itemRect = pivotRef.getBoundingClientRect();
                 const currentPivotOffset = itemRect.top;
                 const dPivotOffset = pivotOffset - currentPivotOffset;
-                scrollTop = this._ref.scrollTop
+                scrollTop = this._ref.scrollTop;
                 if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
                     debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${itemRect.top} + ${dPivotOffset}`, pivot);
                     scrollTop -= dPivotOffset;
@@ -1078,7 +1115,7 @@ export class VirtualList {
 
         // debug helper
         // await delayAsync(50);
-        debugLog?.log(`requestData: query:`, this._query, [...this._pivots]);
+        debugLog?.log(`requestData: query:`, this._query, [...this._pivots], this._viewport, this._viewport.size);
         this._lastQueryTime = Date.now();
         await this._blazorRef.invokeMethodAsync('RequestData', this._query);
         this._lastQuery = this._query;
@@ -1120,7 +1157,8 @@ export class VirtualList {
         if (!viewport || !alreadyLoaded)
             return this._lastQuery;
 
-        const loadZoneSize = viewport.size * 3;
+        // keep mandatory load zone small - we will extend it during the expandStartBy/expandEndBy calculation
+        const loadZoneSize = viewport.size;
         let loadStart = viewport.start - loadZoneSize;
         if (loadStart < alreadyLoaded.start && rs.hasVeryFirstItem)
             loadStart = alreadyLoaded.start;
@@ -1200,8 +1238,8 @@ export class VirtualList {
         const keyRange = new Range(firstItem.key, lastItem.key);
         const virtualRange = new NumberRange(firstItem.range.start - startGap, lastItem.range.end + endGap);
         const query = new VirtualListDataQuery(keyRange, virtualRange);
-        query.expandStartBy = Math.ceil(expandStartBy / responseFulfillmentRatio);
-        query.expandEndBy = Math.ceil(expandEndBy / responseFulfillmentRatio);
+        query.expandStartBy = clamp(Math.ceil(expandStartBy / responseFulfillmentRatio) * 3, 0, MaxExpandBy);
+        query.expandEndBy = clamp(Math.ceil(expandEndBy / responseFulfillmentRatio) * 3, 0, MaxExpandBy);
 
         return query;
     }
@@ -1219,4 +1257,24 @@ function getItemCountAs(itemRef?: HTMLElement): number {
 
     const sCountAs = itemRef.dataset['countAs'];
     return sCountAs == null ? 1 : parseInt(sCountAs);
+}
+
+/**
+ * Return 0 <= i <= array.length such that !pred(array[i - 1]) && pred(array[i]).
+ */
+function binarySearch<T>(array: T[], pred: (item: T) => boolean): number {
+    let low = -1;
+    let high = array.length;
+    while (1 + low < high) {
+        const mid = low + ((high - low) >> 1);
+        if (pred(array[mid])) {
+            high = mid;
+        } else {
+            low = mid;
+        }
+    }
+    if (high == array.length)
+        return -1;
+
+    return high;
 }
