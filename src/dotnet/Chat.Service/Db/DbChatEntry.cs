@@ -66,6 +66,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Content { get; set; } = "";
     public bool HasAttachments { get; set; }
     public bool HasReactions { get; set; }
+    public string LinkPreviewId { get; set; } = "";
+    public LinkPreviewMode LinkPreviewMode { get; set; }
     public string? StreamId { get; set; }
 
     public long? AudioEntryId { get; set; }
@@ -96,6 +98,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ForwardedChatEntryId = new ChatEntryId(ForwardedChatEntryId),
             ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt,
             Attachments = attachments?.ToApiArray() ?? default,
+            LinkPreviewId = LinkPreviewId,
+            LinkPreviewMode = LinkPreviewMode,
 #pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null
@@ -137,6 +141,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ForwardedChatEntryBeginsAt = model.ForwardedChatEntryBeginsAt;
         Content = model.SystemEntry != null ? SystemEntrySerializer.Write(model.SystemEntry) : model.Content;
         IsSystemEntry = model.SystemEntry != null;
+        LinkPreviewId = model.LinkPreviewId;
+        LinkPreviewMode = model.LinkPreviewMode;
 #pragma warning disable IL2026
         TimeMap = !model.TimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TimeMap)

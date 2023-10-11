@@ -130,6 +130,11 @@ public static partial class StringExt
     public static string HtmlEncode(this Symbol input)
         => HtmlEncoder.Default.Encode(input);
 
+    public static string HtmlDecode(this string input)
+        => WebUtility.HtmlDecode(input);
+    public static string HtmlDecode(this Symbol input)
+        => WebUtility.HtmlDecode(input);
+
     // ParseXxx
 
     public static (string Host, ushort Port) ParseHostPort(this string hostPort, ushort defaultPort)

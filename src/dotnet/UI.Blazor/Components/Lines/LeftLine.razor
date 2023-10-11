@@ -1,3 +1,9 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="left-line"><div>&nbsp;</div></div>
+<div class="left-line">
+    <div class="@Width">&nbsp;</div>
+</div>
+
+@code {
+    [Parameter] public string Width { get; set; } = "w-0.75";
+}

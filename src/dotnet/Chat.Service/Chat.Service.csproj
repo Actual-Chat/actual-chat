@@ -17,6 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FFMpegCore" />
+    <PackageReference Include="OpenGraph-Net" />
     <PackageReference Include="SixLabors.ImageSharp" />
   </ItemGroup>
 

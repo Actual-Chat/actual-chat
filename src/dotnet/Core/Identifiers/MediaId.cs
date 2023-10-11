@@ -43,7 +43,9 @@ public readonly partial struct MediaId : ISymbolIdentifier<MediaId>
     public MediaId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
     public MediaId(string scope, Generate _)
-        => this = new MediaId($"{scope}{Separator}{IdGenerator.Next()}");
+        => this = new MediaId(Format(scope, IdGenerator.Next()));
+    public MediaId(string scope, string localId)
+        => this = new MediaId(Format(scope, localId));
 
     public MediaId(Symbol id, string scope, string localId, AssumeValid _)
     {
@@ -70,6 +72,9 @@ public readonly partial struct MediaId : ISymbolIdentifier<MediaId>
     public static bool operator !=(MediaId left, MediaId right) => !left.Equals(right);
 
     // Parsing
+    private static string Format(string scope, string localId)
+        => $"{scope}{Separator}{localId}";
+
     public static MediaId Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<MediaId>(s);
     public static MediaId ParseOrNone(string? s)

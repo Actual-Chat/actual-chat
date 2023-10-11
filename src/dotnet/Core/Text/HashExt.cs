@@ -17,6 +17,12 @@ public static class HashExt
     public static string GetSHA256HashCode(this string input, HashEncoding encoding = HashEncoding.Base16)
     {
         var inputBytes = Encoding.UTF8.GetBytes(input);
+        return inputBytes.GetSHA256HashCode(encoding);
+    }
+
+    // ReSharper disable once InconsistentNaming
+    public static string GetSHA256HashCode(this byte[] inputBytes, HashEncoding encoding = HashEncoding.Base16)
+    {
         var hashBytes = System.Security.Cryptography.SHA256.HashData(inputBytes);
         return hashBytes.EncodeHash(encoding);
     }

@@ -3,6 +3,7 @@ using System;
 using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ActualChat.Chat.Migrations
 {
     [DbContext(typeof(ChatDbContext))]
-    partial class ChatDbContextModelSnapshot : ModelSnapshot
+    [Migration("20231009204407_LinkPreview")]
+    partial class LinkPreview
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -252,10 +255,6 @@ namespace ActualChat.Chat.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("link_preview_id");
-
-                    b.Property<int>("LinkPreviewMode")
-                        .HasColumnType("integer")
-                        .HasColumnName("link_preview_mode");
 
                     b.Property<long>("LocalId")
                         .HasColumnType("bigint")
