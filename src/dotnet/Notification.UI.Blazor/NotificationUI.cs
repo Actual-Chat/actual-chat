@@ -10,6 +10,8 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     private static readonly string JSInitMethod = $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init";
     private static readonly string JSRegisterRequestNotificationHandlerMethod =
         $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler";
+    private static readonly string JSUnregisterRequestNotificationHandlerMethod =
+        $"{NotificationBlazorUIModule.ImportName}.NotificationUI.unregisterRequestNotificationHandler";
 
     private readonly IMutableState<PermissionState> _permissionState;
     private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();
@@ -60,6 +62,12 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     {
         if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp)
             await JS.InvokeVoidAsync(JSRegisterRequestNotificationHandlerMethod, reference).ConfigureAwait(false);
+    }
+
+    public async ValueTask UnregisterRequestNotificationHandler(ElementReference reference)
+    {
+        if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp)
+            await JS.InvokeVoidAsync(JSUnregisterRequestNotificationHandlerMethod, reference).ConfigureAwait(false);
     }
 
     public async Task<PermissionState> GetPermissionState(CancellationToken cancellationToken)

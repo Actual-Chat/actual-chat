@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Audio.UI.Blazor.Components
+@using ActualChat.Notification.UI.Blazor
 @inherits Step;
 
 @if (CurrentStep != this) {
@@ -52,44 +53,63 @@
 
 @code {
     private readonly SetChatsStepModel _stepModel = new();
+    private bool _isHandlerRegistered = false;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
+    [Inject] private NotificationUI NotificationUI { get; init; } = null!;
+    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
+
+    [Parameter, EditorRequired] public ForwardRef NextButtonRef { get; init; } = null!;
 
     public override bool IsCompleted => OnboardingUI.Settings.Value.IsPermissionsStepCompleted;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (CurrentStep == this) {
+            if (!_isHandlerRegistered) {
+                await NotificationUI.RegisterRequestNotificationHandler(NextButtonRef.Current);
+                _isHandlerRegistered = true;
+            }
+        } else {
+            if (_isHandlerRegistered) {
+                await NotificationUI.UnregisterRequestNotificationHandler(NextButtonRef.Current);
+                _isHandlerRegistered = false;
+            }
+        }
+    }
 
     protected override void MarkCompleted()
         => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsPermissionsStepCompleted = true });
 
-    protected override Task<bool> Validate() {
-        return Task.FromResult(true);
-    }
+    protected override Task<bool> Validate()
+        => Task.FromResult(true);
 
     protected override async Task<bool> Save() {
         if (_stepModel.RequestMicrophonePermissions) {
-            var isMicAccessGranted = await AudioRecorder.MicrophonePermission.CheckOrRequest();
-            if (!isMicAccessGranted)
-                return false;
+            AudioRecorder.MicrophonePermission.CheckOrRequest().SilentAwait();
         }
 
-        if (_stepModel.RequestNotificationsPermissions)
-            await RequestNotificationsPermissions();
+        if (_stepModel.RequestNotificationsPermissions) {
+            await NotificationPermissions.RequestNotificationPermission(default);
+        }
 
         return true;
-    }
-
-    private async Task RequestNotificationsPermissions() {
-
     }
 
     private void OnMicrophonePermissionClick()
         => _stepModel.RequestMicrophonePermissions = !_stepModel.RequestMicrophonePermissions;
 
-    private void OnNotificationsPermissionClick()
-        => _stepModel.RequestNotificationsPermissions = !_stepModel.RequestNotificationsPermissions;
+    private async Task OnNotificationsPermissionClick() {
+        _stepModel.RequestNotificationsPermissions = !_stepModel.RequestNotificationsPermissions;
+        if (_stepModel.RequestNotificationsPermissions) {
+            await NotificationUI.RegisterRequestNotificationHandler(NextButtonRef.Current);
+        } else {
+            await NotificationUI.UnregisterRequestNotificationHandler(NextButtonRef.Current);
+        }
+    }
 
     public class SetChatsStepModel {
         public bool RequestMicrophonePermissions { get; set; } = true;
