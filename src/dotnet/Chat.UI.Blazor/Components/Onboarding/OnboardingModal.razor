@@ -18,7 +18,7 @@
                 <PhoneStep Account="account"/>
                 <EmailStep Account="account"/>
                 <AvatarStep/>
-                <PermissionsStep/>
+                <PermissionsStep NextButtonRef="@_nextButtonRef"/>
                 <SetChatsStep/>
             </Steps>
             <Header>
@@ -46,6 +46,7 @@
                     }
                     <Button
                         Class="btn-primary"
+                        RefBack="@_nextButtonRef"
                         Click="() => OnMoveForwardClick(stepper)">
                         @if (stepper.CanSkip) {
                             <span>Verify</span>
@@ -71,6 +72,8 @@
 </DialogFrame>
 
 @code {
+    private readonly ForwardRef _nextButtonRef = new();
+
     [Inject] private AccountUI AccountUI { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;

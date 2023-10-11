@@ -78,9 +78,11 @@ export class NotificationUI {
     }
 
     public static async registerRequestNotificationHandler(buttonContainer: HTMLElement): Promise<void> {
-        buttonContainer.addEventListener('click', async () => {
-            await this.requestNotificationPermission();
-        });
+        buttonContainer.addEventListener('click', this.requestNotificationPermission);
+    }
+
+    public static async unregisterRequestNotificationHandler(buttonContainer: HTMLElement): Promise<void> {
+        buttonContainer.removeEventListener('click', this.requestNotificationPermission);
     }
 
     public static async requestNotificationPermission(): Promise<boolean> {
