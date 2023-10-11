@@ -200,14 +200,11 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 return await CrawlImageLink(url, cancellationToken).ConfigureAwait(false);
 
             // TODO: support more cases
-
-            return LinkMeta.None;
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             Log.LogDebug(e, "Failed to crawl link {url}", url);
-            throw;
         }
+        return LinkMeta.None;
     }
 
     private async Task<LinkMeta> CrawlWebSite(string url, CancellationToken cancellationToken)
