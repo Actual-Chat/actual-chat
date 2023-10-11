@@ -91,7 +91,7 @@
             var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken).ConfigureAwait(false);
             userChatSettings = userChatSettings with {
                 NotificationMode = isMuted ? ChatNotificationMode.Muted : ChatNotificationMode.Default,
-                };
+            };
             await AccountSettings.SetUserChatSettings(Chat.Id, userChatSettings, cancellationToken).ConfigureAwait(false);
         });
 

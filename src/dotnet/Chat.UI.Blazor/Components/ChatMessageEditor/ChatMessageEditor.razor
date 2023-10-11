@@ -198,7 +198,6 @@
                     Attachments = attachmentListSnapshot.Attachments,
                 };
             }
-
             var chatEntry = await UICommander.Run(cmd, CancellationToken.None);
             var readEntryLid = chatEntry.Value.LocalId;
 

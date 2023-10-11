@@ -85,9 +85,8 @@
     private async Task UpdateTotp()
     {
         var (expiresAt, error) = await UICommander.Run(new PhoneAuth_SendTotp(Session, new Phone(Phone), Purpose));
-        if (error != null) {
+        if (error != null)
             return;
-        }
 
         _totpExpiresAt = expiresAt;
     }
