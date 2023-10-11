@@ -23,9 +23,8 @@ const IronPantsHandlePeriod: number = 1600;
 const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
-const MaxExpandBy: number = 160;
+const MaxExpandBy: number = 120;
 const ScrollDebounce: number = 200;
-const RemoveOldItemsDebounce: number = 500;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
 const UpdateTimeout: number = 800;
@@ -59,7 +58,6 @@ export class VirtualList {
 
     private _isDisposed = false;
     private _stickyEdge: Required<VirtualListStickyEdgeState> | null = null;
-    private _whenRenderCompleted: PromiseSource<void> | null = null;
     private _whenUpdateCompleted: PromiseSource<void> | null = null;
     private _pivots: Pivot[] = [];
     private _oldPivots: Pivot[][] = [];
@@ -141,14 +139,14 @@ export class VirtualList {
                 // Extend visibility outside of the viewport.
                 rootMargin: `100px`,
                 // Receive callback on any intersection change, even 1 percent.
-                threshold: visibilityThresholds,
+                threshold: 0, // any change of intersection
             });
         this._skeletonObserver0 = new IntersectionObserver(
             this.onSkeletonVisibilityChange,
             {
                 root: this._ref,
                 rootMargin: `-5px`,
-                threshold: visibilityThresholds,
+                threshold: 0, // any change of intersection
             });
         this._skeletonObserver1 = new IntersectionObserver(
             this.onSkeletonVisibilityChange,
@@ -156,7 +154,7 @@ export class VirtualList {
                 root: this._ref,
                 // Extend visibility outside of the viewport
                 rootMargin: `${SkeletonDetectionBoundary}px`,
-                threshold: visibilityThresholds,
+                threshold: 0, // any change of intersection
             });
 
         this._ironPantsIntervalHandle = self.setInterval(this.onIronPantsHandle, IronPantsHandlePeriod);
@@ -208,7 +206,6 @@ export class VirtualList {
         this._visibilityObserver.disconnect();
         this._scrollPivotObserver.disconnect();
         this._sizeObserver.disconnect();
-        this._whenRenderCompleted?.resolve(undefined);
         this._whenUpdateCompleted?.resolve(undefined);
         clearInterval(this._ironPantsIntervalHandle);
         this._ref.removeEventListener('scroll', this.onScroll);
@@ -249,8 +246,6 @@ export class VirtualList {
 
         // request recalculation of the item range as we've got new items
         this._shouldRecalculateItemRange = true;
-        this._whenRenderCompleted?.resolve(undefined);
-        this._whenRenderCompleted = new PromiseSource<void>();
 
         // let isNodesAdded = mutations.length == 0; // first render
         for (const mutation of mutations) {
@@ -274,12 +269,6 @@ export class VirtualList {
                 if (!key)
                     continue;
 
-                if (this._items.has(key)) {
-                    const item = this._items.get(key);
-                    item.isOld = false;
-                    continue;
-                }
-
                 const newItem = this.createListItem(key, itemRef);
                 this._items.set(key, newItem);
             }
@@ -294,6 +283,7 @@ export class VirtualList {
         else {
             this._isRendering = false;
             this._renderStartedAt = null;
+            this._whenUpdateCompleted?.resolve(undefined);
         }
     };
 
@@ -345,7 +335,7 @@ export class VirtualList {
                 }
                 continue;
             }
-            if (entry.intersectionRatio <= 0.2 && !entry.isIntersecting) {
+            if (!entry.isIntersecting) {
                 hasChanged ||= this._visibleItems.has(key);
                 this._visibleItems.delete(key);
             }
@@ -384,13 +374,30 @@ export class VirtualList {
         }
     };
 
+    private async validateVisibleItems(): Promise<void> {
+        await fastReadRaf();
+
+        const visibleItems = [...this._visibleItems];
+        for (const itemKey of visibleItems) {
+            const itemRef = this.getItemRef(itemKey);
+            if (!itemRef) {
+                this._visibleItems.delete(itemKey);
+                continue;
+            }
+
+            const isItemVisible = this.isItemPartiallyVisible(itemRef);
+            if (!isItemVisible)
+                this._visibleItems.delete(itemKey);
+        }
+    }
+
     private onScrollPivotVisibilityChange = (entries: IntersectionObserverEntry[], _observer: IntersectionObserver): void => {
         if (this._isRendering)
             return;
 
         const time = Date.now();
         // get most recent measurement results
-        const condidates = entries
+        const candidates = entries
             .sort((l, r) => r.time - l.time)
             .map((entry): Pivot => ({
                 itemKey: getItemKey(entry.target as HTMLElement),
@@ -398,7 +405,7 @@ export class VirtualList {
                 time,
             }));
 
-        const matchedJumps = condidates
+        const matchedJumps = candidates
             .map(p1 => ({p1, p2: this._pivots.find(p2 => p2.itemKey === p1.itemKey)}))
             .filter(x => x.p2)
             .filter(x => Math.abs(x.p1.offset - x.p2.offset) > (this._viewport?.size ?? MinViewPortSize) * 2) // location of the same item has changed significantly
@@ -412,17 +419,17 @@ export class VirtualList {
             return;
         }
         // keep 10 pivots to simplify calculation further
-        const firstClassPivots = condidates
+        const firstClassPivots = candidates
             .filter(p => Math.abs(p.offset) < this._viewport?.size ?? MinViewPortSize) // take pivots close to the viewport
             .sort((l, r) => Math.abs(l.offset) - Math.abs(r.offset))
             .slice(0, 10);
 
-        const businessClassPivots = condidates
+        const businessClassPivots = candidates
             .filter(p => Math.abs(p.offset) < (this._viewport?.size ?? MinViewPortSize) * 2) // take pivots close to the viewport
             .sort((l, r) => Math.abs(l.offset) - Math.abs(r.offset))
             .slice(0, 10);
 
-        const economyClassPivots = condidates
+        const economyClassPivots = candidates
             .sort((l, r) => Math.abs(l.offset) - Math.abs(r.offset))
             .slice(0, 10);
 
@@ -604,7 +611,6 @@ export class VirtualList {
         } finally {
             this._isRendering = false;
             this._renderStartedAt = null;
-            this._whenRenderCompleted?.resolve(undefined);
             this._whenUpdateCompleted?.resolve(undefined);
 
             // trigger update only for first render to load data if needed
@@ -614,8 +620,8 @@ export class VirtualList {
         }
     }
 
-    private readonly updateViewportThrottled = throttle((canContract?: boolean) => this.updateViewport(canContract), UpdateViewportInterval, 'default', 'updateViewport');
-    private async updateViewport(canContract?: boolean): Promise<void> {
+    private readonly updateViewportThrottled = throttle(this.updateViewport, UpdateViewportInterval, 'default', 'updateViewport');
+    private async updateViewport(): Promise<void> {
         const rs = this._renderState;
         if (this._isDisposed || this._isRendering)
             return;
@@ -624,6 +630,7 @@ export class VirtualList {
         if (rs.renderIndex === -1)
             return;
 
+        const prevViewportSize = this._viewport?.size ?? Number.MAX_SAFE_INTEGER;
         const rangeStarts = new Array<number>();
         const rangeEnds = new Array<number>();
         const visibleItems = this._visibleItems.size > 0
@@ -644,6 +651,12 @@ export class VirtualList {
         let viewport: NumberRange | null = (!this.fullRange || rangeStarts.length === 0)
             ? null
             : new NumberRange(Math.min(...rangeStarts), Math.max(...rangeEnds));
+
+        if (viewport && viewport.size > prevViewportSize + MinViewPortSize) {
+            // probably we have invalid visible items that provide wrong viewport size
+            void this.validateVisibleItems();
+            viewport = null;
+        }
 
         if (!viewport && this.fullRange) {
             // fallback viewport calculation
@@ -676,7 +689,7 @@ export class VirtualList {
             }
 
             this._viewport = viewport;
-            await this.requestData(canContract);
+            await this.requestData();
         }
     }
 
@@ -685,6 +698,7 @@ export class VirtualList {
         if (this._isDisposed)
             return;
 
+        await this.validateVisibleItems();
         const visibleItems = [...this._visibleItems].sort(this._keySortCollator.compare);
         debugLog?.log(`updateVisibleKeys: calling UpdateItemVisibility:`, visibleItems, this._isEndAnchorVisible);
         await this._blazorRef.invokeMethodAsync('UpdateItemVisibility', this._identity, visibleItems, this._isEndAnchorVisible);
@@ -745,20 +759,21 @@ export class VirtualList {
     private onScroll = (): void => {
         this._isScrolling = true;
         this.turnOffIsScrollingDebounced();
-        this.requestOldItemsRemovalDebounced.reset();
 
         // large messages is being displayed and probably can have outdated pivot offset
         // let's update offset
-        if (this._pivots.length <= 2) {
+        if (this._isRendering)
+            return;
+
+        const updateIsInProgress = this._whenUpdateCompleted && !this._whenUpdateCompleted.isCompleted();
+        if (this._pivots.length <= 2 || updateIsInProgress) {
+            // update pivots if there are no pivots or there are few or we just have requested new update and we are waiting for render
             fastRaf(() => {
                 if (this._isRendering)
                     return;
 
-                // double-check as pivots might be recalculated already
-                if (this._pivots.length <= 2) {
-                    this.updateCurrentPivots();
-                    this.updateViewportThrottled();
-                }
+                this.updateCurrentPivots();
+                this.updateViewportThrottled();
             }, 'pivotRecalculate');
         }
     };
@@ -821,52 +836,7 @@ export class VirtualList {
         if (this._isRendering || this._isDisposed)
             return;
 
-        if (!this.markItemsForRemoval())
-            this.updateViewportThrottled();
-    }
-
-    private markItemsForRemoval(): boolean {
-        let hasOldItems = false;
-        const viewport = this._viewport;
-        const itemRange = this._itemRange;
-        if (!viewport || !itemRange)
-            return false;
-
-        const loadZoneSize = viewport.size;
-        let bufferZoneSize = loadZoneSize * 2;
-        const bufferZone = new NumberRange(
-            viewport.start - bufferZoneSize,
-            viewport.end + bufferZoneSize);
-
-        const oldItemsRange = new NumberRange(bufferZone.end, itemRange.end);
-        if (oldItemsRange.size <=0)
-            return false;
-
-        const items = this._orderedItems;
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            if (!item.range)
-                continue;
-
-            if (item.range.intersectWith(oldItemsRange).size > 0) {
-                item.isOld = true;
-                hasOldItems = true;
-            }
-        }
-        if (hasOldItems) {
-            this.requestOldItemsRemovalDebounced();
-            return true;
-        }
-        return false;
-    }
-
-    private requestOldItemsRemovalDebounced = debounce(() => this.requestOldItemsRemoval(), RemoveOldItemsDebounce);
-    private async requestOldItemsRemoval(): Promise<void> {
-        const items = this._orderedItems;
-        const oldCount = items.reduceRight((prev, item) => (!!item.isOld ? 1 : 0) + prev, 0);
-        const removeOldItems = oldCount > 20;
-
-        this.updateViewportThrottled(removeOldItems);
+        this.updateViewportThrottled();
     }
 
     private getAllItemRefs(): HTMLLIElement[] {
@@ -1077,12 +1047,12 @@ export class VirtualList {
         return true;
     }
 
-    private async requestData(canContract: boolean = false): Promise<void> {
+    private async requestData(): Promise<void> {
         if (this._isRendering || !this._viewport || !this._itemRange)
             return;
 
-        const query = this.getDataQuery(canContract);
-        if (!this.mustRequestData(query, canContract)) {
+        const query = this.getDataQuery();
+        if (!this.mustRequestData(query)) {
             debugLog?.log(`requestData: request is unnecessary`);
             return;
         }
@@ -1103,35 +1073,8 @@ export class VirtualList {
         });
         this._whenUpdateCompleted = newWhenUpdateCompleted;
 
-        if (canContract) {
-            const items = this._orderedItems;
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                item.isOld = false;
-            }
-        }
-
         await fastReadRaf();
-        const pivotRefs = new Array<HTMLElement>();
-        this.updateCurrentPivots(pr => {
-            if (!pr.classList.contains('pivot'))
-                pivotRefs.push(pr);
-        })
-
-        // set native pivot class for visible items
-        for (const itemKey of this._visibleItems) {
-            const pivotRef = this.getItemRef(itemKey);
-            if (!pivotRef)
-                continue;
-
-            // to use browser native scroll pivots
-            if (!pivotRef.classList.contains('pivot'))
-                pivotRefs.push(pivotRef);
-        }
-
-        await fastWriteRaf();
-        for (const pivotRef of pivotRefs)
-            pivotRef.classList.add('pivot');
+        this.updateCurrentPivots();
 
         // debug helper
         // await delayAsync(50);
@@ -1141,7 +1084,7 @@ export class VirtualList {
         this._lastQuery = this._query;
     }
 
-    private mustRequestData(query: VirtualListDataQuery, canContract: boolean): boolean
+    private mustRequestData(query: VirtualListDataQuery): boolean
     {
         const itemRange = this._itemRange;
         const queryRange = query.virtualRange;
@@ -1164,11 +1107,11 @@ export class VirtualList {
             || queryRange.end - commonRange.end > viewportSize
             || this._isNearSkeleton && (commonRange.start > queryRange.start || queryRange.end > commonRange.end);
         // NOTE(AY): The condition below checks just one side
-        const mustContract = itemRange.end - commonRange.end > viewportSize;
-        return mustExpand || (canContract && mustContract);
+        const mustContract = itemRange.end - commonRange.end > viewportSize * 2;
+        return mustExpand || mustContract;
     }
 
-    private getDataQuery(canContract: boolean): VirtualListDataQuery {
+    private getDataQuery(): VirtualListDataQuery {
         const rs = this._renderState;
         const itemSize = this._statistics.itemSize;
         const responseFulfillmentRatio = this._statistics.responseFulfillmentRatio;
@@ -1177,14 +1120,14 @@ export class VirtualList {
         if (!viewport || !alreadyLoaded)
             return this._lastQuery;
 
-        const loadZoneSize = viewport.size * 4;
+        const loadZoneSize = viewport.size * 3;
         let loadStart = viewport.start - loadZoneSize;
         if (loadStart < alreadyLoaded.start && rs.hasVeryFirstItem)
             loadStart = alreadyLoaded.start;
         let loadEnd = viewport.end + loadZoneSize;
         if (loadEnd > alreadyLoaded.end && rs.hasVeryLastItem)
             loadEnd = alreadyLoaded.end;
-        let bufferZoneSize = loadZoneSize * 3;
+        let bufferZoneSize = loadZoneSize + viewport.size;
         const loadZone = new NumberRange(loadStart, loadEnd);
         const bufferZone = new NumberRange(
             viewport.start - bufferZoneSize,
@@ -1192,9 +1135,11 @@ export class VirtualList {
 
         if (this.hasUnmeasuredItems) // Let's wait for measurement to complete first
             return this._lastQuery;
+
         if (this._items.size == 0) // No entries -> nothing to "align" the query to
             return this._lastQuery;
-        if (!canContract && alreadyLoaded.contains(loadZone)) {
+
+        if (alreadyLoaded.contains(loadZone)) {
             // debug helper
             // console.warn('already!', viewport, alreadyLoaded, loadZone);
             return this._lastQuery;
@@ -1207,15 +1152,13 @@ export class VirtualList {
             const item = items[i];
             if(!item.isChatEntry)
                 continue;
+
             if (item.isMeasured && item.range.intersectWith(bufferZone).size > 0) {
                 endIndex = i;
                 if (startIndex < 0)
                     startIndex = i;
-            } else if (startIndex >= 0) {
-                if (canContract && item.isOld)
-                    break;
-                endIndex = i;
-            }
+            } else if (startIndex >= 0)
+                break;
         }
         if (startIndex < 0) {
             // No items inside the bufferZone, so we'll take at least 2 of the viewport of existing items

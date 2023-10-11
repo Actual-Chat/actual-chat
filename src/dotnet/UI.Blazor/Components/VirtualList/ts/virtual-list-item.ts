@@ -9,7 +9,6 @@ export class VirtualListItem {
 
     public range?: NumberRange;
     public size?: number;
-    public isOld?: boolean;
 
     get isMeasured(): boolean {
         return (this.size ?? -1) >= 0 && this.range != null;
