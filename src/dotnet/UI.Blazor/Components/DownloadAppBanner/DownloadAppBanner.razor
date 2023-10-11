@@ -3,13 +3,15 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
 @inherits ComputedStateComponent<bool>
-
-@if (HostInfo.AppKind == AppKind.MauiApp) {
-    return;
-}
-
-@if (!State.Value) {
-    return;
+@{
+    if (!State.Value)
+        return;
+    if (HostInfo.AppKind == AppKind.MauiApp) {
+        if (HostInfo.ClientKind.IsMobile())
+            return;
+        if (CanBeClosed)
+            return;
+    }
 }
 
 <div class="download-app-banner">
@@ -17,7 +19,7 @@
         class="download-app-banner-button"
         @onclick="@OnDownload">
         <div class="download-app-banner-title">
-            Download App
+            Get Actual Chat App
         </div>
         <i class="icon-download"></i>
         @if (CanBeClosed) {
