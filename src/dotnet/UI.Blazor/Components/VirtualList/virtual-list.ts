@@ -946,11 +946,15 @@ export class VirtualList {
         debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef));
         this._inertialScroll.interrupt();
         this._scrollTime = Date.now();
-        itemRef?.scrollIntoView({
-            behavior: useSmoothScroll ? 'smooth' : 'auto',
-            block: blockPosition,
-            inline: 'nearest',
-        });
+        if (itemRef) {
+            const authorBadge = itemRef.querySelector('div.c-author-badge');
+            const navigateTarget = authorBadge ?? itemRef;
+            navigateTarget.scrollIntoView({
+                behavior: useSmoothScroll ? 'smooth' : 'auto',
+                block: blockPosition,
+                inline: 'nearest',
+            });
+        }
     }
 
     private scrollToEnd(
