@@ -1,4 +1,4 @@
-namespace ActualChat.Chat;
+namespace ActualChat.Uploads;
 
 public class ImageUploadProcessor : IUploadProcessor
 {

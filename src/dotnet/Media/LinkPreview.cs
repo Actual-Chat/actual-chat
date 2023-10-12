@@ -1,7 +1,7 @@
 using MemoryPack;
 using Stl.Fusion.Blazor;
 
-namespace ActualChat.Chat;
+namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -16,9 +16,23 @@ public sealed partial record LinkPreview : IHasId<Symbol>, IRequirementTarget
     [DataMember, MemoryPackOrder(4)] public string Description { get; init; } = "";
     [DataMember, MemoryPackOrder(5)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(6)] public Moment ModifiedAt { get; init; }
-    [DataMember, MemoryPackOrder(7)] public Media.Media? PreviewMedia { get; init; } // populated only on reads
+    [DataMember, MemoryPackOrder(7)] public Media? PreviewMedia { get; init; } // populated only on reads
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsEmpty => PreviewMediaId.IsNone && Title.IsNullOrEmpty() && Description.IsNullOrEmpty();
+    public bool IsEmpty => FilledParts == LinkPreviewParts.None;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public LinkPreviewParts FilledParts {
+        get {
+            var result = LinkPreviewParts.None;
+            if (!Title.IsNullOrEmpty())
+                result |= LinkPreviewParts.Title;
+            if (!Description.IsNullOrEmpty())
+                result |= LinkPreviewParts.Description;
+            if (!PreviewMediaId.IsNone)
+                result |= LinkPreviewParts.Image;
+            return result;
+        }
+    }
 
     public static Symbol ComposeId(string url)
         => url.GetSHA256HashCode(HashEncoding.AlphaNumeric);

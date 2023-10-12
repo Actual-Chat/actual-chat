@@ -19,6 +19,5 @@ public sealed class ChatClientModule : HostModule
         fusion.AddClient<IRoles>();
         fusion.AddClient<IMentions>();
         fusion.AddClient<IReactions>();
-        fusion.AddClient<ILinkPreviews>();
     }
 }

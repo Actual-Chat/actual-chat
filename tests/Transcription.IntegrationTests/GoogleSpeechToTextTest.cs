@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using ActualChat.Audio;
 using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
@@ -48,7 +47,7 @@ public class GoogleSpeechToTextTest : TestBase
         }
 
         var builder = new SpeechClientBuilder();
-        var speechClient = await builder.BuildAsync().ConfigureAwait(false);
+        var speechClient = await builder.BuildAsync();
         var recognizeRequests = speechClient
             .StreamingRecognize(
                 // CallSettings.FromCancellationToken(CancellationToken.None),
@@ -69,7 +68,7 @@ public class GoogleSpeechToTextTest : TestBase
         await recognizeRequests.WriteAsync(new StreamingRecognizeRequest {
             StreamingConfig = streamingRecognitionConfig,
             Recognizer = recognizer,
-        }).ConfigureAwait(false);
+        });
         await using var recognizeResponses = recognizeRequests.GetResponseStream();
         await Task.Delay(500);
         // await Task.Delay(20000);

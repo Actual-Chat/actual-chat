@@ -15,10 +15,5 @@
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="FFMpegCore" />
-    <PackageReference Include="OpenGraph-Net" />
-    <PackageReference Include="SixLabors.ImageSharp" />
-  </ItemGroup>
 
 </Project>

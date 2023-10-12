@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Feedback.Contracts\Feedback.Contracts.csproj" />
     <ProjectReference Include="..\Invite.Contracts\Invite.Contracts.csproj" />
+    <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\Notification.Contracts\Notification.Contracts.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>

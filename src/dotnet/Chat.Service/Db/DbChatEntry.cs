@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Stl.Versioning;
@@ -68,6 +69,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool HasReactions { get; set; }
     public string LinkPreviewId { get; set; } = "";
     public LinkPreviewMode LinkPreviewMode { get; set; }
+    public LinkPreviewParts LinkPreviewFilledParts { get; set; }
     public string? StreamId { get; set; }
 
     public long? AudioEntryId { get; set; }
@@ -100,6 +102,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Attachments = attachments?.ToApiArray() ?? default,
             LinkPreviewId = LinkPreviewId,
             LinkPreviewMode = LinkPreviewMode,
+            LinkPreviewFilledParts = LinkPreviewFilledParts,
 #pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null
@@ -143,6 +146,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsSystemEntry = model.SystemEntry != null;
         LinkPreviewId = model.LinkPreviewId;
         LinkPreviewMode = model.LinkPreviewMode;
+        LinkPreviewFilledParts = model.LinkPreviewFilledParts;
 #pragma warning disable IL2026
         TimeMap = !model.TimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TimeMap)

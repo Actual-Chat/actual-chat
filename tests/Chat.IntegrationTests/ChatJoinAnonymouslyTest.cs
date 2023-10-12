@@ -21,9 +21,9 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
 
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        await tester.Commander.Call(new AuthBackend_SetupSession(session)).ConfigureAwait(false);
+        await tester.Commander.Call(new AuthBackend_SetupSession(session));
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
-        var account = await accounts.GetOwn(session, default).ConfigureAwait(false);
+        var account = await accounts.GetOwn(session, default);
         account.IsGuest.Should().BeTrue();
 
         var author = await ChatOperations.JoinChat(tester, chatId, inviteId);
@@ -32,7 +32,7 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
         author.IsAnonymous.Should().BeTrue();
 
         var avatars = tester.AppServices.GetRequiredService<IAvatars>();
-        var avatar = await avatars.GetOwn(session, author.AvatarId, default).ConfigureAwait(false);
+        var avatar = await avatars.GetOwn(session, author.AvatarId, default);
         avatar.Should().NotBeNull();
         avatar!.IsAnonymous.Should().BeTrue();
     }
@@ -55,24 +55,23 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
         await tester.SignIn(new User("", "Bob"));
 
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
-        var account = await accounts.GetOwn(session, default).ConfigureAwait(false);
+        var account = await accounts.GetOwn(session, default);
         account.IsGuest.Should().BeFalse();
 
-        var anonymous = await CreateAnonymousAvatar(tester).ConfigureAwait(false);
+        var anonymous = await CreateAnonymousAvatar(tester);
 
         var author = await ChatOperations
             .JoinChat(tester,
                 chatId,
                 inviteId,
                 joinAnonymously: true,
-                avatarId: anonymous.Id)
-            .ConfigureAwait(false);
+                avatarId: anonymous.Id);
 
         await ChatOperations.AssertJoined(tester, chatId);
         author.IsAnonymous.Should().BeTrue();
 
         var avatars = tester.AppServices.GetRequiredService<IAvatars>();
-        var avatar = await avatars.GetOwn(session, author.AvatarId, default).ConfigureAwait(false);
+        var avatar = await avatars.GetOwn(session, author.AvatarId, default);
         avatar.Should().NotBeNull();
         avatar!.IsAnonymous.Should().BeTrue();
     }
@@ -86,10 +85,10 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
 
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        await tester.Commander.Call(new AuthBackend_SetupSession(session)).ConfigureAwait(false);
+        await tester.Commander.Call(new AuthBackend_SetupSession(session));
 
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
-        var account = await accounts.GetOwn(session, default).ConfigureAwait(false);
+        var account = await accounts.GetOwn(session, default);
         account.IsGuest.Should().BeTrue();
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -112,7 +111,7 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
         await tester.SignIn(new User("", "Bob"));
 
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
-        var account = await accounts.GetOwn(session, default).ConfigureAwait(false);
+        var account = await accounts.GetOwn(session, default);
         account.IsGuest.Should().BeFalse();
 
         var command = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull>() {

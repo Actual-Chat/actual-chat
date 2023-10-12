@@ -1,5 +1,7 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Media
+@using ILinkPreviews = ActualChat.Media.ILinkPreviews
+@using LinkPreview = ActualChat.Media.LinkPreview
 @inherits ComputedStateComponent<LinkPreview>
 @{
     var m = State.Value;
@@ -12,13 +14,13 @@
 
 @* Keep height fixed *@
 <div class="link-preview">
-    @if (!imageUrl.IsNullOrEmpty()) {
+    @if (Entry.LinkPreviewFilledParts.HasFlag(LinkPreviewParts.Image)) {
         <img class="c-thumbnail" src="@imageUrl" alt="link preview thumbnail"/>
     }
     <div class="c-info">
         <div>
             <a href="@m.Url" target="_blank" class="c-title">@m.Title</a>
-            @if (!m.Description.IsNullOrEmpty()) {
+            @if (Entry.LinkPreviewFilledParts.HasFlag(LinkPreviewParts.Description)) {
                 <div class="c-description">@m.Description</div>
             }
         </div>
@@ -31,6 +33,7 @@
 @code {
     [Inject] private ILinkPreviews LinkPreviews { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private ICommander Commander { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public Markup Markup { get; set; } = null!;
@@ -47,7 +50,7 @@
         if (Entry.LinkPreviewId.IsEmpty)
             return LinkPreview.None;
 
-        var linkPreview = await LinkPreviews.Get(Entry.LinkPreviewId, cancellationToken);
+        var linkPreview = await LinkPreviews.GetForEntry(Entry.LinkPreviewId, Entry.Id, cancellationToken);
         return linkPreview is null || linkPreview.IsEmpty ? LinkPreview.None : linkPreview;
     }
 
@@ -57,16 +60,20 @@
             return "";
         var imageUrl = UrlMapper.ContentUrl(preview.ContentId);
         // TODO: use image metadata for better proportions selection
+        var (width, height) = GetImageMaxSize();
+        return UrlMapper.ImagePreviewUrl(imageUrl, width, height, true);
+    }
+
+    private (int? Width, int Height) GetImageMaxSize() {
         switch (Entry.LinkPreviewMode) {
             case LinkPreviewMode.Full:
-                var maxHeight = ScreenSize.IsNarrow() ? 80 : 136;
-                return UrlMapper.ImagePreviewUrl(imageUrl, null, maxHeight, true);
+                var maxHeight = ScreenSize.IsNarrow() ? 160  : 136;
+                return (null, maxHeight);
             case LinkPreviewMode.Compact:
                 maxHeight = ScreenSize.IsNarrow() ? 80 : 120;
-                return UrlMapper.ImagePreviewUrl(imageUrl, maxHeight, maxHeight, true);
+                return (maxHeight, maxHeight);
             default:
-                return "";
+                return (0, 0);
         }
-
     }
 }
