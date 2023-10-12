@@ -31,8 +31,10 @@
 
 
 @code {
-    private bool _isHandlerRegistered;
     private IStoredState<Moment> _dismissedAt = null!;
+    private ILogger? _log = null;
+
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private LocalSettings LocalSettings { get; init; } = null!;
@@ -57,9 +59,14 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (!_dismissedAt.WhenRead.IsCompleted)
-            await _dismissedAt.WhenRead;
+            await _dismissedAt.WhenRead
+                .WaitAsync(TimeSpan.FromSeconds(3), cancellationToken)
+                .SilentAwait();
+
         var permissionState = await NotificationUI.PermissionState.Use(cancellationToken);
-        // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
+        // Log.LogWarning("ComputeState: {Value} @ #{Hash}", permissionState, NotificationUI.GetHashCode());
+
+        // NOTE(AY): We intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
         var dismissedAt = await _dismissedAt.Use(cancellationToken);
         var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
         var isDismissed = dismissPeriod < Constants.Notification.PermissionRequestDismissPeriod;
@@ -75,12 +82,9 @@
     private Task OnConfigureClick(MouseEventArgs arg)
         => NotificationPermissions.RequestNotificationPermission(CancellationToken.None);
 
-    private async Task OnConfigureRendered(ElementReference buttonRef) {
-        if (_isHandlerRegistered)
-            return;
-
-        await NotificationUI.RegisterRequestNotificationHandler(buttonRef);
-        _isHandlerRegistered = true;
+    private Task OnConfigureRendered(ElementReference buttonRef) {
+        _ = NotificationUI.RegisterRequestNotificationHandler(buttonRef);
+        return Task.CompletedTask;
     }
 
     // Nested types

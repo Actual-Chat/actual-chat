@@ -100,10 +100,10 @@ public partial class MainActivity : MauiAppCompatActivity
                 var permissionState = isGranted
                     ? PermissionState.Granted
                     : PermissionState.Denied;
-                _ = DispatchToBlazor(scopedServices1 => {
-                    var notificationUI = scopedServices1.GetRequiredService<NotificationUI>();
-                    notificationUI.SetPermissionState(permissionState);
-                }, $"NotificationUI.SetPermissionState({permissionState})");
+                _tracer.Point($"{nameof(OnCreate)}: NotificationUI.SetPermissionState({permissionState})");
+                _ = DispatchToBlazor(
+                    c => c.GetRequiredService<NotificationUI>().SetPermissionState(permissionState),
+                    $"NotificationUI.SetPermissionState({permissionState})");
             }));
         CreateNotificationChannel();
         TryHandleNotificationTap(Intent);
@@ -169,10 +169,10 @@ public partial class MainActivity : MauiAppCompatActivity
                 Permission.Granted => PermissionState.Granted,
                 _ => PermissionState.Denied,
             };
-            _ = DispatchToBlazor(scopedServices => {
-                var notificationUI = scopedServices.GetRequiredService<NotificationUI>();
-                notificationUI.SetPermissionState(permissionState);
-            }, $"NotificationUI.SetPermissionState({permissionState})");
+            _tracer.Point($"{nameof(OnRequestPermissionsResult)}: NotificationUI.SetPermissionState({permissionState})");
+            _ = DispatchToBlazor(
+                c => c.GetRequiredService<NotificationUI>().SetPermissionState(permissionState),
+                $"NotificationUI.SetPermissionState({permissionState})");
         }
     }
 

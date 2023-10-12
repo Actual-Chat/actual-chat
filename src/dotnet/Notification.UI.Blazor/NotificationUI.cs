@@ -92,15 +92,16 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
         return AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
     }
 
-    public void SetPermissionState(PermissionState state)
+    public void SetPermissionState(PermissionState permissionState)
     {
         try {
             lock (Lock) {
-                if (state == _permissionState.Value)
+                if (permissionState == _permissionState.Value)
                     return;
             }
-            _permissionState.Value = state;
-            if (state == ActualChat.UI.Blazor.PermissionState.Granted)
+            // Log.LogWarning("SetPermissionState: {Value} @ #{Hash}", permissionState, GetHashCode());
+            _permissionState.Value = permissionState;
+            if (permissionState == ActualChat.UI.Blazor.PermissionState.Granted)
                 RegisterDevice();
         }
         finally {

@@ -17,6 +17,7 @@ public sealed class Mutable<T>
     {
         var oldValue = _value;
         _value = value;
-        Changed?.Invoke(oldValue, value);
+        if (!EqualityComparer<T>.Default.Equals(oldValue, value))
+            Changed?.Invoke(oldValue, value);
     }
 }

@@ -82,10 +82,16 @@ public class AppServicesAccessor
         return WhenScopedServicesReadyAsync(whenRendered, cancellationToken);
 
         static async Task<IServiceProvider> WhenScopedServicesReadyAsync(bool whenRendered, CancellationToken cancellationToken) {
+            var mustWait = false;
             while (true) {
-                var c = await _scopedServicesSource.Task.SuppressCancellationAwait(false);
+                if (mustWait) // We don't want to rapidly cycle here
+                    await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                mustWait = true;
+
+                var scopedServicesTask = _scopedServicesSource.Task;
+                await scopedServicesTask.SilentAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
-                if (c == null!)
+                if (!scopedServicesTask.IsCompletedSuccessfully || scopedServicesTask.Result is not { } c)
                     continue;
 
                 if (whenRendered) {
@@ -129,22 +135,22 @@ public class AppServicesAccessor
     public static async Task DispatchToBlazor(Action<IServiceProvider> workItem, bool whenRendered = false)
     {
         var scopedServices = await WhenScopedServicesReady(whenRendered).ConfigureAwait(false);
-        var dispatcher = scopedServices.GetRequiredService<Dispatcher>();
-        await dispatcher.DispatchAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
+        var dispatcher = scopedServices.GetRequiredService<Microsoft.AspNetCore.Components.Dispatcher>();
+        await dispatcher.InvokeAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
     }
 
     public static async Task DispatchToBlazor(Func<IServiceProvider, Task> workItem, bool whenRendered = false)
     {
         var scopedServices = await WhenScopedServicesReady(whenRendered).ConfigureAwait(false);
-        var dispatcher = scopedServices.GetRequiredService<Dispatcher>();
-        await dispatcher.DispatchAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
+        var dispatcher = scopedServices.GetRequiredService<Microsoft.AspNetCore.Components.Dispatcher>();
+        await dispatcher.InvokeAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
     }
 
     public static async Task<T> DispatchToBlazor<T>(Func<IServiceProvider, Task<T>> workItem, bool whenRendered = false)
     {
         var scopedServices = await WhenScopedServicesReady(whenRendered).ConfigureAwait(false);
-        var dispatcher = scopedServices.GetRequiredService<Dispatcher>();
-        return await dispatcher.DispatchAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
+        var dispatcher = scopedServices.GetRequiredService<Microsoft.AspNetCore.Components.Dispatcher>();
+        return await dispatcher.InvokeAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
     }
 
     public static void DiscardScopedServices(IServiceProvider? expectedScopedServices = null)

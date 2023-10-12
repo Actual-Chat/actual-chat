@@ -27,7 +27,7 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
     [Parameter] public EventCallback<ElementReference> Rendered { get; set; }
-    [Parameter] public Mutable<ElementReference>? BackRef { get; set; }
+    [Parameter] public Mutable<ElementReference>? ButtonRef { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
@@ -40,7 +40,7 @@
     private ElementReference Ref {
         set {
             _buttonRef = value;
-            BackRef?.Set(value);
+            ButtonRef?.Set(value);
         }
     }
 
