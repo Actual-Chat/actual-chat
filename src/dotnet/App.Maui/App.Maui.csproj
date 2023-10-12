@@ -83,6 +83,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Maui.Controls" />
     <PackageReference Include="Microsoft.Maui.Controls.Compatibility" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="banditoth.MAUI.DeviceId" />
