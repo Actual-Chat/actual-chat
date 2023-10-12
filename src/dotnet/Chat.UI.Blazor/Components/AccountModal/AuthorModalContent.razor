@@ -73,7 +73,7 @@
         <div class="separator"></div>
     }
 
-    @if (m != null && m.CanPromoteToOwner) {
+    @if (m is { CanPromoteToOwner: true }) {
         <TileItem Class="tile-promote-to-owner" Click="@OnPromoteToOwner">
             <Icon>
                 <i class="icon-star text-xl"></i>
@@ -87,7 +87,7 @@
         </TileItem>
     }
 
-    @if (m != null && m.CanRemoveFromGroup) {
+    @if (m is { CanRemoveFromGroup: true }) {
         <TileItem Class="tile-remove-from-group" Click="@OnRemoveFromGroupClick">
             <Icon>
                 <i class="icon-minus-circle text-xl"></i>
