@@ -119,6 +119,10 @@ export class VirtualList {
         this._renderEndObserver.observe(this._containerRef, { childList: true });
         this._renderEndObserver.observe(this._renderStateRef, { subtree: true, characterData: true, childList: true });
         this._sizeObserver = new ResizeObserver(this.onResize);
+        // An array of numbers between 0.0 and 1.0, specifying a ratio of intersection area to total bounding box area for the observed target.
+        // Trigger callbacks as early as it can on any intersection change, even 1 percent
+        // 0 threshold doesn't work, despite what is written in the documentation
+        const visibilityThresholds = [...Array(101).keys() ].map(i => i / 100);
         this._visibilityObserver = new IntersectionObserver(
             this.onItemVisibilityChange,
             {
@@ -126,7 +130,7 @@ export class VirtualList {
                 root: this._ref,
                 // Extend visibility outside of the viewport.
                 rootMargin: `${VisibilityEpsilon}px`,
-                threshold: 0,
+                threshold: visibilityThresholds,
             });
         this._scrollPivotObserver = new IntersectionObserver(
             this.onScrollPivotVisibilityChange,
@@ -135,14 +139,14 @@ export class VirtualList {
                 // Extend visibility outside of the viewport.
                 rootMargin: `100px`,
                 // Receive callback on any intersection change, even 1 percent.
-                threshold: 0, // any change of intersection
+                threshold: visibilityThresholds,
             });
         this._skeletonObserver0 = new IntersectionObserver(
             this.onSkeletonVisibilityChange,
             {
                 root: this._ref,
                 rootMargin: `-5px`,
-                threshold: 0, // any change of intersection
+                threshold: visibilityThresholds,
             });
         this._skeletonObserver1 = new IntersectionObserver(
             this.onSkeletonVisibilityChange,
@@ -150,7 +154,7 @@ export class VirtualList {
                 root: this._ref,
                 // Extend visibility outside of the viewport
                 rootMargin: `${SkeletonDetectionBoundary}px`,
-                threshold: 0, // any change of intersection
+                threshold: visibilityThresholds,
             });
 
         this._ironPantsIntervalHandle = self.setInterval(this.onIronPantsHandle, IronPantsHandlePeriod);
@@ -942,11 +946,15 @@ export class VirtualList {
         debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef));
         this._inertialScroll.interrupt();
         this._scrollTime = Date.now();
-        itemRef?.scrollIntoView({
-            behavior: useSmoothScroll ? 'smooth' : 'auto',
-            block: blockPosition,
-            inline: 'nearest',
-        });
+        if (itemRef) {
+            const authorBadge = itemRef.querySelector('div.c-author-badge');
+            const navigateTarget = authorBadge ?? itemRef;
+            navigateTarget.scrollIntoView({
+                behavior: useSmoothScroll ? 'smooth' : 'auto',
+                block: blockPosition,
+                inline: 'nearest',
+            });
+        }
     }
 
     private scrollToEnd(
