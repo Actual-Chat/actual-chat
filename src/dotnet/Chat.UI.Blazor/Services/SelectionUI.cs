@@ -128,7 +128,5 @@ public class SelectionUI
             selectedChatIds.ToApiArray());
         await UICommander.Run(cmd, CancellationToken.None).ConfigureAwait(true);
         Clear();
-        if (selectedChatIds.Count == 1)
-            _ = History.NavigateTo(Links.Chat(selectedChatIds.First()));
     }
 }

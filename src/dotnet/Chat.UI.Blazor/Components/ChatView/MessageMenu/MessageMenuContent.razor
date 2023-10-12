@@ -150,12 +150,6 @@
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    private async Task<IReadOnlyCollection<ChatId>> SelectChats(ChatId chatId) {
-        var modalModel = new ForwardMessageModal.Model(chatId);
-        await (await ModalUI.Show(modalModel)).WhenClosed;
-        return modalModel.SelectedChatIds;
-    }
-
     private Task Reply()
         => ChatEditorUI.ShowRelatedEntry(RelatedEntryKind.Reply, ChatEntry.Id, focusOnEditor: true);
 }
