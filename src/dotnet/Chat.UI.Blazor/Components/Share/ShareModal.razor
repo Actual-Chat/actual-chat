@@ -97,10 +97,6 @@
             _ = await uiCommander.Run(cmd, CancellationToken.None);
         }
         Modal.Close(true);
-        if (selectedChatIds.Count != 0) {
-            var history = Services.GetRequiredService<History>();
-            await history.NavigateTo(Links.Chat(selectedChatIds.First()));
-        }
     }
 
     private void OnCommentChanged(string text)
