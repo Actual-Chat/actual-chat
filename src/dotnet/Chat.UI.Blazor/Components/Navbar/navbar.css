@@ -36,7 +36,7 @@ body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
 .navbar-button .badge {
     @apply absolute -right-0.5 -top-0.5;
     @apply min-w-4 min-h-4 w-4 h-4;
-    @apply text-[10px];
+    @apply text-[0.625rem];
     @apply bg-counter-navgroup;
 }
 

@@ -1,5 +1,6 @@
 .pic-upload {
-    @apply relative flex-x gap-8;
+    @apply relative;
+    @apply flex-x gap-8;
 }
 body.hoverable .pic-upload:hover .pic-upload-picker {
     @apply visible;
@@ -9,7 +10,8 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
 }
 
 .pic-upload-picker {
-    @apply invisible absolute top-0 left-0 rounded-full;
+    @apply absolute top-0 left-0;
+    @apply invisible;
     @apply rounded-full;
 }
 .pic-upload-picker,
@@ -18,10 +20,13 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
 }
 
 .pic-upload-input-file-label {
-    @apply flex items-center justify-center w-full h-full cursor-pointer;
+    @apply flex items-center justify-center;
+    @apply w-full h-full;
+    @apply cursor-pointer;
 }
 
 .pic-upload-drop-zone {
+    @apply flex-wrap justify-center;
     @apply border-primary;
     @apply rounded-full;
 }

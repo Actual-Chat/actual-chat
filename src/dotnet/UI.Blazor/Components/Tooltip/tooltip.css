@@ -1,8 +1,18 @@
 .ac-tooltip {
-    @apply hidden absolute bg-01 top-0 left-0 text-base text-02 px-[12px] py-[7px] pointer-events-none rounded-lg whitespace-nowrap z-tooltip;
+    @apply absolute top-0 left-0 z-tooltip;
+    @apply hidden;
+    @apply px-[12px] py-[7px];
+    @apply rounded-lg;
+    @apply whitespace-nowrap;
+    @apply bg-01;
+    @apply text-base text-02;
+    @apply pointer-events-none;
     filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
 }
 
 .ac-tooltip-arrow {
-    @apply absolute bg-01 w-[8px] h-[8px] rotate-45;
+    @apply absolute;
+    @apply w-[8px] h-[8px];
+    @apply bg-01;
+    @apply rotate-45;
 }
