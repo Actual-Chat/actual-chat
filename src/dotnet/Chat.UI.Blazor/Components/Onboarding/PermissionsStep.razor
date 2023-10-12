@@ -69,6 +69,9 @@
 
     public override bool IsCompleted => OnboardingUI.Settings.Value.IsPermissionsStepCompleted;
 
+    protected override Task OnInitializedAsync()
+        => AudioRecorder.MicrophonePermission.Check(CancellationToken.None);
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (CurrentStep == this) {
             if (!_isHandlerRegistered) {
@@ -91,7 +94,7 @@
 
     protected override async Task<bool> Save() {
         if (_stepModel.RequestMicrophonePermissions) {
-            AudioRecorder.MicrophonePermission.CheckOrRequest().SilentAwait();
+            await AudioRecorder.MicrophonePermission.CheckOrRequest().SilentAwait();
         }
 
         if (_stepModel.RequestNotificationsPermissions) {
