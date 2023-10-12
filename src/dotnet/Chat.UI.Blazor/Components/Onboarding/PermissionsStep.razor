@@ -63,19 +63,19 @@
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
     [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ForwardRef NextButtonRef { get; init; } = null!;
+    [Parameter, EditorRequired] public Mutable<ElementReference> NextButtonRef { get; init; } = null!;
 
     public override bool IsCompleted => OnboardingUI.Settings.Value.IsPermissionsStepCompleted;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (CurrentStep == this) {
             if (!_isHandlerRegistered) {
-                await NotificationUI.RegisterRequestNotificationHandler(NextButtonRef.Current);
+                await NotificationUI.RegisterRequestNotificationHandler(NextButtonRef.Value);
                 _isHandlerRegistered = true;
             }
         } else {
             if (_isHandlerRegistered) {
-                await NotificationUI.UnregisterRequestNotificationHandler(NextButtonRef.Current);
+                await NotificationUI.UnregisterRequestNotificationHandler(NextButtonRef.Value);
                 _isHandlerRegistered = false;
             }
         }
@@ -105,9 +105,9 @@
     private async Task OnNotificationsPermissionClick() {
         _stepModel.RequestNotificationsPermissions = !_stepModel.RequestNotificationsPermissions;
         if (_stepModel.RequestNotificationsPermissions) {
-            await NotificationUI.RegisterRequestNotificationHandler(NextButtonRef.Current);
+            await NotificationUI.RegisterRequestNotificationHandler(NextButtonRef.Value);
         } else {
-            await NotificationUI.UnregisterRequestNotificationHandler(NextButtonRef.Current);
+            await NotificationUI.UnregisterRequestNotificationHandler(NextButtonRef.Value);
         }
     }
 

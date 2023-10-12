@@ -1,15 +1,22 @@
 namespace ActualChat.UI.Blazor;
 
-public class ForwardRef
+public sealed class Mutable<T>
 {
-    private ElementReference _current;
+    private T _value = default!;
 
-    public ElementReference Current
+    public T Value
     {
-        get => _current;
+        get => _value;
         set => Set(value);
     }
 
-    public void Set(ElementReference value)
-        => _current = value;
+    public event Action<T, T>? Changed;
+
+    // This is a convenience helper that allows to use mutable?.Set(...)
+    public void Set(T value)
+    {
+        var oldValue = _value;
+        _value = value;
+        Changed?.Invoke(oldValue, value);
+    }
 }

@@ -46,7 +46,7 @@
                     }
                     <Button
                         Class="btn-primary"
-                        RefBack="@_nextButtonRef"
+                        BackRef="@_nextButtonRef"
                         Click="() => OnMoveForwardClick(stepper)">
                         @if (stepper.CanSkip) {
                             <span>Verify</span>
@@ -72,7 +72,7 @@
 </DialogFrame>
 
 @code {
-    private readonly ForwardRef _nextButtonRef = new();
+    private readonly Mutable<ElementReference> _nextButtonRef = new();
 
     [Inject] private AccountUI AccountUI { get; init; } = null!;
 
