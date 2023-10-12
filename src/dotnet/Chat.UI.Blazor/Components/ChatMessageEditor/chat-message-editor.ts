@@ -29,6 +29,7 @@ export class ChatMessageEditor {
     private readonly attachmentListObserver: MutationObserver;
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver: MutationObserver;
+    private isFirstLoading: boolean = true;
     private markupEditor: MarkupEditor;
     private attachmentList: AttachmentList;
     private attachmentListElement: HTMLDivElement;
@@ -263,10 +264,17 @@ export class ChatMessageEditor {
                     : 'Normal';
                 if (this.panelModel !== panelMode) {
                     this.panelModel = panelMode;
-                    if (panelMode === 'Narrow')
-                        this.editorDiv.classList.add('narrow-panel');
-                    else
-                        this.editorDiv.classList.remove('narrow-panel');
+                    if (this.isFirstLoading) {
+                        this.isFirstLoading = false;
+                        this.editorDiv.classList.remove('base-panel');
+                    }
+                    if (panelMode === 'Narrow') {
+                        this.editorDiv.classList.remove('to-thick');
+                        this.editorDiv.classList.add('narrow-panel', 'to-thin');
+                    } else {
+                        this.editorDiv.classList.remove('narrow-panel', 'to-thin');
+                        this.editorDiv.classList.add('to-thick');
+                    }
                 }
             }
             this.lastHeight = height;
