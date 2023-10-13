@@ -284,7 +284,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .Select(x => LinkPreviews.GetForEntry(x.LinkPreviewId, x.Id, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
-        var linkPreviewMap = linkPreviews.SkipNullItems().ToDictionary(x => x.Id);
+        var linkPreviewMap = linkPreviews.SkipNullItems().Distinct().ToDictionary(x => x.Id);
         var messages = ChatMessageModel.FromEntries(
             entries,
             oldData.Items,
