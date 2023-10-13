@@ -1,15 +1,17 @@
 using MemoryPack;
 using Stl.Fusion.Blazor;
+using Stl.Versioning;
 
 namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record LinkPreview : IHasId<Symbol>, IRequirementTarget
+public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IRequirementTarget
 {
     public static readonly LinkPreview None = new ();
     public static readonly LinkPreview Loading = new () { Id = "__LOADING__" };
     [DataMember, MemoryPackOrder(0)] public Symbol Id { get; init; }
+    [DataMember, MemoryPackOrder(8)] public long Version { get; init; }
     [DataMember, MemoryPackOrder(1)] public string Url { get; init; } = "";
     [DataMember, MemoryPackOrder(2)] public MediaId PreviewMediaId { get; init; }
     [DataMember, MemoryPackOrder(3)] public string Title { get; init; } = "";

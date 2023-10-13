@@ -1,15 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Stl.Versioning;
 
 namespace ActualChat.Media.Db;
 
 [Table("LinkPreviews")]
-public class DbLinkPreview : IHasId<string>, IRequirementTarget
+public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;
     private DateTime _modifiedAt;
 
     [Key] public string Id { get; set; } = "";
+    [ConcurrencyCheck] public long Version { get; set; }
     public string Url { get; set; } = "";
     public string ThumbnailMediaId { get; set; } = "";
     public string Title { get; set; } = "";
@@ -31,6 +33,7 @@ public class DbLinkPreview : IHasId<string>, IRequirementTarget
     public LinkPreview ToModel()
         => new() {
             Id = new Symbol(Id),
+            Version = Version,
             Url = Url,
             PreviewMediaId = new MediaId(ThumbnailMediaId),
             Title = Title,
@@ -42,6 +45,7 @@ public class DbLinkPreview : IHasId<string>, IRequirementTarget
     public void UpdateFrom(LinkPreview model)
     {
         Id = model.Id;
+        Version = model.Version;
         Url = model.Url;
         ThumbnailMediaId = model.PreviewMediaId;
         Title = model.Title;
