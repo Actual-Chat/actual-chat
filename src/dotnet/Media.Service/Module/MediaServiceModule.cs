@@ -51,7 +51,7 @@ public sealed class MediaServiceModule : HostModule<MediaSettings>
         fusion.AddService<IMediaBackend, MediaBackend>();
 
         // Links
-        fusion.AddService<ILinkPreviews, LinkPreviews>();
+        fusion.AddService<IMediaLinkPreviews, MediaLinkPreviews>();
         fusion.AddService<ILinkPreviewsBackend, LinkPreviewsBackend>();
         services.AddHttpClient(nameof(LinkPreviewsBackend))
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));

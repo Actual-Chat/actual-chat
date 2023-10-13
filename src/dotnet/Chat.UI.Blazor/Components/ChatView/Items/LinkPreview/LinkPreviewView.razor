@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Media
-@using ILinkPreviews = ActualChat.Media.ILinkPreviews
+@using ILinkPreviews = ActualChat.Media.IMediaLinkPreviews
 @using LinkPreview = ActualChat.Media.LinkPreview
 @inherits ComputedStateComponent<LinkPreview>
 @{
@@ -31,7 +31,7 @@
 </div>
 
 @code {
-    [Inject] private ILinkPreviews LinkPreviews { get; init; } = null!;
+    [Inject] private ILinkPreviews MediaLinkPreviews { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private ICommander Commander { get; init; } = null!;
 
@@ -54,7 +54,7 @@
             return Message.LinkPreview;
 
         // in case link previews were cleaned up and not loaded yet
-        var linkPreview = await LinkPreviews.GetForEntry(Message.Entry.LinkPreviewId, Message.Entry.Id, cancellationToken);
+        var linkPreview = await MediaLinkPreviews.GetForEntry(Message.Entry.LinkPreviewId, Message.Entry.Id, cancellationToken);
         return linkPreview is null || linkPreview.IsEmpty ? LinkPreview.None : linkPreview;
     }
 

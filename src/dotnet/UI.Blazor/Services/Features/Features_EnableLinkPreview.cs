@@ -1,5 +1,5 @@
+using ActualChat.Media;
 using ActualChat.Users;
-using ILinkPreviews = ActualChat.Media.ILinkPreviews;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -7,7 +7,7 @@ public class Features_EnableLinkPreview : FeatureDef<bool>, IClientFeatureDef
 {
     public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var linkPreviews = services.GetRequiredService<ILinkPreviews>();
+        var linkPreviews = services.GetRequiredService<IMediaLinkPreviews>();
         if (await linkPreviews.IsEnabled().ConfigureAwait(false))
             return true;
 

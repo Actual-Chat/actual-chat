@@ -14,6 +14,6 @@ public sealed class MediaClientModule : HostModule
             return; // Client-side only module
 
         var fusion = services.AddFusion();
-        fusion.AddClient<ILinkPreviews>();
+        fusion.AddClient<IMediaLinkPreviews>();
     }
 }

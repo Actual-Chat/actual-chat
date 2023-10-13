@@ -3,7 +3,7 @@ using ActualChat.Media.Module;
 
 namespace ActualChat.Media;
 
-internal class LinkPreviews(IServiceProvider services) : ILinkPreviews
+internal class MediaLinkPreviews(IServiceProvider services) : IMediaLinkPreviews
 {
     private ILinkPreviewsBackend Backend { get; } = services.GetRequiredService<ILinkPreviewsBackend>();
     private MediaSettings Settings { get; } = services.GetRequiredService<MediaSettings>();
