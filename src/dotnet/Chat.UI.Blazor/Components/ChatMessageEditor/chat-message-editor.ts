@@ -23,7 +23,6 @@ export class ChatMessageEditor {
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
     private readonly postPanelDiv: HTMLDivElement;
-    private readonly postButton: HTMLButtonElement;
     private readonly attachButton: HTMLButtonElement;
     private readonly input: HTMLDivElement;
     private readonly attachmentListObserver: MutationObserver;
@@ -49,7 +48,6 @@ export class ChatMessageEditor {
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel');
-        this.postButton = this.postPanelDiv.querySelector(':scope .post-message');
         this.attachButton = this.postPanelDiv.querySelector(':scope .attach-btn');
         this.notifyPanel = this.postPanelDiv.querySelector(':scope .notify-call-panel');
         this.input = this.postPanelDiv.querySelector(':scope .message-input');
@@ -57,10 +55,12 @@ export class ChatMessageEditor {
         this.updateLayout();
         this.updateHasContent();
 
-        // Wiring up event listeners
-        ScreenSize.event$
-            .pipe(takeUntil(this.disposed$))
-            .subscribe(this.updateLayoutThrottled);
+        fromEvent(window.visualViewport, 'resize')
+            .pipe(
+                takeUntil(this.disposed$),
+                debounceTime(50),
+                )
+            .subscribe(this.updateLayout);
 
         fromEvent(this.input, 'paste')
             .pipe(takeUntil(this.disposed$))
@@ -233,7 +233,6 @@ export class ChatMessageEditor {
 
     // Private methods
 
-    private updateLayoutThrottled = throttle(() => this.updateLayout(), 250, 'delayHead');
     private updateLayout = () => {
         const width = window.visualViewport.width;
         const height = window.visualViewport.height;

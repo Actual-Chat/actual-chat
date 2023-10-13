@@ -30,13 +30,13 @@
     @apply overflow-hidden;
     @apply -mb-0.5;
     background: linear-gradient(to bottom, rgba(255,255,255,0) 70%, rgba(68,68,68,1) 0%);
-    transition: all 300ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 .narrow.to-thin .audio-panel-wrapper {
     @apply overflow-hidden;
     @apply -mb-0.5;
     background: linear-gradient(to bottom, rgba(255,255,255,0) 50%, rgba(68,68,68,1) 0%);
-    transition: all 300ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 
 .post-panel {

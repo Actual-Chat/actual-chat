@@ -18,12 +18,12 @@
 .narrow.to-thick .chat-audio-panel {
     @apply gap-x-6;
     background: linear-gradient(to top, rgba(255,255,255,1) 5%, rgba(255,255,255,1) 35%, transparent);
-    transition: all 200ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 .narrow.to-thin .chat-audio-panel {
     @apply items-end gap-x-2;
     background: linear-gradient(to top, rgba(255,255,255,1) 60%, rgba(255,255,255,1) 5%, transparent);
-    transition: all 200ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 
 /* ChatAudioPanel, Desktop view */
@@ -136,11 +136,11 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 .narrow.to-thin .chat-audio-panel .language-wrapper {
     @apply min-w-20 max-w-20 min-h-12 max-h-12;
-    transition: all 200ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 .narrow.to-thick .chat-audio-panel .language-wrapper {
     @apply min-w-12 max-w-12 min-h-12 max-h-12;
-    transition: all 200ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 .narrow .chat-audio-panel .btn.chat-language-toggle {
     @apply text-primary;
@@ -168,7 +168,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow.to-thin .chat-audio-panel .recorder-wrapper {
     @apply flex justify-center;
     @apply h-12 w-20;
-    transition: all 200ms ease-in-out;
+    transition: all 100ms ease-in-out;
 }
 .narrow.to-thin .chat-audio-panel .recorder-wrapper {
     border-width: 0;
@@ -176,7 +176,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow.to-thick .chat-audio-panel .recorder-wrapper {
     @apply flex justify-center;
     @apply h-20 w-20;
-    transition: all 200ms ease-in-out;
+    transition: all 100ms ease-in-out;
 }
 .narrow.to-thick .chat-audio-panel .recorder-wrapper {
     border-width: 1px;
@@ -258,11 +258,11 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 
 .narrow.to-thin .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
     @apply min-w-20 max-w-20 min-h-12 max-h-12;
-    transition: all 200ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 .narrow.to-thick .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
     @apply min-w-17 max-w-17 min-h-17 max-h-17;
-    transition: all 200ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 .narrow.base-panel .chat-audio-panel .recorder-wrapper .btn.btn-round .btn-content {
     @apply min-w-17 max-w-17 min-h-17 max-h-17;
@@ -284,11 +284,11 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 .narrow.to-thin .chat-audio-panel .playback-wrapper {
     @apply min-w-20 max-w-20 min-h-12 max-h-12;
-    transition: all 200ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 .narrow.to-thick .chat-audio-panel .playback-wrapper {
     @apply min-w-12 max-w-12 min-h-12 max-h-12;
-    transition: all 200ms ease-in-out;
+    transition: all 150ms ease-in-out;
 }
 
 .narrow-panel.narrow .playback-wrapper.listen-on .loud-btn.btn.btn-round {
