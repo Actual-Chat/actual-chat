@@ -11,7 +11,7 @@
     @apply rounded-lg;
 }
 .step-tile-body {
-    @apply flex-y grow;
+    @apply flex-y gap-y-2 grow;
 }
 .step-tile-title {
     @apply truncate;

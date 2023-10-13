@@ -1,7 +1,7 @@
 using System.Net.Mail;
 using ActualChat.Contacts;
 using ActualChat.Contacts.UI.Blazor.Services;
-using ActualChat.UI.Blazor;
+using ActualChat.Permissions;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using banditoth.MAUI.DeviceId.Interfaces;
@@ -16,7 +16,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
     private Symbol? _deviceId;
     private Session Session { get; } = services.Session();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private IContactPermissions Permissions { get; } = services.GetRequiredService<IContactPermissions>();
+    private ContactsPermissionHandler Permissions { get; } = services.GetRequiredService<ContactsPermissionHandler>();
     private IDeviceIdProvider DeviceIdProvider { get; } = services.GetRequiredService<IDeviceIdProvider>();
     private ILogger Log { get; } = services.LogFor<MauiContacts>();
 
@@ -25,21 +25,19 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
     public override async Task<ApiArray<ExternalContact>> List(CancellationToken cancellationToken)
     {
         try {
-            var permissionState = await Permissions.Request().ConfigureAwait(false);
-            switch (permissionState) {
-            case PermissionState.Granted:
-                var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
-                var verifiedPhone = account.HasVerifiedPhone() ? account.Phone.ToInternational() : "";
-                var phoneNumberExtractor = PhoneNumberExtractor.CreateFor(verifiedPhone);
-                var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts.GetAllAsync(cancellationToken).ConfigureAwait(false)).ToList();
-                return deviceContacts.Select(x => ToExternalContact(account.Id, phoneNumberExtractor, x)).ToApiArray();
-            case PermissionState.Denied:
-                Log.LogError("Contact permission is missing");
-                return default;
-            default:
-                Log.LogError("Unexpected contact permission status {Status}", permissionState);
+            var isGranted = await Permissions.Check(cancellationToken).ConfigureAwait(false);
+            if (isGranted != true) {
+                Log.LogError("Contacts permission is missing");
                 return default;
             }
+
+            var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+            var verifiedPhone = account.HasVerifiedPhone() ? account.Phone.ToInternational() : "";
+            var phoneNumberExtractor = PhoneNumberExtractor.CreateFor(verifiedPhone);
+            var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts
+                .GetAllAsync(cancellationToken)
+                .ConfigureAwait(false)).ToList();
+            return deviceContacts.Select(x => ToExternalContact(account.Id, phoneNumberExtractor, x)).ToApiArray();
         }
         catch (Exception e) {
             Log.LogError(e, "Failed to read contacts from device");
@@ -51,7 +49,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         UserId ownerId,
         PhoneNumberExtractor phoneNumberExtractor,
         MauiContact mauiContact)
-        => new (new ExternalContactId(ownerId, DeviceId, mauiContact.Id)) {
+        => new (new ExternalContactId(ownerId, DeviceId, mauiContact.Id.Replace(':', '_'))) {
             GivenName = mauiContact.GivenName ?? "",
             DisplayName = mauiContact.DisplayName ?? "",
             FamilyName = mauiContact.FamilyName ?? "",

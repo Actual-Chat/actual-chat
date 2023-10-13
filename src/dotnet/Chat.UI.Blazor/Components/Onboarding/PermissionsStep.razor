@@ -1,6 +1,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Audio.UI.Blazor.Components
+@using ActualChat.Contacts.UI.Blazor.Services
+@using ActualChat.Hosting
 @using ActualChat.Notification.UI.Blazor
+@using ActualChat.Permissions
 @inherits Step;
 
 @if (CurrentStep != this) {
@@ -34,7 +37,7 @@
              @onclick="OnNotificationsPermissionClick">
             <img draggable="false"
                  class="step-tile-icon"
-                 alt="Friends"
+                 alt="Bell"
                  src="/dist/images/onboarding/bell.svg"/>
             <div class="step-tile-body">
                 <div class="step-tile-title">
@@ -50,6 +53,29 @@
                 Class="!flex-none"
                 Change="OnNotificationsPermissionClick"/>
         </div>
+        @if (IsMobile) {
+            <div class="step-tile"
+                 @onclick="OnContactsPermissionClick">
+                <img draggable="false"
+                     class="step-tile-icon"
+                     alt="Contacts"
+                     src="/dist/images/onboarding/contacts.svg"/>
+                <div class="step-tile-body">
+                    <div class="step-tile-title">
+                        Contacts
+                    </div>
+                    <div class="step-tile-subtitle">
+                        Actual Chat can import your contacts to help you find your friends.
+                        We store only the hashes of phone numbers and emails - sufficient for matching,
+                        but not for restoring your actual contacts.
+                    </div>
+                </div>
+                <Checkbox
+                    IsChecked="@_stepModel.RequestContactsPermissions"
+                    Class="!flex-none"
+                    Change="OnContactsPermissionClick"/>
+            </div>
+        }
     </div>
 </div>
 
@@ -64,10 +90,14 @@
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
     [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
+    [Inject] private ContactsPermissionHandler ContactPermissions { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter, EditorRequired] public Mutable<ElementReference> NextButtonRef { get; init; } = null!;
 
     public override bool IsCompleted => OnboardingUI.Settings.Value.IsPermissionsStepCompleted;
+
+    private bool IsMobile => HostInfo is { AppKind: AppKind.MauiApp, ClientKind: ClientKind.Ios or ClientKind.Android };
 
     protected override Task OnInitializedAsync()
         => AudioRecorder.MicrophonePermission.Check(CancellationToken.None);
@@ -94,18 +124,38 @@
 
     protected override async Task<bool> Save() {
         if (_stepModel.RequestMicrophonePermissions) {
-            await AudioRecorder.MicrophonePermission.CheckOrRequest().SilentAwait();
+            await AudioRecorder.MicrophonePermission.CheckOrRequest();
         }
 
         if (_stepModel.RequestNotificationsPermissions) {
             await NotificationPermissions.RequestNotificationPermission(default);
         }
 
+        if (IsMobile && _stepModel.RequestContactsPermissions) {
+            await RequestContactsPermissions();
+        }
+
         return true;
+    }
+
+    private async Task RequestContactsPermissions() {
+        var state = await ContactPermissions.Check(CancellationToken.None);
+        switch (state)
+        {
+            case false:
+                await ContactPermissions.OpenSettings();
+                break;
+            case null:
+                await ContactPermissions.CheckOrRequest(true);
+                break;
+        }
     }
 
     private void OnMicrophonePermissionClick()
         => _stepModel.RequestMicrophonePermissions = !_stepModel.RequestMicrophonePermissions;
+
+    private void OnContactsPermissionClick()
+        => _stepModel.RequestContactsPermissions = !_stepModel.RequestContactsPermissions;
 
     private async Task OnNotificationsPermissionClick() {
         _stepModel.RequestNotificationsPermissions = !_stepModel.RequestNotificationsPermissions;
@@ -119,5 +169,6 @@
     public class SetChatsStepModel {
         public bool RequestMicrophonePermissions { get; set; } = true;
         public bool RequestNotificationsPermissions { get; set; } = true;
+        public bool RequestContactsPermissions { get; set; } = true;
     }
 }
