@@ -12,6 +12,9 @@
 
 <div class="sign-in-step verify-phone-step" @onclick="@TryFocusTotpInput">
     <div class="c-title">Phone number verification</div>
+    <div class="flex-x flex-1 justify-center">
+        <VerifyPhoneCat/>
+    </div>
     <TotpVerifier @ref="_totpVerifier" Purpose="TotpPurpose.SignIn" Phone="@phone.Value" Verified="OnTotpVerified"/>
 </div>
 

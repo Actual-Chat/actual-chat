@@ -7,13 +7,19 @@
     Title="Phone number verification"
     HasCloseButton="true">
     <Body>
-    <div class="flex-1 flex-y justify-center mx-4 gap-y-8">
-        <div>Please verify your phone number to enable sign-in with it and to allow your friends to find your account in their list of contacts on Actual Chat.</div>
-        <TotpVerifier
-            Purpose="TotpPurpose.VerifyPhone"
-            PurposeText=""
-            Phone="@ModalModel.Phone" Verified="@(_ => Complete(true))"
-            Error="@(_ => Complete(false, true))"/>
+    <div class="flex-1 flex-y">
+        <div class="flex-x justify-center mb-4">
+            <VerifyPhoneCat/>
+        </div>
+        <div class="flex-1 flex-y mx-4">
+            <div class="font-bold text-2xl text-02">Enter code</div>
+            <div class="mb-4">Please verify your phone number to enable sign-in with it and to allow your friends to find your account in their list of contacts on Actual Chat.</div>
+            <TotpVerifier
+                Purpose="TotpPurpose.VerifyPhone"
+                PurposeText=""
+                Phone="@ModalModel.Phone" Verified="@(_ => Complete(true))"
+                Error="@(_ => Complete(false, true))"/>
+        </div>
     </div>
     </Body>
 </DialogFrame>
