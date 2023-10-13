@@ -9,6 +9,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public record ChatHub(IServiceProvider Services, Session Session) : IHasServices, IServiceProvider
 {
     private IChats? _chats;
+    private Media.ILinkPreviews? _linkPreviews;
     private IRoles? _roles;
     private IAuthors? _authors;
     private IReactions? _reactions;
@@ -51,6 +52,7 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     private IJSRuntime? _js;
 
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    public Media.ILinkPreviews LinkPreviews => _linkPreviews ??= Services.GetRequiredService<Media.ILinkPreviews>();
     public IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
     public IReactions Reactions => _reactions ??= Services.GetRequiredService<IReactions>();
     public IRoles Roles => _roles ??= Services.GetRequiredService<IRoles>();

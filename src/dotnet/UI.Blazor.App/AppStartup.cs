@@ -9,6 +9,7 @@ using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
+using ActualChat.Media.Module;
 using ActualChat.MediaPlayback.Module;
 using ActualChat.Module;
 using ActualChat.Notification.Module;
@@ -122,6 +123,7 @@ namespace ActualChat.UI.Blazor.App
                     new ContactsClientModule(moduleServices),
                     new ChatModule(moduleServices),
                     new ChatClientModule(moduleServices),
+                    new MediaClientModule(moduleServices),
                     new InviteClientModule(moduleServices),
                     new NotificationClientModule(moduleServices),
                     // UI modules

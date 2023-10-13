@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace ActualChat.Chat.Db;
+namespace ActualChat.Media.Db;
 
 [Table("LinkPreviews")]
 public class DbLinkPreview : IHasId<string>, IRequirementTarget

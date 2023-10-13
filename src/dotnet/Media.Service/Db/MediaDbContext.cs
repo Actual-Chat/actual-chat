@@ -8,6 +8,7 @@ namespace ActualChat.Media.Db;
 public class MediaDbContext : DbContextBase
 {
     public DbSet<DbMedia> Media { get; protected set; } = null!;
+    public DbSet<DbLinkPreview> LinkPreviews { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;

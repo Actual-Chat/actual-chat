@@ -20,42 +20,42 @@ public class PlaywrightTest : AppHostTestBase
     public async Task AddMessageTest()
     {
         const float timeout = 20_000f;
-        using var appHost = await NewAppHost().ConfigureAwait(false);
+        using var appHost = await NewAppHost();
         using var tester = appHost.NewPlaywrightTester();
-        var account = await tester.SignIn(new User("", "it-works")).ConfigureAwait(false);
-        var (page, _) = await tester.NewPage("chat/the-actual-one").ConfigureAwait(false);
+        var account = await tester.SignIn(new User("", "it-works"));
+        var (page, _) = await tester.NewPage("chat/the-actual-one");
         await page.WaitForLoadStateAsync(LoadState.Load,
-            new PageWaitForLoadStateOptions() { Timeout = timeout }).ConfigureAwait(false);
+            new PageWaitForLoadStateOptions() { Timeout = timeout });
         // TODO: wait for server-side blazor loading, something like page.WaitForWebSocketAsync
 
-        await Task.Delay(2000).ConfigureAwait(false);
+        await Task.Delay(2000);
 
-        var chatPage = await page.QuerySelectorAsync(".list-view-layout").ConfigureAwait(false);
+        var chatPage = await page.QuerySelectorAsync(".list-view-layout");
         chatPage.Should().NotBeNull();
-        var input = await page.QuerySelectorAsync("[role='textbox']").ConfigureAwait(false);
+        var input = await page.QuerySelectorAsync("[role='textbox']");
         input.Should().NotBeNull();
-        var button = await page.QuerySelectorAsync("button.message-submit").ConfigureAwait(false);
+        var button = await page.QuerySelectorAsync("button.message-submit");
         button.Should().NotBeNull();
 
-        var messages = await GetMessages(page).ConfigureAwait(false);
-        var lastMessage = await GetLastMessage(messages).ConfigureAwait(false);
+        var messages = await GetMessages(page);
+        var lastMessage = await GetLastMessage(messages);
         lastMessage.Should().NotBe("Test-123");
 
-        await input!.TypeAsync("Test-123").ConfigureAwait(false);
-        await button!.ClickAsync().ConfigureAwait(false);
+        await input!.TypeAsync("Test-123");
+        await button!.ClickAsync();
 
         var count = messages.Count;
-        messages = await WaitNewMessages(TimeSpan.FromSeconds(5), page, count).ConfigureAwait(false);
-        lastMessage = await GetLastMessage(messages).ConfigureAwait(false);
+        messages = await WaitNewMessages(TimeSpan.FromSeconds(5), page, count);
+        lastMessage = await GetLastMessage(messages);
         lastMessage.Should().Be("Test-123");
 
         static async Task<IReadOnlyList<IElementHandle>> WaitNewMessages(TimeSpan timeout, IPage page, int oldMessageCount)
         {
             var stopTime = DateTime.Now + timeout;
-            var newMessages = await GetMessages(page).ConfigureAwait(false);
+            var newMessages = await GetMessages(page);
             while (newMessages.Count == oldMessageCount) {
-                await Task.Delay(500).ConfigureAwait(false);
-                newMessages = await GetMessages(page).ConfigureAwait(false);
+                await Task.Delay(500);
+                newMessages = await GetMessages(page);
                 if (DateTime.Now >= stopTime) {
                     throw new TimeoutException($"Chat state has not changed in {timeout.TotalSeconds} seconds.");
                 }
@@ -67,7 +67,7 @@ public class PlaywrightTest : AppHostTestBase
             => await page.QuerySelectorAllAsync(".list-view-layout .content");
 
         static async Task<string?> GetLastMessage(IEnumerable<IElementHandle> messages)
-            => await messages.Last().TextContentAsync().ConfigureAwait(false);
+            => await messages.Last().TextContentAsync();
     }
 
     [Fact]

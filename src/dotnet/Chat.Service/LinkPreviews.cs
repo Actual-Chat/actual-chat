@@ -1,17 +1,30 @@
-using ActualChat.Chat.Module;
-
 namespace ActualChat.Chat;
 
+[Obsolete("2023.10: Use ActualChat.Media.LinkPreviews instead")]
 internal class LinkPreviews(IServiceProvider services) : ILinkPreviews
 {
-    private ILinkPreviewsBackend Backend { get; } = services.GetRequiredService<ILinkPreviewsBackend>();
-    private ChatSettings Settings { get; } = services.GetRequiredService<ChatSettings>();
+    private Media.ILinkPreviews Service { get; } = services.GetRequiredService<Media.ILinkPreviews>();
 
     // [ComputeMethod]
-    public virtual Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
-        => Backend.Get(id, cancellationToken);
+    public virtual async Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
+    {
+        var preview = await Service.Get(id, cancellationToken).ConfigureAwait(false);
+        if (preview is null)
+            return null;
+
+        return new () {
+            Id = preview.Id,
+            Title = preview.Title,
+            Description = preview.Description,
+            Url = preview.Description,
+            PreviewMediaId = preview.PreviewMediaId,
+            CreatedAt = preview.CreatedAt,
+            ModifiedAt = preview.ModifiedAt,
+            PreviewMedia = preview.PreviewMedia,
+        };
+    }
 
     // [ComputeMethod]
     public virtual Task<bool> IsEnabled()
-        => Task.FromResult(Settings.EnableLinkPreview);
+        => Service.IsEnabled();
 }

@@ -59,7 +59,7 @@ public class DbTest: AppHostTestBase
         }
         await Task.WhenAll(readTasks.ToArray());
         foreach (var readTask in readTasks) {
-            var elapsed = await readTask.ConfigureAwait(false);
+            var elapsed = await readTask;
             elapsed.TotalMilliseconds.Should().BeLessThan(500, "reads should not be blocked with updates");
         }
 

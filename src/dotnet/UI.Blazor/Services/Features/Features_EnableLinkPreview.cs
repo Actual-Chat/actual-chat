@@ -1,5 +1,5 @@
-using ActualChat.Chat;
 using ActualChat.Users;
+using ILinkPreviews = ActualChat.Media.ILinkPreviews;
 
 namespace ActualChat.UI.Blazor.Services;
 

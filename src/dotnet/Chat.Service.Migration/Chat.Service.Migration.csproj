@@ -9,4 +9,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Migrations\20231012105901_ChatEntry_AddLinkPreviewFillParts.cs" />
+    <Compile Remove="Migrations\20231012105901_ChatEntry_AddLinkPreviewFillParts.Designer.cs" />
+  </ItemGroup>
+
 </Project>

@@ -4,6 +4,7 @@ using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
+using ActualChat.Uploads;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework.Operations;
@@ -91,11 +92,11 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddService<IReactions, Reactions>();
         fusion.AddService<IReactionsBackend, ReactionsBackend>();
 
+ #pragma warning disable CS0618 // Type or member is obsolete
         // Links
         fusion.AddService<ILinkPreviews, LinkPreviews>();
-        fusion.AddService<ILinkPreviewsBackend, LinkPreviewsBackend>();
-        services.AddHttpClient(nameof(LinkPreviewsBackend))
-            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));
+ #pragma warning restore CS0618 // Type or member is obsolete
+
 
         // ContentSaver
         services.AddResponseCaching();

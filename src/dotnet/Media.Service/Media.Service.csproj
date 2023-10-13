@@ -4,6 +4,12 @@
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\Media\Media.csproj" />
+    <ProjectReference Include="..\Chat\Chat.csproj" />
+    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenGraph-Net" />
   </ItemGroup>
 
 </Project>

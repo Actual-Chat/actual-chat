@@ -18,6 +18,7 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
     public int CountAs { get; init; } = 1;
     public ChatMessageReplacementKind ReplacementKind { get; init; }
     public DateOnly DateLineDate { get; init; }
+    public Media.LinkPreview? LinkPreview { get; init; }
 
     public override string ToString()
         => $"(#{Key} -> {Entry})";
@@ -78,7 +79,8 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
         IReadOnlyCollection<ChatMessageModel> oldItems,
         long lastReadEntryId,
         bool hasVeryFirstItem,
-        TimeZoneConverter timeZoneConverter)
+        TimeZoneConverter timeZoneConverter,
+        IReadOnlyDictionary<Symbol, Media.LinkPreview> linkPreviews)
     {
         var result = new List<ChatMessageModel>(chatEntries.Count);
         var isBlockStart = true;
@@ -125,12 +127,9 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
                     IsBlockEnd = isBlockEnd,
                     HasEntryKindSign = isEntryKindChanged || (isBlockStart && isAudio),
                     IsForwardBlockStart = isForwardBlockStart,
+                    LinkPreview = linkPreviews.GetValueOrDefault(entry.LinkPreviewId)
                 };
-                var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
-                if (oldItem != null && oldItem.Equals(item))
-                    result.Add(oldItem);
-                else
-                    result.Add(item);
+                AddItem(item);
             }
 
             isPrevUnread = isUnread;
@@ -147,7 +146,7 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
             var oldItem = oldItemsMap!.GetValueOrDefault(item.Key);
             if (oldItem != null && oldItem.Equals(item))
                 item = oldItem;
-            result!.Add(item);
+            result.Add(item);
         }
 
         bool ShouldSplit(

@@ -9,6 +9,7 @@
     <ProjectReference Include="..\Audio.UI.Blazor\Audio.UI.Blazor.csproj" />
     <ProjectReference Include="..\Chat.UI.Blazor\Chat.UI.Blazor.csproj" />
     <ProjectReference Include="..\Contacts.UI.Blazor\Contacts.UI.Blazor.csproj" />
+    <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\Notification.UI.Blazor\Notification.UI.Blazor.csproj" />
     <ProjectReference Include="..\Users.UI.Blazor\Users.UI.Blazor.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />

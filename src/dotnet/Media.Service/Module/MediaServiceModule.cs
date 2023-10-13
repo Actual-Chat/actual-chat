@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
@@ -37,17 +38,23 @@ public sealed class MediaServiceModule : HostModule<MediaSettings>
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<MediaDbContext>))
                 return true;
+
             // 2. Make sure it's intact only for local commands
             var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(IMediaBackend).Assembly) // Media.Contracts assembly
-                return true;
-            return false;
+            return commandAssembly == typeof(IMediaBackend).Assembly // Media.Contracts assembly
+                || commandType == typeof(TextEntryChangedEvent);
         });
 
         var fusion = services.AddFusion();
 
         // Module's own services
         fusion.AddService<IMediaBackend, MediaBackend>();
+
+        // Links
+        fusion.AddService<ILinkPreviews, LinkPreviews>();
+        fusion.AddService<ILinkPreviewsBackend, LinkPreviewsBackend>();
+        services.AddHttpClient(nameof(LinkPreviewsBackend))
+            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
