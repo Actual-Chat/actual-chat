@@ -222,7 +222,7 @@
             initialValue = new Model {
                 OwnAuthorId = ownAuthorId,
                 RepliedEntry = repliedEntry,
-                ShowLinkPreview = Entry.ShowLinkPreview && ChatContext.ShowLinkPreview.Value,
+                ShowLinkPreview = Message.ShowLinkPreview && ChatContext.ShowLinkPreview.Value,
             };
         return new() {
             InitialValue = initialValue,
@@ -250,7 +250,7 @@
             ? await Authors.Get(Session, entry.ForwardedChatEntryId.ChatId, entry.ForwardedAuthorId, cancellationToken)
             : null;
         var selectedChatEntries = await ChatContext.SelectionUI.Selection.Use(cancellationToken);
-        var showLinkPreview = Entry.ShowLinkPreview && await ChatContext.ShowLinkPreview.Use(cancellationToken); // TODO: read ui settings to decide dismiss links or not
+        var showLinkPreview = Message.ShowLinkPreview && await ChatContext.ShowLinkPreview.Use(cancellationToken); // TODO: read ui settings to decide dismiss links or not
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,

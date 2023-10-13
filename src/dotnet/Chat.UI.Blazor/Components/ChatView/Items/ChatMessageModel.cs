@@ -1,3 +1,4 @@
+using ActualChat.Media;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
@@ -19,6 +20,9 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
     public ChatMessageReplacementKind ReplacementKind { get; init; }
     public DateOnly DateLineDate { get; init; }
     public Media.LinkPreview? LinkPreview { get; init; }
+
+    public bool ShowLinkPreview
+        => LinkPreview is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.Dismiss;
 
     public override string ToString()
         => $"(#{Key} -> {Entry})";
@@ -143,7 +147,7 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
         return result;
 
         void AddItem(ChatMessageModel item) {
-            var oldItem = oldItemsMap!.GetValueOrDefault(item.Key);
+            var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
             if (oldItem != null && oldItem.Equals(item))
                 item = oldItem;
             result.Add(item);

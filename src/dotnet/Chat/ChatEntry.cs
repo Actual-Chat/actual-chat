@@ -71,8 +71,6 @@ public sealed partial record ChatEntry(
     public bool HasMediaEntry => VideoEntryId.HasValue || AudioEntryId.HasValue;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool HasMarkup => Kind == ChatEntryKind.Text && !IsSystemEntry && !HasMediaEntry;
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool ShowLinkPreview => !LinkPreviewId.IsEmpty && LinkPreviewMode != LinkPreviewMode.Dismiss;
 
     [MemoryPackConstructor]
     public ChatEntry() : this(ChatEntryId.None) { }
