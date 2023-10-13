@@ -1,9 +1,11 @@
 using ActualChat.Media;
 using ActualChat.Security;
+using ActualChat.Uploads;
 using ActualChat.Users;
 using ActualChat.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using FileInfo = ActualChat.Uploads.FileInfo;
 
 namespace ActualChat.Chat.Controllers;
 

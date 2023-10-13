@@ -1,19 +1,21 @@
-using ActualChat.Chat.Db;
+using ActualChat.Chat;
 using ActualChat.Chat.Events;
-using ActualChat.Chat.Module;
 using ActualChat.Commands;
-using ActualChat.Media;
+using ActualChat.Media.Db;
+using ActualChat.Media.Module;
+using ActualChat.Uploads;
 using Microsoft.EntityFrameworkCore;
 using OpenGraphNet;
 using OpenGraphNet.Metadata;
 using StackExchange.Redis;
 using Stl.Fusion.EntityFramework;
 using Stl.Redis;
+using FileInfo = ActualChat.Uploads.FileInfo;
 
-namespace ActualChat.Chat;
+namespace ActualChat.Media;
 
 public class LinkPreviewsBackend(IServiceProvider services)
-    : DbServiceBase<ChatDbContext>(services), ILinkPreviewsBackend
+    : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {
     private static readonly Dictionary<string, string> ImageExtensionByContentType =
         new (StringComparer.OrdinalIgnoreCase) {
@@ -24,18 +26,34 @@ public class LinkPreviewsBackend(IServiceProvider services)
             ["image/svg+xml"] = ".svg",
             ["image/webp"] = ".webp",
         };
-    private ChatSettings Settings { get; } = services.GetRequiredService<ChatSettings>();
+    private MediaSettings Settings { get; } = services.GetRequiredService<MediaSettings>();
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private HttpClient HttpClient { get; } = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(LinkPreviewsBackend));
     private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; } = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
     private IContentSaver ContentSaver { get; } = services.GetRequiredService<IContentSaver>();
-    private RedisDb<ChatDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<ChatDbContext>>();
+    private RedisDb<MediaDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<MediaDbContext>>();
     private Moment Now => Clocks.SystemClock.Now;
 
     // [ComputeMethod]
     public virtual Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
         => Get(id, null, false, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual async Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
+    {
+        var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+        if (entry is null)
+            return null;
+
+        var preview = await Get(entry.LinkPreviewId, cancellationToken).ConfigureAwait(false);
+        if (preview != null)
+            return preview;
+
+        // we need to refresh metadata in chat entry or recover after link previews have been cleaned up
+        return await EnsureLinkPreviewIsActualizedForChatEntry(entry, cancellationToken).ConfigureAwait(false);
+    }
 
     // [CommandHandler]
     public virtual async Task<LinkPreview?> OnRefresh(LinkPreviewsBackend_Refresh command, CancellationToken cancellationToken)
@@ -79,7 +97,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 CreatedAt = Now,
                 ModifiedAt = Now,
             };
-            dbContext.Add(dbLinkPreview);
+            dbContext.Add((object)dbLinkPreview);
         }
         else {
             dbLinkPreview.ThumbnailMediaId = linkMeta.PreviewMediaId;
@@ -96,41 +114,35 @@ public class LinkPreviewsBackend(IServiceProvider services)
     // Events
 
     [EventHandler]
-    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var (entry, _, changeKind) = eventCommand;
-        var context = CommandContext.GetCurrent();
+        if (Computed.IsInvalidating())
+            return Task.CompletedTask; // It just spawns other commands, so nothing to do here
 
-        if (Computed.IsInvalidating()) {
-            var invPreviewId = context.Operation().Items.GetOrDefault("");
-            if (!invPreviewId.IsNullOrEmpty())
-                _ = Get(LinkPreview.ComposeId(invPreviewId), default);
-            return;
-        }
+        if (changeKind is ChangeKind.Remove)
+            return Task.CompletedTask;
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
+        return EnsureLinkPreviewIsActualizedForChatEntry(entry, cancellationToken);
+    }
 
-        var prevPreviewId = entry.LinkPreviewId;
-        if(changeKind is ChangeKind.Create or ChangeKind.Update) {
-            var preview = await FetchPreview(entry, cancellationToken).ConfigureAwait(false);
-            if (entry.LinkPreviewId != preview.Id && !preview.IsEmpty)
-                entry = entry with { LinkPreviewId = preview.Id };
-        }
+    private async Task<LinkPreview?> EnsureLinkPreviewIsActualizedForChatEntry(ChatEntry entry, CancellationToken cancellationToken)
+    {
+        var preview = await FetchPreviewForEntry(entry, cancellationToken).ConfigureAwait(false);
+        if (entry.LinkPreviewId == preview.Id)
+            return preview;
 
-        if (prevPreviewId == entry.LinkPreviewId)
-            return;
-
-        context.Operation().Items.Set(entry.LinkPreviewId.Value);
-        if (changeKind != ChangeKind.Remove) {
-            var changeTextEntryCmd = new ChatsBackend_UpsertEntry(entry, entry.Attachments.Count > 0);
-            await Commander.Call(changeTextEntryCmd, true, cancellationToken).ConfigureAwait(false);
-        }
+        entry = entry with {
+            LinkPreviewId = preview.Id,
+        };
+        var changeTextEntryCmd = new ChatsBackend_UpsertEntry(entry, entry.Attachments.Count > 0);
+        await Commander.Call(changeTextEntryCmd, true, cancellationToken).ConfigureAwait(false);
+        return preview;
     }
 
     // Private methods
 
-    private async Task<LinkPreview> FetchPreview(ChatEntry entry, CancellationToken cancellationToken)
+    private async Task<LinkPreview> FetchPreviewForEntry(ChatEntry entry, CancellationToken cancellationToken)
     {
         var urls = ExtractUrls(entry);
         foreach (var url in urls) {
@@ -202,7 +214,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             // TODO: support more cases
         }
         catch (Exception e) {
-            Log.LogDebug(e, "Failed to crawl link {url}", url);
+            Log.LogDebug(e, "Failed to crawl link {Url}", url);
         }
         return LinkMeta.None;
     }
@@ -241,7 +253,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             return media.Id;
         // TODO: extract common part with ChatMediaController
         var (processedFile, size) = await ProcessFile(fileInfo, cancellationToken).ConfigureAwait(false);
-        media = new Media.Media(mediaId) {
+        media = new Media(mediaId) {
             ContentId = $"media/{mediaId.LocalId}/{fileInfo.FileName}",
             FileName = fileInfo.FileName,
             Length = fileInfo.Length,
@@ -256,7 +268,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         var changeCommand = new MediaBackend_Change(
             mediaId,
-            new Change<Media.Media> {
+            new Change<Media> {
                 Create = media,
             });
         await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);

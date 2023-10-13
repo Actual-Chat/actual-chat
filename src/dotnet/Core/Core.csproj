@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FFMpegCore" />
     <PackageReference Include="MemoryPack" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" />
@@ -14,9 +15,11 @@
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Microsoft.Toolkit.HighPerformance" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
+    <PackageReference Include="OpenGraph-Net" />
     <PackageReference Include="Stl.Fusion" />
     <PackageReference Include="Stl.Fusion.Ext.Contracts" />
     <PackageReference Include="Stl.Rpc" />
+    <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Ulid" />
   </ItemGroup>

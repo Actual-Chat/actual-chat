@@ -29,6 +29,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private Chat Chat => ChatContext.Chat;
     private ChatUI ChatUI => ChatContext.ChatUI;
     private IChats Chats => ChatContext.Chats;
+    private Media.ILinkPreviews LinkPreviews => ChatContext.LinkPreviews;
     private IAuthors Authors => ChatContext.Authors;
     private NavigationManager Nav => ChatContext.Nav;
     private History History => ChatContext.History;
@@ -279,12 +280,18 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 };
         }
 
+        var linkPreviews = await entries.Where(x => !x.LinkPreviewId.IsEmpty)
+            .Select(x => LinkPreviews.GetForEntry(x.LinkPreviewId, x.Id, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+        var linkPreviewMap = linkPreviews.SkipNullItems().ToDictionary(x => x.Id);
         var messages = ChatMessageModel.FromEntries(
             entries,
             oldData.Items,
             _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid,
             hasVeryFirstItem,
-            TimeZoneConverter);
+            TimeZoneConverter,
+            linkPreviewMap);
 
         var areSameMessages = !oldData.IsNone
             && messages.Count == oldData.Items.Count

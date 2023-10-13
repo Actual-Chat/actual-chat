@@ -1,7 +1,8 @@
 using System.Net.Mime;
 using FFMpegCore;
+using SixLabors.ImageSharp;
 
-namespace ActualChat.Chat;
+namespace ActualChat.Uploads;
 
 public class VideoUploadProcessor : IUploadProcessor
 {

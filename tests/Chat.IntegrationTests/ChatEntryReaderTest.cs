@@ -219,7 +219,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         chat?.Title.Should().Be("The Actual One");
 
         var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
-        var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None).ConfigureAwait(false);
+        var idRange = await chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
 
         { // Test 1
             using var cts = new CancellationTokenSource(500);

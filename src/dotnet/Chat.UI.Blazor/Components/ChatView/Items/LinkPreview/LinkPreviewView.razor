@@ -1,5 +1,7 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Media
+@using ILinkPreviews = ActualChat.Media.ILinkPreviews
+@using LinkPreview = ActualChat.Media.LinkPreview
 @inherits ComputedStateComponent<LinkPreview>
 @{
     var m = State.Value;
@@ -12,7 +14,7 @@
 
 @* Keep height fixed *@
 <div class="link-preview">
-    @if (!imageUrl.IsNullOrEmpty()) {
+    @if (m.PreviewMedia != null) {
         <img class="c-thumbnail" src="@imageUrl" alt="link preview thumbnail"/>
     }
     <div class="c-info">
@@ -31,23 +33,28 @@
 @code {
     [Inject] private ILinkPreviews LinkPreviews { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private ICommander Commander { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
     [Parameter, EditorRequired] public Markup Markup { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<LinkPreview>.Options GetStateOptions() {
         return new() {
-            InitialValue = LinkPreview.Loading,
+            InitialValue = Message.LinkPreview ?? LinkPreview.None,
             Category = GetStateCategory(),
         };
     }
 
     protected override async Task<LinkPreview> ComputeState(CancellationToken cancellationToken) {
-        if (Entry.LinkPreviewId.IsEmpty)
+        if (Message.LinkPreview?.Id.IsEmpty != false)
             return LinkPreview.None;
 
-        var linkPreview = await LinkPreviews.Get(Entry.LinkPreviewId, cancellationToken);
+        if (Message.LinkPreview != null)
+            return Message.LinkPreview;
+
+        // in case link previews were cleaned up and not loaded yet
+        var linkPreview = await LinkPreviews.GetForEntry(Message.Entry.LinkPreviewId, Message.Entry.Id, cancellationToken);
         return linkPreview is null || linkPreview.IsEmpty ? LinkPreview.None : linkPreview;
     }
 
@@ -57,16 +64,20 @@
             return "";
         var imageUrl = UrlMapper.ContentUrl(preview.ContentId);
         // TODO: use image metadata for better proportions selection
-        switch (Entry.LinkPreviewMode) {
+        var (width, height) = GetImageMaxSize();
+        return UrlMapper.ImagePreviewUrl(imageUrl, width, height, true);
+    }
+
+    private (int? Width, int Height) GetImageMaxSize() {
+        switch (Message.Entry.LinkPreviewMode) {
             case LinkPreviewMode.Full:
-                var maxHeight = ScreenSize.IsNarrow() ? 80 : 136;
-                return UrlMapper.ImagePreviewUrl(imageUrl, null, maxHeight, true);
+                var maxHeight = ScreenSize.IsNarrow() ? 160  : 136;
+                return (null, maxHeight);
             case LinkPreviewMode.Compact:
                 maxHeight = ScreenSize.IsNarrow() ? 80 : 120;
-                return UrlMapper.ImagePreviewUrl(imageUrl, maxHeight, maxHeight, true);
+                return (maxHeight, maxHeight);
             default:
-                return "";
+                return (0, 0);
         }
-
     }
 }

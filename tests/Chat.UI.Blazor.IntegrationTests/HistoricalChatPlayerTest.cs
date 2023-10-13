@@ -41,7 +41,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         ChatId chatId;
 
         var dbContextFactory = services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
-        var dbContext = await dbContextFactory.CreateDbContextAsync().ConfigureAwait(false);
+        var dbContext = await dbContextFactory.CreateDbContextAsync();
         await using (var _ = dbContext.ConfigureAwait(false)) {
             var dbChat = AddChat(dbContext, yesterday, _account.Id);
             chatId = new ChatId(dbChat.Id);
@@ -50,7 +50,7 @@ public class HistoricalChatPlayerTest : AppHostTestBase
             long localId = 1;
             AddAudioEntry(dbContext, chatId, authorId, ref localId, entry1BeginsAt, TimeSpan.FromSeconds(20));
             AddAudioEntry(dbContext, chatId, authorId, ref localId, entry2BeginsAt, TimeSpan.FromSeconds(60));
-            await dbContext.SaveChangesAsync().ConfigureAwait(false);
+            await dbContext.SaveChangesAsync();
         }
 
         var player = services.Activate<HistoricalChatPlayer>(chatId);
