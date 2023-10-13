@@ -17,6 +17,7 @@ namespace ActualChat.Media;
 public class LinkPreviewsBackend(IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {
+    private const string RedisKeyPrefix = ".LinkCrawlerLocks.";
     private static readonly Dictionary<string, string> ImageExtensionByContentType =
         new (StringComparer.OrdinalIgnoreCase) {
             ["image/bmp"] = ".bmp",
@@ -80,7 +81,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             return dbLinkPreview.ToModel();
 
         var canCrawl = await RedisDb.Database
-            .StringSetAsync(id.Value, Now.ToString(), Settings.CrawlingTimeout, When.NotExists)
+            .StringSetAsync(ToRedisKey(id), Now.ToString(), Settings.CrawlingTimeout, When.NotExists)
             .ConfigureAwait(false);
         if (!canCrawl)
             // crawling of this url is already in progress
@@ -90,6 +91,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (dbLinkPreview == null) {
             dbLinkPreview = new DbLinkPreview {
                 Id = LinkPreview.ComposeId(url),
+                Version = VersionGenerator.NextVersion(),
                 Url = url,
                 Title = linkMeta.Title,
                 Description = linkMeta.Description,
@@ -104,7 +106,10 @@ public class LinkPreviewsBackend(IServiceProvider services)
             dbLinkPreview.Title = linkMeta.Title;
             dbLinkPreview.Description = linkMeta.Description;
             dbLinkPreview.ModifiedAt = Now;
+            dbLinkPreview.Version = VersionGenerator.NextVersion(dbLinkPreview.Version);
         }
+
+        await RedisDb.Database.KeyDeleteAsync(ToRedisKey(id));
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         context.Operation().Items.Set(true);
@@ -141,6 +146,9 @@ public class LinkPreviewsBackend(IServiceProvider services)
     }
 
     // Private methods
+
+    private static string ToRedisKey(Symbol id)
+        => $"{RedisKeyPrefix}{id.Value}";
 
     private async Task<LinkPreview> FetchPreviewForEntry(ChatEntry entry, CancellationToken cancellationToken)
     {
