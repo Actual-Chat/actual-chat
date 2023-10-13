@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
+using ActualChat.Permissions;
 
 namespace ActualChat.Contacts.UI.Blazor.Module;
 
@@ -19,6 +20,8 @@ public partial class ContactsBlazorUIModule : HostModule, IBlazorUIModule
         var fusion = services.AddFusion();
         fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
         services.AddScoped<DeviceContacts>(c => new DeviceContacts());
-        services.AddScoped<IContactPermissions>(c => c.GetRequiredService<DeviceContacts>());
+
+        if (HostInfo.AppKind != AppKind.MauiApp)
+            services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c));
     }
 }

@@ -1,3 +1,4 @@
+using ActualChat.Permissions;
 using ActualChat.Users;
 
 namespace ActualChat.Contacts.UI.Blazor.Services;
@@ -8,6 +9,7 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IExternalContacts ExternalContacts { get; } = services.GetRequiredService<IExternalContacts>();
     private DeviceContacts DeviceContacts { get; } = services.GetRequiredService<DeviceContacts>();
+    private ContactsPermissionHandler ContactsPermission { get; } = services.GetRequiredService<ContactsPermissionHandler>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
     private ICommander Commander { get; } = services.Commander();
     private ILogger Log { get; } = services.LogFor<ContactSync>();
@@ -60,6 +62,8 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
 
     private async Task Sync(CancellationToken cancellationToken)
     {
+        await ContactsPermission.Check(cancellationToken).ConfigureAwait(false);
+        await ContactsPermission.Cached.When(x => x == true, cancellationToken).ConfigureAwait(false);
         var existingContacts = await ExternalContacts.List(Session, DeviceContacts.DeviceId, cancellationToken).ConfigureAwait(false);
         var existingMap = existingContacts.ToDictionary(x => x.Id);
         var deviceContacts = await DeviceContacts.List(cancellationToken).ConfigureAwait(false);
