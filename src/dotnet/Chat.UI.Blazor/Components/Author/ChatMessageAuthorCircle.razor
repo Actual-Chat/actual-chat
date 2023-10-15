@@ -7,14 +7,24 @@
 <div class="avatar-badge">
     <AvatarCircle
         Avatar="@m.Author.Avatar" Size="SquareSize.Size9" Presence="@m.Presence"
-        Click="@Click"/>
+        Click="@_onClickCallback"/>
 </div>
 
 @code {
-    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    private EventCallback _onClickCallback;
+
+    [Parameter] public EventCallback<AuthorId> Click { get; set; }
 
     public ChatMessageAuthorCircle() {
         ShowPresence = true;
         ShowRecording = true;
     }
+
+    protected override void OnInitialized() {
+        _onClickCallback = NoStateHasChanged.EventCallback(OnAvatarBadgeClick);
+        base.OnInitialized();
+    }
+
+    private void OnAvatarBadgeClick()
+        => Click.InvokeAsync(AuthorId);
 }

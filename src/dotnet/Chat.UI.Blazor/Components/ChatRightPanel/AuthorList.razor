@@ -16,7 +16,7 @@
                     @key="@authorId"
                     AuthorSid="@authorId"
                     ShowPresence="true"
-                    Click="@(_ => AuthorUI.Show(authorId))"/>
+                    Click="@_onClickCallback"/>
             }
         } else {
             var groups = new List<(string,IReadOnlyCollection<AuthorId>, bool)> {
@@ -32,7 +32,7 @@
                             @key="@authorId"
                             AuthorSid="@authorId"
                             ShowPresence="true"
-                            Click="@(_ => AuthorUI.Show(authorId))"/>
+                            Click="@_onClickCallback"/>
                     }
                 </Collapsed>
             }
@@ -41,13 +41,24 @@
 </div>
 
 @code {
+    private EventCallback<AuthorId> _onClickCallback;
+
     private Session Session => ChatContext.Session;
     private Chat Chat => ChatContext.Chat;
     private IRoles Roles => ChatContext.Roles;
     private IAuthors Authors => ChatContext.Authors;
     private AuthorUI AuthorUI => ChatContext.AuthorUI;
 
+    [Inject] private ILogger<AuthorList> Log { get; init; } = null!;
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
+        base.OnInitialized();
+    }
+
+    private void OnAuthorBadgeClick(AuthorId authorId)
+        => _ = AuthorUI.Show(authorId);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

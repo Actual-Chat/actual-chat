@@ -11,12 +11,22 @@
     NameClass="@NameClass"
     ShowStatusText="@ShowStatusText"
     StatusText="@StatusText"
-    Click="@Click"/>
+    Click="@_onClickCallback"/>
 
 @code {
+    private EventCallback _onClickCallback;
+
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public string NameClass { get; set; } = "";
-    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter] public EventCallback<AuthorId> Click { get; set; }
     [Parameter] public bool ShowStatusText { get; set; }
     [Parameter] public string? StatusText { get; set; }
+
+    protected override void OnInitialized() {
+        _onClickCallback = NoStateHasChanged.EventCallback(OnAvatarBadgeClick);
+        base.OnInitialized();
+    }
+
+    private void OnAvatarBadgeClick()
+        => Click.InvokeAsync(AuthorId);
 }
