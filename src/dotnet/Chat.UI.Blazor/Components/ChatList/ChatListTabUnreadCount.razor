@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatListTabUnreadCount.Model>
 @{
-    var m = State.Value;
+    var m = _rendered = State.Value;
     var count = m.Count;
     if (m == Model.Loading || count <= 0)
         return;
@@ -12,6 +12,8 @@
 </div>
 
 @code {
+    private Model? _rendered;
+
     [Inject] private ChatUI ChatUI  { get; init; } = null!;
     [Inject] private ChatListUI ChatListUI  { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
@@ -42,10 +44,12 @@
         _ = History.NavigateTo(Links.Chat(firstUnreadChat.Id));
     }
 
+    protected override bool ShouldRender()
+        => State.HasError || State.Value != _rendered;
+
     public sealed record Model {
         public static Model Loading { get; } = new();
 
         public Trimmed<int> Count { get; init; }
     }
-
 }

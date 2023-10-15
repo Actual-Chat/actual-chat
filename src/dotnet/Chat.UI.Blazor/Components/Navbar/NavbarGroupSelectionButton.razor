@@ -18,9 +18,7 @@
     <Ending>
         <LeftLine/>
         <div class="w-[5px]"></div>
-        @if (ShowBadge && BadgeContent != null) {
-            <Badge>@BadgeContent</Badge>
-        }
+        @BadgeContent
     </Ending>
 </NavbarButton>
 
@@ -29,7 +27,6 @@
 
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
-    [Parameter] public bool ShowBadge { get; set; }
     [Parameter] public string Tooltip { get; set; } = "";
     [Parameter] public FloatingPosition TooltipPosition { get; set; } = FloatingPosition.Right;
     [Parameter] public RenderFragment? ChildContent { get; set; }
