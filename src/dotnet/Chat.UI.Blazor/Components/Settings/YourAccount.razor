@@ -9,10 +9,9 @@
 <Tile>
     <TileItem IsHoverable="false" Class="first-tile-item">
         <Icon>
-            <AccountBadge
-                UserSid="@account.Id"
-                Size="SquareSize.Size9"
-                ShowPresence="false"
+            <AvatarBadge
+                Avatar="@account.Avatar"
+                Size="@SquareSize.Size9"
                 NameClass="hidden" />
         </Icon>
         <Right>

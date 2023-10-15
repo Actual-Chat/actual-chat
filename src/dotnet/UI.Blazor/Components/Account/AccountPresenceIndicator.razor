@@ -1,0 +1,43 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Users
+@inherits ComputedStateComponent<Presence>
+
+@{
+    var presence = State.Value;
+    if (presence is Presence.Unknown or Presence.Offline)
+        return;
+}
+
+@PresenceIndicator.Render(presence)
+
+@code {
+    [Inject] private IUserPresences UserPresences { get; init; } = null!;
+
+    protected UserId UserId { get; private set; }
+
+    [Parameter, EditorRequired] public string UserSid { get; set; } = "";
+
+    protected override void OnParametersSet()
+        => UserId = new UserId(UserSid);
+
+    protected override ComputedState<Presence>.Options GetStateOptions() {
+        if (UserId.IsNone)
+            return new ComputedState<Presence>.Options {
+                InitialValue = Presence.Unknown,
+                Category = GetStateCategory(),
+            };
+        var presenceComputed = Computed.GetExisting(() => UserPresences.Get(UserId, default));
+        var presence = presenceComputed?.IsConsistent() == true &&  presenceComputed.HasValue ? presenceComputed.Value : Presence.Unknown;
+
+        return new ComputedState<Presence>.Options {
+            InitialValue = presence,
+            Category = GetStateCategory(),
+        };
+    }
+
+    protected override async Task<Presence> ComputeState(CancellationToken cancellationToken) {
+        if (UserId.IsNone)
+            return Presence.Unknown;
+        return await UserPresences.Get(UserId, cancellationToken);
+    }
+}

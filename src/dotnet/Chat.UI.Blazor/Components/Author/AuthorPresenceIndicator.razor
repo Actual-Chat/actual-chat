@@ -1,0 +1,70 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<Presence>
+
+@{
+    var presence = State.Value;
+    if (presence is Presence.Unknown or Presence.Offline)
+        return;
+}
+
+@PresenceIndicator.Render(presence)
+
+@code {
+    [Inject] protected Session Session { get; init; } = null!;
+    [Inject] protected IAuthors Authors { get; init; } = null!;
+    [Inject] protected ChatActivity ChatActivity { get; init; } = null!;
+
+    protected AuthorId AuthorId { get; private set; }
+    protected ChatId ChatId => AuthorId.ChatId;
+    protected IChatRecordingActivity? ChatRecordingActivity { get; set; }
+
+    [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
+    [Parameter] public bool ShowRecording { get; set; }
+
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = null;
+    }
+
+    protected override void OnInitialized()
+    {
+        // Set AuthorId here in order to have actual AuthorId value in GetStateOptions.
+        AuthorId = new AuthorId(AuthorSid);
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet()
+    {
+        AuthorId = new AuthorId(AuthorSid);
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = null;
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        if (ShowRecording && !ChatId.IsNone)
+            ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override ComputedState<Presence>.Options GetStateOptions()
+    {
+        return new () {
+            InitialValue = Presence.Unknown,
+            Category = GetStateCategory(),
+        };
+    }
+
+    protected override async Task<Presence> ComputeState(CancellationToken cancellationToken) {
+        if (AuthorId.IsNone)
+            return Presence.Offline;
+
+        var presence = await Authors.GetPresence(Session, AuthorId.ChatId, AuthorId, cancellationToken);
+        if (ShowRecording && ChatRecordingActivity != null) {
+            var isRecording = await ChatRecordingActivity.IsAuthorActive(AuthorId, cancellationToken);
+            if (isRecording)
+                presence = Presence.Recording;
+        }
+        return presence;
+    }
+}

@@ -6,12 +6,10 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
 {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
     protected UserId UserId { get; private set; }
 
     [Parameter, EditorRequired] public string UserSid { get; set; } = "";
-    [Parameter] public bool ShowPresence { get; set; }
 
     protected override void OnParametersSet()
         => UserId = new UserId(UserSid);
@@ -30,17 +28,10 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
         if (account == null)
             return Model.None;
 
-        var presence = Presence.Unknown;
-        if (ShowPresence)
-            presence = await UserPresences.Get(UserId, cancellationToken);
-
-        return new(account, presence);
+        return new(account);
     }
 
-    public sealed record Model(
-        Account Account,
-        Presence Presence = Presence.Unknown
-    ) {
+    public sealed record Model(Account Account) {
         public static readonly Model None = new(Account.None);
         public static readonly Model Loading = new(Account.Loading); // Should differ by ref. from None
     }

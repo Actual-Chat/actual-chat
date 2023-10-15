@@ -2,10 +2,12 @@
 @inherits AccountBadgeBase
 @{
     var m = State.Value;
+    var badgeContent = ShowPresence ? @<AccountPresenceIndicator UserSid="@UserId" /> : (RenderFragment?)null;
 }
 
-<AvatarCircle Avatar="@m.Account.Avatar" Size="@Size" Presence="@m.Presence" />
+<AvatarCircle Avatar="@m.Account.Avatar" Size="@Size" BadgeContent="@badgeContent" />
 
 @code {
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public bool ShowPresence { get; set; }
 }

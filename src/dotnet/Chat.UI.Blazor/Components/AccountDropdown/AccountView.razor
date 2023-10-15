@@ -1,10 +1,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
-@inherits ComputedStateComponent<AccountView.Model>
+@inherits ComputedStateComponent<Account>
 @{
-    var m = State.Value;
-    var account = m.Account;
+    var account = State.Value;
     if (account == AccountFull.Loading)
         return;
 }
@@ -12,25 +11,22 @@
 <AvatarBadge
     Avatar="@account.Avatar"
     Size="@SquareSize.Size9"
-    Presence="@m.Presence"
-    NameClass="hidden" />
+    NameClass="hidden">
+    <BadgeContent>
+        <AccountPresenceIndicator UserSid="@account.Id" />
+    </BadgeContent>
+</AvatarBadge>
 
 @code {
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private IUserPresences UserPresences { get; init; } = null!;
 
-    protected override ComputedState<Model>.Options GetStateOptions()
+    protected override ComputedState<Account>.Options GetStateOptions()
         => new() {
-            InitialValue = new Model(AccountUI.OwnAccount.Value),
+            InitialValue = AccountUI.OwnAccount.Value,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var account = await AccountUI.OwnAccount.Use(cancellationToken);
-        var presence = await UserPresences.Get(account.Id, cancellationToken);
-        return new(account, presence);
-    }
-
-    public sealed record Model(Account Account, Presence Presence = Presence.Unknown);
+    protected override async Task<Account> ComputeState(CancellationToken cancellationToken)
+        => await AccountUI.OwnAccount.Use(cancellationToken);
 }
