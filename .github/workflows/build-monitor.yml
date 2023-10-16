@@ -21,7 +21,7 @@ permissions:
   statuses: write
 
 env:
-  MONITOR_TAG: "7.3.0-alpine-amd64"
+  MONITOR_TAG: "7.3.1-alpine-amd64"
   GCSFUSE_GIT_TAG: "v1.1.0"
   TARGET_IMAGE_NAME: "dotnet-monitor"
 
