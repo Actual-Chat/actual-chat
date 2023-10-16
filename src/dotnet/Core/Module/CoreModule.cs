@@ -51,6 +51,8 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         services.AddSingleton(c => new StaticImportsInitializer(c));
         services.AddHostedService(c => c.GetRequiredService<StaticImportsInitializer>());
         services.AddSingleton(c => new UrlMapper(c.GetRequiredService<HostInfo>()));
+        services.AddSingleton(c => new HealthEventListener(c));
+        services.AddSingleton<IRuntimeStats>(c => c.GetRequiredService<HealthEventListener>());
 
         // IArithmetics
         services.AddTypeMapper<IArithmetics>(map => map

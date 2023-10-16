@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
+using ActualChat.App.Server.Health;
 using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Commands;
@@ -144,6 +145,13 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
                 ? TimeSpan.FromSeconds(1)
                 : TimeSpan.FromSeconds(30);
         });
+
+        // Health-checks
+        services.AddSingleton<LivelinessHealthCheck>(c => new LivelinessHealthCheck(c));
+        services.AddSingleton<ReadinessHealthCheck>(c => new ReadinessHealthCheck(c));
+        services.AddHealthChecks()
+            .AddCheck<LivelinessHealthCheck>("App-Liveliness", tags: new[] { HealthTags.Live })
+            .AddCheck<ReadinessHealthCheck>("App-Readiness", tags: new[] { HealthTags.Ready });
 
         // Queues
         services.AddLocalCommandQueues();

@@ -17,4 +17,7 @@ public sealed class HostSettings
     /// </summary>
     public string DataProtection { get; set; } = "";
     public string OpenTelemetryEndpoint { get; set; } = "";
+
+    public int? LivelinessCpuLimit { get; set; }
+    public int? ReadinessCpuLimit { get; set; }
 }
