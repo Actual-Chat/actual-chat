@@ -13,7 +13,6 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct Phone : ISymbolIdentifier<Phone>
 {
-    public const int MinNumberLength = 7;
     private const char Delimiter = '-';
     public static Phone None => default;
 

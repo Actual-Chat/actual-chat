@@ -1,4 +1,5 @@
 using System.Text;
+using PhoneNumbers;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -44,17 +45,9 @@ public static class PhoneFormatterExt
 
     public static Phone FromReadable(string s)
     {
-        s = Phone.Normalize(s);
-        var code = s.Truncate(PhoneCodes.MaxCodeLength);
-        PhoneCode? phoneCode = null;
-        while (phoneCode is null && !code.IsNullOrEmpty()) {
-            phoneCode = PhoneCodes.GetByCode(code);
-            code = code[..^1];
-        }
-        if (phoneCode is null)
+        var phoneNumberUtil = PhoneNumberUtil.GetInstance();
+        if (!phoneNumberUtil.TryParse(s, null, out var phoneNumber))
             return Phone.None;
-
-        var number = s[phoneCode.Code.Length..];
-        return number.Length < Phone.MinNumberLength ? Phone.None : new Phone(phoneCode.Code, number);
+        return phoneNumber.CreatePhone();
     }
 }

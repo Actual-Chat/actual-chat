@@ -22,5 +22,6 @@
     <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Ulid" />
+    <PackageReference Include="libphonenumber-csharp" />
   </ItemGroup>
 </Project>

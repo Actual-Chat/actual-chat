@@ -71,6 +71,7 @@
     <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.5" />
     <PackageVersion Include="Twilio" Version="6.7.0" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="6.32.0" />
+    <PackageVersion Include="libphonenumber-csharp" Version="8.13.22" />
   </ItemGroup>
   <!--
     MAUI is not compatible with centralized packages management https://github.com/dotnet/sdk/issues/27840
