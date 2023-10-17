@@ -29,8 +29,10 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             switch (permissionState) {
             case PermissionState.Granted:
                 var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+                var verifiedPhone = account.HasVerifiedPhone() ? account.Phone.ToInternational() : "";
+                var phoneNumberExtractor = PhoneNumberExtractor.CreateFor(verifiedPhone);
                 var deviceContacts = (await Microsoft.Maui.ApplicationModel.Communication.Contacts.GetAllAsync(cancellationToken).ConfigureAwait(false)).ToList();
-                return deviceContacts.Select(x => ToExternalContact(account.Id, x)).ToApiArray();
+                return deviceContacts.Select(x => ToExternalContact(account.Id, phoneNumberExtractor, x)).ToApiArray();
             case PermissionState.Denied:
                 Log.LogError("Contact permission is missing");
                 return default;
@@ -45,22 +47,24 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         }
     }
 
-    private ExternalContact ToExternalContact(UserId ownerId, MauiContact mauiContact)
-        => new (ExternalContactId.None) {
-            Id = new ExternalContactId(ownerId, DeviceId, mauiContact.Id),
+    private ExternalContact ToExternalContact(
+        UserId ownerId,
+        PhoneNumberExtractor phoneNumberExtractor,
+        MauiContact mauiContact)
+        => new (new ExternalContactId(ownerId, DeviceId, mauiContact.Id)) {
             GivenName = mauiContact.GivenName ?? "",
             DisplayName = mauiContact.DisplayName ?? "",
             FamilyName = mauiContact.FamilyName ?? "",
             MiddleName = mauiContact.MiddleName ?? "",
             NamePrefix = mauiContact.NamePrefix ?? "",
             NameSuffix = mauiContact.NameSuffix ?? "",
-            PhoneHashes = mauiContact.Phones.Select(GetPhoneHash).SkipNullItems().ToApiSet(),
+            PhoneHashes = mauiContact.Phones.Select(p => GetPhoneHash(p, phoneNumberExtractor)).SkipNullItems().ToApiSet(),
             EmailHashes = mauiContact.Emails.Select(GetEmailHash).SkipNullItems().ToApiSet(),
         };
 
-    private static string? GetPhoneHash(ContactPhone mauiPhone)
+    private static string? GetPhoneHash(ContactPhone mauiPhone, PhoneNumberExtractor phoneNumberExtractor)
     {
-        var phone = PhoneFormatterExt.FromReadable(mauiPhone.PhoneNumber);
+        var phone = phoneNumberExtractor.GetFromNumber(mauiPhone.PhoneNumber);
         return !phone.IsValid ? null : phone.Value.GetSHA256HashCode();
     }
 
