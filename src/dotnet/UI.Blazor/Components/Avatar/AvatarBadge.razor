@@ -4,21 +4,20 @@
 @inherits FusionComponentBase
 
 <div class="avatar-badge @Class" @onclick="@Click">
-    <AvatarCircle Avatar="@Avatar" Size="@Size" Presence="@Presence" />
+    <AvatarCircle Avatar="@Avatar" Size="@Size" BadgeContent="@BadgeContent" />
     <div class="c-name">
         <AvatarName Avatar="@Avatar" Class="@NameClass"/>
-        @if (ShowStatusText && !_statusText.IsNullOrEmpty()) {
-            <span class="@_statusTextClass">@_statusText</span>
+        @if (ShowStatusText && !StatusText.IsNullOrEmpty()) {
+            <span class="@_statusTextClass">@StatusText</span>
         }
     </div>
 </div>
 
 @code {
     private string _statusTextClass = "";
-    private string _statusText = "";
 
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
-    [Parameter] public Presence Presence { get; set; } = Presence.Unknown;
+    [Parameter] public RenderFragment? BadgeContent { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public string NameClass { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
@@ -27,19 +26,11 @@
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
-        _statusText = StatusText ?? GetStatusText();
         _statusTextClass = "c-status " + GetStatusTextClass();
     }
 
     private string GetContentClass()
         => "ml-3";
-
-    private string GetStatusText()
-        => Presence switch {
-            Presence.Recording => "recording",
-            Presence.Online => "online",
-            _ => "",
-        };
 
     private string GetStatusTextClass()
         => (int)Size < 12 ? "c-status-sm" : "";

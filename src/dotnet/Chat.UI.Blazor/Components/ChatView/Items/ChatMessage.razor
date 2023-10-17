@@ -79,7 +79,7 @@
             @if (showAuthor) {
                 <ChatMessageAuthorCircle
                     AuthorSid="@entry.AuthorId"
-                    Click="@(_ => AuthorUI.Show(entry.AuthorId))"/>
+                    Click="@_onClickCallback"/>
             } else {
                 var timestamp = TimeZoneConverter.ToLocalTime(entry.BeginsAt).ToShortTimeString();
                 <div class="c-empty">
@@ -177,6 +177,7 @@
     private ValueTask<Markup> _markupTask;
     private Markup _markup = Markup.Empty;
     private ChatMessageModel? _lastMessage;
+    private EventCallback<AuthorId> _onClickCallback;
 
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
@@ -194,6 +195,14 @@
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);
+        base.OnInitialized();
+    }
+
+    private void OnAuthorBadgeClick(AuthorId authorId)
+        => _ = AuthorUI.Show(authorId);
 
     protected override async Task OnParametersSetAsync()
     {

@@ -21,7 +21,7 @@
                  @onclick="@Click"/>
         }
 
-        <PresenceIndicator Presence="@Presence"/>
+        @BadgeContent
     </div>
 </div>
 
@@ -32,10 +32,10 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
-    [Parameter] public Presence Presence { get; set; }
+    [Parameter] public RenderFragment? BadgeContent { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
     [Parameter] public bool HasTooltip { get; set; }
-    [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
+    [Parameter] public EventCallback Click { get; set; }
 
     protected override void OnParametersSet() {
         _class = GetSizeClass();

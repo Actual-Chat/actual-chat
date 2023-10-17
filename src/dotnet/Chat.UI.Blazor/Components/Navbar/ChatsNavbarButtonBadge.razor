@@ -1,24 +1,16 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.Contacts
-@inherits ComputedStateComponent<ChatsNavbarButton.Model>
+@inherits ComputedStateComponent<ChatsNavbarButtonBadge.Model>
 @{
-    var m = State.Value;
+    var m = _rendered = State.Value;
+    if (m.Count <= 0)
+        return;
 }
 
-<NavbarGroupSelectionButton
-    Id="@NavbarGroupIds.Chats"
-    Title="Chats"
-    Tooltip="Chats"
-    ShowBadge="@(m.Count != 0)">
-    <ChildContent>
-        <i class="icon-message-ellipse text-2xl font-medium"></i>
-    </ChildContent>
-    <BadgeContent>
-        @m.Count
-    </BadgeContent>
-</NavbarGroupSelectionButton>
+<Badge>@m.Count</Badge>
 
 @code {
+    private Model? _rendered;
+
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions() {
@@ -33,6 +25,9 @@
         var count = await ChatListUI.UnreadChatCount.Use(cancellationToken);
         return new Model(count);
     }
+
+    protected override bool ShouldRender()
+        => State.HasError || State.Value != _rendered;
 
     public sealed record Model(Trimmed<int> Count = default);
 }

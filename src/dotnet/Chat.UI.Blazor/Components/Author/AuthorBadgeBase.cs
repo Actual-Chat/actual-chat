@@ -1,5 +1,4 @@
 using ActualChat.Chat.UI.Blazor.Services;
-using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
@@ -7,23 +6,12 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
 {
     [Inject] protected Session Session { get; init; } = null!;
     [Inject] protected IAuthors Authors { get; init; } = null!;
-    [Inject] protected ChatActivity ChatActivity { get; init; } = null!;
-    [Inject] protected IUserPresences UserPresences { get; init; } = null!;
     [Inject] protected AuthorUI AuthorUI { get; init; } = null!;
 
     protected AuthorId AuthorId { get; private set; }
     protected ChatId ChatId => AuthorId.ChatId;
-    protected IChatRecordingActivity? ChatRecordingActivity { get; set; }
 
     [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
-    [Parameter] public bool ShowPresence { get; set; }
-    [Parameter] public bool ShowRecording { get; set; }
-
-    public override async ValueTask DisposeAsync() {
-        await base.DisposeAsync();
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = null;
-    }
 
     protected override void OnInitialized()
     {
@@ -33,17 +21,7 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
     }
 
     protected override void OnParametersSet()
-    {
-        AuthorId = new AuthorId(AuthorSid);
-        ChatRecordingActivity?.Dispose();
-        ChatRecordingActivity = null;
-    }
-
-    protected override async Task OnParametersSetAsync() {
-        if (ShowRecording && !ChatId.IsNone)
-            ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None);
-        await base.OnParametersSetAsync();
-    }
+        => AuthorId = new AuthorId(AuthorSid);
 
     protected override ComputedState<Model>.Options GetStateOptions()
     {
@@ -81,34 +59,13 @@ public abstract class AuthorBadgeBase : ComputedStateComponent<AuthorBadgeBase.M
         if (author == null)
             return Model.None;
 
-        var getPresenceTask = GetPresence(AuthorId, cancellationToken);
-        var getOwnAuthorTask = Authors.GetOwn(Session, ChatId, cancellationToken);
-
-        var presence = await getPresenceTask;
-        var ownAuthor = await getOwnAuthorTask;
+        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken);
         var isOwn = ownAuthor != null && author.Id == ownAuthor.Id;
-        return new(author, presence, isOwn);
-    }
-
-    private async ValueTask<Presence> GetPresence(AuthorId authorId, CancellationToken cancellationToken)
-    {
-        if (authorId.IsNone)
-            return Presence.Offline;
-
-        var presence = Presence.Unknown;
-        if (ShowPresence)
-            presence = await Authors.GetPresence(Session, authorId.ChatId, authorId, cancellationToken);
-        if (ShowRecording && ChatRecordingActivity != null) {
-            var isRecording = await ChatRecordingActivity.IsAuthorActive(authorId, cancellationToken);
-            if (isRecording)
-                presence = Presence.Recording;
-        }
-        return presence;
+        return new(author, isOwn);
     }
 
     public sealed record Model(
         Author Author,
-        Presence Presence = Presence.Unknown,
         bool IsOwn = false)
     {
         public static readonly Model None = new(Author.None);

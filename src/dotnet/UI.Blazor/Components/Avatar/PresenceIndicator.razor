@@ -2,25 +2,25 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits FusionComponentBase
 
-@{
-    RenderFragment RenderCircle(string color)
-        => @<div class="presence-indicator">
-               <div class="@color c-dot"></div>
-           </div>;
-}
-
-@switch (Presence) {
-    case Presence.Online:
-        @RenderCircle("bg-online");
-        break;
-    case Presence.Away:
-        @RenderCircle("bg-away");
-        break;
-    case Presence.Recording:
-        @RenderCircle("bg-icons-04 animate-pulse");
-        break;
-}
+@Render(Presence);
 
 @code {
     [Parameter] public Presence Presence { get; set; }
+
+    public static RenderFragment Render(Presence presence) {
+        if (presence is Presence.Unknown or Presence.Offline)
+            return _ => {};
+        var cls = presence switch {
+            Presence.Online => "bg-online",
+            Presence.Away => "bg-away",
+            Presence.Recording => "bg-icons-04 animate-pulse",
+            _ => ""
+            };
+        return RenderCircle(cls);
+    }
+
+    private static RenderFragment RenderCircle(string cls)
+        => @<div class="presence-indicator">
+               <div class="@cls c-dot"></div>
+           </div>;
 }
