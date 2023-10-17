@@ -114,46 +114,46 @@
   <!-- Extra trimming roots -->
   <ItemGroup>
     <!-- ActualChat - common -->
-    <TrimmerRootAssembly Include="ActualChat.Core" />
-    <TrimmerRootAssembly Include="ActualChat.SignalR.Client" />
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" />
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" />
+    <TrimmerRootAssembly Include="ActualChat.Core" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.SignalR.Client" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="all" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="all"/>
 
     <!-- ActualChat - specific projects -->
-    <TrimmerRootAssembly Include="ActualChat.Audio" />
-    <TrimmerRootAssembly Include="ActualChat.Audio.Client" />
-    <TrimmerRootAssembly Include="ActualChat.Audio.Contracts" />
-    <TrimmerRootAssembly Include="ActualChat.Audio.UI.Blazor" />
-    <TrimmerRootAssembly Include="ActualChat.Chat" />
-    <TrimmerRootAssembly Include="ActualChat.Chat.Contracts" />
-    <TrimmerRootAssembly Include="ActualChat.Chat.UI.Blazor" />
-    <TrimmerRootAssembly Include="ActualChat.Contacts" />
-    <TrimmerRootAssembly Include="ActualChat.Contacts.Contracts" />
-    <TrimmerRootAssembly Include="ActualChat.Feedback.Contracts" />
-    <TrimmerRootAssembly Include="ActualChat.Invite" />
-    <TrimmerRootAssembly Include="ActualChat.Invite.Contracts" />
-    <TrimmerRootAssembly Include="ActualChat.MediaPlayback" />
-    <TrimmerRootAssembly Include="ActualChat.Notification" />
-    <TrimmerRootAssembly Include="ActualChat.Notification.Contracts" />
-    <TrimmerRootAssembly Include="ActualChat.Notification.UI.Blazor" />
-    <TrimmerRootAssembly Include="ActualChat.Transcription.Contracts" />
-    <TrimmerRootAssembly Include="ActualChat.Users" />
-    <TrimmerRootAssembly Include="ActualChat.Users.Contracts" />
-    <TrimmerRootAssembly Include="ActualChat.Users.UI.Blazor" />
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" />
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" />
+    <TrimmerRootAssembly Include="ActualChat.Audio" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Audio.Client" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Audio.Contracts" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Audio.UI.Blazor" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Chat" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Chat.Contracts" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Chat.UI.Blazor" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Contacts" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Contacts.Contracts" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Feedback.Contracts" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Invite" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Invite.Contracts" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.MediaPlayback" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Notification" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Notification.Contracts" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Notification.UI.Blazor" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Transcription.Contracts" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Users" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Users.Contracts" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.Users.UI.Blazor" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="all"/>
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="all"/>
 
     <!-- Stl -->
-    <TrimmerRootAssembly Include="Stl" />
-    <TrimmerRootAssembly Include="Stl.Interception" />
-    <TrimmerRootAssembly Include="Stl.Rpc" />
-    <TrimmerRootAssembly Include="Stl.CommandR" />
-    <TrimmerRootAssembly Include="Stl.Fusion" />
-    <TrimmerRootAssembly Include="Stl.Fusion.Blazor" />
+    <TrimmerRootAssembly Include="Stl" RootMode="all"/>
+    <TrimmerRootAssembly Include="Stl.Interception" RootMode="all" />
+    <TrimmerRootAssembly Include="Stl.Rpc" RootMode="all"/>
+    <TrimmerRootAssembly Include="Stl.CommandR" RootMode="all"/>
+    <TrimmerRootAssembly Include="Stl.Fusion" RootMode="all"/>
+    <TrimmerRootAssembly Include="Stl.Fusion.Blazor" RootMode="all"/>
 
     <!-- Additional assemblies -->
-    <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" />
-    <TrimmerRootAssembly Include="System.Text.Json" />
+    <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" RootMode="all"/>
+    <TrimmerRootAssembly Include="System.Text.Json" RootMode="all"/>
     <!-- System.Private.CoreLib is needed only if you want to enable TaskEventListener -->
     <!--
     <TrimmerRootAssembly Include="System.Private.CoreLib" />

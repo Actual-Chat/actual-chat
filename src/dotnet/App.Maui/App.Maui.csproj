@@ -177,7 +177,7 @@
     <!-- <DebuggerSupport>false</DebuggerSupport> -->
   </PropertyGroup>
   <ItemGroup>
-    <TrimmerRootAssembly Include="ActualChat" />
+    <TrimmerRootAssembly Include="ActualChat" RootMode="all"/>
   </ItemGroup>
 
   <!--
