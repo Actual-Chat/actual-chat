@@ -48,10 +48,12 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install dotnet 7.0 SDK
-        uses: actions/setup-dotnet@v3
+      - name: Install dotnet 8.0 SDK
+        uses: actions/setup-dotnet@v3.2.0
         with:
-          dotnet-version: '7.0.400'
+          dotnet-version: '8.0'
+          dotnet-quality: 'preview'
+          cache: true
 
       - name: Set up Docker Buildx
         id: buildx
@@ -111,14 +113,16 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install dotnet 7.0 SDK
-        uses: actions/setup-dotnet@v3
+      - name: Install dotnet 8.0 SDK
+        uses: actions/setup-dotnet@v3.2.0
         with:
-          dotnet-version: '7.0.400'
+          dotnet-version: '8.0'
+          dotnet-quality: 'preview'
+          cache: true
 
       - name: Debug Build for tests
         run: |-
-          ./run-build.cmd restore
+          ./run-build.cmd restore --locked-mode
           dotnet build ActualChat.sln --nologo --no-restore --configuration Debug
 
       - name: Run unit tests
@@ -194,14 +198,16 @@ jobs:
           fetch-depth: 0
           lfs: true
 
-      - name: Install dotnet 7.0 SDK
-        uses: actions/setup-dotnet@v3
+      - name: Install dotnet 8.0 SDK
+        uses: actions/setup-dotnet@v3.2.0
         with:
-          dotnet-version: '7.0.400'
+          dotnet-version: '8.0'
+          dotnet-quality: 'preview'
+          cache: true
 
       - name: Debug Build for tests
         run: |-
-          ./run-build.cmd restore
+          ./run-build.cmd restore --locked-mode
           dotnet build ActualChat.sln --nologo --no-restore --configuration Debug
 
       - name: Run integration tests
