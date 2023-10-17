@@ -53,7 +53,6 @@ jobs:
         with:
           dotnet-version: '8.0'
           dotnet-quality: 'preview'
-          cache: true
 
       - name: Set up Docker Buildx
         id: buildx
@@ -118,11 +117,10 @@ jobs:
         with:
           dotnet-version: '8.0'
           dotnet-quality: 'preview'
-          cache: true
 
       - name: Debug Build for tests
         run: |-
-          ./run-build.cmd restore --locked-mode
+          ./run-build.cmd restore
           dotnet build ActualChat.sln --nologo --no-restore --configuration Debug
 
       - name: Run unit tests
@@ -203,11 +201,10 @@ jobs:
         with:
           dotnet-version: '8.0'
           dotnet-quality: 'preview'
-          cache: true
 
       - name: Debug Build for tests
         run: |-
-          ./run-build.cmd restore --locked-mode
+          ./run-build.cmd restore
           dotnet build ActualChat.sln --nologo --no-restore --configuration Debug
 
       - name: Run integration tests
