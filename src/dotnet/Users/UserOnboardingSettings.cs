@@ -24,7 +24,7 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
             IsAvatarStepCompleted: true,
             IsVerifyPhoneStepCompleted: true,
             IsSetChatsStepCompleted: true,
-            IsEmailStepCompleted: true,
+            // IsEmailStepCompleted: true,
             IsPermissionsStepCompleted: true,
         };
 }
