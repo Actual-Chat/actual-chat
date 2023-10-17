@@ -21,7 +21,9 @@ public class HealthEventListener(IServiceProvider services, int interval = 10) :
         if (!source.Name.Equals("System.Runtime"))
             return;
 
-        var refreshInterval = new Dictionary<string, string> { { "EventCounterIntervalSec", interval.ToString(CultureInfo.InvariantCulture) } };
+        var refreshInterval = new Dictionary<string, string>(StringComparer.Ordinal) {
+            { "EventCounterIntervalSec", interval.ToString(CultureInfo.InvariantCulture) }
+        };
         EnableEvents(source, EventLevel.Verbose, EventKeywords.All, refreshInterval!);
     }
 

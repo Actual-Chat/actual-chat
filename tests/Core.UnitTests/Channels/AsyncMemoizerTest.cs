@@ -41,14 +41,12 @@ public class AsyncMemoizerTest : TestBase
             var memoizer = cSource.Reader.Memoize();
             var cTarget = Channel.CreateUnbounded<int>();
             await memoizer.AddReplayTarget(cTarget)
-                    .WaitAsync(TimeSpan.FromSeconds(5))
-                    .ConfigureAwait(false);
+                    .WaitAsync(TimeSpan.FromSeconds(5));
             await cTarget.Reader.Completion
-                .WaitAsync(TimeSpan.FromSeconds(5))
-                .ConfigureAwait(false);
+                .WaitAsync(TimeSpan.FromSeconds(5));
         }).ToArray();
         foreach (var task in tasks)
-            await task.ConfigureAwait(false);
+            await task;
     }
 
     [Fact]
@@ -58,13 +56,13 @@ public class AsyncMemoizerTest : TestBase
             var cSource = Channel.CreateUnbounded<int>();
             var memoizer = cSource.Memoize();
             var cTarget = Channel.CreateUnbounded<int>();
-            await memoizer.AddReplayTarget(cTarget).ConfigureAwait(false);
+            await memoizer.AddReplayTarget(cTarget);
             cSource.Writer.Complete();
             await cTarget.Reader.Completion
                 .WaitAsync(TimeSpan.FromSeconds(5));
         }).ToArray();
         foreach (var task in tasks)
-            await task.ConfigureAwait(false);
+            await task;
     }
 
     [Fact]
@@ -74,7 +72,7 @@ public class AsyncMemoizerTest : TestBase
             .Select(i => RunRangeTest(Enumerable.Range(0, i)))
             .ToArray();
         foreach (var task in tasks)
-            await task.ConfigureAwait(false);
+            await task;
     }
 
     private async Task RunRangeTest<T>(IEnumerable<T> source)

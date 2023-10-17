@@ -62,10 +62,10 @@ public class PlatformFeatureTest: TestBase
         // simulate CPU load
         var cycleCount = Math.Max(1, Environment.ProcessorCount / 4);
         for (int i = 0; i < cycleCount; i++) {
-            _ = BackgroundTask.Run( async () => {
-                for (long i = 0; i < long.MaxValue; i++) {
-                    var x = Math.Sqrt(100d * i * i * i)*i / 239d;
-                }
+            _ = BackgroundTask.Run(() => {
+                for (long l = 0; l < long.MaxValue; l++)
+                    _ = Math.Sqrt(100d * l * l * l)*l / 239d;
+                return Task.CompletedTask;
             });
         }
 
