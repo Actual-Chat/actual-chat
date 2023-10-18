@@ -11,7 +11,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 {
     private const int PageSize = 40;
 
-    private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
+    private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(1200);
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeTokenSource = new();
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
@@ -189,6 +189,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // which should never happen, coz it doesn't create any dependencies.
         await _getDataSuspender.WhenResumed();  // No need for .ConfigureAwait(false) here
 
+        // ReSharper disable once ExplicitCallerInfoArgument
         using var activity = BlazorUITrace.StartActivity("ChatView.GetVirtualListData");
 
         var chat = Chat;
@@ -206,7 +207,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             isNavigatingToEntry = true;
             _lastNavigationAnchor = navigationAnchor;
             // even if we must navigate to the next item - it's fine to use previous item there
-            entryLid = navigationAnchor!.EntryLid;
+            entryLid = navigationAnchor.EntryLid;
             if (!ItemVisibility.Value.IsFullyVisible(entryLid))
                 mustScrollToEntry = true;
         }
@@ -227,7 +228,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var hasVeryLastItem = idRangeToLoad.End + 1 >= chatIdRange.End;
 
         // get tiles from the smallest tile layer
-        var idTiles = IdTileStack.FirstLayer.GetOptimalCoveringTiles(idRangeToLoad);
+        var idTiles = GetOptimalCoveringTiles(idRangeToLoad, hasVeryLastItem);
         var chatTiles = (await idTiles
             .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
             .Collect())
@@ -260,7 +261,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (chatTiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
-                return new VirtualListData<ChatMessageModel>(new [] { new VirtualListDataTile<ChatMessageModel>(ChatMessageModel.FromEmpty(Chat.Id), null)}) {
+                return new VirtualListData<ChatMessageModel>(new [] { new VirtualListDataTile<ChatMessageModel>(ChatMessageModel.FromEmpty(Chat.Id))}) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
                     ScrollToKey = null,
@@ -276,7 +277,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .Collect()
             .ConfigureAwait(false);
         var linkPreviewMap = linkPreviews.SkipNullItems().Distinct().ToDictionary(x => x.Id);
-        var dataTiles = GetDataFromChatTiles(chatTiles,
+        var dataTiles = GetDataFromChatTiles(
+            chatTiles,
             oldData,
             _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid,
             hasVeryFirstItem,
@@ -321,7 +323,69 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         return result;
+    }
 
+    private Tile<long>[] GetOptimalCoveringTiles(
+        Range<long> idRangeToLoad,
+        bool hasVeryLastItem)
+    {
+        var secondLayer = IdTileStack.Layers[1];
+        var tiles = ArrayBuffer<Tile<long>>.Lease(true);
+        try {
+            var tileCandidates = secondLayer.GetOptimalCoveringTiles(idRangeToLoad);
+            var firstNativeTileIndex = -1;
+            var lastNativeTileIndex = -1;
+            for (int i = 0; i < tileCandidates.Length; i++) {
+                var tile = tileCandidates[i];
+                if (tile.Layer != secondLayer)
+                    continue;
+
+                firstNativeTileIndex = i;
+                break;
+            }
+            for (int i = tileCandidates.Length -1; i >= 0; i--) {
+                var tile = tileCandidates[i];
+                if (tile.Layer != secondLayer)
+                    continue;
+
+                lastNativeTileIndex = i;
+                break;
+            }
+            if (firstNativeTileIndex < 0 || tileCandidates.Length == 0)
+                return tileCandidates; // bigger tile isn't required
+
+            var isFirstTileNative = tileCandidates[0].Layer == secondLayer;
+            if (!isFirstTileNative) {
+                // replace with tiles of the second layer
+                var replacement = tileCandidates[firstNativeTileIndex].Prev();
+                tiles.Add(replacement);
+            }
+            var isLastTileNative = tileCandidates[^1].Layer == secondLayer;
+            if (isLastTileNative && hasVeryLastItem) {
+                // add second layer tiles except the last one
+                tiles.AddSpan(tileCandidates.AsSpan()[firstNativeTileIndex..^1]);
+                // replace with smaller tiles as the last tile might be changed
+                tiles.AddRange(tileCandidates[^1].Smaller());
+                // subscribe to the next new tile
+                tiles.Add(tiles[^1].Next());
+            }
+            else if (hasVeryLastItem) {
+                // keep smaller tiles at the end
+                tiles.AddSpan(tileCandidates.AsSpan()[firstNativeTileIndex..]);
+                // subscribe to the next new tile
+                tiles.Add(tiles[^1].Next());
+            }
+            else {
+                // add second layer tiles except the last smaller tiles
+                tiles.AddSpan(tileCandidates.AsSpan()[firstNativeTileIndex..(lastNativeTileIndex + 1)]);
+                // replace smaller tiles with second layer tiles
+                tiles.Add(tileCandidates[lastNativeTileIndex].Next());
+            }
+            return tiles.ToArray();
+        }
+        finally {
+            tiles.Release();
+        }
     }
 
     private Range<long> GetIdRangeToLoad(
@@ -421,62 +485,52 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 var nextEntry = chatTile.Entries.Count > j + 1
                     ? chatTile.Entries[j + 1]
                     : nextChatTile?.Entries[0];
-                var items = BuildItemsForEntry(entry, nextEntry);
-                chatMessageModels.AddRange(items);
+                var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
+                var isBlockEnd = ShouldSplit(entry, nextEntry);
+                var isForward = !entry.ForwardedAuthorId.IsNone;
+                var isForwardFromOtherChat = prevForwardChatId != entry.ForwardedChatEntryId.ChatId;
+                var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
+                var isUnread = entry.LocalId > lastReadEntryId;
+                var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
+                var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
+                var addDateLine = date != lastDate && (hasVeryFirstItem || !isVeryFirstItem);
+                if (addWelcomeBlock) {
+                    chatMessageModels.Add(new ChatMessageModel(entry) {
+                        ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
+                    });
+                    addWelcomeBlock = false;
+                }
+                if (isUnread && !isPrevUnread)
+                    AddItem(new ChatMessageModel(entry) {
+                        ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
+                    });
+                if (addDateLine)
+                    AddItem(new ChatMessageModel(entry) {
+                        ReplacementKind = ChatMessageReplacementKind.DateLine,
+                        DateLineDate = date,
+                    });
+
+                {
+                    var item = new ChatMessageModel(entry) {
+                        IsBlockStart = isBlockStart,
+                        IsBlockEnd = isBlockEnd,
+                        HasEntryKindSign = isEntryKindChanged || (isBlockStart && isAudio),
+                        IsForwardBlockStart = isForwardBlockStart,
+                        LinkPreview = linkPreviews.GetValueOrDefault(entry.LinkPreviewId)
+                    };
+                    AddItem(item);
+                }
+
+                isPrevUnread = isUnread;
+                isBlockStart = isBlockEnd;
+                lastDate = date;
+                isPrevAudio = isAudio;
+                isPrevForward = isForward;
+                prevForwardChatId = entry.ForwardedChatEntryId.ChatId;
                 isVeryFirstItem = false;
             }
             result.Add(new VirtualListDataTile<ChatMessageModel>(chatMessageModels, chatTile));
-        }
-
-        return result;
-
-        // ReSharper disable once ReturnTypeCanBeEnumerable.Local
-        List<ChatMessageModel> BuildItemsForEntry(ChatEntry entry, ChatEntry? nextEntry)
-        {
-            var chatMessageModels = new List<ChatMessageModel>();
-            var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
-            var isBlockEnd = ShouldSplit(entry, nextEntry);
-            var isForward = !entry.ForwardedAuthorId.IsNone;
-            var isForwardFromOtherChat = prevForwardChatId != entry.ForwardedChatEntryId.ChatId;
-            var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
-            var isUnread = entry.LocalId > lastReadEntryId;
-            var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
-            var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
-            var addDateLine = date != lastDate && (hasVeryFirstItem || !isVeryFirstItem);
-            if (addWelcomeBlock) {
-                chatMessageModels.Add(new ChatMessageModel(entry) {
-                    ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
-                });
-                addWelcomeBlock = false;
-            }
-            if (isUnread && !isPrevUnread)
-                AddItem(new ChatMessageModel(entry) {
-                    ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
-                });
-            if (addDateLine)
-                AddItem(new ChatMessageModel(entry) {
-                    ReplacementKind = ChatMessageReplacementKind.DateLine,
-                    DateLineDate = date,
-                });
-
-            {
-                var item = new ChatMessageModel(entry) {
-                    IsBlockStart = isBlockStart,
-                    IsBlockEnd = isBlockEnd,
-                    HasEntryKindSign = isEntryKindChanged || (isBlockStart && isAudio),
-                    IsForwardBlockStart = isForwardBlockStart,
-                    LinkPreview = linkPreviews.GetValueOrDefault(entry.LinkPreviewId)
-                };
-                AddItem(item);
-            }
-
-            isPrevUnread = isUnread;
-            isBlockStart = isBlockEnd;
-            lastDate = date;
-            isPrevAudio = isAudio;
-            isPrevForward = isForward;
-            prevForwardChatId = entry.ForwardedChatEntryId.ChatId;
-            return chatMessageModels;
+            continue;
 
             void AddItem(ChatMessageModel item) {
                 var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
@@ -486,12 +540,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             }
         }
 
+        return result;
+
         bool ShouldSplit(
             ChatEntry entry,
             ChatEntry? nextEntry)
         {
             if (nextEntry == null)
                 return false;
+
             if (entry.AuthorId != nextEntry.AuthorId)
                 return true;
 
