@@ -16,13 +16,16 @@
 .markup-editor .editor-content .editor-mention {
     @apply inline-block;
     @apply px-1.5 py-0.25 mx-[1px] -mb-1.5;
-    @apply rounded-full bg-mention-other;
+    @apply rounded-full;
+    @apply bg-mention-other;
     @apply text-mention-other-text font-medium;
     @apply truncate;
     max-width: 12rem;
 }
 .markup-editor .editor-hidden {
-    @apply inline-block overflow-hidden w-[1px] h-[1px];
+    @apply inline-block;
+    @apply w-[1px] h-[1px];
+    @apply overflow-hidden;
 }
 .markup-editor .editor-preformatted {
     @apply font-mono font-medium;
@@ -31,7 +34,9 @@
 /* Placeholder */
 .markup-editor .editor-content:empty:not(:focus):before {
     content: attr(data-placeholder);
-    @apply text-counter md:text-05 !opacity-100 truncate;
+    @apply truncate;
+    @apply !opacity-100;
+    @apply text-counter md:text-05;
 }
 
 /* Permanent mobile cursor */

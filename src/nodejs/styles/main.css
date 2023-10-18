@@ -38,7 +38,8 @@ body.zoom-ios {
 /* Styled inputs */
 
 input.input-imprinted {
-    @apply border-0 bg-04;
+    @apply border-0;
+    @apply bg-04;
 }
 
 input.input-underlined {

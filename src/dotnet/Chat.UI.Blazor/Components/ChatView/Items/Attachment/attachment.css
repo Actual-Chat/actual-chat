@@ -27,11 +27,17 @@
     @apply w-full;
 }
 .file-attachment-name {
-    @apply text-blue-700 cursor-pointer overflow-hidden text-ellipsis hover:underline;
+    @apply overflow-hidden;
+    @apply text-ellipsis;
+    @apply hover:underline;
+    @apply text-blue-700;
+    @apply cursor-pointer;
 }
 .file-attachment-size {
     @apply text-03 text-xs;
 }
 .image-attachment img.skeleton {
-    @apply bg-skeleton rounded-md animate-pulse;
+    @apply rounded-md;
+    @apply bg-skeleton;
+    @apply animate-pulse;
 }
