@@ -13,8 +13,7 @@
 }
 
 .loading-overlay {
-    @apply absolute inset-0 z-[1900];
-    @apply overflow-hidden;
+    @apply absolute inset-0 z-[1900] overflow-hidden;
     background-color: var(--loading-overlay-bg-color);
     @apply transition-opacity ease-in duration-500;
 }
@@ -26,8 +25,7 @@
     left: calc(50vw - var(--loading-overlay-box-size)/2);
     width: var(--loading-overlay-box-size);
     height: var(--loading-overlay-box-size);
-    @apply flex items-center justify-center;
-    @apply overflow-hidden;
+    @apply flex items-center justify-center overflow-hidden;
     @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
 }
 

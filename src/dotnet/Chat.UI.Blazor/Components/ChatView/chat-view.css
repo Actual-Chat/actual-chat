@@ -227,7 +227,7 @@ body.hoverable .chat-header-title:hover {
 }
 
 .message-attachments {
-    @apply flex-y gap-y-1;
+    @apply flex-y;
     @apply py-0.5;
     @apply overflow-hidden;
 }

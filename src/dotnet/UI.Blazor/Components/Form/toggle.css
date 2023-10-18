@@ -1,40 +1,30 @@
 .toggle {
-    @apply flex-1 flex-x items-center gap-x-2;
-    @apply overflow-hidden;
+    @apply flex-1 flex-x items-center gap-x-2 overflow-hidden;
 }
 .toggle input {
     /* The actual input is hidden */
     @apply absolute z-minus;
-    @apply flex-none;
-    @apply w-0 h-0;
-    @apply overflow-hidden;
-    @apply invisible;
+    @apply flex-none w-0 h-0 overflow-hidden invisible;
 }
 .toggle > .c-label {
-    @apply flex-1 flex-x items-center;
-    @apply overflow-hidden;
+    @apply flex-1 flex-x items-center overflow-hidden;
 }
 .toggle > .c-label > .c-text {
-    @apply flex-1;
-    @apply truncate;
+    @apply flex-1 truncate;
 }
 
 /* "Dash" and "O" styling */
 .toggle > .dash {
-    @apply relative;
-    @apply flex-none self-center;
+    @apply self-center flex-none relative;
     @apply my-2 h-3.5 w-8;
-    @apply rounded-3xl;
-    @apply bg-icons-02;
+    @apply rounded-3xl bg-icons-02;
     @apply text-sm;
     transition: .2s;
 }
 .toggle > .dash > .o {
     @apply absolute -left-0 -top-[3px];
     @apply w-5 h-5;
-    @apply rounded-full;
-    @apply border-[1.5px] border-icons-02;
-    @apply bg-01;
+    @apply bg-01 border-[1.5px] border-icons-02 rounded-full;
     transition: .15s;
 }
 
@@ -42,8 +32,7 @@
     @apply bg-accent;
 }
 .toggle[data-input-checked] > .dash > .o {
-    @apply border-accent;
-    @apply bg-01;
+    @apply bg-01 border-accent;
     @apply translate-x-3;
 }
 

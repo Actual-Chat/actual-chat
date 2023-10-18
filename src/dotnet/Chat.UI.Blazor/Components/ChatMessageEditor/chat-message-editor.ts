@@ -23,12 +23,12 @@ export class ChatMessageEditor {
     private blazorRef: DotNet.DotNetObject;
     private readonly editorDiv: HTMLDivElement;
     private readonly postPanelDiv: HTMLDivElement;
+    private readonly postButton: HTMLButtonElement;
     private readonly attachButton: HTMLButtonElement;
     private readonly input: HTMLDivElement;
     private readonly attachmentListObserver: MutationObserver;
     private readonly notifyPanel: HTMLDivElement;
     private readonly notifyPanelObserver: MutationObserver;
-    private isFirstLoading: boolean = true;
     private markupEditor: MarkupEditor;
     private attachmentList: AttachmentList;
     private attachmentListElement: HTMLDivElement;
@@ -48,6 +48,7 @@ export class ChatMessageEditor {
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel');
+        this.postButton = this.postPanelDiv.querySelector(':scope .post-message');
         this.attachButton = this.postPanelDiv.querySelector(':scope .attach-btn');
         this.notifyPanel = this.postPanelDiv.querySelector(':scope .notify-call-panel');
         this.input = this.postPanelDiv.querySelector(':scope .message-input');
@@ -55,12 +56,10 @@ export class ChatMessageEditor {
         this.updateLayout();
         this.updateHasContent();
 
-        fromEvent(window.visualViewport, 'resize')
-            .pipe(
-                takeUntil(this.disposed$),
-                debounceTime(50),
-                )
-            .subscribe(this.updateLayout);
+        // Wiring up event listeners
+        ScreenSize.event$
+            .pipe(takeUntil(this.disposed$))
+            .subscribe(this.updateLayoutThrottled);
 
         fromEvent(this.input, 'paste')
             .pipe(takeUntil(this.disposed$))
@@ -233,6 +232,7 @@ export class ChatMessageEditor {
 
     // Private methods
 
+    private updateLayoutThrottled = throttle(() => this.updateLayout(), 250, 'delayHead');
     private updateLayout = () => {
         const width = window.visualViewport.width;
         const height = window.visualViewport.height;
@@ -263,17 +263,10 @@ export class ChatMessageEditor {
                     : 'Normal';
                 if (this.panelModel !== panelMode) {
                     this.panelModel = panelMode;
-                    if (this.isFirstLoading) {
-                        this.isFirstLoading = false;
-                        this.editorDiv.classList.remove('base-panel');
-                    }
-                    if (panelMode === 'Narrow') {
-                        this.editorDiv.classList.remove('to-thick');
-                        this.editorDiv.classList.add('narrow-panel', 'to-thin');
-                    } else {
-                        this.editorDiv.classList.remove('narrow-panel', 'to-thin');
-                        this.editorDiv.classList.add('to-thick');
-                    }
+                    if (panelMode === 'Narrow')
+                        this.editorDiv.classList.add('narrow-panel');
+                    else
+                        this.editorDiv.classList.remove('narrow-panel');
                 }
             }
             this.lastHeight = height;

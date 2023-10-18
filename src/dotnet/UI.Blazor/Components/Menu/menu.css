@@ -1,25 +1,21 @@
 /* Host & overlay */
 .ac-menu-host {
-    @apply fixed z-menu-container inset-0;
-    @apply overflow-hidden;
+    @apply fixed z-menu-container inset-0 overflow-hidden;
     @apply pointer-events-none select-none;
 }
 .ac-menu-host.has-overlay {
     @apply pointer-events-auto;
 }
 .ac-menu-overlay {
-    @apply fixed inset-0 z-menu-overlay;
-    @apply overflow-hidden;
+    @apply fixed inset-0 overflow-hidden z-menu-overlay;
     background-color: rgba(0,0,0,.32);
 }
 
 /* Normal menu container */
 .ac-menu {
-    @apply absolute z-menu;
-    @apply hidden;
+    @apply hidden absolute z-menu;
     @apply p-1;
-    @apply rounded-lg;
-    @apply bg-01;
+    @apply bg-01 rounded-lg;
     @apply pointer-events-auto;
 }
 .ac-menu {
@@ -47,16 +43,14 @@ body.narrow .ac-menu {
 
 /* Hover menu container */
 .ac-menu-hover {
-    @apply absolute z-menu-hover;
-    @apply hidden;
+    @apply hidden absolute z-menu-hover;
     @apply p-1;
-    @apply rounded-full border border-bg-03;
-    @apply bg-01;
+    @apply bg-01 rounded-full border border-bg-03;
     @apply pointer-events-auto;
 
 }
 .ac-menu-hover .btn.btn-round .btn-content {
-    @apply min-h-8 min-w-8 max-h-8 max-w-8;
+    @apply min-h-8 min-w-8 max-h-8 min-h-8;
     @apply bg-01;
 }
 body.hoverable .ac-menu-hover .btn.btn-round:hover .btn-content {
@@ -69,15 +63,12 @@ body.hoverable .ac-menu-hover .btn.btn-round:hover .btn-content {
 .ac-menu-item {
     @apply flex-1 flex-x;
     @apply min-w-[120px] h-12 md:h-10 p-[6px];
-    @apply rounded-lg;
-    @apply whitespace-nowrap;
-    @apply hover:bg-round-hover;
-    @apply text-02;
+    @apply rounded-lg hover:bg-round-hover;
+    @apply text-02 whitespace-nowrap;
     @apply cursor-pointer;
 }
 .ac-menu-separator {
-    @apply h-0;
-    @apply mx-2 my-1;
+    @apply h-0 mx-2 my-1;
     @apply border-b border-bg-04;
     @apply bg-transparent;
 }
@@ -91,9 +82,7 @@ body.narrow .ac-menu-icon > i {
     @apply text-2xl;
 }
 .ac-menu-text {
-    @apply w-full;
-    @apply mr-2;
-    @apply text-02 text-base font-medium;
+    @apply w-full text-02 text-base font-medium mr-2;
 }
 body.narrow .ac-menu-text {
     @apply text-headline-1;

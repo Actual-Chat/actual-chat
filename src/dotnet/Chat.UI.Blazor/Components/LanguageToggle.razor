@@ -6,16 +6,14 @@
     var cls = $"chat-language-toggle {loadingCls}";
 }
 
-<div class="language-wrapper">
-    <ButtonRound
-        Class="@cls" Click="@(_ => OnClick())">
-        <span class="w-6 h-6 m-1">
-            @if (!isLoading) {
-                @m.ShortTitle
-            }
-        </span>
-    </ButtonRound>
-</div>
+<ButtonRound
+    Class="@cls" Click="@(_ => OnClick())">
+    <span class="w-6 h-6 m-1">
+        @if (!isLoading) {
+            @m.ShortTitle
+        }
+    </span>
+</ButtonRound>
 
 @code {
     [Inject] private ChatHub ChatHub { get; init; } = null!;

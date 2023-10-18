@@ -20,25 +20,14 @@
 .narrow.narrow-panel .post-panel-wrapper {
     background: linear-gradient(to top, rgba(68,68,68,1) 75%, rgba(255,255,255,0) 25%);
 }
-
-.narrow.base-panel .audio-panel-wrapper {
-    @apply overflow-hidden;
+.narrow .audio-panel-wrapper {
     @apply -mb-0.5;
     background: linear-gradient(to bottom, rgba(255,255,255,0) 70%, rgba(68,68,68,1) 0%);
 }
-.narrow.to-thick .audio-panel-wrapper {
-    @apply overflow-hidden;
-    @apply -mb-0.5;
-    background: linear-gradient(to bottom, rgba(255,255,255,0) 70%, rgba(68,68,68,1) 0%);
-    transition: all 150ms ease-in-out;
-}
-.narrow.to-thin .audio-panel-wrapper {
-    @apply overflow-hidden;
+.narrow.narrow-panel .audio-panel-wrapper {
     @apply -mb-0.5;
     background: linear-gradient(to bottom, rgba(255,255,255,0) 50%, rgba(68,68,68,1) 0%);
-    transition: all 150ms ease-in-out;
 }
-
 .post-panel {
     @apply flex-auto flex-x justify-between items-center;
     @apply min-h-12;

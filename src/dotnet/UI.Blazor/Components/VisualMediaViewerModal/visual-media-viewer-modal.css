@@ -104,9 +104,9 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
     @apply bg-black md:bg-[#44444466];
 }
 .image-viewer-footer .show-original-button {
-    @apply -mt-4;
-    @apply underline underline-offset-2;
-    @apply text-icons-02 hover:text-04 text-sm font-normal;
+    @apply -mt-4 underline underline-offset-2;
+    @apply text-icons-02 text-sm font-normal;
+    @apply hover:text-04;
     @apply bg-transparent;
     @apply cursor-pointer;
 }
@@ -124,8 +124,7 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
 /* Image viewer content */
 .image-viewer-modal .image-viewer-content {
     @apply absolute flex-x;
-    @apply justify-center items-center;
-    @apply md:backdrop-blur-md;
+    @apply justify-center items-center md:backdrop-blur-md;
 }
 .image-viewer-content .image-container.inactive,
 .image-viewer-content .video-container.inactive {
@@ -134,8 +133,7 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
 
 .image-viewer-modal .image-viewer-content img,
 .image-viewer-modal .image-viewer-content video {
-    @apply flex-auto;
-    @apply w-fit;
+    @apply flex-auto w-fit;
     @apply object-contain;
 }
 
