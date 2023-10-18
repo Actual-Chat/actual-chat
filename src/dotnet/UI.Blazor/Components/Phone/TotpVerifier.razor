@@ -2,7 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 
-<UITimer Period="@(TotpTtl)" Tick="OnTotpExpired"/>
+<UITimer @key="@_timerKey" Period="@TimerPeriod" IsRecurring="false" Tick="@OnTimerTick" />
 <div class="totp-verifier @Class" @onclick="@(() => Focus())">
     <span class="c-description">
         Enter the code we've sent to <span class="whitespace-nowrap">@(new Phone(Phone).ToReadable())</span>
@@ -10,19 +10,20 @@
     </span>
     <TotpInput @ref="_totpInput" Completed="OnInputCompleted"/>
 
-    @if (_totpExpiresAt != null) {
-        @if (Clocks.SystemClock.Now < _totpExpiresAt) {
+    @if (_totpExpiresAt is { } totpExpiresAt) {
+        @if (Clocks.SystemClock.Now < totpExpiresAt) {
             <div class="c-resend-code">
                 <span>You can request a new code in</span>
-                <Countdown Class="w-9" EndsAt="_totpExpiresAt.Value"/>
+                <Countdown Class="w-9" EndsAt="totpExpiresAt"/>
             </div>
         } else {
-            <Button Class="btn-modal sign-in" Click="OnResendCodeClick">Resend</Button>
+            <Button Class="btn-modal sign-in" Click="SendTotp">Resend</Button>
         }
     }
 </div>
 
 @code {
+    private object? _timerKey = new();
     private TotpInput? _totpInput;
     private Moment? _totpExpiresAt;
 
@@ -39,25 +40,24 @@
     [Parameter] public EventCallback Error { get; set; }
     [Parameter] public EventCallback IncorrectCodeEntered { get; set; }
 
-    private TimeSpan TotpTtl
-        => _totpExpiresAt != null
-            ? _totpExpiresAt.Value - Clocks.SystemClock.Now + TimeSpan.FromMilliseconds(10)
-            : TimeSpan.Zero;
+    private TimeSpan TimerPeriod
+        => _totpExpiresAt is { } totpExpiresAt
+            ? totpExpiresAt - Clocks.SystemClock.Now + TimeSpan.FromMilliseconds(10)
+            : default; // No ticks
 
     protected override Task OnInitializedAsync()
-        => UpdateTotp();
+        => SendTotp();
 
     public ValueTask Focus()
         => _totpInput?.Focus() ?? ValueTask.CompletedTask;
 
     private async Task OnInputCompleted(int totp) {
         // as for now we can decide what to do with totp right here, no need for external handling
-        ICommand<bool> cmd = Purpose switch
-        {
+        ICommand<bool> cmd = Purpose switch {
             TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, new Phone(Phone), totp),
             TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, new Phone(Phone), totp),
             _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
-            };
+        };
 
         var (isValid, error) = await UICommander.Run(cmd);
         if (error != null) {
@@ -79,19 +79,15 @@
         await Verified.InvokeAsync();
     }
 
-    private Task OnResendCodeClick()
-        => UpdateTotp();
-
-    private async Task UpdateTotp()
+    private async Task SendTotp()
     {
-        var (expiresAt, error) = await UICommander.Run(new PhoneAuth_SendTotp(Session, new Phone(Phone), Purpose));
-        if (error != null)
-            return;
-
-        _totpExpiresAt = expiresAt;
+        var (totpExpiresAt, error) = await UICommander.Run(new PhoneAuth_SendTotp(Session, new Phone(Phone), Purpose));
+        _totpExpiresAt = error == null ? totpExpiresAt : null;
+        _timerKey = new(); // To make sure the timer is renewed
+        StateHasChanged();
     }
 
-    private void OnTotpExpired() {
-        // Do nothing, just re-render
+    private void OnTimerTick() {
+        // Just implicitly triggers StateHasChanged()
     }
 }

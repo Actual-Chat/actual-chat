@@ -7,6 +7,7 @@
 
     [Parameter, EditorRequired] public TimeSpan Period { get; set; } // <= Zero -> no ticks
     [Parameter, EditorRequired] public EventCallback Tick { get; set; }
+    [Parameter] public bool IsRecurring { get; set; } = true;
 
     protected override void OnParametersSet() {
         if (_isDisposed || _period == Period)
@@ -25,6 +26,8 @@
             while (!cancellationToken.IsCancellationRequested) {
                 await Task.Delay(Period, cancellationToken);
                 await Tick.InvokeAsync();
+                if (!IsRecurring)
+                    return;
             }
         }, cancellationToken);
     }
