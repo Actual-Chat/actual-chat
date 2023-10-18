@@ -6,7 +6,7 @@
     var renderIndex = RenderIndex++;
     var spacerSize = Data.HasVeryFirstItem
         ? 0
-        : renderIndex == 0 && Data.Items.Count == 0
+        : renderIndex == 0 && Data.Tiles.Count == 0
             ? 1000 // initial spacer size to cover all list area on first load
             : SpacerSize;
     var endSpacerSize = Data.HasVeryLastItem
@@ -16,14 +16,16 @@
             : SpacerSize;
     var startExpansion = Query.IsNone
         ? 0
-        : Data.Items
-        .TakeWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.Start) < 0)
-        .Sum(i => i.CountAs);
+        : Data.Tiles
+            .SelectMany(t => t.Items)
+            .TakeWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.Start) < 0)
+            .Sum(i => i.CountAs);
     var endExpansion = Query.IsNone
         ? 0
-        : Data.Items
-        .SkipWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.End) <= 0)
-        .Sum(i => i.CountAs);
+        : Data.Tiles
+            .SelectMany(t => t.Items)
+            .SkipWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.End) <= 0)
+            .Sum(i => i.CountAs);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
@@ -38,7 +40,7 @@
         HasVeryLastItem = Data.HasVeryLastItem,
         ScrollToKey = Data.ScrollToKey,
     };
-    var items = Data.Items;
+    var tiles = Data.Tiles;
     LastData = Data;
     Query = VirtualListDataQuery.None;
 }
@@ -70,21 +72,8 @@
 
     <ul @key="@VirtualListSpecialKeys.Container"
         class="c-virtual-container">
-        @foreach (var item in items) {
-            @if (item.CountAs != 1) {
-                <li id="@item.Key.Value"
-                    @key="@item.Key"
-                    class="item"
-                    data-count-as="@item.CountAs.Format()">
-                    @Item(item)
-                </li>
-            } else {
-                <li id="@item.Key.Value"
-                    @key="@item.Key"
-                    class="item">
-                    @Item(item)
-                </li>
-            }
+        @foreach (var tile in tiles) {
+            <VirtualListTile Tile="@tile" Item="@Item" />
         }
     </ul>
 
