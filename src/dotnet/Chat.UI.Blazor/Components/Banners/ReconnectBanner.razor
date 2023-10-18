@@ -4,10 +4,18 @@
 @inherits ComputedStateComponent<RpcPeerState?>
 @{
     var m = State.Value ?? ReconnectUI.ConnectedState;
-    var isReconnecting = !m.IsConnected && m.ReconnectsAt <= ReconnectUI.Clock.Now;
+    if (m.IsConnected) {
+        _isVisible = false;
+        return;
+    }
+
+    var now = ReconnectUI.Clock.Now;
+    var isReconnecting = m.ReconnectsAt <= now;
+    if (_isVisible || m.ReconnectsAt > now + TimeSpan.FromSeconds(1))
+        _isVisible = true;
 }
 
-<Banner Class="reconnect-banner" IsVisible="@(!m.IsConnected)">
+<Banner Class="reconnect-banner" IsVisible="@_isVisible">
     <Icon>
         <i class="icon-cloud-disconnected"></i>
     </Icon>
@@ -31,6 +39,8 @@
 </Banner>
 
 @code {
+    private bool _isVisible = false;
+
     [Inject] private ReconnectUI ReconnectUI { get; init; } = null!;
 
     protected override ComputedState<RpcPeerState?>.Options GetStateOptions()
