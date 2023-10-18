@@ -1,11 +1,11 @@
 @implements IDisposable
 
 @code {
-    private TimeSpan _period = TimeSpan.MinValue;
+    private TimeSpan _period;
     private CancellationTokenSource? _periodChangedTokenSource;
     private bool _isDisposed;
 
-    [Parameter, EditorRequired] public TimeSpan Period { get; set; }
+    [Parameter, EditorRequired] public TimeSpan Period { get; set; } // <= Zero -> no ticks
     [Parameter, EditorRequired] public EventCallback Tick { get; set; }
 
     protected override void OnParametersSet() {

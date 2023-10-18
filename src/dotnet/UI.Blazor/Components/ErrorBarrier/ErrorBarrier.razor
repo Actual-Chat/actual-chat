@@ -11,14 +11,18 @@
     </ChildContent>
     <ErrorContent>
         @{
-            Log.LogError(context, "ErrorBarrier {Name} captured an error", Name);
             var now = Now;
             if (now - _childContentRenderedAt < SameFailurePeriod)
                 _errorCount++;
             else
                 _errorCount = 1;
+            Log.LogError(context, "ErrorBarrier {Name} activated, error count = {ErrorCount}", Name, _errorCount);
         }
-        <ErrorBarrierError Barrier="@this" Kind="@Kind" ErrorCount="@_errorCount" MustAutoReload="@MustAutoReload"/>
+        <ErrorBarrierError
+            Barrier="@this"
+            Kind="@Kind"
+            ErrorCount="@_errorCount"
+            MustAutoReload="@MustAutoReload"/>
     </ErrorContent>
 </ErrorBoundary>
 

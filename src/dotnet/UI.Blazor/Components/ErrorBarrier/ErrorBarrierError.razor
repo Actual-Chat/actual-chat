@@ -1,16 +1,16 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<UITimer Period="@_uiTimerPeriod" Tick="@OnTick"/>
+<UITimer Period="@TickPeriod" Tick="@OnTick"/>
 @{
-    if (_isSilentReloadModeOn)
+    if (MustReloadSilently)
         return;
 
     var text = Kind == ErrorBarrierKind.Full
         ? "Something went wrong while displaying this area."
         : "Something went wrong...";
     var buttonText = "Reload";
-    if (MustAutoReload) {
-        var remaining = (long) (_reloadAt - Now).TotalSeconds;
+    if (_reloadAt is { } reloadAt) {
+        var remaining = (int)(reloadAt - Now).TotalSeconds;
         buttonText += $" in {remaining}s";
     }
     var cls = Kind switch {
@@ -18,7 +18,7 @@
         ErrorBarrierKind.Medium => "medium",
         ErrorBarrierKind.Compact => "compact",
         _ => throw new ArgumentOutOfRangeException(nameof(Kind)),
-        };
+    };
 }
 
 <div class="error-barrier @cls">
@@ -34,43 +34,37 @@
 
 @code {
     private static readonly RetryDelaySeq AutoReloadDelays = RetryDelaySeq.Exp(5, 60);
-    private static readonly TimeSpan SilentReloadPeriod = TimeSpan.FromSeconds(0.2);
-    private static readonly TimeSpan UpdatePeriod = TimeSpan.FromSeconds(1);
-    private const int SilentReloadCount = 5;
+    private static readonly TimeSpan FastTickPeriod = TimeSpan.FromSeconds(0.2);
+    private static readonly TimeSpan SlowTickPeriod = TimeSpan.FromSeconds(1);
+    private const int SilentReloadLimit = 3;
 
-    private Moment _startedAt;
-    private Moment _reloadAt;
-    private bool _isSilentReloadModeOn;
-    private TimeSpan _uiTimerPeriod;
+    private int _retryIndex;
+    private Moment? _reloadAt;
 
     private Moment Now => Clocks.CpuClock.Now;
+    private bool MustReloadSilently => _retryIndex == 0;
+    private TimeSpan TickPeriod => MustReloadSilently
+        ? FastTickPeriod
+        : _reloadAt.HasValue ? SlowTickPeriod : TimeSpan.Zero;
 
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
-    // use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
+    // Use explicit namespace - otherwise it doesn't compile on 7.0.302 SDK
     // ReSharper disable once RedundantNameQualifier
     [Parameter, EditorRequired] public ActualChat.UI.Blazor.Components.ErrorBarrier Barrier { get; set; } = null!;
     [Parameter, EditorRequired] public ErrorBarrierKind Kind { get; set; }
     [Parameter, EditorRequired] public int ErrorCount { get; set; }
     [Parameter, EditorRequired] public bool MustAutoReload { get; set; }
 
-    protected override void OnInitialized() {
-        _startedAt = Now;
-        var retryIndex = ErrorCount - SilentReloadCount;
-        _isSilentReloadModeOn = retryIndex <= 0;
-        if (_isSilentReloadModeOn)
-            _uiTimerPeriod = SilentReloadPeriod;
-        else if (MustAutoReload) {
-            _uiTimerPeriod = UpdatePeriod;
-            _reloadAt = Now + AutoReloadDelays[retryIndex];
-        }
-        else {
-            _uiTimerPeriod = TimeSpan.Zero; // Won't tick
-        }
+    protected override void OnParametersSet() {
+        _retryIndex = Math.Max(0, ErrorCount - SilentReloadLimit);
+        _reloadAt = MustAutoReload
+            ? Now + AutoReloadDelays[_retryIndex]
+            : null;
     }
 
     private void OnTick() {
-        if (_isSilentReloadModeOn || MustAutoReload && Now >= _reloadAt)
+        if (MustReloadSilently || Now >= (_reloadAt ?? Moment.MaxValue))
             Barrier.Reload();
     }
 
