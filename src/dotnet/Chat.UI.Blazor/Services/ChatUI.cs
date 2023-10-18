@@ -13,6 +13,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotifyInitialized
 {
     private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
+    private readonly SharedResourcePool<Symbol, IComputedState<Range<long>>> _chatIdRangeStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
@@ -85,6 +86,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
         _readPositionStates = new SharedResourcePool<Symbol, ISyncedState<ReadPosition>>(CreateReadPositionState);
+        _chatIdRangeStates = new SharedResourcePool<Symbol, IComputedState<Range<long>>>(CreateChatIdRangeState);
     }
 
     void INotifyInitialized.Initialized()
@@ -212,7 +214,8 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     [ComputeMethod]
     public virtual async Task<bool> IsEmpty(ChatId chatId, CancellationToken cancellationToken)
     {
-        var idRange = await Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken).ConfigureAwait(false);
+        using var idRangeLease = await LeaseChatIdRangeState(chatId, cancellationToken).ConfigureAwait(false);
+        var idRange = idRangeLease.Value;
         if (idRange.End - idRange.Start >= 100) {
             // Heuristics, it may produce false negatives - e.g. if the chat was cleaned up,
             // but it's still better than to scan a lot. Prob better to implement an actual check
@@ -300,6 +303,14 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
         return result;
     }
 
+    public async ValueTask<ComputedStateLease<Range<long>>> LeaseChatIdRangeState(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var lease = await _chatIdRangeStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
+        var result = new ComputedStateLease<Range<long>>(lease);
+        await result.WhenSynchronized(cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
     // Private methods
 
     private async ValueTask<ChatId> FixSelectedChatId(ChatId chatId, CancellationToken cancellationToken = default)
@@ -370,5 +381,17 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
                 Category = StateCategories.Get(GetType(), nameof(ChatPositions), "[*]"),
             }
         ));
+    }
+
+    private Task<IComputedState<Range<long>>> CreateChatIdRangeState(Symbol chatId, CancellationToken cancellationToken)
+    {
+        var pChatId = new ChatId(chatId, ParseOrNone.Option);
+        var options = new ComputedState<Range<long>>.Options {
+            UpdateDelayer = FixedDelayer.Instant,
+            InitialValue = default,
+            Category = StateCategories.Get(GetType(), nameof(CreateChatIdRangeState)),
+        };
+        return Task.FromResult(StateFactory.NewComputed(options, (s, ct) =>
+            Chats.GetIdRange(Session, pChatId, ChatEntryKind.Text, cancellationToken)));
     }
 }

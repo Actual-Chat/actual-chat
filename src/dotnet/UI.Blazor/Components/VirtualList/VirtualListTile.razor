@@ -1,0 +1,35 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@typeparam TItem where TItem : IVirtualListItem
+@{
+    _renderedDataTile = Tile;
+}
+
+@foreach (var item in Tile.Items) {
+    @if (item.CountAs != 1) {
+        <li id="@item.Key.Value"
+            @key="@item.Key"
+            class="item"
+            data-count-as="@item.CountAs.Format()">
+            @Item(item)
+        </li>
+    } else {
+        <li id="@item.Key.Value"
+            @key="@item.Key"
+            class="item">
+            @Item(item)
+        </li>
+    }
+}
+
+@code {
+    private VirtualListDataTile<TItem>? _renderedDataTile;
+
+    [Parameter] public required VirtualListDataTile<TItem> Tile { get; set; }
+    [Parameter] // NOTE(AY): Putting EditorRequired here triggers a warning in Rider (likely their issue)
+    public RenderFragment<TItem> Item { get; set; } = null!;
+
+    protected override bool ShouldRender() {
+        return !ReferenceEquals(_renderedDataTile, Tile);
+    }
+
+}
