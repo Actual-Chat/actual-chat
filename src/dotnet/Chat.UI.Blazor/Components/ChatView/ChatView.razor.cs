@@ -11,7 +11,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 {
     private const int PageSize = 40;
 
-    private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(1200);
+    private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeTokenSource = new();
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
@@ -463,7 +463,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var addWelcomeBlock = hasVeryFirstItem;
         var result = new List<VirtualListDataTile<ChatMessageModel>>(chatTiles.Count);
         var oldDataTileMap = oldData.Tiles
-            .ToDictionary(t => new Range<long>(t.Items[0].Entry.LocalId, t.Items[^1].Entry.LocalId + 1));
+            .ToDictionary(t => {
+                var startId = t.Items[0].Entry.LocalId;
+                var endId = t.Items[^1].Entry.LocalId;
+                var tileLayer = IdTileStack.FirstLayer;
+                while (tileLayer != null) {
+                    var tile = tileLayer.GetTile(startId);
+                    if (tile.Range.Contains(endId))
+                        return tile.Range;
+
+                    tileLayer = tileLayer.Larger;
+                }
+
+                // this line should never been called, just a safe guard
+                return new Range<long>(t.Items[0].Entry.LocalId, t.Items[^1].Entry.LocalId + 1);
+            });
         var oldItemsMap = oldData.Tiles
             .SelectMany(t => t.Items)
             .ToDictionary(i => i.Key, i => i);
@@ -476,6 +490,18 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (oldDataTileMap.TryGetValue(chatTile.IdTileRange, out var oldDataTile)) {
                 var newMessageLine = oldDataTile.Items.FirstOrDefault(cm => cm.ReplacementKind == ChatMessageReplacementKind.NewMessagesLine);
                 if (ReferenceEquals(oldDataTile.Source, chatTile) && (newMessageLine == null || newMessageLine.Entry.LocalId > lastReadEntryId)) {
+                    var lastTileItem = oldDataTile.Items[^1];
+                    var entry = lastTileItem.Entry;
+                    var nextEntry = nextChatTile?.Entries[0];
+                    isPrevUnread = entry.LocalId > lastReadEntryId;
+                    isBlockStart = ShouldSplit(entry, nextEntry);
+                    lastDate = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
+                    isPrevAudio = entry.AudioEntryId != null || entry.IsStreaming;
+                    isPrevForward = !entry.ForwardedAuthorId.IsNone;
+                    prevForwardChatId = entry.ForwardedChatEntryId.ChatId;
+                    isVeryFirstItem = false;
+                    addWelcomeBlock = false;
+
                     result.Add(oldDataTile);
                     continue;
                 }
