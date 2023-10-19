@@ -4,6 +4,8 @@
     var account = State.Value;
     if (ReferenceEquals(account, AccountFull.Loading))
         return;
+
+    var hasVerifiedEmail = account.HasVerifiedEmail();
 }
 
 <Tile>
@@ -37,7 +39,10 @@
         </Caption>
         <Right>
             <CopyToClipboard ButtonClass="btn-sm transparent tile-hidden-btn" Text="@account.Email"/>
-            <VerificationStatus IsVerified="account.HasVerifiedEmail()" Class="w-8 h-8"/>
+            @if (hasVerifiedEmail) {
+                // Do not show not verified sign until we have email verification
+                <VerificationStatus IsVerified="@hasVerifiedEmail" Class="w-8 h-8"/>
+            }
         </Right>
     </TileItem>
 
