@@ -15,7 +15,7 @@ import { NNVoiceActivityDetector } from './audio-vad';
 import { AudioVadWorker } from './audio-vad-worker-contract';
 import { OpusEncoderWorker } from './opus-encoder-worker-contract';
 import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
-import { retry } from 'promises';
+import { delayAsync, retry } from 'promises';
 import { WebRtcVoiceActivityDetector } from './audio-vad-webrtc';
 import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
 import { ExponentialMovingAverage } from "./streamed-moving-average";
@@ -68,6 +68,9 @@ const serverImpl: AudioVadWorker = {
         webrtcVoiceDetector = new WebRtcVoiceActivityDetector(new vadModule.WebRtcVad(48000, 0));
 
         debugLog?.log(`<- onCreate`);
+
+        // Init NNVad with delay to avoid excessive load during startup
+        delayAsync(2000).then(_ => initNNVad());
     },
 
     init: async (workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void> => {
@@ -226,7 +229,8 @@ function getEmscriptenLoaderOptions(): EmscriptenLoaderOptions {
 }
 
 async function initNNVad(): Promise<void> {
-    isNNVadInitialized = true;
+    if (isNNVadInitialized)
+        return;
 
     const OUT_RATE = 16000;
     const soxrResampler = new SoxrResampler(
@@ -239,11 +243,13 @@ async function initNNVad(): Promise<void> {
     );
     const soxrWasmPath = Versioning.mapPath(SoxrWasm);
     await soxrResampler.init(SoxrModule, { 'locateFile': () => soxrWasmPath });
-    const vad = new NNVoiceActivityDetector(OnnxModel as unknown as URL);
+    const currentActivityEvent: VoiceActivityChange = webrtcVoiceDetector.lastActivityEvent ?? NNVoiceActivityDetector.DefaultVoiceActivity;
+    const vad = new NNVoiceActivityDetector(OnnxModel as unknown as URL, currentActivityEvent);
     await vad.init();
 
     resampler = soxrResampler;
     nnVoiceDetector = vad;
+    isNNVadInitialized = true;
     startWorklet();
 }
 

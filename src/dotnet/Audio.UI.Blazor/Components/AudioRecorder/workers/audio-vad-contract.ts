@@ -12,4 +12,5 @@ export interface VoiceActivityDetector {
     init(): Promise<void>;
     reset(): void;
     conversationSignal(): void;
+    lastActivityEvent: VoiceActivityChange;
 }

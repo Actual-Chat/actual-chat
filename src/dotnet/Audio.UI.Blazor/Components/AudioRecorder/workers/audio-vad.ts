@@ -26,6 +26,8 @@ function adjustChangeEventsToSeconds(event: VoiceActivityChange, sampleRate: num
 }
 
 export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector {
+    public static DefaultVoiceActivity: VoiceActivityChange = { kind: 'end', offset: 0, speechProb: 0 };
+
     protected readonly movingAverages: ExponentialMovingAverage;
     protected readonly longMovingAverages: ExponentialMovingAverage;
     protected readonly speechBoundaries: StreamedMedian;
@@ -34,7 +36,6 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     // private readonly results =  new Array<number>();
 
     protected sampleCount = 0;
-    protected lastActivityEvent: VoiceActivityChange;
     protected endOffset?: number = null;
     protected speechSteps = 0;
     protected speechProbabilities: StreamedMedian | null = null;
@@ -43,13 +44,12 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
     protected maxSilenceSamples: number;
     protected lastConversationPhraseAtSample: number | null = null;
 
-    protected constructor(protected sampleRate: number, private isHighQuality: boolean) {
+    protected constructor(protected sampleRate: number, private isHighQuality: boolean, public lastActivityEvent: VoiceActivityChange = VoiceActivityDetectorBase.DefaultVoiceActivity) {
         this.movingAverages = new ExponentialMovingAverage(8); // 32ms*8 ~ 250ms
         this.longMovingAverages = new ExponentialMovingAverage(64); // 32ms*64 ~ 2s
         this.speechBoundaries = new StreamedMedian();
         // this.speechBoundaries.push(0.75); // initial speech probability boundary
         this.speechBoundaries.push(0.5); // initial speech probability boundary
-        this.lastActivityEvent = { kind: 'end', offset: 0, speechProb: 0 };
         this.maxSilenceSamples = sampleRate * MAX_SILENCE;
         this.minSpeechSamples = sampleRate * MIN_SPEECH;
         this.maxSpeechSamples = sampleRate * MAX_SPEECH;
@@ -212,8 +212,8 @@ export class NNVoiceActivityDetector extends VoiceActivityDetectorBase {
     private h0: ort.Tensor;
     private c0: ort.Tensor;
 
-    constructor(modelUri: URL) {
-        super(16000, true);
+    constructor(modelUri: URL, lastActivityEvent: VoiceActivityChange) {
+        super(16000, true, lastActivityEvent);
 
         this.modelUri = modelUri;
         this.h0 = new ort.Tensor(new Float32Array(2 * 64), [2, 1, 64]);
