@@ -4,7 +4,7 @@
 @using ActualChat.Hosting
 @using ActualChat.Kvas
 @using ActualChat.Notification
-@inherits ComputedStateComponent<GrantNotificationPermissionBanner.Model>
+@inherits ComputedStateComponent<NotificationsPermissionBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -36,17 +36,17 @@
 
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
     [Inject] private LocalSettings LocalSettings { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
-    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     protected override void OnInitialized() {
-        _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, nameof(_dismissedAt)));
+        _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, "Permissions.Notifications.DismissedAt"));
         base.OnInitialized();
     }
 
@@ -77,7 +77,6 @@
 
     private void OnDismiss()
         => _dismissedAt.Value = Clocks.SystemClock.Now;
-
 
     private Task OnConfigureClick(MouseEventArgs arg)
         => NotificationPermissions.RequestNotificationPermission(CancellationToken.None);
