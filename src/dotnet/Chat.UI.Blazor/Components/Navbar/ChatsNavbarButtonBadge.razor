@@ -1,7 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatsNavbarButtonBadge.Model>
 @{
-    var m = _rendered = State.Value;
+    var m = State.Value;
+    _rendered = m;
     if (m.Count <= 0)
         return;
 }
@@ -29,5 +30,5 @@
     protected override bool ShouldRender()
         => State.HasError || State.Value != _rendered;
 
-    public sealed record Model(Trimmed<int> Count = default);
+    public record struct Model(Trimmed<int> Count = default);
 }

@@ -1,6 +1,5 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<Presence>
-
 @{
     var presence = State.Value;
     if (presence is Presence.Unknown or Presence.Offline)

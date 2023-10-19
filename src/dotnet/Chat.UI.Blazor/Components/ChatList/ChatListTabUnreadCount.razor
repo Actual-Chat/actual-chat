@@ -1,14 +1,14 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatListTabUnreadCount.Model>
 @{
-    var m = _rendered = State.Value;
-    var count = m.Count;
-    if (m == Model.Loading || count <= 0)
+    var m = State.Value;
+    _rendered = m;
+    if (m.Count <= 0)
         return;
 }
 
 <div class="c-badge">
-    <UnreadCount Value="@count" Click="OnUnreadBadgeClick"/>
+    <UnreadCount Value="@m.Count" Click="OnUnreadBadgeClick"/>
 </div>
 
 @code {
@@ -22,14 +22,14 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.Loading,
+            InitialValue = new (),
             UpdateDelayer = FixedDelayer.Instant,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var count = await ChatListUI.GetUnreadChatCount(ChatListFilter, cancellationToken).ConfigureAwait(false);
 
-        return new Model() {
+        return new Model {
             Count = count,
         };
     }
@@ -47,9 +47,5 @@
     protected override bool ShouldRender()
         => State.HasError || State.Value != _rendered;
 
-    public sealed record Model {
-        public static Model Loading { get; } = new();
-
-        public Trimmed<int> Count { get; init; }
-    }
+    public record struct Model(Trimmed<int> Count = default);
 }

@@ -1,7 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @inherits ComputedStateComponent<Presence>
-
 @{
     var presence = State.Value;
     if (presence is Presence.Unknown or Presence.Offline)
@@ -38,6 +37,7 @@
     protected override async Task<Presence> ComputeState(CancellationToken cancellationToken) {
         if (UserId.IsNone)
             return Presence.Unknown;
+
         return await UserPresences.Get(UserId, cancellationToken);
     }
 }

@@ -49,7 +49,6 @@
     private IAuthors Authors => ChatContext.Authors;
     private AuthorUI AuthorUI => ChatContext.AuthorUI;
 
-    [Inject] private ILogger<AuthorList> Log { get; init; } = null!;
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override void OnInitialized() {
