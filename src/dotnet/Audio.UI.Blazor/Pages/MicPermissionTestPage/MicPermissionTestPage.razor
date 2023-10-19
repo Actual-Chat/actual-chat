@@ -72,5 +72,5 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; init; }
 
     private void OnClick(GuideType guideType)
-        => ModalUI.Show(new GuideModal.Model(true, guideType));
+        => ModalUI.Show(new RecordingTroubleshooterModal.Model(guideType));
 }

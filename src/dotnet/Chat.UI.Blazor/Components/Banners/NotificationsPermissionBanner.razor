@@ -17,7 +17,7 @@
     <RenderIntoSlot Name="PermissionBanner">
         <Banner @key="GetType()" IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowDismissButton="true" Dismiss="OnDismiss">
             <Body>
-            Actual Chat can notify you about new messages
+                Actual Chat can <strong>notify</strong> you about new messages
             </Body>
             <Buttons>
                 <Button
@@ -38,7 +38,7 @@
 
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
-    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
+    [Inject] private INotificationsPermission NotificationsPermission { get; init; } = null!;
     [Inject] private LocalSettings LocalSettings { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
@@ -79,7 +79,7 @@
         => _dismissedAt.Value = Clocks.SystemClock.Now;
 
     private Task OnConfigureClick(MouseEventArgs arg)
-        => NotificationPermissions.RequestNotificationPermission(CancellationToken.None);
+        => NotificationsPermission.RequestNotificationPermission(CancellationToken.None);
 
     private Task OnConfigureRendered(ElementReference buttonRef) {
         _ = NotificationUI.RegisterRequestNotificationHandler(buttonRef);

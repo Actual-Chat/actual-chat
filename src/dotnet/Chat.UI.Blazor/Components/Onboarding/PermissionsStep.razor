@@ -29,31 +29,31 @@
                 </div>
             </div>
             <Checkbox
-                IsChecked="@_stepModel.RequestMicrophonePermissions"
+                IsChecked="@_model.RequestMicrophonePermission"
                 Class="!flex-none"
                 Change="OnMicrophonePermissionClick"/>
         </div>
-        <div class="step-tile"
-             @onclick="OnNotificationsPermissionClick">
-            <img draggable="false"
-                 class="step-tile-icon"
-                 alt="Bell"
-                 src="/dist/images/onboarding/bell.svg"/>
-            <div class="step-tile-body">
-                <div class="step-tile-title">
-                    Notifications
-                </div>
-                <div class="step-tile-subtitle">
-                    We send notifications related to the chats you've joined,
-                    and you can mute these notifications on a per-chat basis.
-                </div>
-            </div>
-            <Checkbox
-                IsChecked="@_stepModel.RequestNotificationsPermissions"
-                Class="!flex-none"
-                Change="OnNotificationsPermissionClick"/>
-        </div>
         @if (IsMobile) {
+            <div class="step-tile"
+                 @onclick="OnNotificationsPermissionClick">
+                <img draggable="false"
+                     class="step-tile-icon"
+                     alt="Bell"
+                     src="/dist/images/onboarding/bell.svg"/>
+                <div class="step-tile-body">
+                    <div class="step-tile-title">
+                        Notifications
+                    </div>
+                    <div class="step-tile-subtitle">
+                        We send notifications related to the chats you've joined,
+                        and you can mute these notifications on a per-chat basis.
+                    </div>
+                </div>
+                <Checkbox
+                    IsChecked="@_model.RequestNotificationsPermission"
+                    Class="!flex-none"
+                    Change="OnNotificationsPermissionClick"/>
+            </div>
             <div class="step-tile"
                  @onclick="OnContactsPermissionClick">
                 <img draggable="false"
@@ -71,7 +71,7 @@
                     </div>
                 </div>
                 <Checkbox
-                    IsChecked="@_stepModel.RequestContactsPermissions"
+                    IsChecked="@_model.RequestContactsPermission"
                     Class="!flex-none"
                     Change="OnContactsPermissionClick"/>
             </div>
@@ -80,8 +80,8 @@
 </div>
 
 @code {
-    private readonly SetChatsStepModel _stepModel = new();
-    private bool _isHandlerRegistered = false;
+    private readonly Model _model = new();
+    private ElementReference _notificationPermissionHandlerRef;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
@@ -89,86 +89,85 @@
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
     [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
-    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
-    [Inject] private ContactsPermissionHandler ContactPermissions { get; init; } = null!;
+    [Inject] private INotificationsPermission NotificationsPermission { get; init; } = null!;
+    [Inject] private ContactsPermissionHandler ContactsPermission { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter, EditorRequired] public Mutable<ElementReference> NextButtonRef { get; init; } = null!;
 
-    public override bool IsCompleted => OnboardingUI.Settings.Value.IsPermissionsStepCompleted;
+    public override bool IsCompleted => OnboardingUI.LocalSettings.Value.IsPermissionsStepCompleted;
 
-    private bool IsMobile => HostInfo is { AppKind: AppKind.MauiApp, ClientKind: ClientKind.Ios or ClientKind.Android };
+    private bool IsMobile => HostInfo.ClientKind.IsMobile();
 
-    protected override Task OnInitializedAsync()
-        => AudioRecorder.MicrophonePermission.Check(CancellationToken.None);
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (CurrentStep == this) {
-            if (!_isHandlerRegistered) {
-                await NotificationUI.RegisterRequestNotificationHandler(NextButtonRef.Value);
-                _isHandlerRegistered = true;
-            }
-        } else {
-            if (_isHandlerRegistered) {
-                await NotificationUI.UnregisterRequestNotificationHandler(NextButtonRef.Value);
-                _isHandlerRegistered = false;
-            }
+    protected override async Task OnInitializedAsync() {
+        if (!IsMobile) {
+            // NOTE(AY): Requesting mic & notifications in the same event handler doesn't work on web.
+            // We should show an extra modal explaining that notification permission request
+            // may not appear, so the user has to click on the "Notifications blocked" item
+            // in the browser bar to enable them.
+            // I disabled this logic for web browser, coz it doesn't work anyway,
+            // and we show NotificationsPermissionBanner which allows to enable it later -
+            // which, by the way, should use the same popup.
+            _model.RequestNotificationsPermission = false;
         }
+        await AudioRecorder.MicrophonePermission.Check(CancellationToken.None);
     }
 
+    protected override Task OnAfterRenderAsync(bool firstRender)
+        => UpdateNotificationPermissionHandler();
+
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsPermissionsStepCompleted = true });
+        => OnboardingUI.UpdateLocalSettings(OnboardingUI.LocalSettings.Value with { IsPermissionsStepCompleted = true });
 
     protected override Task<bool> Validate()
         => Task.FromResult(true);
 
     protected override async Task<bool> Save() {
-        if (_stepModel.RequestMicrophonePermissions) {
+        if (_model.RequestMicrophonePermission)
             await AudioRecorder.MicrophonePermission.CheckOrRequest();
-        }
-
-        if (_stepModel.RequestNotificationsPermissions) {
-            await NotificationPermissions.RequestNotificationPermission(default);
-        }
-
-        if (IsMobile && _stepModel.RequestContactsPermissions) {
+        if (_model.RequestNotificationsPermission)
+            await NotificationsPermission.RequestNotificationPermission(default);
+        if (IsMobile && _model.RequestContactsPermission)
             await RequestContactsPermissions();
-        }
 
         return true;
     }
 
-    private async Task RequestContactsPermissions() {
-        var state = await ContactPermissions.Check(CancellationToken.None);
-        switch (state)
-        {
-            case false:
-                await ContactPermissions.OpenSettings();
-                break;
-            case null:
-                await ContactPermissions.CheckOrRequest(true);
-                break;
-        }
-    }
+    private Task RequestContactsPermissions()
+        => ContactsPermission.CheckOrRequest(true).AsTask();
 
     private void OnMicrophonePermissionClick()
-        => _stepModel.RequestMicrophonePermissions = !_stepModel.RequestMicrophonePermissions;
+        => _model.RequestMicrophonePermission = !_model.RequestMicrophonePermission;
 
     private void OnContactsPermissionClick()
-        => _stepModel.RequestContactsPermissions = !_stepModel.RequestContactsPermissions;
+        => _model.RequestContactsPermission = !_model.RequestContactsPermission;
 
-    private async Task OnNotificationsPermissionClick() {
-        _stepModel.RequestNotificationsPermissions = !_stepModel.RequestNotificationsPermissions;
-        if (_stepModel.RequestNotificationsPermissions) {
-            await NotificationUI.RegisterRequestNotificationHandler(NextButtonRef.Value);
-        } else {
-            await NotificationUI.UnregisterRequestNotificationHandler(NextButtonRef.Value);
+    private Task OnNotificationsPermissionClick() {
+        _model.RequestNotificationsPermission = !_model.RequestNotificationsPermission;
+        return UpdateNotificationPermissionHandler();
+    }
+
+    private async Task UpdateNotificationPermissionHandler() {
+        var mustRegisterHandler = CurrentStep == this && _model.RequestNotificationsPermission;
+        var nextButtonRef = NextButtonRef.Value;
+        var isRegistered = nextButtonRef.Id == _notificationPermissionHandlerRef.Id
+            && ReferenceEquals(nextButtonRef.Context, _notificationPermissionHandlerRef.Context);
+        if (isRegistered == mustRegisterHandler)
+            return;
+
+        if (mustRegisterHandler) {
+            await NotificationUI.RegisterRequestNotificationHandler(nextButtonRef);
+            _notificationPermissionHandlerRef = nextButtonRef;
+        }
+        else {
+            await NotificationUI.UnregisterRequestNotificationHandler(nextButtonRef);
+            _notificationPermissionHandlerRef = default;
         }
     }
 
-    public class SetChatsStepModel {
-        public bool RequestMicrophonePermissions { get; set; } = true;
-        public bool RequestNotificationsPermissions { get; set; } = true;
-        public bool RequestContactsPermissions { get; set; } = true;
+    public class Model {
+        public bool RequestMicrophonePermission { get; set; } = true;
+        public bool RequestNotificationsPermission { get; set; } = true;
+        public bool RequestContactsPermission { get; set; } = true;
     }
 }

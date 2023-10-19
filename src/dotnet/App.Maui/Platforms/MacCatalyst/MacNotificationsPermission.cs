@@ -3,11 +3,8 @@ using ActualChat.UI.Blazor;
 
 namespace ActualChat.App.Maui;
 
-public class WindowsNotificationPermissions : INotificationPermissions
+public class MacNotificationsPermission : INotificationsPermission
 {
-    public WindowsNotificationPermissions()
-    { }
-
     public Task<PermissionState> GetPermissionState(CancellationToken cancellationToken)
         => Task.FromResult(PermissionState.Denied);
 

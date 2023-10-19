@@ -1,15 +1,10 @@
 using ActualChat.Permissions;
-using AppInfo = Microsoft.Maui.ApplicationModel.AppInfo;
-using Dispatcher = Microsoft.AspNetCore.Components.Dispatcher;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace ActualChat.App.Maui.Services;
 
 public class MauiContactsPermissionHandler : ContactsPermissionHandler
 {
-    private Dispatcher? _dispatcher;
-    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
-
     public MauiContactsPermissionHandler(IServiceProvider services, bool mustStart = true)
         : base(services, mustStart)
         => ExpirationPeriod = null; // We don't need expiration period - GrantContactPermissionBanner checks it
@@ -32,14 +27,10 @@ public class MauiContactsPermissionHandler : ContactsPermissionHandler
 
     protected override async Task<bool> Request(CancellationToken cancellationToken)
     {
-        var status = await Dispatcher.InvokeAsync(MauiPermissions.RequestAsync<MauiPermissions.ContactsRead>)
-            .ConfigureAwait(false);
+        var status = await MauiPermissions.RequestAsync<MauiPermissions.ContactsRead>().ConfigureAwait(false);
         return status is PermissionStatus.Granted or PermissionStatus.Limited;
     }
 
-    protected override Task<bool> Troubleshoot(CancellationToken cancellationToken)
-        => Stl.Async.TaskExt.FalseTask;
-
-    public override Task OpenSettings()
-        => Dispatcher.InvokeAsync(AppInfo.Current.ShowSettingsUI);
+    protected override Task Troubleshoot(CancellationToken cancellationToken)
+        => OpenSystemSettings();
 }

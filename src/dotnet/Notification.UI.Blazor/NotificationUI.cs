@@ -5,7 +5,7 @@ using Stl.Rpc;
 
 namespace ActualChat.Notification.UI.Blazor;
 
-public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificationPermissions
+public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificationsPermission
 {
     private static readonly string JSInitMethod = $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init";
     private static readonly string JSRegisterRequestNotificationHandlerMethod =
@@ -50,8 +50,8 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
             }
             else if (HostInfo.AppKind == AppKind.MauiApp) {
                 // There should be no cycle reference as we implement INotificationPermissions for MAUI platform separately
-                var notificationPermissions = services.GetRequiredService<INotificationPermissions>();
-                var permissionState = await notificationPermissions.GetPermissionState(CancellationToken.None).ConfigureAwait(false);
+                var notificationsPermission = services.GetRequiredService<INotificationsPermission>();
+                var permissionState = await notificationsPermission.GetPermissionState(CancellationToken.None).ConfigureAwait(false);
                 SetPermissionState(permissionState);
             }
             await _whenPermissionStateReady.Task.ConfigureAwait(false);
@@ -77,7 +77,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     }
 
     public Task RequestNotificationPermission(CancellationToken cancellationToken)
-        // Web browser notification permission requests are handled at notification-ui.ts
+        // Web browser notification permission requests are handled by notification-ui.ts
         => Task.CompletedTask;
 
     [JSInvokable]

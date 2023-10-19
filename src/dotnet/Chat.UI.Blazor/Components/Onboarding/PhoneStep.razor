@@ -19,10 +19,10 @@
     <Form
         @ref="_formRef"
         Class="mt-6"
-        Model="@_stepModel">
+        Model="@_model">
         <DataAnnotationsValidator/>
         <FormSection
-            For="() => _stepModel.Phone"
+            For="() => _model.Phone"
             InputId="phone"
             Label="Phone"
             Class="grow"
@@ -31,7 +31,7 @@
             <ChildContent>
                 <InputText
                     id="phone"
-                    @bind-Value="_stepModel.Phone"
+                    @bind-Value="_model.Phone"
                     autocomplete="tel"
                     type="tel"
                     inputmode="tel"/>
@@ -48,7 +48,7 @@
 </div>
 
 @code {
-    private readonly Model _stepModel = new();
+    private readonly Model _model = new();
     private Form? _formRef;
     private bool _showVerificationStatus;
     private bool? _isVerified;
@@ -77,18 +77,18 @@
             if (_skipped is true)
                 return false;
 
-            return OnboardingUI.Settings.Value.IsVerifyPhoneStepCompleted;
+            return OnboardingUI.UserSettings.Value.IsVerifyPhoneStepCompleted;
         }
     }
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsVerifyPhoneStepCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsVerifyPhoneStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
         _showVerificationStatus = !account.HasVerifiedPhone();
         if (!account.Phone.IsNone)
-            _stepModel.Phone = account.Phone.ToReadable();
+            _model.Phone = account.Phone.ToReadable();
     }
 
     protected override Task<bool> Validate() {
@@ -102,7 +102,7 @@
     }
 
     protected override async Task<bool> Save() {
-        var phone = PhoneFormatterExt.FromReadable(_stepModel.Phone);
+        var phone = PhoneFormatterExt.FromReadable(_model.Phone);
         var account = await Accounts.GetOwn(Session, default);
         var command = new Accounts_Update(Session, account with { Phone = phone }, account.Version);
         var (_, error) = await UICommander.Run(command);

@@ -6,7 +6,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class OnboardingUI : IDisposable, IOnboardingUI
 {
-    private readonly ISyncedState<UserOnboardingSettings> _settings;
+    private readonly ISyncedState<UserOnboardingSettings> _userSettings;
+    private readonly IStoredState<LocalOnboardingSettings> _localSettings;
     private CancellationTokenSource? _lastTryShowCts;
     private ModalRef? _lastModalRef;
 
@@ -16,7 +17,8 @@ public class OnboardingUI : IDisposable, IOnboardingUI
     private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
 
-    public IState<UserOnboardingSettings> Settings => _settings;
+    public IState<UserOnboardingSettings> UserSettings => _userSettings;
+    public IState<LocalOnboardingSettings> LocalSettings => _localSettings;
 
     public OnboardingUI(IServiceProvider services)
     {
@@ -27,18 +29,24 @@ public class OnboardingUI : IDisposable, IOnboardingUI
 
         var stateFactory = services.StateFactory();
         var accountSettings = services.GetRequiredService<AccountSettings>();
-        _settings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
+        _userSettings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
             new (accountSettings, UserOnboardingSettings.KvasKey) {
                 InitialValue = new UserOnboardingSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
-                Category = StateCategories.Get(GetType(), nameof(Settings)),
+                Category = StateCategories.Get(GetType(), nameof(UserSettings)),
+            });
+        var localSettings = services.GetRequiredService<LocalSettings>();
+        _localSettings = stateFactory.NewKvasStored<LocalOnboardingSettings>(
+            new (localSettings, LocalOnboardingSettings.KvasKey) {
+                InitialValue = new LocalOnboardingSettings(),
+                Category = StateCategories.Get(GetType(), nameof(LocalSettings)),
             });
     }
 
     public void Dispose()
     {
         _lastTryShowCts.CancelAndDisposeSilently();
-        _settings.Dispose();
+        _userSettings.Dispose();
     }
 
     public async Task<bool> TryShow()
@@ -64,14 +72,16 @@ public class OnboardingUI : IDisposable, IOnboardingUI
         if (!shouldBeShown)
             return false;
 
-        UpdateSettings(Settings.Value with { LastShownAt = Now });
         var modalUI = Services.GetRequiredService<ModalUI>();
-        _lastModalRef = await modalUI.Show(new OnboardingModal.Model()).ConfigureAwait(false);
+        _lastModalRef = await modalUI.Show(new OnboardingModal.Model(), CancellationToken.None).ConfigureAwait(false);
         return true;
     }
 
-    public void UpdateSettings(UserOnboardingSettings value)
-        => _settings.Value = value;
+    public void UpdateUserSettings(UserOnboardingSettings value)
+        => _userSettings.Value = value;
+
+    public void UpdateLocalSettings(LocalOnboardingSettings value)
+        => _localSettings.Value = value;
 
     // Private methods
 
@@ -82,8 +92,10 @@ public class OnboardingUI : IDisposable, IOnboardingUI
         await AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, cancellationToken).ConfigureAwait(false);
 
         // Wait when settings are read & synchronized
-        await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        await _settings.Synchronize(cancellationToken).ConfigureAwait(false);
+        await _userSettings.WhenFirstTimeRead.ConfigureAwait(false);
+        await _userSettings.Synchronize(cancellationToken).ConfigureAwait(false);
+        await _localSettings.WhenRead.ConfigureAwait(false);
+        await _localSettings.Synchronize(cancellationToken).ConfigureAwait(false);
 
         // If there was a recent account change, add a delay to let them hit the client
         await Task.Delay(AccountUI.GetPostChangeInvalidationDelay(), cancellationToken).ConfigureAwait(false);
@@ -91,7 +103,6 @@ public class OnboardingUI : IDisposable, IOnboardingUI
         // Finally, wait for the possibility to render onboarding modal
         await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var settings = _settings.Value;
-        return settings.HasUncompletedSteps;
+        return _userSettings.Value.HasUncompletedSteps || _localSettings.Value.HasUncompletedSteps;
     }
 }

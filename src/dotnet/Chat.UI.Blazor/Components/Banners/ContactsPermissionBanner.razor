@@ -10,8 +10,6 @@
         return;
 
     var isVisible = m is { IsPermissionGranted: false or null, IsDismissed: false };
-    if (!HostInfo.ClientKind.IsMobile())
-        isVisible = false;
 }
 
 @if (isVisible) {
@@ -23,7 +21,7 @@
             ShowDismissButton="true"
             Dismiss="OnDismiss">
             <Body>
-                Import contacts to find your friends
+                Actual Chat can import your <strong>contacts</strong> to find them here
             </Body>
             <Buttons>
                 <Button
@@ -76,16 +74,8 @@
     private void OnDismiss()
         => _dismissedAt.Value = Clocks.SystemClock.Now;
 
-    private async Task OnConfigureClick(MouseEventArgs e) {
-        switch (ContactsPermission.Cached.Value) {
-            case false:
-                await ContactsPermission.OpenSettings();
-                break;
-            case null:
-                await ContactsPermission.CheckOrRequest(true);
-                break;
-        }
-    }
+    private Task OnConfigureClick(MouseEventArgs e)
+        => ContactsPermission.CheckOrRequest(true).AsTask();
 
     // Nested types
 

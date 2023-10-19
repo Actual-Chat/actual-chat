@@ -2,45 +2,40 @@
 @using ActualChat.Audio.UI.Blazor.Services
 @using ActualChat.Hosting
 @namespace ActualChat.Audio.UI.Blazor.Components
-@implements IModalView<GuideModal.Model>
-
+@implements IModalView<RecordingTroubleshooterModal.Model>
 @{
     GuideType type;
-    @if (!IsTestPage) {
-        if (GuideType == GuideType.Unknown) {
-            type = GuideType.Unknown;
-        }
-        else if (HostInfo.AppKind.IsMauiApp()) {
-            type = HostInfo.ClientKind switch
-            {
+    @if (ModalModel.TestGuideType is { } testGuideType) {
+        type = testGuideType;
+    } else {
+        if (HostInfo.AppKind.IsMauiApp()) {
+            type = HostInfo.ClientKind switch {
                 ClientKind.Ios => GuideType.IosApp,
                 ClientKind.Android => GuideType.AndroidApp,
                 _ => GuideType.WebChrome,
-            };
+                };
         } else {
             if (ScreenSize.IsNarrow()) {
-                if (BrowserInfo.IsEdge)
+                if (BrowserInfo.IsEdge) {
                     type = GuideType.MobileEdgeAndroid;
-                else if (BrowserInfo.IsWebKit)
+                } else if (BrowserInfo.IsWebKit)
                     type = GuideType.MobileSafariIos;
                 else
                     type = GuideType.MobileChromeAndroid;
             } else {
-                if (BrowserInfo.IsEdge)
+                if (BrowserInfo.IsEdge) {
                     type = GuideType.WebEdge;
-                else if (BrowserInfo.IsWebKit)
+                } else if (BrowserInfo.IsWebKit)
                     type = GuideType.WebSafari;
                 else
                     type = GuideType.WebChrome;
             }
         }
-    } else {
-        type = GuideType;
     }
+
     var title = type == GuideType.Unknown
         ? "Troubleshoot recording issues"
         : "Microphone access guide";
-
     var buttonTitle = RecordingPermissionRequester?.CanRequest ?? false
         ? "Settings"
         : "OK";
@@ -98,21 +93,13 @@
     [Inject] private IRecordingPermissionRequester RecordingPermissionRequester { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
-    private bool IsTestPage => ModalModel.IsTestPage;
-    private GuideType GuideType => ModalModel.GuideType;
-
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    private async Task OnOkClick() {
-        if (ModalModel.GuideType != GuideType.Unknown)
-            ModalModel.WasPermissionRequested = await RecordingPermissionRequester.TryRequest();
-        Modal.Close();
-    }
+    private void OnOkClick()
+        => Modal.Close();
 
-    public sealed record Model(bool IsTestPage, GuideType GuideType) {
-        public bool WasPermissionRequested { get; set; }
-    }
+    public sealed record Model(GuideType? TestGuideType = null);
 }

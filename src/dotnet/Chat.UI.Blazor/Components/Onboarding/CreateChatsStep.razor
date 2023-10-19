@@ -24,7 +24,7 @@
                 </div>
             </div>
             <Checkbox
-                IsChecked="@_stepModel.CreateFamilyChat"
+                IsChecked="@_model.CreateFamilyChat"
                 Class="!flex-none"
                 Change="CreateFamilyChatClick"/>
         </div>
@@ -44,7 +44,7 @@
                 </div>
             </div>
             <Checkbox
-                IsChecked="@_stepModel.CreateFriendsChat"
+                IsChecked="@_model.CreateFriendsChat"
                 Class="!flex-none"
                 Change="CreateFriendsChatClick"/>
         </div>
@@ -64,7 +64,7 @@
                 </div>
             </div>
             <Checkbox
-                IsChecked="@_stepModel.CreateClassmatesChat"
+                IsChecked="@_model.CreateClassmatesChat"
                 Class="!flex-none"
                 Change="CreateClassmatesChatClick"/>
         </div>
@@ -84,7 +84,7 @@
                 </div>
             </div>
             <Checkbox
-                IsChecked="@_stepModel.CreateAlumniChat"
+                IsChecked="@_model.CreateAlumniChat"
                 Class="!flex-none"
                 Change="CreateAlumniChatClick"/>
         </div>
@@ -104,7 +104,7 @@
                 </div>
             </div>
             <Checkbox
-                IsChecked="@_stepModel.CreateCoworkersChat"
+                IsChecked="@_model.CreateCoworkersChat"
                 Class="!flex-none"
                 Change="CreateCoworkersChatClick"/>
         </div>
@@ -112,32 +112,32 @@
 </div>
 
 @code {
-    private readonly SetChatsStepModel _stepModel = new();
+    private readonly Model _model = new();
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAccounts Accounts { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
 
-    public override bool IsCompleted => OnboardingUI.Settings.Value.IsSetChatsStepCompleted;
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsCreateChatsStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsSetChatsStepCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsCreateChatsStepCompleted = true });
 
     protected override Task<bool> Validate() {
         return Task.FromResult(true);
     }
 
     protected override async Task<bool> Save() {
-        if (_stepModel.CreateFamilyChat)
+        if (_model.CreateFamilyChat)
             await CreateChat("Family", Constants.Chat.SystemTags.Family);
-        if (_stepModel.CreateFriendsChat)
+        if (_model.CreateFriendsChat)
             await CreateChat("Friends", Constants.Chat.SystemTags.Friends);
-        if (_stepModel.CreateClassmatesChat)
+        if (_model.CreateClassmatesChat)
             await CreateChat("Classmates", Constants.Chat.SystemTags.Classmates, "system-icons:alumni");
-        if (_stepModel.CreateAlumniChat)
+        if (_model.CreateAlumniChat)
             await CreateChat("Alumni", Constants.Chat.SystemTags.Alumni);
-        if (_stepModel.CreateCoworkersChat)
+        if (_model.CreateCoworkersChat)
             await CreateChat("Coworkers", Constants.Chat.SystemTags.Coworkers);
 
         return true;
@@ -161,21 +161,21 @@
     }
 
     private void CreateFamilyChatClick()
-        => _stepModel.CreateFamilyChat = !_stepModel.CreateFamilyChat;
+        => _model.CreateFamilyChat = !_model.CreateFamilyChat;
 
     private void CreateFriendsChatClick()
-        => _stepModel.CreateFriendsChat = !_stepModel.CreateFriendsChat;
+        => _model.CreateFriendsChat = !_model.CreateFriendsChat;
 
     private void CreateClassmatesChatClick()
-        => _stepModel.CreateClassmatesChat = !_stepModel.CreateClassmatesChat;
+        => _model.CreateClassmatesChat = !_model.CreateClassmatesChat;
 
     private void CreateAlumniChatClick()
-        => _stepModel.CreateAlumniChat = !_stepModel.CreateAlumniChat;
+        => _model.CreateAlumniChat = !_model.CreateAlumniChat;
 
     private void CreateCoworkersChatClick()
-        => _stepModel.CreateCoworkersChat = !_stepModel.CreateCoworkersChat;
+        => _model.CreateCoworkersChat = !_model.CreateCoworkersChat;
 
-    public class SetChatsStepModel {
+    public class Model {
         public bool CreateFamilyChat { get; set; } = true;
         public bool CreateFriendsChat { get; set; } = true;
         public bool CreateClassmatesChat { get; set; }
