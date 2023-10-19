@@ -9,7 +9,7 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessageModel>, IDisposable
 {
-    private const int PageSize = 40;
+    private const int PageSize = 20;
 
     private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
@@ -252,12 +252,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             ? GetScrollToKey(chatTiles, entryLid)
             : null;
 
-        // Do not show '-new-' separator after view is scrolled to the end anchor.
-        var lastTile = chatTiles[^1];
-        if (!_suppressNewMessagesEntry && _itemVisibilityUpdateReceived)
-            if (ShouldSuppressNewMessagesEntry(ItemVisibility.Value, lastTile))
-                _suppressNewMessagesEntry = true;
-
         if (chatTiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
@@ -269,6 +263,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     RequestedEndExpansion = null,
                 };
         }
+        // Do not show '-new-' separator after view is scrolled to the end anchor.
+        var lastTile = chatTiles[^1];
+        if (!_suppressNewMessagesEntry && _itemVisibilityUpdateReceived)
+            if (ShouldSuppressNewMessagesEntry(ItemVisibility.Value, lastTile))
+                _suppressNewMessagesEntry = true;
 
         var linkPreviews = await chatTiles
             .SelectMany(t => t.Entries)
@@ -679,16 +678,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         var chatId = Chat.Id;
         var chatIdRange = ChatIdRangeState.Value;
-        var lastIdTile = IdTileStack.Layers[0].GetTile(chatIdRange.ToInclusive().End);
-        var lastTile = await Chats.GetTile(Session,
-            chatId,
-            ChatEntryKind.Text,
-            lastIdTile.Range,
-            cancellationToken);
         var entryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var authorId = author?.Id;
-        var newEntries = entryReader.Observe(lastTile.Entries[^1].LocalId, cancellationToken);
+        var newEntries = entryReader.Observe(chatIdRange.End, cancellationToken);
         // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
         await foreach (var newOwnEntry in newEntries.Where(e => e.AuthorId == authorId && e is { IsStreaming: false, AudioEntryId: null }).ConfigureAwait(false))
             LastAuthorTextEntryLidState.Value = newOwnEntry.LocalId;
