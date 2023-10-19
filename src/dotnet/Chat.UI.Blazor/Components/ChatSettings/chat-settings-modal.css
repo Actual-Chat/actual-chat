@@ -47,7 +47,7 @@
 }
 
 .form .field-allow-guest .tile-item-body-caption label {
-    @apply text-icons-04;
+    @apply text-record;
 }
 
 .wide .field-chat-title input {
@@ -60,14 +60,14 @@
 
 .edit-chat-settings-modal .item-leave-group .tile-item-icon,
 .edit-chat-settings-modal .item-leave-group .tile-item-body-content {
-    @apply text-icons-04;
+    @apply text-record;
 }
 
 /* Edit members page */
 
 .tile-item.item-manage-members .tile-item-right {
     @apply min-w-8 justify-start;
-    @apply text-icons-01;
+    @apply text-03;
 }
 .tile-item.item-manage-members .tile-item-right i {
     @apply -ml-2;
@@ -89,7 +89,7 @@
     @apply min-h-12;
 }
 .edit-chat-settings-modal.edit-members .list .avatar-badge .c-status {
-    @apply text-icons-01 text-xs leading-3.5;
+    @apply text-03 text-xs leading-3.5;
 }
 
 .edit-chat-settings-modal.edit-members .tile-item {

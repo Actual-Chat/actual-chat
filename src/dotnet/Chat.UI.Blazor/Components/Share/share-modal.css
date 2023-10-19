@@ -32,7 +32,7 @@
 }
 .share-modal .link-info .c-icon {
     @apply flex items-center;
-    @apply text-icons-01 pl-3;
+    @apply text-03 pl-3;
 }
 .share-modal .link-info .c-body {
     @apply grow;

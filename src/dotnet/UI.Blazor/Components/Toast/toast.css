@@ -55,7 +55,7 @@
     @apply bg-error-toast-body;
 }
 .error-toast i {
-    @apply text-error;
+    @apply text-danger;
 }
 .error-toast > .c-icon {
     @apply my-1;

@@ -11,11 +11,11 @@
     @apply w-10 h-10 absolute right-0 self-center;
 }
 .chat-search-box .btn.btn-round .btn-content {
-    @apply bg-transparent text-icons-01;
+    @apply bg-transparent text-03;
 }
 .chat-search-box label {
     @apply relative flex-x;
 }
 .chat-search-box-spinner {
-    @apply absolute right-0 mr-2 self-center w-5 h-5 min-w-5 min-h-5 max-w-5 max-h-5 border-2 border-icons-01 border-dashed rounded-full animate-spin;
+    @apply absolute right-0 mr-2 self-center w-5 h-5 min-w-5 min-h-5 max-w-5 max-h-5 border-2 border-text-03 border-dashed rounded-full animate-spin;
 }

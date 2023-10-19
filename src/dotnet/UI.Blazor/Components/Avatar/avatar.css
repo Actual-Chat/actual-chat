@@ -19,7 +19,7 @@
 .avatar-text {
     @apply flex-x justify-center items-center;
     @apply rounded-full bg-avatar;
-    @apply text-center text-04;
+    @apply text-center text-06;
 }
 
 .avatar-circle {

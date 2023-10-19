@@ -7,7 +7,7 @@
 }
 
 .settings-tab .app-settings .auto-start .disable-reason {
-    @apply text-icons-04;
+    @apply text-record;
 }
 
 .settings-tab .app-settings .auto-start .disable-reason.active {

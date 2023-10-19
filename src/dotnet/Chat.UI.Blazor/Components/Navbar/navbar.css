@@ -4,7 +4,7 @@
     @apply text-badge;
 }
 .left-panel-buttons .btn.btn-square.on .navbar-button-content.btn-content {
-    @apply text-icons-01;
+    @apply text-03;
 }
 body.hoverable .left-panel-buttons .btn.btn-square:hover .btn-content,
 body.hoverable .left-panel-buttons .btn.btn-square.on .btn-content,

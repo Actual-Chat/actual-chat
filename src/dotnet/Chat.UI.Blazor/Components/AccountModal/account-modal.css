@@ -31,14 +31,14 @@ body.hoverable .author-modal .tile:hover {
     @apply shadow-none;
 }
 .author-modal .anonymous-bio * {
-    @apply text-icons-04;
+    @apply text-record;
 }
 .author-modal .anonymous-bio .tile-item-body-content {
     @apply max-h-max;
     @apply whitespace-normal;
 }
 .author-modal .anonymous-bio * {
-    @apply text-icons-04;
+    @apply text-record;
 }
 
 .author-modal .separator {
@@ -59,5 +59,5 @@ body.hoverable .author-modal .tile:hover {
 
 .author-modal .tile-remove-from-group .tile-item-icon,
 .author-modal .tile-remove-from-group .tile-item-body-content {
-    @apply text-icons-04;
+    @apply text-record;
 }

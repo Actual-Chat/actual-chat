@@ -5,7 +5,7 @@
     @apply animate-opacity-from-0;
 }
 .banner.reconnect-banner i {
-    @apply text-2xl text-icons-04;
+    @apply text-2xl text-record;
 }
 .banner.reconnect-banner .banner-body {
     @apply flex-1 flex-x items-center gap-x-2;

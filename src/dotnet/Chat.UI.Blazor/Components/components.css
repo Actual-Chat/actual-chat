@@ -165,5 +165,5 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 .chat-not-found-container > .c-wrapper > .text-wrapper {
     @apply absolute bottom-0;
     @apply flex-y items-center;
-    @apply text-headline-6 text-icons-01 ;
+    @apply text-headline-6 text-03;
 }

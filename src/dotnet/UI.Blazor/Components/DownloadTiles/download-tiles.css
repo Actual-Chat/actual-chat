@@ -13,8 +13,8 @@ body.narrow .download-tiles {
     @apply bg-black;
 }
 .download-tiles .web-app > span {
-    @apply text-base font-medium text-04;
+    @apply text-base font-medium text-06;
 }
 .download-tiles .web-app > i {
-    @apply text-2xl text-04 font-thin;
+    @apply text-2xl text-06 font-thin;
 }

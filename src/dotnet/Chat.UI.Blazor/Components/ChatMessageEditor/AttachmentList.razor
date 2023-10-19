@@ -8,7 +8,7 @@
 @if (_attachments.Count > 0) {
     <div class="attachment-list-wrapper">
         <div class="c-btn-group">
-            <Button Class="btn-sm attachment-list-btn danger c-remove" Click="_ => Clear()">
+            <Button Class="btn-sm attachment-list-btn btn-danger c-remove" Click="_ => Clear()">
                 Remove all
             </Button>
             <Button Class="btn-sm attachment-list-btn c-send" Click="OnSendClick">
@@ -31,7 +31,7 @@
                     <div class="flex-y relative">
                         <div class="attachment-item">
                             <ButtonSquare Click="@(() => OnRemoveClick(attachment))" Class="remove-attachment-btn">
-                                <i class="icon-trash03 text-2xl font-thin text-04"></i>
+                                <i class="icon-trash03 text-2xl font-thin text-06"></i>
                             </ButtonSquare>
                             @if (attachment.IsImage) {
                                 <img src="@attachment.Url" alt="Image attachment"/>

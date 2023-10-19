@@ -8,7 +8,7 @@ details.main-collapsed > summary.c-summary {
     @apply flex-x items-center gap-x-2;
 }
 details.main-collapsed > summary.c-summary > i {
-    @apply text-xl text-icons-01;
+    @apply text-xl text-03;
 }
 details.main-collapsed > summary.c-summary > i.closed {
     @apply rotate-180;

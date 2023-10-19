@@ -3,7 +3,7 @@
 @inherits FusionComponentBase
 @{
     var entry = Entry;
-    var colorCls = IsOwn ? "text-06 " : "text-primary ";
+    var colorCls = "text-accent ";
     var fontCls = "text-base leading-4 md:leading-6 ";
     var authorNameCls = colorCls + fontCls + "font-medium max-w-full md:max-w-64";
 }
@@ -26,7 +26,7 @@
     } else {
         <div class="c-content">
             <div class="flex justify-center w-8">
-                <i class="icon-edit text-2xl text-icons-01"></i>
+                <i class="icon-edit text-2xl text-03"></i>
             </div>
             <div class="flex-1 flex-x overflow-hidden">
                 <div class="quote-text truncate font-medium">@_text</div>

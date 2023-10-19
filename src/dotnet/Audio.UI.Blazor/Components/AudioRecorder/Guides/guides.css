@@ -1,20 +1,20 @@
 .guide-modal .modal-header-interactive {
     @apply bg-bubble;
-    @apply text-04;
+    @apply text-06;
 }
 .guide-modal .form-block {
     @apply gap-y-6;
 }
 .guide-modal .modal-header-interactive * {
-    @apply text-04;
+    @apply text-06;
 }
 .guide-modal .modal-header-interactive .modal-title {
-    @apply text-04;
+    @apply text-06;
     @apply text-headline-1;
 }
 
 .guide-modal .modal-header-interactive .btn .btn-content {
-    @apply text-04;
+    @apply text-06;
 }
 
 .guide-modal .dialog-body {

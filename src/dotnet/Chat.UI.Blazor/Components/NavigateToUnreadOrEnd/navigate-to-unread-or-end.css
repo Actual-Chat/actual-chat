@@ -19,8 +19,7 @@
 }
 .navigate-to-end .unread-counter {
     @apply -mb-2 z-10;
-    /*@apply bg-unread;*/ /* too washy color */
-    @apply text-04 cursor-pointer;
+    @apply text-06 cursor-pointer;
 }
 .navigate-to-end .btn.btn-round {
     @apply shadow-md md:shadow-none;

@@ -10,7 +10,7 @@
 .banner-buttons {
     @apply flex-x items-center gap-x-2;
     @apply ml-auto;
-    @apply text-icons-01;
+    @apply text-03;
 }
 .banner-buttons-close {
     @apply flex items-center justify-center;

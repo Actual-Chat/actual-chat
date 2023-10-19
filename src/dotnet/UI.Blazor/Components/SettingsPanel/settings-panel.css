@@ -57,7 +57,7 @@
     @apply cursor-auto;
 }
 .settings-panel > .c-tabs .c-tab-item i {
-    @apply text-icons-01;
+    @apply text-03;
 }
 body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i {
     @apply text-02;
@@ -118,7 +118,7 @@ body.hoverable .tile:hover {
 .tile-item-icon {
     @apply flex-none flex justify-center;
     @apply min-w-10 max-w-10;
-    @apply text-icons-01;
+    @apply text-03;
 }
 .tile-item.first-tile-item {
     @apply h-14;

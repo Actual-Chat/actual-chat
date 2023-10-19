@@ -44,7 +44,7 @@
     @apply px-1 max-w-36 truncate;
 }
 body.hoverable .contact-selector-badges-contact:hover {
-    @apply bg-error text-04;
+    @apply bg-danger text-04;
 }
 body.hoverable .contact-selector-badges-contact:hover .contact-selector-badges-remove-contact-icon {
     @apply flex;
