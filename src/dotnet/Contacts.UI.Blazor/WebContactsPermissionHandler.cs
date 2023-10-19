@@ -6,10 +6,10 @@ public class WebContactsPermissionHandler(IServiceProvider services, bool mustSt
     : ContactsPermissionHandler(services, mustStart)
 {
     protected override Task<bool?> Get(CancellationToken cancellationToken)
-        => Task.FromResult<bool?>(false);
+        => Task.FromResult<bool?>(true);
 
     protected override Task<bool> Request(CancellationToken cancellationToken)
-        => Stl.Async.TaskExt.FalseTask;
+        => Stl.Async.TaskExt.TrueTask;
 
     protected override Task<bool> Troubleshoot(CancellationToken cancellationToken)
         => Stl.Async.TaskExt.FalseTask;
