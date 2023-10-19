@@ -1,7 +1,7 @@
 ﻿.error-barrier {
     @apply flex-1 place-self-center;
     @apply flex-y justify-center items-center gap-y-2 p-4;
-    @apply text-icons-01;
+    @apply text-03;
     @apply overflow-hidden;
 }
 .error-barrier.full {

@@ -37,6 +37,6 @@
 }
 
 .link-preview .c-domain {
-    @apply text-xs md:text-sm text-icons-02;
+    @apply text-xs md:text-sm text-04;
     @apply truncate;
 }

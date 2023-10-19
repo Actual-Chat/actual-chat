@@ -17,14 +17,14 @@
 .toggle > .dash {
     @apply self-center flex-none relative;
     @apply my-2 h-3.5 w-8;
-    @apply rounded-3xl bg-icons-02;
+    @apply rounded-3xl bg-05;
     @apply text-sm;
     transition: .2s;
 }
 .toggle > .dash > .o {
     @apply absolute -left-0 -top-[3px];
     @apply w-5 h-5;
-    @apply bg-01 border-[1.5px] border-icons-02 rounded-full;
+    @apply bg-01 border-[1.5px] border-text-04 rounded-full;
     transition: .15s;
 }
 
@@ -55,11 +55,11 @@
 
 /* Disabled */
 .toggle[data-input-disabled] > .dash {
-    @apply border-icons-02;
+    @apply border-text-04;
     filter: grayscale(60%);
 }
 .toggle[data-input-disabled] > .dash > .o {
-    @apply bg-icons-02;
+    @apply bg-05;
 }
 
 /* Small toggle */

@@ -1,0 +1,140 @@
+@page "/test/ui-colors"
+@using ActualChat.UI.Blazor.Services
+@using System.Text
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>UI Colors Test Page</MainHeader>
+
+<div class="text-bg-colors flex-y items-start justify-center gap-y-1 ">
+    <h1>Text and background colors</h1>
+    <div class="w-full bg-01 text-03">
+        <p>BG-01 TEXT-03</p>
+        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    </div>
+    <div class="w-full bg-02 text-02">
+        <p>BG-02 TEXT-02</p>
+        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    </div>
+    <div class="w-full bg-03 text-03">
+        <p>BG-03 TEXT-03</p>
+        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    </div>
+    <div class="w-full bg-04 text-accent">
+        <p>BG-04 TEXT-ACCENT</p>
+        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    </div>
+    <div class="w-full bg-05 text-01">
+        <p>BG-05 TEXT-01</p>
+        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    </div>
+    <div class="w-full bg-06 text-04">
+        <p>BG-06 TEXT-04</p>
+        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    </div>
+    <div class="w-full bg-07 text-04">
+        <p>BG-07 TEXT-04</p>
+        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    </div>
+</div>
+
+@* <div class="buttons-colors flex-y items-start justify-center gap-y-1"> *@
+<h1>Button colors</h1>
+<div class="buttons-colors grid grid-cols-3 items-center justify-center gap-4">
+    <Button Class="btn-primary">Primary</Button>
+    <Button Class="btn-outline">Outline</Button>
+    <Button Class="btn-secondary">Secondary</Button>
+
+    <Button Class="btn-danger">Danger</Button>
+    <Button Class="btn-danger-outline">Danger Outline</Button>
+    <Button Class="btn-cancel">Cancel</Button>
+
+    <Button Class="btn-primary btn-xs">Primary XS</Button>
+    <Button Class="btn-danger btn-sm">Danger SM</Button>
+    <Button Class="btn-secondary btn-lg">Secondary LG</Button>
+
+    <Button Class="btn-modal">Modal</Button>
+    <Button Class="btn-modal btn-primary">Modal Primary</Button>
+    <Button Class="btn-modal danger">Modal Danger</Button>
+
+    <Button Class="btn-transparent">Transparent</Button>
+
+    <ButtonRound>R</ButtonRound>
+    <ButtonSquare ContentClass="flex-none items-center justify-center min-w-12 min-h-12 bg-03">S</ButtonSquare>
+    <ButtonX></ButtonX>
+    <HeaderButton>H</HeaderButton >
+</div>
+
+<div class="buttons-colors flex-y items-start justify-center gap-y-1">
+    <h1>Toast colors</h1>
+    <ErrorToast Class="min-h-14">
+        Color Test Page Error Toast
+    </ErrorToast>
+
+    <Toast Text="Test Toast"></Toast>
+
+    <Banner
+        Class="!bg-banner-info !text-banner-info"
+        IsVisible="true"
+        ShowDismissButton="true">
+        <Body>
+        <Button Class="btn-transparent">
+            Info Banner
+        </Button>
+        </Body>
+    </Banner>
+
+    <Banner
+        Class="!bg-banner-warning !text-banner-warning"
+        IsVisible="true"
+        ShowDismissButton="true">
+        <Body>
+            <Button Class="btn-transparent">
+                Warning Banner
+            </Button>
+        </Body>
+    </Banner>
+
+    <Banner
+        Class="!bg-banner-success !text-banner-success"
+        IsVisible="true"
+        ShowDismissButton="true">
+        <Body>
+        <Button Class="btn-transparent">
+            Success Banner
+        </Button>
+        </Body>
+    </Banner>
+
+    <Banner
+        Class="!bg-banner-error !text-banner-error"
+        IsVisible="true"
+        ShowDismissButton="true">
+        <Body>
+        <Button Class="btn-transparent">
+            Error Banner
+        </Button>
+        </Body>
+    </Banner>
+</div>
+
+@code {
+    [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ILogger<UIColorsTestPage> Log { get; init; } = null!;
+
+    private void OnClick(int count) {
+        var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();
+        UICommander.ShowError(StandardError.Constraint(result));
+    }
+
+    private void OnLogErrorClick()
+        => Log.LogError("!!!An error log entry is generated on UIColorsTestPage");
+
+    private void OnCrashClick()
+        => throw StandardError.Internal("Simulated crash!");
+
+    private void OnAppCrashClick() {
+        var rootComponent = (IRootComponent)CircuitContext.RootComponent;
+        rootComponent.SimulateCrash(StandardError.Internal("Simulated application crash!"));
+    }
+}

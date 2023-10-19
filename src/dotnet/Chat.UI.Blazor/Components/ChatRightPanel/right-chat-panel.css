@@ -2,7 +2,7 @@
     @apply flex-y;
     @apply lg:w-80 h-full;
     @apply border-l border-bg-04;
-    @apply bg-02;
+    @apply bg-03;
 }
 
 .right-chat-panel > .c-panel-content {

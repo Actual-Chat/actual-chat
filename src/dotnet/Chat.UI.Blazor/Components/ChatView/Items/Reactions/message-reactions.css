@@ -9,7 +9,7 @@
     @apply h-5 w-5;
     @apply invisible;
     @apply cursor-pointer rounded-full;
-    @apply hover:bg-round-focus text-icons-03;
+    @apply hover:bg-round-focus text-03;
 }
 body.hoverable .message-reactions-add {
     @apply hidden;

@@ -109,7 +109,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply flex-none flex-y;
     @apply w-full;
     @apply overflow-hidden;
-    @apply bg-02;
+    @apply bg-01;
 }
 .layout-header > .c-content {
     @apply ordinary-header;
@@ -164,13 +164,13 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .default-layout .layout-header {
     @apply ordinary-header;
     @apply px-0;
-    @apply bg-02;
+    @apply bg-01;
     @apply border-b border-bg-04;
 }
 .default-layout .layout-header .c-content {
     @apply flex-1 flex-x gap-x-4;
     @apply overflow-hidden;
-    @apply bg-02;
+    @apply bg-01;
 }
 .default-layout .layout-header .c-content .c-title {
     @apply flex-1;
@@ -212,11 +212,11 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 .fusion-close > .c-content > .c-title {
     @apply flex-y items-center;
-    @apply text-3.5xl leading-9 text-04 font-normal;
+    @apply text-3.5xl leading-9 text-06 font-normal;
 }
 .fusion-close > .c-content > .c-footer {
     @apply flex-y items-center;
-    @apply text-lg text-04;
+    @apply text-lg text-06;
 }
 
 /* Page with header and footer */

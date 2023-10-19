@@ -2,5 +2,5 @@
     @apply relative;
     @apply flex-x justify-center items-center;
     @apply min-w-6 h-4.5 mx-1 px-1 py-0.5;
-    @apply rounded-full text-04 text-sm;
+    @apply rounded-full text-06 text-sm;
 }

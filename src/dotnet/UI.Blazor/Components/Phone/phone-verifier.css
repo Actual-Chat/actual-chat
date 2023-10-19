@@ -2,7 +2,7 @@
     @apply flex-x gap-x-4 items-center;
 }
 .phone-verifier .c-description {
-    @apply text-sm text-icons-01;
+    @apply text-sm text-03;
 }
 .phone-verifier .c-verify .c-verify-btn {
     @apply text-sm;

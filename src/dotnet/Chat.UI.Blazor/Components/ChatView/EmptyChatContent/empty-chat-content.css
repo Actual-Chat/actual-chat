@@ -11,7 +11,7 @@
 }
 .empty-chat-content > .c-text {
     @apply flex-y items-center;
-    @apply text-lg text-icons-01 text-headline-5;
+    @apply text-lg text-03 text-headline-5;
 }
 .narrow .empty-chat-content > .c-image {
     height: 224px;

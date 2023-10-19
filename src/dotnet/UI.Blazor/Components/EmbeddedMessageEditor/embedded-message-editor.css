@@ -15,7 +15,7 @@
     @apply w-12 h-14;
 }
 .embedded-message-editor i {
-    @apply text-icons-01 text-2xl;
+    @apply text-03 text-2xl;
 }
 .embedded-message-editor input {
     @apply h-14;

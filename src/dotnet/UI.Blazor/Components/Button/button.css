@@ -1,9 +1,12 @@
 .btn, .btn-md {
-    @apply inline-flex-x justify-center relative;
-    @apply py-1 px-3 fill-current rounded-lg border outline-none;
+    @apply relative;
+    @apply inline-flex-x justify-center;
     @apply min-w-32 md:min-w-24 max-w-full md:max-w-max;
     @apply h-12 md:h-10 min-h-12 md:min-h-10;
+    @apply py-1 px-3;
+    @apply rounded-lg border outline-none;
     @apply text-xl md:text-lg font-normal md:font-normal;
+    @apply fill-current;
     @apply whitespace-nowrap;
     @apply select-none;
     @apply transition duration-150 ease-in-out;
@@ -21,115 +24,183 @@
 
 /* Primary */
 .btn.btn-primary {
-    @apply bg-primary border-primary text-primary-title;
+    @apply bg-primary;
+    @apply border-primary;
+    @apply text-primary-title;
 }
 body.hoverable .btn.btn-primary:hover,
 .btn.btn-primary:focus {
-    @apply bg-primary-hover border-primary-hover;
+    @apply bg-primary-hover;
+    @apply border-primary-hover;
 }
 .btn.btn-primary:active,
 .btn.btn-primary:focus:active {
-    @apply bg-primary border-primary;
+    @apply bg-primary;
+    @apply border-primary ring-1 ring-primary-hover;
 }
 .btn.btn-primary:disabled,
-.btn.btn-secondary:disabled {
-    @apply bg-secondary-hover text-primary-title border-secondary-hover;
+body.hoverable .btn.btn-primary:disabled:hover,
+.btn.btn-primary:disabled:focus,
+.btn.btn-primary:disabled:active,
+.btn.btn-primary:disabled:focus:active,
+.btn.btn-secondary:disabled,
+.btn.btn-secondary:disabled:focus,
+.btn.btn-secondary:disabled:active,
+.btn.btn-secondary:disabled:focus:active,
+body.hoverable .btn.btn-secondary:disabled:hover {
+    @apply bg-secondary-hover;
+    @apply border-secondary-hover ring-0;
 }
 
 /* Secondary */
-.btn.btn-secondary,
-.btn.btn-secondary:active,
-.btn.btn-secondary:focus:active {
-    @apply bg-secondary border-secondary text-secondary-title;
+.btn.btn-secondary{
+    @apply bg-secondary;
+    @apply border-secondary;
+    @apply text-secondary-title;
 }
 body.hoverable .btn.btn-secondary:hover,
 .btn.btn-secondary:focus {
-    @apply bg-secondary-hover border-secondary-hover;
+    @apply bg-secondary-hover;
+    @apply border-secondary-hover;
+}
+.btn.btn-secondary:active,
+.btn.btn-secondary:focus:active {
+    @apply bg-secondary;
+    @apply border-secondary ring-1 ring-secondary-hover;
 }
 
 /* Cancel */
-.btn.btn-cancel,
-.btn.btn-cancel:active,
-.btn.btn-cancel:focus:active {
-    @apply bg-cancel border-cancel text-cancel-title;
+.btn.btn-cancel {
+    @apply bg-cancel;
+    @apply border-cancel;
+    @apply text-cancel-title;
 }
 body.hoverable .btn.btn-cancel:hover,
 .btn.btn-cancel:focus {
-    @apply bg-cancel-hover border-cancel-hover;
+    @apply bg-cancel-hover;
+    @apply border-cancel-hover;
+}
+.btn.btn-cancel:active,
+.btn.btn-cancel:focus:active {
+    @apply bg-cancel;
+    @apply border-cancel ring-1 ring-cancel-hover;
+}
+.btn.btn-cancel:disabled,
+.btn.btn-cancel:disabled:focus,
+.btn.btn-cancel:disabled:active,
+.btn.btn-cancel:disabled:focus:active,
+body.hoverable .btn.btn-cancel:disabled:hover {
+    @apply bg-cancel-hover;
+    @apply border-cancel-hover ring-0;
 }
 
 /* Outline */
-.btn.btn-outline,
-.btn.btn-outline:active,
-.btn.btn-outline:focus:active {
-    @apply border-accent text-outline-title;
+.btn.btn-outline {
+    @apply bg-outline;
+    @apply border-outline-title;
+    @apply text-outline-title;
 }
 body.hoverable .btn.btn-outline:hover,
-body.hoverable .btn.btn-outline:focus:hover {
-    @apply bg-secondary-hover border-accent;
+.btn.btn-outline:focus {
+    @apply bg-outline-hover;
+    @apply border-outline-title;
 }
-.btn.btn-outline:disabled {
-    @apply border-disabled text-disabled;
+.btn.btn-outline:active,
+.btn.btn-outline:focus:active {
+    @apply bg-outline-hover;
+    @apply border-outline-title ring-1 ring-outline-title;
 }
-
-/* Error */
-.btn.btn-error {
-    @apply bg-error border-error text-error-title;
-}
-body.hoverable .btn.btn-error:hover,
-body.hoverable .btn.btn-error:focus:hover {
-    @apply bg-error-hover border-error-hover text-error;
-}
-.btn.btn-error:active,
-.btn.btn-error:focus:active {
-    @apply outline-none ring-2 ring-error-ring bg-error border-error-ring;
-}
-.btn.btn-error:focus {
-    @apply outline-none ring-1 ring-error-ring bg-error border-error-ring;
+.btn.btn-outline:disabled,
+.btn.btn-outline:disabled:focus,
+.btn.btn-outline:disabled:active,
+.btn.btn-outline:disabled:focus:active,
+body.hoverable .btn.btn-outline:disabled:hover {
+    @apply bg-outline-hover;
+    @apply border-outline-hover ring-0;
 }
 
-/* Error outline */
-.btn.btn-error-outline {
-    @apply bg-01 border-error text-error-outline-title;
+/* Danger */
+.btn.btn-danger {
+    @apply bg-danger;
+    @apply border-danger;
+    @apply text-danger-title;
 }
-body.hoverable .btn.btn-error-outline:hover,
-body.hoverable .btn.btn-error-outline:focus:hover {
-    @apply bg-error-outline-hover border-error-hover;
+body.hoverable .btn.btn-danger:hover,
+.btn.btn-danger:focus {
+    @apply bg-danger-hover;
+    @apply border-danger-hover;
 }
-.btn.btn-error-outline:active,
-.btn.btn-error-outline:focus:active {
-    @apply outline-none ring-2 ring-error-ring bg-01 border-error-ring;
+.btn.btn-danger:active,
+.btn.btn-danger:focus:active {
+    @apply bg-danger-hover;
+    @apply border-danger-hover ring-1 ring-danger-hover;
 }
-.btn.btn-error-outline:focus {
-    @apply outline-none ring-1 ring-error-ring bg-01 border-error-ring;
+.btn.btn-danger:disabled,
+.btn.btn-danger:disabled:focus,
+.btn.btn-danger:disabled:active,
+.btn.btn-danger:disabled:focus:active,
+body.hoverable .btn.btn-danger:disabled:hover {
+    @apply bg-danger-hover;
+    @apply border-danger-hover ring-0;
 }
+
+/* Danger outline */
+.btn.btn-danger-outline {
+    @apply bg-outline;
+    @apply border-danger;
+    @apply text-danger;
+}
+body.hoverable .btn.btn-danger-outline:hover,
+.btn.btn-danger-outline:focus {
+    @apply bg-danger-outline-hover;
+    @apply border-danger;
+}
+.btn.btn-danger-outline:active,
+.btn.btn-danger-outline:focus:active {
+    @apply bg-danger-outline-hover;
+    @apply border-danger ring-1 ring-danger;
+}
+.btn.btn-danger-outline:disabled,
+.btn.btn-danger-outline:disabled:focus,
+.btn.btn-danger-outline:disabled:active,
+.btn.btn-danger-outline:disabled:focus:active,
+body.hoverable .btn.btn-danger-outline:disabled:hover {
+    @apply bg-danger-outline-hover;
+    @apply text-danger-hover;
+    @apply text-danger-hover;
+}
+
 
 .btn.btn-transparent {
     @apply flex-x;
-    @apply m-0 p-0 min-w-0 h-min;
+    @apply min-w-0 h-min;
+    @apply m-0 p-0;
     @apply border-0 rounded-none;
     @apply text-base;
     @apply hover:cursor-pointer;
 }
 
+/* Modal buttons */
 .btn.btn-modal {
     @apply min-w-20;
     @apply px-2;
     @apply border-0;
     @apply text-headline-1;
 }
+.btn.btn-modal .btn-content {
+    @apply flex-x gap-x-2 items-center;
+}
 .btn.btn-modal:not(.btn-primary) {
-    @apply text-badge;
+    @apply text-primary;
     @apply bg-03;
 }
-.btn.btn-modal.danger {
-    @apply text-icons-04;
+.btn.btn-modal:not(.btn-primary):active,
+.btn.btn-modal:not(.btn-primary):focus:active {
+    @apply bg-secondary;
+    @apply border-secondary ring-1 ring-secondary;
 }
 .btn.btn-modal:not(.btn-primary) .btn-content {
     @apply bg-transparent;
-}
-.btn.btn-modal .btn-content {
-    @apply flex-x gap-x-2 items-center;
 }
 .btn.btn-modal:active {
     @apply bg-secondary;
@@ -137,11 +208,28 @@ body.hoverable .btn.btn-error-outline:focus:hover {
 body.hoverable .btn.btn-modal:hover:not(.btn-primary) {
     @apply bg-secondary;
 }
-body.hoverable .btn.btn-modal.danger:hover {
-    @apply bg-error-hover;
+
+/* Modal primary button */
+.btn.btn-primary.btn-modal:active,
+.btn.btn-primary.btn-modal:focus:active {
+    @apply bg-primary-hover;
+    @apply border-primary-hover ring-1 ring-primary-hover;
 }
-.btn.btn-modal.danger:active {
-    @apply bg-error-hover;
+
+/* Modal danger button */
+.btn.btn-modal.btn-danger {
+    @apply text-danger;
+}
+.btn.btn-danger.btn-modal:active,
+.btn.btn-danger.btn-modal:focus:active {
+    @apply bg-danger-outline-hover;
+    @apply border-danger-outline-hover ring-1 ring-danger-outline-hover;
+}
+body.hoverable .btn.btn-modal.btn-danger:hover {
+    @apply bg-danger-outline-hover;
+}
+.btn.btn-modal.btn-danger:active {
+    @apply bg-danger-hover;
 }
 
 .btn.btn-modal.btn-narrow {
@@ -171,7 +259,7 @@ body.hoverable .btn.btn-modal.danger:hover {
     @apply inline-block overflow-hidden;
     @apply p-0 mx-0 min-w-0 h-auto min-h-0;
     @apply border-0;
-    @apply text-base font-semibold text-icons-01;
+    @apply text-base font-semibold text-03;
 }
 .btn.btn-square:disabled {
     @apply opacity-70;
@@ -203,7 +291,7 @@ body.hoverable .btn.btn-square:hover > .btn-content {
     @apply flex overflow-hidden;
     @apply p-0 mx-0 min-w-0 h-full min-h-0;
     @apply border-0 bg-transparent;
-    @apply text-base text-icons-01;
+    @apply text-base text-03;
     @apply rounded-full w-fit h-fit self-center;
 }
 .btn.btn-round:disabled {
@@ -288,7 +376,7 @@ button.on, .btn.on, .btn.btn-square.on, .btn.btn-round.on {
     @apply text-primary;
 }
 button.off, .btn.off, .btn.btn-square.off, .btn.btn-round.off {
-    @apply text-icons-01;
+    @apply text-03;
 }
 
 /* Specific buttons */
@@ -310,13 +398,13 @@ body.hoverable .btn.btn-x:active .btn-content {
     @apply relative z-20;
     @apply flex-none flex items-center justify-center;
     @apply min-w-6 min-h-6;
-    @apply text-icons-01;
+    @apply text-03;
 }
 body.hoverable .btn-h:hover {
     @apply text-03;
 }
 body.hoverable .btn-h.inactive:hover {
-    @apply text-icons-01;
+    @apply text-03;
 }
 .btn-h > .c-content {
     @apply relative z-20;
@@ -345,16 +433,16 @@ body.hoverable .btn-h:active > .c-ground {
     @apply h-10 w-10;
 }
 .btn-h.inverted {
-    @apply text-05;
+    @apply text-03;
 }
 .btn-h.inverted > .c-ground {
     @apply bg-07;
 }
 body.hoverable .btn-h.inverted:hover {
-    @apply text-04;
+    @apply text-06;
 }
 body.narrow .btn-h.inverted {
-    @apply text-04;
+    @apply text-06;
 }
 
 .btn-submit {
@@ -362,7 +450,7 @@ body.narrow .btn-h.inverted {
     @apply text-accent;
 }
 .btn-submit:disabled {
-    @apply text-icons-02;
+    @apply text-04;
 }
 
 .two-btn-group {

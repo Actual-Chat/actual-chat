@@ -14,10 +14,10 @@
     box-shadow: none;
 }
 .totp-input.invalid > .c-digits > input[type=text].c-digit {
-    @apply border-b-error;
+    @apply border-b-danger;
 }
 .totp-input.invalid > .c-error {
-    @apply text-error text-sm;
+    @apply text-danger text-sm;
 }
 .totp-input:not(.invalid) > .c-error {
     @apply invisible;

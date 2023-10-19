@@ -17,7 +17,7 @@
     @apply rounded-lg;
 }
 body.hoverable .default-avatar-btn:hover {
-    @apply bg-hover;
+    @apply bg-outline-hover;
 }
 .default-avatar-btn,
 .delete-avatar-btn,
@@ -32,7 +32,7 @@ body.hoverable .default-avatar-btn:hover {
     @apply rounded-lg;
 }
 body.hoverable .delete-avatar-btn:hover {
-    @apply bg-error-hover;
+    @apply bg-danger-outline-hover;
 }
 .edit-account-avatar {
     @apply w-30 h-30 self-center;

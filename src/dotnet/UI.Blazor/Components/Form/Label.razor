@@ -3,7 +3,7 @@
 <label for="@(InputId.NullIfEmpty() ?? "-")">
     <span>@Text</span>
     @if (IsRequired) {
-        <sup class="text-error text-xxs opacity-50"> &#x2731</sup>
+        <sup class="text-danger text-xxs opacity-50"> &#x2731</sup>
     }
 </label>
 

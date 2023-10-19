@@ -42,9 +42,11 @@
 .navbar-chats .c-active-chats {
     @apply flex-none flex-y;
     @apply overflow-y-hidden;
+    @apply bg-02;
 }
 .navbar-chats .c-active-chats > .c-delimiter {
-    @apply border-t-4 border-bg-04;
+    /*@apply border-t-4 border-bg-04;*/
+    @apply hidden;
 }
 .navbar-chats .chat-list {
     @apply flex-1 flex-y;
@@ -54,6 +56,7 @@
 /* Top-level container - active-chats, pinned-chats, etc. */
 .active-chats {
     @apply relative flex-y bottom-0 p-2;
+    @apply border-t border-bg-04;
 }
 .active-chats > .c-title {
     @apply px-2 pb-2;
@@ -141,7 +144,7 @@ body.hoverable .chat-list .navbar-item .btn.on:hover .btn-content {
 }
 .chat-list .navbar-item .recording-in-chat.on .btn-content,
 body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on .btn-content {
-    @apply text-icons-04;
+    @apply text-record;
 }
 
 /* Hide avatar name skeletons - otherwise they're blinking on refresh */

@@ -9,7 +9,7 @@
     @apply absolute;
     @apply flex items-center justify-center;
     @apply w-10 h-10;
-    @apply text-icons-01;
+    @apply text-03;
 }
 .search-box input {
     @apply h-10;
