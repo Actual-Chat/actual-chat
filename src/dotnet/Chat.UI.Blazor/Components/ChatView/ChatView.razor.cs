@@ -280,12 +280,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 };
         }
 
-        var linkPreviews = await entries
+        var linkPreviewMap = (await entries
             .Where(x => !x.LinkPreviewId.IsEmpty)
             .Select(x => MediaLinkPreviews.GetForEntry(x.LinkPreviewId, x.Id, cancellationToken))
-            .Collect()
-            .ConfigureAwait(false);
-        var linkPreviewMap = linkPreviews.SkipNullItems().Distinct().ToDictionary(x => x.Id);
+            .CollectResults()
+            .ConfigureAwait(false)
+            ).Select(x => x.ValueOrDefault)
+            .SkipNullItems()
+            .DistinctBy(x => x.Id)
+            .ToDictionary(x => x.Id);
         var messages = ChatMessageModel.FromEntries(
             entries,
             oldData.Items,
