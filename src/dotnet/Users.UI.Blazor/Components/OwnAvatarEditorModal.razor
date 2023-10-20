@@ -44,7 +44,7 @@
                     class="default-avatar-btn"
                     @onclick="@ChangeDefaultAvatar">
                     <div>
-                        <i class="icon-star text-xl hover:text-primary @(_form.IsDefault ? "text-accent" : "text-03")"></i>
+                        <i class="icon-star text-xl hover:text-primary @(_form.IsDefault ? "text-primary" : "text-03")"></i>
                     </div>
                     <div class="flex w-full px-8 text-02">
                         Make default
@@ -73,9 +73,9 @@
         <Buttons>
             <FormButtons>
                 @{
-                    var submitClass = $"btn-primary {_formRef.IsValid.ToEnabledClass()}";
+                    var submitClass = $"btn-modal btn-primary {_formRef.IsValid.ToEnabledClass()}";
                 }
-                <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
                 <Button Type="@ButtonType.Submit" Class="@submitClass">Save</Button>
             </FormButtons>
         </Buttons>

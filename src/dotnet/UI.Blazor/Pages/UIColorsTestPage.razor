@@ -19,8 +19,8 @@
         <p>BG-03 TEXT-03</p>
         <p>Is it possible to create a medium, which naturally combines all of them together?</p>
     </div>
-    <div class="w-full bg-04 text-accent">
-        <p>BG-04 TEXT-ACCENT</p>
+    <div class="w-full bg-04 text-primary">
+        <p>BG-04 TEXT-PRIMARY</p>
         <p>Is it possible to create a medium, which naturally combines all of them together?</p>
     </div>
     <div class="w-full bg-05 text-01">
@@ -54,7 +54,7 @@
 
     <Button Class="btn-modal">Modal</Button>
     <Button Class="btn-modal btn-primary">Modal Primary</Button>
-    <Button Class="btn-modal danger">Modal Danger</Button>
+    <Button Class="btn-modal btn-danger">Modal Danger</Button>
 
     <Button Class="btn-transparent">Transparent</Button>
 
@@ -121,6 +121,7 @@
     [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ILogger<UIColorsTestPage> Log { get; init; } = null!;
+    [Inject] private InteractiveUI InteractiveUI { get; init; } = null!;
 
     private void OnClick(int count) {
         var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();

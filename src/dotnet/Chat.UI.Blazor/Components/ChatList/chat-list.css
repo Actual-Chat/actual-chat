@@ -144,7 +144,7 @@ body.hoverable .chat-list .navbar-item .btn.on:hover .btn-content {
 }
 .chat-list .navbar-item .recording-in-chat.on .btn-content,
 body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on .btn-content {
-    @apply text-record;
+    @apply text-danger;
 }
 
 /* Hide avatar name skeletons - otherwise they're blinking on refresh */

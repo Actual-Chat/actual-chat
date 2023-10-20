@@ -22,7 +22,7 @@
 .recording-sub-header > .c-round-container > .c-round {
     @apply w-2.5 h-2.5;
     @apply rounded-full;
-    @apply bg-record;
+    @apply bg-danger;
     @apply animate-pulse;
 }
 .recording-sub-header > .c-line-1 a {

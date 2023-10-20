@@ -97,18 +97,18 @@ body.hoverable .btn.btn-cancel:disabled:hover {
 /* Outline */
 .btn.btn-outline {
     @apply bg-outline;
-    @apply border-outline-title;
-    @apply text-outline-title;
+    @apply border-primary;
+    @apply text-primary;
 }
 body.hoverable .btn.btn-outline:hover,
 .btn.btn-outline:focus {
     @apply bg-outline-hover;
-    @apply border-outline-title;
+    @apply border-primary;
 }
 .btn.btn-outline:active,
 .btn.btn-outline:focus:active {
     @apply bg-outline-hover;
-    @apply border-outline-title ring-1 ring-outline-title;
+    @apply border-primary ring-1 ring-primary;
 }
 .btn.btn-outline:disabled,
 .btn.btn-outline:disabled:focus,
@@ -316,7 +316,7 @@ body.hoverable .btn.btn-square:hover > .btn-content {
     @apply text-primary;
 }
 .btn.btn-round.accent-icon .btn-content {
-    @apply text-accent;
+    @apply text-primary;
 }
 .btn.btn-round.hover-primary-icon .btn-content {
     @apply hover:text-primary;
@@ -447,7 +447,7 @@ body.narrow .btn-h.inverted {
 
 .btn-submit {
     @apply text-headline-1;
-    @apply text-accent;
+    @apply text-primary;
 }
 .btn-submit:disabled {
     @apply text-04;
@@ -468,5 +468,5 @@ body.narrow .btn-h.inverted {
 }
 .two-btn-group > button.active {
     @apply bg-01;
-    @apply text-accent;
+    @apply text-primary;
 }

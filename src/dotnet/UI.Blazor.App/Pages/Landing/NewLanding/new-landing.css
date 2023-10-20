@@ -1275,7 +1275,7 @@ body.wide .page-links .btn-to-main-page {
     @apply overflow-hidden;
 }
 body.hoverable .landing-download-tile:hover {
-    @apply bg-accent;
+    @apply bg-primary;
 }
 body.hoverable .landing-download-tile:hover .c-title,
 body.hoverable .landing-download-tile:hover .c-text {
@@ -1346,7 +1346,7 @@ body.narrow .landing-download-tile .c-content {
     @apply flex;
 }
 .landing-card > .landing-card-header > .c-icon i {
-    @apply text-2xl text-accent;
+    @apply text-2xl text-primary;
 }
 .landing-card > .landing-card-header > .c-title {
     @apply flex items-center;
@@ -1479,7 +1479,7 @@ body.narrow .premium-features-modal .c-block-note {
     @apply border-2 border-[#CACCFF];
 }
 .premium-features-modal-card .c-icon {
-    @apply text-accent;
+    @apply text-primary;
 }
 .premium-features-modal-card .c-text {
     @apply text-headline-1 text-01;
@@ -1497,5 +1497,5 @@ body.narrow .premium-features-modal .c-block-note {
     @apply w-8 h-8;
     @apply rounded-full;
     @apply bg-[#CCE4FFFF];
-    @apply text-title-1 text-accent;
+    @apply text-title-1 text-primary;
 }

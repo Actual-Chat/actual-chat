@@ -1,6 +1,6 @@
 .empty-chat-content {
     @apply flex-y items-center gap-y-4;
-    @apply pb-8;
+    @apply py-8;
 }
 .empty-chat-content > .c-image {
     height: 279px;

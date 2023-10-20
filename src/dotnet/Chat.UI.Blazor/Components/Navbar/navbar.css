@@ -1,7 +1,7 @@
 .left-panel-buttons .btn.btn-square .navbar-button-content.btn-content {
     @apply w-10 md:w-12 h-10 md:h-12;
     @apply bg-03;
-    @apply text-badge;
+    @apply text-primary;
 }
 .left-panel-buttons .btn.btn-square.on .navbar-button-content.btn-content {
     @apply text-03;
@@ -37,7 +37,7 @@ body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
     @apply absolute -right-0.5 -top-0.5;
     @apply min-w-4 min-h-4 w-4 h-4;
     @apply text-[0.625rem];
-    @apply bg-counter-navgroup;
+    @apply bg-danger;
 }
 
 /* Navbar content */

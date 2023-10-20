@@ -42,7 +42,7 @@
 
     input,
     textarea {
-        @apply bg-01 text-02 border-accent;
+        @apply bg-01 text-02 border-primary;
     }
     input {
         @apply h-12 md:h-8;

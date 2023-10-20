@@ -7,7 +7,7 @@
 }
 
 .settings-tab .app-settings .auto-start .disable-reason {
-    @apply text-record;
+    @apply text-danger;
 }
 
 .settings-tab .app-settings .auto-start .disable-reason.active {

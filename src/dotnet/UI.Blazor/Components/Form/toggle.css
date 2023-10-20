@@ -29,10 +29,10 @@
 }
 
 .toggle[data-input-checked] > .dash {
-    @apply bg-accent;
+    @apply bg-primary;
 }
 .toggle[data-input-checked] > .dash > .o {
-    @apply bg-01 border-accent;
+    @apply bg-01 border-primary;
     @apply translate-x-3;
 }
 

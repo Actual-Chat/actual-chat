@@ -30,8 +30,8 @@
 }
 .form input:focus,
 .form select:focus {
-    @apply outline-none border-accent;
-    @apply ring-1 ring-accent;
+    @apply outline-none border-primary;
+    @apply ring-1 ring-primary;
 }
 .form input:not([type='checkbox']):not(.dialog-unstyled).invalid:focus,
 .form select.invalid:focus {
@@ -75,8 +75,8 @@
     @apply bg-02 border-b border-text-03 gap-y-0 px-2;
 }
 .form-section-content.label-inside-input:focus-within {
-    @apply border-accent;
-    @apply caret-accent;
+    @apply border-primary;
+    @apply caret-primary;
 }
 .form section.invalid .form-section-content.label-inside-input {
     @apply border-danger;
@@ -91,7 +91,7 @@
     @apply text-xs font-normal text-03;
 }
 .form .form-section-content.label-inside-input:focus-within label {
-    @apply text-accent;
+    @apply text-primary;
 }
 .form section.invalid .form-section-content.label-inside-input label {
     @apply text-danger;

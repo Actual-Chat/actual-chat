@@ -28,7 +28,7 @@
         </div>
         <div class="selection-header-buttons">
             <HeaderButton Click="@(() => SelectionUI.Delete())">
-                <i class="icon-trash03 text-record"></i>
+                <i class="icon-trash03 text-danger"></i>
             </HeaderButton>
             <HeaderButton Click="@(() => SelectionUI.CopyToClipboard())">
                 <i class="icon-copy !text-lg"></i>
@@ -61,7 +61,7 @@
             Click="@(() => SelectionUI.Delete())"
             Tooltip="Delete selected"
             TooltipPosition="FloatingPosition.Bottom">
-            <i class="icon-trash03 text-record"></i>
+            <i class="icon-trash03 text-danger"></i>
         </HeaderButton>
         <HeaderButton
             Click="@(() => SelectionUI.CopyToClipboard())"

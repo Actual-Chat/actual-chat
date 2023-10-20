@@ -63,12 +63,18 @@
     --navy-50: #0038FF;
     --navy-40: #3360FF;
 
+    --green-99: #F5FFF8;
+    --green-95: #E5FFEB;
     --green-90: #CEFFD9;
     --green-80: #9CFFB2;
     --green-70: #67FF88;
     --green-60: #3AFF66;
     --green-50: #00FF38;
     --green-40: #00D42F;
+    --green-30: #00AC26;
+    --green-20: #00881E;
+    --green-10: #005F15;
+    --green-05: #00320B;
 
     --sienna-90: #FFF2D0;
     --sienna-80: #FFE6A5;
@@ -82,16 +88,6 @@
 
     --white: #FFFFFF;
     --black: #000000;
-
-    --opacity-10: 0.1;
-    --opacity-20: 0.2;
-    --opacity-30: 0.3;
-    --opacity-40: 0.4;
-    --opacity-50: 0.5;
-    --opacity-60: 0.6;
-    --opacity-70: 0.7;
-    --opacity-80: 0.8;
-    --opacity-90: 0.9;
 }
 
 :root, .theme-light {
@@ -111,22 +107,35 @@
     --text-05: var(--gray-80);
     --text-06: var(--white);
 
-    --accent: var(--blue-50);
-    --record: var(--magenta-50);
-    --online: var(--green-60);
-    --success: var(--green-60);
+    /* Banners */
+    --background-banner-success: var(--green-90);
+    --text-banner-success: var(--green-30);
+    --background-banner-info: var(--blue-99);
+    --text-banner-info: var(--blue-40);
+    --background-banner-warning: var(--sienna-90);
+    --text-banner-warning: var(--sienna-40);
+    --background-banner-error: var(--red-99);
+    --text-banner-error: var(--magenta-40);
+
+    /*Primary colors for buttons, icons*/
+    --primary: var(--blue-50);
+    --danger: var(--magenta-50);
+
+    /* Utils */
+    --online: var(--green-40);
+    --away: var(--sienna-40);
     --selected: var(--blue-50-20);
     --hover: var(--blue-50-10);
-
+    --separator: var(--gray-05);
+    --placeholder: var(--gray-60);
     --counter: var(--gray-80);
-    --counter-navgroup: var(--magenta-50);
-
-    --reaction-own: rgba(41, 112, 255, 0.6);
+    --rating: var(--sienna-40);
+    --background-recording-countdown: var(--sienna-90);
+    --shadow-main: var(--gray-70);
 
     /* Buttons */
     --disabled: #E7E7E7;
 
-    --primary: var(--blue-50);
     --primary-hover: var(--blue-60);
     --primary-title: var(--white);
 
@@ -140,12 +149,10 @@
 
     --outline: var(--white);
     --outline-hover: var(--blue-99);
-    --outline-title: var(--blue-50);
 
-    --danger: var(--red-50);
-    --danger-hover: var(--red-60);
+    --danger-hover: var(--magenta-60);
     --danger-title: var(--white);
-    --danger-outline-hover: var(--red-99);
+    --danger-outline-hover: var(--magenta-99);
 
     --square: #e2e7ec;
     --square-active: #e2e7ec;
@@ -159,32 +166,11 @@
     --round-focus: #E1EFFA;
     --round-title: #4b5e71;
 
-    --recorder: #e2e7ec;
-    --recorder-hover: #edf0f3;
-    --recorder-title: #4b5e71;
-    --background-recording-countdown: #fff3cf;
-
-    --shadow-main: #B9B9B9;
-
     /* Utils colors */
-    --background-banner-success: var(--green-90);
-    --text-banner-success: var(--green-40);
-    --background-banner-info: var(--blue-99);
-    --text-banner-info: var(--blue-40);
-    --background-banner-warning: var(--sienna-90);
-    --text-banner-warning: var(--sienna-40);
-    --background-banner-error: var(--red-99);
-    --text-banner-error: var(--magenta-40);
-
     --new-separator: #FF388014;
-    --away: #FFCC31;
-    --separator: #2b3641;
-    --placeholder: #788ea5;
-    --white: #ffffff;
-    --rating: #fde047;
+
     --code: #D83E52;
     --avatar: #5a7188;
-    --recorder-on: #FF7070;
     --toggle-on: #0ea5e9;
     --toggle-hover: #38bdf8;
     --message-hover: #F8FBFE;
@@ -201,7 +187,6 @@
     --replied-message: #dbeafe;
     --replied-message-hover: #bfdbfe;
     --replied-message-border: #3b82f6;
-    --audio-message: #0ea5e9;
     --context-menu: #F9FAFB;
     --context-border: #e2e7ec;
     --selection: #cbd5e1;
@@ -212,26 +197,17 @@
     --scrollbar: #B9B9B9;
     --quote: #d6dde4;
     --place: #A98AFF;
-    --badge: var(--blue-50);
     --bubble: #515BE9;
     --menuitem-hover: #2970FF0F;
     --menuitem-hover-warning: #FF008A1A;
     --bubble-btn-hover: #626BEB;
-    --gradient-stop-01: #FFFFFF;
-    --gradient-stop-02: #EEEEEE;
+    --reaction-own: rgba(41, 112, 255, 0.6);
 
     --toast-body: #444444E0;
-    --toast-text: #FFFFFF;
+    --toast-text: var(--white);
     --toast-action: #6BCAFF;
     --error-toast-body: #FFBFBF;
     --error-toast-text: #fafafa;
-
-    --glow-max: rgb(255, 255, 255);
-    --glow-mid: rgb(181, 240, 255);
-    --glow-min: rgb(0, 204, 255);
-    --playing-glow-max: rgb(181, 240, 255);
-    --playing-glow-mid: rgb(0, 204, 255);
-    --playing-glow-min: rgb(0, 139, 173);
 }
 .theme-dark {
     /* Main colors */
@@ -249,8 +225,6 @@
     --cancel-hover: #546174;
     --cancel-title: #edf0f3;
     --cancel-ring: #9aa6b7;
-    --cancel-outline-hover: #2F3136;
-    --cancel-outline-title: #d7d8dc;
 
     --danger: #ef4444;
     --danger-hover: #ec2020;

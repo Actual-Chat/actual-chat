@@ -29,13 +29,13 @@
     <Buttons>
         <Button
             Type="@ButtonType.Button"
-            Class="btn-cancel"
+            Class="btn-modal"
             Click="@(() => Modal.Close())">
             Cancel
         </Button>
         <Button
             Type="@ButtonType.Submit"
-            Class="btn-primary"
+            Class="btn-modal btn-primary"
             IsDisabled="@(!canSend)"
             Click="OnSend">
             Send

@@ -1004,7 +1004,7 @@ body.narrow .page-links .page-title {
     @apply overflow-hidden;
 }
 body.hoverable .landing-download-tile:hover {
-    @apply bg-accent;
+    @apply bg-primary;
 }
 body.hoverable .landing-download-tile:hover .c-title,
 body.hoverable .landing-download-tile:hover .c-text {
