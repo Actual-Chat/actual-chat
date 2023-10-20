@@ -94,13 +94,13 @@ export class NotificationUI {
         } else {
             if (hasPromiseBasedNotificationApi()) {
                 const permission = await Notification.requestPermission();
-                storeNotificationPermission(permission);
+                storeNotificationsPermission(permission);
             } else {
                 // Legacy browsers / Safari
                 await new Promise<boolean>((resolve, reject) => {
                     try {
                         Notification.requestPermission(function(permission) {
-                            storeNotificationPermission(permission);
+                            storeNotificationsPermission(permission);
                             resolve(true);
                         });
                     }
@@ -141,10 +141,10 @@ export class NotificationUI {
 
 // Helpers
 
-function storeNotificationPermission(permission: NotificationPermission) {
+function storeNotificationsPermission(permission: NotificationPermission) {
     // Whatever the user answers, we make sure Chrome stores the information
     if (!('permission' in Notification)) {
-        debugLog?.log(`storeNotificationPermission(${permission})`);
+        debugLog?.log(`storeNotificationsPermission(${permission})`);
         // @ts-ignore readonly property
         Notification['permission'] = permission;
     }
@@ -163,7 +163,7 @@ function hasPromiseBasedNotificationApi(): boolean {
 //     if (BrowserInfo.appKind == 'Maui')
 //         return;
 //
-//     const isGranted = await requestNotificationPermission();
+//     const isGranted = await requestNotificationsPermission();
 //     if (!isGranted)
-//         errorLog?.log(`Notification permission isn't granted`);
+//         errorLog?.log(`Notifications permission isn't granted`);
 // });

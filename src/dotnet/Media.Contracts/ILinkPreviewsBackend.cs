@@ -6,9 +6,8 @@ public interface ILinkPreviewsBackend : IComputeService
 {
     [ComputeMethod]
     Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken);
-
     [ComputeMethod]
-    Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken);
+    Task<LinkPreview?> Fetch(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<LinkPreview?> OnRefresh(LinkPreviewsBackend_Refresh command, CancellationToken cancellationToken);

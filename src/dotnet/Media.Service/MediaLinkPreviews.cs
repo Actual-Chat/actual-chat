@@ -9,6 +9,10 @@ internal class MediaLinkPreviews(IServiceProvider services) : IMediaLinkPreviews
     private MediaSettings Settings { get; } = services.GetRequiredService<MediaSettings>();
 
     // [ComputeMethod]
+    public virtual Task<bool> IsEnabled()
+        => Task.FromResult(Settings.EnableLinkPreview);
+
+    // [ComputeMethod]
     public virtual Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
         => Backend.Get(id, cancellationToken);
 
@@ -16,10 +20,5 @@ internal class MediaLinkPreviews(IServiceProvider services) : IMediaLinkPreviews
     public virtual Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
         => id.IsEmpty || entryId.IsNone
             ? Task.FromResult<LinkPreview?>(null)
-            : Backend.GetForEntry(id, entryId, cancellationToken);
-
-    // [ComputeMethod]
-    public virtual Task<bool> IsEnabled()
-        => Task.FromResult(Settings.EnableLinkPreview);
-
+            : Backend.Fetch(id, entryId, cancellationToken);
 }

@@ -33,19 +33,25 @@ public sealed class PermissionStepModel(IServiceProvider services)
         var m = new PermissionStepModel(services);
         m.SkipMicrophonePermission = await m.MicrophonePermission.Check(cancellationToken) == true;
         m.SkipNotificationsPermission = !m.IsMobile // See the note below
-                || await m.NotificationsPermission.GetPermissionState(cancellationToken) == PermissionState.Granted;
+            || await m.NotificationsPermission.IsGranted(cancellationToken) == true;
         m.SkipContactsPermission = await m.ContactsPermission.Check(cancellationToken) == true;
         m.RequestMicrophonePermission = !m.SkipContactsPermission;
         m.RequestNotificationsPermission = !m.SkipNotificationsPermission;
         m.RequestContactsPermission = !m.SkipContactsPermission;
         return m;
+
         // NOTE(AY): Requesting mic & notifications in the same event handler doesn't work on web.
-        // We should show an extra modal explaining that notification permission request
-        // may not appear, so the user has to click on the "Notifications blocked" item
+        // We should show an extra popup explaining that notification permission request
+        // may not appear + that the user has to click on the "Notifications blocked" item
         // in the browser bar to enable them.
-        // I disabled this logic for web browser, coz it doesn't work anyway,
+        //
+        // Notification permission request handler must be bound to the button there,
+        // coz here it just doesn't have a chance to work properly due to other
+        // permission requests.
+        //
+        // I disabled this logic for web browser for now, coz it doesn't work anyway,
         // and we show NotificationsPermissionBanner which allows to enable it later -
-        // which, by the way, should use the same popup.
+        // which, by the way, should fallback to the same popup.
     }
 
     public void MarkCompleted()

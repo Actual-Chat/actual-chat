@@ -46,9 +46,11 @@ public partial class MainActivity : MauiAppCompatActivity
 
     public static MainActivity Current => _current
         ?? throw StandardError.Internal($"{nameof(MainActivity)} isn't created yet.");
+    public static readonly TimeSpan MaxPermissionRequestDuration = TimeSpan.FromMinutes(1);
 
     private readonly Tracer _tracer = Tracer.Default[nameof(MainActivity)];
-    private ActivityResultLauncher _requestPermissionLauncher = null!;
+    private ActivityResultLauncher _permissionRequestLauncher = null!;
+    private TaskCompletionSource? _permissionRequestCompletedSource;
 
     private ILogger Log { get; set; } = NullLogger.Instance;
 
@@ -76,14 +78,14 @@ public partial class MainActivity : MauiAppCompatActivity
         base.OnCreate(savedInstanceState);
         _tracer.Point("OnCreate, base.OnCreate completed");
 
-        if (this.Window != null) {
+        if (Window != null) {
             // Set System bars colors
             // See https://developer.android.com/design/ui/mobile/guides/layout-and-content/layout-basics
             // I do it from here because I can not modify theme 'Maui.MainTheme'
             // which is applied after calling base.OnCreate.
             var bg07 = Android.Graphics.Color.Rgb(68, 68, 68);
-            this.Window.SetStatusBarColor(bg07);
-            this.Window.SetNavigationBarColor(bg07);
+            Window.SetStatusBarColor(bg07);
+            Window.SetNavigationBarColor(bg07);
         }
 
         // Attempt to have notification reception even after app is swiped out.
@@ -93,17 +95,11 @@ public partial class MainActivity : MauiAppCompatActivity
         PackageManager?.SetComponentEnabledSetting(componentName, ComponentEnabledState.Enabled, ComponentEnableOption.DontKillApp);
 
         // Create launcher to request permissions
-        _requestPermissionLauncher = RegisterForActivityResult(
+        _permissionRequestLauncher = RegisterForActivityResult(
             new ActivityResultContracts.RequestPermission(),
-            new AndroidActivityResultCallback(result => {
-                var isGranted = (bool)result!;
-                var permissionState = isGranted
-                    ? PermissionState.Granted
-                    : PermissionState.Denied;
-                _tracer.Point($"{nameof(OnCreate)}: NotificationUI.SetPermissionState({permissionState})");
-                _ = DispatchToBlazor(
-                    c => c.GetRequiredService<NotificationUI>().SetPermissionState(permissionState),
-                    $"NotificationUI.SetPermissionState({permissionState})");
+            new AndroidActivityResultCallback(_ => {
+                _permissionRequestCompletedSource?.TrySetResult();
+                _permissionRequestCompletedSource = null;
             }));
         CreateNotificationChannel();
         TryHandleNotificationTap(Intent);
@@ -155,25 +151,27 @@ public partial class MainActivity : MauiAppCompatActivity
         TryHandleNotificationTap(intent);
     }
 
-    public void RequestPermissions(string permission)
-        => _requestPermissionLauncher.Launch(permission);
+    public Task RequestPermission(string permission, CancellationToken cancellationToken = default)
+    {
+        var whenCompletedSource = TaskCompletionSourceExt.New();
+        _ = Task.Delay(MaxPermissionRequestDuration, cancellationToken)
+            .ContinueWith(_ => whenCompletedSource.TrySetResult(), TaskScheduler.Default);
+        return RequestPermission(permission, whenCompletedSource);
+    }
+
+    public Task RequestPermission(string permission, TaskCompletionSource whenCompletedSource)
+    {
+        _permissionRequestCompletedSource?.TrySetResult();
+        _permissionRequestCompletedSource = whenCompletedSource;
+        _permissionRequestLauncher.Launch(permission);
+        return whenCompletedSource.Task;
+    }
 
     public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
     {
         base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == NotificationPermissionId) {
-            var (_, notificationGrant) = permissions
-                .Zip(grantResults)
-                .FirstOrDefault(tuple => OrdinalEquals(tuple.First, Manifest.Permission.PostNotifications));
-            var permissionState = notificationGrant switch {
-                Permission.Granted => PermissionState.Granted,
-                _ => PermissionState.Denied,
-            };
-            _tracer.Point($"{nameof(OnRequestPermissionsResult)}: NotificationUI.SetPermissionState({permissionState})");
-            _ = DispatchToBlazor(
-                c => c.GetRequiredService<NotificationUI>().SetPermissionState(permissionState),
-                $"NotificationUI.SetPermissionState({permissionState})");
-        }
+        _permissionRequestCompletedSource?.TrySetResult();
+        _permissionRequestCompletedSource = null;
     }
 
     private void CreateNotificationChannel()

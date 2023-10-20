@@ -1,5 +1,4 @@
 using ActualChat.Notification.UI.Blazor;
-using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Foundation;
 using Microsoft.AspNetCore.Components;
@@ -11,27 +10,26 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
-public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificationsPermission, IDisposable
+public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission, IDisposable
 {
     private NotificationUI? _notificationUI;
     private History? _history;
     private NavigationManager? _nav;
+    private ILogger? _log;
 
-    public IServiceProvider Services { get; }
+    private IServiceProvider Services { get; }
     private IFirebaseCloudMessaging Messaging { get; }
     private History History  => _history ??= Services.GetRequiredService<History>();
     private UrlMapper UrlMapper => History.UrlMapper;
     private NavigationManager Nav => _nav ??= Services.GetRequiredService<NavigationManager>();
     private NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
     private UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
-    private ILogger Log { get; }
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public PushNotifications(IServiceProvider services)
     {
         Services = services;
         Messaging = services.GetRequiredService<IFirebaseCloudMessaging>();
-        Log = services.LogFor(GetType());
-
         Messaging.NotificationTapped += OnNotificationTapped;
     }
 
@@ -51,43 +49,43 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
     public Task<string?> GetDeviceToken(CancellationToken cancellationToken)
         => Messaging.GetTokenAsync();
 
-    public async Task<PermissionState> GetPermissionState(CancellationToken cancellationToken)
+    public async Task<bool?> IsGranted(CancellationToken cancellationToken = default)
     {
         var settings = await NotificationCenter.GetNotificationSettingsAsync().ConfigureAwait(false);
-        switch (settings.AuthorizationStatus) {
-        case UNAuthorizationStatus.NotDetermined:
-            return PermissionState.Prompt;
-        case UNAuthorizationStatus.Denied:
-            return PermissionState.Denied;
-        case UNAuthorizationStatus.Authorized:
-        case UNAuthorizationStatus.Provisional:
-        case UNAuthorizationStatus.Ephemeral:
-            return PermissionState.Granted;
-        default:
-            throw new ArgumentOutOfRangeException(nameof(settings.AuthorizationStatus), settings.AuthorizationStatus, null);
-        }
+        return settings.AuthorizationStatus switch {
+            UNAuthorizationStatus.NotDetermined => null,
+            UNAuthorizationStatus.Authorized => true,
+            UNAuthorizationStatus.Provisional => true,
+            UNAuthorizationStatus.Ephemeral => true,
+            _ => false,
+        };
     }
 
-    public async Task RequestNotificationPermission(CancellationToken cancellationToken)
-    {
-        // TODO: replace with Messaging.CheckIfValidAsync() when they await result
-        if (!UIDevice.CurrentDevice.CheckSystemVersion(10, 0))
-            return;
+    public Task Request(CancellationToken cancellationToken = default)
+        => ForegroundTask.Run(async () => {
+            var isGranted = await IsGranted(cancellationToken).ConfigureAwait(true);
+            if (isGranted == true) {
+                NotificationUI.SetIsGranted(isGranted);
+                return;
+            }
 
-        // For iOS 10 display notification (sent via APNS)
-        var options = UNAuthorizationOptions.Alert
-            | UNAuthorizationOptions.Badge
-            | UNAuthorizationOptions.Sound;
-        var (granted, error) = await NotificationCenter.RequestAuthorizationAsync(options)
-            .ConfigureAwait(false);
-        if (granted)
-            Log.LogInformation("RequestNotificationPermission: granted");
-        else
-            Log.LogWarning("RequestNotificationPermission: denied, {Error}", error);
+            // TODO: replace with Messaging.CheckIfValidAsync()?
+            if (!UIDevice.CurrentDevice.CheckSystemVersion(10, 0))
+                return;
 
-        var state = await GetPermissionState(cancellationToken).ConfigureAwait(false);
-        NotificationUI.SetPermissionState(state);
-    }
+            // For iOS 10 display notification (sent via APNS)
+            var options = UNAuthorizationOptions.Alert
+                | UNAuthorizationOptions.Badge
+                | UNAuthorizationOptions.Sound;
+            var (result, error) = await NotificationCenter.RequestAuthorizationAsync(options).ConfigureAwait(true);
+            if (result)
+                Log.LogInformation("RequestNotificationPermission: granted");
+            else
+                Log.LogWarning("RequestNotificationPermission: denied, {Error}", error);
+
+            isGranted = await IsGranted(cancellationToken).ConfigureAwait(false);
+            NotificationUI.SetIsGranted(isGranted);
+        }, Log, "Notifications permission request failed", cancellationToken);
 
     private static void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
     {
