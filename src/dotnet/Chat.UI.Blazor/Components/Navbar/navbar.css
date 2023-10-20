@@ -103,7 +103,7 @@ body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
 }
 
 body.hoverable .navbar-item:hover {
-    @apply bg-round-hover;
+    @apply bg-hover;
     @apply cursor-pointer;
 }
 .navbar-item:has(.navbar-item-content:active) {

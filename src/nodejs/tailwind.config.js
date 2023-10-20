@@ -74,6 +74,11 @@ module.exports = {
         30: '.3',
       },
       colors: {
+        'primary': 'var(--primary)',
+        'danger': 'var(--danger)',
+        'success': 'var(--success)',
+        'warning': 'var(--warning)',
+
         'counter': 'var(--counter)',
         'toast-body': 'var(--toast-body)',
         'toast-text': 'var(--toast-text)',
@@ -88,7 +93,6 @@ module.exports = {
         'rating': 'var(--rating)',
 
         'disabled': 'var(--disabled)',
-        'primary': 'var(--primary)',
         'primary-hover': 'var(--primary-hover)',
         'primary-title': 'var(--primary-title)',
         'reaction-own': 'var(--reaction-own)',
@@ -101,7 +105,6 @@ module.exports = {
         'outline': 'var(--outline)',
         'outline-hover': 'var(--outline-hover)',
 
-        'danger': 'var(--danger)',
         'danger-hover': 'var(--danger-hover)',
         'danger-title': 'var(--danger-title)',
         'danger-outline-hover': 'var(--danger-outline-hover)',

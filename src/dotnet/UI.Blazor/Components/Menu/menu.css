@@ -54,7 +54,7 @@ body.narrow .ac-menu {
     @apply bg-01;
 }
 body.hoverable .ac-menu-hover .btn.btn-round:hover .btn-content {
-    @apply bg-round-hover;
+    @apply bg-hover;
 }
 
 /* Item list */

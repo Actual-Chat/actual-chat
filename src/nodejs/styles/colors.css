@@ -70,7 +70,7 @@
     --green-70: #67FF88;
     --green-60: #3AFF66;
     --green-50: #00FF38;
-    --green-40: #00D42F;
+    --green-40: #00D12E;
     --green-30: #00AC26;
     --green-20: #00881E;
     --green-10: #005F15;
@@ -108,31 +108,33 @@
     --text-05: var(--gray-80);
     --text-06: var(--white);
 
-    /* Banners */
-    --background-banner-success: var(--green-90);
-    --text-banner-success: var(--green-30);
-    --background-banner-info: var(--blue-99);
-    --text-banner-info: var(--blue-40);
-    --background-banner-warning: var(--sienna-90);
-    --text-banner-warning: var(--sienna-40);
-    --background-banner-error: var(--red-99);
-    --text-banner-error: var(--magenta-40);
-
     /*Primary colors for buttons, icons*/
     --primary: var(--blue-50);
     --danger: var(--magenta-50);
+    --success: var(--green-40);
+    --warning: var(--sienna-40);
+
+    /* Banners */
+    --background-banner-success: var(--green-95);
+    --text-banner-success: var(--success);
+    --background-banner-info: var(--blue-95);
+    --text-banner-info: var(--primary);
+    --background-banner-warning: var(--sienna-90);
+    --text-banner-warning: var(--warning);
+    --background-banner-error: var(--magenta-95);
+    --text-banner-error: var(--danger);
 
     /* Utils */
-    --online: var(--green-40);
-    --away: var(--sienna-40);
+    --online: var(--success);
+    --away: var(--warning);
     --selected: var(--blue-50-20);
     --hover: var(--blue-50-10);
-    --separator: var(--gray-05);
-    --placeholder: var(--gray-60);
-    --counter: var(--gray-80);
-    --rating: var(--sienna-40);
-    --background-recording-countdown: var(--sienna-90);
-    --shadow-main: var(--gray-70);
+    --separator: var(--text-01);
+    --placeholder: var(--text-04);
+    --counter: var(--background-05);
+    --rating: var(--warning);
+    --background-recording-countdown: var(--background-banner-warning);
+    --shadow-main: var(--background-05);
 
     /* Buttons */
     --disabled: #E7E7E7;
@@ -142,11 +144,11 @@
 
     --secondary: var(--blue-99);
     --secondary-hover: var(--blue-95);
-    --secondary-title: var(--blue-50);
+    --secondary-title: var(--primary);
 
-    --cancel: var(--gray-95);
-    --cancel-hover: var(--gray-90);
-    --cancel-title: var(--gray-30);
+    --cancel: var(--background-03);
+    --cancel-hover: var(--background-04);
+    --cancel-title: var(--background-06);
 
     --outline: var(--white);
     --outline-hover: var(--blue-99);

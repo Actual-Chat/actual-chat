@@ -5,41 +5,36 @@
 <RequireAccount MustBeAdmin="true"/>
 <MainHeader>UI Colors Test Page</MainHeader>
 
-<div class="text-bg-colors flex-y items-start justify-center gap-y-1 ">
-    <h1>Text and background colors</h1>
-    <div class="w-full bg-01 text-03">
-        <p>BG-01 TEXT-03</p>
-        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+<h1>Text and background colors</h1>
+<div class="text-bg-colors grid grid-cols-4 items-center justify-center gap-1">
+    <div class="p-2 bg-01 text-03">
+        <p>bg-01 text-03</p>
     </div>
-    <div class="w-full bg-02 text-02">
-        <p>BG-02 TEXT-02</p>
-        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    <div class="p-2 bg-02 text-02">
+        <p>bg-02 text-02</p>
     </div>
-    <div class="w-full bg-03 text-03">
-        <p>BG-03 TEXT-03</p>
-        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    <div class="p-2 bg-03 text-03">
+        <p>bg-03 text-03</p>
     </div>
-    <div class="w-full bg-04 text-primary">
-        <p>BG-04 TEXT-PRIMARY</p>
-        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    <div class="p-2 bg-04 text-primary">
+        <p>bg-04 text-primary</p>
     </div>
-    <div class="w-full bg-05 text-01">
-        <p>BG-05 TEXT-01</p>
-        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    <div class="p-2 bg-05 text-01">
+        <p>bg-05 text-01</p>
     </div>
-    <div class="w-full bg-06 text-04">
-        <p>BG-06 TEXT-04</p>
-        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    <div class="p-2 bg-06 text-04">
+        <p>bg-06 text-04</p>
     </div>
-    <div class="w-full bg-07 text-04">
-        <p>BG-07 TEXT-04</p>
-        <p>Is it possible to create a medium, which naturally combines all of them together?</p>
+    <div class="p-2 bg-07 text-05">
+        <p>bg-07 text-05</p>
+    </div>
+    <div class="p-2 bg-08 text-06">
+        <p>bg-08 text-06</p>
     </div>
 </div>
 
-@* <div class="buttons-colors flex-y items-start justify-center gap-y-1"> *@
 <h1>Button colors</h1>
-<div class="buttons-colors grid grid-cols-3 items-center justify-center gap-4">
+<div class="buttons-colors grid grid-cols-3 items-center justify-center gap-1">
     <Button Class="btn-primary">Primary</Button>
     <Button Class="btn-outline">Outline</Button>
     <Button Class="btn-secondary">Secondary</Button>
@@ -65,7 +60,7 @@
 </div>
 
 <div class="buttons-colors flex-y items-start justify-center gap-y-1">
-    <h1>Toast colors</h1>
+    <h1>Toast and banner colors</h1>
     <ErrorToast Class="min-h-14">
         Color Test Page Error Toast
     </ErrorToast>
@@ -73,48 +68,83 @@
     <Toast Text="Test Toast"></Toast>
 
     <Banner
-        Class="!bg-banner-info !text-banner-info"
         IsVisible="true"
         ShowDismissButton="true">
         <Body>
-        <Button Class="btn-transparent">
-            Info Banner
-        </Button>
+        Default Banner
         </Body>
-    </Banner>
-
-    <Banner
-        Class="!bg-banner-warning !text-banner-warning"
-        IsVisible="true"
-        ShowDismissButton="true">
-        <Body>
+        <Buttons>
             <Button Class="btn-transparent">
-                Warning Banner
+                Configure
             </Button>
-        </Body>
+        </Buttons>
     </Banner>
 
     <Banner
-        Class="!bg-banner-success !text-banner-success"
-        IsVisible="true"
-        ShowDismissButton="true">
+        Severity="BannerSeverity.Info"
+        IsVisible="true">
         <Body>
-        <Button Class="btn-transparent">
-            Success Banner
-        </Button>
+        Info Banner
         </Body>
+        <Buttons>
+            <Button Class="btn-transparent">
+                Configure
+            </Button>
+        </Buttons>
     </Banner>
 
     <Banner
-        Class="!bg-banner-error !text-banner-error"
+        Severity="BannerSeverity.Warning"
         IsVisible="true"
         ShowDismissButton="true">
         <Body>
-        <Button Class="btn-transparent">
-            Error Banner
-        </Button>
+        Warning Banner
         </Body>
+        <Buttons>
+            <Button Class="btn-transparent">
+                Settings
+            </Button>
+        </Buttons>
     </Banner>
+
+    <Banner
+        Severity="BannerSeverity.Success"
+        IsVisible="true">
+        <Body>
+        Success Banner
+        </Body>
+        <Buttons>
+            <Button Class="btn-transparent">
+                OK
+            </Button>
+        </Buttons>
+    </Banner>
+
+    <Banner
+        Severity="BannerSeverity.Error"
+        IsVisible="true">
+        <Body>
+        Error Banner
+        </Body>
+        <Buttons>
+            <Button Class="btn-transparent">
+                Yes
+            </Button>
+        </Buttons>
+    </Banner>
+</div>
+
+<h1>Utility colors</h1>
+<div class="separator-colors grid grid-cols-3 items-center justify-center gap-4">
+    <div class="flex items-center p-2 bg-new-separator text-danger">
+        bg-new-separator text-danger
+    </div>
+    <div class="flex items-center p-2 bg-hover text-01">
+        bg-hover text-01
+    </div>
+    <div class="flex items-center p-2 bg-selected text-01">
+        bg-selected text-01
+    </div>
 </div>
 
 @code {
