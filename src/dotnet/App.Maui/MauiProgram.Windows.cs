@@ -22,6 +22,6 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddWindows(builder => {
-            builder.OnWindowCreated(WindowsMinimization.Configure);
+            builder.OnWindowCreated(WindowConfigurator.Configure);
         });
 }

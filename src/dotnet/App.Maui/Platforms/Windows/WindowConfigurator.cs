@@ -1,10 +1,17 @@
 using Microsoft.Maui.Platform;
+using Window = Microsoft.UI.Xaml.Window;
 
 namespace ActualChat.App.Maui;
 
-internal static class WindowsMinimization
+internal static class WindowConfigurator
 {
-    public static void Configure(Microsoft.UI.Xaml.Window window)
+    public static void Configure(Window window)
+    {
+        ConfigureMinimization(window);
+        ConfigureStartupSize(window);
+    }
+
+    private static void ConfigureMinimization(Window window)
     {
         WinUI.App.AppInstanceActivated += arguments => {
             window.DispatcherQueue.TryEnqueue(() => {
@@ -32,5 +39,12 @@ internal static class WindowsMinimization
             presenter.Minimize();
             e.Cancel = true;
         };
+    }
+
+    private static void ConfigureStartupSize(Window window)
+    {
+        var appWindow = window.GetAppWindow()!;
+        var presenter = (Microsoft.UI.Windowing.OverlappedPresenter)appWindow.Presenter;
+        presenter.Maximize();
     }
 }
