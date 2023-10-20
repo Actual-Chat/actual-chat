@@ -924,7 +924,7 @@ body.narrow .landing-video-modal .c-header {
     @apply flex-x items-center;
     @apply h-14;
     @apply text-06;
-    @apply bg-black opacity-80;
+    @apply bg-08 opacity-80;
 }
 body.narrow .landing-video-modal .c-body {
     @apply flex-1 flex justify-center items-center;
@@ -934,14 +934,14 @@ body.narrow .landing-video-modal .c-footer {
     @apply h-14;
     @apply px-2;
     @apply text-06;
-    @apply bg-black opacity-80;
+    @apply bg-08 opacity-80;
 }
 .landing-video-modal .play-btn,
 .landing-video-modal .pause-btn {
     @apply flex-none items-center justify-center;
     @apply w-20 h-20;
     @apply rounded-full;
-    @apply bg-black;
+    @apply bg-08;
     @apply opacity-50;
     left: calc(50vw - 2.5rem);
     bottom: calc(50vh - 2.5rem);

@@ -18,7 +18,7 @@
     @apply absolute top-0 z-20;
     @apply w-full;
     @apply md:shadow-md;
-    @apply bg-black md:bg-[#44444466];
+    @apply bg-08 md:bg-[#44444466];
 }
 .image-viewer-header > .c-author {
     @apply flex-1 flex-x items-center gap-x-4;
@@ -101,7 +101,7 @@ body.hoverable .image-viewer-header .image-header-btn.btn.btn-round:hover .btn-c
     @apply flex-x justify-center items-center;
     @apply h-14 w-full;
     @apply md:shadow-md-top;
-    @apply bg-black md:bg-[#44444466];
+    @apply bg-08 md:bg-[#44444466];
 }
 .image-viewer-footer .show-original-button {
     @apply -mt-4 underline underline-offset-2;
