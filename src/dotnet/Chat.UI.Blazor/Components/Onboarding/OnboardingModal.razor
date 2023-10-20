@@ -13,7 +13,7 @@
     Class="onboarding-modal"
     HasHeader="false">
     <Body>
-        <Stepper Context="stepper">
+        <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged">
             <Steps>
                 <PhoneStep Account="account"/>
                 @* <EmailStep Account="account"/> *@
@@ -23,7 +23,7 @@
             </Steps>
             <Header>
                 @if (stepper.CanMoveBack) {
-                    <HeaderButton Click="stepper.MoveBack">
+                    <HeaderButton Click="@(_ => stepper.MoveBack())">
                         <i class="icon-arrow-left text-2xl"></i>
                     </HeaderButton>
                     <div class="text-xl md:text-lg font-semibold md:font-medium">Back</div>
@@ -40,14 +40,14 @@
                     @if (stepper.CanSkip) {
                         <Button
                             Class=""
-                            Click="() => OnSkipClick(stepper)">
+                            Click="@(async _ => await stepper.Skip())">
                             Skip
                         </Button>
                     }
                     <Button
                         Class="btn-primary"
                         ButtonRef="@_nextButtonRef"
-                        Click="() => OnMoveForwardClick(stepper)">
+                        Click="@(async _ => await stepper.TryMoveForward())">
                         @if (stepper.CanSkip) {
                             <span>Verify</span>
                         } else if (stepper.IsLastStep) {
@@ -89,24 +89,12 @@
 
     // Event handlers
 
-    private async Task OnMoveForwardClick(Stepper stepper) {
-        var wasAtTheLastStep = stepper.CurrentStepIndex == stepper.LastStepIndex;
-        if (!await stepper.TryMoveForward())
+    private void OnCurrentStepChanged(bool isCompleted) {
+        if (!isCompleted)
             return;
 
-        if (wasAtTheLastStep) {
-            ModalModel.CanBeClosed = true;
-            Modal.Close(true);
-        }
-    }
-
-    private async Task OnSkipClick(Stepper stepper) {
-        var wasAtTheLastStep = stepper.CurrentStepIndex == stepper.LastStepIndex;
-        await stepper.Skip();
-        if (wasAtTheLastStep) {
-            ModalModel.CanBeClosed = true;
-            Modal.Close(true);
-        }
+        ModalModel.CanBeClosed = true;
+        Modal.Close(true);
     }
 
     public sealed record Model : IOptionallyClosable {

@@ -4,8 +4,14 @@ namespace ActualChat.Contacts.UI.Blazor;
 
 public class WebContactsPermissionHandler : ContactsPermissionHandler
 {
-    public WebContactsPermissionHandler(IServiceProvider services, bool mustStart = true) : base(services, mustStart)
-        => ExpirationPeriod = null; // We don't need expiration period - there is no Contacts at a web browser
+    public WebContactsPermissionHandler(IServiceProvider services, bool mustStart = true)
+        : base(services, false)
+    {
+        // We don't need expiration period - no contacts on Web
+        ExpirationPeriod = null;
+        if (mustStart)
+            this.Start();
+    }
 
     protected override Task<bool?> Get(CancellationToken cancellationToken)
         => Task.FromResult<bool?>(true);

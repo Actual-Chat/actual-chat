@@ -133,7 +133,8 @@ export class NotificationUI {
         });
     }
 
-    private static requestNotificationPermissionHandler(): void {
+    // Must be lambda, otherwise "this" is going to be wrong here
+    private static requestNotificationPermissionHandler = () => {
         void this.requestNotificationPermission();
     }
 }

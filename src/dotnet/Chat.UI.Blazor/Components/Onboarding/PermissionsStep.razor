@@ -5,35 +5,47 @@
 @using ActualChat.Notification.UI.Blazor
 @using ActualChat.Permissions
 @inherits Step;
-
-@if (CurrentStep != this) {
-    return;
+@{
+    var m = _model;
+    if (CurrentStep != this || m == null)
+        return;
 }
 
 <div class="permissions-step">
     <p class="text-title-1 text-center">Required permissions</p>
     <div class="step-tiles">
-        <div class="step-tile"
-             @onclick="OnMicrophonePermissionClick">
-            <img draggable="false"
-                 class="step-tile-icon"
-                 alt="Mic"
-                 src="/dist/images/onboarding/mic.svg"/>
-            <div class="step-tile-body">
-                <div class="step-tile-title">
-                    Microphone
-                </div>
-                <div class="step-tile-subtitle">
-                    Live-transcribed voice messaging is where Actual Chat shines,
-                    but this feature won't work without microphone access.
+        @if (m.SkipEverything) {
+            <div class="step-tile">
+                <div class="step-tile-body">
+                    <div class="step-tile-subtitle">
+                        All necessary permissions are already granted.
+                    </div>
                 </div>
             </div>
-            <Checkbox
-                IsChecked="@_model.RequestMicrophonePermission"
-                Class="!flex-none"
-                Change="OnMicrophonePermissionClick"/>
-        </div>
-        @if (IsMobile) {
+        }
+        @if (!m.SkipMicrophonePermission) {
+            <div class="step-tile"
+                 @onclick="OnMicrophonePermissionClick">
+                <img draggable="false"
+                     class="step-tile-icon"
+                     alt="Mic"
+                     src="/dist/images/onboarding/mic.svg"/>
+                <div class="step-tile-body">
+                    <div class="step-tile-title">
+                        Microphone
+                    </div>
+                    <div class="step-tile-subtitle">
+                        Live-transcribed voice messaging is where Actual Chat shines,
+                        but this feature won't work without microphone access.
+                    </div>
+                </div>
+                <Checkbox
+                    IsChecked="@m.RequestMicrophonePermission"
+                    Class="!flex-none"
+                    Change="OnMicrophonePermissionClick"/>
+            </div>
+        }
+        @if (!m.SkipNotificationsPermission) {
             <div class="step-tile"
                  @onclick="OnNotificationsPermissionClick">
                 <img draggable="false"
@@ -50,10 +62,12 @@
                     </div>
                 </div>
                 <Checkbox
-                    IsChecked="@_model.RequestNotificationsPermission"
+                    IsChecked="@m.RequestNotificationsPermission"
                     Class="!flex-none"
                     Change="OnNotificationsPermissionClick"/>
             </div>
+        }
+        @if (!m.SkipContactsPermission) {
             <div class="step-tile"
                  @onclick="OnContactsPermissionClick">
                 <img draggable="false"
@@ -71,7 +85,7 @@
                     </div>
                 </div>
                 <Checkbox
-                    IsChecked="@_model.RequestContactsPermission"
+                    IsChecked="@m.RequestContactsPermission"
                     Class="!flex-none"
                     Change="OnContactsPermissionClick"/>
             </div>
@@ -80,75 +94,58 @@
 </div>
 
 @code {
-    private readonly Model _model = new();
+    private PermissionStepModel? _model;
     private ElementReference _notificationPermissionHandlerRef;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
-    [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
-    [Inject] private INotificationsPermission NotificationsPermission { get; init; } = null!;
-    [Inject] private ContactsPermissionHandler ContactsPermission { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter, EditorRequired] public Mutable<ElementReference> NextButtonRef { get; init; } = null!;
 
     public override bool IsCompleted => OnboardingUI.LocalSettings.Value.IsPermissionsStepCompleted;
 
-    private bool IsMobile => HostInfo.ClientKind.IsMobile();
+    protected override async Task OnInitializedAsync()
+        => _model = await PermissionStepModel.New(Services);
 
-    protected override async Task OnInitializedAsync() {
-        if (!IsMobile) {
-            // NOTE(AY): Requesting mic & notifications in the same event handler doesn't work on web.
-            // We should show an extra modal explaining that notification permission request
-            // may not appear, so the user has to click on the "Notifications blocked" item
-            // in the browser bar to enable them.
-            // I disabled this logic for web browser, coz it doesn't work anyway,
-            // and we show NotificationsPermissionBanner which allows to enable it later -
-            // which, by the way, should use the same popup.
-            _model.RequestNotificationsPermission = false;
-        }
-        await AudioRecorder.MicrophonePermission.Check(CancellationToken.None);
-    }
-
-    protected override Task OnAfterRenderAsync(bool firstRender)
-        => UpdateNotificationPermissionHandler();
-
-    protected override void MarkCompleted()
-        => OnboardingUI.UpdateLocalSettings(OnboardingUI.LocalSettings.Value with { IsPermissionsStepCompleted = true });
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+        => await UpdateNotificationPermissionHandler();
 
     protected override Task<bool> Validate()
-        => Task.FromResult(true);
+        => Task.FromResult(_model != null);
+
+    protected override void MarkCompleted()
+        => _model?.MarkCompleted();
 
     protected override async Task<bool> Save() {
-        if (_model.RequestMicrophonePermission)
-            await AudioRecorder.MicrophonePermission.CheckOrRequest();
-        if (_model.RequestNotificationsPermission)
-            await NotificationsPermission.RequestNotificationPermission(default);
-        if (IsMobile && _model.RequestContactsPermission)
-            await RequestContactsPermissions();
+        if (_model is not { } m)
+            return false;
 
+        if (m.RequestMicrophonePermission)
+            await m.MicrophonePermission.CheckOrRequest();
+        if (m.RequestNotificationsPermission)
+            await m.NotificationsPermission.RequestNotificationPermission(default);
+        if (m.RequestContactsPermission)
+            await m.ContactsPermission.CheckOrRequest();
         return true;
     }
 
-    private Task RequestContactsPermissions()
-        => ContactsPermission.CheckOrRequest(true).AsTask();
-
     private void OnMicrophonePermissionClick()
-        => _model.RequestMicrophonePermission = !_model.RequestMicrophonePermission;
+        => _model!.RequestMicrophonePermission = !_model.RequestMicrophonePermission;
 
     private void OnContactsPermissionClick()
-        => _model.RequestContactsPermission = !_model.RequestContactsPermission;
+        => _model!.RequestContactsPermission = !_model.RequestContactsPermission;
 
     private Task OnNotificationsPermissionClick() {
-        _model.RequestNotificationsPermission = !_model.RequestNotificationsPermission;
+        _model!.RequestNotificationsPermission = !_model.RequestNotificationsPermission;
         return UpdateNotificationPermissionHandler();
     }
 
     private async Task UpdateNotificationPermissionHandler() {
-        var mustRegisterHandler = CurrentStep == this && _model.RequestNotificationsPermission;
+        if (_model is not { } m)
+            return;
+
+        var mustRegisterHandler = CurrentStep == this && m.RequestNotificationsPermission;
         var nextButtonRef = NextButtonRef.Value;
         var isRegistered = nextButtonRef.Id == _notificationPermissionHandlerRef.Id
             && ReferenceEquals(nextButtonRef.Context, _notificationPermissionHandlerRef.Context);
@@ -165,9 +162,4 @@
         }
     }
 
-    public class Model {
-        public bool RequestMicrophonePermission { get; set; } = true;
-        public bool RequestNotificationsPermission { get; set; } = true;
-        public bool RequestContactsPermission { get; set; } = true;
-    }
 }

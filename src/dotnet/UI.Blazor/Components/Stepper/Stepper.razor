@@ -29,6 +29,7 @@
     [Parameter] public RenderFragment<Stepper>? Header { get; set; }
     [Parameter] public RenderFragment<Stepper>? Footer { get; set; }
     [Parameter] public RenderFragment<Stepper>? Steps { get; set; }
+    [Parameter] public EventCallback<bool> CurrentStepChanged { get; set; }
 
     public int StepCount => _steps.Count;
     public int LastStepIndex => Math.Max(0, _steps.Count - 1);
@@ -46,25 +47,25 @@
         StateHasChanged();
     }
 
+    public async ValueTask<bool> TryMoveForward() {
+        if (_currentStep is null || !await _currentStep.TryComplete())
+            return false;
+
+        return await Move(1);
+    }
+
     public async ValueTask Skip() {
         if (_currentStep is null)
             return;
 
         await _currentStep.Skip();
-        Move(1);
+        await Move(1);
     }
 
-    public async ValueTask<bool> TryMoveForward() {
-        if (_currentStep is null || !await _currentStep.TryComplete())
-            return false;
-        return Move(1);
-    }
+    public ValueTask<bool> MoveBack()
+        => Move(-1);
 
-    public void MoveBack() {
-        Move(-1);
-    }
-
-    private bool Move(int offset) {
+    private async ValueTask<bool> Move(int offset) {
         if (_currentStep == null)
             return false;
 
@@ -72,14 +73,17 @@
         if (newStepIndex < 0)
             return false;
 
-        if (newStepIndex >= StepCount)
+        if (newStepIndex >= StepCount) {
+            await CurrentStepChanged.InvokeAsync(true);
             return true;
+        }
 
         var previousStep = _currentStep;
         _currentStep = _steps[newStepIndex];
         previousStep.NotifyStateHasChanged();
         _currentStep.NotifyStateHasChanged();
         StateHasChanged();
+        await CurrentStepChanged.InvokeAsync(false);
         return true;
     }
 }

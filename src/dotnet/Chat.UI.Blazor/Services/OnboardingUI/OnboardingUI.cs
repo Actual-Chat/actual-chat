@@ -103,6 +103,18 @@ public class OnboardingUI : IDisposable, IOnboardingUI
         // Finally, wait for the possibility to render onboarding modal
         await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        return _userSettings.Value.HasUncompletedSteps || _localSettings.Value.HasUncompletedSteps;
+        if (_userSettings.Value.HasUncompletedSteps)
+            return true;
+
+        if (!_localSettings.Value.IsPermissionsStepCompleted) {
+            // Fix IsPermissionsStepCompleted based on actual permissions:
+            // we don't want to show "Required permissions" screen if they're already granted
+            var permissionsStepModel = await PermissionStepModel.New(Services, cancellationToken).ConfigureAwait(false);
+            if (permissionsStepModel.SkipEverything) {
+                permissionsStepModel.MarkCompleted();
+                await Task.Yield(); // Just in case
+            }
+        }
+        return _localSettings.Value.HasUncompletedSteps;
     }
 }

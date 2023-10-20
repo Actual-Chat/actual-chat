@@ -6,6 +6,8 @@ using WebKit;
 
 namespace ActualChat.App.Maui;
 
+#pragma warning disable VSTHRD002
+
 public partial class MainPage
 {
     /// <summary>
@@ -78,25 +80,22 @@ public partial class MainPage
             }
 
             var permissionHandler = Services.GetRequiredService<MicrophonePermissionHandler>();
-            var resultValueTask = permissionHandler.CheckOrRequest(true);
+            var resultValueTask = permissionHandler.CheckOrRequest();
             if (resultValueTask.IsCompleted) {
- #pragma warning disable VSTHRD002
                 var result = resultValueTask.Result
- #pragma warning restore VSTHRD002
                     ? WKPermissionDecision.Grant
                     : WKPermissionDecision.Prompt;
-                decisionHandler(result);
+                decisionHandler.Invoke(result);
             }
             else
                 _ = resultValueTask
                     .AsTask()
                     .ContinueWith(t => {
-                            var result = t.Result
-                                ? WKPermissionDecision.Grant
-                                : WKPermissionDecision.Prompt;
-                            decisionHandler(result);
-                        },
-                        TaskScheduler.Default);
+                        var result = t is { IsCompletedSuccessfully: true, Result: true }
+                            ? WKPermissionDecision.Grant
+                            : WKPermissionDecision.Prompt;
+                        decisionHandler.Invoke(result);
+                    }, TaskScheduler.Default);
         }
 
         private bool IsMediaCaptureGranted(

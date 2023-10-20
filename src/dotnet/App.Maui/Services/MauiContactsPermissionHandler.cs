@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.Permissions;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
@@ -6,22 +7,23 @@ namespace ActualChat.App.Maui.Services;
 public class MauiContactsPermissionHandler : ContactsPermissionHandler
 {
     public MauiContactsPermissionHandler(IServiceProvider services, bool mustStart = true)
-        : base(services, mustStart)
-        => ExpirationPeriod = null; // We don't need expiration period - GrantContactPermissionBanner checks it
+        : base(services, false)
+    {
+        ExpirationPeriod = TimeSpan.FromMinutes(30); // No need to check this frequently
+        if (mustStart)
+            this.Start();
+    }
 
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {
-        var status = await Dispatcher
-            .InvokeAsync(MauiPermissions.CheckStatusAsync<MauiPermissions.ContactsRead>)
-            .ConfigureAwait(false);
+        var status = await MauiPermissions.CheckStatusAsync<MauiPermissions.ContactsRead>().ConfigureAwait(false);
+        // Android returns Denied when permission is not set, also you can request permissions again
         return status switch {
-            PermissionStatus.Denied => false,
-            PermissionStatus.Disabled => false,
-            PermissionStatus.Restricted => false,
-            PermissionStatus.Unknown => null,
             PermissionStatus.Granted => true,
             PermissionStatus.Limited => true,
-            _ => throw StandardError.NotSupported<PermissionStatus>(status.ToString()),
+            PermissionStatus.Unknown => null,
+            PermissionStatus.Denied => HostInfo.ClientKind == ClientKind.Android ? null : false,
+            _ => false,
         };
     }
 
@@ -32,5 +34,5 @@ public class MauiContactsPermissionHandler : ContactsPermissionHandler
     }
 
     protected override Task Troubleshoot(CancellationToken cancellationToken)
-        => OpenSystemSettings();
+        => Task.CompletedTask;
 }

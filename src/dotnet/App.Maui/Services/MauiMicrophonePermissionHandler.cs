@@ -13,23 +13,24 @@ public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
     protected ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
 
     public MauiMicrophonePermissionHandler(IServiceProvider services, bool mustStart = true)
-        : base(services, mustStart)
-        => ExpirationPeriod = null; // We don't need expiration period - AudioRecorder is able to reset cached permission in case of recording failure
+        : base(services, false)
+    {
+        // We don't need expiration period - AudioRecorder is able to reset cached permission in case of recording failure
+        ExpirationPeriod = null;
+        if (mustStart)
+            this.Start();
+    }
 
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {
-        var status = await MauiPermissions
-            .CheckStatusAsync<MauiPermissions.Microphone>()
-            .ConfigureAwait(true);
+        var status = await MauiPermissions.CheckStatusAsync<MauiPermissions.Microphone>().ConfigureAwait(true);
         // Android returns Denied when permission is not set, also you can request permissions again
         return status switch {
-            PermissionStatus.Denied => HostInfo.ClientKind == ClientKind.Android ? null : false,
-            PermissionStatus.Disabled => false,
-            PermissionStatus.Restricted => false,
-            PermissionStatus.Unknown => null,
             PermissionStatus.Granted => true,
             PermissionStatus.Limited => true,
-            _ => throw StandardError.NotSupported<PermissionStatus>(status.ToString()),
+            PermissionStatus.Unknown => null,
+            PermissionStatus.Denied => HostInfo.ClientKind == ClientKind.Android ? null : false,
+            _ => false,
         };
     }
 

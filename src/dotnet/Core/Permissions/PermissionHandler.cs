@@ -51,16 +51,15 @@ public abstract class PermissionHandler : WorkerBase
         if (_cached.Value == true)
             return true;
 
-        Log.LogDebug("Check");
-        var isGranted = await Get(cancellationToken).ConfigureAwait(false);
-        SetUnsafe(isGranted);
-        if (isGranted ?? false)
-            return true;
-
-        if (!mustRequest)
-            return false;
-
         return await Dispatcher.InvokeAsync(async () => {
+            Log.LogDebug("Check");
+            var isGranted = await Get(cancellationToken).ConfigureAwait(true);
+            SetUnsafe(isGranted);
+            if (isGranted ?? false)
+                return true;
+            if (!mustRequest)
+                return false;
+
             Log.LogDebug("Request");
             var maybeGranted = await Request(cancellationToken).ConfigureAwait(true);
             if (!maybeGranted)
@@ -73,7 +72,7 @@ public abstract class PermissionHandler : WorkerBase
         }).ConfigureAwait(false);
     }
 
-    public void Reset()
+    public void ForgetCached()
         => _cached.Value = null;
 
     public async Task<bool?> Check(CancellationToken cancellationToken)
@@ -86,10 +85,12 @@ public abstract class PermissionHandler : WorkerBase
         if (_cached.Value == true)
             return true;
 
-        Log.LogDebug("Check");
-        var isGranted = await Get(cancellationToken).ConfigureAwait(false);
-        SetUnsafe(isGranted);
-        return isGranted;
+        return await Dispatcher.InvokeAsync(async () => {
+            Log.LogDebug("Check");
+            var isGranted = await Get(cancellationToken).ConfigureAwait(false);
+            SetUnsafe(isGranted);
+            return isGranted;
+        }).ConfigureAwait(false);
     }
 
     // Protected methods

@@ -75,7 +75,7 @@
         => _dismissedAt.Value = Clocks.SystemClock.Now;
 
     private Task OnConfigureClick(MouseEventArgs e)
-        => ContactsPermission.CheckOrRequest(true).AsTask();
+        => ContactsPermission.CheckOrRequest().AsTask();
 
     // Nested types
 
