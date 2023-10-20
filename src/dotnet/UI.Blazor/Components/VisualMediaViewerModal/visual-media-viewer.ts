@@ -383,9 +383,7 @@ export class VisualMediaViewer {
                     if (viewerTop < 0 || viewerBottom > window.innerHeight || viewerLeft < 0 || viewerRight > window.innerWidth) {
                         this.getImageAndMouseX(event, viewerRect);
                         this.getImageAndMouseY(event, viewerRect);
-                        fromEvent(window, 'pointermove')
-                            .pipe(takeUntil(this.disposed$))
-                            .subscribe((event: PointerEvent) => this.onPointerMove(event));
+                        window.addEventListener('pointermove', this.onPointerMove)
                     } else {
                         preventDefaultForEvent(event);
                     }
@@ -404,10 +402,7 @@ export class VisualMediaViewer {
                 let viewerRect = this.imageViewer.getBoundingClientRect();
                 this.curState = new MoveState(imageRect, viewerRect, 0);
                 this.prevState = new MoveState(imageRect, viewerRect, 0);
-                fromEvent(window, 'pointermove')
-                    .pipe(takeUntil(this.disposed$))
-                    .subscribe((event: PointerEvent) => this.onTouchableMove(event));
-
+                window.addEventListener('pointermove', this.onTouchableMove);
                 if (this.points.length === 2) {
                     this.startDistance = this.getDistance();
                 } else if (this.points.length === 1) {
@@ -438,6 +433,8 @@ export class VisualMediaViewer {
     };
 
     private onPointerUp = (event: PointerEvent) => {
+        window.removeEventListener('pointermove', this.onPointerMove);
+        window.removeEventListener('pointermove', this.onTouchableMove);
         this.stopMovement = false;
         if (event.pointerType === 'touch') {
             if (this.points.length === 1) {
