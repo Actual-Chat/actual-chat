@@ -280,7 +280,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 };
         }
 
-        var linkPreviews = await entries.Where(x => !x.LinkPreviewId.IsEmpty)
+        var linkPreviews = await entries
+            .Where(x => !x.LinkPreviewId.IsEmpty)
             .Select(x => MediaLinkPreviews.GetForEntry(x.LinkPreviewId, x.Id, cancellationToken))
             .Collect()
             .ConfigureAwait(false);

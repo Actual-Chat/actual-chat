@@ -2,10 +2,10 @@
 @using ActualChat.Media
 @using ILinkPreviews = ActualChat.Media.IMediaLinkPreviews
 @using LinkPreview = ActualChat.Media.LinkPreview
-@inherits ComputedStateComponent<LinkPreview>
+@inherits FusionComponentBase
 @{
-    var m = State.Value;
-    if (m == LinkPreview.None)
+    var m = Source;
+    if (Mode == LinkPreviewMode.Dismiss || m == null || m.IsEmpty)
         return;
 
     var imageUrl = GetImageUrl(m.PreviewMedia);
@@ -25,7 +25,7 @@
             }
         </div>
         @if (uri != null) {
-            <a href="@uri.Scheme://@uri.Authority" target="_blank" class="c-domain">@uri.Host</a>
+            <a href="@(uri.Scheme)://@(uri.Authority)" target="_blank" class="c-domain">@uri.Host</a>
         }
     </div>
 </div>
@@ -35,33 +35,15 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private ICommander Commander { get; init; } = null!;
 
-    [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
-    [Parameter, EditorRequired] public Markup Markup { get; set; } = null!;
+    [Parameter, EditorRequired] public LinkPreview? Source { get; set; }
+    [Parameter, EditorRequired] public LinkPreviewMode Mode { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    protected override ComputedState<LinkPreview>.Options GetStateOptions() {
-        return new() {
-            InitialValue = Message.LinkPreview ?? LinkPreview.None,
-            Category = GetStateCategory(),
-        };
-    }
-
-    protected override async Task<LinkPreview> ComputeState(CancellationToken cancellationToken) {
-        if (Message.LinkPreview?.Id.IsEmpty != false)
-            return LinkPreview.None;
-
-        if (Message.LinkPreview != null)
-            return Message.LinkPreview;
-
-        // in case link previews were cleaned up and not loaded yet
-        var linkPreview = await MediaLinkPreviews.GetForEntry(Message.Entry.LinkPreviewId, Message.Entry.Id, cancellationToken);
-        return linkPreview is null || linkPreview.IsEmpty ? LinkPreview.None : linkPreview;
-    }
 
     private string GetImageUrl(Media? preview)
     {
         if (preview?.ContentId.IsNullOrEmpty() != false)
             return "";
+
         var imageUrl = UrlMapper.ContentUrl(preview.ContentId);
         // TODO: use image metadata for better proportions selection
         var (width, height) = GetImageMaxSize();
@@ -69,7 +51,7 @@
     }
 
     private (int? Width, int Height) GetImageMaxSize() {
-        switch (Message.Entry.LinkPreviewMode) {
+        switch (Mode) {
             case LinkPreviewMode.Full:
                 var maxHeight = ScreenSize.IsNarrow() ? 160  : 136;
                 return (null, maxHeight);

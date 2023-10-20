@@ -48,8 +48,8 @@
 
 @if (isSystem) {
     <div class="@cls"
-         data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.TrueString))"
-         data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.TrueString, "", ""))"
+         data-hover-menu="@(MenuRef.New<MessageHoverMenu>(message.Entry.Id, bool.TrueString))"
+         data-menu="@(MenuRef.New<MessageMenu>(message.Entry.Id, bool.TrueString, "", ""))"
          data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
         <div class="chat-message group @cls">
             <div class="c-content">
@@ -70,9 +70,9 @@
 }
 
 <div class="@cls"
-     data-chat-entry-id="@(Message.Entry.Id)"
-     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(Message.Entry.Id, bool.FalseString))"
-     data-menu="@(MenuRef.New<MessageMenu>(Message.Entry.Id, bool.FalseString, "", ""))"
+     data-chat-entry-id="@(message.Entry.Id)"
+     data-hover-menu="@(MenuRef.New<MessageHoverMenu>(message.Entry.Id, bool.FalseString))"
+     data-menu="@(MenuRef.New<MessageMenu>(message.Entry.Id, bool.FalseString, "", ""))"
      data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <div class="chat-message group">
         <div class="c-author-badge">
@@ -135,7 +135,7 @@
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (entry.IsStreaming) {
-                    <ChatMessageTranscript Model="@message" ShowEntryKind="@Message.HasEntryKindSign"/>
+                    <ChatMessageTranscript Model="@message" ShowEntryKind="@message.HasEntryKindSign"/>
                 } else {
                     <p class="chat-message-markup">
                         @if (message.HasEntryKindSign) {
@@ -163,7 +163,7 @@
             }
             @if (m.ShowLinkPreview) {
                 <div class="message-link-preview">
-                    <LinkPreviewView Message="Message" Markup="@markup"/>
+                    <LinkPreviewView Source="@message.LinkPreview" Mode="@entry.LinkPreviewMode"/>
                 </div>
             }
         </div>
@@ -259,7 +259,8 @@
             ? await Authors.Get(Session, entry.ForwardedChatEntryId.ChatId, entry.ForwardedAuthorId, cancellationToken)
             : null;
         var selectedChatEntries = await ChatContext.SelectionUI.Selection.Use(cancellationToken);
-        var showLinkPreview = Message.ShowLinkPreview && await ChatContext.ShowLinkPreview.Use(cancellationToken); // TODO: read ui settings to decide dismiss links or not
+        var showLinkPreview = Message.ShowLinkPreview
+            && await ChatContext.ShowLinkPreview.Use(cancellationToken); // TODO: read UI settings
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,

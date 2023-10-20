@@ -39,21 +39,23 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
     // [ComputeMethod]
     public virtual Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
-        => Get(id, null, false, cancellationToken);
+        => Fetch(id, null, true, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
+    public virtual async Task<LinkPreview?> Fetch(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
         if (entry is null)
             return null;
 
-        var preview = await Get(entry.LinkPreviewId, cancellationToken).ConfigureAwait(false);
-        if (preview != null)
-            return preview;
+        var linkPreview = await Get(entry.LinkPreviewId, cancellationToken).ConfigureAwait(false);
+        if (linkPreview != null)
+            return linkPreview;
 
-        // we need to refresh metadata in chat entry or recover after link previews have been cleaned up
-        return await EnsureLinkPreviewIsActualizedForChatEntry(entry, cancellationToken).ConfigureAwait(false);
+        // Regenerate link preview in background in case there is no preview yet (or it was wiped)
+        using var _1 = ExecutionContextExt.SuppressFlow();
+        _ = BackgroundTask.Run(() => Renew(entry, CancellationToken.None), CancellationToken.None);
+        return linkPreview;
     }
 
     // [CommandHandler]
@@ -69,6 +71,9 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 _ = Get(id, default);
             return default!;
         }
+
+        if (id.IsEmpty)
+            return null;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -128,21 +133,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (changeKind is ChangeKind.Remove)
             return Task.CompletedTask;
 
-        return EnsureLinkPreviewIsActualizedForChatEntry(entry, cancellationToken);
-    }
-
-    private async Task<LinkPreview?> EnsureLinkPreviewIsActualizedForChatEntry(ChatEntry entry, CancellationToken cancellationToken)
-    {
-        var preview = await FetchPreviewForEntry(entry, cancellationToken).ConfigureAwait(false);
-        if (entry.LinkPreviewId == preview.Id)
-            return preview;
-
-        entry = entry with {
-            LinkPreviewId = preview.Id,
-        };
-        var changeTextEntryCmd = new ChatsBackend_UpsertEntry(entry, entry.Attachments.Count > 0);
-        await Commander.Call(changeTextEntryCmd, true, cancellationToken).ConfigureAwait(false);
-        return preview;
+        return Renew(entry, cancellationToken);
     }
 
     // Private methods
@@ -150,20 +141,37 @@ public class LinkPreviewsBackend(IServiceProvider services)
     private static string ToRedisKey(Symbol id)
         => $"{RedisKeyPrefix}{id.Value}";
 
-    private async Task<LinkPreview> FetchPreviewForEntry(ChatEntry entry, CancellationToken cancellationToken)
+    private async Task<LinkPreview?> Renew(ChatEntry entry, CancellationToken cancellationToken)
+    {
+        var linkPreview = await Fetch(entry, false, cancellationToken).ConfigureAwait(false);
+        var linkPreviewId = linkPreview?.Id ?? Symbol.Empty;
+        if (entry.LinkPreviewId == linkPreviewId)
+            return linkPreview;
+
+        entry = entry with {
+            LinkPreviewId = linkPreviewId,
+        };
+        var changeTextEntryCmd = new ChatsBackend_UpsertEntry(entry, entry.Attachments.Count > 0);
+        await Commander.Call(changeTextEntryCmd, true, cancellationToken).ConfigureAwait(false);
+        return linkPreview;
+    }
+
+    private async Task<LinkPreview?> Fetch(ChatEntry entry, bool allowStale, CancellationToken cancellationToken)
     {
         var urls = ExtractUrls(entry);
         foreach (var url in urls) {
-            var preview = await Get(LinkPreview.ComposeId(url), url, true, cancellationToken)
-                .ConfigureAwait(false);
+            var preview = await Fetch(LinkPreview.ComposeId(url), url, allowStale, cancellationToken).ConfigureAwait(false);
             if (preview != null)
                 return preview;
         }
-        return LinkPreview.None;
+        return null;
     }
 
-    private async Task<LinkPreview?> Get(Symbol id, string? url, bool wait, CancellationToken cancellationToken)
+    private async Task<LinkPreview?> Fetch(Symbol id, string? url, bool allowStale, CancellationToken cancellationToken)
     {
+        if (id.IsEmpty)
+            return null;
+
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -172,29 +180,23 @@ public class LinkPreviewsBackend(IServiceProvider services)
             .ConfigureAwait(false);
 
         var linkPreview = dbLinkPreview?.ToModel();
-        var ensureRefreshedTask = EnsureRefreshed();
-        if (wait)
-            linkPreview = await ensureRefreshedTask.ConfigureAwait(false);
-
-        if (linkPreview?.PreviewMediaId.IsNone != false)
+        url ??= linkPreview?.Url;
+        var mustRefresh = !url.IsNullOrEmpty()
+            && (linkPreview == null || linkPreview.ModifiedAt + Settings.LinkPreviewUpdatePeriod < Now);
+        if (mustRefresh) {
+            var refreshTask = Commander.Call(new LinkPreviewsBackend_Refresh(url!), cancellationToken);
+            if (!allowStale)
+                linkPreview = await refreshTask.ConfigureAwait(false);
+            else if (linkPreview == null)
+                linkPreview = LinkPreview.Updating;
+        }
+        if (linkPreview == null || linkPreview.PreviewMediaId.IsNone)
             return linkPreview;
 
         return linkPreview with {
             PreviewMedia = await MediaBackend.Get(linkPreview.PreviewMediaId, cancellationToken)
                 .ConfigureAwait(false),
         };
-
-        Task<LinkPreview?> EnsureRefreshed()
-        {
-            if (linkPreview != null && Now - linkPreview.ModifiedAt < Settings.LinkPreviewUpdatePeriod)
-                return Task.FromResult<LinkPreview?>(linkPreview);
-
-            url ??= linkPreview?.Url;
-            if (url.IsNullOrEmpty())
-                return Task.FromResult(linkPreview);
-
-            return Commander.Call(new LinkPreviewsBackend_Refresh(url), cancellationToken);
-        }
     }
 
     private HashSet<string> ExtractUrls(ChatEntry entry)

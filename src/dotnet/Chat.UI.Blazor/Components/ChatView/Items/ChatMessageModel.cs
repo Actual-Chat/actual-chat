@@ -48,7 +48,8 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
             && HasEntryKindSign == other.HasEntryKindSign
             && DateLineDate == other.DateLineDate
             && ReplacementKind == other.ReplacementKind
-            && Entry.Attachments.SequenceEqual(other.Entry.Attachments);
+            && Entry.Attachments.SequenceEqual(other.Entry.Attachments)
+            && LinkPreview == other.LinkPreview;
     }
 
     public override int GetHashCode()
@@ -59,7 +60,8 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
             HasEntryKindSign,
             DateLineDate,
             ReplacementKind,
-            Entry.Attachments.Count); // Fine to have something that's fast here
+            Entry.Attachments.Count,
+            LinkPreview); // Fine to have something that's fast here
 
     public static bool operator ==(ChatMessageModel? left, ChatMessageModel? right) => Equals(left, right);
     public static bool operator !=(ChatMessageModel? left, ChatMessageModel? right) => !Equals(left, right);
@@ -131,7 +133,7 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
                     IsBlockEnd = isBlockEnd,
                     HasEntryKindSign = isEntryKindChanged || (isBlockStart && isAudio),
                     IsForwardBlockStart = isForwardBlockStart,
-                    LinkPreview = linkPreviews.GetValueOrDefault(entry.LinkPreviewId)
+                    LinkPreview = linkPreviews.GetValueOrDefault(entry.LinkPreviewId),
                 };
                 AddItem(item);
             }

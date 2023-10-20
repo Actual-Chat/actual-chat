@@ -6,6 +6,10 @@ internal class LinkPreviews(IServiceProvider services) : ILinkPreviews
     private Media.IMediaLinkPreviews Service { get; } = services.GetRequiredService<Media.IMediaLinkPreviews>();
 
     // [ComputeMethod]
+    public virtual Task<bool> IsEnabled()
+        => Service.IsEnabled();
+
+    // [ComputeMethod]
     public virtual async Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
     {
         var preview = await Service.Get(id, cancellationToken).ConfigureAwait(false);
@@ -14,17 +18,13 @@ internal class LinkPreviews(IServiceProvider services) : ILinkPreviews
 
         return new () {
             Id = preview.Id,
-            Title = preview.Title,
-            Description = preview.Description,
             Url = preview.Description,
             PreviewMediaId = preview.PreviewMediaId,
+            Title = preview.Title,
+            Description = preview.Description,
             CreatedAt = preview.CreatedAt,
             ModifiedAt = preview.ModifiedAt,
             PreviewMedia = preview.PreviewMedia,
         };
     }
-
-    // [ComputeMethod]
-    public virtual Task<bool> IsEnabled()
-        => Service.IsEnabled();
 }

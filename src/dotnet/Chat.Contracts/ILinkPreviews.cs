@@ -7,10 +7,9 @@ namespace ActualChat.Chat;
 public interface ILinkPreviews : IComputeService
 {
     [ComputeMethod]
-    Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken);
-
-    [ComputeMethod]
     Task<bool> IsEnabled();
+    [ComputeMethod]
+    Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken);
 }
 
 [Obsolete("2023.10: Use ActualChat.Media.LinkPreview instead")]
