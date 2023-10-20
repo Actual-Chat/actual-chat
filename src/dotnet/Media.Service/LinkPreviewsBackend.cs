@@ -42,7 +42,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         => Fetch(id, null, true, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<LinkPreview?> Fetch(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
+    public virtual async Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
         if (entry is null)

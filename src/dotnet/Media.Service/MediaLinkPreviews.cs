@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Media.Module;
 
 namespace ActualChat.Media;
@@ -20,5 +19,5 @@ internal class MediaLinkPreviews(IServiceProvider services) : IMediaLinkPreviews
     public virtual Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
         => id.IsEmpty || entryId.IsNone
             ? Task.FromResult<LinkPreview?>(null)
-            : Backend.Fetch(id, entryId, cancellationToken);
+            : Backend.GetForEntry(id, entryId, cancellationToken);
 }
