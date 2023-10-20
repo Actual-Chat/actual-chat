@@ -2,6 +2,7 @@ namespace ActualChat.Notification.UI.Blazor;
 
 public interface INotificationsPermission
 {
-    Task<PermissionState> GetPermissionState(CancellationToken cancellationToken);
-    Task RequestNotificationPermission(CancellationToken cancellationToken);
+    // null = undetermined / never requested
+    Task<bool?> IsGranted(CancellationToken cancellationToken = default);
+    Task Request(CancellationToken cancellationToken = default);
 }

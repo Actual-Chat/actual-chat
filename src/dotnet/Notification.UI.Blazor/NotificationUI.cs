@@ -13,7 +13,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     private static readonly string JSUnregisterRequestNotificationHandlerMethod =
         $"{NotificationBlazorUIModule.ImportName}.NotificationUI.unregisterRequestNotificationHandler";
 
-    private readonly IMutableState<PermissionState> _permissionState;
+    private readonly IMutableState<bool?> _permissionState;
     private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();
     private volatile Task<string?>? _registerDeviceTask;
     private History? _history;
@@ -32,7 +32,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     private UrlMapper UrlMapper => History.UrlMapper;
     private IJSRuntime JS => History.JS;
 
-    public IState<PermissionState> PermissionState => _permissionState;
+    public IState<bool?> PermissionState => _permissionState;
     public Task WhenReady { get; }
 
     public NotificationUI(IServiceProvider services)
@@ -40,7 +40,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
         Services = services;
 
         var stateFactory = services.StateFactory();
-        _permissionState = stateFactory.NewMutable(ActualChat.UI.Blazor.PermissionState.Denied, nameof(PermissionState));
+        _permissionState = stateFactory.NewMutable((bool?)null, nameof(PermissionState));
         WhenReady = Initialize();
 
         async Task Initialize() {
@@ -51,8 +51,8 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
             else if (HostInfo.AppKind == AppKind.MauiApp) {
                 // There should be no cycle reference as we implement INotificationPermissions for MAUI platform separately
                 var notificationsPermission = services.GetRequiredService<INotificationsPermission>();
-                var permissionState = await notificationsPermission.GetPermissionState(CancellationToken.None).ConfigureAwait(false);
-                SetPermissionState(permissionState);
+                var isGranted = await notificationsPermission.IsGranted().ConfigureAwait(false);
+                SetIsGranted(isGranted);
             }
             await _whenPermissionStateReady.Task.ConfigureAwait(false);
         }
@@ -70,15 +70,14 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
             await JS.InvokeVoidAsync(JSUnregisterRequestNotificationHandlerMethod, reference).ConfigureAwait(false);
     }
 
-    public async Task<PermissionState> GetPermissionState(CancellationToken cancellationToken)
+    public async Task<bool?> IsGranted(CancellationToken cancellationToken)
     {
-        await WhenReady.ConfigureAwait(false);
+        await WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         return _permissionState.Value;
     }
 
-    public Task RequestNotificationPermission(CancellationToken cancellationToken)
-        // Web browser notification permission requests are handled by notification-ui.ts
-        => Task.CompletedTask;
+    public Task Request(CancellationToken cancellationToken = default)
+        => Task.CompletedTask; // Actually handled by notification-ui.ts
 
     [JSInvokable]
     public Task HandleNotificationNavigation(string absoluteUrl)
@@ -92,16 +91,16 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
         return AutoNavigationUI.DispatchNavigateTo(localUrl, AutoNavigationReason.Notification);
     }
 
-    public void SetPermissionState(PermissionState permissionState)
+    public void SetIsGranted(bool? isGranted)
     {
         try {
             lock (Lock) {
-                if (permissionState == _permissionState.Value)
+                if (isGranted == _permissionState.Value)
                     return;
             }
             // Log.LogWarning("SetPermissionState: {Value} @ #{Hash}", permissionState, GetHashCode());
-            _permissionState.Value = permissionState;
-            if (permissionState == ActualChat.UI.Blazor.PermissionState.Granted)
+            _permissionState.Value = isGranted;
+            if (isGranted == true)
                 RegisterDevice();
         }
         finally {
@@ -113,11 +112,11 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     public void SetPermissionState(string permissionState)
     {
         var state = permissionState switch {
-            "granted" => ActualChat.UI.Blazor.PermissionState.Granted,
-            "prompt" => ActualChat.UI.Blazor.PermissionState.Prompt,
-            _ => ActualChat.UI.Blazor.PermissionState.Denied,
+            "granted" => true,
+            "prompt" => (bool?)null,
+            _ => false,
         };
-        SetPermissionState(state);
+        SetIsGranted(state);
     }
 
     // Private methods

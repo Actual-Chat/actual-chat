@@ -26,7 +26,7 @@ public static partial class MauiProgram
         // Temporarily disabled switch between loud speaker and earpiece
         // to have single audio channel controlled with volume buttons
         //services.AddScoped<IAudioOutputController>(c => new AndroidAudioOutputController(c));
-        services.AddScoped<INotificationsPermission>(_ => new AndroidNotificationsPermission());
+        services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c));
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
         services.AddScoped(c => new NativeGoogleAuth(c));
     }

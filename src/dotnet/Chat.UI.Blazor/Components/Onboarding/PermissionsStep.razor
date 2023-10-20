@@ -121,12 +121,19 @@
         if (_model is not { } m)
             return false;
 
+        var requests = new List<Func<Task>>();
         if (m.RequestMicrophonePermission)
-            await m.MicrophonePermission.CheckOrRequest();
+            requests.Add(() => m.MicrophonePermission.CheckOrRequest().AsTask());
         if (m.RequestNotificationsPermission)
-            await m.NotificationsPermission.RequestNotificationPermission(default);
+            requests.Add(() => m.NotificationsPermission.Request());
         if (m.RequestContactsPermission)
-            await m.ContactsPermission.CheckOrRequest();
+            requests.Add(() => m.ContactsPermission.CheckOrRequest().AsTask());
+
+        for (var i = 0; i < requests.Count; i++) {
+            if (i != 0)
+                await Task.Delay(300);
+            await requests[i].Invoke();
+        }
         return true;
     }
 

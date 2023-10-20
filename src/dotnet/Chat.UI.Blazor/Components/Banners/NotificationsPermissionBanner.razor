@@ -10,7 +10,7 @@
     if (ReferenceEquals(m, Model.Loading))
         return;
 
-    var isVisible = m is { State: PermissionState.Prompt, IsDismissed: false };
+    var isVisible = m is { IsGranted: not true, IsDismissed: false };
 }
 
 @if (isVisible) {
@@ -78,8 +78,8 @@
     private void OnDismiss()
         => _dismissedAt.Value = Clocks.SystemClock.Now;
 
-    private Task OnConfigureClick(MouseEventArgs arg)
-        => NotificationsPermission.RequestNotificationPermission(CancellationToken.None);
+    private void OnConfigureClick()
+        => NotificationsPermission.Request();
 
     private Task OnConfigureRendered(ElementReference buttonRef) {
         _ = NotificationUI.RegisterRequestNotificationHandler(buttonRef);
@@ -89,9 +89,9 @@
     // Nested types
 
     public sealed record Model(
-        PermissionState State,
+        bool? IsGranted,
         bool IsDismissed
     ) {
-        public static readonly Model Loading = new(PermissionState.Denied, true);
+        public static readonly Model Loading = new(null, true);
     }
 }
