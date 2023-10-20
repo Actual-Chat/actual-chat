@@ -1,8 +1,8 @@
 @namespace ActualChat.UI.Blazor.Components
 @inherits FusionComponentBase
 
-<div class="severity-icon @CircleBgColor">
-     <i class="@Icon @IconColor text-2xl"></i>
+<div class="severity-icon">
+     <i class="@Icon text-2xl"></i>
 </div>
 
 @code {
@@ -12,29 +12,13 @@
         get {
             var iconName = Severity switch {
                 BannerSeverity.Success => "checkmark-circle",
-                BannerSeverity.Info => "info",
+                BannerSeverity.Info => "bell",
                 BannerSeverity.Error => "info",
                 BannerSeverity.Warning => "alert-triangle",
-                _ => "",
+                _ => "info",
             };
 
             return $"icon-{iconName}";
         }
     }
-
-    private string IconColor => Severity switch {
-        BannerSeverity.Success => "text-banner-success",
-        BannerSeverity.Info => "text-banner-info",
-        BannerSeverity.Error => "text-banner-error",
-        BannerSeverity.Warning => "text-banner-warning",
-        _ => "",
-    };
-
-    private string CircleBgColor => Severity switch {
-        BannerSeverity.Success => "bg-banner-success",
-        BannerSeverity.Info => "bg-banner-info",
-        BannerSeverity.Error => "bg-banner-error",
-        BannerSeverity.Warning => "bg-banner-warning",
-        _ => "",
-    };
 }

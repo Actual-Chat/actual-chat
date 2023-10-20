@@ -30,5 +30,5 @@ body.hoverable .blazor-mode-toggle .btn.btn-square:disabled:hover .btn-content {
     @apply bg-round opacity-80;
 }
 body.hoverable .blazor-mode-toggle .btn.btn-square:hover:not(:disabled) .btn-content {
-    @apply bg-round-hover underline;
+    @apply bg-hover underline;
 }

@@ -20,7 +20,7 @@
 }
 .right-panel-chat-info-item.hovered {
     @apply cursor-pointer;
-    @apply hover:bg-round-hover;
+    @apply hover:bg-hover;
 }
 .right-panel-chat-info-item > .c-icon {
     @apply flex items-center justify-center;
@@ -76,7 +76,7 @@
     @apply m-0.5;
 }
 body.hoverable .author-list-tab .avatar-badge:hover {
-    @apply bg-round-hover;
+    @apply bg-hover;
 }
 .author-list-tab > .c-content {
     @apply flex-auto flex-y gap-y-1;

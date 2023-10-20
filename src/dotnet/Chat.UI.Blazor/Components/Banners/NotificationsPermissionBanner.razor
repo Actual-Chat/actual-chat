@@ -15,7 +15,14 @@
 
 @if (isVisible) {
     <RenderIntoSlot Name="PermissionBanner">
-        <Banner @key="GetType()" IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowDismissButton="true" Dismiss="OnDismiss">
+        <Banner
+            @key="GetType()"
+            IsVisible="@isVisible"
+            Severity="BannerSeverity.Info"
+            Dismiss="OnDismiss">
+            <Icon>
+                <i class="icon-bell text-2xl"></i>
+            </Icon>
             <Body>
                 Actual Chat can <strong>notify</strong> you about new messages
             </Body>
