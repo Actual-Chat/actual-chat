@@ -52,10 +52,11 @@
         _localUrl = null;
         switch (Markup.Kind) {
         case UrlMarkupKind.Www:
-            if (url.OrdinalStartsWith(History.Nav.BaseUri))
-                _localUrl = new LocalUrl(History.Nav.ToBaseRelativePath(url));
-            else if (url.OrdinalStartsWith(History.UrlMapper.BaseUrl))
-                _localUrl = new LocalUrl(History.UrlMapper.ToBaseRelativePath(url));
+            var url2 = url.EnsureSuffix("/");
+            if (url2.OrdinalStartsWith(History.Nav.BaseUri))
+                _localUrl = new LocalUrl(History.Nav.ToBaseRelativePath(url2));
+            else if (url2.OrdinalStartsWith(History.UrlMapper.BaseUrl))
+                _localUrl = new LocalUrl(History.UrlMapper.ToBaseRelativePath(url2));
             break;
         case UrlMarkupKind.Email:
             _hrefUrl = url.OrdinalStartsWith("mailto:") ? url : "mailto:" + url;
