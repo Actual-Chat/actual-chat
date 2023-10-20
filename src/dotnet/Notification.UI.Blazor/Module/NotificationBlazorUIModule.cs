@@ -22,7 +22,7 @@ public sealed class NotificationBlazorUIModule: HostModule, IBlazorUIModule
         services.AddScoped<NotificationUI>();
         if (appKind.IsServer() || appKind.IsWasmApp()) {
             services.AddTransient<IDeviceTokenRetriever>(c => new WebDeviceTokenRetriever(c));
-            services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<NotificationUI>());
+            services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<NotificationUI>());
         }
     }
 }

@@ -13,7 +13,7 @@ public static partial class MauiProgram
         services.AddSingleton(CrossFirebaseCloudMessaging.Current);
         services.AddScoped<PushNotifications>(c => new PushNotifications(c));
         services.AddTransient<IDeviceTokenRetriever>(c => c.GetRequiredService<PushNotifications>());
-        services.AddScoped<INotificationPermissions>(c => c.GetRequiredService<PushNotifications>());
+        services.AddScoped<INotificationsPermission>(c => c.GetRequiredService<PushNotifications>());
         services.AddScoped<IRecordingPermissionRequester>(_ => new IOSRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c));

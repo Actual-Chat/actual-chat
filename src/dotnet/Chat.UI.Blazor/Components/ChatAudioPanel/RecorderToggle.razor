@@ -197,7 +197,7 @@
                 return;
             }
 
-            var model = new GuideModal.Model(false, GuideType.Unknown);
+            var model = new RecordingTroubleshooterModal.Model();
             var modalRef = await ModalUI.Show(model, token);
             try {
                 await modalRef.WhenClosed.WaitAsync(token);

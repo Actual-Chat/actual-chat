@@ -1,3 +1,6 @@
+using ActualChat.Hosting;
+using ActualChat.UI;
+using Microsoft.AspNetCore.Components;
 using Stl.Locking;
 
 namespace ActualChat.Permissions;
@@ -5,11 +8,20 @@ namespace ActualChat.Permissions;
 public abstract class PermissionHandler : WorkerBase
 {
     private readonly IMutableState<bool?> _cached;
+    private HostInfo? _hostInfo;
+    private SystemSettingsUI? _permissionSettingsUI;
+    private Dispatcher? _dispatcher;
+    private IMomentClock? _clock;
+    private ILogger? _log;
 
     protected IServiceProvider Services { get; }
-    protected ILogger Log { get; }
+    protected HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    protected SystemSettingsUI SystemSettingsUI
+        => _permissionSettingsUI ??= Services.GetRequiredService<SystemSettingsUI>();
+    protected Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
+    protected IMomentClock Clock => _clock ??= Services.Clocks().CpuClock;
+    protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    protected IMomentClock Clock { get; init; }
     protected AsyncLock AsyncLock { get; } = AsyncLock.New(LockReentryMode.CheckedPass);
     protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
 
@@ -18,9 +30,8 @@ public abstract class PermissionHandler : WorkerBase
     protected PermissionHandler(IServiceProvider services, bool mustStart = true)
     {
         Services = services;
-        Log = services.LogFor(GetType());
+        _log = services.LogFor(GetType());
 
-        Clock = services.Clocks().CpuClock;
         _cached = services.StateFactory().NewMutable(
             (bool?)null,
             StateCategories.Get(GetType(), nameof(Cached)));
@@ -40,28 +51,28 @@ public abstract class PermissionHandler : WorkerBase
         if (_cached.Value == true)
             return true;
 
-        Log.LogDebug("Check");
-        var isGranted = await Get(cancellationToken).ConfigureAwait(false);
-        SetUnsafe(isGranted);
-        if (isGranted ?? false)
-            return true;
+        return await Dispatcher.InvokeAsync(async () => {
+            Log.LogDebug("Check");
+            var isGranted = await Get(cancellationToken).ConfigureAwait(true);
+            SetUnsafe(isGranted);
+            if (isGranted ?? false)
+                return true;
+            if (!mustRequest)
+                return false;
 
-        if (!mustRequest)
-            return false;
+            Log.LogDebug("Request");
+            var maybeGranted = await Request(cancellationToken).ConfigureAwait(true);
+            if (!maybeGranted)
+                await Troubleshoot(cancellationToken).ConfigureAwait(true);
 
-        Log.LogDebug("Request");
-        var wasRequested = await Request(cancellationToken).ConfigureAwait(false);
-        if (!wasRequested)
-            await Troubleshoot(cancellationToken).ConfigureAwait(false);
-
-        Log.LogDebug("Post-request check");
-        isGranted = await Get(cancellationToken).ConfigureAwait(false);
-        SetUnsafe(isGranted);
-
-        return isGranted ?? false;
+            Log.LogDebug("Post-request check");
+            isGranted = await Get(cancellationToken).ConfigureAwait(false);
+            SetUnsafe(isGranted);
+            return isGranted ?? false;
+        }).ConfigureAwait(false);
     }
 
-    public void Reset()
+    public void ForgetCached()
         => _cached.Value = null;
 
     public async Task<bool?> Check(CancellationToken cancellationToken)
@@ -74,17 +85,19 @@ public abstract class PermissionHandler : WorkerBase
         if (_cached.Value == true)
             return true;
 
-        Log.LogDebug("Check");
-        var isGranted = await Get(cancellationToken).ConfigureAwait(false);
-        SetUnsafe(isGranted);
-        return isGranted;
+        return await Dispatcher.InvokeAsync(async () => {
+            Log.LogDebug("Check");
+            var isGranted = await Get(cancellationToken).ConfigureAwait(false);
+            SetUnsafe(isGranted);
+            return isGranted;
+        }).ConfigureAwait(false);
     }
 
     // Protected methods
 
     protected abstract Task<bool?> Get(CancellationToken cancellationToken);
     protected abstract Task<bool> Request(CancellationToken cancellationToken);
-    protected abstract Task<bool> Troubleshoot(CancellationToken cancellationToken);
+    protected abstract Task Troubleshoot(CancellationToken cancellationToken);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -101,12 +114,9 @@ public abstract class PermissionHandler : WorkerBase
             var cExpected = cCached;
             if (ExpirationPeriod is { } expirationPeriod)
                 _ = BackgroundTask.Run(async () => {
-                        await Clock.Delay(expirationPeriod, expirationToken).ConfigureAwait(false);
-                        await Set(null, cExpected, cancellationToken).ConfigureAwait(false);
-                    },
-                    Log,
-                    "Expiration task failed",
-                    CancellationToken.None);
+                    await Clock.Delay(expirationPeriod, expirationToken).ConfigureAwait(false);
+                    await Set(null, cExpected, cancellationToken).ConfigureAwait(false);
+                }, Log, "Expiration task failed", CancellationToken.None);
         }
     }
 
@@ -126,4 +136,7 @@ public abstract class PermissionHandler : WorkerBase
         if (_cached.Value != value)
             _cached.Value = value;
     }
+
+    protected Task OpenSystemSettings()
+        => SystemSettingsUI.Open();
 }

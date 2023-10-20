@@ -11,7 +11,7 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
-public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificationPermissions, IDisposable
+public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificationsPermission, IDisposable
 {
     private NotificationUI? _notificationUI;
     private History? _history;
@@ -81,9 +81,9 @@ public class PushNotifications : IDeviceTokenRetriever, IHasServices, INotificat
         var (granted, error) = await NotificationCenter.RequestAuthorizationAsync(options)
             .ConfigureAwait(false);
         if (granted)
-            Log.LogInformation("RequestNotificationPermissions: granted", granted);
+            Log.LogInformation("RequestNotificationPermission: granted");
         else
-            Log.LogWarning("RequestNotificationPermissions: denied, {Error}", error);
+            Log.LogWarning("RequestNotificationPermission: denied, {Error}", error);
 
         var state = await GetPermissionState(cancellationToken).ConfigureAwait(false);
         NotificationUI.SetPermissionState(state);

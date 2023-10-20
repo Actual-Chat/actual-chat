@@ -19,17 +19,17 @@
     <Form
         @ref="_formRef"
         Class="mt-6"
-        Model="@_stepModel">
+        Model="@_model">
         <DataAnnotationsValidator/>
         <FormSection
-            For="() => _stepModel.Email"
+            For="() => _model.Email"
             InputId="email"
             Label="Email"
             IsRequired="true"
             IsLabelInsideInput="true">
             <InputText
                 id="email"
-                @bind-Value="_stepModel.Email"
+                @bind-Value="_model.Email"
                 autocomplete="email"
                 type="email"
                 inputmode="email"/>
@@ -38,7 +38,7 @@
 </div>
 
 @code {
-    private readonly Model _stepModel = new();
+    private readonly Model _model = new();
     private Form? _formRef;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -55,16 +55,16 @@
             if (Account.HasVerifiedEmail())
                 return true;
 
-            return OnboardingUI.Settings.Value.IsEmailStepCompleted;
+            return OnboardingUI.UserSettings.Value.IsEmailStepCompleted;
         }
     }
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsEmailStepCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsEmailStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await AccountUI.OwnAccount.Use();
-        _stepModel.Email = account.Email;
+        _model.Email = account.Email;
     }
 
     protected override Task<bool> Validate() {
@@ -74,7 +74,7 @@
 
     protected override async Task<bool> Save() {
         var account = await AccountUI.OwnAccount.Use();
-        var command = new Accounts_Update(Session, account with { Email = _stepModel.Email }, account.Version);
+        var command = new Accounts_Update(Session, account with { Email = _model.Email }, account.Version);
         var (_, error) = await UICommander.Run(command);
         return error is null;
     }

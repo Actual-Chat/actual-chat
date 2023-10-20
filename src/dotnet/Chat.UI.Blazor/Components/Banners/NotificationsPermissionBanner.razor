@@ -4,7 +4,7 @@
 @using ActualChat.Hosting
 @using ActualChat.Kvas
 @using ActualChat.Notification
-@inherits ComputedStateComponent<GrantNotificationPermissionBanner.Model>
+@inherits ComputedStateComponent<NotificationsPermissionBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -17,7 +17,7 @@
     <RenderIntoSlot Name="PermissionBanner">
         <Banner @key="GetType()" IsVisible="@isVisible" Severity="BannerSeverity.Info" ShowDismissButton="true" Dismiss="OnDismiss">
             <Body>
-            Actual Chat can notify you about new messages
+                Actual Chat can <strong>notify</strong> you about new messages
             </Body>
             <Buttons>
                 <Button
@@ -36,17 +36,17 @@
 
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
+    [Inject] private INotificationsPermission NotificationsPermission { get; init; } = null!;
     [Inject] private LocalSettings LocalSettings { get; init; } = null!;
     [Inject] private NotificationUI NotificationUI { get; init; } = null!;
-    [Inject] private INotificationPermissions NotificationPermissions { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
     protected override void OnInitialized() {
-        _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, nameof(_dismissedAt)));
+        _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, "Permissions.Notifications.DismissedAt"));
         base.OnInitialized();
     }
 
@@ -78,9 +78,8 @@
     private void OnDismiss()
         => _dismissedAt.Value = Clocks.SystemClock.Now;
 
-
     private Task OnConfigureClick(MouseEventArgs arg)
-        => NotificationPermissions.RequestNotificationPermission(CancellationToken.None);
+        => NotificationsPermission.RequestNotificationPermission(CancellationToken.None);
 
     private Task OnConfigureRendered(ElementReference buttonRef) {
         _ = NotificationUI.RegisterRequestNotificationHandler(buttonRef);

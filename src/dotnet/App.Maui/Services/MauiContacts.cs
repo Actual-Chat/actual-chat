@@ -14,20 +14,24 @@ namespace ActualChat.App.Maui.Services;
 public class MauiContacts(IServiceProvider services) : DeviceContacts
 {
     private Symbol? _deviceId;
-    private Session Session { get; } = services.Session();
-    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private ContactsPermissionHandler Permissions { get; } = services.GetRequiredService<ContactsPermissionHandler>();
-    private IDeviceIdProvider DeviceIdProvider { get; } = services.GetRequiredService<IDeviceIdProvider>();
-    private ILogger Log { get; } = services.LogFor<MauiContacts>();
+    private Session? _session;
+    private IAccounts? _accounts;
+    private ContactsPermissionHandler? _permissions;
+    private ILogger? _log;
 
     public override Symbol DeviceId => _deviceId ??= DeviceIdProvider.GetDeviceId();
+    private Session Session => _session ??= services.Session();
+    private IAccounts Accounts => _accounts ??= services.GetRequiredService<IAccounts>();
+    private ContactsPermissionHandler Permissions => _permissions ??= services.GetRequiredService<ContactsPermissionHandler>();
+    private IDeviceIdProvider DeviceIdProvider { get; } = services.GetRequiredService<IDeviceIdProvider>();
+    private ILogger Log => _log ??= services.LogFor<MauiContacts>();
 
     public override async Task<ApiArray<ExternalContact>> List(CancellationToken cancellationToken)
     {
         try {
             var isGranted = await Permissions.Check(cancellationToken).ConfigureAwait(false);
             if (isGranted != true) {
-                Log.LogError("Contacts permission is missing");
+                Log.LogWarning("Contacts permission is isn't granted");
                 return default;
             }
 
@@ -40,7 +44,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
             return deviceContacts.Select(x => ToExternalContact(account.Id, phoneNumberExtractor, x)).ToApiArray();
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to read contacts from device");
+            Log.LogError(e, "Failed to read device contacts");
             return default;
         }
     }

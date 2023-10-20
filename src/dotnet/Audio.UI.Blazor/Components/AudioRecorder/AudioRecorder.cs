@@ -92,7 +92,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                 .InvokeAsync<bool>("startRecording", cts.Token, chatId, repliedChatEntryId)
                 .ConfigureAwait(false);
             if (!isStarted) {
-                MicrophonePermission.Reset();
+                MicrophonePermission.ForgetCached();
                 Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);
                 // Cancel recording
                 MarkStopped();
@@ -192,7 +192,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     internal async Task<bool?> CheckPermission(CancellationToken cancellationToken = default)
     {
-        await WhenInitialized.ConfigureAwait(false);
+        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         var state = await _jsRef.InvokeAsync<string>("checkPermission", cancellationToken).ConfigureAwait(false);
         return state switch {
             "prompt" => null,
@@ -204,7 +204,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     internal async Task<bool> RequestPermission(CancellationToken cancellationToken = default)
     {
-        await WhenInitialized.ConfigureAwait(false);
+        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         return await _jsRef.InvokeAsync<bool>("requestPermission", cancellationToken).ConfigureAwait(false);
     }
 

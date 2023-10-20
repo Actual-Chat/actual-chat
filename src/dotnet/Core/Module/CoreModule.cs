@@ -1,8 +1,10 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
+using ActualChat.Permissions;
 using ActualChat.Rpc;
 using ActualChat.Security;
+using ActualChat.UI;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.ObjectPool;
@@ -110,6 +112,9 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         // Features
         services.AddScoped(c => new Features(c));
         fusion.AddService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
+
+        // UI
+        services.AddScoped(_ => new SystemSettingsUI());
 
         if (isServer)
             InjectServerServices(services);

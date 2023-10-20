@@ -77,12 +77,12 @@ export class NotificationUI {
         }
     }
 
-    public static async registerRequestNotificationHandler(buttonContainer: HTMLElement): Promise<void> {
-        buttonContainer.addEventListener('click', this.requestNotificationPermission);
+    public static async registerRequestNotificationHandler(element: HTMLElement): Promise<void> {
+        element.addEventListener('click', this.requestNotificationPermissionHandler);
     }
 
-    public static async unregisterRequestNotificationHandler(buttonContainer: HTMLElement): Promise<void> {
-        buttonContainer.removeEventListener('click', this.requestNotificationPermission);
+    public static async unregisterRequestNotificationHandler(element: HTMLElement): Promise<void> {
+        element.removeEventListener('click', this.requestNotificationPermissionHandler);
     }
 
     public static async requestNotificationPermission(): Promise<boolean> {
@@ -131,6 +131,11 @@ export class NotificationUI {
             const url = event.data?.url;
             await this.backendRef.invokeMethodAsync('HandleNotificationNavigation', url);
         });
+    }
+
+    // Must be lambda, otherwise "this" is going to be wrong here
+    private static requestNotificationPermissionHandler = () => {
+        void this.requestNotificationPermission();
     }
 }
 

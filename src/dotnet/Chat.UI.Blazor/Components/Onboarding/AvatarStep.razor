@@ -14,10 +14,10 @@
     <p class="text-title-1 text-center">Your user name and avatar</p>
     <Form
         @ref="_formRef"
-        Model="@_stepModel">
+        Model="@_model">
         <DataAnnotationsValidator/>
         <div class="flex-none flex-x my-8">
-            <Pic Title="@_stepModel.Name" Picture="@_stepModel.Picture" Size="SquareSize.Size24">
+            <Pic Title="@_model.Name" Picture="@_model.Picture" Size="SquareSize.Size24">
                 <NoPicture>
                     <AnonymousIcon Class="w-24 h-24"/>
                 </NoPicture>
@@ -32,7 +32,7 @@
                     </div>
                 </Button>
                 <FileUpload
-                    @key="@_stepModel.AvatarId.Value"
+                    @key="@_model.AvatarId.Value"
                     id="fileUpload"
                     UploadUrl="/api/avatars/upload-picture"
                     Uploaded="OnImagePicked"
@@ -53,26 +53,26 @@
             </div>
         </div>
         <FormSection
-            For="() => _stepModel.Name"
+            For="() => _model.Name"
             InputId="name"
             Label="First name"
             IsLabelInsideInput="true"
             IsRequired="true">
-            <InputText id="name" @bind-Value="_stepModel.Name" autocomplete="given-name"/>
+            <InputText id="name" @bind-Value="_model.Name" autocomplete="given-name"/>
         </FormSection>
         <FormSection
-            For="() => _stepModel.LastName"
+            For="() => _model.LastName"
             InputId="lastName"
             Label="Last name (optional)"
             IsLabelInsideInput="true">
-            <InputText id="lastName" @bind-Value="_stepModel.LastName" autocomplete="family-name"/>
+            <InputText id="lastName" @bind-Value="_model.LastName" autocomplete="family-name"/>
         </FormSection>
     </Form>
 </div>
 
 @code {
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
-    private readonly AvatarStepModel _stepModel = new();
+    private readonly Model _model = new();
     private Form? _formRef;
 
     [Inject] private Session Session { get; init; } = null!;
@@ -81,19 +81,19 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
 
-    public override bool IsCompleted => OnboardingUI.Settings.Value.IsAvatarStepCompleted;
+    public override bool IsCompleted => OnboardingUI.UserSettings.Value.IsAvatarStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateSettings(OnboardingUI.Settings.Value with { IsAvatarStepCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsAvatarStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await Accounts.GetOwn(Session, CancellationToken.None);
-        _stepModel.Name = account.Name;
-        _stepModel.LastName = account.LastName;
+        _model.Name = account.Name;
+        _model.LastName = account.LastName;
 
         if (!account.Avatar.Id.IsEmpty) {
-            _stepModel.Picture = account.Avatar.Picture!;
-            _stepModel.AvatarId = account.Avatar.Id;
+            _model.Picture = account.Avatar.Picture!;
+            _model.AvatarId = account.Avatar.Id;
             return;
         }
 
@@ -104,8 +104,8 @@
         if (error != null)
             return;
 
-        _stepModel.AvatarId = newAvatar.Id;
-        _stepModel.Picture = newAvatar.Picture! with { ExternalUrl = account.Avatar.PictureUrl };
+        _model.AvatarId = newAvatar.Id;
+        _model.Picture = newAvatar.Picture! with { ExternalUrl = account.Avatar.PictureUrl };
         var setDefaultAvatarCommand = new Avatars_SetDefault(Session, newAvatar.Id);
         await UICommander.Run(setDefaultAvatarCommand);
     }
@@ -120,20 +120,20 @@
         var updateAccountCommand = new Accounts_Update(
             Session,
             account with {
-                Name = _stepModel.Name,
-                LastName = _stepModel.LastName,
+                Name = _model.Name,
+                LastName = _model.LastName,
             },
             account.Version);
         await UICommander.Run(updateAccountCommand);
 
-        var avatar = await Avatars.GetOwn(Session, _stepModel.AvatarId, default).Require();
+        var avatar = await Avatars.GetOwn(Session, _model.AvatarId, default).Require();
         var updateAvatarCommand = new Avatars_Change(
             Session,
-            _stepModel.AvatarId,
+            _model.AvatarId,
             avatar.Version,
             new Change<AvatarFull> {
-                Update = avatar.WithPicture(_stepModel.Picture) with {
-                    Name = $"{_stepModel.Name} {_stepModel.LastName}".Trim(),
+                Update = avatar.WithPicture(_model.Picture) with {
+                    Name = $"{_model.Name} {_model.LastName}".Trim(),
                 },
             });
         var (_, error) = await UICommander.Run(updateAvatarCommand);
@@ -141,14 +141,14 @@
     }
 
     private void OnImagePicked(MediaContent mediaContent) {
-        _stepModel.Picture = new (mediaContent);
+        _model.Picture = new (mediaContent);
     }
 
     private void OnGenerateAvatarClick() {
-        _stepModel.Picture = new(null, DefaultUserPicture.GetBoringAvatar(IdGenerator.Next()));
+        _model.Picture = new(null, DefaultUserPicture.GetBoringAvatar(IdGenerator.Next()));
     }
 
-    public class AvatarStepModel {
+    public class Model {
         [Required] public string Name { get; set; } = "";
         public string LastName { get; set; } = "";
         public Symbol AvatarId { get; set; } = "";

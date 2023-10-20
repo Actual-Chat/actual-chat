@@ -1,8 +1,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Kvas
 @using ActualChat.Contacts.UI.Blazor.Services
+@using ActualChat.Hosting
 @using ActualChat.Permissions
-@inherits ComputedStateComponent<GrantContactPermissionBanner.Model>
+@inherits ComputedStateComponent<ContactsPermissionBanner.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -20,7 +21,7 @@
             ShowDismissButton="true"
             Dismiss="OnDismiss">
             <Body>
-                Import contacts to find your friends
+                Actual Chat can import your <strong>contacts</strong> to find them here
             </Body>
             <Buttons>
                 <Button
@@ -34,19 +35,20 @@
 @code {
     private IStoredState<Moment> _dismissedAt = null!;
 
-    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private DeviceContacts DeviceContacts { get; init; } = null!;
-    [Inject] private ContactsPermissionHandler ContactPermissions { get; init; } = null!;
+    [Inject] private ContactsPermissionHandler ContactsPermission { get; init; } = null!;
+    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private ILogger<GrantContactPermissionBanner> Log { get; init; } = null!;
+    [Inject] private ILogger<ContactsPermissionBanner> Log { get; init; } = null!;
 
     protected override void OnInitialized() {
-        _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "ContactPermission_DismissedAt"));
+        _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "Permissions.Contacts.DismissedAt"));
         base.OnInitialized();
     }
 
     protected override async Task OnInitializedAsync()
-        => await ContactPermissions.Check(CancellationToken.None);
+        => await ContactsPermission.Check(CancellationToken.None);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -59,7 +61,7 @@
         if (!_dismissedAt.WhenRead.IsCompleted)
             await _dismissedAt.WhenRead;
 
-        var permissionState = await ContactPermissions.Cached.Use(cancellationToken);
+        var permissionState = await ContactsPermission.Cached.Use(cancellationToken);
         // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
         var dismissedAt = await _dismissedAt.Use(cancellationToken);
         var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
@@ -72,17 +74,8 @@
     private void OnDismiss()
         => _dismissedAt.Value = Clocks.SystemClock.Now;
 
-    private async Task OnConfigureClick(MouseEventArgs e) {
-        switch (ContactPermissions.Cached.Value)
-        {
-            case false:
-                await ContactPermissions.OpenSettings();
-                break;
-            case null:
-                await ContactPermissions.CheckOrRequest(true);
-                break;
-        }
-    }
+    private Task OnConfigureClick(MouseEventArgs e)
+        => ContactsPermission.CheckOrRequest().AsTask();
 
     // Nested types
 
