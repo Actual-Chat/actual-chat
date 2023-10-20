@@ -255,7 +255,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (chatTiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
-                return new VirtualListData<ChatMessageModel>(new [] { new VirtualListDataTile<ChatMessageModel>(ChatMessageModel.FromEmpty(Chat.Id))}) {
+                return new VirtualListData<ChatMessageModel>(new [] {
+                    new VirtualListDataTile<ChatMessageModel>(ChatMessageModel.FromEmpty(Chat.Id)),
+                }) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
                     ScrollToKey = null,
