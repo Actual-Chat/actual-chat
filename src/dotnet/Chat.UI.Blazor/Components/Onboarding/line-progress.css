@@ -11,5 +11,5 @@
     @apply bg-primary;
 }
 .line-progress-item.white {
-    @apply text-white;
+    @apply text-06;
 }

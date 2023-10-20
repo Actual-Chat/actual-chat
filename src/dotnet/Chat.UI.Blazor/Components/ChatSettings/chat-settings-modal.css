@@ -47,7 +47,7 @@
 }
 
 .form .field-allow-guest .tile-item-body-caption label {
-    @apply text-record;
+    @apply text-danger;
 }
 
 .wide .field-chat-title input {
@@ -60,7 +60,7 @@
 
 .edit-chat-settings-modal .item-leave-group .tile-item-icon,
 .edit-chat-settings-modal .item-leave-group .tile-item-body-content {
-    @apply text-record;
+    @apply text-danger;
 }
 
 /* Edit members page */

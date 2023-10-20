@@ -204,7 +204,7 @@ body.hoverable .post-panel-btn:hover {
 body.wide .attachment-mode .post-panel-btn.post-message {
     @apply flex;
     @apply animate-display-from-left;
-    @apply text-accent;
+    @apply text-primary;
 }
 body.narrow .attachment-mode .post-panel-btn.post-message {
     @apply text-06;
@@ -241,13 +241,13 @@ body.narrow .attachment-list-btn.btn {
     @apply px-0;
 }
 .attachment-list-btn.btn .btn-content {
-    @apply text-accent font-medium;
+    @apply text-primary font-medium;
 }
 .attachment-list-btn.btn:hover .btn-content {
     @apply brightness-125;
 }
-.attachment-list-btn.btn.btn-danger .btn-content {
-    @apply text-record;
+.attachment-list-btn.btn.c-remove .btn-content {
+    @apply text-danger;
 }
 
 .attachment-wrapper {

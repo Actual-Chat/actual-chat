@@ -58,7 +58,7 @@
     @apply text-02 text-title-1;
 }
 .right-chat-panel > .c-header > .c-center i.icon-edit {
-    @apply text-accent;
+    @apply text-primary;
 }
 
 

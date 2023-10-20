@@ -10,7 +10,7 @@
     @apply text-center align-middle;
 }
 .totp-input > .c-digits > input[type=text].c-digit:focus, .totp-input > .c-digits > input[type=text].c-digit:active {
-    @apply border-b-accent outline-none;
+    @apply border-b-primary outline-none;
     box-shadow: none;
 }
 .totp-input.invalid > .c-digits > input[type=text].c-digit {

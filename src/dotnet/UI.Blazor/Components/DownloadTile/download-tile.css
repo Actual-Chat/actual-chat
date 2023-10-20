@@ -6,7 +6,7 @@
     @apply overflow-hidden;
 }
 body.hoverable .download-tile:hover {
-    @apply bg-accent;
+    @apply bg-primary;
 }
 body.hoverable .download-tile:hover .c-title,
 body.hoverable .download-tile:hover .c-text {
