@@ -10,7 +10,7 @@ body.narrow .download-tiles {
     @apply flex-x items-center gap-2;
     @apply px-2 py-1;
     @apply rounded-lg;
-    @apply bg-black;
+    @apply bg-08;
 }
 .download-tiles .web-app > span {
     @apply text-base font-medium text-06;

@@ -179,6 +179,7 @@ module.exports = {
         'bg-06': 'var(--background-06)',
         'text-06': 'var(--text-06)',
         'bg-07': 'var(--background-07)',
+        'bg-08': 'var(--background-08)',
       },
       backgroundColor: {
         '01': 'var(--background-01)',
@@ -188,7 +189,7 @@ module.exports = {
         '05': 'var(--background-05)',
         '06': 'var(--background-06)',
         '07': 'var(--background-07)',
-        '09': 'var(--text-03)',
+        '08': 'var(--background-08)',
         'banner-warning': 'var(--background-banner-warning)',
         'banner-error': 'var(--background-banner-error)',
         'banner-info': 'var(--background-banner-info)',
