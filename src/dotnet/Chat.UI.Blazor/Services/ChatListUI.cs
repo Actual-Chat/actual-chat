@@ -140,9 +140,10 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats
             .Select(c => ChatUI.Get(c.ChatId, cancellationToken))
-            .Collect()
+            .CollectResults()
             .ConfigureAwait(true)
-            ).SkipNullItems();
+            ).Select(x => x.ValueOrDefault)
+            .SkipNullItems();
         return chats.ToList();
     }
 
@@ -220,13 +221,15 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
                 _ = IncreaseLoadLimit();
             }
 
-            var contacts = await contactIds
+            var contacts = (await contactIds
                 .Select(contactId => ChatUI.Get(contactId.ChatId, cancellationToken))
-                .Collect()
-                .ConfigureAwait(false);
-            var result = contacts.SkipNullItems().ToDictionary(c => c.Id);
-            DebugLog?.LogDebug("<- ListAllUnorderedRaw ({IdsLength} contacts, {Duration})", contacts.Length, startedAt.Elapsed.ToShortString());
-            return result;
+                .CollectResults(256)
+                .ConfigureAwait(false)
+                ).Select(x => x.ValueOrDefault)
+                .SkipNullItems()
+                .ToDictionary(c => c.Id);
+            DebugLog?.LogDebug("<- ListAllUnorderedRaw ({Count} contacts, {Duration})", contacts.Count, startedAt.Elapsed.ToShortString());
+            return contacts;
         }
         finally {
             LoadingUI.MarkChatListLoaded();
