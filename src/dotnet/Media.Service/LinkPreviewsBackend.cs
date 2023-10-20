@@ -27,10 +27,15 @@ public class LinkPreviewsBackend(IServiceProvider services)
             ["image/svg+xml"] = ".svg",
             ["image/webp"] = ".webp",
         };
+
+    // all backend services should be requested lazily to avoid circular references!
+    private IMediaBackend? _mediaBackend;
+    private IChatsBackend? _chatsBackend;
+    private IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>();
+    private IMediaBackend MediaBackend => _mediaBackend ??= services.GetRequiredService<IMediaBackend>();
+
     private MediaSettings Settings { get; } = services.GetRequiredService<MediaSettings>();
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
-    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
-    private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private HttpClient HttpClient { get; } = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(LinkPreviewsBackend));
     private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; } = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
     private IContentSaver ContentSaver { get; } = services.GetRequiredService<IContentSaver>();
@@ -39,10 +44,10 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
     // [ComputeMethod]
     public virtual Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
-        => Fetch(id, null, true, cancellationToken);
+        => GetAndRefreshIfRequired(id, null, true, cancellationToken);
 
     // [ComputeMethod]
-    public virtual async Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
+    public virtual async Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
         if (entry is null)
@@ -54,8 +59,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         // Regenerate link preview in background in case there is no preview yet (or it was wiped)
         using var _1 = ExecutionContextExt.SuppressFlow();
-        _ = BackgroundTask.Run(() => Renew(entry, CancellationToken.None), CancellationToken.None);
-        return linkPreview;
+        _ = BackgroundTask.Run(() => GenerateForEntry(entry, CancellationToken.None), CancellationToken.None);
+        return null;
     }
 
     // [CommandHandler]
@@ -75,55 +80,61 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (id.IsEmpty)
             return null;
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
+        var alreadyCrawlingKey = ToRedisKey(id);
+        try {
+            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbLinkPreview = await dbContext.LinkPreviews.ForUpdate()
-            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-            .ConfigureAwait(false);
+            var dbLinkPreview = await dbContext.LinkPreviews.ForUpdate()
+                .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
+                .ConfigureAwait(false);
 
-        if (dbLinkPreview != null && Now - dbLinkPreview.ModifiedAt.ToMoment() < TimeSpan.FromDays(1))
+            if (dbLinkPreview != null && Now - dbLinkPreview.ModifiedAt.ToMoment() < TimeSpan.FromDays(1))
+                return dbLinkPreview.ToModel();
+
+            var canCrawl = await RedisDb.Database
+                .StringSetAsync(alreadyCrawlingKey, Now.ToString(), Settings.CrawlingTimeout, When.NotExists)
+                .ConfigureAwait(false);
+            if (!canCrawl)
+                // crawling of this url is already in progress
+                return null!;
+
+            var linkMeta = await Crawl(url, cancellationToken).ConfigureAwait(false);
+            if (dbLinkPreview == null) {
+                dbLinkPreview = new DbLinkPreview {
+                    Id = LinkPreview.ComposeId(url),
+                    Version = VersionGenerator.NextVersion(),
+                    Url = url,
+                    Title = linkMeta.Title,
+                    Description = linkMeta.Description,
+                    ThumbnailMediaId = linkMeta.PreviewMediaId,
+                    CreatedAt = Now,
+                    ModifiedAt = Now,
+                };
+                dbContext.Add((object)dbLinkPreview);
+            }
+            else {
+                dbLinkPreview.ThumbnailMediaId = linkMeta.PreviewMediaId;
+                dbLinkPreview.Title = linkMeta.Title;
+                dbLinkPreview.Description = linkMeta.Description;
+                dbLinkPreview.ModifiedAt = Now;
+                dbLinkPreview.Version = VersionGenerator.NextVersion(dbLinkPreview.Version);
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            context.Operation().Items.Set(true);
             return dbLinkPreview.ToModel();
-
-        var canCrawl = await RedisDb.Database
-            .StringSetAsync(ToRedisKey(id), Now.ToString(), Settings.CrawlingTimeout, When.NotExists)
-            .ConfigureAwait(false);
-        if (!canCrawl)
-            // crawling of this url is already in progress
-            return null!;
-
-        var linkMeta = await Crawl(url, cancellationToken).ConfigureAwait(false);
-        if (dbLinkPreview == null) {
-            dbLinkPreview = new DbLinkPreview {
-                Id = LinkPreview.ComposeId(url),
-                Version = VersionGenerator.NextVersion(),
-                Url = url,
-                Title = linkMeta.Title,
-                Description = linkMeta.Description,
-                ThumbnailMediaId = linkMeta.PreviewMediaId,
-                CreatedAt = Now,
-                ModifiedAt = Now,
-            };
-            dbContext.Add((object)dbLinkPreview);
         }
-        else {
-            dbLinkPreview.ThumbnailMediaId = linkMeta.PreviewMediaId;
-            dbLinkPreview.Title = linkMeta.Title;
-            dbLinkPreview.Description = linkMeta.Description;
-            dbLinkPreview.ModifiedAt = Now;
-            dbLinkPreview.Version = VersionGenerator.NextVersion(dbLinkPreview.Version);
+        finally {
+            await RedisDb.Database.KeyDeleteAsync(alreadyCrawlingKey).ConfigureAwait(false);
         }
-
-        await RedisDb.Database.KeyDeleteAsync(ToRedisKey(id));
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(true);
-        return dbLinkPreview.ToModel();
     }
 
     // Events
 
     [EventHandler]
+    // ReSharper disable once UnusedMemberHierarchy.Global
+    // ReSharper disable once MemberCanBeProtected.Global
     public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var (entry, _, changeKind) = eventCommand;
@@ -133,7 +144,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (changeKind is ChangeKind.Remove)
             return Task.CompletedTask;
 
-        return Renew(entry, cancellationToken);
+        return GenerateForEntry(entry, cancellationToken);
     }
 
     // Private methods
@@ -141,9 +152,9 @@ public class LinkPreviewsBackend(IServiceProvider services)
     private static string ToRedisKey(Symbol id)
         => $"{RedisKeyPrefix}{id.Value}";
 
-    private async Task<LinkPreview?> Renew(ChatEntry entry, CancellationToken cancellationToken)
+    private async Task<LinkPreview?> GenerateForEntry(ChatEntry entry, CancellationToken cancellationToken)
     {
-        var linkPreview = await Fetch(entry, false, cancellationToken).ConfigureAwait(false);
+        var linkPreview = await GetAndRefreshIfRequired(entry, false, cancellationToken).ConfigureAwait(false);
         var linkPreviewId = linkPreview?.Id ?? Symbol.Empty;
         if (entry.LinkPreviewId == linkPreviewId)
             return linkPreview;
@@ -156,18 +167,18 @@ public class LinkPreviewsBackend(IServiceProvider services)
         return linkPreview;
     }
 
-    private async Task<LinkPreview?> Fetch(ChatEntry entry, bool allowStale, CancellationToken cancellationToken)
+    private async Task<LinkPreview?> GetAndRefreshIfRequired(ChatEntry entry, bool allowStale, CancellationToken cancellationToken)
     {
         var urls = ExtractUrls(entry);
         foreach (var url in urls) {
-            var preview = await Fetch(LinkPreview.ComposeId(url), url, allowStale, cancellationToken).ConfigureAwait(false);
+            var preview = await GetAndRefreshIfRequired(LinkPreview.ComposeId(url), url, allowStale, cancellationToken).ConfigureAwait(false);
             if (preview != null)
                 return preview;
         }
         return null;
     }
 
-    private async Task<LinkPreview?> Fetch(Symbol id, string? url, bool allowStale, CancellationToken cancellationToken)
+    private async Task<LinkPreview?> GetAndRefreshIfRequired(Symbol id, string? url, bool allowStale, CancellationToken cancellationToken)
     {
         if (id.IsEmpty)
             return null;
@@ -175,7 +186,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var dbLinkPreview = await dbContext.LinkPreviews.ForUpdate()
+        var dbLinkPreview = await dbContext.LinkPreviews
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
 
@@ -234,7 +245,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var graph = await OpenGraph.ParseUrlAsync(url, timeout: (int)Settings.CrawlerGraphParsingTimeout.TotalMilliseconds, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         // TODO: limit image size limit
-        var mediaId = await GrabImage(graph.Image, cancellationToken).ConfigureAwait(false);
+        var mediaId = await GetMediaId(graph.Image, cancellationToken).ConfigureAwait(false);
         var description = graph.Metadata["og:description"].Value();
         if (!description.IsNullOrEmpty())
             description = description.HtmlDecode();
@@ -244,16 +255,16 @@ public class LinkPreviewsBackend(IServiceProvider services)
     private async Task<LinkMeta> CrawlImageLink(string url, CancellationToken cancellationToken)
     {
         // TODO: limit image size limit
-        var mediaId = await GrabImage(new Uri(url), cancellationToken).ConfigureAwait(false);
+        var mediaId = await GetMediaId(new Uri(url), cancellationToken).ConfigureAwait(false);
         return new LinkMeta ("", "", mediaId);
     }
 
-    private async Task<MediaId> GrabImage(Uri? imageUri, CancellationToken cancellationToken)
+    private async Task<MediaId> GetMediaId(Uri? imageUri, CancellationToken cancellationToken)
     {
         if (imageUri is null)
             return MediaId.None;
 
-        var fileInfo = await FetchImageFile().ConfigureAwait(false);
+        var fileInfo = await DownloadImageToFile().ConfigureAwait(false);
         if (fileInfo is null)
             return MediaId.None;
 
@@ -262,7 +273,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (media is not null)
             return media.Id;
         // TODO: extract common part with ChatMediaController
-        var (processedFile, size) = await ProcessFile(fileInfo, cancellationToken).ConfigureAwait(false);
+        var (processedFile, size) = await ProcessFile(fileInfo).ConfigureAwait(false);
         media = new Media(mediaId) {
             ContentId = $"media/{mediaId.LocalId}/{fileInfo.FileName}",
             FileName = fileInfo.FileName,
@@ -285,7 +296,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         return mediaId;
 
-        async Task<FileInfo?> FetchImageFile()
+        async Task<FileInfo?> DownloadImageToFile()
         {
             var cts = cancellationToken.CreateLinkedTokenSource();
             cts.CancelAfter(Settings.CrawlerImageDownloadTimeout);
@@ -299,15 +310,17 @@ public class LinkPreviewsBackend(IServiceProvider services)
             var fileName = Path.ChangeExtension(imageUri.Segments[^1], ext);
             return new FileInfo(fileName, contentType, imageBytes.Length, imageBytes);
         }
+
+        Task<ProcessedFileInfo> ProcessFile(FileInfo file)
+        {
+            var processor = UploadProcessors.FirstOrDefault(x => x.Supports(file));
+            return processor != null
+                ? processor.Process(file, cancellationToken)
+                : Task.FromResult(new ProcessedFileInfo(file, null));
+        }
     }
 
-    private Task<ProcessedFileInfo> ProcessFile(FileInfo file, CancellationToken cancellationToken)
-    {
-        var processor = UploadProcessors.FirstOrDefault(x => x.Supports(file));
-        return processor != null
-            ? processor.Process(file, cancellationToken)
-            : Task.FromResult(new ProcessedFileInfo(file, null));
-    }
+
 
     private sealed record LinkMeta(string Title, string Description, MediaId PreviewMediaId)
     {

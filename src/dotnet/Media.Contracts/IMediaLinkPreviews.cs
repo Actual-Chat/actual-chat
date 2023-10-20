@@ -7,5 +7,5 @@ public interface IMediaLinkPreviews : IComputeService
     [ComputeMethod]
     Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken);
+    Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken);
 }

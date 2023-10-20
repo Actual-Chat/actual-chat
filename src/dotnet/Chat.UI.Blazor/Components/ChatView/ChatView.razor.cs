@@ -271,23 +271,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (ShouldSuppressNewMessagesEntry(ItemVisibility.Value, lastTile))
                 _suppressNewMessagesEntry = true;
 
-        var linkPreviewMap = (await chatTiles
-            .SelectMany(t => t.Entries)
-            .Where(x => !x.LinkPreviewId.IsEmpty)
-            .Select(x => MediaLinkPreviews.GetForEntry(x.LinkPreviewId, x.Id, cancellationToken))
-            .CollectResults()
-            .ConfigureAwait(false)
-            ).Select(x => x.ValueOrDefault)
-            .SkipNullItems()
-            .DistinctBy(x => x.Id)
-            .ToDictionary(x => x.Id);
         var dataTiles = GetDataFromChatTiles(
             chatTiles,
             oldData,
             _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid,
             hasVeryFirstItem,
-            TimeZoneConverter,
-            linkPreviewMap);
+            TimeZoneConverter);
         var areSameDataTiles = !oldData.IsNone
             && dataTiles.Count == oldData.Tiles.Count
             && dataTiles
@@ -454,8 +443,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         VirtualListData<ChatMessageModel> oldData,
         long lastReadEntryId,
         bool hasVeryFirstItem,
-        TimeZoneConverter timeZoneConverter,
-        IReadOnlyDictionary<Symbol, Media.LinkPreview> linkPreviews)
+        TimeZoneConverter timeZoneConverter)
     {
         var isBlockStart = true;
         var lastDate = default(DateOnly);
@@ -546,7 +534,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                         IsBlockEnd = isBlockEnd,
                         HasEntryKindSign = isEntryKindChanged || (isBlockStart && isAudio),
                         IsForwardBlockStart = isForwardBlockStart,
-                        LinkPreview = linkPreviews.GetValueOrDefault(entry.LinkPreviewId)
+                        LinkPreview = entry.LinkPreview,
                     };
                     AddItem(item);
                 }

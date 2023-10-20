@@ -15,10 +15,23 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
 
-    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
-    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
-    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
-    private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
+    private static readonly Task<ILookup<TextEntryId, TextEntryAttachment>> EmptyAttachmentsTask =
+        Task.FromResult(Array.Empty<TextEntryAttachment>().ToLookup(ta => ta.EntryId));
+    private static readonly Task<IReadOnlyDictionary<Symbol, Media.LinkPreview>> EmptyLinkPreviewsTask =
+        Task.FromResult((IReadOnlyDictionary<Symbol, Media.LinkPreview>)new Dictionary<Symbol, Media.LinkPreview>().AsReadOnly());
+
+    // all backend services should be requested lazily to avoid circular references!
+    private IAccountsBackend? _accountsBackend;
+    private IAuthorsBackend? _authorsBackend;
+    private IRolesBackend? _rolesBackend;
+    private IMediaBackend? _mediaBackend;
+    private ILinkPreviewsBackend? _linkPreviewsBackend;
+    private IAccountsBackend AccountsBackend => _accountsBackend ??= services.GetRequiredService<IAccountsBackend>();
+    private IAuthorsBackend AuthorsBackend => _authorsBackend ??= services.GetRequiredService<IAuthorsBackend>();
+    private IRolesBackend RolesBackend => _rolesBackend ??= services.GetRequiredService<IRolesBackend>();
+    private IMediaBackend MediaBackend => _mediaBackend ??= services.GetRequiredService<IMediaBackend>();
+    private ILinkPreviewsBackend LinkPreviewsBackend => _linkPreviewsBackend ??= services.GetRequiredService<ILinkPreviewsBackend>();
+
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
@@ -235,34 +248,78 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
             .Select(x => x.Id)
             .ToList();
-        var allAttachments = entryIdsWithAttachments.Count > 0
-            ? await dbContext.TextEntryAttachments
- #pragma warning disable MA0002
-                .Where(x => entryIdsWithAttachments.Contains(x.EntryId))
- #pragma warning restore MA0002
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false)
-            : (IReadOnlyCollection<DbTextEntryAttachment>)Array.Empty<DbTextEntryAttachment>();
+        var linkPreviewIds  = dbEntries.Where(x => !string.IsNullOrEmpty(x.LinkPreviewId))
+            .Select(x => (Symbol)x.LinkPreviewId)
+            .Distinct()
+            .ToList();
 
-        var attachmentsLookup = allAttachments.ToLookup(x => x.EntryId, StringComparer.Ordinal);
-        var entries = await dbEntries.Select(async e => {
-                var entryAttachments = await attachmentsLookup[e.Id]
-                    .Select(async dbAttachment => {
-                        var attachment = dbAttachment.ToModel();
-                        if (attachment.MediaId.IsNone)
-                            return attachment;
+        var allAttachmentsTask = entryIdsWithAttachments.Count > 0
+            ? GetAttachments(dbContext, entryIdsWithAttachments)
+            : EmptyAttachmentsTask;
+        var allLinkPreviewsTask = linkPreviewIds.Count > 0
+            ? GetLinkPreviews(linkPreviewIds)
+            : EmptyLinkPreviewsTask;
 
-                        var media = await MediaBackend.Get(attachment.MediaId, cancellationToken).ConfigureAwait(false);
-                        return attachment with { Media = media! };
-                    })
-                    .Collect()
-                    .ConfigureAwait(false);
+        await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).ConfigureAwait(false);
 
-                return e.ToModel(entryAttachments);
-            })
-            .Collect()
-            .ConfigureAwait(false);
+        var allAttachments = allAttachmentsTask.Result;
+        var allLinkPreviews = allLinkPreviewsTask.Result;
+        var entries = dbEntries.Select(e => {
+            var entryId = TextEntryId.Parse(e.Id);
+            var entryAttachments = allAttachments[entryId];
+            var linkPreview = allLinkPreviews.GetValueOrDefault(e.LinkPreviewId);
+            return e.ToModel(entryAttachments, linkPreview);
+        });
         return new ChatTile(idTileRange, true, entries.ToApiArray());
+
+        async Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments(ChatDbContext dbContext1, ICollection<string> entryIdsWithAttachments1)
+        {
+            if (entryIdsWithAttachments1.Count == 0)
+                return EmptyAttachmentsTask.Result;
+
+            var dbAttachments = await dbContext1.TextEntryAttachments
+                #pragma warning disable MA0002
+                .Where(x => entryIdsWithAttachments1.Contains(x.EntryId))
+                #pragma warning restore MA0002
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var mediaIds = dbAttachments
+                .Where(dba => !dba.MediaId.IsNullOrEmpty())
+                .Select(dba => MediaId.ParseOrNone(dba.MediaId))
+                .Where(mid => !mid.IsNone)
+                .ToList();
+            var allMedia = mediaIds.Count > 0
+                ? (await mediaIds
+                        .Select(mid => MediaBackend.Get(mid, cancellationToken))
+                        .Collect()
+                        .ConfigureAwait(false))
+                    .Where(m => m != null)
+                    .ToDictionary(m => m!.Id)!
+                :  new Dictionary<MediaId,Media.Media>();
+            return dbAttachments
+                .Select(dba => {
+                    var attachment = dba.ToModel();
+                    if (attachment.MediaId.IsNone)
+                        return attachment;
+
+                    return attachment with { Media = allMedia.GetValueOrDefault(attachment.MediaId)!};
+                })
+                .ToLookup(a => a.EntryId);
+        }
+
+        async Task<IReadOnlyDictionary<Symbol, Media.LinkPreview>> GetLinkPreviews(ICollection<Symbol> linkPreviewIds1)
+        {
+            if (linkPreviewIds1.Count == 0)
+                return EmptyLinkPreviewsTask.Result;
+
+            return (await linkPreviewIds1
+                    .Select(id => LinkPreviewsBackend.Get(id, cancellationToken))
+                    .Collect()
+                    .ConfigureAwait(false))
+                .Where(lp => lp != null)
+                .ToDictionary(lp => lp!.Id)!;
+        }
     }
 
     // [CommandHandler]

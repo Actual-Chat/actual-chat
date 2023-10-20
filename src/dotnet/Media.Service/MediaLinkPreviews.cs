@@ -16,8 +16,8 @@ internal class MediaLinkPreviews(IServiceProvider services) : IMediaLinkPreviews
         => Backend.Get(id, cancellationToken);
 
     // [ComputeMethod]
-    public virtual Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
-        => id.IsEmpty || entryId.IsNone
+    public virtual Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken)
+        => entryId.IsNone
             ? Task.FromResult<LinkPreview?>(null)
-            : Backend.GetForEntry(id, entryId, cancellationToken);
+            : Backend.GetForEntry(entryId, cancellationToken);
 }

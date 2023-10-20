@@ -70,7 +70,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
             await JS.InvokeVoidAsync(JSUnregisterRequestNotificationHandlerMethod, reference).ConfigureAwait(false);
     }
 
-    public async Task<bool?> IsGranted(CancellationToken cancellationToken)
+    public async Task<bool?> IsGranted(CancellationToken cancellationToken = default)
     {
         await WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         return _permissionState.Value;

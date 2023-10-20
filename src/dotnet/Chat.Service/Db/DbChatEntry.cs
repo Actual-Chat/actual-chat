@@ -67,15 +67,15 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Content { get; set; } = "";
     public bool HasAttachments { get; set; }
     public bool HasReactions { get; set; }
-    public string LinkPreviewId { get; set; } = "";
-    public LinkPreviewMode LinkPreviewMode { get; set; }
+    public string? LinkPreviewId { get; set; }
+    public LinkPreviewMode? LinkPreviewMode { get; set; }
     public string? StreamId { get; set; }
 
     public long? AudioEntryId { get; set; }
     public long? VideoEntryId { get; set; }
     public string? TimeMap { get; set; }
 
-    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null)
+    public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, Media.LinkPreview? linkPreview = null)
     {
         var chatId = new ChatId(ChatId);
         var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
@@ -101,6 +101,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             Attachments = attachments?.ToApiArray() ?? default,
             LinkPreviewId = LinkPreviewId,
             LinkPreviewMode = LinkPreviewMode,
+            LinkPreview = linkPreview,
 #pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null

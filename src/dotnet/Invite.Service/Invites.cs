@@ -13,7 +13,7 @@ internal class Invites(IServiceProvider services) : IInvites
     private IServiceProvider Services { get; } = services;
     private IInvitesBackend Backend { get; } = services.GetRequiredService<IInvitesBackend>();
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private IAccounts Accounts => _accounts ??= services.GetRequiredService<IAccounts>();
+    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks => _clocks ??= Services.GetRequiredService<MomentClockSet>();
 

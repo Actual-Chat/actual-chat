@@ -36,7 +36,7 @@
     [Inject] private ICommander Commander { get; init; } = null!;
 
     [Parameter, EditorRequired] public LinkPreview? Source { get; set; }
-    [Parameter, EditorRequired] public LinkPreviewMode Mode { get; set; }
+    [Parameter, EditorRequired] public LinkPreviewMode? Mode { get; set; }
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     private string GetImageUrl(Media? preview)
