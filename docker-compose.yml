@@ -12,7 +12,7 @@ services:
       POSTGRES_HOST_AUTH_METHOD: "password"
     ports:
       - "5432:5432"
-    entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000"]
+    entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
   imageproxy:
     image: willnorris/imageproxy:latest
     expose:

@@ -4,9 +4,11 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Stl.Fusion.EntityFramework;
 using Stl.Fusion.EntityFramework.Npgsql;
+using Stl.Fusion.EntityFramework.Operations;
 using Stl.Fusion.EntityFramework.Redis;
 using Stl.Fusion.Operations.Internal;
 
@@ -109,8 +111,15 @@ public sealed class DbModule : HostModule<DbSettings>
                 operations.ConfigureOperationLogReader(_ => new() {
                     UnconditionalCheckPeriod = TimeSpan.FromSeconds(IsDevelopmentInstance ? 60 : 5).ToRandom(0.1),
                 });
+                operations.ConfigureOperationLogTrimmer(_ => new DbOperationLogTrimmer<TDbContext>.Options {
+                    MaxOperationAge = TimeSpan.FromMinutes(10),
+                });
                 // operations.AddNpgsqlOperationLogChangeTracking();
                 operations.AddRedisOperationLogChangeTracking();
+
+                // override DbOperationLog for efficient trimming
+                services.RemoveAll(sd => sd.ServiceType == typeof(IDbOperationLog<TDbContext>));
+                services.TryAddSingleton<IDbOperationLog<TDbContext>, DbOperationLog<TDbContext>>();
             });
 
             configure?.Invoke(db);

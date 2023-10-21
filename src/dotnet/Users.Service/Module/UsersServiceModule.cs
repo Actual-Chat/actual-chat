@@ -141,6 +141,12 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
             auth.ConfigureAuthService(_ => new() {
                 MinUpdatePresencePeriod = Constants.Session.MinUpdatePresencePeriod,
             });
+            auth.ConfigureSessionInfoTrimmer(_ => new DbSessionInfoTrimmer<UsersDbContext>.Options {
+                MaxSessionAge = TimeSpan.FromDays(60),
+            });
+            // override IDbSessionInfoRepo for efficient trimming
+            services.RemoveAll(sd => sd.ServiceType == typeof(IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>));
+            services.TryAddSingleton<IDbSessionInfoRepo<UsersDbContext, DbSessionInfo, string>, DbSessionInfoRepo>();
         });
         var fusionWebServer = fusion.AddWebServer();
         services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
