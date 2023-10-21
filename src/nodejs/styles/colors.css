@@ -115,13 +115,13 @@
     --warning: var(--sienna-40);
 
     /* Banners */
-    --background-banner-success: var(--green-95);
+    --background-banner-success: var(--green-99);
     --text-banner-success: var(--success);
-    --background-banner-info: var(--blue-95);
+    --background-banner-info: var(--blue-99);
     --text-banner-info: var(--primary);
     --background-banner-warning: var(--sienna-90);
     --text-banner-warning: var(--warning);
-    --background-banner-error: var(--magenta-95);
+    --background-banner-error: var(--magenta-99);
     --text-banner-error: var(--danger);
 
     /* Utils */
@@ -218,63 +218,117 @@
     --background-02: var(--gray-15);
     --background-03: var(--gray-10);
     --background-04: var(--gray-05);
-    --text-01: #fafafa;
-    --text-02: #e5e6e8;
-    --text-03: #d0d2d6;
-    --text-04: #d0d2d6;
+    --background-05: var(--gray-30);
+    --background-06: var(--gray-70);
+    --background-07: var(--gray-80);
+    --background-08: var(--gray-90);
+
+    --text-01: var(--gray-95);
+    --text-02: var(--gray-95);
+    --text-03: var(--gray-80);
+    --text-04: var(--gray-60);
+
+    /*Primary colors for buttons, icons*/
+    --primary: var(--blue-50);
+    --danger: var(--magenta-50);
+    --success: var(--green-40);
+    --warning: var(--sienna-40);
+
+    /* Banners */
+    --background-banner-success: var(--green-20);
+    --text-banner-success: var(--green-80);
+    --background-banner-info: var(--blue-20);
+    --text-banner-info: var(--blue-80);
+    --background-banner-warning: var(--sienna-20);
+    --text-banner-warning: var(--sienna-80);
+    --background-banner-error: var(--magenta-20);
+    --text-banner-error: var(--magenta-80);
+
+    /* Utils */
+    --online: var(--success);
+    --away: var(--warning);
+    --selected: var(--blue-50-20);
+    --hover: var(--blue-50-10);
+    --separator: var(--text-01);
+    --placeholder: var(--text-04);
+    --counter: var(--background-05);
+    --rating: var(--warning);
+    --background-recording-countdown: var(--background-banner-warning);
+    --shadow-main: var(--background-05);
 
     /* Buttons */
-    --cancel: #64748b;
-    --cancel-hover: #546174;
-    --cancel-title: #edf0f3;
-    --cancel-ring: #9aa6b7;
+    --disabled: #E7E7E7;
 
-    --danger: #ef4444;
-    --danger-hover: #ec2020;
-    --danger-title: #edf0f3;
-    --danger-outline-hover: #2F3136;
+    --primary-hover: var(--blue-60);
+    --primary-title: var(--white);
 
-    --square: #292b2f;
-    --square-active: #202125;
-    --square-hover: #202125;
-    --square-focus: #17181a;
-    --square-title: #edf0f3;
+    --secondary: var(--blue-99);
+    --secondary-hover: var(--blue-95);
+    --secondary-title: var(--primary);
 
-    --shadow-main: #64748b;
+    --cancel: var(--background-03);
+    --cancel-hover: var(--background-04);
+    --cancel-title: var(--background-06);
+
+    --outline: var(--white);
+    --outline-hover: var(--blue-99);
+
+    --danger-hover: var(--magenta-60);
+    --danger-title: var(--white);
+    --danger-outline-hover: var(--magenta-99);
+
+    --square: #e2e7ec;
+    --square-active: #e2e7ec;
+    --square-hover: #E1E9FA;
+    --square-focus: #cad3dc;
+    --square-title: #4b5e71;
+
+    --round: #F5F5F5;
+    --round-active: #E1EFFA;
+    --round-hover: #E1EFFA;
+    --round-focus: #E1EFFA;
+    --round-title: #4b5e71;
 
     /* Utils colors */
-    --online: #31d872;
-    --unread: #93c5fd;
-    --separator: #2b3641;
-    --placeholder: #788ea5;
-    --white: #ffffff;
-    --rating: #fde047;
+    --new-separator: #FF388014;
+
     --code: #D83E52;
     --avatar: #5a7188;
-    --recorder-on: #ef4444;
-    --toggle-on: #52baf6;
-    --toggle-hover: #65c1f7;
-    --message-hover: #484c54;
-    --mention: #672d0d;
-    --mention-hover: #893d11;
-    --mention-message: #4e4039;
-    --mention-message-hover: #594941;
-    --audio-message: #d2effc;
-    --context-menu: #17181a;
-    --context-border: #17181a;
-    --selection: #484c54;
-    --dot: #292B2F;
-    --dot-selected: #fafafa;
-    --skeleton: #292B2F;
-    --skeleton-border: #2F3136;
+    --toggle-on: #0ea5e9;
+    --toggle-hover: #38bdf8;
+    --message-hover: #F8FBFE;
+    --mention-other: #DDE8FF;
+    --mention-other-text: var(--blue-50);
+    --mention-own: #98E5AE;
+    --mention-own-border: #2FCB5B;
+    --mention-own-text: #00611B;
+    --mention-invalid: #DDE8FF;
+    --mention-invalid-text: #D83E52;
+    --mention-list-item-selected: #EDF2FA;
+    --mention-message: #fff7ed;
+    --mention-message-hover: #fff7e5;
+    --replied-message: #dbeafe;
+    --replied-message-hover: #bfdbfe;
+    --replied-message-border: #3b82f6;
+    --context-menu: #F9FAFB;
+    --context-border: #e2e7ec;
+    --selection: #cbd5e1;
+    --dot: #e2e7ec;
+    --dot-selected: #4b5e71;
+    --skeleton: #edf0f3;
+    --skeleton-border: #F9FAFB;
+    --scrollbar: #B9B9B9;
+    --quote: #d6dde4;
+    --place: #A98AFF;
+    --bubble: #515BE9;
+    --menuitem-hover: #2970FF0F;
+    --menuitem-hover-warning: #FF008A1A;
+    --bubble-btn-hover: #626BEB;
+    --reaction-own: rgba(41, 112, 255, 0.6);
 
-    --error-toast-body: #fd5757;
+    --toast-body: #444444E0;
+    --toast-text: var(--white);
+    --toast-action: #6BCAFF;
+    --error-toast-body: #FFBFBF;
     --error-toast-text: #fafafa;
-
-    --glow-max: rgb(255, 255, 255);
-    --glow-mid: rgb(181, 240, 255);
-    --glow-min: rgb(0, 204, 255);
-    --playing-glow-max: rgb(181, 240, 255);
-    --playing-glow-mid: rgb(0, 204, 255);
-    --playing-glow-min: rgb(0, 139, 173);
 }
