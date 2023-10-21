@@ -13,18 +13,16 @@
     @apply ml-auto;
     @apply text-03;
 }
-.banner-buttons-close {
-    @apply flex items-center justify-center;
-    @apply w-6 h-6;
-    @apply ml-3;
-    @apply rounded-full;
+.banner .btn:not(.close-banner) {
+    @apply px-2;
 }
-body.hoverable .banner-buttons-close:hover i {
-    @apply text-03;
+body.hoverable .banner .btn:hover {
+    @apply brightness-125 ;
 }
 .severity-icon {
     @apply flex items-center justify-center;
     @apply rounded-full;
+    @apply text-01;
 }
 
 .bg-banner-info .btn .btn-content,

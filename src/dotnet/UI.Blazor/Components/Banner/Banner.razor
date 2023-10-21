@@ -22,7 +22,7 @@
             @Buttons
             @if (ShowDismissButton) {
                 <Button
-                    Class="btn-transparent blackout"
+                    Class="btn-transparent blackout close-banner"
                     Click="OnClose"
                     Tooltip="Dismiss"
                     TooltipPosition="FloatingPosition.Top">
@@ -71,7 +71,7 @@
         BannerSeverity.Info => "bg-banner-info",
         BannerSeverity.Error => "bg-banner-error",
         BannerSeverity.Warning => "bg-banner-warning",
-        _ => "bg-01",
+        _ => "bg-02",
         };
 
     private string TextColor => Severity switch {

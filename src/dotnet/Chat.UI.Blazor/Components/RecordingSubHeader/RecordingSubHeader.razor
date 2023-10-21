@@ -30,6 +30,15 @@
             <Countdown EndsAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
         </div>
     }
+
+    <Button
+        Class="btn-transparent recording-in-chat on"
+        ContentClass="!bg-transparent"
+        Click="@(_ => ChatAudioUI.SetRecordingChatId(default))"
+        Tooltip="Stop recording"
+        TooltipPosition="FloatingPosition.Top">
+        Stop
+    </Button>
 </div>
 
 @code {
