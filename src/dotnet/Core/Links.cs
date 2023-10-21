@@ -2,10 +2,10 @@ namespace ActualChat;
 
 public static class Links
 {
-    public static LocalUrl Home { get; } = default;
-    public static LocalUrl Docs { get; } = "/docs";
-    public static LocalUrl NotFound { get; } = "/404";
-    public static LocalUrl Chats { get; } = "/chat";
+    public static readonly LocalUrl Home = default;
+    public static readonly LocalUrl Docs = "/docs";
+    public static readonly LocalUrl NotFound = "/404";
+    public static readonly LocalUrl Chats = "/chat";
 
     public static LocalUrl Chat(ChatEntryId entryId)
         => entryId.IsNone

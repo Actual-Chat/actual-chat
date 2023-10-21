@@ -9,7 +9,7 @@ public readonly struct HashRing<T>
 
     public static readonly Func<T, int> DefaultHasher = static v => v.GetHashCode();
     public static readonly Func<T, int> DefaultStringHasher = static v => v is string s ? s.GetDjb2HashCode() : v.GetHashCode();
-    public static HashRing<T> Empty { get; } = new(Array.Empty<T>());
+    public static readonly HashRing<T> Empty = new(Array.Empty<T>());
 
     private readonly T[] _doubleItems;
     public (T Value, int Hash)[] Items { get; }

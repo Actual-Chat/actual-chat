@@ -13,7 +13,7 @@ public partial record Author(
     public static readonly Author None = new() { Avatar = Avatar.None };
     public static readonly Author Loading = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
-    public static Requirement<Author> MustExist { get; } = Requirement.New(
+    public static readonly Requirement<Author> MustExist = Requirement.New(
         new(() => StandardError.NotFound<Author>()),
         (Author? a) => a is { Id.IsNone: false });
 

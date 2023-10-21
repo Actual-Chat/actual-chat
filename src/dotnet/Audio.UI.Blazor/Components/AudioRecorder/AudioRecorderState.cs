@@ -7,5 +7,5 @@ public readonly record struct AudioRecorderState(
     bool IsConnected = false,
     bool IsVoiceActive = false)
 {
-    public static AudioRecorderState Idle { get; } = default;
+    public static readonly AudioRecorderState Idle = default;
 }

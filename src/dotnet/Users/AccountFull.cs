@@ -8,22 +8,22 @@ public sealed partial record AccountFull(
     long Version = 0
     ) : Account(new UserId(User.Id, AssumeValid.Option), Version)
 {
-    public static new AccountFull None { get; } = new(User.NewGuest(), 0) { Avatar = Avatar.None };
-    public static new AccountFull Loading { get; } = new(User.NewGuest(), -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
+    public static new readonly AccountFull None = new(User.NewGuest(), 0) { Avatar = Avatar.None };
+    public static new readonly AccountFull Loading = new(User.NewGuest(), -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
-    public static new Requirement<AccountFull> MustExist { get; } = Requirement.New(
+    public static new readonly Requirement<AccountFull> MustExist = Requirement.New(
         new(() => StandardError.NotFound<Account>()),
         (AccountFull? a) => a is { IsNone: false });
-    public static new Requirement<AccountFull> MustNotBeGuest { get; } = Requirement.New(
+    public static new readonly Requirement<AccountFull> MustNotBeGuest = Requirement.New(
         new(() => StandardError.Account.Guest()),
         (AccountFull? a) => a?.IsGuestOrNone == false);
-    public static Requirement<AccountFull> MustBeAdmin { get; } = MustExist & Requirement.New(
+    public static readonly Requirement<AccountFull> MustBeAdmin = MustExist & Requirement.New(
         new(() => StandardError.Account.NonAdmin()),
         (AccountFull? a) => a?.IsAdmin ?? false);
-    public static Requirement<AccountFull> MustNotBeSuspended { get; } = MustExist & Requirement.New(
+    public static readonly Requirement<AccountFull> MustNotBeSuspended = MustExist & Requirement.New(
         new(() => StandardError.Account.Suspended()),
         (AccountFull? a) => a != null && (a.Status != AccountStatus.Suspended || a.IsAdmin));
-    public static Requirement<AccountFull> MustBeActive { get; } = MustNotBeGuest & Requirement.New(
+    public static readonly Requirement<AccountFull> MustBeActive = MustNotBeGuest & Requirement.New(
         new(() => StandardError.Account.Inactive()),
         (AccountFull? a) => a != null && (a.Status == AccountStatus.Active || a.IsAdmin));
 

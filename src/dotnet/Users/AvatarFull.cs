@@ -10,12 +10,12 @@ public sealed partial record AvatarFull(
     Symbol Id = default,
     long Version = 0) : Avatar(Id, Version)
 {
-    public static new Requirement<AvatarFull> MustExist { get; } = Requirement.New(
+    public static new readonly Requirement<AvatarFull> MustExist = Requirement.New(
         new(() => StandardError.NotFound<Avatar>()),
         (AvatarFull? a) => a is { Id.IsEmpty : false });
 
-    public static new AvatarFull None { get; } = new( UserId.None,Symbol.Empty, 0);
-    public static new AvatarFull Loading { get; } = new(UserId.None, Symbol.Empty, -1); // Should differ by ref. from None
+    public static new readonly AvatarFull None = new( UserId.None,Symbol.Empty, 0);
+    public static new readonly AvatarFull Loading = new(UserId.None, Symbol.Empty, -1); // Should differ by ref. from None
 
     [DataMember, MemoryPackOrder(8)] public bool IsAnonymous { get; init; }
 

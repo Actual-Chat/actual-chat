@@ -6,7 +6,7 @@ public sealed record VirtualListItemVisibility(
     bool IsEndAnchorVisible
 )
 {
-    public static VirtualListItemVisibility Empty { get; } = new("", ImmutableHashSet<string>.Empty, true);
+    public static readonly VirtualListItemVisibility Empty = new("", ImmutableHashSet<string>.Empty, true);
 
     public bool IsEmpty => VisibleKeys.Count == 0;
 }

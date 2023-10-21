@@ -210,7 +210,6 @@
 
     // Nested types
 
-
     public sealed record Model(
         Chat Chat,
         bool IsRecording = false,
@@ -221,7 +220,6 @@
         bool? HasMicrophonePermission = null,
         Moment? StartRecordingAt = null
     ) {
-        public static Model Loading { get; } = new(SpecialChat.Loading, false, true);
+        public static readonly Model Loading = new(SpecialChat.Loading, false, true);
     }
-
 }

@@ -75,8 +75,10 @@
     private void OnStop()
         => _ = ChatAudioUI.SetRecordingChatId(default);
 
+    // Nested types
+
     public sealed record Model {
-        public static Model NotRecording { get; } = new();
+        public static readonly Model NotRecording = new();
 
         public Chat? RecordingChat { get; init; }
         public string? RecordingChatUrl { get; init; }

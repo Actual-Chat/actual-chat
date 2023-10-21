@@ -27,7 +27,7 @@ public sealed record Emoji(Symbol Id, string Name) : IHasId<Symbol>, IRequiremen
         Angry,
     }.ToDictionary(x => x.Id);
 
-    public static Requirement<Emoji> MustExist { get; } = Requirement.New(
+    public static readonly Requirement<Emoji> MustExist = Requirement.New(
         new(() => StandardError.NotFound<Emoji>()),
         (Emoji? e) => e != null && _all.ContainsKey(e.Id));
 

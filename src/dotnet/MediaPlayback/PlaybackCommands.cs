@@ -8,8 +8,8 @@ public interface IPlaybackCommand
 
 public sealed class PlayTrackCommand : IPlaybackCommand
 {
-    public static PlayTrackCommand PlayNothing { get; } = new(null!, null!);
-    public static IMessageProcess<PlayTrackCommand> PlayNothingProcess { get; } =
+    public static readonly PlayTrackCommand PlayNothing = new(null!, null!);
+    public static readonly IMessageProcess<PlayTrackCommand> PlayNothingProcess =
         new MessageProcess<PlayTrackCommand>(
             PlayNothing,
             default,

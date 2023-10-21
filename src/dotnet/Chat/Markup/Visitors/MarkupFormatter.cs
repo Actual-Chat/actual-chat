@@ -59,9 +59,9 @@ public sealed record MarkupFormatter(
     bool ShowStyleTokens = true
     ) : MarkupFormatterBase
 {
-    public static MarkupFormatter Default { get; } = new();
-    public static MarkupFormatter Readable { get; } = new(MentionMarkup.NameOrNotAvailableFormatter);
-    public static MarkupFormatter ReadableUnstyled { get; } = Readable with { ShowStyleTokens = false };
+    public static readonly MarkupFormatter Default = new();
+    public static readonly MarkupFormatter Readable = new(MentionMarkup.NameOrNotAvailableFormatter);
+    public static readonly MarkupFormatter ReadableUnstyled = Readable with { ShowStyleTokens = false };
 
     public MarkupFormatter() : this(MentionMarkup.DefaultFormatter, true) { }
     public MarkupFormatter(bool showStyleTokens) : this(MentionMarkup.DefaultFormatter, showStyleTokens) { }

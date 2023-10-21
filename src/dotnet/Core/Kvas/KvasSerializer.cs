@@ -9,7 +9,7 @@ public class KvasSerializer : ByteSerializerBase
     private static readonly byte[] ByteFormatHeader = { ByteFormatMarker };
 
     public static IByteSerializer Default { get; set; } = new KvasSerializer();
-    public static byte[] SerializedTrue { get; } = Default.Write(true).WrittenMemory.ToArray();
+    public static readonly byte[] SerializedTrue = Default.Write(true).WrittenMemory.ToArray();
 
     public IByteSerializer ByteSerializer { get; init; } = MemoryPackByteSerializer.Default;
     public ITextSerializer TextSerializer { get; init; } = SystemJsonSerializer.Default;

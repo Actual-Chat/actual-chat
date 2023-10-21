@@ -5,7 +5,7 @@ namespace ActualChat.Users;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record UserChatSettings
 {
-    public static UserChatSettings Default { get; } = new();
+    public static readonly UserChatSettings Default = new();
 
     public static string GetKvasKey(string chatId) => $"@UserChatSettings({chatId})";
 

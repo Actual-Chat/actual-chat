@@ -4,7 +4,7 @@ namespace ActualChat.Kubernetes;
 
 public sealed record Kube : IRequirementTarget
 {
-    public static Requirement<Kube> MustExist { get; } = Requirement.New(
+    public static readonly Requirement<Kube> MustExist = Requirement.New(
         new(() => StandardError.NotSupported("This code can execute only within Kubernetes cluster.")),
         (Kube? k) => k != null);
 

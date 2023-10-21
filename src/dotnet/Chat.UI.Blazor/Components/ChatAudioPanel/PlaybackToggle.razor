@@ -86,6 +86,7 @@
     private void OnToggleAudioOutputClick()
         => AudioOutputController.ToggleSpeakerphone(!AudioOutputController.IsSpeakerphoneOn.Value);
 
+    // Nested types
 
     public sealed record Model(
         Chat Chat,
@@ -93,6 +94,6 @@
         bool IsAnimated = false,
         bool IsSpeakerphoneOn = false
     ) {
-        public static Model Loading { get; } = new(SpecialChat.Loading, ChatAudioState.None);
+        public static readonly Model Loading = new(SpecialChat.Loading, ChatAudioState.None);
     }
 }

@@ -4,7 +4,7 @@ namespace ActualChat.Chat;
 
 public record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
 {
-    public static MarkupEditorHtmlConverter Instance { get; } = new();
+    public static readonly MarkupEditorHtmlConverter Instance = new();
 
     public MarkupEditorHtmlConverter()
     {

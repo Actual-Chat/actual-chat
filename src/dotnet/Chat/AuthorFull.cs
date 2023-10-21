@@ -6,12 +6,12 @@ namespace ActualChat.Chat;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record AuthorFull(AuthorId Id, long Version = 0) : Author(Id, Version)
 {
-    public static new Requirement<AuthorFull> MustExist { get; } = Requirement.New(
+    public static new readonly Requirement<AuthorFull> MustExist = Requirement.New(
         new(() => StandardError.NotFound<Author>()),
         (AuthorFull? a) => a is { Id.IsNone: false });
 
-    public static new AuthorFull None { get; } = new() { Avatar = Avatar.None };
-    public static new AuthorFull Loading { get; } = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
+    public static new readonly AuthorFull None = new() { Avatar = Avatar.None };
+    public static new readonly AuthorFull Loading = new(default, -1) { Avatar = Avatar.Loading }; // Should differ by Id & Version from None
 
     [DataMember, MemoryPackOrder(6)] public UserId UserId { get; init; }
     [DataMember, MemoryPackOrder(7)] public ApiArray<Symbol> RoleIds { get; init; }

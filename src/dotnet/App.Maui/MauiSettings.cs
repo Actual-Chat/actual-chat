@@ -36,6 +36,6 @@ public static class MauiSettings
 
     public static class WebAuth
     {
-        public static bool UseSystemBrowser { get; } = true;
+        public static readonly bool UseSystemBrowser = true;
     }
 }

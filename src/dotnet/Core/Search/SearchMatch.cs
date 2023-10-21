@@ -9,7 +9,7 @@ public readonly partial record struct SearchMatch(
     [property: DataMember(Order = 1), MemoryPackOrder(1)] double Rank,
     SearchMatchPart[] Parts)
 {
-    public static SearchMatch Empty { get; } = New("");
+    public static readonly SearchMatch Empty = New("");
 
     private readonly SearchMatchPart[]? _parts = Parts;
 

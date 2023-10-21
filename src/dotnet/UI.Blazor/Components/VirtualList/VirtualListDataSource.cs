@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.Components;
 public static class VirtualListDataSource<TItem>
     where TItem : IVirtualListItem
 {
-    public static IVirtualListDataSource<TItem> Empty { get; } = new EmptyDataSource();
+    public static readonly IVirtualListDataSource<TItem> Empty = new EmptyDataSource();
 
     // Nested types
 

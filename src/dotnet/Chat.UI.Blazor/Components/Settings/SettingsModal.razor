@@ -115,7 +115,9 @@
     private void OnCloseClick()
         => Modal.Close();
 
+    // Nested types
+
     public sealed record Model {
-        public static Model Instance { get; } = new();
+        public static readonly Model Instance = new();
     }
 }

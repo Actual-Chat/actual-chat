@@ -2,7 +2,7 @@ namespace ActualChat.UI.Blazor;
 
 public sealed class NoStateHasChanged : IHandleEvent
 {
-    public static NoStateHasChanged Instance { get; } = new ();
+    public static readonly NoStateHasChanged Instance = new ();
 
     private NoStateHasChanged() { }
 

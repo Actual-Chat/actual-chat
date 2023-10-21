@@ -6,7 +6,7 @@ namespace ActualChat.Mathematics;
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public readonly partial struct LinearMap
 {
-    public static LinearMap Zero { get; } = new(Vector2.Zero);
+    public static readonly LinearMap Zero = new(Vector2.Zero);
 
     private readonly float[]? _data;
 

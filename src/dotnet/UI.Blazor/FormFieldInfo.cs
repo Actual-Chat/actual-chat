@@ -6,7 +6,7 @@ public abstract class FormFieldInfo
 {
     private static ConcurrentDictionary<Type, FormFieldInfo[]> FieldInfoCache = new();
 
-    public static string FieldIdSuffix { get; } = "FieldId";
+    public static readonly string FieldIdSuffix = "FieldId";
 
     public Type FormType { get; }
     public PropertyInfo Property { get; }

@@ -2,7 +2,7 @@ namespace ActualChat.Chat;
 
 public sealed record PreformattedTextMarkup(string Text) : TextMarkup(Text)
 {
-    public static new PreformattedTextMarkup Empty { get; } = new("");
+    public static new readonly PreformattedTextMarkup Empty = new("");
 
     public override TextMarkupKind Kind => TextMarkupKind.Preformatted;
 

@@ -74,8 +74,10 @@
         };
     }
 
+    // Nested types
+
     public sealed record Model {
-        public static Model Loading { get; } = new();
+        public static readonly Model Loading = new();
 
         public bool IsVisible { get; init; }
         public bool ShowMembers { get; init; }

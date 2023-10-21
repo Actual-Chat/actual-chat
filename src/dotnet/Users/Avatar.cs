@@ -14,9 +14,9 @@ public partial record Avatar(
 {
     public const string GuestName = "Guest";
     public static Avatar None { get; } = new(Symbol.Empty, 0);
-    public static Avatar Loading { get; } = new(Symbol.Empty, -1); // Should differ by ref. from None
+    public static readonly Avatar Loading = new(Symbol.Empty, -1); // Should differ by ref. from None
 
-    public static Requirement<Avatar> MustExist { get; } = Requirement.New(
+    public static readonly Requirement<Avatar> MustExist = Requirement.New(
         new(() => StandardError.NotFound<Avatar>()),
         (Avatar? a) => a is { Id.IsEmpty : false });
 

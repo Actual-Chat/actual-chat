@@ -121,7 +121,9 @@
         }
     }
 
+    // Nested types
+
     public sealed record Model(UserLanguageSettings Languages) {
-        public static Model Loading { get; } = new(new UserLanguageSettings());
+        public static readonly Model Loading = new(new UserLanguageSettings());
     }
 }

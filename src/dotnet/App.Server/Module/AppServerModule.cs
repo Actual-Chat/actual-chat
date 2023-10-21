@@ -43,7 +43,7 @@ namespace ActualChat.App.Server.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
 {
-    public static string AppVersion { get; } =
+    public static readonly string AppVersion =
         typeof(AppServerModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
 
     private IWebHostEnvironment? _env;

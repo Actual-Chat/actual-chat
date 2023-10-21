@@ -24,10 +24,10 @@ public abstract class FeatureDefRegistry<TFeatureDef> : IFeatureDefRegistry
 
 public class ClientFeatureDefRegistry : FeatureDefRegistry<IClientFeatureDef>
 {
-    public static ClientFeatureDefRegistry Instance { get; } = new();
+    public static readonly ClientFeatureDefRegistry Instance = new();
 }
 
 public class ServerFeatureDefRegistry : FeatureDefRegistry<IServerFeatureDef>
 {
-    public static ServerFeatureDefRegistry Instance { get; } = new();
+    public static readonly ServerFeatureDefRegistry Instance = new();
 }

@@ -135,6 +135,8 @@
     private Task OnDeleteAccountClick()
         => ModalUI.Show(new DeleteAccountModal.Model());
 
+    // Nested types
+
     public sealed class FormModel(ComponentIdGenerator? componentIdGenerator)
         : FormModel<FormModel>("own-account-editor", componentIdGenerator) {
         [Required, MinLength(4, ErrorMessage = "Name must be at least 4 characters.")]
@@ -149,7 +151,6 @@
     }
 
     public sealed record Model {
-        public static Model Default { get; } = new();
+        public static readonly Model Default = new();
     }
-
 }

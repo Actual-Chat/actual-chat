@@ -5,7 +5,7 @@ namespace ActualChat.Comparison;
 public sealed class VersionEqualityComparer<T, TKey> : IEqualityComparer<T>
     where T : IHasId<TKey>, IHasVersion<long>
 {
-    public static VersionEqualityComparer<T, TKey> Instance { get; } = new();
+    public static readonly VersionEqualityComparer<T, TKey> Instance = new();
 
     public bool Equals(T? x, T? y)
     {

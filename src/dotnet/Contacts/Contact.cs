@@ -12,7 +12,7 @@ public sealed partial record Contact(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<ContactId>, IHasVersion<long>, IRequirementTarget
 {
-    public static Requirement<Contact> MustExist { get; } = Requirement.New(
+    public static readonly Requirement<Contact> MustExist = Requirement.New(
         new(() => StandardError.NotFound<Contact>()),
         (Contact? c) => c is { Id.IsNone: false });
 

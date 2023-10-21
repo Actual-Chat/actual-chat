@@ -4,7 +4,7 @@ namespace ActualChat.Chat;
 
 public record PlainTextMarkup(string Text) : TextMarkup(Text)
 {
-    public static new PlainTextMarkup Empty { get; } = new("");
+    public static new readonly PlainTextMarkup Empty = new("");
 
     public override TextMarkupKind Kind => TextMarkupKind.Plain;
 

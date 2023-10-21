@@ -4,7 +4,7 @@ public static class ChannelExt
 {
     private static readonly ChannelClosedException ChannelClosedError = new();
 
-    public static UnboundedChannelOptions SingleReaderWriterUnboundedChannelOptions { get; } = new () {
+    public static readonly UnboundedChannelOptions SingleReaderWriterUnboundedChannelOptions = new () {
         SingleReader = true,
         SingleWriter = true,
     };

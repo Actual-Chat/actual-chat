@@ -124,9 +124,12 @@
         chatPlayers.StartHistoricalPlayback(chatId, startAt);
     }
 
+    // Nested types
+
     public sealed record Model
     {
-        public static Model NotPlaying { get; } = new();
+        public static readonly Model NotPlaying = new();
+
         public bool CanPlay { get; init; } = true;
     }
 }

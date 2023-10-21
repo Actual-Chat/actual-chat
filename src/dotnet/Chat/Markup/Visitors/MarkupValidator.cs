@@ -4,7 +4,7 @@ public record MarkupValidator : MarkupVisitor<bool>
 {
     public enum AggregationMode { All, Any }
 
-    public static MarkupValidator ContainsAnyMention { get; } = new(m => m is MentionMarkup, AggregationMode.Any);
+    public static readonly MarkupValidator ContainsAnyMention = new(m => m is MentionMarkup, AggregationMode.Any);
 
     public static MarkupValidator ContainsMention(MentionId id)
         => new(m => m is MentionMarkup mention && mention.Id == id, AggregationMode.Any);

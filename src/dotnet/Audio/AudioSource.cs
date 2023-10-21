@@ -10,7 +10,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
     protected bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
-    public static AudioFormat DefaultFormat { get; } = new () {
+    public static readonly AudioFormat DefaultFormat = new () {
         CodecSettings = Convert.ToBase64String(OpusStreamFormat),
     };
 

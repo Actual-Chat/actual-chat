@@ -13,11 +13,11 @@ public sealed partial record Chat(
     [property: DataMember, MemoryPackOrder(1)] long Version = 0
     ) : IHasId<ChatId>, IHasVersion<long>, IRequirementTarget
 {
-    public static Requirement<Chat> MustExist { get; } = Requirement.New(
+    public static readonly Requirement<Chat> MustExist = Requirement.New(
         new(() => StandardError.NotFound<Chat>()),
         (Chat? c) => c is { Id.IsNone: false });
 
-    public static Requirement<Chat> MustBeTemplate { get; } = MustExist
+    public static readonly Requirement<Chat> MustBeTemplate = MustExist
         & Requirement.New<Chat>(
             new (() => StandardError.Chat.NonTemplate()),
             c => c is { IsPublic: true, IsTemplate: true });

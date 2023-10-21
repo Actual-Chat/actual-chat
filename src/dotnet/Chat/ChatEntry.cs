@@ -16,10 +16,10 @@ public sealed partial record ChatEntry(
     public static readonly VersionEqualityComparer<ChatEntry, ChatEntryId> VersionEqualityComparer = new();
     public static readonly ChatEntry Loading = new(default, -1); // Should differ by Id & Version from None
 
-    public static Requirement<ChatEntry> MustExist { get; } = Requirement.New(
+    public static readonly Requirement<ChatEntry> MustExist = Requirement.New(
         new(() => StandardError.NotFound<ChatEntry>()),
         (ChatEntry? c) => c is { Id.IsNone: false });
-    public static Requirement<ChatEntry> MustNotBeRemoved { get; } = Requirement.New(
+    public static readonly Requirement<ChatEntry> MustNotBeRemoved = Requirement.New(
         new(() => StandardError.NotFound<ChatEntry>()),
         (ChatEntry? c) => c is { Id.IsNone: false, IsRemoved: false });
 

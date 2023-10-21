@@ -10,7 +10,7 @@ namespace ActualChat.Invite.Db;
 [Index(nameof(SearchKey), nameof(Remaining))]
 public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    public static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+    public static readonly RandomStringGenerator IdGenerator = new(10, Alphabet.AlphaNumeric);
     private static ITextSerializer<InviteDetails> DetailsSerializer { get; } =
         SystemJsonSerializer.Default.ToTyped<InviteDetails>();
 

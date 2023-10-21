@@ -7,7 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public class ActiveChatsUI
 {
     public const int MaxActiveChatCount = 3;
-    public static TimeSpan MaxContinueListeningRecency { get; } = TimeSpan.FromMinutes(5);
+    public static readonly TimeSpan MaxContinueListeningRecency = TimeSpan.FromMinutes(5);
 
     private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.CheckedPass);
     private readonly IStoredState<ApiArray<ActiveChat>> _activeChats;

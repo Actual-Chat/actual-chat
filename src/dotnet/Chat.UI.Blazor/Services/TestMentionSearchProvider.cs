@@ -1,11 +1,10 @@
 using ActualChat.Search;
-using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
 {
-    public static TestMentionSearchProvider Instance { get; } = new();
+    public static readonly TestMentionSearchProvider Instance = new();
 
     public Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
     {

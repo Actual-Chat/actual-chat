@@ -9,7 +9,7 @@ public interface IMarkupTrimmer
 
 public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarkupTrimmer
 {
-    public static MarkupTrimmer Instance { get; } = new();
+    public static readonly MarkupTrimmer Instance = new();
 
     public Markup Trim(Markup markup, int maxLength, Func<MentionMarkup, string>? mentionFormatter = null)
     {

@@ -18,8 +18,8 @@ public sealed partial record Transcript(
     public static readonly Regex ContentStartRegex = ContentStartRegexFactory();
     public static readonly Regex ContentEndRegex = ContentEndRegexFactory();
 
-    public static Vector2 TimeMapEpsilon { get; } = new(0.1f, 0.1f);
-    public static Transcript Empty { get; } = New();
+    public static readonly Vector2 TimeMapEpsilon = new(0.1f, 0.1f);
+    public static readonly Transcript Empty = New();
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int Length => Text.Length;

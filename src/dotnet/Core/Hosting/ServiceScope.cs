@@ -2,12 +2,12 @@ namespace ActualChat.Hosting;
 
 public static class ServiceScope
 {
-    public static Symbol Server { get; } = nameof(Server);
-    public static Symbol Client { get; } = nameof(Client);
-    public static Symbol BlazorUI { get; } = nameof(BlazorUI);
-    public static Symbol Test { get; } = nameof(Test);
+    public static readonly Symbol Server = nameof(Server);
+    public static readonly Symbol Client = nameof(Client);
+    public static readonly Symbol BlazorUI = nameof(BlazorUI);
+    public static readonly Symbol Test = nameof(Test);
 
-    public static Symbol WebServerApp { get; } = nameof(WebServerApp);
-    public static Symbol WasmApp { get; } = nameof(WasmApp);
-    public static Symbol MauiApp { get; } = nameof(MauiApp);
+    public static readonly Symbol WebServerApp = nameof(WebServerApp);
+    public static readonly Symbol WasmApp = nameof(WasmApp);
+    public static readonly Symbol MauiApp = nameof(MauiApp);
 }

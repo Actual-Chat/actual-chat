@@ -12,10 +12,10 @@ public partial record Account(
     public static Account None => AccountFull.None;
     public static Account Loading => AccountFull.Loading;
 
-    public static Requirement<Account> MustExist { get; } = Requirement.New(
+    public static readonly Requirement<Account> MustExist = Requirement.New(
         new(() => StandardError.NotFound<Account>()),
         (Account? a) => a is { IsNone: false });
-    public static Requirement<Account> MustNotBeGuest { get; } = Requirement.New(
+    public static readonly Requirement<Account> MustNotBeGuest = Requirement.New(
         new(() => StandardError.Account.Guest()),
         (Account? a) => a?.IsGuestOrNone == false);
 

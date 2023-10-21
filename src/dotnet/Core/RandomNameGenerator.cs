@@ -58,7 +58,7 @@ public sealed record RandomNameGenerator
         "Helehana",
     };
 
-    public static RandomNameGenerator Default { get; } = new();
+    public static readonly RandomNameGenerator Default = new();
 
     public char WordDelimiter { get; init; } = ' ';
 

@@ -2,7 +2,7 @@ namespace ActualChat.Comparison;
 
 public sealed class LongAsStringKeyComparer : IComparer<string>
 {
-    public static LongAsStringKeyComparer Default { get; } = new();
+    public static readonly LongAsStringKeyComparer Default = new();
 
     public IComparer<string> BaseComparer { get; init; } = StringComparer.Ordinal;
 

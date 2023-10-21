@@ -11,7 +11,7 @@ public sealed partial record AuthorRules(
     [property: DataMember, MemoryPackOrder(3)] ChatPermissions Permissions = default
     ) : IRequirementTarget
 {
-    public static Requirement<AuthorRules> MustExist { get; } = Requirement.New(
+    public static readonly Requirement<AuthorRules> MustExist = Requirement.New(
         new(() => StandardError.NotFound<AuthorRules>()),
         (AuthorRules? a) => a is { ChatId.IsEmpty: false });
 
