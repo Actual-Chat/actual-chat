@@ -245,6 +245,16 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             .OrderBy(e => e.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        // audio or video entries doesn't have attachments now
+        if (entryKind != ChatEntryKind.Text)
+            return new ChatTile(
+                idTileRange,
+                true,
+                dbEntries
+                    .Select(dbe => dbe.ToModel())
+                    .ToApiArray());
+
         var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
             .Select(x => x.Id)
             .ToList();
