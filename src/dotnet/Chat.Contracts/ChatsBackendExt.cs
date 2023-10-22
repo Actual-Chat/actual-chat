@@ -10,7 +10,7 @@ public static class ChatsBackendExt
         if (entryId.IsNone)
             return null;
 
-        var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
         var tile = await chatsBackend.GetTile(entryId.ChatId,
                 entryId.Kind,
                 idTile.Range,
@@ -28,7 +28,7 @@ public static class ChatsBackendExt
         if (entryId.IsNone)
             return null;
 
-        var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(entryId.LocalId);
+        var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
         var tile = await chatsBackend.GetTile(entryId.ChatId,
                 entryId.Kind,
                 idTile.Range,

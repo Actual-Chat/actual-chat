@@ -13,7 +13,7 @@ namespace ActualChat.Chat;
 
 public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
+    private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
 
     private static readonly Task<ILookup<TextEntryId, TextEntryAttachment>> EmptyAttachmentsTask =
         Task.FromResult(Array.Empty<TextEntryAttachment>().ToLookup(ta => ta.EntryId));
@@ -718,7 +718,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             if (invChats == null)
                 return;
 
-            var tileSize = Constants.Chat.IdTileStack.MinTileSize;
+            var tileSize = Constants.Chat.ServerIdTileStack.MinTileSize;
             foreach (var chatEntryPair in invChats) {
                 var chatId = new ChatId(chatEntryPair.Key);
                 var entryId = chatEntryPair.Value;
