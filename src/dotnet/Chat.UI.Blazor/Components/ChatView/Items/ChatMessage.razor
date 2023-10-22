@@ -104,6 +104,11 @@
                               @onclick="() => OnForwardedMessageHeaderClick(entry.ForwardedChatEntryId.ChatId)">
                             @m.ForwardedChat.Title
                         </span>
+                    } else if (m.ForwardedPeerAuthor != null) {
+                        <span class="forwarded-chat-header-name message-link"
+                              @onclick="() => OnForwardedAuthorClick(m.ForwardedPeerAuthor)">
+                            @m.ForwardedPeerAuthor.Avatar.Name
+                        </span>
                     } else {
                         <span class="forwarded-chat-header-name">
                             @(!entry.ForwardedChatTitle.IsNullOrEmpty()
@@ -117,7 +122,7 @@
                 <div class="forwarded-author-header">
                     @if (m.ForwardedAuthor != null) {
                         <span class="forwarded-author-header-name message-link"
-                              @onclick="() => OnForwardedMessageAuthorClick(entry.ForwardedChatEntryId)">
+                              @onclick="() => OnForwardedMessageAuthorClick(entry.ForwardedChatEntryId, m.ForwardedAuthor)">
                             @m.ForwardedAuthor.Avatar.Name
                         </span>
                     } else {
@@ -255,9 +260,8 @@
         var forwardedChat = !entry.ForwardedChatEntryId.IsNone
             ? await Chats.Get(Session, entry.ForwardedChatEntryId.ChatId, cancellationToken)
             : null;
-        var forwardedAuthor = !entry.ForwardedChatEntryId.IsNone && !entry.ForwardedAuthorId.IsNone
-            ? await Authors.Get(Session, entry.ForwardedChatEntryId.ChatId, entry.ForwardedAuthorId, cancellationToken)
-            : null;
+        var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken);
+        var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken);
         var selectedChatEntries = await ChatContext.SelectionUI.Selection.Use(cancellationToken);
         var showLinkPreview = Message.ShowLinkPreview
             && await ChatContext.ShowLinkPreview.Use(cancellationToken); // TODO: read UI settings
@@ -271,6 +275,7 @@
             ForwardedChat = forwardedChat,
             ForwardedAuthor = forwardedAuthor,
             ShowLinkPreview = showLinkPreview,
+            ForwardedPeerAuthor = forwardedPeerAuthor,
         };
         return result.Equals(_rendered) ? _rendered! : result;
     }
@@ -292,8 +297,11 @@
     private void OnForwardedMessageHeaderClick(ChatId chatId)
         => _ = History.NavigateTo(Links.Chat(chatId));
 
-    private void OnForwardedMessageAuthorClick(ChatEntryId entryId)
-        => _ = History.NavigateTo(Links.Chat(entryId));
+    private void OnForwardedMessageAuthorClick(ChatEntryId entryId, Author forwardedAuthor)
+        => _ = entryId.IsNone ? AuthorUI.Show(forwardedAuthor.Id) : History.NavigateTo(Links.Chat(entryId));
+
+    private void OnForwardedAuthorClick(Author forwardedAuthor)
+        => _ = AuthorUI.Show(forwardedAuthor.Id);
 
     private bool HasAnyMentions(Markup markup)
         => MarkupValidator.ContainsAnyMention.IsValid(markup);
@@ -324,6 +332,55 @@
         return (mediaList, fileList);
     }
 
+    private async Task<Author?> GetForwardedAuthor(ChatEntry entry, AuthorFull? ownAuthor, CancellationToken cancellationToken) {
+        if (entry.ForwardedAuthorId.IsNone)
+            return null;
+
+        if (!entry.ForwardedChatEntryId.IsNone)
+            return await Authors.Get(Session, entry.ForwardedChatEntryId.ChatId, entry.ForwardedAuthorId, cancellationToken);
+
+        var isPeerChat = entry.ForwardedAuthorId.ChatId.IsPeerChat(out var peerChatId);
+        if (!isPeerChat)
+            return null;
+
+        if (ownAuthor == null)
+            return null;
+
+        if (peerChatId.IndexOf(ownAuthor.UserId) != -1)
+            return await Authors.Get(Session, entry.ForwardedAuthorId.ChatId, entry.ForwardedAuthorId, cancellationToken);
+
+        var messageUserId = entry.ForwardedAuthorId.LocalId == 1 ? peerChatId.UserId1 : peerChatId.UserId2;
+        var peerChatWithMessageUser = new PeerChatId(messageUserId, ownAuthor.UserId);
+        var messageAuthorId = new AuthorId(peerChatWithMessageUser, peerChatWithMessageUser.UserId1 == messageUserId ? 1 : 2, AssumeValid.Option);
+        var author = await Authors.Get(Session, peerChatWithMessageUser, messageAuthorId, cancellationToken);
+        return author;
+    }
+
+    private async Task<Author?> GetForwardedPeerAuthor(ChatEntry entry, AuthorFull? ownAuthor, CancellationToken cancellationToken) {
+        var isPeerChat = entry.ForwardedAuthorId.ChatId.IsPeerChat(out var peerChatId);
+        if (!isPeerChat)
+            return null;
+
+        if (ownAuthor == null)
+            return null;
+
+        if (peerChatId.IndexOf(ownAuthor.UserId) != -1) {
+            var anotherAuthorId = new AuthorId(peerChatId, peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
+            var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken);
+            return anotherAuthor;
+        }
+
+        var entryAuthorFull = await Authors.GetFull(Session, entry.ChatId, entry.AuthorId, cancellationToken);
+        if (entryAuthorFull == null)
+            return null;
+
+        var peerUserId = peerChatId.UserId1 == entryAuthorFull.UserId ? peerChatId.UserId2 : peerChatId.UserId1;
+        var peerChatWithMessageUser = new PeerChatId(peerUserId, ownAuthor.UserId);
+        var messageAuthorId = new AuthorId(peerChatWithMessageUser, peerChatWithMessageUser.UserId1 == peerUserId ? 1 : 2, AssumeValid.Option);
+        var author = await Authors.Get(Session, peerChatWithMessageUser, messageAuthorId, cancellationToken);
+        return author;
+    }
+
     // Nested types
 
     public sealed record Model {
@@ -337,6 +394,7 @@
         public ChatEntry? RepliedEntry { get; init; }
         public Chat? ForwardedChat { get; init; }
         public Author? ForwardedAuthor { get; init; }
+        public Author? ForwardedPeerAuthor { get; init; }
         public bool ShowLinkPreview { get; set; }
     }
 }
