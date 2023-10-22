@@ -4,10 +4,10 @@
 @{
     var isDestructive = ModalModel.IsDestructive;
     var title = ModalModel.Title;
-    if (string.IsNullOrEmpty(title))
+    if (title.IsNullOrEmpty())
         title = isDestructive ? "Discard changes" : "Confirm changes";
     var text = ModalModel.Text;
-    if (string.IsNullOrEmpty(text))
+    if (text.IsNullOrEmpty())
         text = isDestructive
             ? "Are you sure you want to discard all changes?"
             : "Are you sure you want to confirm all changes?";

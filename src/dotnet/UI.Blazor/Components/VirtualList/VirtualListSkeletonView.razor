@@ -16,8 +16,8 @@
 @code {
     private int? _lastSkeletonCount;
 
-    [Parameter] public int SkeletonCount { get; set; }
-    [Parameter, EditorRequired] public RenderFragment<int>? Skeleton { get; set; }
+    [Parameter, EditorRequired] public int SkeletonCount { get; set; }
+    [Parameter] public RenderFragment<int>? Skeleton { get; set; }
 
     protected override bool ShouldRender()
         => SkeletonCount != _lastSkeletonCount;

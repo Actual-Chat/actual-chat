@@ -14,14 +14,15 @@
     var isReply = m.RepliedEntry != null;
     var isForward = !entry.ForwardedAuthorId.IsNone;
     var isReplyToOwnMessage = m.RepliedEntry?.AuthorId == entry.AuthorId;
-    var showAuthor = !isSystem && (message.IsBlockStart || isReply);
-    var showForwardHeader = !isSystem && isForward && message.IsForwardBlockStart;
+    var showAuthor = !isSystem && ((message.Flags & ChatMessageFlags.BlockStart) != 0 || isReply);
+    var showForwardHeader = !isSystem && isForward && (message.Flags & ChatMessageFlags.ForwardStart) != 0;
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
     var forwardedClass = isForward ? "forwarded-message" : "";
     var forwardedBorderClass = isForward && !showAuthor ? "forwarded-border" : "";
-    var marginClass = message.IsBlockEnd ? "mb-2" : "mb-0";
+    var isBlockEnd = NextMessage == null || (NextMessage.Flags & ChatMessageFlags.BlockStart) != 0;
+    var marginClass = isBlockEnd ? "mb-2" : "mb-0";
     var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
@@ -33,14 +34,14 @@
     case ChatMessageReplacementKind.None:
         break;
     case ChatMessageReplacementKind.DateLine:
-        <ChatMessageDateLine Date="@message.DateLineDate"/>
-        return;;
+        <ChatMessageDateLine Date="@message.Date"/>
+        return;
     case ChatMessageReplacementKind.NewMessagesLine:
         <Separator Title="New messages" TitleClass="new-separator-title"/>
-        return;;
+        return;
     case ChatMessageReplacementKind.WelcomeBlock:
         <ChatWelcomeBlock ChatContext="@ChatContext" />
-        return;;
+        return;
     default:
         throw new ArgumentOutOfRangeException();
     }
@@ -135,10 +136,10 @@
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (entry.IsStreaming) {
-                    <ChatMessageTranscript Model="@message" ShowEntryKind="@message.HasEntryKindSign"/>
+                    <ChatMessageTranscript Model="@message" ShowEntryKind="@((message.Flags & ChatMessageFlags.HasEntryKindSign) != 0)"/>
                 } else {
                     <p class="chat-message-markup">
-                        @if (message.HasEntryKindSign) {
+                        @if ((message.Flags & ChatMessageFlags.HasEntryKindSign) != 0) {
                             <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
                         }
                         <CascadingValue Value="@entry" IsFixed="true">
@@ -163,7 +164,7 @@
             }
             @if (m.ShowLinkPreview) {
                 <div class="message-link-preview">
-                    <LinkPreviewView Source="@message.LinkPreview" Mode="@entry.LinkPreviewMode"/>
+                    <LinkPreviewView Source="@message.Entry.LinkPreview" Mode="@entry.LinkPreviewMode"/>
                 </div>
             }
         </div>
@@ -195,6 +196,7 @@
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessageModel? NextMessage { get; set; } = null!;
 
     protected override void OnInitialized() {
         _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);

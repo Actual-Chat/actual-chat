@@ -10,17 +10,15 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
     public Symbol Key => _key ??= GetKey();
 
     public ChatEntry Entry { get; } = entry;
-    public bool IsBlockStart { get; init; }
-    public bool IsBlockEnd { get; init; }
-    public bool IsForwardBlockStart { get; init; }
-    public bool HasEntryKindSign { get; init; }
-    public int CountAs { get; init; } = 1;
     public ChatMessageReplacementKind ReplacementKind { get; init; }
-    public DateOnly DateLineDate { get; init; }
-    public Media.LinkPreview? LinkPreview { get; init; }
+    public DateOnly Date { get; init; }
+    public ChatMessageFlags Flags { get; init; }
+    public int CountAs { get; init; } = 1;
 
+    public bool IsReplacement
+        => ReplacementKind != ChatMessageReplacementKind.None;
     public bool ShowLinkPreview
-        => LinkPreview is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.Dismiss;
+        => Entry.LinkPreview is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.Dismiss;
 
     public override string ToString()
         => $"(#{Key} -> {Entry})";
@@ -40,41 +38,25 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
         if (ReferenceEquals(this, other))
             return true;
 
-        return Entry.VersionEquals(other.Entry)
-            && IsBlockStart == other.IsBlockStart
-            && IsBlockEnd == other.IsBlockEnd
-            && HasEntryKindSign == other.HasEntryKindSign
-            && DateLineDate == other.DateLineDate
+        return Entry == other.Entry
             && ReplacementKind == other.ReplacementKind
-            && Entry.Attachments.SequenceEqual(other.Entry.Attachments)
-            && LinkPreview == other.LinkPreview;
+            && Date == other.Date
+            && Flags == other.Flags
+            && Entry.Attachments.SequenceEqual(other.Entry.Attachments);
     }
 
     public override int GetHashCode()
-        => HashCode.Combine(
-            Entry,
-            IsBlockStart,
-            IsBlockEnd,
-            HasEntryKindSign,
-            DateLineDate,
-            ReplacementKind,
-            Entry.Attachments.Count,
-            LinkPreview); // Fine to have something that's fast here
+        => HashCode.Combine(Entry, ReplacementKind, Date, Flags, Entry.Attachments.Count);
 
     public static bool operator ==(ChatMessageModel? left, ChatMessageModel? right) => Equals(left, right);
     public static bool operator !=(ChatMessageModel? left, ChatMessageModel? right) => !Equals(left, right);
 
     // Static helpers
 
-    public static List<ChatMessageModel> FromEmpty(ChatId chatId)
+    public static ChatMessageModel Welcome(ChatId chatId)
     {
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0L, AssumeValid.Option);
         var chatEntry = new ChatEntry(chatEntryId);
-        var chatMessageModel = new ChatMessageModel(chatEntry) {
-            IsBlockStart = true,
-            IsBlockEnd = true,
-            ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
-        };
-        return new List<ChatMessageModel>() { chatMessageModel };
+        return new ChatMessageModel(chatEntry) { ReplacementKind = ChatMessageReplacementKind.WelcomeBlock };
     }
 }

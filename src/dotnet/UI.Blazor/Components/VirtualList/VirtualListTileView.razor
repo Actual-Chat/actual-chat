@@ -1,0 +1,30 @@
+﻿@namespace ActualChat.UI.Blazor.Components
+@typeparam TItem where TItem : IVirtualListItem
+@{
+    var items = Tile.Items;
+    for (var i = 0; i < items.Count;) {
+        var item = items[i];
+        i++;
+        var nextItem = i >= items.Count ? NextItem : items[i];
+        @if (item.CountAs != 1) {
+            <li id="@item.Key.Value"
+                @key="@item.Key"
+                class="item"
+                data-count-as="@item.CountAs.Format()">
+                @Item.Invoke((item, nextItem))
+            </li>
+        } else {
+            <li id="@item.Key.Value"
+                @key="@item.Key"
+                class="item">
+                @Item.Invoke((item, nextItem))
+            </li>
+        }
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public VirtualListTile<TItem> Tile { get; set; } = null!;
+    [Parameter, EditorRequired] public TItem? NextItem { get; set; }
+    [Parameter] public RenderFragment<(TItem Item, TItem? NextItem)> Item { get; set; } = null!;
+}

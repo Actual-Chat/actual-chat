@@ -163,7 +163,7 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
             .OrderByDescending(x => x.LocalId)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbEntry?.ToModel();
+        return dbEntry?.ToModel(); // LinkPreview & other properties aren't populated here!
     }
 
     // [CommandHandler]

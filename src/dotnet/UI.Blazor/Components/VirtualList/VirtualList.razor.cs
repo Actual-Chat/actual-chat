@@ -33,7 +33,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     [Parameter, EditorRequired]
     public IVirtualListDataSource<TItem> DataSource { get; set; } = VirtualListDataSource<TItem>.Empty;
     [Parameter] // NOTE(AY): Putting EditorRequired here triggers a warning in Rider (likely their issue)
-    public RenderFragment<TItem> Item { get; set; } = null!;
+    public RenderFragment<(TItem Item, TItem? NextItem)> Item { get; set; } = null!;
     [Parameter] public RenderFragment<int> Skeleton { get; set; } = null!;
     [Parameter] public int SkeletonCount { get; set; } = 10;
     [Parameter] public double SpacerSize { get; set; } = 200;
@@ -108,7 +108,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
             var lastComputedData = Data == VirtualListData<TItem>.None
                 ? LastData
                 : Data;
-            data = await DataSource.GetData(query, lastComputedData, cancellationToken);
+            data = await DataSource.GetData(query, lastComputedData, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);

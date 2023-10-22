@@ -67,19 +67,29 @@
     <div @key="@VirtualListSpecialKeys.EndSpacer"
          class="c-spacer-end"
          style="height: @(endSpacerSize)px">
-        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
+        <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <ul @key="@VirtualListSpecialKeys.Container"
         class="c-virtual-container">
-        @foreach (var tile in tiles) {
-            <VirtualListTile Tile="@tile" Item="@Item" />
+        @{
+            for (var i = 0; i < tiles.Count;) {
+                var tile = tiles[i];
+                i++;
+                var nextItem = default(TItem?);
+                if (i < tiles.Count) {
+                    var nextTileItems = tiles[i].Items;
+                    if (nextTileItems.Count > 0)
+                        nextItem = nextTileItems[0];
+                }
+                <VirtualListTileView @key="@tile" Tile="@tile" NextItem="@nextItem" Item="@Item"/>
+            }
         }
     </ul>
 
     <div @key="@VirtualListSpecialKeys.Spacer"
          class="c-spacer-start"
          style="height: @(spacerSize)px">
-        <VirtualListSkeleton SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
+        <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 </div>

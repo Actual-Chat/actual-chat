@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.UI.Blazor.Components;
 
-public record VirtualListDataTile<TItem>(IReadOnlyList<TItem> Items, object? Source = null)
+public sealed record VirtualListTile<TItem>(IReadOnlyList<TItem> Items)
     where TItem : IVirtualListItem
 {
     /// <summary>
@@ -10,4 +10,8 @@ public record VirtualListDataTile<TItem>(IReadOnlyList<TItem> Items, object? Sou
         => Items.Count > 0
             ? new Range<string>(Items[0].Key, Items[^1].Key)
             : default;
+
+    // This record relies on referential equality
+    public bool Equals(VirtualListTile<TItem>? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }
