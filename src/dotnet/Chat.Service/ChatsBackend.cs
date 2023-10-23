@@ -26,11 +26,11 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     private IRolesBackend? _rolesBackend;
     private IMediaBackend? _mediaBackend;
     private ILinkPreviewsBackend? _linkPreviewsBackend;
-    private IAccountsBackend AccountsBackend => _accountsBackend ??= services.GetRequiredService<IAccountsBackend>();
-    private IAuthorsBackend AuthorsBackend => _authorsBackend ??= services.GetRequiredService<IAuthorsBackend>();
-    private IRolesBackend RolesBackend => _rolesBackend ??= services.GetRequiredService<IRolesBackend>();
-    private IMediaBackend MediaBackend => _mediaBackend ??= services.GetRequiredService<IMediaBackend>();
-    private ILinkPreviewsBackend LinkPreviewsBackend => _linkPreviewsBackend ??= services.GetRequiredService<ILinkPreviewsBackend>();
+    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
+    private IAuthorsBackend AuthorsBackend => _authorsBackend ??= Services.GetRequiredService<IAuthorsBackend>();
+    private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
+    private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
+    private ILinkPreviewsBackend LinkPreviewsBackend => _linkPreviewsBackend ??= Services.GetRequiredService<ILinkPreviewsBackend>();
 
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();

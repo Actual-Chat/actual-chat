@@ -25,7 +25,7 @@ public readonly partial struct ApiArray<T>(T[] items)
     private static readonly T[] EmptyItems = Array.Empty<T>();
     public static readonly ApiArray<T> Empty = default;
 
-    private readonly T[]? _items = items.Length == 0 ? null : items;
+    private readonly T[]? _items = items is [] ? null : items;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public T[] Items {
