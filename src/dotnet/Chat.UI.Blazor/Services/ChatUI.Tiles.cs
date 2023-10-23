@@ -3,6 +3,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatUI
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
+    private static readonly VirtualListTile<ChatMessageModel> EmptyTile = new(Array.Empty<ChatMessageModel>());
 
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     public virtual async Task<VirtualListTile<ChatMessageModel>> GetTile(
@@ -13,9 +14,17 @@ public partial class ChatUI
         long lastReadEntryId,
         CancellationToken cancellationToken = default)
     {
-        var tile = await Chats
-            .GetTile(Session, chatId, ChatEntryKind.Text, idRange, cancellationToken)
+        if (idRange.IsEmpty)
+            return EmptyTile;
+
+        var tiles = await ChatView.IdTileStack.FirstLayer
+            .GetCoveringTiles(idRange)
+            .Select(t => Chats.GetTile(Session, chatId, ChatEntryKind.Text, t.Range, cancellationToken))
+            .Collect()
             .ConfigureAwait(false);
+        var entries = tiles.SelectMany(t => t.Entries).ToList();
+        if (entries.Count == 0)
+            return EmptyTile;
 
         var prevEntry = (ChatEntry?)null;
         var prevDate = DateOnly.MinValue;
@@ -34,12 +43,9 @@ public partial class ChatUI
             hasVeryFirstItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.WelcomeBlock;
         }
 
-        var entries = tile.Entries;
         var messages = new List<ChatMessageModel>(entries.Count);
         var isWelcomeBlockAdded = false;
-        for (var index = 0; index < entries.Count; index++) {
-            var entry = entries[index];
-
+        foreach (var entry in entries) {
             var date = DateOnly.FromDateTime(TimeZoneConverter.ToLocalTime(entry.BeginsAt));
             var isForward = !entry.ForwardedAuthorId.IsNone;
             var isBlockStart = IsBlockStart(prevEntry, entry);
@@ -84,7 +90,6 @@ public partial class ChatUI
             prevForwardChatId = entry.ForwardedChatEntryId.ChatId;
             isPrevAudio = isAudio;
         }
-
         return new VirtualListTile<ChatMessageModel>(messages);
     }
 

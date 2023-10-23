@@ -294,7 +294,7 @@ public sealed class ChatEntryReader(
         Range<long> idRange,
         CancellationToken cancellationToken)
     {
-        var (minId, maxId) = idRange.ToInclusive();
+        var (minId, maxId) = idRange.MoveEnd(-1);
         ChatEntry? entry;
         while (minId < maxId) {
             var midId = minId + ((maxId - minId) >> 1);
