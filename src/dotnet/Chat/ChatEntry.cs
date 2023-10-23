@@ -46,7 +46,7 @@ public sealed partial record ChatEntry(
     [DataMember, MemoryPackOrder(27)] public string? ForwardedChatTitle { get; init; }
     [DataMember, MemoryPackOrder(28)] public string? ForwardedAuthorName { get; init; }
     [DataMember, MemoryPackOrder(29)] public Symbol LinkPreviewId { get; init; } = "";
-    [DataMember, MemoryPackOrder(30)] public LinkPreviewMode? LinkPreviewMode { get; init; }
+    [DataMember, MemoryPackOrder(30)] public LinkPreviewMode LinkPreviewMode { get; init; }
     [DataMember, MemoryPackOrder(50)] public ApiArray<TextEntryAttachment> Attachments { get; init; }
     [DataMember, MemoryPackOrder(51)] public LinkPreview? LinkPreview { get; init; }
 

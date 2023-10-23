@@ -5,7 +5,7 @@
 @inherits FusionComponentBase
 @{
     var m = Source;
-    if (Mode == LinkPreviewMode.Dismiss || m == null || m.IsEmpty)
+    if (Mode == LinkPreviewMode.None || m == null || m.IsEmpty)
         return;
 
     var imageUrl = GetImageUrl(m.PreviewMedia);

@@ -20,7 +20,7 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
     public Media.LinkPreview? LinkPreview { get; init; }
 
     public bool ShowLinkPreview
-        => LinkPreview is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.Dismiss;
+        => LinkPreview is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.None;
 
     public override string ToString()
         => $"(#{Key} -> {Entry})";

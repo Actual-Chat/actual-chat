@@ -2,7 +2,8 @@ namespace ActualChat.Media;
 
 public enum LinkPreviewMode
 {
-    Full,
+    Default = 0,
+    None,
     Compact,
-    Dismiss,
+    Full,
 }

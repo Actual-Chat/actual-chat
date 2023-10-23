@@ -104,7 +104,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt,
             Attachments = attachmentsArray,
             LinkPreviewId = LinkPreviewId,
-            LinkPreviewMode = LinkPreviewMode,
+            LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
             LinkPreview = linkPreview,
 #pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text
