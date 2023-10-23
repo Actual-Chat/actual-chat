@@ -121,7 +121,7 @@ export class TotpInput implements Disposable {
 
     private async onInput(e: InputEvent) {
         const [i, input] = this.getEventCtx(e);
-        const text = e.data;
+        const text = e.data ?? input.value;
         await this.setFromText(text, i, input);
     }
 

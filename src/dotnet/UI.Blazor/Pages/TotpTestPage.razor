@@ -1,0 +1,68 @@
+@page "/test/totp"
+@using ActualChat.Users
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.UI.Blazor.Services
+@layout NoLayout
+
+<RequireAccount MustBeAdmin="true"/>
+
+<div class="flex-y flex-1 items-center justify-center">
+    <Form
+        Class="m-6 w-80"
+        Model="@_model"
+        OnValidSubmit="OnVerifyClick">
+        <DataAnnotationsValidator/>
+        <FormSection
+            For="() => _model.ReadablePhone"
+            InputId="phone"
+            Label="Phone"
+            Class="grow"
+            IsLabelInsideInput="true"
+            IsRequired="true">
+            <ChildContent>
+                <InputText
+                    id="phone"
+                    @bind-Value="_model.ReadablePhone"
+                    autocomplete="tel"
+                    type="tel"
+                    inputmode="tel"/>
+            </ChildContent>
+        </FormSection>
+
+        @if (_model.ShowVerifier) {
+            <TotpVerifier Purpose="TotpPurpose.SignIn" Verified="@OnVerified" Phone="@_model.Phone" />
+        }
+
+        <FormButtons>
+            @if (_model.ShowVerifier) {
+                <Button Click="OnCancelClick" Class="btn-w-full">Cancel</Button>
+            } else {
+                <Button Type="@ButtonType.Submit" Class="btn-w-full btn-primary">Verify</Button>
+            }
+        </FormButtons>
+    </Form>
+</div>
+
+@code {
+    private readonly Model _model = new();
+
+    private void OnVerified() {
+        _model.IsVerified = true;
+        _model.ShowVerifier = false;
+    }
+
+    private void OnVerifyClick()
+        => _model.ShowVerifier = true;
+
+    private void OnCancelClick() {
+        _model.ShowVerifier = false;
+        _model.IsVerified = false;
+    }
+
+    public class Model {
+        [Required, PhoneNumber] public string ReadablePhone { get; set; } = "+1(234)-567-89-10";
+        public bool IsVerified { get; set; }
+        public bool ShowVerifier { get; set; }
+        public Phone Phone => PhoneFormatterExt.FromReadable(ReadablePhone);
+    }
+}
