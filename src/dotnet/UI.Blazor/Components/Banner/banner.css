@@ -1,28 +1,43 @@
 .banner {
-    @apply flex-x gap-x-1 items-center justify-between;
+    @apply flex-x gap-x-2 items-center justify-between;
     @apply w-full h-14;
-    @apply pl-2.5 pr-2.5;
-    @apply bg-01 border-bg-04 border-b;
+    @apply px-4;
+    @apply border-bg-04 border-b;
 }
 .banner-body {
+    @apply flex-1;
     @apply ml-1;
 }
 .banner-buttons {
     @apply flex-x items-center gap-x-2;
     @apply ml-auto;
-    @apply text-icons-01;
-}
-.banner-buttons-close {
-    @apply flex items-center justify-center;
-    @apply w-6 h-6;
-    @apply ml-3;
-    @apply rounded-full;
-}
-body.hoverable .banner-buttons-close:hover i {
     @apply text-03;
+}
+.banner .btn:not(.close-banner) {
+    @apply px-2;
+}
+body.hoverable .banner .btn:hover {
+    @apply brightness-125 ;
 }
 .severity-icon {
     @apply flex items-center justify-center;
-    @apply w-10 h-10 min-w-10 min-h-10;
     @apply rounded-full;
+    @apply text-01;
+}
+
+.bg-banner-info .btn .btn-content,
+.bg-banner-info i {
+    @apply text-banner-info;
+}
+.bg-banner-success .btn .btn-content,
+.bg-banner-success i {
+    @apply text-banner-success;
+}
+.bg-banner-warning .btn .btn-content,
+.bg-banner-warning i {
+    @apply text-banner-warning;
+}
+.bg-banner-error .btn .btn-content,
+.bg-banner-error i {
+    @apply text-banner-error;
 }

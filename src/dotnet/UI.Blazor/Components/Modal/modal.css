@@ -170,21 +170,21 @@ body.narrow .dialog-buttons {
     @apply rounded-md mb-2;
 }
 .dialog-body .validation-errors .validation-message {
-    @apply flex justify-center rounded-md p-2 bg-error text-04 font-normal text-base;
+    @apply flex justify-center rounded-md p-2 bg-danger text-06 font-normal text-base;
 }
 
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
     @apply border rounded-md outline-none p-1 px-2;
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled).invalid {
-    @apply border-error;
+    @apply border-danger;
 }
 .dialog-body input:focus:not(.dialog-unstyled) {
     @apply outline-none border-primary;
     @apply ring-1 ring-primary;
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled).invalid:focus {
-    @apply border-error;
+    @apply border-danger;
 }
 
 /* Fullscreen Modal */

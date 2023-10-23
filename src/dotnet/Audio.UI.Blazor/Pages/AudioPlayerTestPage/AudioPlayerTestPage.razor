@@ -10,11 +10,11 @@
 
 <div class="flex items-baseline text-xl text-bold">
     <label for="url">URL:</label>
-    <input id="url" class="flex-1 mt-1 p-1 text-lg bg-gray-50 focus:outline-none border border-gray-200 rounded text-gray-600" type="text" placeholder="Put a webm url here..." @bind="@_uri" @bind:event="oninput">
+    <input id="url" class="flex-1 mt-1 p-1 text-lg bg-03 focus:outline-none border border-bg-05 rounded text-02" type="text" placeholder="Put a webm url here..." @bind="@_uri" @bind:event="oninput">
 </div>
-<div class="text-xl text-bold bg-green-50 rounded-2xl">
-    <p class="text-2xl text-bold mb-3 text-indigo-500">Our players:</p>
-    <button class="py-1 px-3 bg-gray-900 text-yellow-600 rounded-md">CLICK HERE (to initialize audio context pool)</button>
+<div class="text-xl text-bold bg-banner-success rounded-2xl">
+    <p class="text-2xl text-bold mb-3 text-banner">Our players:</p>
+    <button class="py-1 px-3 bg-07 text-warning rounded-md">CLICK HERE (to initialize audio context pool)</button>
     <p>IsPlaying: @_isPlaying</p>
     <p>Offset: @_offset</p>
     <p>[Js] constructor delay: @ObjectCreationDelay ms</p>
@@ -22,31 +22,31 @@
     <p>[Js] from ctor to the play(): @StartPlayingDelay ms</p>
     @if (_isPlaying) {
         <button
-            class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-red-700"
+            class="mt-3 px-8 py-1 text-05 rounded-md bg-danger"
             @onclick="@OnToggleClick">Stop</button>
         <button
-            class="mt-3 px-4 py-1 text-gray-700 rounded-md bg-yellow-300"
+            class="mt-3 px-4 py-1 text-03 rounded-md bg-banner-warning"
             @onclick="@(() => OnBlockMainThread(BlockMainThreadMs))">Block JS main thread for @BlockMainThreadMs ms</button>
         <button
-            class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-blue-700"
+            class="mt-3 px-8 py-1 text-05 rounded-md bg-primary"
             @onclick="@OnPauseToggleClick">@(_isPaused ? "Resume" : "Paused")</button>
     } else {
         <button
-            class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-purple-700"
+            class="mt-3 px-8 py-1 text-05 rounded-md bg-bubble"
             @onclick="@OnToggleClick" >@(_isPlaying ? "StopTask" : "AudioContext")</button>
     }
 </div>
 
-<div class="bg-red-50 rounded-2xl">
-    <p class="text-2xl text-bold text-indigo-500 mb-3">Default &lt;audio&gt; player:</p>
+<div class="bg-02 rounded-2xl">
+    <p class="text-2xl text-bold text-danger mb-3">Default &lt;audio&gt; player:</p>
     <audio controls="" name="media">
         <source src="@_uri" type="audio/webm">
     </audio>
 </div>
 
-<div class="bg-green-50  rounded-2xl">
-    <p class="text-2xl text-bold text-indigo-500 mb-3">Decoder leak test</p>
+<div class="bg-banner-success  rounded-2xl">
+    <p class="text-2xl text-bold text-danger mb-3">Decoder leak test</p>
     <button
-        class="mt-3 px-8 py-1 text-gray-50 rounded-md bg-green-700"
+        class="mt-3 px-8 py-1 text-05 rounded-md bg-banner-success"
         @onclick="@OnDecoderLeakTestClick">Decoder Leak Test</button>
 </div>

@@ -9,6 +9,7 @@ internal class Invites(IServiceProvider services) : IInvites
     private IChats? _chats;
     private IAccounts? _accounts;
     private MomentClockSet? _clocks;
+    private ILogger? _log;
 
     private IServiceProvider Services { get; } = services;
     private IInvitesBackend Backend { get; } = services.GetRequiredService<IInvitesBackend>();
@@ -16,6 +17,7 @@ internal class Invites(IServiceProvider services) : IInvites
     private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks => _clocks ??= Services.GetRequiredService<MomentClockSet>();
+    private ILogger Log => _log ??= Services.LogFor<Invites>();
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<Invite>> ListUserInvites(
@@ -93,12 +95,23 @@ internal class Invites(IServiceProvider services) : IInvites
         if (Computed.IsInvalidating())
             return default!;
 
-        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
-        account.Require(Account.MustNotBeGuest);
+        Log.LogInformation("On Invites_Use");
+        Exception? exception = null;
+        try {
+            var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+            account.Require(Account.MustNotBeGuest);
 
-        var useCommand = new InvitesBackend_Use(command.Session, command.InviteId);
-        var invite = await Commander.Call(useCommand, cancellationToken).ConfigureAwait(false);
-        return invite.Mask();
+            var useCommand = new InvitesBackend_Use(command.Session, command.InviteId);
+            var invite = await Commander.Call(useCommand, cancellationToken).ConfigureAwait(false);
+            return invite.Mask();
+        }
+        catch (Exception e) {
+            exception = e;
+            throw;
+        }
+        finally {
+            Log.LogInformation("On Invites_Use completed. Error: {Error}", exception);
+        }
     }
 
     // [CommandHandler]

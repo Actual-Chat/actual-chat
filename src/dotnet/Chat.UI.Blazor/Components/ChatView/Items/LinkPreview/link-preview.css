@@ -28,7 +28,7 @@
     @apply max-w-20 md:max-w-30;
 }
 .link-preview .c-title {
-    @apply text-xs md:text-base text-accent font-semibold;
+    @apply text-xs md:text-base text-primary font-semibold;
     @apply line-clamp-1 md:line-clamp-2;
 }
 .link-preview .c-description {
@@ -37,6 +37,6 @@
 }
 
 .link-preview .c-domain {
-    @apply text-xs md:text-sm text-icons-02;
+    @apply text-xs md:text-sm text-04;
     @apply truncate;
 }

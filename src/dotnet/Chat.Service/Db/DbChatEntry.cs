@@ -77,6 +77,10 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, Media.LinkPreview? linkPreview = null)
     {
+        // fix NRE during deserialization of ApiArray at versions earlier than v0.200
+        var attachmentsArray = attachments == null
+            ? new ApiArray<TextEntryAttachment>(Array.Empty<TextEntryAttachment>())
+            : new ApiArray<TextEntryAttachment>(attachments!.ToArray());
         var chatId = new ChatId(ChatId);
         var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
         return new (id, Version) {
@@ -98,9 +102,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ForwardedAuthorName = ForwardedAuthorName,
             ForwardedChatEntryId = new ChatEntryId(ForwardedChatEntryId),
             ForwardedChatEntryBeginsAt = ForwardedChatEntryBeginsAt,
-            Attachments = attachments?.ToApiArray() ?? default,
+            Attachments = attachmentsArray,
             LinkPreviewId = LinkPreviewId,
-            LinkPreviewMode = LinkPreviewMode,
+            LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
             LinkPreview = linkPreview,
 #pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text

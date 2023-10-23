@@ -66,9 +66,9 @@
         <FormBlock>
             <button type="button" class="delete-avatar-btn" @onclick="@OnDeleteAccountClick">
                 <div>
-                    <i class="icon-trash03 text-xl text-error"></i>
+                    <i class="icon-trash03 text-xl text-danger"></i>
                 </div>
-                <div class="flex w-full px-8 text-error">
+                <div class="flex w-full px-8 text-danger">
                     Delete account
                 </div>
             </button>
@@ -76,8 +76,8 @@
         </Body>
         <Buttons>
             <FormButtons>
-                <Button Type="@ButtonType.Button" Class="btn-cancel" Click="OnCancel">Cancel</Button>
-                <Button Type="@ButtonType.Submit" Class="btn-primary" IsDisabled="@(!_formRef.IsValid)">Save</Button>
+                <Button Type="@ButtonType.Button" Class="btn-modal" Click="OnCancel">Cancel</Button>
+                <Button Type="@ButtonType.Submit" Class="btn-modal btn-primary" IsDisabled="@(!_formRef.IsValid)">Save</Button>
             </FormButtons>
         </Buttons>
     </DialogFrame>

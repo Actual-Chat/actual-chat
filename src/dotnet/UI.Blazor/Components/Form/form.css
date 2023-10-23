@@ -25,18 +25,18 @@
 }
 .form input:not([type='checkbox']):not(.dialog-unstyled).invalid,
 .form select.invalid {
-    @apply border-error;
-    @apply ring-1 ring-error;
+    @apply border-danger;
+    @apply ring-1 ring-danger;
 }
 .form input:focus,
 .form select:focus {
-    @apply outline-none border-accent;
-    @apply ring-1 ring-accent;
+    @apply outline-none border-primary;
+    @apply ring-1 ring-primary;
 }
 .form input:not([type='checkbox']):not(.dialog-unstyled).invalid:focus,
 .form select.invalid:focus {
-    @apply border-error;
-    @apply ring-1 ring-error;
+    @apply border-danger;
+    @apply ring-1 ring-danger;
 }
 
 .form.form-y section > * {
@@ -67,19 +67,19 @@
 }
 
 .form-section-validation-message {
-    @apply text-caption-2 text-error;
+    @apply text-caption-2 text-danger;
 }
 
 /*Label inside input*/
 .form-section-content.label-inside-input {
-    @apply bg-02 border-b border-icons-01 gap-y-0 px-2;
+    @apply bg-02 border-b border-text-03 gap-y-0 px-2;
 }
 .form-section-content.label-inside-input:focus-within {
-    @apply border-accent;
-    @apply caret-accent;
+    @apply border-primary;
+    @apply caret-primary;
 }
 .form section.invalid .form-section-content.label-inside-input {
-    @apply border-error;
+    @apply border-danger;
 }
 .label-inside-input input,
 .label-inside-input select {
@@ -91,10 +91,10 @@
     @apply text-xs font-normal text-03;
 }
 .form .form-section-content.label-inside-input:focus-within label {
-    @apply text-accent;
+    @apply text-primary;
 }
 .form section.invalid .form-section-content.label-inside-input label {
-    @apply text-error;
+    @apply text-danger;
 }
 .form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled),
 .form .form-section-content.label-inside-input select {
@@ -102,7 +102,7 @@
 }
 .form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled).invalid,
 .form .form-section-content.label-inside-input select.invalid {
-    @apply border-error ring-0;
+    @apply border-danger ring-0;
 }
 .form .form-section-content.label-inside-input input:focus,
 .form .form-section-content.label-inside-input select:focus {
@@ -110,7 +110,7 @@
 }
 .form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled).invalid:focus,
 .form .form-section-content.label-inside-input select.invalid:focus {
-    @apply border-error ring-0;
+    @apply border-danger ring-0;
 }
 
 .form .tile-item {

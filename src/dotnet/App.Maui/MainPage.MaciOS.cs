@@ -79,23 +79,27 @@ public partial class MainPage
                 return;
             }
 
-            var permissionHandler = Services.GetRequiredService<MicrophonePermissionHandler>();
-            var resultValueTask = permissionHandler.CheckOrRequest();
-            if (resultValueTask.IsCompleted) {
-                var result = resultValueTask.Result
-                    ? WKPermissionDecision.Grant
-                    : WKPermissionDecision.Prompt;
-                decisionHandler.Invoke(result);
-            }
-            else
-                _ = resultValueTask
-                    .AsTask()
-                    .ContinueWith(t => {
-                        var result = t is { IsCompletedSuccessfully: true, Result: true }
+            _ = DispatchToBlazor(
+                c => {
+                    var permissionHandler = c.GetRequiredService<MicrophonePermissionHandler>();
+                    var resultValueTask = permissionHandler.CheckOrRequest();
+                    if (resultValueTask.IsCompleted) {
+                        var result = resultValueTask.Result
                             ? WKPermissionDecision.Grant
                             : WKPermissionDecision.Prompt;
                         decisionHandler.Invoke(result);
-                    }, TaskScheduler.Default);
+                    }
+                    else
+                        _ = resultValueTask
+                            .AsTask()
+                            .ContinueWith(t => {
+                                var result = t is { IsCompletedSuccessfully: true, Result: true }
+                                    ? WKPermissionDecision.Grant
+                                    : WKPermissionDecision.Prompt;
+                                decisionHandler.Invoke(result);
+                            }, TaskScheduler.Default);
+                },
+                "RequestMediaCapturePermission");
         }
 
         private bool IsMediaCaptureGranted(

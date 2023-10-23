@@ -2,7 +2,7 @@
     @apply flex-y;
     @apply lg:w-80 h-full;
     @apply border-l border-bg-04;
-    @apply bg-02;
+    @apply bg-03;
 }
 
 .right-chat-panel > .c-panel-content {
@@ -20,7 +20,7 @@
 }
 .right-panel-chat-info-item.hovered {
     @apply cursor-pointer;
-    @apply hover:bg-round-hover;
+    @apply hover:bg-hover;
 }
 .right-panel-chat-info-item > .c-icon {
     @apply flex items-center justify-center;
@@ -58,7 +58,7 @@
     @apply text-02 text-title-1;
 }
 .right-chat-panel > .c-header > .c-center i.icon-edit {
-    @apply text-accent;
+    @apply text-primary;
 }
 
 
@@ -76,7 +76,7 @@
     @apply m-0.5;
 }
 body.hoverable .author-list-tab .avatar-badge:hover {
-    @apply bg-round-hover;
+    @apply bg-hover;
 }
 .author-list-tab > .c-content {
     @apply flex-auto flex-y gap-y-1;

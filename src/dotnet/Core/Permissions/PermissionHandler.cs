@@ -10,7 +10,7 @@ public abstract class PermissionHandler : WorkerBase
     private readonly IMutableState<bool?> _cached;
     private HostInfo? _hostInfo;
     private SystemSettingsUI? _permissionSettingsUI;
-    private Dispatcher? _dispatcher;
+    private IDispatcherResolver? _dispatcherResolver;
     private IMomentClock? _clock;
     private ILogger? _log;
 
@@ -18,7 +18,8 @@ public abstract class PermissionHandler : WorkerBase
     protected HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     protected SystemSettingsUI SystemSettingsUI
         => _permissionSettingsUI ??= Services.GetRequiredService<SystemSettingsUI>();
-    protected Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
+    protected IDispatcherResolver DispatcherResolver
+        => _dispatcherResolver ??= Services.GetRequiredService<IDispatcherResolver>();
     protected IMomentClock Clock => _clock ??= Services.Clocks().CpuClock;
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
@@ -51,7 +52,9 @@ public abstract class PermissionHandler : WorkerBase
         if (_cached.Value == true)
             return true;
 
-        return await Dispatcher.InvokeAsync(async () => {
+        if (!DispatcherResolver.WhenReady.IsCompleted)
+            await DispatcherResolver.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await DispatcherResolver.Dispatcher.InvokeAsync(async () => {
             Log.LogDebug("Check");
             var isGranted = await Get(cancellationToken).ConfigureAwait(true);
             SetUnsafe(isGranted);
@@ -85,7 +88,9 @@ public abstract class PermissionHandler : WorkerBase
         if (_cached.Value == true)
             return true;
 
-        return await Dispatcher.InvokeAsync(async () => {
+        if (!DispatcherResolver.WhenReady.IsCompleted)
+            await DispatcherResolver.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await DispatcherResolver.Dispatcher.InvokeAsync(async () => {
             Log.LogDebug("Check");
             var isGranted = await Get(cancellationToken).ConfigureAwait(false);
             SetUnsafe(isGranted);

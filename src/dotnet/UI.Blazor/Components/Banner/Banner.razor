@@ -8,13 +8,13 @@
         return;
 }
 
-<div class="banner @Class @_animator.Class">
+<div class="banner @BannerBgColor @Class @_animator.Class">
     @if (Icon != null) {
         @Icon
     } else {
         <SeverityIcon Severity="@Severity"/>
     }
-    <div class="banner-body">
+    <div class="banner-body @TextColor">
         @Body
     </div>
     @if (Buttons != null || ShowDismissButton) {
@@ -22,7 +22,7 @@
             @Buttons
             @if (ShowDismissButton) {
                 <Button
-                    Class="btn-transparent blackout"
+                    Class="btn-transparent blackout close-banner"
                     Click="OnClose"
                     Tooltip="Dismiss"
                     TooltipPosition="FloatingPosition.Top">
@@ -45,7 +45,7 @@
     [Parameter] public RenderFragment? Buttons { get; set; }
     [Parameter] public bool ShowDismissButton { get; set; }
     [Parameter] public bool IsVisible { get; set; } = true;
-    [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Info;
+    [Parameter] public BannerSeverity Severity { get; set; } = BannerSeverity.Default;
     [Parameter] public EventCallback Dismiss { get; set; }
 
     protected override void OnInitialized() {
@@ -65,4 +65,20 @@
             _isDismissed = true; // NOTE(AY) You can't change IsVisible here, coz it's a parameter of component
         StateHasChanged();
     }
+
+    private string BannerBgColor => Severity switch {
+        BannerSeverity.Success => "bg-banner-success",
+        BannerSeverity.Info => "bg-banner-info",
+        BannerSeverity.Error => "bg-banner-error",
+        BannerSeverity.Warning => "bg-banner-warning",
+        _ => "bg-02",
+        };
+
+    private string TextColor => Severity switch {
+        BannerSeverity.Success => "text-banner-success",
+        BannerSeverity.Info => "text-banner-info",
+        BannerSeverity.Error => "text-banner-error",
+        BannerSeverity.Warning => "text-banner-warning",
+        _ => "text-02",
+        };
 }

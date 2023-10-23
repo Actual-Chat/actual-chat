@@ -5,7 +5,7 @@
     @apply animate-opacity-from-0;
 }
 .banner.reconnect-banner i {
-    @apply text-2xl text-icons-04;
+    @apply text-2xl text-danger;
 }
 .banner.reconnect-banner .banner-body {
     @apply flex-1 flex-x items-center gap-x-2;
@@ -25,7 +25,7 @@
 
 .banner.add-members-banner {
     @apply h-10;
-    @apply bg-accent text-white;
+    @apply bg-primary text-06;
 }
 .banner.add-members-banner .banner-body {
     @apply flex-1 flex-x justify-center items-center;
@@ -34,5 +34,5 @@
     @apply gap-x-4 text-headline-1;
 }
 .banner.add-members-banner .banner-buttons .btn.btn-transparent .btn-content {
-    @apply text-white;
+    @apply text-06;
 }

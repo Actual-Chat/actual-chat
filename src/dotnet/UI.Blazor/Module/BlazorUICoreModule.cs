@@ -49,6 +49,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // Replace BlazorCircuitContext w/ AppBlazorCircuitContext + expose Dispatcher
         services.AddScoped(c => new AppBlazorCircuitContext(c));
+        services.AddTransient(c => (IDispatcherResolver)c.GetRequiredService<AppBlazorCircuitContext>());
         services.AddTransient(c => (BlazorCircuitContext)c.GetRequiredService<AppBlazorCircuitContext>());
         services.AddTransient(c => c.GetRequiredService<AppBlazorCircuitContext>().Dispatcher);
 

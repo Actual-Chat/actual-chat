@@ -1,0 +1,171 @@
+@page "/test/ui-colors"
+@using ActualChat.UI.Blazor.Services
+@using System.Text
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>UI Colors Test Page</MainHeader>
+
+<h1>Text and background colors</h1>
+<div class="text-bg-colors grid grid-cols-4 items-center justify-center gap-1">
+    <div class="p-2 bg-01 text-03">
+        <p>bg-01 text-03</p>
+    </div>
+    <div class="p-2 bg-02 text-02">
+        <p>bg-02 text-02</p>
+    </div>
+    <div class="p-2 bg-03 text-03">
+        <p>bg-03 text-03</p>
+    </div>
+    <div class="p-2 bg-04 text-primary">
+        <p>bg-04 text-primary</p>
+    </div>
+    <div class="p-2 bg-05 text-01">
+        <p>bg-05 text-01</p>
+    </div>
+    <div class="p-2 bg-06 text-04">
+        <p>bg-06 text-04</p>
+    </div>
+    <div class="p-2 bg-07 text-05">
+        <p>bg-07 text-05</p>
+    </div>
+    <div class="p-2 bg-08 text-06">
+        <p>bg-08 text-06</p>
+    </div>
+</div>
+
+<h1>Button colors</h1>
+<div class="buttons-colors grid grid-cols-3 items-center justify-center gap-1">
+    <Button Class="btn-primary">Primary</Button>
+    <Button Class="btn-outline">Outline</Button>
+    <Button Class="btn-secondary">Secondary</Button>
+
+    <Button Class="btn-danger">Danger</Button>
+    <Button Class="btn-danger-outline">Danger Outline</Button>
+    <Button Class="btn-cancel">Cancel</Button>
+
+    <Button Class="btn-primary btn-xs">Primary XS</Button>
+    <Button Class="btn-danger btn-sm">Danger SM</Button>
+    <Button Class="btn-secondary btn-lg">Secondary LG</Button>
+
+    <Button Class="btn-modal">Modal</Button>
+    <Button Class="btn-modal btn-primary">Modal Primary</Button>
+    <Button Class="btn-modal btn-danger">Modal Danger</Button>
+
+    <Button Class="btn-transparent">Transparent</Button>
+
+    <ButtonRound>R</ButtonRound>
+    <ButtonSquare ContentClass="flex-none items-center justify-center min-w-12 min-h-12 bg-03">S</ButtonSquare>
+    <ButtonX></ButtonX>
+    <HeaderButton>H</HeaderButton >
+</div>
+
+<div class="buttons-colors flex-y items-start justify-center gap-y-1">
+    <h1>Toast and banner colors</h1>
+    <ErrorToast Class="min-h-14">
+        Color Test Page Error Toast
+    </ErrorToast>
+
+    <Toast Text="Test Toast"></Toast>
+
+    <Banner
+        IsVisible="true"
+        ShowDismissButton="true">
+        <Body>
+        Default Banner
+        </Body>
+        <Buttons>
+            <Button Class="btn-transparent">
+                Configure
+            </Button>
+        </Buttons>
+    </Banner>
+
+    <Banner
+        Severity="BannerSeverity.Info"
+        IsVisible="true">
+        <Body>
+        Info Banner
+        </Body>
+        <Buttons>
+            <Button Class="btn-transparent">
+                Configure
+            </Button>
+        </Buttons>
+    </Banner>
+
+    <Banner
+        Severity="BannerSeverity.Warning"
+        IsVisible="true"
+        ShowDismissButton="true">
+        <Body>
+        Warning Banner
+        </Body>
+        <Buttons>
+            <Button Class="btn-transparent">
+                Settings
+            </Button>
+        </Buttons>
+    </Banner>
+
+    <Banner
+        Severity="BannerSeverity.Success"
+        IsVisible="true">
+        <Body>
+        Success Banner
+        </Body>
+        <Buttons>
+            <Button Class="btn-transparent">
+                OK
+            </Button>
+        </Buttons>
+    </Banner>
+
+    <Banner
+        Severity="BannerSeverity.Error"
+        IsVisible="true">
+        <Body>
+        Error Banner
+        </Body>
+        <Buttons>
+            <Button Class="btn-transparent">
+                Yes
+            </Button>
+        </Buttons>
+    </Banner>
+</div>
+
+<h1>Utility colors</h1>
+<div class="separator-colors grid grid-cols-3 items-center justify-center gap-4">
+    <div class="flex items-center p-2 bg-new-separator text-danger">
+        bg-new-separator text-danger
+    </div>
+    <div class="flex items-center p-2 bg-hover text-01">
+        bg-hover text-01
+    </div>
+    <div class="flex items-center p-2 bg-selected text-01">
+        bg-selected text-01
+    </div>
+</div>
+
+@code {
+    [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ILogger<UIColorsTestPage> Log { get; init; } = null!;
+    [Inject] private InteractiveUI InteractiveUI { get; init; } = null!;
+
+    private void OnClick(int count) {
+        var result = new StringBuilder().Insert(0, "There's something wrong here! ", count).ToString();
+        UICommander.ShowError(StandardError.Constraint(result));
+    }
+
+    private void OnLogErrorClick()
+        => Log.LogError("!!!An error log entry is generated on UIColorsTestPage");
+
+    private void OnCrashClick()
+        => throw StandardError.Internal("Simulated crash!");
+
+    private void OnAppCrashClick() {
+        var rootComponent = (IRootComponent)CircuitContext.RootComponent;
+        rootComponent.SimulateCrash(StandardError.Internal("Simulated application crash!"));
+    }
+}

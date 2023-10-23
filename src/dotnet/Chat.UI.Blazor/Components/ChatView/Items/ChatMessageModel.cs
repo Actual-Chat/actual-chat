@@ -18,7 +18,7 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
     public bool IsReplacement
         => ReplacementKind != ChatMessageReplacementKind.None;
     public bool ShowLinkPreview
-        => Entry.LinkPreview is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.Dismiss;
+        => Entry.LinkPreview is { IsEmpty: false } && Entry.LinkPreviewMode != LinkPreviewMode.None;
 
     public override string ToString()
         => $"(#{Key} -> {Entry})";

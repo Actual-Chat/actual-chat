@@ -6,4 +6,5 @@ public enum BannerSeverity
     Info,
     Warning,
     Error,
+    Default,
 }

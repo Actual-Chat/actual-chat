@@ -10,11 +10,11 @@ body.narrow .download-tiles {
     @apply flex-x items-center gap-2;
     @apply px-2 py-1;
     @apply rounded-lg;
-    @apply bg-black;
+    @apply bg-08;
 }
 .download-tiles .web-app > span {
-    @apply text-base font-medium text-04;
+    @apply text-base font-medium text-06;
 }
 .download-tiles .web-app > i {
-    @apply text-2xl text-04 font-thin;
+    @apply text-2xl text-06 font-thin;
 }

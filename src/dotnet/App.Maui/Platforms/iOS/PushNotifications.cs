@@ -83,7 +83,7 @@ public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission
             else
                 Log.LogWarning("RequestNotificationPermission: denied, {Error}", error);
 
-            isGranted = await IsGranted(cancellationToken).ConfigureAwait(false);
+            isGranted = await IsGranted(cancellationToken).ConfigureAwait(true);
             NotificationUI.SetIsGranted(isGranted);
         }, Log, "Notifications permission request failed", cancellationToken);
 

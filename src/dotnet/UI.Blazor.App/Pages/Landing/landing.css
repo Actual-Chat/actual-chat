@@ -140,7 +140,7 @@ body.narrow .landing-header .light-alpha {
     @apply flex-x items-center justify-center gap-x-4;
     @apply min-w-fit w-fit;
     @apply px-2;
-    @apply text-04 text-headline-1 leading-4.5;
+    @apply text-06 text-headline-1 leading-4.5;
     @apply transition-all ease-in-out duration-100;
 }
 body.narrow .landing-header .btn-text {
@@ -182,7 +182,7 @@ body.narrow .landing-header .btn-text {
 .landing-header .signin-button.btn .btn-content {
     @apply min-w-10 max-w-10 min-h-10 max-h-10;
     @apply bg-transparent;
-    @apply text-04;
+    @apply text-06;
 }
 .landing-header.filled .signin-button.btn .btn-content {
     @apply text-01;
@@ -196,7 +196,7 @@ body.narrow .landing-header .btn-text {
 .docs-header .menu-button.btn .btn-content {
     @apply min-w-10 max-w-10 min-h-10 max-h-10;
     @apply bg-transparent;
-    @apply text-04;
+    @apply text-06;
 }
 .landing-header.filled .menu-button.btn .btn-content {
     @apply text-01;
@@ -206,7 +206,7 @@ body.narrow .landing-header .btn-text {
     @apply px-6;
     @apply border border-bg-04;
     @apply bg-transparent;
-    @apply text-04;
+    @apply text-06;
 }
 body.app-maui .landing-header .btn-download {
     @apply hidden;
@@ -270,7 +270,7 @@ body.narrow .landing .page-links .page-links-wrapper {
     @apply flex-y justify-center;
     @apply w-3/5;
     @apply pt-12;
-    @apply md:text-3xl font-normal text-04;
+    @apply md:text-3xl font-normal text-06;
 }
 body.app-maui .landing .page-1 .main-text {
     @apply gap-y-4;
@@ -467,11 +467,11 @@ body.narrow .landing-links {
     @apply opacity-75;
 }
 .btn-download.transparent * {
-    @apply text-04;
+    @apply text-06;
 }
 .btn-download .c-content {
     @apply flex items-center;
-    @apply text-04 text-headline-1;
+    @apply text-06 text-headline-1;
 }
 
 .page-container {
@@ -723,7 +723,7 @@ body.narrow .docs-header {
     @apply text-headline-1;
 }
 .docs-header .menu-button.btn .btn-content {
-    @apply text-icons-01;
+    @apply text-03;
 }
 
 body.wide .docs-subheader {
@@ -923,8 +923,8 @@ body.narrow .landing-video-modal .dialog-body {
 body.narrow .landing-video-modal .c-header {
     @apply flex-x items-center;
     @apply h-14;
-    @apply text-04;
-    @apply bg-black opacity-80;
+    @apply text-06;
+    @apply bg-08 opacity-80;
 }
 body.narrow .landing-video-modal .c-body {
     @apply flex-1 flex justify-center items-center;
@@ -933,15 +933,15 @@ body.narrow .landing-video-modal .c-footer {
     @apply flex-x items-center gap-x-2;
     @apply h-14;
     @apply px-2;
-    @apply text-04;
-    @apply bg-black opacity-80;
+    @apply text-06;
+    @apply bg-08 opacity-80;
 }
 .landing-video-modal .play-btn,
 .landing-video-modal .pause-btn {
     @apply flex-none items-center justify-center;
     @apply w-20 h-20;
     @apply rounded-full;
-    @apply bg-black;
+    @apply bg-08;
     @apply opacity-50;
     left: calc(50vw - 2.5rem);
     bottom: calc(50vh - 2.5rem);
@@ -949,7 +949,7 @@ body.narrow .landing-video-modal .c-footer {
 .landing-video-modal .play-btn-icon {
     @apply absolute;
     @apply bg-transparent;
-    @apply text-3xl text-04;
+    @apply text-3xl text-06;
     @apply opacity-100;
 }
 .landing-video-modal .c-body .play-btn,
@@ -974,7 +974,7 @@ body.narrow .landing-video-modal .c-footer {
 }
 .landing-video-modal .c-timeline {
     @apply flex-none flex-x gap-x-1;
-    @apply text-04 text-xs font-thin;
+    @apply text-06 text-xs font-thin;
 }
 .landing-video-modal .c-current,
 .landing-video-modal .c-duration {
@@ -988,7 +988,7 @@ body.narrow .landing-video-modal .c-footer {
 .page-links .page-title {
     @apply flex;
     @apply my-8;
-    @apply text-headline-4 text-04;
+    @apply text-headline-4 text-06;
 }
 body.narrow .page-links .page-title {
     @apply justify-start;
@@ -1004,11 +1004,11 @@ body.narrow .page-links .page-title {
     @apply overflow-hidden;
 }
 body.hoverable .landing-download-tile:hover {
-    @apply bg-accent;
+    @apply bg-primary;
 }
 body.hoverable .landing-download-tile:hover .c-title,
 body.hoverable .landing-download-tile:hover .c-text {
-    @apply text-04;
+    @apply text-06;
 }
 .landing-download-tile .c-title {
     @apply flex justify-start;

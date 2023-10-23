@@ -198,7 +198,7 @@ body.narrow .landing.new .landing-header .light-alpha {
 .landing.new .landing-header .c-btn-group {
     @apply flex-x items-center justify-center gap-x-2;
     @apply min-w-fit w-fit;
-    @apply text-04 font-medium;
+    @apply text-06 font-medium;
     @apply transition-all ease-in-out duration-100;
 }
 .landing.new .landing-header .c-btn-group .lg-icon i {
@@ -211,7 +211,7 @@ body.narrow .landing.new .landing-header .c-btn-group {
     @apply flex-x items-center justify-center gap-x-2;
     @apply min-w-fit w-fit;
     @apply px-2;
-    @apply text-04 text-headline-1 leading-4.5;
+    @apply text-06 text-headline-1 leading-4.5;
     @apply transition-all ease-in-out duration-100;
 }
 
@@ -250,7 +250,7 @@ body.narrow .landing.new .landing-header .c-btn-group {
 .landing.new .landing-header .signin-button.btn .btn-content {
     @apply min-w-10 max-w-10 min-h-10 max-h-10;
     @apply bg-transparent;
-    @apply text-04;
+    @apply text-06;
 }
 .landing.new .landing-header.filled .signin-button.btn .btn-content {
     @apply text-01;
@@ -264,7 +264,7 @@ body.narrow .landing.new .landing-header .c-btn-group {
 .docs-header .menu-button.btn .btn-content {
     @apply min-w-10 max-w-10 min-h-10 max-h-10;
     @apply bg-transparent;
-    @apply text-04;
+    @apply text-06;
 }
 .landing.new .landing-header.filled .menu-button.btn .btn-content {
     @apply text-01;
@@ -274,7 +274,7 @@ body.narrow .landing.new .landing-header .c-btn-group {
     @apply px-6;
     @apply border border-bg-04;
     @apply bg-transparent;
-    @apply text-04;
+    @apply text-06;
 }
 body.app-maui .landing.new .landing-header .btn-download {
     @apply hidden;
@@ -356,7 +356,7 @@ body.narrow .landing.new .page-1 > .c-content .main-text {
     @apply flex-y gap-y-8 ;
     @apply p-0;
     @apply w-auto md:w-100 lg:w-120;
-    @apply md:text-3xl font-normal text-04;
+    @apply md:text-3xl font-normal text-06;
 }
 body.narrow .landing.new .page-1 > .c-content .main-text .main-text-wrapper {
     @apply justify-center gap-y-4;
@@ -805,14 +805,14 @@ body.narrow .landing.new .landing-links {
 }
 .landing.new .landing-links > .c-title {
     @apply flex-none flex-y;
-    @apply text-04 text-2xl lg:text-3.5xl;
+    @apply text-06 text-2xl lg:text-3.5xl;
 }
 .landing.new .landing-links > .link-group {
     @apply flex-1 flex-x justify-evenly gap-x-8;
 }
 .landing.new .landing-links > .link-group > .link-btn > .c-text {
     @apply flex-y items-start;
-    @apply text-04 md:text-caption-1 lg:text-title-1;
+    @apply text-06 md:text-caption-1 lg:text-title-1;
 }
 .landing.new .landing-footer {
     @apply flex-x;
@@ -825,7 +825,7 @@ body.narrow .landing.new .landing-links {
     @apply px-6;
     @apply rounded-full;
     @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
-    @apply text-04 text-headline-1;
+    @apply text-06 text-headline-1;
 }
 .btn-download.light {
     @apply bg-none bg-01;
@@ -838,7 +838,7 @@ body.narrow .landing.new .landing-links {
     @apply max-w-none md:max-w-88;
 }
 .landing.new .btn-download > i {
-    @apply text-2xl font-thin text-04;
+    @apply text-2xl font-thin text-06;
 }
 .landing.new .btn-download.light > i {
     @apply text-01;
@@ -848,15 +848,15 @@ body.narrow .landing.new .landing-links {
     @apply justify-center;
     @apply w-full lg:w-fit;
     @apply bg-none bg-01;
-    @apply border border-text-04;
+    @apply border border-text-06;
 }
 body.narrow .landing.new .btn-download.web-signin,
 body.narrow .landing.new .btn-download.ios-disabled {
     @apply justify-center;
     @apply w-full;
     @apply bg-none bg-transparent;
-    @apply border border-text-04;
-    @apply text-04;
+    @apply border border-text-06;
+    @apply text-06;
 }
 .btn-download.transparent,
 .btn-download.ios-disabled.transparent {
@@ -868,11 +868,11 @@ body.narrow .landing.new .btn-download.ios-disabled {
     @apply opacity-75;
 }
 .btn-download.transparent * {
-    @apply text-04;
+    @apply text-06;
 }
 .btn-download .c-content {
     @apply flex items-center;
-    @apply text-04 text-headline-1;
+    @apply text-06 text-headline-1;
 }
 
 .page-container {
@@ -1113,7 +1113,7 @@ body.narrow .docs-header {
     @apply text-headline-1;
 }
 .docs-header .menu-button.btn .btn-content {
-    @apply text-icons-01;
+    @apply text-03;
 }
 
 body.wide .docs-subheader {
@@ -1172,8 +1172,8 @@ body.narrow .landing-video-modal .dialog-body {
 body.narrow .landing-video-modal .c-header {
     @apply flex-x items-center;
     @apply h-14;
-    @apply text-04;
-    @apply bg-black opacity-80;
+    @apply text-06;
+    @apply bg-08 opacity-80;
 }
 body.narrow .landing-video-modal .c-body {
     @apply flex-1 flex justify-center items-center;
@@ -1182,15 +1182,15 @@ body.narrow .landing-video-modal .c-footer {
     @apply flex-x items-center gap-x-2;
     @apply h-14;
     @apply px-2;
-    @apply text-04;
-    @apply bg-black opacity-80;
+    @apply text-06;
+    @apply bg-08 opacity-80;
 }
 .landing-video-modal .play-btn,
 .landing-video-modal .pause-btn {
     @apply flex-none items-center justify-center;
     @apply w-20 h-20;
     @apply rounded-full;
-    @apply bg-black;
+    @apply bg-08;
     @apply opacity-50;
     left: calc(50vw - 2.5rem);
     bottom: calc(50vh - 2.5rem);
@@ -1198,7 +1198,7 @@ body.narrow .landing-video-modal .c-footer {
 .landing-video-modal .play-btn-icon {
     @apply absolute;
     @apply bg-transparent;
-    @apply text-3xl text-04;
+    @apply text-3xl text-06;
     @apply opacity-100;
 }
 .landing-video-modal .c-body .play-btn,
@@ -1223,7 +1223,7 @@ body.narrow .landing-video-modal .c-footer {
 }
 .landing-video-modal .c-timeline {
     @apply flex-none flex-x gap-x-1;
-    @apply text-04 text-xs font-thin;
+    @apply text-06 text-xs font-thin;
 }
 .landing-video-modal .c-current,
 .landing-video-modal .c-duration {
@@ -1252,7 +1252,7 @@ body.narrow .page-links {
 .page-links .page-title {
     @apply flex;
     @apply my-8;
-    @apply text-headline-4 text-04;
+    @apply text-headline-4 text-06;
 }
 body.narrow .page-links .page-title {
     @apply justify-start;
@@ -1275,11 +1275,11 @@ body.wide .page-links .btn-to-main-page {
     @apply overflow-hidden;
 }
 body.hoverable .landing-download-tile:hover {
-    @apply bg-accent;
+    @apply bg-primary;
 }
 body.hoverable .landing-download-tile:hover .c-title,
 body.hoverable .landing-download-tile:hover .c-text {
-    @apply text-04;
+    @apply text-06;
 }
 .landing-download-tile .c-title {
     @apply flex justify-start;
@@ -1311,13 +1311,13 @@ body.narrow .landing-download-tile .c-content {
     @apply flex-x items-center gap-2;
     @apply px-2 py-1;
     @apply rounded-lg;
-    @apply bg-black;
+    @apply bg-08;
 }
 .landing-download-tile .web-app > span {
-    @apply text-base font-medium text-04;
+    @apply text-base font-medium text-06;
 }
 .landing-download-tile .web-app > i {
-    @apply text-2xl text-04 font-thin;
+    @apply text-2xl text-06 font-thin;
 }
 
 .landing.new .checkmark {
@@ -1346,7 +1346,7 @@ body.narrow .landing-download-tile .c-content {
     @apply flex;
 }
 .landing-card > .landing-card-header > .c-icon i {
-    @apply text-2xl text-accent;
+    @apply text-2xl text-primary;
 }
 .landing-card > .landing-card-header > .c-title {
     @apply flex items-center;
@@ -1374,7 +1374,7 @@ body.wide .premium-features-modal .modal-header {
     @apply bg-bubble;
 }
 .premium-features-modal .modal-header-interactive * {
-    @apply text-04;
+    @apply text-06;
 }
 .premium-features-modal .modal-header-interactive .modal-title {
     @apply text-headline-1;
@@ -1453,7 +1453,7 @@ body.narrow .premium-features-modal .c-block-note {
     @apply text-3.5xl text-01;
 }
 .premium-features-modal .c-block-3 .c-left > span {
-    @apply text-05;
+    @apply text-03;
 }
 .premium-features-modal .c-block-3 .c-right {
     @apply text-text-1 text-01;
@@ -1469,7 +1469,7 @@ body.narrow .premium-features-modal .c-block-note {
 }
 
 .premium-features-modal .text-note {
-    @apply text-caption-2 text-icons-01;
+    @apply text-caption-2 text-03;
 }
 .premium-features-modal-card {
     @apply flex-x items-center gap-x-4;
@@ -1479,7 +1479,7 @@ body.narrow .premium-features-modal .c-block-note {
     @apply border-2 border-[#CACCFF];
 }
 .premium-features-modal-card .c-icon {
-    @apply text-accent;
+    @apply text-primary;
 }
 .premium-features-modal-card .c-text {
     @apply text-headline-1 text-01;
@@ -1497,5 +1497,5 @@ body.narrow .premium-features-modal .c-block-note {
     @apply w-8 h-8;
     @apply rounded-full;
     @apply bg-[#CCE4FFFF];
-    @apply text-title-1 text-accent;
+    @apply text-title-1 text-primary;
 }

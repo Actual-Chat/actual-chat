@@ -13,7 +13,7 @@
         var cls = presence switch {
             Presence.Online => "bg-online",
             Presence.Away => "bg-away",
-            Presence.Recording => "bg-icons-04 animate-pulse",
+            Presence.Recording => "bg-danger animate-pulse",
             _ => ""
             };
         return RenderCircle(cls);

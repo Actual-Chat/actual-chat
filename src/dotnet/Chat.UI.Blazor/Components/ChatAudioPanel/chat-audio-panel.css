@@ -34,12 +34,12 @@
 .chat-audio-panel .record-off-btn.btn .btn-content,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover .btn-content {
     @apply bg-gradient-to-b from-primary to-[#B60B84];
-    @apply text-04;
+    @apply text-06;
 }
 .chat-audio-panel .record-on-btn.btn .btn-content,
 body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
     @apply bg-gradient-to-b from-[#FF3880] to-[#B64AAC];
-    @apply text-04;
+    @apply text-06;
 }
 .chat-audio-panel .language-button,
 .chat-audio-panel .playback-wrapper,
@@ -50,7 +50,7 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .narrow .chat-audio-panel .language-button,
 .narrow .chat-audio-panel .playback-wrapper,
 .narrow .chat-audio-panel .recorder-wrapper {
-    @apply drop-shadow-lg shadow-gradient-stop-02;
+    @apply drop-shadow-lg;
 }
 .chat-audio-panel .recorder-wrapper {
     @apply border;
@@ -64,10 +64,10 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 }
 .recorder-wrapper .mic-disabled.btn .btn-content,
 body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
-    @apply bg-icons-02;
+    @apply bg-05;
 }
 .recorder-wrapper.mic-disabled {
-    @apply border-icons-02;
+    @apply border-text-04;
 }
 
 .playback-wrapper .btn.btn-round.on .btn-content {
@@ -75,7 +75,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 .playback-wrapper.listen-off-to-on,
 .playback-wrapper.listen-on {
-    @apply outline outline-1 outline-accent outline-offset-0;
+    @apply outline outline-1 outline-primary outline-offset-0;
     @apply bg-round-focus;
 }
 
@@ -89,7 +89,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply items-center;
     @apply rounded-full;
     @apply bg-transparent;
-    @apply text-04;
+    @apply text-06;
     box-shadow:
         -1px 0 0 0 #5D4CD2FF,
         0 -1px 0 0 #2970FFFF,
@@ -150,7 +150,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 .narrow .chat-audio-panel .recorder-wrapper .btn .btn-content {
     @apply min-w-17 max-w-17 min-h-17 max-h-17;
-    @apply text-04;
+    @apply text-06;
 }
 .narrow .chat-audio-panel .recorder-wrapper .btn .btn-content i {
     font-size: 2rem;
@@ -280,7 +280,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply m-0.5;
 }
 .chat-language-toggle.btn {
-    @apply font-semibold text-lg text-icons-01 md:text-base;
+    @apply font-semibold text-lg text-03 md:text-base;
 }
 .wide .chat-audio-panel .playback-button {
     @apply min-w-12 max-w-12;

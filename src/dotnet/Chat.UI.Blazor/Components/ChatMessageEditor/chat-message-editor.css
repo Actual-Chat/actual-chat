@@ -75,10 +75,10 @@
     @apply flex-none flex items-center justify-center;
     @apply h-12 w-10;
     @apply bg-transparent;
-    @apply text-icons-01;
+    @apply text-03;
 }
 body.narrow .post-panel-btn {
-    @apply text-icons-02;
+    @apply text-04;
 }
 body.hoverable .post-panel-btn:hover {
     @apply brightness-125;
@@ -108,7 +108,7 @@ body.hoverable .post-panel-btn:hover {
     @apply outline-none;
     @apply scale-100;
     @apply bg-07 md:bg-03;
-    @apply text-05 md:text-icons-01;
+    @apply text-03;
 }
 .notify-call-content,
 .panel-closed .notify-call-content {
@@ -126,7 +126,7 @@ body.hoverable .post-panel-btn:hover {
     @apply items-center;
     @apply gap-x-2;
     @apply md:mr-4;
-    @apply text-04 md:text-03;
+    @apply text-06 md:text-03;
 }
 .notify-call-content .btn {
     @apply flex-none;
@@ -137,7 +137,7 @@ body.hoverable .post-panel-btn:hover {
 .notify-call-content .btn.notify-btn {
     @apply bg-06 md:bg-04;
     @apply border-bg-06 md:border-bg-04;
-    @apply text-04 md:text-03;
+    @apply text-06 md:text-03;
 }
 .notify-call-content .btn .btn-content {
     @apply items-center;
@@ -150,7 +150,7 @@ body.hoverable .post-panel-btn:hover {
     @apply self-end;
     @apply p-0;
     @apply outline-none;
-    @apply text-04 md:text-icons-01;
+    @apply text-06 md:text-03;
     @apply bg-transparent;
 }
 .notify-call-content .btn.close-btn .btn-content{
@@ -194,7 +194,7 @@ body.hoverable .post-panel-btn:hover {
     @apply hidden flex-none;
     @apply self-end;
     @apply outline-none;
-    @apply text-05;
+    @apply text-03;
 }
 
 .text-mode .post-panel-btn.post-message {
@@ -204,10 +204,10 @@ body.hoverable .post-panel-btn:hover {
 body.wide .attachment-mode .post-panel-btn.post-message {
     @apply flex;
     @apply animate-display-from-left;
-    @apply text-accent;
+    @apply text-primary;
 }
 body.narrow .attachment-mode .post-panel-btn.post-message {
-    @apply text-04;
+    @apply text-06;
 }
 
 .text-mode .recorder-buttons .btn {
@@ -241,13 +241,13 @@ body.narrow .attachment-list-btn.btn {
     @apply px-0;
 }
 .attachment-list-btn.btn .btn-content {
-    @apply text-accent font-medium;
+    @apply text-primary font-medium;
 }
 .attachment-list-btn.btn:hover .btn-content {
     @apply brightness-125;
 }
-.attachment-list-btn.btn.danger .btn-content {
-    @apply text-icons-04;
+.attachment-list-btn.btn.c-remove .btn-content {
+    @apply text-danger;
 }
 
 .attachment-wrapper {
@@ -285,19 +285,19 @@ body.narrow .attachment-item > img, .attachment-item > video {
     @apply self-center;
     @apply min-w-9 max-w-9 min-h-9 max-h-9;
     @apply top-0 right-0;
-    @apply text-04;
+    @apply text-06;
     @apply z-10;
 }
 .remove-attachment-btn.btn .btn-content {
     @apply justify-center;
-    @apply hover:bg-error hover:opacity-80;
+    @apply hover:bg-danger hover:opacity-80;
     background: rgba(0,0,0,0.4);
 }
 .remove-attachment-btn.btn .btn-content i {
     @apply opacity-80;
 }
 body.hoverable .remove-attachment-btn.btn:hover .btn-content {
-    @apply bg-error opacity-80;
+    @apply bg-danger opacity-80;
 }
 .attachment-filename {
     @apply w-full max-w-34;
@@ -336,9 +336,19 @@ body.narrow .related-chat-entry-panel {
     @apply p-1 -mb-0.5;
     @apply overflow-hidden;
     @apply bg-07;
+    animation: show-related 0.1s linear;
 }
+@keyframes show-related {
+    0% {
+        height: 0;
+    }
+    100% {
+        height: auto;
+    }
+}
+
 body.narrow .related-chat-entry-panel * {
-    @apply bg-09;
+    @apply bg-06;
 }
 .related-chat-entry-panel .related-chat-entry > .c-content {
     @apply flex-1 flex-x items-center gap-x-2;
@@ -349,13 +359,29 @@ body.narrow .related-chat-entry-panel .related-chat-entry {
     @apply px-1;
     @apply rounded-lg;
     @apply overflow-hidden;
+    animation: related-slide-in 0.25s ease-in-out;
+}
+@keyframes related-slide-in {
+    0% {
+        transform: translateX(100%);
+        min-height: 0;
+        height: 0;
+    }
+    50% {
+        transform: translateX(100%);
+        min-height: 2.5rem;
+        height: auto;
+    }
+    100% {
+        transform: translateX(0);
+    }
 }
 body.narrow .related-chat-entry-panel .related-chat-entry .avatar-name,
 body.narrow .related-chat-entry-panel .related-chat-entry .icon-close,
 body.narrow .related-chat-entry-panel .related-chat-entry .icon-reply,
 body.narrow .related-chat-entry-panel .related-chat-entry .quote-text,
 body.narrow .related-chat-entry-panel .related-chat-entry .icon-edit {
-    @apply text-04;
+    @apply text-06;
 }
 .related-chat-entry {
     @apply flex-1 flex-x items-center;

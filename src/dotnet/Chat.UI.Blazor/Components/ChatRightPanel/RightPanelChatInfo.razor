@@ -25,7 +25,7 @@
             Content="Notifications"
             Hint="@(m.NotificationMode != ChatNotificationMode.Muted ? "On" : "Off")">
             <Icon>
-                <i class="text-2xl text-icons-03 icon-bell"></i>
+                <i class="text-2xl text-03 icon-bell"></i>
             </Icon>
             <Right>
                 <Toggle Class="mr-2" IsChecked="@(m.NotificationMode != ChatNotificationMode.Muted)"/>
@@ -36,10 +36,10 @@
     @if (m.ShareModel is { } shareModel) {
         <RightPanelChatInfoItem
             Click="@(() => OnShareClick(shareModel))"
-            ContentClass="text-accent"
+            ContentClass="text-primary"
             Content="Share">
             <Icon>
-                <i class="text-2xl icon-share text-accent"></i>
+                <i class="text-2xl icon-share text-primary"></i>
             </Icon>
         </RightPanelChatInfoItem>
     }
@@ -47,10 +47,10 @@
     @if (Chat.CanInvite()) {
         <RightPanelChatInfoItem
             Click="@OnInviteClick"
-            ContentClass="text-accent"
+            ContentClass="text-primary"
             Content="Add members">
             <Icon>
-                <i class="text-2xl icon-person-add text-accent"></i>
+                <i class="text-2xl icon-person-add text-primary"></i>
             </Icon>
         </RightPanelChatInfoItem>
     }

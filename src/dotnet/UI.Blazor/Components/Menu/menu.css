@@ -54,7 +54,7 @@ body.narrow .ac-menu {
     @apply bg-01;
 }
 body.hoverable .ac-menu-hover .btn.btn-round:hover .btn-content {
-    @apply bg-round-hover;
+    @apply bg-hover;
 }
 
 /* Item list */
@@ -76,7 +76,7 @@ body.hoverable .ac-menu-hover .btn.btn-round:hover .btn-content {
     @apply flex-1 flex-x items-center gap-x-4;
 }
 .ac-menu-icon > i {
-    @apply text-icons-01 text-2xl;
+    @apply text-03 text-2xl;
 }
 body.narrow .ac-menu-icon > i {
     @apply text-2xl;
@@ -98,7 +98,7 @@ body.hoverable .ac-menu-item:hover .ac-menu-icon {
 }
 .ac-menu-item.important-item.on .ac-menu-icon > i,
 .ac-menu-item.important-item.on .ac-menu-text {
-    @apply text-icons-04;
+    @apply text-danger;
 }
 body.hoverable .ac-menu-item.important-item.on:hover {
     @apply bg-menuitem-hover-warning;
@@ -108,5 +108,5 @@ body.hoverable .ac-menu-item.warning-item:hover {
 }
 .ac-menu-item.warning-item .ac-menu-icon > i,
 .ac-menu-item.warning-item .ac-menu-text {
-    @apply text-icons-04;
+    @apply text-danger;
 }
