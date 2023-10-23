@@ -77,6 +77,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public ChatEntry ToModel(IEnumerable<TextEntryAttachment>? attachments = null, Media.LinkPreview? linkPreview = null)
     {
+        // fix NRE during deserialization of ApiArray at versions earlier than v0.200
+        attachments ??= Enumerable.Empty<TextEntryAttachment>();
         var chatId = new ChatId(ChatId);
         var id = new ChatEntryId(Id, chatId, Kind, LocalId, AssumeValid.Option);
         return new (id, Version) {
