@@ -34,13 +34,13 @@
         break;
     case ChatMessageReplacementKind.DateLine:
         <ChatMessageDateLine Date="@message.DateLineDate"/>
-        return;;
+        return;
     case ChatMessageReplacementKind.NewMessagesLine:
         <Separator Title="New messages" TitleClass="new-separator-title"/>
-        return;;
+        return;
     case ChatMessageReplacementKind.WelcomeBlock:
         <ChatWelcomeBlock ChatContext="@ChatContext" />
-        return;;
+        return;
     default:
         throw new ArgumentOutOfRangeException();
     }

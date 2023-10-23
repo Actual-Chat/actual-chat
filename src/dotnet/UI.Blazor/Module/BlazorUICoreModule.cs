@@ -108,6 +108,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new TuneUI(c));
         services.AddScoped(c => new BubbleUI(c));
         services.AddScoped(c => new ShareUI(c));
+        services.AddScoped(c => new SignInRequesterUI(c));
         services.AddScoped(_ => new ToastUI());
         fusion.AddService<BackgroundUI>(ServiceLifetime.Scoped);
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);

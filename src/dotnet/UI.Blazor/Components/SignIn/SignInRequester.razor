@@ -1,0 +1,18 @@
+﻿@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+@code {
+    [Inject] private SignInRequesterUI SignInRequesterUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        if (SignInRequesterUI.Request == null)
+            return;
+
+        _ = ModalUI.Show(new SignInModal.Model(SignInRequesterUI.Request.Reason));
+        SignInRequesterUI.ClearRequestOnLocationChange();
+    }
+}

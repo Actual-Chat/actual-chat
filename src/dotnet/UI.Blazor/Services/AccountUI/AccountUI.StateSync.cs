@@ -78,7 +78,13 @@ public partial class AccountUI
         // We were signed out -> it's a sign-in
         var onboardingUI = Services.GetRequiredService<IOnboardingUI>();
         _ = onboardingUI.TryShow();
-        if (!history.LocalUrl.IsChatOrChatRoot())
+        var signInRequest = SignInRequesterUI.Request;
+        if (signInRequest != null) {
+            SignInRequesterUI.Clear();
+            if (!signInRequest.RedirectTo.IsNullOrEmpty())
+                _ = autoNavigationUI.History.NavigateTo(signInRequest.RedirectTo, true);
+        }
+        else if (!history.LocalUrl.IsChatOrChatRoot())
             _ = autoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
     }
 }
