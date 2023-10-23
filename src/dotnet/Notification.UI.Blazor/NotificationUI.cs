@@ -7,6 +7,8 @@ namespace ActualChat.Notification.UI.Blazor;
 
 public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificationsPermission
 {
+    private const int MaxRetryCount = 5;
+
     private static readonly string JSInitMethod = $"{NotificationBlazorUIModule.ImportName}.NotificationUI.init";
     private static readonly string JSRegisterRequestNotificationHandlerMethod =
         $"{NotificationBlazorUIModule.ImportName}.NotificationUI.registerRequestNotificationHandler";
@@ -121,7 +123,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
 
     // Private methods
 
-    public void RegisterDevice()
+    private void RegisterDevice()
     {
         if (_registerDeviceTask != null)
             return;
@@ -131,7 +133,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
 
             _registerDeviceTask = Task.Run(async () => {
                 string? deviceId = null;
-                while (true) {
+                for (int i = 0; i < MaxRetryCount; i++) {
                     using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
                     using var cts = StopToken.LinkWith(timeoutCts.Token);
                     var cancellationToken = cts.Token;
@@ -149,6 +151,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
                     }
                     await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken.None).ConfigureAwait(false);
                 }
+                return null;
             }, CancellationToken.None);
         }
     }
