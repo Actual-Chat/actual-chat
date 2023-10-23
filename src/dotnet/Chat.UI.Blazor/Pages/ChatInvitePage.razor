@@ -10,9 +10,6 @@
 @if (_useResult is { } useResult) {
     if (useResult.Error is { } error) {
         <p>Failed to join chat: @error.Message</p>
-        @if (_secondAttempt) {
-          <p>Processing invite one more time, please wait..</p>
-        }
     } else {
         <p>Processing invite, please wait..</p>
     }
@@ -22,14 +19,12 @@
     private bool _navigateRequested;
     private Result<Invite>? _useResult;
     private AccountFull? _account;
-    private bool _secondAttempt;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private SignInRequesterUI SignInRequesterUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private ILogger<ChatInvitePage> Log { get; init; } = null!;
 
     [Parameter] public string InviteId { get; set; } = "";
 
@@ -43,19 +38,8 @@
 
         var useCommand = new Invites_Use(Session, InviteId);
         _useResult = await UICommander.Run(useCommand);
-        if (_useResult is not { } useResult)
+        if (_useResult is not { } useResult || useResult.HasError)
             return;
-
-        if (useResult.HasError) {
-            if (useResult.Error is not TimeoutException exception)
-                return;
-            Log.LogWarning(exception, "Invites_Use command execution failed with timeout. Will try again");
-            _secondAttempt = true;
-            _useResult = await UICommander.Run(useCommand);
-            if (_useResult is not { } useResult2  || useResult2.HasError)
-                return;
-            useResult = useResult2;
-        }
 
         var invite = useResult.Value;
         var chatInvite = invite.Details.Chat.Require();
