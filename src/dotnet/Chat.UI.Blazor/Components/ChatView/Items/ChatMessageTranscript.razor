@@ -17,7 +17,7 @@
     [Inject] private ILogger<ChatMessageTranscript> Log { get; init; } = null!;
     private Dispatcher Dispatcher => ChatHub.Dispatcher;
 
-    [Parameter, EditorRequired] public ChatMessageModel Model { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowEntryKind { get; set; }
 
@@ -36,14 +36,14 @@
         RestartCts = new();
         var cancellationToken = RestartCts.Token;
         BackgroundTask.Run(
-            () => ReadTranscript(Model, cancellationToken),
+            () => ReadTranscript(Message, cancellationToken),
             Log, "ReadTranscript failed",
             cancellationToken);
     }
 
-    private async Task ReadTranscript(ChatMessageModel model, CancellationToken cancellationToken) {
+    private async Task ReadTranscript(ChatMessage message, CancellationToken cancellationToken) {
         try {
-            var entry = model.Entry;
+            var entry = message.Entry;
             var diffs = TranscriptStreamer.GetTranscriptDiffStream(entry.StreamId, cancellationToken);
             var transcripts = diffs.ToTranscripts();
             var lastText = "";

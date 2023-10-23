@@ -3,7 +3,7 @@ using ActualChat.Media;
 namespace ActualChat.Chat.UI.Blazor.Components;
 
 [ParameterComparer(typeof(ByValueParameterComparer))]
-public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquatable<ChatMessageModel>
+public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<ChatMessage>
 {
     private Symbol? _key;
 
@@ -29,9 +29,9 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
     // Equality
 
     public override bool Equals(object? obj)
-        => ReferenceEquals(this, obj) || (obj is ChatMessageModel other && Equals(other));
+        => ReferenceEquals(this, obj) || (obj is ChatMessage other && Equals(other));
 
-    public bool Equals(ChatMessageModel? other)
+    public bool Equals(ChatMessage? other)
     {
         if (ReferenceEquals(null, other))
             return false;
@@ -48,15 +48,15 @@ public sealed class ChatMessageModel(ChatEntry entry) : IVirtualListItem, IEquat
     public override int GetHashCode()
         => HashCode.Combine(Entry, ReplacementKind, Date, Flags, Entry.Attachments.Count);
 
-    public static bool operator ==(ChatMessageModel? left, ChatMessageModel? right) => Equals(left, right);
-    public static bool operator !=(ChatMessageModel? left, ChatMessageModel? right) => !Equals(left, right);
+    public static bool operator ==(ChatMessage? left, ChatMessage? right) => Equals(left, right);
+    public static bool operator !=(ChatMessage? left, ChatMessage? right) => !Equals(left, right);
 
     // Static helpers
 
-    public static ChatMessageModel Welcome(ChatId chatId)
+    public static ChatMessage Welcome(ChatId chatId)
     {
         var chatEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0L, AssumeValid.Option);
         var chatEntry = new ChatEntry(chatEntryId);
-        return new ChatMessageModel(chatEntry) { ReplacementKind = ChatMessageReplacementKind.WelcomeBlock };
+        return new ChatMessage(chatEntry) { ReplacementKind = ChatMessageReplacementKind.WelcomeBlock };
     }
 }

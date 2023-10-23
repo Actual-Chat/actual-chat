@@ -1,5 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<ChatMessage.Model>
+@inherits ComputedStateComponent<ChatMessageView.Model>
 @using ActualChat.Hosting
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Diagnostics.CodeAnalysis
@@ -141,7 +141,7 @@
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (entry.IsStreaming) {
-                    <ChatMessageTranscript Model="@message" ShowEntryKind="@((message.Flags & ChatMessageFlags.HasEntryKindSign) != 0)"/>
+                    <ChatMessageTranscript Message="@message" ShowEntryKind="@((message.Flags & ChatMessageFlags.HasEntryKindSign) != 0)"/>
                 } else {
                     <p class="chat-message-markup">
                         @if ((message.Flags & ChatMessageFlags.HasEntryKindSign) != 0) {
@@ -178,11 +178,11 @@
 
 @code {
     private Model? _rendered;
-    private ChatMessageModel? _renderedMessage;
+    private ChatMessage? _renderedMessage;
     private Markup? _renderedMarkup;
     private ValueTask<Markup> _markupTask;
     private Markup _markup = Markup.Empty;
-    private ChatMessageModel? _lastMessage;
+    private ChatMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
 
     // Shortcuts
@@ -200,8 +200,8 @@
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
-    [Parameter, EditorRequired] public ChatMessageModel Message { get; set; } = null!;
-    [Parameter, EditorRequired] public ChatMessageModel? NextMessage { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatMessage? NextMessage { get; set; } = null!;
 
     protected override void OnInitialized() {
         _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);

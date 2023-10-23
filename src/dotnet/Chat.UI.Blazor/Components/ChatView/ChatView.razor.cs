@@ -8,7 +8,7 @@ using Stl.Diagnostics;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessageModel>, IDisposable
+public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessage>, IDisposable
 {
     public static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     public static readonly long MinLoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
@@ -180,9 +180,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     // - Return last chat messages when the author has submitted a new message - monitoring dedicated state
     // - Return messages around an anchor message we are navigating to
     // If the message data is the same it should return same instances of data tiles to reduce re-rendering
-    async Task<VirtualListData<ChatMessageModel>> IVirtualListDataSource<ChatMessageModel>.GetData(
+    async Task<VirtualListData<ChatMessage>> IVirtualListDataSource<ChatMessage>.GetData(
         VirtualListDataQuery query,
-        VirtualListData<ChatMessageModel> oldData,
+        VirtualListData<ChatMessage> oldData,
         CancellationToken cancellationToken)
     {
         await WhenInitialized; // No need for .ConfigureAwait(false) here
@@ -225,8 +225,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
         activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
         activity?.SetTag("AC." + "IdRangeToLoad", idRangeToLoad.Format());
-        Log.LogWarning("GetData: #{ChatId} -> {IdRangeToLoad} of {IdRange}",
-            chatId, idRangeToLoad.Format(), chatIdRange.Format());
+        DebugLog?.LogDebug("GetData: #{ChatId} -> {IdRangeToLoad}", chatId, idRangeToLoad.Format());
 
         // Prefetching new tiles
         var lastIdRangeToLoad = _lastIdRangeToLoad;
@@ -239,32 +238,36 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         // Building actual virtual list tiles
-        var idTiles = GetRenderTiles(idRangeToLoad, chatIdRange);
-        var prevMessage = hasVeryFirstItem ? ChatMessageModel.Welcome(chatId) : null;
+        var idTiles = GetIdTilesToLoad(idRangeToLoad, chatIdRange);
+        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var lastReadEntryLid = _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid;
-        var tiles = new List<VirtualListTile<ChatMessageModel>>();
+        var tiles = new List<VirtualListTile<ChatMessage>>();
         foreach (var idTile in idTiles) {
             bool? isUnread = null;
             if (lastReadEntryLid < idTile.Range.Start)
                 isUnread = true;
             else if (lastAuthorEntryLid >= idTile.Range.End - 1)
                 isUnread = false;
-            var tile = await ChatUI.GetTile(
-                chatId, idTile.Range,
-                prevMessage,
-                isUnread, isUnread.HasValue ? 0 : lastReadEntryLid,
-                cancellationToken);
+            var lastReadEntryLidArg = isUnread.HasValue ? 0 : lastReadEntryLid;
+            var tile = await ChatUI
+                .GetTile(chatId, idTile.Range, prevMessage, isUnread, lastReadEntryLidArg, cancellationToken);
             if (tile.Items.Count == 0)
                 continue;
 
             tiles.Add(tile);
+#if false
+            DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
+                idTile.Range.Format(), isUnread, lastReadEntryLidArg);
+            foreach (var item in tile.Items)
+                DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
+#endif
             prevMessage = tile.Items[^1];
         }
         if (tiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
-                return new VirtualListData<ChatMessageModel>(new [] {
-                    new VirtualListTile<ChatMessageModel>(new [] { ChatMessageModel.Welcome(Chat.Id) }),
+                return new VirtualListData<ChatMessage>(new [] {
+                    new VirtualListTile<ChatMessage>(new [] { ChatMessage.Welcome(Chat.Id) }),
                 }) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
@@ -277,7 +280,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var scrollToKey = (string?)null;
         if (mustScrollToEntry && scrollAnchor != null) {
             var entryLid = scrollAnchor.EntryLid;
-            var criteria = (Func<ChatMessageModel, bool>)(scrollAnchor.MustPositionAfter
+            var criteria = (Func<ChatMessage, bool>)(scrollAnchor.MustPositionAfter
                 ? m => m.Entry.LocalId <= entryLid || m.IsReplacement
                 : m => m.Entry.LocalId < entryLid || m.IsReplacement);
             var message = tiles
@@ -296,7 +299,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (ShouldSuppressNewMessagesEntry(tiles, ItemVisibility.Value))
                 _suppressNewMessagesEntry = true;
 
-        var result = new VirtualListData<ChatMessageModel>(tiles) {
+        var result = new VirtualListData<ChatMessage>(tiles) {
                 HasVeryFirstItem = hasVeryFirstItem,
                 HasVeryLastItem = hasVeryLastItem,
                 ScrollToKey = scrollToKey,
@@ -368,18 +371,23 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     // Private methods
 
-    private Tile<long>[] GetRenderTiles(
+    private Tile<long>[] GetIdTilesToLoad(
         Range<long> idRangeToLoad,
         Range<long> chatIdRange)
     {
-        var fastRange = new Range<long>(chatIdRange.End - (2 * IdTileStack.MinTileSize), chatIdRange.End);
-        var slowRange = new Range<long>(chatIdRange.Start, fastRange.Start);
-        if (slowRange.IsNegative)
-            slowRange = default;
         var tiles = ArrayBuffer<Tile<long>>.Lease(true);
         try {
-            tiles.AddRange(IdTileStack.GetOptimalCoveringTiles(idRangeToLoad.IntersectWith(slowRange)));
-            tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(idRangeToLoad.IntersectWith(fastRange)));
+            var fastRange = new Range<long>(chatIdRange.End - (2 * IdTileStack.MinTileSize), chatIdRange.End);
+            var slowRange = new Range<long>(chatIdRange.Start, fastRange.Start);
+            if (slowRange.IsNegative)
+                slowRange = default;
+            fastRange = idRangeToLoad.IntersectWith(fastRange);
+            slowRange = idRangeToLoad.IntersectWith(slowRange);
+            DebugLog?.LogDebug("GetRenderTiles: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
+            if (!slowRange.IsEmpty)
+                tiles.AddRange(IdTileStack.GetOptimalCoveringTiles(slowRange));
+            if (!fastRange.IsEmpty)
+                tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(fastRange));
             return tiles.ToArray();
         }
         finally {
@@ -389,7 +397,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private Range<long> GetIdRangeToLoad(
         VirtualListDataQuery query,
-        VirtualListData<ChatMessageModel> oldData,
+        VirtualListData<ChatMessage> oldData,
         NavigationAnchor? scrollAnchor,
         Range<long> chatIdRange)
     {
@@ -457,7 +465,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     }
 
     private bool ShouldSuppressNewMessagesEntry(
-        List<VirtualListTile<ChatMessageModel>> tiles,
+        List<VirtualListTile<ChatMessage>> tiles,
         ChatViewItemVisibility itemVisibility)
     {
         if (!itemVisibility.IsEndAnchorVisible)

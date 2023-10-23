@@ -3,13 +3,13 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatUI
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
-    private static readonly VirtualListTile<ChatMessageModel> EmptyTile = new(Array.Empty<ChatMessageModel>());
+    private static readonly VirtualListTile<ChatMessage> EmptyTile = new(Array.Empty<ChatMessage>());
 
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
-    public virtual async Task<VirtualListTile<ChatMessageModel>> GetTile(
+    public virtual async Task<VirtualListTile<ChatMessage>> GetTile(
         ChatId chatId,
         Range<long> idRange,
-        ChatMessageModel? prevMessage,
+        ChatMessage? prevMessage,
         bool? isUnread,
         long lastReadEntryId,
         CancellationToken cancellationToken = default)
@@ -43,7 +43,7 @@ public partial class ChatUI
             hasVeryFirstItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.WelcomeBlock;
         }
 
-        var messages = new List<ChatMessageModel>(entries.Count);
+        var messages = new List<ChatMessage>(entries.Count);
         var isWelcomeBlockAdded = false;
         foreach (var entry in entries) {
             var date = DateOnly.FromDateTime(TimeZoneConverter.ToLocalTime(entry.BeginsAt));
@@ -54,17 +54,17 @@ public partial class ChatUI
             var isEntryUnread = isUnread ?? entry.LocalId > lastReadEntryId;
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
             if (hasVeryFirstItem && !isWelcomeBlockAdded) {
-                messages.Add(new ChatMessageModel(entry) {
+                messages.Add(new ChatMessage(entry) {
                     ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
                 });
                 isWelcomeBlockAdded = true;
             }
             if (isEntryUnread && !isPrevUnread)
-                messages.Add(new ChatMessageModel(entry) {
+                messages.Add(new ChatMessage(entry) {
                     ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
                 });
             if (date != prevDate)
-                messages.Add(new ChatMessageModel(entry) {
+                messages.Add(new ChatMessage(entry) {
                     ReplacementKind = ChatMessageReplacementKind.DateLine,
                     Date = date,
                 });
@@ -76,7 +76,7 @@ public partial class ChatUI
                 flags |= ChatMessageFlags.HasEntryKindSign;
             if (isForwardBlockStart)
                 flags |= ChatMessageFlags.ForwardStart;
-            var message = new ChatMessageModel(entry) {
+            var message = new ChatMessage(entry) {
                 Date = date,
                 Flags = flags,
             };
@@ -90,7 +90,7 @@ public partial class ChatUI
             prevForwardChatId = entry.ForwardedChatEntryId.ChatId;
             isPrevAudio = isAudio;
         }
-        return new VirtualListTile<ChatMessageModel>(messages);
+        return new VirtualListTile<ChatMessage>(messages);
     }
 
     private static bool IsBlockStart(ChatEntry? prevEntry, ChatEntry entry)

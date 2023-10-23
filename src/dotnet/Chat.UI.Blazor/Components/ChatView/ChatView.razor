@@ -11,7 +11,7 @@
     KeyComparer="@LongAsStringKeyComparer.Default"
     ItemVisibilityChanged="@OnItemVisibilityChanged">
     <Item>
-        <ChatMessage ChatContext="@ChatContext" Message="@context.Item" NextMessage="@context.NextItem" />
+        <ChatMessageView ChatContext="@ChatContext" Message="@context.Item" NextMessage="@context.NextItem" />
     </Item>
     <Skeleton>
         <chat-message-skeleton />

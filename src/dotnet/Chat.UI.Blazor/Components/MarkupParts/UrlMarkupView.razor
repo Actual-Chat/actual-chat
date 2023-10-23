@@ -40,13 +40,13 @@
 
     private LocalUrl? _localUrl;
     private string _hrefUrl = "";
-    private ChatMessageModel _message = null!;
+    private ChatMessage _message = null!;
 
     [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
     protected override void OnParametersSet() {
-        _message = new ChatMessageModel(Entry);
+        _message = new ChatMessage(Entry);
         var url = Markup.Url;
         _hrefUrl = url;
         _localUrl = null;
