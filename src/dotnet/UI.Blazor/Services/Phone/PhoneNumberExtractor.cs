@@ -15,7 +15,7 @@ public class PhoneNumberExtractor(string? defaultRegion)
     {
         string? defaultRegion = null;
         var phoneNumberUtil = PhoneNumberUtil.GetInstance();
-        if (!string.IsNullOrEmpty(sOwnPhoneNumber)
+        if (!sOwnPhoneNumber.IsNullOrEmpty()
             && phoneNumberUtil.TryParse(sOwnPhoneNumber, null, out var phoneNumber))
             defaultRegion = phoneNumberUtil.GetRegionCodeForNumber(phoneNumber);
         return new PhoneNumberExtractor(defaultRegion);

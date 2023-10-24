@@ -1,12 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits MenuBase
 
-@if (_chatMessageModel != null) {
-    <MessageHoverMenuContent Message="@_chatMessageModel" IsSystem="@_isSystem"/>
+@if (_message != null) {
+    <MessageHoverMenuContent Message="@_message" IsSystem="@_isSystem"/>
 }
 
 @code {
-    private ChatMessageModel? _chatMessageModel;
+    private ChatMessage? _message;
     private bool _isSystem;
 
     [Inject] private ChatHub ChatHub { get; init; } = null!;
@@ -20,8 +20,8 @@
         _isSystem = bool.Parse(sIsSystem);
         var entryId = new TextEntryId(sEntryId);
         var entry = await Chats.GetEntry(Session, entryId, CancellationToken.None);
-        _chatMessageModel = entry != null
-            ? new ChatMessageModel(entry)
+        _message = entry != null
+            ? new ChatMessage(entry)
             : null;
     }
 }

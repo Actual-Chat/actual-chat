@@ -225,7 +225,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     cancellationToken))
                 .Collect()
                 .ConfigureAwait(false);
-
             return new ChatTile(smallerChatTiles, includeRemoved);
         }
         if (!includeRemoved) {
@@ -237,11 +236,12 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
+        var idRange = idTile.Range;
         var dbEntries = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId
                 && e.Kind == entryKind
-                && e.LocalId >= idTile.Range.Start
-                && e.LocalId < idTile.Range.End)
+                && e.LocalId >= idRange.Start
+                && e.LocalId < idRange.End)
             .OrderBy(e => e.LocalId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -258,7 +258,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
             .Select(x => x.Id)
             .ToList();
-        var linkPreviewIds  = dbEntries.Where(x => !string.IsNullOrEmpty(x.LinkPreviewId))
+        var linkPreviewIds  = dbEntries.Where(x => !x.LinkPreviewId.IsNullOrEmpty())
             .Select(x => (Symbol)x.LinkPreviewId)
             .Distinct()
             .ToList();
@@ -269,7 +269,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var allLinkPreviewsTask = linkPreviewIds.Count > 0
             ? GetLinkPreviews(linkPreviewIds)
             : EmptyLinkPreviewsTask;
-
         await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).ConfigureAwait(false);
 
         var allAttachments = allAttachmentsTask.Result;

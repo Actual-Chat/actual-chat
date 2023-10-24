@@ -158,7 +158,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return null;
         }
 
-        idRange = ((Range<long>)(fullIdRange.Start, lastEntry.LocalId)).ToExclusive();
+        idRange = ((Range<long>)(fullIdRange.Start, lastEntry.LocalId)).MoveEnd(1);
         var reverseEntries = audioEntryReader.ReadReverse(idRange, cancellationToken);
         var remainedShift = shift;
         var lastShiftPosition = playingAt;

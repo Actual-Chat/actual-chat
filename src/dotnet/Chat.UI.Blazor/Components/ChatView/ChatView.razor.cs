@@ -4,26 +4,27 @@ using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
+using Stl.Diagnostics;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessageModel>, IDisposable
+public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessage>, IDisposable
 {
-    private const int PageSize = 20;
+    public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
+    public static readonly long MinLoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
 
-    private static readonly TimeSpan BlockSplitPauseDuration = TimeSpan.FromSeconds(120);
-    private static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
     private readonly CancellationTokenSource _disposeTokenSource = new();
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private readonly Suspender _getDataSuspender = new();
 
-    private Task _syncLastAuthorEntryLifState = null!;
+    private Task _syncLastAuthorEntryLidState = null!;
     private NavigationAnchor? _lastNavigationAnchor;
     private long _lastReadEntryLid;
     private bool _itemVisibilityUpdateReceived;
     private bool _suppressNewMessagesEntry;
     private IMutableState<ChatViewItemVisibility> _itemVisibility = null!;
     private IComputedState<bool>? _isViewportAboveUnreadEntry = null;
+    private Range<long> _lastIdRangeToLoad;
     private ILogger? _log;
 
     private IServiceProvider Services => ChatContext.Services;
@@ -40,6 +41,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private Dispatcher Dispatcher => ChatContext.Dispatcher;
     private CancellationToken DisposeToken => _disposeTokenSource.Token;
     private ILogger Log => _log ??= Services.LogFor(GetType());
+    private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     private IMutableState<NavigationAnchor?> NavigationAnchorState { get; set; } = null!;
     private IMutableState<long> LastAuthorTextEntryLidState { get; set; } = null!;
@@ -79,7 +81,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _lastReadEntryLid = ReadPositionState.Value.EntryLid;
             if (_whenInitializedSource.TrySetResult())
                 RegionVisibility.IsVisible.Updated += OnRegionVisibilityChanged;
-            _syncLastAuthorEntryLifState = new AsyncChain(nameof(SyncLastAuthorEntryLidState),  SyncLastAuthorEntryLidState)
+            _syncLastAuthorEntryLidState = new AsyncChain(nameof(SyncLastAuthorEntryLidState),  SyncLastAuthorEntryLidState)
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
                 .RunIsolated(_disposeTokenSource.Token);
@@ -127,19 +129,19 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             navigateToEntryLid = readEntryLid;
         else {
             var chatIdRange = await Chats.GetIdRange(Session, Chat.Id, ChatEntryKind.Text, DisposeToken);
-            navigateToEntryLid = chatIdRange.ToInclusive().End;
+            navigateToEntryLid = chatIdRange.MoveEnd(-1).End;
         }
 
         // Reset to ensure the navigation will happen
         _lastReadEntryLid = navigateToEntryLid;
-        NavigateToEntry(navigateToEntryLid, true);
+        NavigateToAnchor(navigateToEntryLid, true);
     }
 
-    public void NavigateToEntry(long entryLid, bool isNext = false)
+    public void NavigateToAnchor(long entryLid, bool mustPositionAfter = false)
     {
         // Reset to ensure navigation will happen
         _lastNavigationAnchor = null;
-        NavigationAnchorState.Value = new NavigationAnchor(entryLid, isNext);
+        NavigationAnchorState.Value = new NavigationAnchor(entryLid, mustPositionAfter);
         NavigationAnchorState.Invalidate();
     }
 
@@ -165,7 +167,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 }
             }, CancellationToken.None);
             History.CancelWhen(cts, x => !OrdinalEquals(x.Uri, uri));
-            NavigateToEntry(entryId);
+            NavigateToAnchor(entryId);
         }
     }
 
@@ -178,9 +180,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     // - Return last chat messages when the author has submitted a new message - monitoring dedicated state
     // - Return messages around an anchor message we are navigating to
     // If the message data is the same it should return same instances of data tiles to reduce re-rendering
-    async Task<VirtualListData<ChatMessageModel>> IVirtualListDataSource<ChatMessageModel>.GetData(
+    async Task<VirtualListData<ChatMessage>> IVirtualListDataSource<ChatMessage>.GetData(
         VirtualListDataQuery query,
-        VirtualListData<ChatMessageModel> oldData,
+        VirtualListData<ChatMessage> oldData,
         CancellationToken cancellationToken)
     {
         await WhenInitialized; // No need for .ConfigureAwait(false) here
@@ -195,68 +197,76 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chat = Chat;
         var chatId = chat.Id;
         activity?.SetTag("AC." + nameof(ChatId), chatId);
-        var readEntryLid = ReadPositionState.Value.EntryLid;
-        var entryLid = readEntryLid;
-        var isFirstRender = oldData.IsNone;
-        var mustScrollToEntry = isFirstRender && entryLid != 0;
         var chatIdRange = ChatIdRangeState.Value; // do not subscribe to Id range change
-        var isNavigatingToEntry = false;
+        var readEntryLid = ReadPositionState.Value.EntryLid;
+        var isFirstRender = oldData.IsNone;
+        var scrollAnchor = isFirstRender && readEntryLid != 0
+            ? new NavigationAnchor(readEntryLid)
+            : null;
+        var lastAuthorEntryLid = await LastAuthorTextEntryLidState.Use(cancellationToken);
+        if (lastAuthorEntryLid > _lastReadEntryLid) {
+            // Scroll to the latest Author's entry - e.g.m when the author submits a new one
+            _lastReadEntryLid = lastAuthorEntryLid;
+            scrollAnchor ??= new NavigationAnchor(lastAuthorEntryLid);
+        }
         // Handle NavigateToEntry
         var navigationAnchor = await NavigationAnchorState.Use(cancellationToken);
         if (navigationAnchor != null && navigationAnchor != _lastNavigationAnchor) {
-            isNavigatingToEntry = true;
             _lastNavigationAnchor = navigationAnchor;
-            // even if we must navigate to the next item - it's fine to use previous item there
-            entryLid = navigationAnchor.EntryLid;
-            if (!ItemVisibility.Value.IsFullyVisible(entryLid))
-                mustScrollToEntry = true;
+            scrollAnchor = navigationAnchor;
         }
-        var lastAuthorEntryLid = await LastAuthorTextEntryLidState.Use(cancellationToken).ConfigureAwait(false);
-        if (lastAuthorEntryLid > _lastReadEntryLid) {
-            // Scroll to the latest Author entry - e.g.m when author submits the new one
-            _lastReadEntryLid = lastAuthorEntryLid;
-            entryLid = lastAuthorEntryLid;
-            mustScrollToEntry = true;
-        }
-        var idRangeToLoad = GetIdRangeToLoad(query, oldData, mustScrollToEntry ? entryLid : 0, chatIdRange);
-
-        activity?.SetTag("AC." + "IdRange", chatIdRange.AsOneLineString());
-        activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
-        activity?.SetTag("AC." + "IdRangeToLoad", idRangeToLoad.AsOneLineString());
-
+        var mustScrollToEntry = scrollAnchor != null && !ItemVisibility.Value.IsFullyVisible(scrollAnchor.EntryLid);
+        var idRangeToLoad = GetIdRangeToLoad(query, oldData, scrollAnchor, chatIdRange);
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
-        var hasVeryLastItem = idRangeToLoad.End + 1 >= chatIdRange.End;
+        var hasVeryLastItem = idRangeToLoad.End >= chatIdRange.End;
 
-        // get tiles from the smallest tile layer
-        var idTiles = GetOptimalCoveringTiles(idRangeToLoad, hasVeryLastItem);
-        var chatTiles = (await idTiles
-            .Select(idTile => Chats.GetTile(Session, chatId, ChatEntryKind.Text, idTile.Range, cancellationToken))
-            .Collect())
-            .Where(t => !t.IsEmpty)
-            .OrderBy(t => t.Entries[0].LocalId)
-            .ToList();
+        activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
+        activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
+        activity?.SetTag("AC." + "IdRangeToLoad", idRangeToLoad.Format());
+        // DebugLog?.LogDebug("GetData: #{ChatId} -> {IdRangeToLoad}", chatId, idRangeToLoad.Format());
 
-        if (isNavigatingToEntry && navigationAnchor!.MoveNext) {
-            // update navigate target with the requested next item
-            var nextEntry = chatTiles
-                .SkipWhile(t => !t.IdTileRange.Contains(entryLid))
-                .Take(2)
-                .SelectMany(t => t.Entries)
-                .SkipWhile(e => e.Id.LocalId <= entryLid)
-                .FirstOrDefault();
-            if (nextEntry != null)
-                entryLid = nextEntry.Id.LocalId;
+        // Prefetching new tiles
+        var lastIdRangeToLoad = _lastIdRangeToLoad;
+        _lastIdRangeToLoad = idRangeToLoad;
+        var newIdRanges = idRangeToLoad.Subtract(lastIdRangeToLoad);
+        using (var __ = ExecutionContextExt.SuppressFlow()) {
+            // We don't want dependencies to be captured for prefetch calls
+            _ = PrefetchTiles(chatId, newIdRanges.Item1, cancellationToken);
+            _ = PrefetchTiles(chatId, newIdRanges.Item2, cancellationToken);
         }
 
-        var scrollToKey = mustScrollToEntry
-            ? GetScrollToKey(chatTiles, entryLid)
-            : null;
+        // Building actual virtual list tiles
+        var idTiles = GetIdTilesToLoad(idRangeToLoad);
+        var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
+        var lastReadEntryLid = _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid;
+        var tiles = new List<VirtualListTile<ChatMessage>>();
+        foreach (var idTile in idTiles) {
+            bool? isUnread = null;
+            if (lastReadEntryLid < idTile.Range.Start)
+                isUnread = true;
+            else if (lastAuthorEntryLid >= idTile.Range.End - 1)
+                isUnread = false;
+            var lastReadEntryLidArg = isUnread.HasValue ? 0 : lastReadEntryLid;
+            var tile = await ChatUI
+                .GetTile(chatId, idTile.Range, prevMessage, isUnread, lastReadEntryLidArg, cancellationToken);
+            if (tile.Items.Count == 0)
+                continue;
 
-        if (chatTiles.Count == 0) {
+            tiles.Add(tile);
+#if false
+            // Uncomment for debugging:
+            DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
+                idTile.Range.Format(), isUnread, lastReadEntryLidArg);
+            foreach (var item in tile.Items)
+                DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
+#endif
+            prevMessage = tile.Items[^1];
+        }
+        if (tiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
-                return new VirtualListData<ChatMessageModel>(new [] {
-                    new VirtualListDataTile<ChatMessageModel>(ChatMessageModel.FromEmpty(Chat.Id)),
+                return new VirtualListData<ChatMessage>(new [] {
+                    new VirtualListTile<ChatMessage>(default(Range<long>), new [] { ChatMessage.Welcome(Chat.Id) }),
                 }) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
@@ -265,26 +275,36 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     RequestedEndExpansion = null,
                 };
         }
-        // Do not show '-new-' separator after view is scrolled to the end anchor.
-        var lastTile = chatTiles[^1];
+
+        var scrollToKey = (string?)null;
+        var highlightEntryLid = scrollAnchor != null && scrollAnchor == navigationAnchor
+            ? (long?)scrollAnchor.EntryLid
+            : null;
+        if (mustScrollToEntry && scrollAnchor != null) {
+            var entryLid = scrollAnchor.EntryLid;
+            var criteria = (Func<ChatMessage, bool>)(scrollAnchor.MustPositionAfter
+                ? m => m.Entry.LocalId <= entryLid || m.IsReplacement
+                : m => m.Entry.LocalId < entryLid || m.IsReplacement);
+            var message = tiles
+                .SkipWhile(t => criteria.Invoke(t.Items[^1]))
+                .SelectMany(t => t.Items)
+                .SkipWhile(criteria)
+                .FirstOrDefault();
+            if (message is not null) {
+                scrollToKey = message.Entry.LocalId.Format();
+                if (highlightEntryLid.HasValue)
+                    highlightEntryLid = message.Entry.LocalId;
+            }
+            else
+                Log.LogWarning("Failed to find entry to scroll to #{EntryLid}", entryLid);
+        }
+
+        // Do not show '-new-' separator after view is scrolled to the end anchor
         if (!_suppressNewMessagesEntry && _itemVisibilityUpdateReceived)
-            if (ShouldSuppressNewMessagesEntry(ItemVisibility.Value, lastTile))
+            if (ShouldSuppressNewMessagesEntry(tiles, ItemVisibility.Value))
                 _suppressNewMessagesEntry = true;
 
-        var dataTiles = GetDataFromChatTiles(
-            chatTiles,
-            oldData,
-            _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid,
-            hasVeryFirstItem,
-            TimeZoneConverter);
-        var areSameDataTiles = !oldData.IsNone
-            && dataTiles.Count == oldData.Tiles.Count
-            && dataTiles
-                .Zip(oldData.Tiles)
-                .All(pair => ReferenceEquals(pair.First, pair.Second));
-        var result = areSameDataTiles && OrdinalEquals(scrollToKey, oldData.ScrollToKey) && !isNavigatingToEntry
-            ? oldData
-            : new VirtualListData<ChatMessageModel>(dataTiles) {
+        var result = new VirtualListData<ChatMessage>(tiles) {
                 HasVeryFirstItem = hasVeryFirstItem,
                 HasVeryLastItem = hasVeryLastItem,
                 ScrollToKey = scrollToKey,
@@ -301,278 +321,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (visibility != ChatViewItemVisibility.Empty
             && visibility.IsEndAnchorVisible
             && hasVeryLastItem
-            && chatTiles.Count > 0) {
-            var lastEntryLid = chatTiles[^1].Entries[^1].Id.LocalId;
+            && tiles.Count > 0) {
+            var lastEntryLid = tiles[^1].Items[^1].Entry.LocalId;
             if (lastEntryLid > readEntryLid)
                 ReadPositionState.Value = new ReadPosition(chatId,  lastEntryLid);
             else if (readEntryLid >= chatIdRange.End)
                 ReadPositionState.Value = new ReadPosition(chatId,chatIdRange.End - 1);
         }
 
-        if (isNavigatingToEntry) {
+        if (highlightEntryLid.HasValue) {
             // highlight entry when it has already been loaded
-            var highlightedEntryId = new ChatEntryId(chatId, ChatEntryKind.Text, entryLid, AssumeValid.Option);
-            ChatUI.HighlightEntry(highlightedEntryId, navigate: false);
+            var entryLid = new ChatEntryId(chatId, ChatEntryKind.Text, highlightEntryLid.Value, AssumeValid.Option);
+            ChatUI.HighlightEntry(entryLid, navigate: false);
         }
-
         return result;
-    }
-
-    private Tile<long>[] GetOptimalCoveringTiles(
-        Range<long> idRangeToLoad,
-        bool hasVeryLastItem)
-    {
-        var secondLayer = IdTileStack.Layers[1];
-        var tiles = ArrayBuffer<Tile<long>>.Lease(true);
-        try {
-            var tileCandidates = secondLayer.GetOptimalCoveringTiles(idRangeToLoad);
-            var firstNativeTileIndex = -1;
-            var lastNativeTileIndex = -1;
-            for (int i = 0; i < tileCandidates.Length; i++) {
-                var tile = tileCandidates[i];
-                if (tile.Layer != secondLayer)
-                    continue;
-
-                firstNativeTileIndex = i;
-                break;
-            }
-            for (int i = tileCandidates.Length -1; i >= 0; i--) {
-                var tile = tileCandidates[i];
-                if (tile.Layer != secondLayer)
-                    continue;
-
-                lastNativeTileIndex = i;
-                break;
-            }
-            if (firstNativeTileIndex < 0 || tileCandidates.Length == 0)
-                return tileCandidates; // bigger tile isn't required
-
-            var isFirstTileNative = tileCandidates[0].Layer == secondLayer;
-            if (!isFirstTileNative) {
-                // replace with tiles of the second layer
-                var replacement = tileCandidates[firstNativeTileIndex].Prev();
-                tiles.Add(replacement);
-            }
-            var isLastTileNative = tileCandidates[^1].Layer == secondLayer;
-            if (isLastTileNative && hasVeryLastItem) {
-                // add second layer tiles except the last one
-                tiles.AddSpan(tileCandidates.AsSpan()[firstNativeTileIndex..^1]);
-                // replace with smaller tiles as the last tile might be changed
-                tiles.AddRange(tileCandidates[^1].Smaller());
-                // subscribe to the next new tile
-                tiles.Add(tiles[^1].Next());
-            }
-            else if (hasVeryLastItem) {
-                // keep smaller tiles at the end
-                tiles.AddSpan(tileCandidates.AsSpan()[firstNativeTileIndex..]);
-                // subscribe to the next new tile
-                tiles.Add(tiles[^1].Next());
-            }
-            else {
-                // add second layer tiles except the last smaller tiles
-                tiles.AddSpan(tileCandidates.AsSpan()[firstNativeTileIndex..(lastNativeTileIndex + 1)]);
-                // replace smaller tiles with second layer tiles
-                tiles.Add(tileCandidates[lastNativeTileIndex].Next());
-            }
-            return tiles.ToArray();
-        }
-        finally {
-            tiles.Release();
-        }
-    }
-
-    private Range<long> GetIdRangeToLoad(
-        VirtualListDataQuery query,
-        VirtualListData<ChatMessageModel> oldData,
-        long scrollToEntryLid,
-        Range<long> chatIdRange)
-    {
-        var queryRange = (query.IsNone, oldData.Tiles.Count == 0) switch {
-            (true, true) => new Range<long>(chatIdRange.End - (2 * PageSize), chatIdRange.End),
-            (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId, oldData.Tiles[^1].Items[^1].Entry.LocalId),
-            _ => query.KeyRange
-                .AsLongRange()
-                .Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),
-        };
-
-        // If we are scrolling somewhere - let's load the date near the entryId
-        // Last read position might point to already deleted entries, OR it might be corrupted!
-        var scrollToEntryRange = scrollToEntryLid > 0 && chatIdRange.Contains(scrollToEntryLid)
-            ? new Range<long>(
-                scrollToEntryLid -  (2 * PageSize),
-                scrollToEntryLid + PageSize)
-            : queryRange;
-
-        // Union (queryRange, scrollToEntryRange) if they overlap, otherwise pick scrollToEntryRange
-        queryRange = scrollToEntryRange.Overlaps(queryRange)
-            ? queryRange.MinMaxWith(scrollToEntryRange)
-            : scrollToEntryRange;
-
-        // Clamp queryRange by chatIdRange
-        queryRange = queryRange.Clamp(chatIdRange);
-
-        // Extend requested range if it's close to chat Id range
-        var isCloseToTheEnd = queryRange.End >= chatIdRange.End - (PageSize / 2);
-        var isCloseToTheStart = queryRange.Start <= chatIdRange.Start + (PageSize / 2);
-        var extendedRange = (closeToTheStart: isCloseToTheStart, closeToTheEnd: isCloseToTheEnd) switch {
-            (true, true) => chatIdRange.Expand(1), // extend to mitigate outdated id range
-            (_, true) => new Range<long>(queryRange.Start, chatIdRange.End + 2),
-            (true, _) => new Range<long>(chatIdRange.Start, queryRange.End),
-            _ => queryRange,
-        };
-        return extendedRange;
-    }
-
-    private string? GetScrollToKey(List<ChatTile> chatTiles, long scrollToEntryLid)
-    {
-        var scrollToEntry = chatTiles
-            .SkipWhile(t => !t.IdTileRange.Contains(scrollToEntryLid))
-            .Take(2)
-            .SelectMany(t => t.Entries)
-            .SkipWhile(e => e.LocalId < scrollToEntryLid)
-            .FirstOrDefault();
-        if (scrollToEntry is not null)
-            return scrollToEntry.LocalId.Format();
-
-        Log.LogWarning("Failed to find entry to scroll to #{EntryLid}", scrollToEntryLid);
-        return null;
-    }
-
-    private static List<VirtualListDataTile<ChatMessageModel>> GetDataFromChatTiles(
-        List<ChatTile> chatTiles,
-        VirtualListData<ChatMessageModel> oldData,
-        long lastReadEntryId,
-        bool hasVeryFirstItem,
-        TimeZoneConverter timeZoneConverter)
-    {
-        var isBlockStart = true;
-        var lastDate = default(DateOnly);
-        var isPrevUnread = true;
-        var isPrevAudio = (bool?)false;
-        var isPrevForward = false;
-        var isVeryFirstItem = true;
-        var prevForwardChatId = ChatId.None;
-        var addWelcomeBlock = hasVeryFirstItem;
-        var result = new List<VirtualListDataTile<ChatMessageModel>>(chatTiles.Count);
-        var oldDataTileMap = oldData.Tiles
-            .ToDictionary(t => {
-                var startId = t.Items[0].Entry.LocalId;
-                var endId = t.Items[^1].Entry.LocalId;
-                var tileLayer = IdTileStack.FirstLayer;
-                while (tileLayer != null) {
-                    var tile = tileLayer.GetTile(startId);
-                    if (tile.Range.Contains(endId))
-                        return tile.Range;
-
-                    tileLayer = tileLayer.Larger;
-                }
-
-                // this line should never been called, just a safe guard
-                return new Range<long>(t.Items[0].Entry.LocalId, t.Items[^1].Entry.LocalId + 1);
-            });
-        var oldItemsMap = oldData.Tiles
-            .SelectMany(t => t.Items)
-            .ToDictionary(i => i.Key, i => i);
-        for (var i = 0; i < chatTiles.Count; i++) {
-            var chatTile = chatTiles[i];
-            var nextChatTile = chatTiles.Count > i + 1
-                ? chatTiles[i + 1]
-                : null;
-            var chatMessageModels = new List<ChatMessageModel>();
-            if (oldDataTileMap.TryGetValue(chatTile.IdTileRange, out var oldDataTile)) {
-                var newMessageLine = oldDataTile.Items.FirstOrDefault(cm => cm.ReplacementKind == ChatMessageReplacementKind.NewMessagesLine);
-                if (ReferenceEquals(oldDataTile.Source, chatTile) && (newMessageLine == null || newMessageLine.Entry.LocalId > lastReadEntryId)) {
-                    var lastTileItem = oldDataTile.Items[^1];
-                    var entry = lastTileItem.Entry;
-                    var nextEntry = nextChatTile?.Entries[0];
-                    isPrevUnread = entry.LocalId > lastReadEntryId;
-                    isBlockStart = ShouldSplit(entry, nextEntry);
-                    lastDate = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
-                    isPrevAudio = entry.AudioEntryId != null || entry.IsStreaming;
-                    isPrevForward = !entry.ForwardedAuthorId.IsNone;
-                    prevForwardChatId = entry.ForwardedChatEntryId.ChatId;
-                    isVeryFirstItem = false;
-                    addWelcomeBlock = false;
-
-                    result.Add(oldDataTile);
-                    continue;
-                }
-            }
-            for (var j = 0; j < chatTile.Entries.Count; j++) {
-                var entry = chatTile.Entries[j];
-                var nextEntry = chatTile.Entries.Count > j + 1
-                    ? chatTile.Entries[j + 1]
-                    : nextChatTile?.Entries[0];
-                var date = DateOnly.FromDateTime(timeZoneConverter.ToLocalTime(entry.BeginsAt));
-                var isBlockEnd = ShouldSplit(entry, nextEntry);
-                var isForward = !entry.ForwardedAuthorId.IsNone;
-                var isForwardFromOtherChat = prevForwardChatId != entry.ForwardedChatEntryId.ChatId;
-                var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
-                var isUnread = entry.LocalId > lastReadEntryId;
-                var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
-                var isEntryKindChanged = isPrevAudio is not { } vIsPrevAudio || (vIsPrevAudio ^ isAudio);
-                var addDateLine = date != lastDate && (hasVeryFirstItem || !isVeryFirstItem);
-                if (addWelcomeBlock) {
-                    chatMessageModels.Add(new ChatMessageModel(entry) {
-                        ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
-                    });
-                    addWelcomeBlock = false;
-                }
-                if (isUnread && !isPrevUnread)
-                    AddItem(new ChatMessageModel(entry) {
-                        ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
-                    });
-                if (addDateLine)
-                    AddItem(new ChatMessageModel(entry) {
-                        ReplacementKind = ChatMessageReplacementKind.DateLine,
-                        DateLineDate = date,
-                    });
-
-                {
-                    var item = new ChatMessageModel(entry) {
-                        IsBlockStart = isBlockStart,
-                        IsBlockEnd = isBlockEnd,
-                        HasEntryKindSign = isEntryKindChanged || (isBlockStart && isAudio),
-                        IsForwardBlockStart = isForwardBlockStart,
-                        LinkPreview = entry.LinkPreview,
-                    };
-                    AddItem(item);
-                }
-
-                isPrevUnread = isUnread;
-                isBlockStart = isBlockEnd;
-                lastDate = date;
-                isPrevAudio = isAudio;
-                isPrevForward = isForward;
-                prevForwardChatId = entry.ForwardedChatEntryId.ChatId;
-                isVeryFirstItem = false;
-            }
-            result.Add(new VirtualListDataTile<ChatMessageModel>(chatMessageModels, chatTile));
-            continue;
-
-            void AddItem(ChatMessageModel item) {
-                var oldItem = oldItemsMap.GetValueOrDefault(item.Key);
-                if (oldItem != null && oldItem.Equals(item))
-                    item = oldItem;
-                chatMessageModels.Add(item);
-            }
-        }
-
-        return result;
-
-        bool ShouldSplit(
-            ChatEntry entry,
-            ChatEntry? nextEntry)
-        {
-            if (nextEntry == null)
-                return false;
-
-            if (entry.AuthorId != nextEntry.AuthorId)
-                return true;
-
-            var prevEndsAt = entry.EndsAt ?? entry.BeginsAt;
-            return nextEntry.BeginsAt - prevEndsAt >= BlockSplitPauseDuration;
-        }
     }
 
     // Event handlers
@@ -608,8 +370,94 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private Task OnNavigateToChatEntry(NavigateToChatEntryEvent @event, CancellationToken cancellationToken)
     {
         if (@event.ChatEntryId.ChatId == Chat.Id)
-            NavigateToEntry(@event.ChatEntryId.LocalId);
+            NavigateToAnchor(@event.ChatEntryId.LocalId);
         return Task.CompletedTask;
+    }
+
+    // Private methods
+
+    private Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad)
+    {
+        var tiles = ArrayBuffer<Tile<long>>.Lease(true);
+        try {
+            var hotPoint = IdTileStack.Layers[1]
+                .GetTile(idRangeToLoad.End - IdTileStack.Layers[1].TileSize)
+                .Start;
+            var hotRange = new Range<long>(Math.Max(hotPoint, idRangeToLoad.Start), idRangeToLoad.End).Positive();
+            var coldRange = hotRange.IsEmpty
+                ? idRangeToLoad
+                : new Range<long>(idRangeToLoad.Start, hotRange.Start);
+            var coldTileCandidates = IdTileStack.GetOptimalCoveringTiles(coldRange);
+            var maxTileSize = coldTileCandidates.Length > 0
+                ? coldTileCandidates.Select(t => t.Range.Size()).Max()
+                : 0;
+            if (maxTileSize > 0 && coldTileCandidates[0].Range.Size() < maxTileSize) {
+                // replace all smaller tiles to the left of the tile with Max size
+                var firstMaxTile = coldTileCandidates.First(t => t.Range.Size() == maxTileSize);
+                tiles.Add(firstMaxTile.Prev());
+            }
+            tiles.AddRange(coldTileCandidates.SkipWhile(t => t.Range.Size() < maxTileSize));
+            tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(hotRange));
+            var result = tiles.ToArray();
+            // DebugLog?.LogDebug("GetIdTilesToLoad: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
+            // if (result.DistinctBy(x => x.Range).Count() != result.Length)
+            //     Debugger.Break();
+            return result;
+        }
+        finally {
+            tiles.Release();
+        }
+    }
+
+    private Range<long> GetIdRangeToLoad(
+        VirtualListDataQuery query,
+        VirtualListData<ChatMessage> oldData,
+        NavigationAnchor? scrollAnchor,
+        Range<long> chatIdRange)
+    {
+        var range = (query.IsNone, oldData.Tiles.Count == 0) switch {
+            (true, true) => new Range<long>(chatIdRange.End - MinLoadLimit, chatIdRange.End),
+            (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId, oldData.Tiles[^1].Items[^1].Entry.LocalId),
+            _ => query.KeyRange
+                .ToLongRange()
+                .Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),
+        };
+
+        // If we are scrolling somewhere, let's extend the range to scrollAnchor & nearby entries.
+        if (scrollAnchor is { } vScrollAnchor) {
+            var scrollAnchorRange = new Range<long>(
+                vScrollAnchor.EntryLid - MinLoadLimit,
+                vScrollAnchor.EntryLid + (MinLoadLimit / 2));
+            range = scrollAnchorRange.Overlaps(range)
+                ? range.MinMaxWith(scrollAnchorRange)
+                : scrollAnchorRange;
+        }
+
+        var minTileSize = IdTileStack.MinTileSize;
+        // Fix queryRange start
+        if (range.Start < chatIdRange.Start)
+            range = new Range<long>(chatIdRange.Start, range.End);
+        // Fix queryRange end + subscribe to the next new tile
+        if (range.End >= chatIdRange.End - minTileSize)
+            range = new Range<long>(range.Start, chatIdRange.End + minTileSize);
+
+        // Expand queryRange to tile boundaries
+        range = range.ExpandToTiles(IdTileStack.FirstLayer);
+        return range;
+    }
+
+    private Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)
+    {
+        if (idRange.IsEmptyOrNegative)
+            return Task.CompletedTask;
+
+        return Task.Run(async () => {
+            await IdTileStack.FirstLayer
+                .GetCoveringTiles(idRange)
+                .Select(x => Chats.GetTile(Session, chatId, ChatEntryKind.Text, x.Range, cancellationToken))
+                .Collect()
+                .ConfigureAwait(false);
+        }, CancellationToken.None);
     }
 
     private async Task<bool> ComputeIsViewportAboveUnreadEntry(IComputedState<bool> state, CancellationToken cancellationToken)
@@ -630,7 +478,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             && itemVisibility.MaxEntryLid < readEntryLid;
     }
 
-    private bool ShouldSuppressNewMessagesEntry(ChatViewItemVisibility itemVisibility, ChatTile lastTile)
+    private bool ShouldSuppressNewMessagesEntry(
+        List<VirtualListTile<ChatMessage>> tiles,
+        ChatViewItemVisibility itemVisibility)
     {
         if (!itemVisibility.IsEndAnchorVisible)
             return false;
@@ -641,8 +491,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return false;
 
         var lastVisibleEntryLid = itemVisibility.MaxEntryLid;
-        var lastEntryLid = !lastTile.IsEmpty ? lastTile.Entries.Max(c => c.Id.LocalId) : -1;
-        return lastEntryLid < 0 || lastVisibleEntryLid >= lastEntryLid;
+        if (tiles.Count == 0)
+            return true;
+
+        var lastEntryLid = tiles[^1].Items.MaxBy(m => m.Entry.LocalId)!.Entry.LocalId;
+        return lastVisibleEntryLid >= lastEntryLid;
     }
 
     private void OnRegionVisibilityChanged(IState<bool> state, StateEventKind eventKind)
@@ -680,5 +533,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             LastAuthorTextEntryLidState.Value = newOwnEntry.LocalId;
     }
 
-    private record NavigationAnchor(long EntryLid, bool MoveNext = false);
+    // Nested types
+
+    private record NavigationAnchor(long EntryLid, bool MustPositionAfter = false);
 }

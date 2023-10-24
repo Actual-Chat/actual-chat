@@ -29,7 +29,7 @@ public class RemoveAccountTest : AppHostTestBase
         await services.Commander().Call(removeEntriesCommand);
 
         var ids = new HashSet<long>();
-        var idTileStack = Constants.Chat.IdTileStack;
+        var idTileStack = Constants.Chat.ReaderIdTileStack;
         var newEntryRange = new Range<long>(entries.Min(e => e.LocalId), entries.Max(e => e.LocalId) + 1);
         var idTiles = idTileStack.GetOptimalCoveringTiles(newEntryRange);
         foreach (var idTile in idTiles) {
@@ -78,8 +78,8 @@ public class RemoveAccountTest : AppHostTestBase
         chat1.Should().BeNull();
 
         var lastEntryLid = entries[^1].Id.LocalId;
-        var idTileStack = Constants.Chat.IdTileStack;
-        var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid))[^1];
+        var idTileStack = Constants.Chat.ReaderIdTileStack;
+        var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid + 1))[^1];
         await FluentActions.Awaiting(() => chats.GetTile(session,
                 chat.Id,
                 ChatEntryKind.Text,

@@ -42,7 +42,7 @@ public class VirtualListTestService : IComputeService
                 .Range(start, end - start + 1)
                 .Select(key => new TestListItemRef(key, rangeSeedValue, contentSeed))
                 .Chunk(10)
-                .Select(ms => new VirtualListDataTile<TestListItemRef>(ms))
+                .Select(chunk => new VirtualListTile<TestListItemRef>($"tile-{chunk.First().Id}", chunk))
                 .ToList()) {
             HasVeryFirstItem = start == range.Start,
             HasVeryLastItem = end == range.End,

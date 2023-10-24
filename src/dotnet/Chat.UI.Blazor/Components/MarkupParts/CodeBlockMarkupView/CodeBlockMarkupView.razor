@@ -16,12 +16,12 @@
     private static readonly string JSHighlightCodeMethod = $"{ChatBlazorUIModule.ImportName}.highlightCode";
 
     private ElementReference _preRef;
-    private ChatMessageModel _message = null!;
+    private ChatMessage _message = null!;
 
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     protected override void OnParametersSet()
-        => _message = new ChatMessageModel(Entry);
+        => _message = new ChatMessage(Entry);
 
     protected override Task OnAfterRenderAsync(bool firstRender)
         => JS.InvokeVoidAsync(JSHighlightCodeMethod, _preRef, Markup.Language.NullIfWhiteSpace(), Markup.Code).AsTask();

@@ -2,12 +2,9 @@
 
 namespace ActualChat.Users;
 
-public class SecureTokens : ISecureTokens
+public class SecureTokens(IServiceProvider services) : ISecureTokens
 {
-    private ISecureTokensBackend Backend { get; }
-
-    public SecureTokens(IServiceProvider services)
-        => Backend = services.GetRequiredService<ISecureTokensBackend>();
+    private ISecureTokensBackend Backend { get; } = services.GetRequiredService<ISecureTokensBackend>();
 
     public async Task<SecureToken> Create(string value, CancellationToken cancellationToken = default)
         => await Backend.Create(value, cancellationToken).ConfigureAwait(false);

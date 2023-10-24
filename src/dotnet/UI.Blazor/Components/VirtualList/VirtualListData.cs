@@ -1,9 +1,9 @@
 namespace ActualChat.UI.Blazor.Components;
 
-public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListDataTile<TItem>> tiles)
+public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>> tiles)
     where TItem : IVirtualListItem
 {
-    public static readonly VirtualListData<TItem> None = new(Array.Empty<VirtualListDataTile<TItem>>());
+    public static readonly VirtualListData<TItem> None = new(Array.Empty<VirtualListTile<TItem>>());
 
     public bool IsNone
         => ReferenceEquals(this, None);
@@ -16,7 +16,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListDataTile<TIt
             ? new Range<string>(Tiles[0].KeyRange.Start, Tiles[^1].KeyRange.End)
             : default;
 
-    public IReadOnlyList<VirtualListDataTile<TItem>> Tiles { get; } = tiles;
+    public IReadOnlyList<VirtualListTile<TItem>> Tiles { get; } = tiles;
     public int? RequestedStartExpansion { get; init; }
     public int? RequestedEndExpansion { get; init; }
     public bool HasVeryFirstItem { get; init; }

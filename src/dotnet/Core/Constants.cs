@@ -18,7 +18,8 @@ public static partial class Constants
             new HashSet<Symbol>(new [] { DefaultChatId.Id, AnnouncementsChatId.Id, FeedbackTemplateChatId.Id });
 
         public static readonly TileStack<long> ServerIdTileStack = TileStacks.Long5To1K;
-        public static readonly TileStack<long> IdTileStack = TileStacks.Long5To80;
+        public static readonly TileStack<long> ReaderIdTileStack = TileStacks.Long5To80;
+        public static readonly TileStack<long> ViewIdTileStack = TileStacks.Long5To20;
         public static readonly TileStack<Moment> TimeTileStack = TileStacks.Moment3MTo6Y;
         public static readonly TimeSpan MaxEntryDuration = TimeTileStack.MinTileSize.EpochOffset; // 3 minutes, though it can be any
         public const int MaxSearchFilterLength = 100;

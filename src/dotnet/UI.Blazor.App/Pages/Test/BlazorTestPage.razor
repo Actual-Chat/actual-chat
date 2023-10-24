@@ -1,6 +1,7 @@
 @page "/test/blazor"
 
 <RequireAccount MustBeAdmin="true"/>
+
 <h2>Blazor Test Page</h2>
 
 <p>Counter: @_counter</p>
@@ -15,9 +16,21 @@
     @_output.ToDelimitedString("\r\n")
 </pre>
 
+<p>
+    @{
+        var renderKey = new object();
+    }
+    <RenderAtDepth RenderKey="@renderKey" Depth="10">
+        <BlazorTestNode @key="@context" Name="--" ChildProbability="0"/>
+    </RenderAtDepth>
+    <BlazorTestNode @key="@renderKey" Name="Root" ChildProbability="2"/>
+</p>
+
 @code {
     private int _counter;
     private ImmutableList<string> _output = ImmutableList<string>.Empty;
+
+    [Inject] private ILogger<BlazorTestPage> Log { get; init; } = null!;
 
     protected override Task OnInitializedAsync() {
         BackgroundTask.Run(() => {

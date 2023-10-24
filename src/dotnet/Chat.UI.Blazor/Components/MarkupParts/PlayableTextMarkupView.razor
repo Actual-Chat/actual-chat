@@ -144,7 +144,7 @@
             return Model.None;
 
         var timeRange = Markup.TimeRange;
-        if (timeRange.IsEmpty)
+        if (timeRange.IsEmptyOrNegative)
             return Model.None;
 
         var trackId = ChatAudioTrackInfo.ComposeTrackId(Entry.ChatId, audioEntryId.GetValueOrDefault());

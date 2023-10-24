@@ -1,7 +1,7 @@
 namespace ActualChat.UI.Blazor.Components.Internal;
 
 /// <summary> The data transferred from Blazor to JS. </summary>
-public class VirtualListRenderState
+public sealed class VirtualListRenderState
 {
     public long RenderIndex { get; init; }
     public VirtualListDataQuery Query { get; init; } = VirtualListDataQuery.None;

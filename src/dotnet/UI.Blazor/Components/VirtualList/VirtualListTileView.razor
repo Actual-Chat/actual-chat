@@ -1,6 +1,8 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 @typeparam TItem where TItem : IVirtualListItem
+@inherits FusionComponentBase
 @{
+    // Console.Out.WriteLine("VirtualListTileView.Render() = " + Tile.KeyRange);
     _renderedDataTile = Tile;
 }
 
@@ -22,14 +24,11 @@
 }
 
 @code {
-    private VirtualListDataTile<TItem>? _renderedDataTile;
+    private VirtualListTile<TItem>? _renderedDataTile;
 
-    [Parameter] public required VirtualListDataTile<TItem> Tile { get; set; }
-    [Parameter] // NOTE(AY): Putting EditorRequired here triggers a warning in Rider (likely their issue)
-    public RenderFragment<TItem> Item { get; set; } = null!;
+    [Parameter, EditorRequired] public VirtualListTile<TItem> Tile { get; set; } = null!;
+    [Parameter] public RenderFragment<TItem> Item { get; set; } = null!;
 
-    protected override bool ShouldRender() {
-        return !ReferenceEquals(_renderedDataTile, Tile);
-    }
-
+    protected override bool ShouldRender()
+        => !ReferenceEquals(_renderedDataTile, Tile);
 }
