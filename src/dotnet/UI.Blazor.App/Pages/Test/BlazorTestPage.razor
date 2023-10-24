@@ -22,7 +22,7 @@
     }
     <BlazorTestNode @key="@renderKey" Name="Root" ChildProbability="2"/>
     <RenderAtDepth RenderKey="@renderKey" Depth="10">
-        <BlazorTestNode @key="@renderKey" Name="-- Final --" ChildProbability="0"/>
+        <BlazorTestNode @key="@context" Name="-- Final --" ChildProbability="0"/>
     </RenderAtDepth>
 </p>
 
