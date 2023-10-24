@@ -21,12 +21,26 @@
 .link-preview:has(.c-description) .c-info {
     @apply py-2;
 }
+/* thumbnail */
 .link-preview .c-thumbnail {
     @apply w-max md:max-w-34 lg:max-w-60 object-cover;
 }
-.link-preview .c-thumbnail.compact {
+.link-preview.compact .c-thumbnail {
     @apply max-w-20 md:max-w-30;
 }
+/* icon */
+.link-preview .c-icon {
+    @apply h-20 md:h-32 w-20 md:w-32;
+    @apply flex-x items-center justify-center;
+    @apply bg-link-preview-icon;
+}
+.link-preview:not(:has(.c-description)) .c-icon {
+    @apply h-16 md:h-20 w-16 md:w-20;
+}
+.link-preview .c-icon > i {
+    @apply text-4xl text-06;
+}
+/* text */
 .link-preview .c-title {
     @apply text-xs md:text-base text-primary font-semibold;
     @apply line-clamp-1 md:line-clamp-2;
