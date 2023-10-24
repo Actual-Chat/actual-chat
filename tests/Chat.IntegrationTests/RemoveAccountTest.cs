@@ -79,7 +79,7 @@ public class RemoveAccountTest : AppHostTestBase
 
         var lastEntryLid = entries[^1].Id.LocalId;
         var idTileStack = Constants.Chat.ReaderIdTileStack;
-        var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid))[^1];
+        var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid + 1))[^1];
         await FluentActions.Awaiting(() => chats.GetTile(session,
                 chat.Id,
                 ChatEntryKind.Text,
