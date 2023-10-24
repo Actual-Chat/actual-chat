@@ -69,7 +69,4 @@ public static partial class RangeExt
         => new (
             long.Parse(range.Start, NumberStyles.Integer, CultureInfo.InvariantCulture),
             long.Parse(range.End, NumberStyles.Integer, CultureInfo.InvariantCulture));
-
-    public static string Format(this Range<long> range)
-        => $"[{range.Start}, {range.End})";
 }

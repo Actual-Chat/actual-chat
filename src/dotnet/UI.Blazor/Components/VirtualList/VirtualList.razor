@@ -85,7 +85,7 @@
                     if (nextTileItems.Count > 0)
                         nextItem = nextTileItems[0];
                 }
-                <VirtualListTileView @key="@tile" Tile="@tile" Item="@Item" NextItem="@nextItem" />
+                <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" NextItem="@nextItem" />
             }
         }
     </ul>

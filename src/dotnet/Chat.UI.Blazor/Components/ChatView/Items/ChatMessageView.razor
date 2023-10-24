@@ -3,11 +3,13 @@
 @using ActualChat.Hosting
 @using Microsoft.AspNetCore.Components.Rendering
 @using System.Diagnostics.CodeAnalysis
+@using Stl.Diagnostics
 @{
     var m = _rendered = State.Value;
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
     var entry = message.Entry;
+    Log.LogInformation("Rendering: {Id} ({ReplacementKind})", entry.LocalId, message.ReplacementKind);
 
     // Flags
     var isSystem = entry.IsSystemEntry;
@@ -184,6 +186,7 @@
     private Markup _markup = Markup.Empty;
     private ChatMessage? _lastMessage;
     private EventCallback<AuthorId> _onClickCallback;
+    private ILogger? _log;
 
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
@@ -198,6 +201,7 @@
     private ModalUI ModalUI => ChatContext.ModalUI;
     private TimeZoneConverter TimeZoneConverter => ChatContext.TimeZoneConverter;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
+    private ILogger Log => _log ??= ChatContext.Services.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;

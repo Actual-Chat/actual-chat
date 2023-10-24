@@ -3,7 +3,6 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatUI
 {
     private static readonly TimeSpan BlockStartTimeGap = TimeSpan.FromSeconds(120);
-    private static readonly VirtualListTile<ChatMessage> EmptyTile = new(Array.Empty<ChatMessage>());
 
     [ComputeMethod(MinCacheDuration = 30, InvalidationDelay = 0.1)]
     public virtual async Task<VirtualListTile<ChatMessage>> GetTile(
@@ -15,7 +14,7 @@ public partial class ChatUI
         CancellationToken cancellationToken = default)
     {
         if (idRange.IsEmptyOrNegative)
-            return EmptyTile;
+            throw new ArgumentOutOfRangeException(nameof(idRange));
 
         var tiles = await ChatView.IdTileStack.FirstLayer
             .GetCoveringTiles(idRange)
@@ -24,7 +23,7 @@ public partial class ChatUI
             .ConfigureAwait(false);
         var entries = tiles.SelectMany(t => t.Entries).ToList();
         if (entries.Count == 0)
-            return EmptyTile;
+            return new VirtualListTile<ChatMessage>(idRange);
 
         var prevEntry = (ChatEntry?)null;
         var prevDate = DateOnly.MinValue;
@@ -90,7 +89,7 @@ public partial class ChatUI
             prevForwardChatId = entry.ForwardedChatEntryId.ChatId;
             isPrevAudio = isAudio;
         }
-        return new VirtualListTile<ChatMessage>(messages);
+        return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
     }
 
     private static bool IsBlockStart(ChatEntry? prevEntry, ChatEntry entry)

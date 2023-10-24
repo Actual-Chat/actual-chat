@@ -268,7 +268,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
             if (isEmpty)
                 return new VirtualListData<ChatMessage>(new [] {
-                    new VirtualListTile<ChatMessage>(new [] { ChatMessage.Welcome(Chat.Id) }),
+                    new VirtualListTile<ChatMessage>(default(Range<long>), new [] { ChatMessage.Welcome(Chat.Id) }),
                 }) {
                     HasVeryFirstItem = true,
                     HasVeryLastItem = true,
@@ -378,14 +378,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         var tiles = ArrayBuffer<Tile<long>>.Lease(true);
         try {
-            var fastRange = new Range<long>(chatIdRange.End - (2 * IdTileStack.MinTileSize), chatIdRange.End);
-            var slowRange = new Range<long>(chatIdRange.Start, fastRange.Start).Positive();
-            slowRange = idRangeToLoad.IntersectWith(slowRange);
-            fastRange = idRangeToLoad.IntersectWith(fastRange);
-            // DebugLog?.LogDebug("GetRenderTiles: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
+            var fastPoint = IdTileStack.FirstLayer
+                .GetTile(chatIdRange.End - (2 * IdTileStack.MinTileSize))
+                .Start;
+            var fastRange = new Range<long>(Math.Max(fastPoint, idRangeToLoad.Start), idRangeToLoad.End).Positive();
+            var slowRange = fastRange.IsEmpty
+                ? idRangeToLoad
+                : new Range<long>(idRangeToLoad.Start, fastRange.Start);
             tiles.AddRange(IdTileStack.GetOptimalCoveringTiles(slowRange));
             tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(fastRange));
-            return tiles.ToArray();
+            var result = tiles.ToArray();
+            // DebugLog?.LogDebug("GetRenderTiles: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
+            // if (result.DistinctBy(x => x.Range).Count() != result.Length)
+            //     Debugger.Break();
+            return result;
         }
         finally {
             tiles.Release();
@@ -398,7 +404,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         NavigationAnchor? scrollAnchor,
         Range<long> chatIdRange)
     {
-        var queryRange = (query.IsNone, oldData.Tiles.Count == 0) switch {
+        var range = (query.IsNone, oldData.Tiles.Count == 0) switch {
             (true, true) => new Range<long>(chatIdRange.End - MinLoadLimit, chatIdRange.End),
             (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId, oldData.Tiles[^1].Items[^1].Entry.LocalId),
             _ => query.KeyRange
@@ -411,22 +417,22 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             var scrollAnchorRange = new Range<long>(
                 vScrollAnchor.EntryLid - MinLoadLimit,
                 vScrollAnchor.EntryLid + (MinLoadLimit / 2));
-            queryRange = scrollAnchorRange.Overlaps(queryRange)
-                ? queryRange.MinMaxWith(scrollAnchorRange)
+            range = scrollAnchorRange.Overlaps(range)
+                ? range.MinMaxWith(scrollAnchorRange)
                 : scrollAnchorRange;
         }
 
         var minTileSize = IdTileStack.MinTileSize;
         // Fix queryRange start
-        if (queryRange.Start < chatIdRange.Start)
-            queryRange = new Range<long>(chatIdRange.Start, queryRange.End);
+        if (range.Start < chatIdRange.Start)
+            range = new Range<long>(chatIdRange.Start, range.End);
         // Fix queryRange end
-        if (queryRange.End >= chatIdRange.End - minTileSize)
-            queryRange = new Range<long>(queryRange.Start, chatIdRange.End);
+        if (range.End >= chatIdRange.End - minTileSize)
+            range = new Range<long>(range.Start, chatIdRange.End);
 
         // Expand queryRange to tile boundaries
-        queryRange = queryRange.ExpandToTiles(IdTileStack.FirstLayer);
-        return queryRange;
+        range = range.ExpandToTiles(IdTileStack.FirstLayer);
+        return range;
     }
 
     private Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)
