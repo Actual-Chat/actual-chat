@@ -13,6 +13,7 @@ using banditoth.MAUI.DeviceId;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
 using Serilog;
+using Stl.CommandR.Rpc;
 
 namespace ActualChat.App.Maui;
 
@@ -44,6 +45,7 @@ public static partial class MauiProgram
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
+            RpcOutboundCommandCallMiddleware.DefaultTimeout = TimeSpan.FromSeconds(20);
 #if true
             // Normal start
             ConfigureApp(appBuilder, false);

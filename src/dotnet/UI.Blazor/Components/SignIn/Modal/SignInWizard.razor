@@ -3,7 +3,12 @@
 <Stepper Context="stepper">
     <Header>
         @if (!stepper.CanMoveBack) {
-            <div class="sign-in-modal-header">Sign-in to Actual Chat</div>
+            <div class="sign-in-modal-header-wrapper">
+                <div class="sign-in-modal-header">Sign-in to Actual Chat</div>
+                @if (!string.IsNullOrEmpty(Reason)) {
+                    <div class="sign-in-modal-reason">@Reason</div>
+                }
+            </div>
         } else {
             <ButtonRound
                 Class="transparent"
@@ -21,4 +26,6 @@
 
 @code {
     private PhoneSignInModel _model = new();
+
+    [Parameter] public string Reason { get; set; } = "";
 }

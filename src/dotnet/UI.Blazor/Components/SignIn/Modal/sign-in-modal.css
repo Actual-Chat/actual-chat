@@ -11,10 +11,16 @@
 
 .sign-in-modal .stepper-header {
     @apply flex-x gap-x-0;
-    @apply mb-4;
+    @apply max-h-22 mb-4;
+}
+.sign-in-modal-header-wrapper {
+    @apply flex-y gap-y-1;
 }
 .sign-in-modal-header {
     @apply text-xl font-semibold md:font-medium text-02;
+}
+.sign-in-modal-reason {
+    @apply text-lg font-semibold md:font-medium text-03;
 }
 .sign-in {
     @apply w-full !max-w-full;
