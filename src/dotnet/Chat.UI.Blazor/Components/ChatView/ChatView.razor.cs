@@ -197,7 +197,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chat = Chat;
         var chatId = chat.Id;
         activity?.SetTag("AC." + nameof(ChatId), chatId);
-        var chatIdRange = ChatIdRangeState.Value;
+        var chatIdRange = ChatIdRangeState.Value; // do not subscribe to Id range change
         var readEntryLid = ReadPositionState.Value.EntryLid;
         var isFirstRender = oldData.IsNone;
         var scrollAnchor = isFirstRender && readEntryLid != 0
@@ -211,12 +211,10 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
         // Handle NavigateToEntry
         var navigationAnchor = await NavigationAnchorState.Use(cancellationToken);
-        if (navigationAnchor != _lastNavigationAnchor) {
+        if (navigationAnchor != null && navigationAnchor != _lastNavigationAnchor) {
             _lastNavigationAnchor = navigationAnchor;
-            if (navigationAnchor != null)
-                scrollAnchor = navigationAnchor;
+            scrollAnchor = navigationAnchor;
         }
-
         var mustScrollToEntry = scrollAnchor != null && !ItemVisibility.Value.IsFullyVisible(scrollAnchor.EntryLid);
         var idRangeToLoad = GetIdRangeToLoad(query, oldData, scrollAnchor, chatIdRange);
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
@@ -231,7 +229,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var lastIdRangeToLoad = _lastIdRangeToLoad;
         _lastIdRangeToLoad = idRangeToLoad;
         var newIdRanges = idRangeToLoad.Subtract(lastIdRangeToLoad);
-        using (var flowSuppressor = ExecutionContextExt.SuppressFlow()) {
+        using (var __ = ExecutionContextExt.SuppressFlow()) {
             // We don't want dependencies to be captured for prefetch calls
             _ = PrefetchTiles(chatId, newIdRanges.Item1, cancellationToken);
             _ = PrefetchTiles(chatId, newIdRanges.Item2, cancellationToken);
@@ -279,6 +277,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         var scrollToKey = (string?)null;
+        var highlightEntryLid = scrollAnchor != null && scrollAnchor == navigationAnchor
+            ? (long?)scrollAnchor.EntryLid
+            : null;
         if (mustScrollToEntry && scrollAnchor != null) {
             var entryLid = scrollAnchor.EntryLid;
             var criteria = (Func<ChatMessage, bool>)(scrollAnchor.MustPositionAfter
@@ -289,8 +290,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .SelectMany(t => t.Items)
                 .SkipWhile(criteria)
                 .FirstOrDefault();
-            if (message is not null)
+            if (message is not null) {
                 scrollToKey = message.Entry.LocalId.Format();
+                if (highlightEntryLid.HasValue)
+                    highlightEntryLid = message.Entry.LocalId;
+            }
             else
                 Log.LogWarning("Failed to find entry to scroll to #{EntryLid}", entryLid);
         }
@@ -325,9 +329,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ReadPositionState.Value = new ReadPosition(chatId,chatIdRange.End - 1);
         }
 
-        if (navigationAnchor != null) {
+        if (highlightEntryLid.HasValue) {
             // highlight entry when it has already been loaded
-            var entryLid = new ChatEntryId(chatId, ChatEntryKind.Text, navigationAnchor.EntryLid, AssumeValid.Option);
+            var entryLid = new ChatEntryId(chatId, ChatEntryKind.Text, highlightEntryLid.Value, AssumeValid.Option);
             ChatUI.HighlightEntry(entryLid, navigate: false);
         }
         return result;
