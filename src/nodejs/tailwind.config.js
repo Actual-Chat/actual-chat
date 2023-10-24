@@ -155,6 +155,7 @@ module.exports = {
         'menuitem-hover': 'var(--menuitem-hover)',
         'menuitem-hover-warning': 'var(--menuitem-hover-warning)',
         'bubble-btn-hover': 'var(--bubble-btn-hover)',
+        'link-preview-icon': 'var(--link-preview-icon)',
       },
       textColor: {
         '01': 'var(--text-01)',
