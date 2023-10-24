@@ -35,7 +35,7 @@ public partial class ChatUI
         if (prevMessage != null) {
             prevEntry = prevMessage.Entry;
             prevDate = DateOnly.FromDateTime(TimeZoneConverter.ToLocalTime(prevEntry.BeginsAt));
-            isPrevUnread = (prevMessage.Flags & ChatMessageFlags.Unread) != 0;
+            isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
             isPrevForward = !prevEntry.ForwardedAuthorId.IsNone;
             prevForwardChatId = prevEntry.ForwardedChatEntryId.ChatId;
             isPrevAudio = prevEntry.AudioEntryId != null || prevEntry.IsStreaming;

@@ -26,7 +26,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     private IChatPositions? _chatPositions;
     private IMentions? _mentions;
     private AccountSettings? _accountSettings;
-    private TimeZoneConverter _timeZoneConverter;
+    private TimeZoneConverter? _timeZoneConverter;
     private KeepAwakeUI? _keepAwakeUI;
     private TuneUI? _tuneUI;
     private ActiveChatsUI? _activeChatsUI;

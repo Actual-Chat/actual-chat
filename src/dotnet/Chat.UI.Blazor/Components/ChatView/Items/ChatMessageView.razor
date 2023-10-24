@@ -16,15 +16,15 @@
     var isReply = m.RepliedEntry != null;
     var isForward = !entry.ForwardedAuthorId.IsNone;
     var isReplyToOwnMessage = m.RepliedEntry?.AuthorId == entry.AuthorId;
-    var showAuthor = !isSystem && ((message.Flags & ChatMessageFlags.BlockStart) != 0 || isReply);
-    var showForwardHeader = !isSystem && isForward && (message.Flags & ChatMessageFlags.ForwardStart) != 0;
+    var isBlockStart = message.Flags.HasFlag(ChatMessageFlags.BlockStart);
+    var showAuthor = !isSystem && (isBlockStart || isReply);
+    var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
     var forwardedClass = isForward ? "forwarded-message" : "";
     var forwardedBorderClass = isForward && !showAuthor ? "forwarded-border" : "";
-    var isBlockEnd = NextMessage == null || (NextMessage.Flags & ChatMessageFlags.BlockStart) != 0;
-    var marginClass = isBlockEnd ? "mb-2" : "mb-0";
+    var marginClass = isBlockStart ? "mt-2" : "";
     var ownMessageClass = m.OwnAuthorId == message.Entry.AuthorId ? "own-message" : "";
     var highlightClass = m.IsHighlighted ? "chat-message-highlighted" : "";
     var repliedClass = m.IsReplyTarget ? "replied-message" : "";
@@ -143,10 +143,10 @@
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (entry.IsStreaming) {
-                    <ChatMessageTranscript Message="@message" ShowEntryKind="@((message.Flags & ChatMessageFlags.HasEntryKindSign) != 0)"/>
+                    <ChatMessageTranscript Message="@message" ShowEntryKind="@message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)"/>
                 } else {
                     <p class="chat-message-markup">
-                        @if ((message.Flags & ChatMessageFlags.HasEntryKindSign) != 0) {
+                        @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
                             <ChatEntryKindView Kind="@(entry.HasAudioEntry ? ChatEntryKind.Audio : entry.Kind)"/>
                         }
                         <CascadingValue Value="@entry" IsFixed="true">
@@ -205,7 +205,6 @@
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
-    [Parameter, EditorRequired] public ChatMessage? NextMessage { get; set; } = null!;
 
     protected override void OnInitialized() {
         _onClickCallback = NoStateHasChanged.EventCallback<AuthorId>(OnAuthorBadgeClick);

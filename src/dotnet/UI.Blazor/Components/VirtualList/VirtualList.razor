@@ -76,18 +76,8 @@
 
     <ul @key="@VirtualListSpecialKeys.Container"
         class="c-virtual-container">
-        @{
-            for (var i = 0; i < tiles.Count;) {
-                var tile = tiles[i];
-                i++;
-                var nextItem = default(TItem?);
-                if (i < tiles.Count) {
-                    var nextTileItems = tiles[i].Items;
-                    if (nextTileItems.Count > 0)
-                        nextItem = nextTileItems[0];
-                }
-                <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" NextItem="@nextItem" />
-            }
+        @foreach (var tile in tiles) {
+            <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item"/>
         }
     </ul>
 
