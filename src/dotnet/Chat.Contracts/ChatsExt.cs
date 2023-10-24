@@ -20,7 +20,7 @@ public static class ChatsExt
             return null;
 
         try {
-            var idTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(entryId.LocalId);
+            var idTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(entryId.LocalId);
             var tile = await chats.GetTile(session,
                     entryId.ChatId,
                     entryId.Kind,

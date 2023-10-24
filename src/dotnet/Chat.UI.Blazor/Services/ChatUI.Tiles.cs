@@ -14,7 +14,7 @@ public partial class ChatUI
         long lastReadEntryId,
         CancellationToken cancellationToken = default)
     {
-        if (idRange.IsEmpty)
+        if (idRange.IsEmptyOrNegative)
             return EmptyTile;
 
         var tiles = await ChatView.IdTileStack.FirstLayer

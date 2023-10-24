@@ -139,7 +139,7 @@ public class AudioProcessorTest : AppHostTestBase
         readSize.Should().BeLessOrEqualTo(writtenSize);
 
         var idRange = await chats.GetIdRange(chat.Id, ChatEntryKind.Text, true, CancellationToken.None);
-        var lastIdTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(idRange.End - 1);
+        var lastIdTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var lastTile = await chats.GetTile(
             chat.Id,
             ChatEntryKind.Text,
@@ -205,7 +205,7 @@ public class AudioProcessorTest : AppHostTestBase
         readSize.Should().BeLessOrEqualTo(writtenSize);
 
         var idRange = await chats.GetIdRange(chat.Id, ChatEntryKind.Text, true, CancellationToken.None);
-        var lastIdTile = Constants.Chat.IdTileStack.FirstLayer.GetTile(idRange.End - 1);
+        var lastIdTile = Constants.Chat.ServerIdTileStack.FirstLayer.GetTile(idRange.End - 1);
         var lastTile = await chats.GetTile(
             chat.Id,
             ChatEntryKind.Text,

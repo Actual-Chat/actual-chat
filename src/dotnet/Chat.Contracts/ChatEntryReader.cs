@@ -7,7 +7,7 @@ public sealed class ChatEntryReader(
     ChatEntryKind entryKind,
     TileLayer<long>? idTileLayer = null)
 {
-    public static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
+    public static readonly TileStack<long> IdTileStack = Constants.Chat.ReaderIdTileStack;
 
     public IChats Chats { get; } = chats;
     public Session Session { get; init; } = session;
@@ -230,7 +230,7 @@ public sealed class ChatEntryReader(
                     return tile;
 
             var idRange = cIdRange.Value;
-            if (idRange.IsEmpty)
+            if (idRange.IsEmptyOrNegative)
                 // Empty chat (no entries of EntryKind) -> let's wait for the new ones
                 goto waitForInvalidation;
 

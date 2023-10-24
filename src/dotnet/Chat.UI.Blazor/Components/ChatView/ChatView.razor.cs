@@ -10,7 +10,7 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessage>, IDisposable
 {
-    public static readonly TileStack<long> IdTileStack = Constants.Chat.IdTileStack;
+    public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
     public static readonly long MinLoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
 
     private readonly CancellationTokenSource _disposeTokenSource = new();
@@ -256,6 +256,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
             tiles.Add(tile);
 #if false
+            // Uncomment for debugging:
             DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
                 idTile.Range.Format(), isUnread, lastReadEntryLidArg);
             foreach (var item in tile.Items)
@@ -378,16 +379,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var tiles = ArrayBuffer<Tile<long>>.Lease(true);
         try {
             var fastRange = new Range<long>(chatIdRange.End - (2 * IdTileStack.MinTileSize), chatIdRange.End);
-            var slowRange = new Range<long>(chatIdRange.Start, fastRange.Start);
-            if (slowRange.IsNegative)
-                slowRange = default;
-            fastRange = idRangeToLoad.IntersectWith(fastRange);
+            var slowRange = new Range<long>(chatIdRange.Start, fastRange.Start).Positive();
             slowRange = idRangeToLoad.IntersectWith(slowRange);
-            DebugLog?.LogDebug("GetRenderTiles: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
-            if (!slowRange.IsEmpty)
-                tiles.AddRange(IdTileStack.GetOptimalCoveringTiles(slowRange));
-            if (!fastRange.IsEmpty)
-                tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(fastRange));
+            fastRange = idRangeToLoad.IntersectWith(fastRange);
+            // DebugLog?.LogDebug("GetRenderTiles: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
+            tiles.AddRange(IdTileStack.GetOptimalCoveringTiles(slowRange));
+            tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(fastRange));
             return tiles.ToArray();
         }
         finally {
@@ -434,7 +431,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     private Task PrefetchTiles(ChatId chatId, Range<long> idRange, CancellationToken cancellationToken)
     {
-        if (idRange.IsEmpty)
+        if (idRange.IsEmptyOrNegative)
             return Task.CompletedTask;
 
         return Task.Run(async () => {

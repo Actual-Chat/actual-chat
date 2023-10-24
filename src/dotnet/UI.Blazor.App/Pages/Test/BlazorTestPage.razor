@@ -1,6 +1,7 @@
 @page "/test/blazor"
 
 <RequireAccount MustBeAdmin="true"/>
+
 <h2>Blazor Test Page</h2>
 
 <p>Counter: @_counter</p>
@@ -14,6 +15,16 @@
 <pre>
     @_output.ToDelimitedString("\r\n")
 </pre>
+
+<p>
+    @{
+        var renderKey = new object();
+    }
+    <BlazorTestNode @key="@renderKey" Name="Root" ChildProbability="2"/>
+    <RenderAtDepth RenderKey="@renderKey" Depth="10">
+        <BlazorTestNode @key="@renderKey" Name="-- Final --" ChildProbability="0"/>
+    </RenderAtDepth>
+</p>
 
 @code {
     private int _counter;

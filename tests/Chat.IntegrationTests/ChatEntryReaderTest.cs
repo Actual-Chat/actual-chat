@@ -116,7 +116,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         var acDcId = nirvanaId - 1;
 
         var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
-        var tiles = Constants.Chat.IdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(acDcId, chuckBerryId));
+        var tiles = Constants.Chat.ReaderIdTileStack.FirstLayer.GetCoveringTiles(new Range<long>(acDcId, chuckBerryId));
         var result = await reader.ReadTiles(new Range<long>(tiles[0].Start, tiles[^1].End), CancellationToken.None).ToListAsync();
         result.Count.Should().BeGreaterThan(0);
         result.Count.Should().BeLessThanOrEqualTo(2);
@@ -238,9 +238,9 @@ public class ChatEntryReaderTest : AppHostTestBase
             var resultTask = reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     tester.AppServices.GetRequiredService<IChats>(), session, TestChatId,
-                    (int)Constants.Chat.IdTileStack.MinTileSize));
+                    (int)Constants.Chat.ReaderIdTileStack.MinTileSize));
             var result = await resultTask;
-            result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
+            result.Count.Should().Be(1 + (int)Constants.Chat.ReaderIdTileStack.MinTileSize);
         }
     }
 
@@ -271,9 +271,9 @@ public class ChatEntryReaderTest : AppHostTestBase
             var resultTask = reader.Observe(idRange.Result.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     chats, session, TestChatId,
-                    (int)Constants.Chat.IdTileStack.MinTileSize));
+                    (int)Constants.Chat.ReaderIdTileStack.MinTileSize));
             var result = await resultTask;
-            result.Count.Should().Be(1 + (int)Constants.Chat.IdTileStack.MinTileSize);
+            result.Count.Should().Be(1 + (int)Constants.Chat.ReaderIdTileStack.MinTileSize);
         }
     }
 

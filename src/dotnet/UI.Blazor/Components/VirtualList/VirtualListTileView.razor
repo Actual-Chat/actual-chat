@@ -1,5 +1,6 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 @typeparam TItem where TItem : IVirtualListItem
+@inherits FusionComponentBase
 @{
     var items = Tile.Items;
     for (var i = 0; i < items.Count;) {

@@ -1,0 +1,11 @@
+@if (Depth <= 0) {
+    @ChildContent
+} else {
+    <RenderAtDepth RenderKey="@RenderKey" Depth="@(Depth - 1)" ChildContent="@ChildContent"/>
+}
+
+@code {
+    [Parameter, EditorRequired] public object RenderKey { get; init; } = null!;
+    [Parameter, EditorRequired] public int Depth { get; init; }
+    [Parameter] public RenderFragment? ChildContent { get; init; }
+}

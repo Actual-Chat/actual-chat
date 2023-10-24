@@ -1,0 +1,26 @@
+<pre>@Name</pre>
+@if (_children.Length != 0) {
+    @foreach (var child in _children) {
+        <div class="pl-2"><BlazorTestNode Name="@child" ChildProbability="@(ChildProbability / 3)"/></div>
+    }
+}
+
+@code {
+    private string[] _children = Array.Empty<string>();
+
+    [Inject] private ILogger<BlazorTestNode> Log { get; init; } = null!;
+
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public double ChildProbability { get; set; } = 1;
+
+    protected override void OnParametersSet() {
+        _children = Enumerable.Range(0, 2)
+            .Where(_ => Random.Shared.NextDouble() <= ChildProbability)
+            .Select(i => $"{Name}.{i}")
+            .ToArray();
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        Log.LogWarning("OnAfterRender: {Name}", Name);
+    }
+}

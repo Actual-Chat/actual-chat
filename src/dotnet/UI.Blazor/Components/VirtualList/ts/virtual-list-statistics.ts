@@ -1,8 +1,8 @@
 import { clamp } from 'math';
 
 const DefaultItemSize: number = 30;
-const MinItemSize: number = 8;
-const MaxItemSize: number = 16_384;
+const MinItemSize: number = 12;
+const MaxItemSize: number = 240;
 const ItemCountResetThreshold: number = 1000;
 const ItemCountResetValue: number = 900;
 const MinResponseFulfillmentRatio: number = 0.25;
