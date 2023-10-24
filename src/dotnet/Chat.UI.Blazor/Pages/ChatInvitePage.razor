@@ -1,8 +1,11 @@
 ﻿@page "/join/{InviteId}"
 @using ActualChat.Invite
 
-<RequireAccount/>
 <MainHeader>Joining via invite link</MainHeader>
+
+@if (_navigateRequested) {
+    return;
+}
 
 @if (_useResult is { } useResult) {
     if (useResult.Error is { } error) {
@@ -13,15 +16,26 @@
 }
 
 @code {
+    private bool _navigateRequested;
     private Result<Invite>? _useResult;
+    private AccountFull? _account;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
+    [Inject] private SignInRequesterUI SignInRequesterUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
 
     [Parameter] public string InviteId { get; set; } = "";
 
     protected override async Task OnParametersSetAsync() {
+        _account = await AccountUI.OwnAccount.Use();
+        if (_account.IsGuestOrNone || !_account.IsActive()) {
+            _navigateRequested = true;
+            _ = SignInRequesterUI.NavigateToSignIn("You must sign-in to use this chat invite", History.LocalUrl);
+            return;
+        }
+
         var useCommand = new Invites_Use(Session, InviteId);
         _useResult = await UICommander.Run(useCommand);
         if (_useResult is not { } useResult || useResult.HasError)
@@ -29,6 +43,6 @@
 
         var invite = useResult.Value;
         var chatInvite = invite.Details.Chat.Require();
-        _ = History.NavigateTo(Links.Chat(chatInvite.ChatId));
+        _ = History.NavigateTo(Links.Chat(chatInvite.ChatId), true);
     }
 }

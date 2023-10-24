@@ -10,12 +10,17 @@
 
     var imageUrl = GetImageUrl(m.PreviewMedia);
     Uri.TryCreate(m.Url, UriKind.Absolute, out var uri);
+    var compactCls = m.PreviewMedia != null ? "" : "compact";
 }
 
 @* Keep height fixed *@
-<div class="link-preview">
+<div class="link-preview @compactCls">
     @if (m.PreviewMedia != null) {
         <img class="c-thumbnail" src="@imageUrl" alt="link preview thumbnail"/>
+    } else {
+        <div class="c-icon">
+            <i class="icon-link-2"></i>
+        </div>
     }
     <div class="c-info">
         <div>

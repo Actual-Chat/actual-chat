@@ -13,10 +13,13 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
     private AppBlazorCircuitContext? _blazorCircuitContext;
     private IClientAuth? _clientAuth;
     private ILogger? _log;
+    private SignInRequesterUI? _signInRequesterUI;
 
     private AppBlazorCircuitContext BlazorCircuitContext =>
         _blazorCircuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
+    private SignInRequesterUI SignInRequesterUI =>
+        _signInRequesterUI ??= Services.GetRequiredService<SignInRequesterUI>();
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }

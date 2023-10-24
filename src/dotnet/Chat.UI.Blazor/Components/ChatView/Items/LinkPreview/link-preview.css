@@ -4,13 +4,13 @@
     @apply overflow-hidden;
 }
 .link-preview:not(:has(.c-thumbnail)) {
-    @apply h-20 md:h-32;
+    @apply h-20 md:h-20;
 }
 .link-preview:not(:has(.c-thumbnail)):not(:has(.c-description)) {
-    @apply h-16 md:h-20;
+    @apply h-16 md:h-16;
 }
 .link-preview.compact {
-    @apply flex-x h-20 md:h-30 flex-x mb-2;
+    @apply flex-x h-20 md:h-24 flex-x mb-2;
 }
 .link-preview .c-info {
     @apply flex-1 flex-y p-4 justify-between;
@@ -21,22 +21,36 @@
 .link-preview:has(.c-description) .c-info {
     @apply py-2;
 }
+/* thumbnail */
 .link-preview .c-thumbnail {
     @apply w-max md:max-w-34 lg:max-w-60 object-cover;
 }
-.link-preview .c-thumbnail.compact {
+.link-preview.compact .c-thumbnail {
     @apply max-w-20 md:max-w-30;
 }
+/* icon */
+.link-preview .c-icon {
+    @apply h-20 md:h-24 w-20 md:w-24;
+    @apply flex-x items-center justify-center;
+    @apply bg-link-preview-icon;
+}
+.link-preview:not(:has(.c-description)) .c-icon {
+    @apply h-16 w-16;
+}
+.link-preview .c-icon > i {
+    @apply text-2xl text-06;
+}
+/* text */
 .link-preview .c-title {
     @apply text-xs md:text-base text-primary font-semibold;
-    @apply line-clamp-1 md:line-clamp-2;
+    @apply line-clamp-1;
 }
 .link-preview .c-description {
     @apply text-xs md:text-base text-02;
-    @apply line-clamp-1 md:line-clamp-2;
+    @apply line-clamp-1;
 }
 
 .link-preview .c-domain {
     @apply text-xs md:text-sm text-04;
-    @apply truncate;
+    @apply line-clamp-1;
 }

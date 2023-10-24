@@ -205,6 +205,7 @@
     --menuitem-hover-warning: #FF008A1A;
     --bubble-btn-hover: #626BEB;
     --reaction-own: rgba(41, 112, 255, 0.6);
+    --link-preview-icon: var(--blue-70);
 
     --toast-body: #444444E0;
     --toast-text: var(--white);

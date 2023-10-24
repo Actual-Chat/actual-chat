@@ -7,7 +7,7 @@
     NarrowViewSettings="DialogFrameNarrowViewSettings.Stretch">
     <Body>
     <FormBlock>
-        <SignInWizard/>
+        <SignInWizard Reason="@ModalModel.Reason" />
     </FormBlock>
     </Body>
 </DialogFrame>
@@ -16,5 +16,5 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public sealed record Model;
+    public sealed record Model(string Reason = "");
 }
