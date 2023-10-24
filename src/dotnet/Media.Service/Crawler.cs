@@ -134,7 +134,8 @@ public class Crawler(IServiceProvider services) : IHasServices
             return null;
 
         var imageBytes = await response.Content.ReadAsByteArrayAsync(cts.Token).ConfigureAwait(false);
-        var fileName = Path.ChangeExtension(imageUri.Segments[^1], ext);
+        var fileName = new string(imageUri.Segments[^1].Where(Alphabet.AlphaNumeric.IsMatch).ToArray());
+        fileName = Path.ChangeExtension(fileName, ext);
         return new FileInfo(fileName, contentType, imageBytes.Length, imageBytes);
     }
 
