@@ -56,7 +56,10 @@
 
     <div @key="@VirtualListSpecialKeys.RenderState"
          class="data render-state">
-        @SystemJsonSerializer.Default.Write(renderState)
+        @* RenderAtDepth ensures the JSON here is rendered once every item is rendered *@
+        <RenderAtDepth RenderKey="@renderState" Depth="5">
+            @SystemJsonSerializer.Default.Write(context)
+        </RenderAtDepth>
     </div>
 
     <div @key="@VirtualListSpecialKeys.EndAnchor"

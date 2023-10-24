@@ -1,3 +1,6 @@
+@{
+    Log.LogWarning("Render: {Name}", Name);
+}
 <pre>@Name</pre>
 @if (_children.Length != 0) {
     @foreach (var child in _children) {

@@ -20,15 +20,17 @@
     @{
         var renderKey = new object();
     }
-    <BlazorTestNode @key="@renderKey" Name="Root" ChildProbability="2"/>
     <RenderAtDepth RenderKey="@renderKey" Depth="10">
-        <BlazorTestNode @key="@context" Name="-- Final --" ChildProbability="0"/>
+        <BlazorTestNode @key="@context" Name="--" ChildProbability="0"/>
     </RenderAtDepth>
+    <BlazorTestNode @key="@renderKey" Name="Root" ChildProbability="2"/>
 </p>
 
 @code {
     private int _counter;
     private ImmutableList<string> _output = ImmutableList<string>.Empty;
+
+    [Inject] private ILogger<BlazorTestPage> Log { get; init; } = null!;
 
     protected override Task OnInitializedAsync() {
         BackgroundTask.Run(() => {
