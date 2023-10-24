@@ -225,7 +225,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
         activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
         activity?.SetTag("AC." + "IdRangeToLoad", idRangeToLoad.Format());
-        DebugLog?.LogDebug("GetData: #{ChatId} -> {IdRangeToLoad}", chatId, idRangeToLoad.Format());
+        // DebugLog?.LogDebug("GetData: #{ChatId} -> {IdRangeToLoad}", chatId, idRangeToLoad.Format());
 
         // Prefetching new tiles
         var lastIdRangeToLoad = _lastIdRangeToLoad;
@@ -388,7 +388,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             tiles.AddRange(IdTileStack.GetOptimalCoveringTiles(slowRange));
             tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(fastRange));
             var result = tiles.ToArray();
-            // DebugLog?.LogDebug("GetRenderTiles: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
+            // DebugLog?.LogDebug("GetIdTilesToLoad: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
             // if (result.DistinctBy(x => x.Range).Count() != result.Length)
             //     Debugger.Break();
             return result;
