@@ -9,7 +9,7 @@
     var message = _renderedMessage = Message;
     var markup = _renderedMarkup = _markup;
     var entry = message.Entry;
-    // Log.LogInformation("Rendering: {Id} ({ReplacementKind})", entry.LocalId, message.ReplacementKind);
+    // Console.Out.WriteLine("ChatMessageView.Render() = " + entry.LocalId + " : " + message.ReplacementKind);
 
     // Flags
     var isSystem = entry.IsSystemEntry;
@@ -226,11 +226,10 @@
         await base.OnParametersSetAsync(); // Triggers recompute
     }
 
-    protected override bool ShouldRender() {
-        return !ReferenceEquals(_rendered, State.Value)
+    protected override bool ShouldRender()
+        => !ReferenceEquals(_rendered, State.Value)
             || !ReferenceEquals(_renderedMessage, Message)
             || !ReferenceEquals(_renderedMarkup, _markup);
-    }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         var initialValue = Model.None;

@@ -38,11 +38,12 @@ public sealed class ChatMessage(ChatEntry entry) : IVirtualListItem, IEquatable<
         if (ReferenceEquals(this, other))
             return true;
 
-        return Entry == other.Entry
+        return Entry.VersionEquals(other.Entry)
             && ReplacementKind == other.ReplacementKind
             && Date == other.Date
             && Flags == other.Flags
-            && Entry.Attachments.SequenceEqual(other.Entry.Attachments);
+            && Entry.Attachments.SequenceEqual(other.Entry.Attachments)
+            && Entry.LinkPreview == other.Entry.LinkPreview;
     }
 
     public override int GetHashCode()

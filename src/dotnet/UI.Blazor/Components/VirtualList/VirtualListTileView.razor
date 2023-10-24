@@ -2,6 +2,9 @@
 @typeparam TItem where TItem : IVirtualListItem
 @inherits FusionComponentBase
 @{
+    // Console.Out.WriteLine("VirtualListTileView.Render() = " + Tile.KeyRange);
+    _renderedDataTile = Tile;
+
     var items = Tile.Items;
     for (var i = 0; i < items.Count;) {
         var item = items[i];
@@ -25,7 +28,12 @@
 }
 
 @code {
+    private VirtualListTile<TItem>? _renderedDataTile;
+
     [Parameter, EditorRequired] public VirtualListTile<TItem> Tile { get; set; } = null!;
     [Parameter, EditorRequired] public TItem? NextItem { get; set; }
     [Parameter] public RenderFragment<(TItem Item, TItem? NextItem)> Item { get; set; } = null!;
+
+    protected override bool ShouldRender()
+        => !ReferenceEquals(_renderedDataTile, Tile);
 }

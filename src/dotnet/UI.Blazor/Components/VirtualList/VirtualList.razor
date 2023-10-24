@@ -3,6 +3,7 @@
 @using ActualChat.UI.Blazor.Components.Internal
 @inherits ComputedStateComponent<VirtualListData<TItem>>
 @{
+    // Console.Out.WriteLine("VirtualList.Render() = "  + Data.KeyRange + " !" + Data.GetHashCode());
     var renderIndex = RenderIndex++;
     var spacerSize = Data.HasVeryFirstItem
         ? 0

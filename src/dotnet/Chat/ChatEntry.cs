@@ -79,4 +79,5 @@ public sealed partial record ChatEntry(
     // This record relies on referential equality
     public bool Equals(ChatEntry? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
+    public bool VersionEquals(ChatEntry? other) => VersionEqualityComparer.Equals(this, other);
 }

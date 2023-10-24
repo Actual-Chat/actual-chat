@@ -229,7 +229,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         }
         if (!includeRemoved) {
             var fullTile = await GetTile(chatId, entryKind, idTileRange, true, cancellationToken).ConfigureAwait(false);
-            return new ChatTile(idTileRange, fullTile.IsLast, false, fullTile.Entries.Where(e => !e.IsRemoved).ToApiArray());
+            return new ChatTile(idTileRange, false, fullTile.Entries.Where(e => !e.IsRemoved).ToApiArray());
         }
 
         // If we're here, it's the smallest tile & includeRemoved = true
@@ -240,18 +240,16 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var dbEntries = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId
                 && e.Kind == entryKind
-                && e.LocalId >= idRange.Start)
+                && e.LocalId >= idRange.Start
+                && e.LocalId < idRange.End)
             .OrderBy(e => e.LocalId)
-            .Take((int)(idRange.Size() + 1))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var isLast = dbEntries.RemoveAll(e => e.LocalId >= idRange.End) == 0;
 
         // audio or video entries doesn't have attachments now
         if (entryKind != ChatEntryKind.Text)
             return new ChatTile(
                 idTileRange,
-                isLast,
                 true,
                 dbEntries
                     .Select(dbe => dbe.ToModel())
@@ -281,7 +279,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             var linkPreview = allLinkPreviews.GetValueOrDefault(e.LinkPreviewId);
             return e.ToModel(entryAttachments, linkPreview);
         });
-        return new ChatTile(idTileRange, isLast, true, entries.ToApiArray());
+        return new ChatTile(idTileRange, true, entries.ToApiArray());
 
         async Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments(ChatDbContext dbContext1, ICollection<string> entryIdsWithAttachments1)
         {
@@ -947,12 +945,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 // a tile with includeRemoved == true, so we have to invalidate
                 // just this tile.
                 _ = GetTile(chatId, entryKind, idTile.Range, true, default);
-                var cPrevTile = Computed.GetExisting(() => GetTile(chatId, entryKind, idTile.Prev().Range, true, default));
-                if (cPrevTile != null) {
-                    // We want to make sure here that prev. tile is invalidated
-                    if (cPrevTile.IsComputing() || (cPrevTile.IsConsistent() && cPrevTile.ValueOrDefault is { IsLast: true }))
-                        cPrevTile.Invalidate();
-                }
             }
             switch (changeKind) {
             case ChangeKind.Create:

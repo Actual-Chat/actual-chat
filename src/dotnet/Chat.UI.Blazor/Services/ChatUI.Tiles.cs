@@ -75,13 +75,14 @@ public partial class ChatUI
                 flags |= ChatMessageFlags.HasEntryKindSign;
             if (isForwardBlockStart)
                 flags |= ChatMessageFlags.ForwardStart;
+            if (isEntryUnread)
+                flags |= ChatMessageFlags.Unread;
             var message = new ChatMessage(entry) {
                 Date = date,
                 Flags = flags,
             };
             messages.Add(message);
 
-            prevMessage = message;
             prevEntry = entry;
             prevDate = date;
             isPrevUnread = isEntryUnread;

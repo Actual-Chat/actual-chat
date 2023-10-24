@@ -238,7 +238,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         // Building actual virtual list tiles
-        var idTiles = GetIdTilesToLoad(idRangeToLoad, chatIdRange);
+        var idTiles = GetIdTilesToLoad(idRangeToLoad);
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var lastReadEntryLid = _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid;
         var tiles = new List<VirtualListTile<ChatMessage>>();
@@ -372,21 +372,28 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     // Private methods
 
-    private Tile<long>[] GetIdTilesToLoad(
-        Range<long> idRangeToLoad,
-        Range<long> chatIdRange)
+    private Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad)
     {
         var tiles = ArrayBuffer<Tile<long>>.Lease(true);
         try {
-            var fastPoint = IdTileStack.FirstLayer
-                .GetTile(chatIdRange.End - (2 * IdTileStack.MinTileSize))
+            var hotPoint = IdTileStack.Layers[1]
+                .GetTile(idRangeToLoad.End - IdTileStack.Layers[1].TileSize)
                 .Start;
-            var fastRange = new Range<long>(Math.Max(fastPoint, idRangeToLoad.Start), idRangeToLoad.End).Positive();
-            var slowRange = fastRange.IsEmpty
+            var hotRange = new Range<long>(Math.Max(hotPoint, idRangeToLoad.Start), idRangeToLoad.End).Positive();
+            var coldRange = hotRange.IsEmpty
                 ? idRangeToLoad
-                : new Range<long>(idRangeToLoad.Start, fastRange.Start);
-            tiles.AddRange(IdTileStack.GetOptimalCoveringTiles(slowRange));
-            tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(fastRange));
+                : new Range<long>(idRangeToLoad.Start, hotRange.Start);
+            var coldTileCandidates = IdTileStack.GetOptimalCoveringTiles(coldRange);
+            var maxTileSize = coldTileCandidates.Length > 0
+                ? coldTileCandidates.Select(t => t.Range.Size()).Max()
+                : 0;
+            if (maxTileSize > 0 && coldTileCandidates[0].Range.Size() < maxTileSize) {
+                // replace all smaller tiles to the left of the tile with Max size
+                var firstMaxTile = coldTileCandidates.First(t => t.Range.Size() == maxTileSize);
+                tiles.Add(firstMaxTile.Prev());
+            }
+            tiles.AddRange(coldTileCandidates.SkipWhile(t => t.Range.Size() < maxTileSize));
+            tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(hotRange));
             var result = tiles.ToArray();
             // DebugLog?.LogDebug("GetIdTilesToLoad: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
             // if (result.DistinctBy(x => x.Range).Count() != result.Length)
@@ -426,9 +433,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Fix queryRange start
         if (range.Start < chatIdRange.Start)
             range = new Range<long>(chatIdRange.Start, range.End);
-        // Fix queryRange end
+        // Fix queryRange end + subscribe to the next new tile
         if (range.End >= chatIdRange.End - minTileSize)
-            range = new Range<long>(range.Start, chatIdRange.End);
+            range = new Range<long>(range.Start, chatIdRange.End + minTileSize);
 
         // Expand queryRange to tile boundaries
         range = range.ExpandToTiles(IdTileStack.FirstLayer);
