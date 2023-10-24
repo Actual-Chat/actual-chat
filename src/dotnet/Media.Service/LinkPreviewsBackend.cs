@@ -3,14 +3,10 @@ using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Media.Db;
 using ActualChat.Media.Module;
-using ActualChat.Uploads;
 using Microsoft.EntityFrameworkCore;
-using OpenGraphNet;
-using OpenGraphNet.Metadata;
 using StackExchange.Redis;
 using Stl.Fusion.EntityFramework;
 using Stl.Redis;
-using FileInfo = ActualChat.Uploads.FileInfo;
 
 namespace ActualChat.Media;
 
@@ -18,27 +14,17 @@ public class LinkPreviewsBackend(IServiceProvider services)
     : DbServiceBase<MediaDbContext>(services), ILinkPreviewsBackend
 {
     private const string RedisKeyPrefix = ".LinkCrawlerLocks.";
-    private static readonly Dictionary<string, string> ImageExtensionByContentType =
-        new (StringComparer.OrdinalIgnoreCase) {
-            ["image/bmp"] = ".bmp",
-            ["image/jpeg"] = ".jpg",
-            ["image/vnd.microsoft.icon"] = ".ico",
-            ["image/png"] = ".png",
-            ["image/svg+xml"] = ".svg",
-            ["image/webp"] = ".webp",
-        };
 
     // all backend services should be requested lazily to avoid circular references!
     private IMediaBackend? _mediaBackend;
     private IChatsBackend? _chatsBackend;
+    private Crawler? _crawler;
     private IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>();
     private IMediaBackend MediaBackend => _mediaBackend ??= services.GetRequiredService<IMediaBackend>();
 
     private MediaSettings Settings { get; } = services.GetRequiredService<MediaSettings>();
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
-    private HttpClient HttpClient { get; } = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(LinkPreviewsBackend));
-    private IReadOnlyCollection<IUploadProcessor> UploadProcessors { get; } = services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
-    private IContentSaver ContentSaver { get; } = services.GetRequiredService<IContentSaver>();
+    private Crawler Crawler => _crawler ??= Services.GetRequiredService<Crawler>();
     private RedisDb<MediaDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<MediaDbContext>>();
     private Moment Now => Clocks.SystemClock.Now;
 
@@ -99,7 +85,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 // crawling of this url is already in progress
                 return null!;
 
-            var linkMeta = await Crawl(url, cancellationToken).ConfigureAwait(false);
+            var linkMeta = await Crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
             if (dbLinkPreview == null) {
                 dbLinkPreview = new DbLinkPreview {
                     Id = LinkPreview.ComposeId(url),
@@ -214,116 +200,5 @@ public class LinkPreviewsBackend(IServiceProvider services)
     {
         var markup = MarkupParser.Parse(entry.Content);
         return new LinkExtractor().GetLinks(markup);
-    }
-
-    private async Task<LinkMeta> Crawl(string url, CancellationToken cancellationToken)
-    {
-        try {
-            var response = await HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, url), cancellationToken).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-                return LinkMeta.None;
-
-            // TODO: consider robot tags
-
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-            if (OrdinalIgnoreCaseEquals(contentType, "text/html"))
-                return await CrawlWebSite(url, cancellationToken).ConfigureAwait(false);
-
-            if (contentType.OrdinalIgnoreCaseStartsWith("image/"))
-                return await CrawlImageLink(url, cancellationToken).ConfigureAwait(false);
-
-            // TODO: support more cases
-        }
-        catch (Exception e) {
-            Log.LogDebug(e, "Failed to crawl link {Url}", url);
-        }
-        return LinkMeta.None;
-    }
-
-    private async Task<LinkMeta> CrawlWebSite(string url, CancellationToken cancellationToken)
-    {
-        var graph = await OpenGraph.ParseUrlAsync(url, timeout: (int)Settings.CrawlerGraphParsingTimeout.TotalMilliseconds, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-        // TODO: limit image size limit
-        var mediaId = await GetMediaId(graph.Image, cancellationToken).ConfigureAwait(false);
-        var description = graph.Metadata["og:description"].Value();
-        if (!description.IsNullOrEmpty())
-            description = description.HtmlDecode();
-        return new (graph.Title.HtmlDecode(), description, mediaId);
-    }
-
-    private async Task<LinkMeta> CrawlImageLink(string url, CancellationToken cancellationToken)
-    {
-        // TODO: limit image size limit
-        var mediaId = await GetMediaId(new Uri(url), cancellationToken).ConfigureAwait(false);
-        return new LinkMeta ("", "", mediaId);
-    }
-
-    private async Task<MediaId> GetMediaId(Uri? imageUri, CancellationToken cancellationToken)
-    {
-        if (imageUri is null)
-            return MediaId.None;
-
-        var fileInfo = await DownloadImageToFile().ConfigureAwait(false);
-        if (fileInfo is null)
-            return MediaId.None;
-
-        var mediaId = new MediaId(imageUri.AbsoluteUri.GetSHA256HashCode(HashEncoding.AlphaNumeric), fileInfo.Content.GetSHA256HashCode(HashEncoding.AlphaNumeric));
-        var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
-        if (media is not null)
-            return media.Id;
-        // TODO: extract common part with ChatMediaController
-        var (processedFile, size) = await ProcessFile(fileInfo).ConfigureAwait(false);
-        media = new Media(mediaId) {
-            ContentId = $"media/{mediaId.LocalId}/{fileInfo.FileName}",
-            FileName = fileInfo.FileName,
-            Length = fileInfo.Length,
-            ContentType = fileInfo.ContentType,
-            Width = size?.Width ?? 0,
-            Height = size?.Height ?? 0,
-        };
-
-        using var stream = new MemoryStream(processedFile.Content);
-        var content = new Content(media.ContentId, media.ContentType, stream);
-        await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
-
-        var changeCommand = new MediaBackend_Change(
-            mediaId,
-            new Change<Media> {
-                Create = media,
-            });
-        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-
-        return mediaId;
-
-        async Task<FileInfo?> DownloadImageToFile()
-        {
-            var cts = cancellationToken.CreateLinkedTokenSource();
-            cts.CancelAfter(Settings.CrawlerImageDownloadTimeout);
-
-            var response = await HttpClient.GetAsync(imageUri, cts.Token).ConfigureAwait(false);
-            var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-            if (!ImageExtensionByContentType.TryGetValue(contentType, out var ext))
-                return null;
-
-            var imageBytes = await response.Content.ReadAsByteArrayAsync(cts.Token).ConfigureAwait(false);
-            var fileName = Path.ChangeExtension(imageUri.Segments[^1], ext);
-            return new FileInfo(fileName, contentType, imageBytes.Length, imageBytes);
-        }
-
-        Task<ProcessedFileInfo> ProcessFile(FileInfo file)
-        {
-            var processor = UploadProcessors.FirstOrDefault(x => x.Supports(file));
-            return processor != null
-                ? processor.Process(file, cancellationToken)
-                : Task.FromResult(new ProcessedFileInfo(file, null));
-        }
-    }
-
-
-
-    private sealed record LinkMeta(string Title, string Description, MediaId PreviewMediaId)
-    {
-        public static readonly LinkMeta None = new ("", "", MediaId.None);
     }
 }
