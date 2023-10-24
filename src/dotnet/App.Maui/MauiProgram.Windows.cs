@@ -21,7 +21,10 @@ public static partial class MauiProgram
     { }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
-        => events.AddWindows(builder => {
+    {
+        events.AddWindows(builder => {
             builder.OnWindowCreated(WindowConfigurator.Configure);
         });
+        new WindowsWebViewLivenessProbeAdapter().Subscribe();
+    }
 }

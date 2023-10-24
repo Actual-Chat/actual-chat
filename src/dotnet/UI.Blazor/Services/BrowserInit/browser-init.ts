@@ -63,6 +63,10 @@ export class BrowserInit {
         }
     }
 
+    public static isStateOk() {
+        return this.apiVersion.length > 0;
+    }
+
     public static getUrl(url: string) {
         // @ts-ignore
         const baseUri = BrowserInit.baseUri;
