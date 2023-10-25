@@ -1,5 +1,5 @@
 import { Disposable } from 'disposable';
-import { fromEvent, Subject, takeUntil, concatMap, tap, merge } from 'rxjs';
+import { fromEvent, Subject, takeUntil, switchMap, tap, merge } from 'rxjs';
 import { preventDefaultForEvent, stopEvent } from 'event-handling';
 import { hasModifierKey } from 'keyboard';
 
@@ -21,7 +21,7 @@ export class TotpInput implements Disposable {
         merge(fromEvent(inputs, 'input'), fromEvent(inputs, 'paste'), fromEvent(inputs, 'change'))
             .pipe(
                 takeUntil(this.disposed$),
-                concatMap(() => this.onChanged())
+                switchMap(() => this.onChanged())
             ).subscribe();
         fromEvent(inputs, 'keyup')
             .pipe(

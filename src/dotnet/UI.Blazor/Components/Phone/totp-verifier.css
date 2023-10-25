@@ -10,3 +10,6 @@
 .totp-verifier .totp-input:not(.invalid) > .c-error {
     @apply hidden;
 }
+.totp-verifier .c-progress {
+    @apply text-sm text-center;
+}

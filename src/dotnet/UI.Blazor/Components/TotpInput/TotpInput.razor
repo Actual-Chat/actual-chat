@@ -16,7 +16,8 @@
                 name="token"
                 inputmode="numeric"
                 pattern="[0-9]*"
-                autocomplete="one-time-code"/>
+                autocomplete="one-time-code"
+                disabled="@IsDisabled"/>
         }
     </div>
     <span class="c-error">@ErrorText</span>
@@ -35,6 +36,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private FocusUI FocusUI { get; init; } = null!;
 
+    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public string ErrorText { get; set; } = "Invalid code. Please correct it or request a new one.";
     [Parameter] public EventCallback<int> Completed { get; set; }
 

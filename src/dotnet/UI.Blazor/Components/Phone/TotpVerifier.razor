@@ -8,7 +8,10 @@
         Enter the code we've sent to <span class="whitespace-nowrap">@(new Phone(Phone).ToReadable())</span>
         @PurposeText
     </span>
-    <TotpInput @ref="_totpInput" Completed="OnInputCompleted"/>
+    <TotpInput @ref="_totpInput" Completed="OnInputCompleted" IsDisabled="@_isVerifying"/>
+    @if (_isVerifying) {
+        <span class="c-progress">Verifying...</span>
+    }
 
     @if (_totpExpiresAt is { } totpExpiresAt) {
         @if (Clocks.SystemClock.Now < totpExpiresAt) {
@@ -26,6 +29,7 @@
     private object? _timerKey = new();
     private TotpInput? _totpInput;
     private Moment? _totpExpiresAt;
+    private bool _isVerifying;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
@@ -52,6 +56,8 @@
         => _totpInput?.Focus() ?? ValueTask.CompletedTask;
 
     private async Task OnInputCompleted(int totp) {
+        _isVerifying = true;
+        StateHasChanged();
         // as for now we can decide what to do with totp right here, no need for external handling
         ICommand<bool> cmd = Purpose switch {
             TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, new Phone(Phone), totp),
@@ -60,9 +66,12 @@
         };
 
         var (isValid, error) = await UICommander.Run(cmd);
+        _isVerifying = false;
+        StateHasChanged();
         if (error != null) {
-            if (_totpInput != null)
+            if (_totpInput != null) {
                 await _totpInput.Clear();
+            }
             await Error.InvokeAsync();
 
             return;

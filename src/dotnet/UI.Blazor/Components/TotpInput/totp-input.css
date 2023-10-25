@@ -17,7 +17,7 @@
     @apply border-b-danger;
 }
 .totp-input.invalid > .c-error {
-    @apply text-danger text-sm;
+    @apply text-danger text-sm text-center;
 }
 .totp-input:not(.invalid) > .c-error {
     @apply invisible;
