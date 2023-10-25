@@ -116,7 +116,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ConfigureAwait(false);
 
         await dbContext.UserIdentities
-            .Where(a => a.Id == userId)
+            .Where(a => a.DbUserId == userId)
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
