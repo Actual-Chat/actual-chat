@@ -8,10 +8,7 @@
         Enter the code we've sent to <span class="whitespace-nowrap">@(new Phone(Phone).ToReadable())</span>
         @PurposeText
     </span>
-    <TotpInput @ref="_totpInput" Completed="OnInputCompleted" IsDisabled="@_isVerifying"/>
-    @if (_isVerifying) {
-        <span class="c-progress">Verifying...</span>
-    }
+    <TotpInput @ref="_totpInput" Completed="OnInputCompleted" IsVerifying="@_isVerifying"/>
 
     @if (_totpExpiresAt is { } totpExpiresAt) {
         @if (Clocks.SystemClock.Now < totpExpiresAt) {

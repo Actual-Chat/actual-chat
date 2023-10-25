@@ -1,5 +1,6 @@
 .totp-input {
     @apply flex-y flex-1 gap-y-4 justify-center items-stretch;
+    @apply h-20;
 }
 .totp-input > .c-digits {
     @apply flex-x flex-1 justify-between items-center;
@@ -16,9 +17,16 @@
 .totp-input.invalid > .c-digits > input[type=text].c-digit {
     @apply border-b-danger;
 }
-.totp-input.invalid > .c-error {
+/* Label + error */
+.totp-input .c-text {
+    @apply min-h-8 flex-1 flex-y justify-center;
+}
+.totp-input.invalid .c-error {
     @apply text-danger text-sm text-center;
 }
-.totp-input:not(.invalid) > .c-error {
-    @apply invisible;
+.totp-input:not(.invalid) .c-error {
+    @apply hidden;
+}
+.totp-input .c-disabled-text {
+    @apply text-sm text-center;
 }

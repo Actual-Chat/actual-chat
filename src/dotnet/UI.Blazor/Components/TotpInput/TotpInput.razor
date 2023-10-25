@@ -17,10 +17,15 @@
                 inputmode="numeric"
                 pattern="[0-9]*"
                 autocomplete="one-time-code"
-                disabled="@IsDisabled"/>
+                disabled="@IsVerifying"/>
         }
     </div>
-    <span class="c-error">@ErrorText</span>
+    <div class="c-text">
+        <span class="c-error">@ErrorText</span>
+            @if (IsVerifying) {
+                <span class="c-disabled-text">Verifying...</span>
+            }
+    </div>
 </div>
 
 @code {
@@ -36,7 +41,7 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private FocusUI FocusUI { get; init; } = null!;
 
-    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsVerifying { get; set; }
     [Parameter] public string ErrorText { get; set; } = "Invalid code. Please correct it or request a new one.";
     [Parameter] public EventCallback<int> Completed { get; set; }
 

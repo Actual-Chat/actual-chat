@@ -7,9 +7,3 @@
 .totp-verifier .c-resend-code {
     @apply flex-x justify-center gap-x-1;
 }
-.totp-verifier .totp-input:not(.invalid) > .c-error {
-    @apply hidden;
-}
-.totp-verifier .c-progress {
-    @apply text-sm text-center;
-}
