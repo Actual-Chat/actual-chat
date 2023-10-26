@@ -312,7 +312,7 @@ export class VirtualList {
 
     private onResize = (entries: ResizeObserverEntry[], _observer: ResizeObserver): void => {
         let itemsWereMeasured = false;
-        const itemElementsWithWrongSize = new Array<HTMLElement>();
+        const itemRefsWithWrongSize = new Array<HTMLElement>();
         for (const entry of entries) {
             const rect = entry.contentRect;
             const key = getItemKey(entry.target as HTMLElement);
@@ -321,7 +321,7 @@ export class VirtualList {
             const item = this._items.get(key);
             if (item) {
                 if (item.size < 0 && size == 0) {
-                    itemElementsWithWrongSize.push(entry.target as HTMLElement);
+                    itemRefsWithWrongSize.push(entry.target as HTMLElement);
                 }
                 else {
                     const hasRemoved = this._unmeasuredItems.delete(key);
@@ -334,15 +334,15 @@ export class VirtualList {
                 itemsWereMeasured ||= hasRemoved;
             }
         }
-        if (itemElementsWithWrongSize.length) {
+        if (itemRefsWithWrongSize.length) {
             // ensure we have all sizes calculated
             fastRaf(() => {
-                for (const element of itemElementsWithWrongSize) {
-                    const key = getItemKey(element);
+                for (const itemRef of itemRefsWithWrongSize) {
+                    const key = getItemKey(itemRef);
                     const item = this._items.get(key);
                     if (item.size < 0) {
-                        const rect = element.getBoundingClientRect();
-                        item.size = rect.height;
+                        const itemRect = itemRef.getBoundingClientRect();
+                        item.size = itemRect.height;
                     }
                     const hasRemoved = this._unmeasuredItems.delete(key);
                     itemsWereMeasured ||= hasRemoved;
@@ -956,8 +956,26 @@ export class VirtualList {
         if (!isRecalculationForced && (this.hasUnmeasuredItems || (!this._shouldRecalculateItemRange && this._itemRange)))
             return false;
 
-        if (this.hasUnmeasuredItems)
+        if (this.hasUnmeasuredItems) {
+            const unmeasuredItems = [...this._unmeasuredItems];
+            fastRaf(() => {
+                let itemsWereMeasured = false;
+                for (const key of unmeasuredItems) {
+                    const item = this._items.get(key);
+                    if (item.size < 0) {
+                        const itemRef = this.getItemRef(key);
+                        const itemRect = itemRef.getBoundingClientRect();
+                        item.size = itemRect.height;
+                    }
+                    const hasRemoved = this._unmeasuredItems.delete(key);
+                    itemsWereMeasured ||= hasRemoved;
+                }
+
+                // recalculate item range as some elements were updated
+                this._shouldRecalculateItemRange = itemsWereMeasured;
+            });
             return false;
+        }
 
         if (isRecalculationForced)
             this.updateOrderedItems();
@@ -1091,10 +1109,10 @@ export class VirtualList {
                 : 'start';
         const alreadyLoadedFromStart = Math.abs(alreadyLoaded.start - viewport.start);
         const alreadyLoadedTillEnd = Math.abs(alreadyLoaded.end - viewport.end);
-        const loadZoneTrigger = viewport.size * 2;
+        const loadZoneTrigger = viewportSize * 2;
         const loadZoneSize = loadZoneTrigger * 2;
-        let loadStart = viewport.start - viewportSize; // keep at least 1 viewport more in both directions
-        let loadEnd = viewport.end + viewportSize;
+        let loadStart = viewport.start - viewportSize * 1.5; // keep at least 1.5 viewport more in both directions
+        let loadEnd = viewport.end + viewportSize * 1.5;
 
         switch (lastQuerySide) {
             case "none":

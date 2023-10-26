@@ -236,7 +236,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         // Building actual virtual list tiles
-        var idTiles = GetIdTilesToLoad(idRangeToLoad);
+        var idTiles = GetIdTilesToLoad(idRangeToLoad, chatIdRange);
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var lastReadEntryLid = _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid;
         var tiles = new List<VirtualListTile<ChatMessage>>();
@@ -376,28 +376,25 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     // Private methods
 
-    private Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad)
+    private Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
     {
+        var firstLayer = IdTileStack.FirstLayer;
+        var secondLayer = IdTileStack.Layers[1];
         var tiles = ArrayBuffer<Tile<long>>.Lease(true);
         try {
-            var hotPoint = IdTileStack.Layers[1]
-                .GetTile(idRangeToLoad.End - IdTileStack.Layers[1].TileSize)
-                .Start;
-            var hotRange = new Range<long>(Math.Max(hotPoint, idRangeToLoad.Start), idRangeToLoad.End).Positive();
+            // hot range assumes high probability of changes - so close to the end of the chat messages
+            var hotRangeTiles = firstLayer.GetCoveringTiles(new Range<long>(chatIdRange.End - secondLayer.TileSize, chatIdRange.End + firstLayer.TileSize));
+            var hotRange = new Range<long>(hotRangeTiles[0].Range.Start, hotRangeTiles[^1].Range.End);
+            if (!idRangeToLoad.Overlaps(hotRange)) // idRangeToLoad has already been extended to cover ids beyond existing chat id range
+                hotRange = default;
+
             var coldRange = hotRange.IsEmpty
                 ? idRangeToLoad
                 : new Range<long>(idRangeToLoad.Start, hotRange.Start);
-            var coldTileCandidates = IdTileStack.GetOptimalCoveringTiles(coldRange);
-            var maxTileSize = coldTileCandidates.Length > 0
-                ? coldTileCandidates.Select(t => t.Range.Size()).Max()
-                : 0;
-            if (maxTileSize > 0 && coldTileCandidates[0].Range.Size() < maxTileSize) {
-                // replace all smaller tiles to the left of the tile with Max size
-                var firstMaxTile = coldTileCandidates.First(t => t.Range.Size() == maxTileSize);
-                tiles.Add(firstMaxTile.Prev());
-            }
-            tiles.AddRange(coldTileCandidates.SkipWhile(t => t.Range.Size() < maxTileSize));
-            tiles.AddRange(IdTileStack.FirstLayer.GetCoveringTiles(hotRange));
+
+            // load second layer stack to improve reuse if large tiles during scroll
+            tiles.AddRange(secondLayer.GetCoveringTiles(coldRange));
+            tiles.AddRange(firstLayer.GetCoveringTiles(hotRange));
             var result = tiles.ToArray();
             // DebugLog?.LogDebug("GetIdTilesToLoad: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
             // if (result.DistinctBy(x => x.Range).Count() != result.Length)
