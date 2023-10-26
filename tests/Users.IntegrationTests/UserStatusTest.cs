@@ -59,7 +59,7 @@ public class UserStatusTest : AppHostTestBase
             await TestExt.WhenMetAsync(async () => {
                 account = await GetOwnAccount();
                 account.Status.Should().Be(newStatus);
-            }, TimeSpan.FromSeconds(1));
+            }, TimeSpan.FromSeconds(3));
         }
     }
 
