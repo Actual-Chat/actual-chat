@@ -70,7 +70,11 @@ const serverImpl: AudioVadWorker = {
         debugLog?.log(`<- onCreate`);
 
         // Init NNVad with delay to avoid excessive load during startup
-        delayAsync(2000).then(_ => initNNVad());
+        const isSimdSupported = canUseNNVad && _isSimdSupported();
+        if (isSimdSupported && !isNNVadInitialized) {
+            // Load NN VAD Module with delay
+            delayAsync(2000).then(_ => initNNVad());
+        }
     },
 
     init: async (workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void> => {
