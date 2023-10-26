@@ -20,8 +20,8 @@ import {KaiserBesselDerivedWindow} from './kaiser–bessel-derived-window';
 import {OpusEncoderWorker} from './opus-encoder-worker-contract';
 import {OpusEncoderWorklet} from '../worklets/opus-encoder-worklet-contract';
 import {VoiceActivityChange} from './audio-vad-contract';
-import {Log} from 'logging';
 import {RecorderStateEventHandler} from "../opus-media-recorder-contracts";
+import {Log} from 'logging';
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -175,11 +175,11 @@ const serverImpl: OpusEncoderWorker = {
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
         if (buffer.byteLength === 0)
             return;
+
         const isConnected = hubConnection.state === HubConnectionState.Connected;
-
-
         if (state === 'encoding') {
             queue.push(buffer);
+            // debugLog?.log(`onEncoderWorkletSamples(${buffer.byteLength}):`, vadState);
             if (vadState === 'voice')
                 processQueue();
             else if (isConnected && queue.length > CHUNKS_WILL_BE_SENT_ON_RESUME)
@@ -267,6 +267,7 @@ async function startRecording(): Promise<void> {
 
 function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
     const isConnected = hubConnection.state === HubConnectionState.Connected;
+    // debugLog?.log(`processQueue:(${fade}): isConnected:`, isConnected);
     if (!isConnected)
         return;
 

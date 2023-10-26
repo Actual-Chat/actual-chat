@@ -51,7 +51,7 @@ public record DialogFrameNarrowViewSettings
         return new DialogFrameNarrowViewSettings {
             Position = DialogFramePosition.Stretch,
             SubmitClick = eventCallback,
-            SubmitButtonText = submitButtonText
+            SubmitButtonText = submitButtonText,
         };
     }
 
@@ -63,7 +63,7 @@ public record DialogFrameNarrowViewSettings
         return new DialogFrameNarrowViewSettings {
             Position = DialogFramePosition.Stretch,
             SubmitClick = eventCallback,
-            SubmitButtonText = submitButtonText
+            SubmitButtonText = submitButtonText,
         };
     }
 }
