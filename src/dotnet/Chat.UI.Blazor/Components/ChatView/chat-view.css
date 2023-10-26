@@ -168,9 +168,16 @@ body.hoverable .chat-header-title:hover {
 }
 .system-entry {
     @apply self-center;
-    @apply w-fit;
+    @apply w-full;
     @apply px-6;
     @apply mt-0.5;
+}
+.system-entry .chat-message {
+    @apply flex-y items-center justify-center;
+}
+.system-entry .chat-message > .c-content {
+    @apply flex-none;
+    @apply mr-0;
 }
 .system-entry .chat-message-markup {
     @apply flex flex-wrap items-center justify-center gap-x-0.5;
@@ -181,7 +188,8 @@ body.hoverable .chat-header-title:hover {
 }
 .system-entry .message-content {
     @apply flex-x flex-wrap justify-center items-center gap-x-2;
-    @apply bg-02;
+    @apply bg-03;
+    @apply w-fit;
     @apply px-2;
     @apply rounded-lg;
 }

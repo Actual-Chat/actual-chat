@@ -40,6 +40,8 @@
     --magenta-20: #5D0626;
     --magenta-10: #350013;
 
+    --magenta-50-10: #FF005C1A;
+
     --red-99: #FFECEC;
     --red-95: #FFD4D4;
     --red-90: #FFACAC;
@@ -52,13 +54,31 @@
     --red-20: #700101;
     --red-10: #3D0000;
 
+    --indigo-90: #D2C7FF;
+    --indigo-80: #AA95FF;
+    --indigo-70: #7957FF;
+    --indigo-60: #582EFF;
     --indigo-50: #3300FF;
-    --indigo-40: #582EFF;
-    --indigo-30: #7957FF;
+    --indigo-40: #2800C8;
+    --indigo-30: #2000A0;
+    --indigo-20: #160070;
+    --indigo-10: #0C003D;
 
-    --violet-50: #5200FF;
-    --violet-40: #6E29FF;
-    --violet-30: #8E59FF;
+    --violet-99: #F8EFFF;
+    --violet-95: #F3E4FF;
+    --violet-90: #E7C9FF;
+    --violet-80: #D39AFF;
+    --violet-70: #BB63FF;
+    --violet-60: #A635FF;
+    --violet-50: #8F00FF;
+    --violet-40: #7701D3;
+    --violet-30: #5D00A7;
+    --violet-20: #33005A;
+    --violet-10: #1B0030;
+
+    --violet-60-20: #A635FF33;
+    --violet-50-20: #5200FF33;
+    --violet-50-10: #5200FF1A;
 
     --navy-50: #0038FF;
     --navy-40: #3360FF;
@@ -88,10 +108,15 @@
 
     --white: #FFFFFF;
     --black: #000000;
+    --black-10: #0000001A;
+    --black-50: #00000080;
+    --white-10: #FFFFFF1A;
+    --white-05: #FFFFFF0D;
+    --white-30: #FFFFFF4D;
 }
 
 :root, .theme-light {
-    /* Main colors */
+    /* Background */
     --background-01: var(--white);
     --background-02: var(--gray-99);
     --background-03: var(--gray-95);
@@ -101,6 +126,7 @@
     --background-07: var(--gray-20);
     --background-08: var(--black);
 
+    /* Text and icons */
     --text-01: var(--gray-05);
     --text-02: var(--gray-05);
     --text-03: var(--gray-40);
@@ -108,7 +134,7 @@
     --text-05: var(--gray-80);
     --text-06: var(--white);
 
-    /*Primary colors for buttons, icons*/
+    /*Primary colors for buttons, icons, etc */
     --primary: var(--blue-50);
     --danger: var(--magenta-50);
     --success: var(--green-40);
@@ -124,8 +150,64 @@
     --background-banner-error: var(--magenta-99);
     --text-banner-error: var(--danger);
 
+    /* Toasts */
+    --toast-body: var(--gray-20);
+    --toast-text: var(--gray-95);
+    --toast-action: var(--blue-60);
+    --error-toast-body: var(--magenta-70);
+    --error-toast-text: var(--text-06);
+
+    /* Buttons */
+    --disabled: #E7E7E7;
+    --primary-hover: var(--blue-60);
+    --primary-title: var(--white);
+    --secondary: var(--blue-99);
+    --secondary-hover: var(--blue-95);
+    --secondary-title: var(--primary);
+    --cancel: var(--background-03);
+    --cancel-hover: var(--background-04);
+    --cancel-title: var(--background-06);
+    --outline: var(--background-01);
+    --outline-hover: var(--blue-50-10);
+    --danger-hover: var(--magenta-60);
+    --danger-title: var(--text-06);
+    --danger-outline-hover: var(--magenta-50-10);
+    --square: var(--gray-95);
+    --square-active: var(--gray-95);
+    --square-hover: var(--blue-50-10);
+    --square-focus: var(--blue-50-10);
+    --square-title: var(--gray-05);
+    --round: var(--gray-95);
+    --round-active: var(--blue-95);
+    --round-hover: var(--blue-50-10);
+    --round-focus: var(--blue-95);
+    --round-title: var(--gray-05);
+
+    /* Hover */
+    --more-colored: var(--background-01);
+    --less-colored: var(--background-08);
+    --primary-colored: var(--primary);
+    --danger-colored: var(--danger);
+
+    /* Post Audio Panel */
+    --post-panel: var(--gray-20);
+    --playback-on: var(--blue-90);
+    --audio-panel-gradient-top: var(--background-01);
+    --audio-panel-gradient-bottom: var(--post-panel);
+    --recorder-off-top: var(--blue-50);
+    --recorder-off-bottom: var(--magenta-40);
+    --recorder-off-middle: var(--violet-50);
+    --recorder-on-top: var(--magenta-60);
+    --recorder-on-bottom: var(--violet-60);
+    --recorder-on-middle: var(--magenta-50);
+
+    /* Download Banner */
+    --download-banner-left: var(--magenta-40);
+    --download-banner-right: var(--blue-50);
+
     /* Utils */
-    --online: var(--success);
+    --transparent: rgba(0, 0, 0, 0);
+    --online: var(--green-30);
     --away: var(--warning);
     --selected: var(--blue-50-20);
     --hover: var(--blue-50-10);
@@ -135,86 +217,41 @@
     --rating: var(--warning);
     --background-recording-countdown: var(--background-banner-warning);
     --shadow-main: var(--background-05);
-
-    /* Buttons */
-    --disabled: #E7E7E7;
-
-    --primary-hover: var(--blue-60);
-    --primary-title: var(--white);
-
-    --secondary: var(--blue-99);
-    --secondary-hover: var(--blue-95);
-    --secondary-title: var(--primary);
-
-    --cancel: var(--background-03);
-    --cancel-hover: var(--background-04);
-    --cancel-title: var(--background-06);
-
-    --outline: var(--white);
-    --outline-hover: var(--blue-99);
-
-    --danger-hover: var(--magenta-60);
-    --danger-title: var(--white);
-    --danger-outline-hover: var(--magenta-99);
-
-    --square: #e2e7ec;
-    --square-active: #e2e7ec;
-    --square-hover: #E1E9FA;
-    --square-focus: #cad3dc;
-    --square-title: #4b5e71;
-
-    --round: #F5F5F5;
-    --round-active: #E1EFFA;
-    --round-hover: #E1EFFA;
-    --round-focus: #E1EFFA;
-    --round-title: #4b5e71;
-
-    /* Utils colors */
-    --new-separator: #FF388014;
-
-    --code: #D83E52;
-    --avatar: #5a7188;
-    --toggle-on: #0ea5e9;
-    --toggle-hover: #38bdf8;
-    --message-hover: #F8FBFE;
-    --mention-other: #DDE8FF;
-    --mention-other-text: var(--blue-50);
-    --mention-own: #98E5AE;
-    --mention-own-border: #2FCB5B;
-    --mention-own-text: #00611B;
-    --mention-invalid: #DDE8FF;
-    --mention-invalid-text: #D83E52;
-    --mention-list-item-selected: #EDF2FA;
-    --mention-message: #fff7ed;
-    --mention-message-hover: #fff7e5;
-    --replied-message: #dbeafe;
-    --replied-message-hover: #bfdbfe;
-    --replied-message-border: #3b82f6;
-    --context-menu: #F9FAFB;
-    --context-border: #e2e7ec;
-    --selection: #cbd5e1;
+    --new-separator: var(--magenta-50-10);
+    --code: var(--magenta-40);
+    --avatar: var(--gray-30);
+    --toggle-on: var(--primary);
+    --toggle-hover: var(--blue-40);
+    --message-hover: var(--blue-50-10);
+    --mention-other: var(--blue-95);
+    --mention-other-text: var(--primary);
+    --mention-own: var(--violet-50-10);
+    --mention-own-text: var(--violet-50);
+    --mention-list-item-selected: var(--blue-50-10);
+    --replied-message: var(--blue-50-10);
+    --replied-message-hover: var(--blue-50-20);
+    --replied-message-border: var(--blue-50);
+    --context-menu: var(--blue-50-10);
+    --context-border: var(--gray-90);
+    --selection: var(--blue-50-10);
     --dot: #e2e7ec;
     --dot-selected: #4b5e71;
-    --skeleton: #edf0f3;
-    --skeleton-border: #F9FAFB;
-    --scrollbar: #B9B9B9;
-    --quote: #d6dde4;
-    --place: #A98AFF;
-    --bubble: #515BE9;
-    --menuitem-hover: #2970FF0F;
-    --menuitem-hover-warning: #FF008A1A;
-    --bubble-btn-hover: #626BEB;
-    --reaction-own: rgba(41, 112, 255, 0.6);
+    --skeleton: var(--gray-90);
+    --skeleton-border: var(--gray-95);
+    --scrollbar: var(--gray-40);
+    --quote: var(--gray-90);
+    --place: var(--indigo-80);
+    --menuitem-hover: var(--blue-50-10);
+    --menuitem-hover-warning: var(--magenta-50-10);
+    --bubble: var(--indigo-60);
+    --bubble-btn-hover: var(--black-10);
+    --reaction-own: var(--blue-50-20);
+    --viewer-header: var(--black-50);
+    --left-side-logo: var(--black);
     --link-preview-icon: var(--blue-70);
-
-    --toast-body: #444444E0;
-    --toast-text: var(--white);
-    --toast-action: #6BCAFF;
-    --error-toast-body: #FFBFBF;
-    --error-toast-text: #fafafa;
 }
 .theme-dark {
-    /* Main colors */
+    /* Background */
     --background-01: var(--gray-20);
     --background-02: var(--gray-15);
     --background-03: var(--gray-10);
@@ -222,15 +259,18 @@
     --background-05: var(--gray-30);
     --background-06: var(--gray-70);
     --background-07: var(--gray-80);
-    --background-08: var(--gray-90);
+    --background-08: var(--white);
 
+    /* Text and icons */
     --text-01: var(--gray-95);
     --text-02: var(--gray-95);
-    --text-03: var(--gray-80);
-    --text-04: var(--gray-60);
+    --text-03: var(--gray-60);
+    --text-04: var(--gray-40);
+    --text-05: var(--gray-20);
+    --text-06: var(--black);
 
-    /*Primary colors for buttons, icons*/
-    --primary: var(--blue-50);
+    /*Primary colors for buttons, icons, etc */
+    --primary: var(--blue-60);
     --danger: var(--magenta-50);
     --success: var(--green-40);
     --warning: var(--sienna-40);
@@ -245,23 +285,18 @@
     --background-banner-error: var(--magenta-20);
     --text-banner-error: var(--magenta-80);
 
-    /* Utils */
-    --online: var(--success);
-    --away: var(--warning);
-    --selected: var(--blue-50-20);
-    --hover: var(--blue-50-10);
-    --separator: var(--text-01);
-    --placeholder: var(--text-04);
-    --counter: var(--background-05);
-    --rating: var(--warning);
-    --background-recording-countdown: var(--background-banner-warning);
-    --shadow-main: var(--background-05);
+    /* Toasts */
+    --toast-body: var(--gray-80);
+    --toast-text: var(--gray-05);
+    --toast-action: var(--blue-50);
+    --error-toast-body: var(--magenta-90);
+    --error-toast-text: var(--magenta-20);
 
     /* Buttons */
     --disabled: #E7E7E7;
 
     --primary-hover: var(--blue-60);
-    --primary-title: var(--white);
+    --primary-title: var(--text-06);
 
     --secondary: var(--blue-99);
     --secondary-hover: var(--blue-95);
@@ -271,65 +306,87 @@
     --cancel-hover: var(--background-04);
     --cancel-title: var(--background-06);
 
-    --outline: var(--white);
-    --outline-hover: var(--blue-99);
+    --outline: var(--background-01);
+    --outline-hover: var(--blue-50-10);
 
     --danger-hover: var(--magenta-60);
-    --danger-title: var(--white);
-    --danger-outline-hover: var(--magenta-99);
+    --danger-title: var(--text-06);
+    --danger-outline-hover: var(--magenta-50-10);
 
-    --square: #e2e7ec;
-    --square-active: #e2e7ec;
-    --square-hover: #E1E9FA;
-    --square-focus: #cad3dc;
-    --square-title: #4b5e71;
+    --square: var(--gray-10);
+    --square-active: var(--gray-10);
+    --square-hover: var(--white-05);
+    --square-focus: var(--white-05);
+    --square-title: var(--gray-95);
 
-    --round: #F5F5F5;
-    --round-active: #E1EFFA;
-    --round-hover: #E1EFFA;
-    --round-focus: #E1EFFA;
-    --round-title: #4b5e71;
+    --round: var(--gray-10);
+    --round-active: var(--blue-20);
+    --round-hover: var(--white-05);
+    --round-focus: var(--blue-20);
+    --round-title: var(--gray-95);
 
-    /* Utils colors */
-    --new-separator: #FF388014;
+    /* Hover */
+    --more-colored: var(--background-01);
+    --less-colored: var(--background-08);
+    --primary-colored: var(--primary);
+    --danger-colored: var(--danger);
 
-    --code: #D83E52;
-    --avatar: #5a7188;
-    --toggle-on: #0ea5e9;
-    --toggle-hover: #38bdf8;
-    --message-hover: #F8FBFE;
-    --mention-other: #DDE8FF;
-    --mention-other-text: var(--blue-50);
-    --mention-own: #98E5AE;
-    --mention-own-border: #2FCB5B;
-    --mention-own-text: #00611B;
-    --mention-invalid: #DDE8FF;
-    --mention-invalid-text: #D83E52;
-    --mention-list-item-selected: #EDF2FA;
-    --mention-message: #fff7ed;
-    --mention-message-hover: #fff7e5;
-    --replied-message: #dbeafe;
-    --replied-message-hover: #bfdbfe;
-    --replied-message-border: #3b82f6;
-    --context-menu: #F9FAFB;
-    --context-border: #e2e7ec;
-    --selection: #cbd5e1;
+    /* Post Audio Panel */
+    --post-panel: var(--gray-10);
+    --playback-on: var(--blue-10);
+    --audio-panel-gradient-top: var(--background-01);
+    --audio-panel-gradient-bottom: var(--post-panel);
+    --recorder-off-top: var(--blue-50);
+    --recorder-off-bottom: var(--magenta-40);
+    --recorder-off-middle: var(--violet-50);
+    --recorder-on-top: var(--magenta-60);
+    --recorder-on-bottom: var(--violet-60);
+    --recorder-on-middle: var(--magenta-50);
+
+    /* Download Banner */
+    --download-banner-left: var(--magenta-40);
+    --download-banner-right: var(--blue-50);
+
+    /* Utils */
+    --online: var(--success);
+    --away: var(--warning);
+    --selected: var(--white-10);
+    --hover: var(--white-05);
+    --separator: var(--gray-90);
+    --placeholder: var(--gray-15);
+    --counter: var(--background-05);
+    --rating: var(--sienna-40);
+    --background-recording-countdown: var(--background-banner-warning);
+    --shadow-main: var(--background-05);
+    --new-separator: var(--magenta-50-10);
+    --code: var(--magenta-60);
+    --avatar: var(--gray-70);
+    --toggle-on: var(--blue-60);
+    --toggle-hover: var(--blue-50);
+    --message-hover: var(--white-05);
+    --mention-other: var(--gray-95);
+    --mention-other-text: var(--blue-60);
+    --mention-own: var(--violet-60-20);
+    --mention-own-text: var(--violet-70);
+    --mention-list-item-selected: var(--white-05);
+    --replied-message: var(--white-05);
+    --replied-message-hover: var(--white-10);
+    --replied-message-border: var(--blue-60);
+    --context-menu: var(--white-05);
+    --context-border: var(--gray-05);
+    --selection: var(--white-05);
     --dot: #e2e7ec;
     --dot-selected: #4b5e71;
-    --skeleton: #edf0f3;
-    --skeleton-border: #F9FAFB;
-    --scrollbar: #B9B9B9;
-    --quote: #d6dde4;
-    --place: #A98AFF;
-    --bubble: #515BE9;
-    --menuitem-hover: #2970FF0F;
-    --menuitem-hover-warning: #FF008A1A;
-    --bubble-btn-hover: #626BEB;
-    --reaction-own: rgba(41, 112, 255, 0.6);
-
-    --toast-body: #444444E0;
-    --toast-text: var(--white);
-    --toast-action: #6BCAFF;
-    --error-toast-body: #FFBFBF;
-    --error-toast-text: #fafafa;
+    --skeleton: var(--gray-05);
+    --skeleton-border: var(--gray-10);
+    --scrollbar: var(--gray-60);
+    --quote: var(--gray-10);
+    --place: var(--indigo-80);
+    --menuitem-hover: var(--white-05);
+    --menuitem-hover-warning: var(--magenta-50-10);
+    --bubble: var(--indigo-40);
+    --bubble-btn-hover: var(--white-10);
+    --reaction-own: var(--white-10);
+    --viewer-header: var(--white-10);
+    --left-side-logo: var(--white);
 }

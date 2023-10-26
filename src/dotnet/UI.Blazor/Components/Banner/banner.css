@@ -8,6 +8,9 @@
     @apply flex-1;
     @apply ml-1;
 }
+body.narrow .banner-body {
+    @apply text-sm leading-4;
+}
 .banner-buttons {
     @apply flex-x items-center gap-x-2;
     @apply ml-auto;

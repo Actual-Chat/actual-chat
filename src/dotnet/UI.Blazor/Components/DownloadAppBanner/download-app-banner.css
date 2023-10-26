@@ -6,18 +6,18 @@
     @apply w-full h-10;
     @apply px-6;
     @apply rounded-lg;
-    @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
+    @apply bg-gradient-to-r from-[var(--download-banner-left)] to-[var(--download-banner-right)];
     @apply hover:cursor-pointer;
 }
 .download-app-banner .download-app-banner-title {
     @apply flex items-center;
-    @apply text-06 text-headline-1;
+    @apply always-white text-headline-1;
 }
 .download-app-banner .icon-download {
-    @apply text-2xl font-thin text-06;
+    @apply text-2xl font-thin always-white;
 }
 .download-app-banner .icon-close {
-    @apply text-06;
+    @apply always-white;
     @apply absolute;
     @apply right-4;
     @apply rounded-full;

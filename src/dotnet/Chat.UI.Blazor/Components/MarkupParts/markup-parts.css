@@ -10,11 +10,8 @@
     @apply text-mention-other-text font-medium;
     @apply select-none cursor-pointer;
 }
-.mention-markup.mention-markup-invalid {
-    @apply bg-mention-invalid text-mention-invalid-text;
-}
 .mention-markup.mention-markup-own {
-    @apply border-mention-own-border bg-mention-own text-mention-own-text;
+    @apply bg-mention-own text-mention-own-text;
 }
 
 .url-markup:not(.url-markup-image) {

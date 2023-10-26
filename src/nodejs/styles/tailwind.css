@@ -96,6 +96,10 @@
         -webkit-tap-highlight-color: transparent;
     }
 
+    .content-empty {
+        content: "";
+    }
+
     /* Flex shortcuts */
 
     .flex-x {
@@ -193,5 +197,35 @@
         @apply flex-x items-center gap-x-4;
         @apply min-h-14 max-h-14;
         @apply px-4;
+    }
+
+    /* Hover styles */
+
+    .hover-after {
+        @apply absolute inset-0;
+        @apply opacity-5;
+        @apply content-empty;
+    }
+    .more-colored-hover {
+        @apply hover-after;
+        @apply bg-more-colored;
+    }
+    .less-colored-hover {
+        @apply hover-after;
+        @apply bg-less-colored;
+    }
+    .primary-colored-hover {
+        @apply hover-after;
+        @apply bg-primary-colored;
+        @apply opacity-10;
+    }
+    .danger-colored-hover {
+        @apply hover-after;
+        @apply bg-danger-colored;
+        @apply opacity-10;
+    }
+
+    .always-white {
+        @apply text-[var(--white)];
     }
 }

@@ -79,6 +79,7 @@ module.exports = {
         'success': 'var(--success)',
         'warning': 'var(--warning)',
 
+        'transparent': 'var(--transparent)',
         'counter': 'var(--counter)',
         'toast-body': 'var(--toast-body)',
         'toast-text': 'var(--toast-text)',
@@ -91,6 +92,12 @@ module.exports = {
         'placeholder': 'var(--placeholder)',
         'white': 'var(--white)',
         'rating': 'var(--rating)',
+
+        // hover
+        'more-colored': 'var(--more-colored)',
+        'less-colored': 'var(--less-colored)',
+        'primary-colored': 'var(--primary-colored)',
+        'danger-colored': 'var(--danger-colored)',
 
         'disabled': 'var(--disabled)',
         'primary-hover': 'var(--primary-hover)',
@@ -127,13 +134,8 @@ module.exports = {
         'mention-other': 'var(--mention-other)',
         'mention-other-text': 'var(--mention-other-text)',
         'mention-own': 'var(--mention-own)',
-        'mention-own-border': 'var(--mention-own-border)',
         'mention-own-text': 'var(--mention-own-text)',
-        'mention-invalid': 'var(--mention-invalid)',
-        'mention-invalid-text': 'var(--mention-invalid-text)',
         'mention-list-item-selected': 'var(--mention-list-item-selected)',
-        'mention-message': 'var(--mention-message)',
-        'mention-message-hover': 'var(--mention-message-hover)',
         'replied-message': 'var(--replied-message)',
         'replied-message-hover': 'var(--replied-message-hover)',
         'replied-message-border': 'var(--replied-message-border)',
@@ -155,6 +157,24 @@ module.exports = {
         'menuitem-hover': 'var(--menuitem-hover)',
         'menuitem-hover-warning': 'var(--menuitem-hover-warning)',
         'bubble-btn-hover': 'var(--bubble-btn-hover)',
+
+        // Post Audio Panel
+        'post-panel': 'var(--post-panel)',
+        'playback-on': 'var(--playback-on)',
+        'audio-panel-gradient-top': 'rgb(var(--audio-panel-gradient-top) / <alpha-value>)',
+        'audio-panel-gradient-bottom': 'rgb(var(--audio-panel-gradient-bottom) / <alpha-value>)',
+        'recorder-off-top': 'var(--recorder-off-top)',
+        'recorder-off-bottom': 'var(--recorder-off-bottom)',
+        'recorder-off-middle': 'var(--recorder-off-middle)',
+        'recorder-on-top': 'var(--recorder-on-top)',
+        'recorder-on-bottom': 'var(--recorder-on-bottom)',
+        'recorder-on-middle': 'var(--recorder-on-middle)',
+
+        // Download Banner
+        'download-banner-left': 'var(--download-banner-left)',
+        'download-banner-right': 'var(--download-banner-right)',
+
+        'viewer-header': 'var(--viewer-header)',
         'link-preview-icon': 'var(--link-preview-icon)',
       },
       textColor: {
