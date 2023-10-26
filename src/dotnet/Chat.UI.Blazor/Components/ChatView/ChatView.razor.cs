@@ -432,6 +432,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 ? range.MinMaxWith(scrollAnchorRange)
                 : scrollAnchorRange;
         }
+        range = range.MoveEnd(1); // tiles excludes the end element
 
         var minTileSize = IdTileStack.MinTileSize;
         // Fix queryRange start

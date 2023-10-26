@@ -1083,6 +1083,7 @@ export class VirtualList {
         if (!viewport || !alreadyLoaded)
             return this._lastQuery;
 
+        const viewportSize = viewport.size;
         const lastQuerySide = this._lastQuery.expandStartBy == 0 && this._lastQuery.expandEndBy == 0
             ? 'none'
             : this._lastQuery.expandStartBy == 0
@@ -1092,8 +1093,8 @@ export class VirtualList {
         const alreadyLoadedTillEnd = Math.abs(alreadyLoaded.end - viewport.end);
         const loadZoneTrigger = viewport.size * 2;
         const loadZoneSize = loadZoneTrigger * 2;
-        let loadStart = viewport.start - viewport.size; // keep at least 1 viewport more in both directions
-        let loadEnd = viewport.end + viewport.size;
+        let loadStart = viewport.start - viewportSize; // keep at least 1 viewport more in both directions
+        let loadEnd = viewport.end + viewportSize;
 
         switch (lastQuerySide) {
             case "none":
@@ -1113,7 +1114,7 @@ export class VirtualList {
                     if (!rs.hasVeryLastItem)
                         loadEnd = viewport.end + loadZoneSize;
                 }
-                else if (alreadyLoadedFromStart < viewport.size / 3) { // smaller than half of viewport to change load direction
+                else if (alreadyLoadedFromStart < viewportSize / 3) { // smaller than half of viewport to change load direction
                     debugLog?.log('getDataQuery: previous direction was _end_', viewport, alreadyLoaded, loadZoneSize);
                     if (!rs.hasVeryFirstItem)
                         loadStart = viewport.start - loadZoneSize;
@@ -1127,7 +1128,7 @@ export class VirtualList {
                     if (!rs.hasVeryFirstItem)
                         loadStart = viewport.start - loadZoneSize;
                 }
-                else if (alreadyLoadedTillEnd < viewport.size / 3) { // smaller than 1/3 of viewport to change load direction
+                else if (alreadyLoadedTillEnd < viewportSize / 3) { // smaller than 1/3 of viewport to change load direction
                     debugLog?.log('getDataQuery: previous direction was _start_', viewport, alreadyLoaded, loadZoneSize);
                     if (!rs.hasVeryLastItem)
                         loadEnd = viewport.end + loadZoneSize;
@@ -1179,13 +1180,16 @@ export class VirtualList {
         const lastItem = items[endIndex];
         const startGap = Math.max(0, firstItem.range.start - loadZone.start);
         const endGap = Math.max(0, loadZone.end - lastItem.range.end);
+        // skip queries that load few more items - we prefer to load more
+        if (startGap < viewportSize && endGap < viewportSize)
+            return this._lastQuery;
+
         const expandStartBy = clamp(Math.ceil(startGap / itemSize / responseFulfillmentRatio), 0, MaxExpandBy);
         const expandEndBy = clamp(Math.ceil(endGap / itemSize / responseFulfillmentRatio), 0, MaxExpandBy);
         const keyRange = new Range(firstItem.key, lastItem.key);
         const query = new VirtualListDataQuery(keyRange, loadZone);
         query.expandStartBy = expandStartBy;
         query.expandEndBy = expandEndBy;
-
         return query;
     }
 }
