@@ -134,6 +134,9 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
 .chat-list .navbar-item-content .c-last-message .avatar-name {
     @apply text-xs text-02 font-medium;
 }
+.chat-list .navbar-item-content .c-last-message .c-text {
+    @apply truncate;
+}
 
 .chat-list .navbar-item .btn {
     @apply w-8 h-full;
