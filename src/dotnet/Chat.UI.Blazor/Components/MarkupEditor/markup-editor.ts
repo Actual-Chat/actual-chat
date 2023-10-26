@@ -111,7 +111,7 @@ export class MarkupEditor {
                 return;
 
             if (!DeviceInfo.isIos) {
-                debugLog?.log("focus");
+                debugLog?.log('focus');
                 this.contentDiv.focus();
                 return;
             }
@@ -119,7 +119,7 @@ export class MarkupEditor {
 
         // The code blow makes sure mobile keyboard is shown on iOS.
         // It works only after the first interaction.
-        debugLog?.log("focus: using iOS/force workaround");
+        debugLog?.log('focus: using iOS/force workaround');
         const contentDiv = this.contentDiv;
         const tempInput = document.createElement('input');
         tempInput.style.position = 'absolute';
@@ -242,7 +242,7 @@ export class MarkupEditor {
     // Event handlers
 
     private onFocus = () => {
-        debugLog?.log("onFocus");
+        debugLog?.log('onFocus');
         if (!this.isContentDivInitialized) {
             this.isContentDivInitialized = true;
             this.transaction('onFocus - init', () => {
@@ -570,7 +570,7 @@ export class MarkupEditor {
                     continue;
                 }
 
-                debugLog?.log("fixContent: processing", node);
+                debugLog?.log('fixContent: processing', node);
                 let text = asText(node);
                 if (text) {
                     const oldText = text.textContent;

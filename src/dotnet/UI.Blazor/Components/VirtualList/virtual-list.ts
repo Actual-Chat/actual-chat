@@ -250,7 +250,7 @@ export class VirtualList {
     private onItemSetChange = (mutations: MutationRecord[], _observer: MutationObserver): void => {
         if (!this.isRendering) {
             if (mutations.length > 0)
-                warnLog?.log("onItemSetChange: there are mutations, but isRendering() == false")
+                warnLog?.log('onItemSetChange: there are mutations, but isRendering() == false')
             this._renderStartedAt = Date.now();
         }
         this._cachedAllItemRefs = null;

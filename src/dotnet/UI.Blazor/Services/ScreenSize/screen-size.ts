@@ -77,7 +77,7 @@ export class ScreenSize {
                 this.change$.next(size);
             }
             catch (e) {
-                errorLog?.log("measureAndUpdate: one of change$ handlers failed:", e)
+                errorLog?.log('measureAndUpdate: one of change$ handlers failed:', e)
             }
         }
         return size;

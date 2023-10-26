@@ -28,7 +28,7 @@ export class KeepAwakeUI {
         debugLog?.log('-> warmup()');
         return this.enableNoSleep().then(() => {
                 if (!this.mustKeepAwake) {
-                    debugLog?.log("warmup: disabling since mustKeepAwake=", this.mustKeepAwake)
+                    debugLog?.log('warmup: disabling since mustKeepAwake=', this.mustKeepAwake)
                     this.disableNoSleep();
                 }
             })

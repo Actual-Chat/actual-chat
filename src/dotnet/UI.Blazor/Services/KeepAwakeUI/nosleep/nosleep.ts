@@ -81,16 +81,16 @@ export class NoSleep {
     public enable() {
         if (this.isNativeWakeLockSupported) {
             return navigator.wakeLock
-                .request("screen")
+                .request('screen')
                 .then((wakeLock) => {
                     this.wakeLock = wakeLock;
                     this.enabled = true;
-                    debugLog?.log("Wake Lock active.");
+                    debugLog?.log('Wake Lock active.');
                     this.wakeLock.addEventListener("release", () => {
                         // ToDo: Potentially emit an event for the page to observe since
                         // Wake Lock releases happen when page visibility changes.
                         // (https://web.dev/wakelock/#wake-lock-lifecycle)
-                        debugLog?.log("Wake Lock released.");
+                        debugLog?.log('Wake Lock released.');
                     });
                 })
                 .catch((err) => {

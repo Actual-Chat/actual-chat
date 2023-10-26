@@ -198,7 +198,7 @@ export class ChatMessageEditor {
 
     private onReturnFocusOnInput = ((event: MouseEvent) => {
         if (this.panelModel == 'Narrow') {
-            debugLog?.log("onReturnFocusOnInput");
+            debugLog?.log('onReturnFocusOnInput');
             this.markupEditor.focus();
             this.updateHasContent();
         }
