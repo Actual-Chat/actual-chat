@@ -761,7 +761,7 @@ export class VirtualList {
         const time = Date.now();
         const pivots = new Array<Pivot>();
         // add query edges and first\last items as pivots
-        const itemKeys = [this.getFirstItemKey(), this._query.keyRange.start, this._query.keyRange.end, this.getLastItemKey()];
+        const itemKeys = [this.getFirstItemKey(), this._query.keyRange?.start, this._query.keyRange?.end, this.getLastItemKey()];
         for (let itemKey of itemKeys) {
             if (pivots.some(p => p.itemKey === itemKey))
                 continue;
