@@ -20,6 +20,7 @@ public sealed class UsersSettings
     public string TwilioApiKey { get; set; } = "";
     public string TwilioApiSecret { get; set; } = "";
     public string TwilioSmsFrom { get; set; } = "";
+    public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
 
     public AccountStatus NewAccountStatus { get; set; } = AccountStatus.Inactive;
     public TimeSpan TotpTimestep { get; set; } = TimeSpan.FromSeconds(60);

@@ -33,13 +33,19 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         // TODO: throttle
         var (session, phone, purpose) = command;
+        if (Settings.PredefinedTotps.TryGetValue(phone, out _))
+            return GetExpiresAt(); // no need to send predefined totp
+
         var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose).ConfigureAwait(false);
         var totp = Totps.GenerateCode(securityToken, modifier); // generate totp with the newest one
-        var expiresAt = Clocks.SystemClock.UtcNow + Settings.TotpUIThrottling;
+        var expiresAt = GetExpiresAt();
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
         await TextMessage.Send(phone, $"Actual Chat: your phone verification code is {sTotp}. Don't share it with anyone.").ConfigureAwait(false);
         return expiresAt;
+
+        DateTimeOffset GetExpiresAt()
+            => Clocks.SystemClock.UtcNow + Settings.TotpUIThrottling;
     }
 
     // [CommandHandler]
@@ -51,9 +57,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return default; // It just spawns other commands, so nothing to do here
 
         var (session, phone, totp) = command;
-        var (securityToken, modifier) = await GetTotpInputs(session, phone, TotpPurpose.SignIn).ConfigureAwait(false);
-
-        if (!Totps.ValidateCode(securityToken, totp, modifier))
+        if (!await ValidateCode(session, phone, totp, TotpPurpose.SignIn).ConfigureAwait(false))
             return false;
 
         var user = new User(Symbol.Empty, string.Empty).WithPhone(phone);
@@ -76,9 +80,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         }
 
         var (session, phone, totp) = command;
-        var (securityToken, modifier) = await GetTotpInputs(session, phone, TotpPurpose.VerifyPhone).ConfigureAwait(false);
-
-        if (!Totps.ValidateCode(securityToken, totp, modifier))
+        if (! await ValidateCode(session, phone, totp, TotpPurpose.VerifyPhone).ConfigureAwait(false))
             return false;
 
         // save phone to account
@@ -107,6 +109,15 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return true;
+    }
+
+    private async Task<bool> ValidateCode(Session session, Phone phone, int totp, TotpPurpose purpose)
+    {
+        if (Settings.PredefinedTotps.TryGetValue(phone, out var predefinedTotp) && predefinedTotp == totp)
+            return true;
+
+        var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose).ConfigureAwait(false);
+        return Totps.ValidateCode(securityToken, totp, modifier);
     }
 
     private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(Session session, Phone phone, TotpPurpose purpose)
