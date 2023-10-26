@@ -178,11 +178,17 @@ export class VirtualList {
             // update pivots just before the render
             // we can do this because Blazor updates attributes before changing nodes
             // it's OK to trigger style recalc there - there are no changes made yet
-            this.updateCurrentPivots();
-            const time = Date.now();
-            debugLog?.log(`renderStartedAt: `, time);
-            this._renderStartedAt = time;
-            origSetAttribute.call(this._renderIndexRef, qualifiedName, value);
+            // we SHOULD NOT fail there - otherwise Blazor will fail
+            try {
+                this.updateCurrentPivots();
+                const time = Date.now();
+                debugLog?.log(`renderStartedAt: `, time);
+                this._renderStartedAt = time;
+                origSetAttribute.call(this._renderIndexRef, qualifiedName, value);
+            }
+            catch (e) {
+                warnLog?.log('renderIndex.setAttribute: failed', e);
+            }
         };
         if (this.parseRenderState() === null)
             this._renderStartedAt = Date.now();
