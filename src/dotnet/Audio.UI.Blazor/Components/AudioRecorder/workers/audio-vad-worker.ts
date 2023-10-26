@@ -148,6 +148,7 @@ async function processQueue(): Promise<void> {
             }
 
             void vadWorklet.releaseBuffer(buffer, rpcNoWait);
+            debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
             if (typeof vadEvent === 'number') {
                 audioPowerAverage.append(vadEvent);
                 if (audioPowerSampleCounter++ > 10) {
