@@ -1,6 +1,6 @@
 .chat-message-editor {
     @apply relative;
-    @apply bg-07 md:bg-01;
+    @apply bg-post-panel md:bg-01;
 }
 .chat-message-editor.narrow {
     background: transparent;
@@ -12,28 +12,28 @@
 .post-panel-wrapper {
     @apply flex-1 -flex-y;
     @apply overflow-x-hidden;
-    @apply bg-07 md:bg-01;
+    @apply bg-post-panel md:bg-01;
 }
 .narrow .post-panel-wrapper {
-    background: linear-gradient(to bottom, rgba(255,255,255,0) 45%, rgba(68,68,68,1) 30%);
+    background: linear-gradient(to bottom, var(--transparent) 45%, var(--audio-panel-gradient-bottom) 30%);
 }
 .narrow.narrow-panel .post-panel-wrapper {
-    background: linear-gradient(to top, rgba(68,68,68,1) 75%, rgba(255,255,255,0) 25%);
+    background: linear-gradient(to top, var(--audio-panel-gradient-bottom) 75%, var(--transparent) 25%);
 }
 .narrow .audio-panel-wrapper {
     @apply -mb-0.5;
-    background: linear-gradient(to bottom, rgba(255,255,255,0) 70%, rgba(68,68,68,1) 0%);
+    background: linear-gradient(to bottom, var(--transparent) 70%, var(--audio-panel-gradient-bottom) 0%);
 }
 .narrow.narrow-panel .audio-panel-wrapper {
     @apply -mb-0.5;
-    background: linear-gradient(to bottom, rgba(255,255,255,0) 50%, rgba(68,68,68,1) 0%);
+    background: linear-gradient(to bottom, var(--transparent) 50%, var(--audio-panel-gradient-bottom) 0%);
 }
 .post-panel {
     @apply flex-auto flex-x justify-between items-center;
     @apply min-h-12;
     @apply py-1 md:py-0 px-1.5;
     @apply border-bg-01  md:rounded-3xl outline-none;
-    @apply bg-07 md:bg-03;
+    @apply bg-post-panel md:bg-03;
     @apply overflow-hidden;
     @apply break-all;
 }
@@ -43,7 +43,7 @@
     @apply overflow-hidden;
     @apply outline-none;
     @apply text-counter md:text-02;
-    @apply bg-07 md:bg-03;
+    @apply bg-post-panel md:bg-03;
     @apply cursor-text;
     word-break: break-word;
 }
@@ -313,15 +313,15 @@ body.narrow .attachment-filename {
 }
 .attachment-upload-progress {
     @apply h-[5px];
-    @apply bg-[#0ea5e9];
+    @apply bg-05;
     @apply rounded-md;
     transition: all 150ms ease-in-out;
 }
 .attachment-upload-completed {
-    @apply bg-[#2FCB5B];
+    @apply bg-success;
 }
 .attachment-upload-failed {
-    @apply bg-[#ED0000];
+    @apply bg-danger;
 }
 
 .related-chat-entry-panel {

@@ -11,13 +11,13 @@
     @apply gap-x-6;
     @apply py-2 mb-0.5;
     @apply rounded-b-4xl;
-    background: linear-gradient(to top, rgba(255,255,255,1) 5%, rgba(255,255,255,1) 35%, transparent);
+    background: linear-gradient(to top, var(--background-01) 40%, transparent);
 }
 /* ChatAudioPanel, Mobile view, Text mode */
 .narrow-panel.narrow .chat-audio-panel {
     @apply gap-x-2;
     @apply py-2;
-    background: linear-gradient(to top, rgba(255,255,255,1) 60%, rgba(255,255,255,1) 5%, transparent);
+    background: linear-gradient(to top, var(--background-01) 65%, transparent);
 }
 /* ChatAudioPanel, Desktop view */
 .wide .chat-audio-panel {
@@ -33,12 +33,12 @@
 }
 .chat-audio-panel .record-off-btn.btn .btn-content,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover .btn-content {
-    @apply bg-gradient-to-b from-primary to-[#B60B84];
+    @apply bg-gradient-to-b from-[var(--recorder-off-top)] to-[var(--recorder-off-bottom)];
     @apply text-06;
 }
 .chat-audio-panel .record-on-btn.btn .btn-content,
 body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
-    @apply bg-gradient-to-b from-[#FF3880] to-[#B64AAC];
+    @apply bg-gradient-to-b from-[var(--recorder-on-top)] to-[var(--recorder-on-bottom)];
     @apply text-06;
 }
 .chat-audio-panel .language-button,
@@ -53,7 +53,7 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
     @apply drop-shadow-lg;
 }
 .chat-audio-panel .recorder-wrapper {
-    @apply border;
+    @apply border-none;
 }
 .chat-audio-panel .recorder-wrapper.applying-changes .record-off-btn.btn,
 .chat-audio-panel .recorder-wrapper.applying-changes .record-on-btn.btn {
@@ -61,6 +61,7 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 }
 .recorder-wrapper .recorder-icon {
     @apply h-10 w-10;
+    @apply always-white;
 }
 .recorder-wrapper .mic-disabled.btn .btn-content,
 body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
@@ -71,7 +72,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 
 .playback-wrapper .btn.btn-round.on .btn-content {
-    @apply bg-[#C9E3FF];
+    @apply bg-playback-on;
 }
 .playback-wrapper.listen-off-to-on,
 .playback-wrapper.listen-on {
@@ -91,19 +92,19 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply bg-transparent;
     @apply text-06;
     box-shadow:
-        -1px 0 0 0 #5D4CD2FF,
-        0 -1px 0 0 #2970FFFF,
-        1px 0 0 0 #5D4CD2FF,
-        0 1px 0 0 #B50C85FF;
+        -1px 0 0 0 var(--recorder-off-middle),
+        0 -1px 0 0 var(--recorder-off-top),
+        1px 0 0 0 var(--recorder-off-middle),
+        0 1px 0 0 var(--recorder-off-bottom);
 }
 
 .chat-audio-panel .recorder-wrapper.record-on,
 .chat-audio-panel .recorder-wrapper.record-off-to-on {
     box-shadow:
-        -1px 0 0 0 #E93E8DFF,
-        0 -1px 0 0 #FF3880FF,
-        1px 0 0 0 #E93E8DFF,
-        0 1px 0 0 #A550B6FF;
+        -1px 0 0 0 var(--recorder-on-middle),
+        0 -1px 0 0 var(--recorder-on-top),
+        1px 0 0 0 var(--recorder-on-middle),
+        0 1px 0 0 var(--recorder-on-bottom);
 }
 .chat-audio-panel .recorder-wrapper .btn {
     @apply absolute;
@@ -125,17 +126,17 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .chat-audio-panel .btn.btn-round.chat-language-toggle .btn-content,
 .narrow .chat-audio-panel .playback-wrapper.listen-off,
 .narrow .chat-audio-panel .playback-wrapper.listen-on-to-off {
-    @apply bg-gradient-to-b from-[#F5F5F5] to-[#FFFFFF];
+    @apply bg-gradient-to-b from-[var(--background-02)] to-[var(--background-01)];
 }
 .narrow .chat-audio-panel .playback-wrapper.listen-on,
 .narrow .chat-audio-panel .playback-wrapper.listen-off-to-on {
-    @apply bg-round-focus;
+    @apply bg-playback-on;
 }
 .narrow .chat-audio-panel .playback-wrapper .btn.btn-round .btn-content {
     @apply bg-transparent;
 }
 .narrow .chat-audio-panel .playback-wrapper .btn.btn-round.on .btn-content {
-    @apply bg-round-focus;
+    @apply bg-playback-on;
 }
 .narrow .chat-audio-panel .recorder-wrapper {
     @apply flex;

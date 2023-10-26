@@ -54,7 +54,7 @@
          data-hover-menu="@(MenuRef.New<MessageHoverMenu>(message.Entry.Id, bool.TrueString))"
          data-menu="@(MenuRef.New<MessageMenu>(message.Entry.Id, bool.TrueString, "", ""))"
          data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
-        <div class="chat-message group @cls">
+        <div class="chat-message group">
             <div class="c-content">
                 <div class="message-content">
                     <p class="chat-message-markup">
@@ -62,11 +62,11 @@
                             <MarkupView Markup="@markup"/>
                         </CascadingValue>
                     </p>
-                    @if (entry.HasReactions) {
-                        <MessageReactions Entry="@entry"/>
-                    }
                 </div>
             </div>
+                @if (entry.HasReactions) {
+                    <MessageReactions Entry="@entry"/>
+                }
         </div>
     </div>
     return;

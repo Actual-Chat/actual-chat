@@ -10,6 +10,7 @@
     @apply whitespace-nowrap;
     @apply select-none;
     @apply transition duration-150 ease-in-out;
+    @apply overflow-hidden;
 }
 .btn .btn-content {
     @apply flex-x self-center items-center;
@@ -28,15 +29,13 @@
     @apply border-primary;
     @apply text-primary-title;
 }
-body.hoverable .btn.btn-primary:hover,
-.btn.btn-primary:focus {
-    @apply bg-primary-hover;
-    @apply border-primary-hover;
-}
 .btn.btn-primary:active,
 .btn.btn-primary:focus:active {
     @apply bg-primary;
-    @apply border-primary ring-1 ring-primary-hover;
+    @apply border-primary ring-1 ring-primary;
+}
+body.hoverable .btn.btn-primary:hover::after {
+    @apply more-colored-hover;
 }
 .btn.btn-primary:disabled,
 body.hoverable .btn.btn-primary:disabled:hover,
@@ -52,21 +51,42 @@ body.hoverable .btn.btn-secondary:disabled:hover {
     @apply border-secondary-hover ring-0;
 }
 
+/* Danger */
+.btn.btn-danger {
+    @apply bg-danger;
+    @apply border-danger;
+    @apply text-danger-title;
+}
+body.hoverable .btn.btn-danger:hover::after {
+    @apply danger-colored-hover;
+}
+.btn.btn-danger:active,
+.btn.btn-danger:focus:active {
+    @apply bg-danger;
+    @apply border-danger ring-1 ring-danger;
+}
+.btn.btn-danger:disabled,
+.btn.btn-danger:disabled:focus,
+.btn.btn-danger:disabled:active,
+.btn.btn-danger:disabled:focus:active,
+body.hoverable .btn.btn-danger:disabled:hover {
+    @apply bg-danger-hover;
+    @apply border-danger-hover ring-0;
+}
+
 /* Secondary */
 .btn.btn-secondary{
     @apply bg-secondary;
     @apply border-secondary;
     @apply text-secondary-title;
 }
-body.hoverable .btn.btn-secondary:hover,
-.btn.btn-secondary:focus {
-    @apply bg-secondary-hover;
-    @apply border-secondary-hover;
+body.hoverable .btn.btn-secondary:hover::after {
+    @apply less-colored-hover;
 }
 .btn.btn-secondary:active,
 .btn.btn-secondary:focus:active {
     @apply bg-secondary;
-    @apply border-secondary ring-1 ring-secondary-hover;
+    @apply border-secondary ring-1 ring-secondary;
 }
 
 /* Cancel */
@@ -75,15 +95,13 @@ body.hoverable .btn.btn-secondary:hover,
     @apply border-cancel;
     @apply text-cancel-title;
 }
-body.hoverable .btn.btn-cancel:hover,
-.btn.btn-cancel:focus {
-    @apply bg-cancel-hover;
-    @apply border-cancel-hover;
+body.hoverable .btn.btn-cancel:hover::after {
+    @apply less-colored-hover;
 }
 .btn.btn-cancel:active,
 .btn.btn-cancel:focus:active {
     @apply bg-cancel;
-    @apply border-cancel ring-1 ring-cancel-hover;
+    @apply border-cancel-hover ring-1 ring-cancel-hover;
 }
 .btn.btn-cancel:disabled,
 .btn.btn-cancel:disabled:focus,
@@ -100,10 +118,8 @@ body.hoverable .btn.btn-cancel:disabled:hover {
     @apply border-primary;
     @apply text-primary;
 }
-body.hoverable .btn.btn-outline:hover,
-.btn.btn-outline:focus {
-    @apply bg-outline-hover;
-    @apply border-primary;
+body.hoverable .btn.btn-outline:hover::after {
+    @apply primary-colored-hover;
 }
 .btn.btn-outline:active,
 .btn.btn-outline:focus:active {
@@ -119,41 +135,14 @@ body.hoverable .btn.btn-outline:disabled:hover {
     @apply border-outline-hover ring-0;
 }
 
-/* Danger */
-.btn.btn-danger {
-    @apply bg-danger;
-    @apply border-danger;
-    @apply text-danger-title;
-}
-body.hoverable .btn.btn-danger:hover,
-.btn.btn-danger:focus {
-    @apply bg-danger-hover;
-    @apply border-danger-hover;
-}
-.btn.btn-danger:active,
-.btn.btn-danger:focus:active {
-    @apply bg-danger-hover;
-    @apply border-danger-hover ring-1 ring-danger-hover;
-}
-.btn.btn-danger:disabled,
-.btn.btn-danger:disabled:focus,
-.btn.btn-danger:disabled:active,
-.btn.btn-danger:disabled:focus:active,
-body.hoverable .btn.btn-danger:disabled:hover {
-    @apply bg-danger-hover;
-    @apply border-danger-hover ring-0;
-}
-
 /* Danger outline */
 .btn.btn-danger-outline {
     @apply bg-outline;
     @apply border-danger;
     @apply text-danger;
 }
-body.hoverable .btn.btn-danger-outline:hover,
-.btn.btn-danger-outline:focus {
-    @apply bg-danger-outline-hover;
-    @apply border-danger;
+body.hoverable .btn.btn-danger-outline:hover::after {
+    @apply danger-colored-hover;
 }
 .btn.btn-danger-outline:active,
 .btn.btn-danger-outline:focus:active {
@@ -170,7 +159,7 @@ body.hoverable .btn.btn-danger-outline:disabled:hover {
     @apply text-danger-hover;
 }
 
-
+/* Transparent button */
 .btn.btn-transparent {
     @apply flex-x;
     @apply min-w-0 h-min;
@@ -185,51 +174,45 @@ body.hoverable .btn.btn-danger-outline:disabled:hover {
     @apply min-w-20;
     @apply px-2;
     @apply border-0;
-    @apply text-headline-1;
+    @apply text-headline-1 text-primary;
+    @apply bg-cancel;
 }
 .btn.btn-modal .btn-content {
     @apply flex-x gap-x-2 items-center;
 }
-.btn.btn-modal:not(.btn-primary) {
-    @apply text-primary;
-    @apply bg-03;
+.btn.btn-modal:active,
+.btn.btn-modal:focus:active {
+    @apply bg-cancel;
+    @apply border-cancel-hover ring-1 ring-cancel-hover;
 }
-.btn.btn-modal:not(.btn-primary):active,
-.btn.btn-modal:not(.btn-primary):focus:active {
-    @apply bg-secondary;
-    @apply border-secondary ring-1 ring-secondary;
-}
-.btn.btn-modal:not(.btn-primary) .btn-content {
-    @apply bg-transparent;
-}
-.btn.btn-modal:active {
-    @apply bg-secondary;
-}
-body.hoverable .btn.btn-modal:hover:not(.btn-primary) {
-    @apply bg-secondary;
+body.hoverable .btn.btn-modal:hover::after {
+    @apply less-colored-hover;
 }
 
 /* Modal primary button */
-.btn.btn-primary.btn-modal:active,
-.btn.btn-primary.btn-modal:focus:active {
-    @apply bg-primary-hover;
-    @apply border-primary-hover ring-1 ring-primary-hover;
+.btn.btn-primary.btn-modal {
+    @apply bg-primary;
+    @apply text-06;
+}
+body.hoverable .btn.btn-modal.btn-primary:hover::after {
+    @apply more-colored-hover;
+}
+.btn.btn-modal.btn-primary:active,
+.btn.btn-modal.btn-primary:focus:active {
+    @apply bg-primary;
+    @apply border-primary ring-1 ring-primary;
 }
 
 /* Modal danger button */
 .btn.btn-modal.btn-danger {
     @apply text-danger;
 }
-.btn.btn-danger.btn-modal:active,
-.btn.btn-danger.btn-modal:focus:active {
-    @apply bg-danger-outline-hover;
-    @apply border-danger-outline-hover ring-1 ring-danger-outline-hover;
+body.hoverable .btn.btn-modal.btn-danger:hover::after {
+    @apply danger-colored-hover;
 }
-body.hoverable .btn.btn-modal.btn-danger:hover {
-    @apply bg-danger-outline-hover;
-}
-.btn.btn-modal.btn-danger:active {
-    @apply bg-danger-hover;
+.btn.btn-modal.btn-danger:active,
+.btn.btn-modal.btn-danger:focus:active {
+    @apply border-danger-hover ring-1 ring-danger-hover;
 }
 
 .btn.btn-modal.btn-narrow {
@@ -255,6 +238,7 @@ body.hoverable .btn.btn-modal.btn-danger:hover {
     @apply min-w-full;
 }
 
+/* Button Square */
 .btn.btn-square {
     @apply inline-block overflow-hidden;
     @apply p-0 mx-0 min-w-0 h-auto min-h-0;
@@ -286,7 +270,7 @@ body.hoverable .btn.btn-square:hover > .btn-content {
     @apply p-1 self-center;
 }
 
-/*Button Round*/
+/* Button Round */
 .btn.btn-round {
     @apply flex overflow-hidden;
     @apply p-0 mx-0 min-w-0 h-full min-h-0;
@@ -301,7 +285,9 @@ body.hoverable .btn.btn-square:hover > .btn-content {
     @apply opacity-100;
 }
 .btn.btn-round .btn-content {
-    @apply bg-round min-h-12 min-w-12 max-h-12 max-w-12 items-center justify-center;
+    @apply items-center justify-center;
+    @apply min-h-12 min-w-12 max-h-12 max-w-12;
+    @apply bg-round;
 }
 .btn.btn-round.transparent .btn-content {
     @apply bg-transparent;

@@ -332,7 +332,7 @@ body.narrow .landing.new .page-1 > .c-content {
 }
 body.narrow .landing.new .page-1 {
     @apply min-h-screen;
-    @apply bg-gradient-to-b from-[#0036A3] to-[#6E368F];
+    @apply bg-gradient-to-b from-[var(--indigo-30)] to-[--magenta-60];
     min-height: calc(var(--vh, 1vh) * 100);
 }
 body.narrow .landing.new .page-1 .page-1-wrapper,
