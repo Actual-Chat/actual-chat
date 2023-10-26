@@ -14,11 +14,11 @@
 
 <div class="c-content">
     @if (IsLeftNavigateButtonVisible) {
-        <HeaderButton Click="OnOpenLeftPanelClick" Class="md:hidden">
+        <HeaderButton Click="@OnOpenLeftPanelClick" Class="md:hidden">
             <i class="icon-arrow-left"></i>
         </HeaderButton>
     }
-    <div class="chat-header-center">
+    <div class="chat-header-center" @onclick="@OnToggleRightPanelClick">
         @if (!ReferenceEquals(chat, SpecialChat.NoChatSelected)) {
             <ChatIcon Chat="@chat"/>
             <div class="chat-header-title">
@@ -33,7 +33,7 @@
         <div class="chat-header-control-panel">
             <ChatSearch @key="@chat.Id.Value" Chat="@chat"/>
             @if (IsRightNavigateButtonVisible) {
-                <ChatHeaderRightPanelToggle Click="OnSwitchRightPanelClick"/>
+                <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
             }
         </div>
     }
@@ -53,7 +53,7 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
         => await ChatContext.SelectionUI.HasSelection.Use(cancellationToken);
 
-    private void OnSwitchRightPanelClick()
+    private void OnToggleRightPanelClick()
         => ChatContext.PanelsUI.Right.Toggle();
 
     private void OnOpenLeftPanelClick()
