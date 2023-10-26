@@ -105,6 +105,7 @@
             foreach (var failure in failureGroup.Failures)
                 Failures.Remove(failure);
         });
+        _failureGroups.Remove(failureGroup.Title);
         StateHasChanged();
     }
 
