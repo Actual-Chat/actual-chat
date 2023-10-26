@@ -24,8 +24,12 @@ export class NumberRange extends Range<number> {
     public contains(containedRange: Range<number>): boolean;
     public contains(item: number): boolean;
     public contains(item: Range<number> | number): boolean {
+        if (item == null)
+            return false;
+
         if (typeof item === 'number')
             return this.start <= item && item <= this.end;
+
         return this.start <= item.start && item.end <= this.end;
     }
 
