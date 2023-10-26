@@ -16,8 +16,11 @@ public partial class ChatUI
         if (idRange.IsEmptyOrNegative)
             throw new ArgumentOutOfRangeException(nameof(idRange));
 
+        var requestedIdRange = prevMessage == null
+            ? idRange.MoveStart(-1) // to request previous item of requested range to properly render block star - we will drop it off
+            : idRange;
         var tiles = await ChatView.IdTileStack.FirstLayer
-            .GetCoveringTiles(idRange)
+            .GetCoveringTiles(requestedIdRange)
             .Select(t => Chats.GetTile(Session, chatId, ChatEntryKind.Text, t.Range, cancellationToken))
             .Collect()
             .ConfigureAwait(false);
@@ -52,22 +55,7 @@ public partial class ChatUI
             var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
             var isEntryUnread = isUnread ?? entry.LocalId > lastReadEntryId;
             var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
-            if (hasVeryFirstItem && !isWelcomeBlockAdded) {
-                messages.Add(new ChatMessage(entry) {
-                    ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
-                });
-                isWelcomeBlockAdded = true;
-            }
-            if (isEntryUnread && !isPrevUnread)
-                messages.Add(new ChatMessage(entry) {
-                    ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
-                });
-            if (date != prevDate)
-                messages.Add(new ChatMessage(entry) {
-                    ReplacementKind = ChatMessageReplacementKind.DateLine,
-                    Date = date,
-                });
-
+            var shouldAddToResult = idRange.Contains(entry.LocalId);
             var flags = default(ChatMessageFlags);
             if (isBlockStart)
                 flags |= ChatMessageFlags.BlockStart;
@@ -77,12 +65,28 @@ public partial class ChatUI
                 flags |= ChatMessageFlags.ForwardStart;
             if (isEntryUnread)
                 flags |= ChatMessageFlags.Unread;
-            var message = new ChatMessage(entry) {
-                Date = date,
-                Flags = flags,
-            };
-            messages.Add(message);
-
+            if (shouldAddToResult) {
+                if (hasVeryFirstItem && !isWelcomeBlockAdded) {
+                    messages.Add(new ChatMessage(entry) {
+                        ReplacementKind = ChatMessageReplacementKind.WelcomeBlock,
+                    });
+                    isWelcomeBlockAdded = true;
+                }
+                if (isEntryUnread && !isPrevUnread)
+                    messages.Add(new ChatMessage(entry) {
+                        ReplacementKind = ChatMessageReplacementKind.NewMessagesLine,
+                    });
+                if (date != prevDate)
+                    messages.Add(new ChatMessage(entry) {
+                        ReplacementKind = ChatMessageReplacementKind.DateLine,
+                        Date = date,
+                    });
+                var message = new ChatMessage(entry) {
+                    Date = date,
+                    Flags = flags,
+                };
+                messages.Add(message);
+            }
             prevEntry = entry;
             prevDate = date;
             isPrevUnread = isEntryUnread;
