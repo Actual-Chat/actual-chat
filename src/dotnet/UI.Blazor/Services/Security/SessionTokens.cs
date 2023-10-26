@@ -28,8 +28,8 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private Moment Now => Clock.Now;
 
-    public TimeSpan RefreshLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(5);
-    public TimeSpan NoRefreshLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(1);
+    public TimeSpan RefreshLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(15);
+    public TimeSpan NoRefreshLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(5);
     public SecureToken? Current => _current;
 
     public ValueTask<SecureToken> Get(CancellationToken cancellationToken = default)
