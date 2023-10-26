@@ -14,7 +14,6 @@ import { Log } from 'logging';
 import { RecorderStateChanged, RecorderStateEventHandler } from "./opus-media-recorder-contracts";
 import * as signalR from "@microsoft/signalr";
 import { AudioInitializer } from "../../Services/audio-initializer";
-import {BrowserInfo} from "../../../UI.Blazor/Services/BrowserInfo/browser-info";
 import {BrowserInit} from "../../../UI.Blazor/Services/BrowserInit/browser-init";
 
 /*
@@ -63,6 +62,8 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     private isRecording: boolean = false;
     private isConnected: boolean = false;
     private isVoiceActive: boolean = false;
+    private sessionToken: string | null;
+    private encoderWorkerSessionToken: string | null;
 
     public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
@@ -214,8 +215,9 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         if (!chatId)
             throw new Error('start: chatId is unspecified.');
 
-        await this.ensureInitialized();
-        debugLog?.log(`start(): awaited whenInitialized`);
+        debugLog?.log(`start(): awaiting whenInitialized`);
+        await this.whenInitialized;
+        debugLog?.log(`start(): whenInitialized completed`);
 
         await this.stop();
         debugLog?.log(`start(): after stop() call`);
@@ -381,8 +383,17 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     }
 
     public async setSessionToken(sessionToken: string): Promise<void> {
-        await this.ensureInitialized();
-        await this.encoderWorker.setSessionToken(sessionToken);
+        this.sessionToken = sessionToken;
+
+        // We don't want to wait here - this method can complete immediately,
+        // all we need
+        this.whenInitialized.then(() => {
+            if (this.encoderWorkerSessionToken === this.sessionToken)
+                return; // Concurrent call to this method already applied the change
+
+            this.encoderWorkerSessionToken = sessionToken;
+            void this.encoderWorker.setSessionToken(this.sessionToken);
+        });
     }
 
     public async stop(): Promise<void> {

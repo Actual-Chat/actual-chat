@@ -7,7 +7,7 @@ import { timerQueue } from 'timerQueue';
 import { ObjectPool } from 'object-pool';
 import { Log } from 'logging';
 
-const { logScope, warnLog } = Log.get('AudioVadWorkletProcessor');
+const { logScope, debugLog, warnLog } = Log.get('AudioVadWorkletProcessor');
 
 const SAMPLES_PER_WINDOW_32 = 1536;
 const SAMPLES_PER_WINDOW_30 = 1440;
@@ -52,6 +52,7 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     }
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+        // debugLog?.log(`process:`, this.state);
         timerQueue?.triggerExpired();
         const hasInput = inputs
             && inputs.length !== 0

@@ -70,7 +70,11 @@ const serverImpl: AudioVadWorker = {
         debugLog?.log(`<- onCreate`);
 
         // Init NNVad with delay to avoid excessive load during startup
-        delayAsync(2000).then(_ => initNNVad());
+        const isSimdSupported = canUseNNVad && _isSimdSupported();
+        if (isSimdSupported && !isNNVadInitialized) {
+            // Load NN VAD Module with delay
+            delayAsync(2000).then(_ => initNNVad());
+        }
     },
 
     init: async (workletPort: MessagePort, encoderWorkerPort: MessagePort): Promise<void> => {
@@ -148,9 +152,11 @@ async function processQueue(): Promise<void> {
             }
 
             void vadWorklet.releaseBuffer(buffer, rpcNoWait);
+            // debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
             if (typeof vadEvent === 'number') {
                 audioPowerAverage.append(vadEvent);
                 if (audioPowerSampleCounter++ > 10) {
+                    // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.lastAverage);
                     // Let's sample audio power results to call this once per 300 ms
                     void server.onAudioPowerChange(audioPowerAverage.lastAverage, rpcNoWait);
                     audioPowerSampleCounter = 0;

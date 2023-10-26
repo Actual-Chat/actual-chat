@@ -49,8 +49,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
         async Task Initialize() {
             _blazorRef = DotNetObjectReference.Create<IAudioRecorderBackend>(this);
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef)
-                .ConfigureAwait(false);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef).ConfigureAwait(false);
         }
     }
 

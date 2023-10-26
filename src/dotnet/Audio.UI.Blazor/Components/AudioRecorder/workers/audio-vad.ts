@@ -7,6 +7,8 @@ import wasmSimdThreaded from 'onnxruntime-web/dist/ort-wasm-simd-threaded.wasm';
 import { Versioning } from 'versioning';
 import { VoiceActivityChange, VoiceActivityDetector } from './audio-vad-contract';
 import { clamp } from 'math';
+import { Log } from 'logging';
+const { logScope, debugLog } = Log.get('AudioVadWorker');
 
 const MAX_SILENCE = 1.35; // 1.35 s - max silence period duration during active voice before break
 const MAX_MONOLOGUE_SILENCE = 3; // 3 s - max silence period duration during active voice before break for monologues
@@ -68,7 +70,8 @@ export abstract class VoiceActivityDetectorBase implements VoiceActivityDetector
         } = this;
         let currentEvent = this.lastActivityEvent;
         const gain = this.calculateChunkGainApproximately(monoPcm);
-         if (gain < 0.0025 && currentEvent.kind === 'end')
+        // debugLog?.log('appendChunk:', currentEvent, gain);
+        if (gain < 0.0025 && currentEvent.kind === 'end')
             return gain; // do not try to check VAD at low gain input
 
         const prob = await this.appendChunkInternal(monoPcm);
