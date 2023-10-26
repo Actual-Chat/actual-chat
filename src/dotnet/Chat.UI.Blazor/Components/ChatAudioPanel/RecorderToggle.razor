@@ -51,7 +51,9 @@
             MustKeepAwake="true"
             Tooltip="@dynamicTooltip"
             TooltipPosition="@tooltipPosition"
-            @onpointerup="@OnPointerUp"
+            @onmouseup="@OnPointerUp"
+            @ontouchend="@OnPointerUp"
+            @ontouchcancel="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
             <i class="icon-talking text-xl recorder-icon"></i>
@@ -61,7 +63,9 @@
             Click="@OnClick"
             Tooltip="@dynamicTooltip"
             TooltipPosition="@tooltipPosition"
-            @onpointerup="@OnPointerUp"
+            @onmouseup="@OnPointerUp"
+            @ontouchend="@OnPointerUp"
+            @ontouchcancel="@OnPointerUp"
             @oncontextmenu="@OnContextMenu"
             data-context-menu-delay="200">
             <i class="icon-stop-fill text-2xl"></i>
