@@ -66,7 +66,6 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
     // ReSharper disable once InconsistentNaming
     private bool CanUseNNVad()
     {
-        return false;
         if (HostInfo.ClientKind != ClientKind.Ios)
             return true;
 

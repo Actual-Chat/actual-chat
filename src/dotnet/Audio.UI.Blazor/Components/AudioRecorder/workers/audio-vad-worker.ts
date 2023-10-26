@@ -152,10 +152,11 @@ async function processQueue(): Promise<void> {
             }
 
             void vadWorklet.releaseBuffer(buffer, rpcNoWait);
-            debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
+            // debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);
             if (typeof vadEvent === 'number') {
                 audioPowerAverage.append(vadEvent);
                 if (audioPowerSampleCounter++ > 10) {
+                    // debugLog?.log(`processQueue: lastAverage:`, audioPowerAverage.lastAverage);
                     // Let's sample audio power results to call this once per 300 ms
                     void server.onAudioPowerChange(audioPowerAverage.lastAverage, rpcNoWait);
                     audioPowerSampleCounter = 0;
