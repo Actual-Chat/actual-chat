@@ -91,23 +91,24 @@
             </Right>
         </TileItem>
     </FormBlock>
-</Form>
 
-<RenderIntoSlot Name="@ButtonsSlotName">
-    @if (ScreenSize.IsWide()) {
+    <RenderIntoSlot Name="@ButtonsSlotName">
+        @if (ScreenSize.IsWide()) {
+            <Button
+                Click="@(() => Cancelled())"
+                Class="btn-modal">
+                Cancel
+            </Button>
+        }
         <Button
-            Click="@(() => Cancelled())"
-            Class="btn-modal">
-            Cancel
+            Click="@OnCreate"
+            Type="@ButtonType.Button"
+            IsDisabled="@(!context.Validate())"
+            Class="btn-modal btn-primary">
+            Create
         </Button>
-    }
-    <Button
-        Click="@OnCreate"
-        Type="@ButtonType.Button"
-        Class="btn-modal btn-primary">
-        Create
-    </Button>
-</RenderIntoSlot>
+    </RenderIntoSlot>
+</Form>
 
 @code {
     private static readonly string UploadUrl = "/api/avatars/upload-picture";
@@ -134,6 +135,8 @@
     }
 
     private async Task OnCreate() {
+        if (!_formRef.IsValid)
+            return;
         try {
             var command = new Chats_Change(Session, default, null, new() {
                 Create = new ChatDiff {
