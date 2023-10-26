@@ -10,15 +10,21 @@ namespace ActualChat.Users;
 public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IPhoneAuth
 {
     private static readonly string TotpFormat = new('0', Constants.Auth.Phone.TotpLength);
+
+    private IAuthBackend? _authBackend;
+    private IAccounts? _accounts;
+    private IDbEntityConverter<DbUser, User>? _userConverter;
+
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
     private HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
-    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private ITextMessageGateway TextMessage { get; } = services.GetRequiredService<ITextMessageGateway>();
     private Rfc6238AuthenticationService Totps { get; } = services.GetRequiredService<Rfc6238AuthenticationService>();
     private TotpRandomSecrets RandomSecrets { get; } = services.GetRequiredService<TotpRandomSecrets>();
     private IDbUserRepo<UsersDbContext, DbUser, string> DbUsers { get; } = services.GetRequiredService<IDbUserRepo<UsersDbContext, DbUser, string>>();
-    private IDbEntityConverter<DbUser, User> UserConverter { get; } = services.DbEntityConverter<DbUser, User>();
-    private IAuthBackend AuthBackend { get; } = services.GetRequiredService<IAuthBackend>();
+
+    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
+    private IAuthBackend AuthBackend => _authBackend ??= Services.GetRequiredService<IAuthBackend>();
+    private IDbEntityConverter<DbUser, User> UserConverter => _userConverter ??= Services.DbEntityConverter<DbUser, User>();
 
     // [ComputeMethod]
     // TODO: move to Features_EnablePhoneAuth
@@ -33,7 +39,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
         // TODO: throttle
         var (session, phone, purpose) = command;
-        if (Settings.PredefinedTotps.TryGetValue(phone, out _))
+        if (TryGetPredefined(phone, out _))
             return GetExpiresAt(); // no need to send predefined totp
 
         var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose).ConfigureAwait(false);
@@ -113,7 +119,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
 
     private async Task<bool> ValidateCode(Session session, Phone phone, int totp, TotpPurpose purpose)
     {
-        if (Settings.PredefinedTotps.TryGetValue(phone, out var predefinedTotp) && predefinedTotp == totp)
+        if (TryGetPredefined(phone, out var predefinedTotp) && predefinedTotp == totp)
             return true;
 
         var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose).ConfigureAwait(false);
@@ -127,4 +133,8 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         var modifier = $"{purpose}:{phone}";
         return (securityTokens, modifier);
     }
+
+    private bool TryGetPredefined(Phone phone, out int predefinedTotp)
+        // removing dashes due to issue with dash in bash env var names
+        => Settings.PredefinedTotps.TryGetValue(Phone.Normalize(phone.Value), out predefinedTotp);
 }
