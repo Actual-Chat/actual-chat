@@ -1,4 +1,3 @@
-using ActualChat.Hosting;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -8,8 +7,8 @@ public class Features_EnableIncompleteUI : FeatureDef<bool>, IClientFeatureDef
 {
     public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var hostInfo = services.GetRequiredService<HostInfo>();
-        if (!hostInfo.IsDevelopmentInstance)
+        var urlMapper = services.GetRequiredService<UrlMapper>();
+        if (urlMapper.IsActualChat)
             return false;
 
         var session = services.Session();
