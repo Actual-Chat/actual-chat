@@ -931,7 +931,17 @@ export class VirtualList {
                         // if (DeviceInfo.isIos) {
                         //     this._ref.style.overflow = 'hidden';
                         // }
+
+                        // set scroll styles to improve UX on iOS before setting scrollTop
+                        this._ref.style.overscrollBehaviorY = 'none';
                         this._ref.scrollTop = scrollTop;
+                        fastRaf({
+                            write: () => {
+                                // reset scroll styles
+                                this._ref.style.overscrollBehaviorY = 'auto';
+                            }
+                        });
+
                         debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
                         // if (DeviceInfo.isIos) {
                         //     this._ref.style.overflow = '';
