@@ -76,6 +76,7 @@ export class VirtualList {
     private _itemRange: NumberRange | null = null;
     private _viewport: NumberRange | null = null;
     private _shouldRecalculateItemRange: boolean = true;
+    private _shouldUpdateOrderedItems: boolean = true;
 
     public static create(
         ref: HTMLElement,
@@ -270,8 +271,9 @@ export class VirtualList {
                 '; startedAt: ', startedAt);
         }
 
-        // request recalculation of the item range as we've got new items
+        // request recalculation of the item range and order item list as we've got new items
         this._shouldRecalculateItemRange = true;
+        this._shouldUpdateOrderedItems = true;
 
         // copy existing items - because we can remove them and add again at another tiles
         const oldItems = new Map<string, VirtualListItem>(this._items);
@@ -535,7 +537,6 @@ export class VirtualList {
         const now = Date.now();
         debugLog?.log(`endRender, renderIndex = #${rs.renderIndex}, duration = ${now - startedAt}ms, rs =`, rs);
         try {
-            this._inertialScroll.freeze();
             this._renderState = rs;
 
             // fix iOS MAUI scroll issue after first renders
@@ -563,10 +564,6 @@ export class VirtualList {
                 else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                 }
-                // reset state as we can navigate to item that doesn't intersect with previously loaded items
-                this._pivots = [];
-                this._itemRange = null;
-                this._viewport = null;
             } else if (this._stickyEdge != null) {
                 // Sticky edge scroll
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
@@ -579,7 +576,6 @@ export class VirtualList {
                     if (this._stickyEdge?.edge === VirtualListEdge.End) {
                         let itemRef = this.getItemRef(this._stickyEdge.itemKey);
                         this.scrollTo(itemRef, false, 'end');
-                        this._pivots = [];
                     }
                     this.setStickyEdge(null);
                 } else {
@@ -588,7 +584,6 @@ export class VirtualList {
                     if (this._stickyEdge?.edge === VirtualListEdge.Start) {
                         let itemRef = this.getItemRef(itemKey);
                         this.scrollTo(itemRef, false);
-                        this._pivots = [];
                     }
                 }
             }
@@ -605,10 +600,13 @@ export class VirtualList {
             this._renderStartedAt = null;
             this._whenRequestDataCompleted?.resolve(undefined);
 
+            this._pivots = [];
+            this._itemRange = null;
+            this._viewport = null;
+
             // trigger update only for first render to load data if needed
             if (rs.renderIndex <= 1)
                 void this.updateViewport();
-            this._inertialScroll.unfreeze();
         }
     }
 
@@ -642,7 +640,7 @@ export class VirtualList {
                 rangeEnds.push(item.range.end);
             }
             else {
-                if (this.ensureItemRangeCalculated(false)) {
+                if (this.ensureItemRangeCalculated()) {
                     return await this.updateViewport();
                 }
             }
@@ -675,7 +673,7 @@ export class VirtualList {
 
         // update item range
         const isViewportUnknown = viewport == null;
-        if (!this.ensureItemRangeCalculated(isViewportUnknown) && !this._itemRange) {
+        if (!this.ensureItemRangeCalculated() && !this._itemRange) {
             this.updateViewportThrottled();
         }
         else if (isViewportUnknown)
@@ -723,6 +721,7 @@ export class VirtualList {
             }
         }
         this._orderedItems = orderedItems;
+        this._shouldUpdateOrderedItems = false;
     }
 
     private createListItem(itemKey: string, itemRef: HTMLElement): VirtualListItem {
@@ -935,24 +934,19 @@ export class VirtualList {
                     if (shouldResync) {
                         // debug helper
                         // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
-                        // if (DeviceInfo.isIos) {
-                        //     this._ref.style.overflow = 'hidden';
-                        // }
 
                         // set scroll styles to improve UX on iOS before setting scrollTop
+                        this._inertialScroll.freeze();
                         this._ref.style.overscrollBehaviorY = 'none';
                         this._ref.scrollTop = scrollTop;
                         fastRaf({
                             write: () => {
                                 // reset scroll styles
                                 this._ref.style.overscrollBehaviorY = 'auto';
+                                this._inertialScroll.unfreeze();
                             }
                         });
-
                         debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
-                        // if (DeviceInfo.isIos) {
-                        //     this._ref.style.overflow = '';
-                        // }
                     } else if (this._isNearSkeleton && Math.abs(scrollTop) < PivotSyncEpsilon) {
                         debugLog?.log(`restoreScrollPosition: scrollTop ~= 0`, this.isRendering);
 
@@ -990,21 +984,21 @@ export class VirtualList {
         this._shouldRecalculateItemRange = itemsWereMeasured;
     }
 
-    private ensureItemRangeCalculated(isRecalculationForced: boolean): boolean {
+    private ensureItemRangeCalculated(): boolean {
         // nothing to do when unmeasured items still exist or there were no new renders
         if (this.hasUnmeasuredItems) {
             void this.measureItems();
             return false;
         }
 
-        if (!isRecalculationForced &&  !this._shouldRecalculateItemRange && this._itemRange)
-            return false;
-
-        if (isRecalculationForced)
+        if (this._shouldUpdateOrderedItems)
             this.updateOrderedItems();
 
+        if (!this._shouldRecalculateItemRange && this._itemRange)
+            return false;
+
         // nothing to do when there are no items rendered
-        if ((this._orderedItems?.length ?? 0) == 0)
+        if (this._orderedItems.length == 0)
             return false;
 
         const orderedItems = this._orderedItems;
@@ -1033,7 +1027,7 @@ export class VirtualList {
         }
         this._itemRange = new NumberRange(
             orderedItems[0].range.start,
-            orderedItems[0].range.start + orderedItems.map(it => it.size).reduce((sum, curr) => sum + curr, 0));
+            orderedItems[orderedItems.length - 1].range.end);
 
         this._shouldRecalculateItemRange = false;
         return true;
