@@ -10,6 +10,7 @@ public sealed partial class UrlMapper
 
     private static readonly Regex IsAbsoluteUrlRegex = IsAbsoluteUrlRegexFactory();
     private static readonly char[] UriPathEndChar = { '#', '?' };
+    private static readonly string[] ExtensionsToExclude = { ".svg", ".gif" };
 
     private readonly string _baseUrlWithoutBackslash;
 
@@ -133,6 +134,10 @@ public sealed partial class UrlMapper
         if (!HasImageProxy)
             return imageUrl;
 
+        var extension = Path.GetExtension(imageUrl);
+        if (ExtensionsToExclude.Contains(extension, StringComparer.OrdinalIgnoreCase))
+            return imageUrl;
+
         var sMaxWidth = maxWidth?.Format();
         var sMaxHeight = maxHeight?.Format();
         var cropping = crop ? "sc" : ",fit";
@@ -141,7 +146,16 @@ public sealed partial class UrlMapper
 
     // Returns absolute URL
     public string ImagePreview128Url(string imageUrl)
-        => HasImageProxy ? $"{ImageProxyBaseUrl}128/{imageUrl}" : imageUrl;
+    {
+        if (!HasImageProxy)
+            return imageUrl;
+
+        var imageExtension = Path.GetExtension(imageUrl);
+        if (ExtensionsToExclude.Contains(imageExtension, StringComparer.OrdinalIgnoreCase))
+            return imageUrl;
+
+        return $"{ImageProxyBaseUrl}128/{imageUrl}";
+    }
 
     // Returns absolute URL
     public string BoringAvatar(string imageUrl)
