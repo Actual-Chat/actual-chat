@@ -1,30 +1,28 @@
-using ActualChat.Hosting;
 using ActualChat.Kvas;
 
 namespace ActualChat.UI.Blazor.Services;
 
 public class ThemeUI : WorkerBase
 {
+    private const Theme DefaultTheme = Theme.Light;
     private readonly ISyncedState<ThemeSettings> _settings;
     private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
     // Nearly every service here is requested only when the theme is applied,
     // so it makes sense to postpone their resolution
-    private HostInfo? _hostInfo;
     private Dispatcher? _dispatcher;
     private IJSRuntime? _js;
     private ILogger? _log;
 
-    private Theme _appliedTheme = Theme.Light;
+    private Theme _appliedTheme = DefaultTheme;
 
     private IServiceProvider Services { get; }
-    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     private IJSRuntime JS => _js ??= Services.JSRuntime();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public IState<ThemeSettings> Settings => _settings;
     public Theme Theme {
-        get => _settings.Value.Theme;
+        get => _settings.Value.Theme.GetValueOrDefault(DefaultTheme);
         set => _settings.Value = new ThemeSettings(value);
     }
     public Task WhenReady => _whenReadySource.Task;
@@ -34,16 +32,14 @@ public class ThemeUI : WorkerBase
         Services = services;
 
         var stateFactory = services.StateFactory();
-        var accountSettings = services.AccountSettings().WithPrefix(nameof(ThemeUI));
+        var accountSettings = services.LocalSettings().WithPrefix(nameof(ThemeUI));
         _settings = stateFactory.NewKvasSynced<ThemeSettings>(
             new(accountSettings, nameof(ThemeSettings)) {
-                InitialValue = new ThemeSettings(Theme.Light),
+                InitialValue = new ThemeSettings(null),
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
-
-        // We don't have themes yet, so it's safe to indicate the theme is ready immediately
-        _whenReadySource.TrySetResult();
+        Log.LogInformation("State created");
     }
 
     protected override Task DisposeAsyncCore()
@@ -54,17 +50,19 @@ public class ThemeUI : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        Log.LogInformation("Worker started");
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
+        Log.LogInformation("State first time read");
 
-        await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false))
-            await ApplyTheme(cTheme.Value.Theme).ConfigureAwait(false);
+        await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false)) {
+            Log.LogInformation("State change. Theme: '{Theme}'", cTheme.Value.Theme);
+            await ApplyTheme(cTheme.Value.Theme.GetValueOrDefault(DefaultTheme)).ConfigureAwait(false);
+        }
     }
 
     private Task ApplyTheme(Theme theme)
         => Dispatcher.InvokeAsync(async () => {
             _whenReadySource.TrySetResult();
-            if (!HostInfo.IsDevelopmentInstance) // Themes work on dev instances only
-                return;
             if (_appliedTheme == theme)
                 return;
 

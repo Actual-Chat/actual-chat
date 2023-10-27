@@ -1,4 +1,4 @@
-@inherits ComputedStateComponent<Theme>
+@inherits ComputedStateComponent<Theme?>
 @{
     var m = State.Value;
     var isDark = m is Theme.Dark;
@@ -9,14 +9,14 @@
 @code {
     [Inject] ThemeUI ThemeUI { get; init; } = null!;
 
-    protected override ComputedState<Theme>.Options GetStateOptions()
+    protected override ComputedState<Theme?>.Options GetStateOptions()
         => new() {
             InitialValue = ThemeUI.Theme,
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<Theme> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Theme?> ComputeState(CancellationToken cancellationToken) {
         var themeSettings = await ThemeUI.Settings.Use(cancellationToken);
         return themeSettings.Theme;
     }
