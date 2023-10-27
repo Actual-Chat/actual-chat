@@ -191,6 +191,7 @@
 
     /* Post Audio Panel */
     --post-panel: var(--gray-20);
+    --post-panel-text: var(--gray-95);
     --playback-on: var(--blue-90);
     --audio-panel-gradient-top: var(--background-01);
     --audio-panel-gradient-bottom: var(--post-panel);
@@ -257,7 +258,7 @@
     --background-03: var(--gray-10);
     --background-04: var(--gray-05);
     --background-05: var(--gray-30);
-    --background-06: var(--gray-70);
+    --background-06: var(--gray-20);
     --background-07: var(--gray-80);
     --background-08: var(--white);
 
@@ -333,6 +334,7 @@
 
     /* Post Audio Panel */
     --post-panel: var(--gray-10);
+    --post-panel-text: var(--gray-80);
     --playback-on: var(--blue-10);
     --audio-panel-gradient-top: var(--background-01);
     --audio-panel-gradient-bottom: var(--post-panel);

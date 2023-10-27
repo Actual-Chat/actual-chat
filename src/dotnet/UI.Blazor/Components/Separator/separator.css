@@ -1,0 +1,9 @@
+.separator {
+    @apply flex items-center justify-center;
+    @apply my-2 mx-4;
+}
+.separator > .c-title {
+    @apply px-2 py-0;
+    @apply rounded-full;
+    @apply text-xs font-medium;
+}

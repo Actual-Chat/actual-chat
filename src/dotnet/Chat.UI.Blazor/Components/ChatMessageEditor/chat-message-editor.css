@@ -42,7 +42,7 @@
     @apply max-h-48 md:max-h-88;
     @apply overflow-hidden;
     @apply outline-none;
-    @apply text-counter md:text-02;
+    @apply text-post-panel-text md:text-02;
     @apply bg-post-panel md:bg-03;
     @apply cursor-text;
     word-break: break-word;
@@ -335,7 +335,7 @@ body.narrow .related-chat-entry-panel {
     @apply h-auto;
     @apply p-1 -mb-0.5;
     @apply overflow-hidden;
-    @apply bg-07;
+    @apply bg-post-panel;
     animation: show-related 0.1s linear;
 }
 @keyframes show-related {
@@ -381,7 +381,7 @@ body.narrow .related-chat-entry-panel .related-chat-entry .icon-close,
 body.narrow .related-chat-entry-panel .related-chat-entry .icon-reply,
 body.narrow .related-chat-entry-panel .related-chat-entry .quote-text,
 body.narrow .related-chat-entry-panel .related-chat-entry .icon-edit {
-    @apply text-06;
+    @apply text-post-panel-text;
 }
 .related-chat-entry {
     @apply flex-1 flex-x items-center;
@@ -403,4 +403,11 @@ body.hoverable .related-chat-entry .btn.btn-round:hover .btn-content {
 }
 body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
     @apply bg-transparent;
+}
+
+.quote-text {
+    @apply flex-1;
+    @apply truncate;
+    @apply text-sm md:text-base;
+    @apply text-02;
 }

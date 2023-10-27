@@ -188,6 +188,7 @@ module.exports = {
         'banner-error': 'var(--text-banner-error)',
         'banner-info': 'var(--text-banner-info)',
         'banner-success': 'var(--text-banner-success)',
+        'post-panel-text': 'var(--post-panel-text)',
       },
       borderColor: {
         'bg-01': 'var(--background-01)',
