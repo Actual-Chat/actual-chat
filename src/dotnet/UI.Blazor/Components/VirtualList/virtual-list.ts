@@ -766,6 +766,7 @@ export class VirtualList {
     private updateCurrentPivots(): void {
         const time = Date.now();
         const pivots = new Array<Pivot>();
+        const pivotRefs = new Array<HTMLElement>();
         // add query edges and first\last items as pivots
         const itemKeys = [this.getFirstItemKey(), this._query.keyRange?.start, this._query.keyRange?.end, this.getLastItemKey()];
         for (let itemKey of itemKeys) {
@@ -776,6 +777,7 @@ export class VirtualList {
             if (!pivotRef)
                 continue;
 
+            pivotRefs.push(pivotRef);
             // measure scroll position
             const itemRect = pivotRef.getBoundingClientRect();
             const pivot: Pivot = {
@@ -787,6 +789,11 @@ export class VirtualList {
         }
         if (pivots.length)
             this._pivots = pivots;
+
+        for (const pivotRef of pivotRefs) {
+            // set native scroll pivot
+            pivotRef.style.overflowAnchor = 'auto';
+        }
     }
 
     private turnOffIsScrollingDebounced = debounce(() => this.turnOffIsScrolling(), ScrollDebounce);
