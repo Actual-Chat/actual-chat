@@ -103,8 +103,23 @@ public class BatchingKvasTest : TestBase
 
         // Let's wait it can be actually read
         kvas.ClearReadCache();
+        Out.WriteLine("Cleared read cache");
         var s2t = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
-        await s2t.Computed.When(x => x == "b").WaitAsync(TimeSpan.FromSeconds(5));
+        Out.WriteLine("Created s2t");
+        try {
+            await s2t.Computed.When(x => {
+                    Out.WriteLine($"Testing s2t value. Expected is 'b'. Actual is '{x}'");
+                    return x == "b";
+                })
+                .WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        catch (Exception e) {
+            Out.WriteLine($"Failed awaiting s2t. Error: '{e.GetType()} : {e.Message}'");
+            throw;
+        }
+        finally {
+            Out.WriteLine("Completed awaiting s2t");
+        }
 
         // And try to fetch it anew
         var s2a = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
