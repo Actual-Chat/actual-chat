@@ -9,11 +9,11 @@
 
 <div class="@Class @sizeClass">
     @if (!_pictureUrl.IsNullOrEmpty()) {
-        <img class="pic-image @sizeClass @cursorClass"
-             alt=""
-             src="@_pictureUrl"
-             @onclick="@OnPictureClick"
-             @onclick:preventDefault="true"/>
+        <image-skeleton
+            class="pic-image @sizeClass @cursorClass"
+            src="@_pictureUrl"
+            @onclick="@OnPictureClick"
+            @onclick:preventDefault="true"/>
     } else if(NoPicture != null) {
         @NoPicture
     } else {

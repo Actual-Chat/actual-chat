@@ -27,7 +27,7 @@
 .btn-square.account-btn .avatar-badge > * {
     @apply m-0;
 }
-.btn-square.account-btn .avatar-badge img {
+.btn-square.account-btn .avatar-badge image-skeleton {
     @apply min-w-10 max-w-10 min-h-10 max-h-10;
     @apply md:min-w-12 md:max-w-12 md:min-h-12 md:max-h-12;
 }
