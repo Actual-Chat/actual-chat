@@ -951,31 +951,37 @@ export class VirtualList {
         warnLog?.log(`restoreScrollPosition: there are no pivot refs found!`);
     }
 
+    private async measureItems(): Promise<void> {
+        if (!this.hasUnmeasuredItems)
+            return;
+
+        await fastReadRaf();
+        const unmeasuredItems = [...this._unmeasuredItems];
+        let itemsWereMeasured = false;
+        for (const key of unmeasuredItems) {
+            const item = this._items.get(key);
+            if (item.size < 0) {
+                const itemRef = this.getItemRef(key);
+                const itemRect = itemRef.getBoundingClientRect();
+                item.size = itemRect.height;
+            }
+            const hasRemoved = this._unmeasuredItems.delete(key);
+            itemsWereMeasured ||= hasRemoved;
+        }
+
+        // recalculate item range as some elements were updated
+        this._shouldRecalculateItemRange = itemsWereMeasured;
+    }
+
     private ensureItemRangeCalculated(isRecalculationForced: boolean): boolean {
         // nothing to do when unmeasured items still exist or there were no new renders
-        if (!isRecalculationForced && (this.hasUnmeasuredItems || (!this._shouldRecalculateItemRange && this._itemRange)))
-            return false;
-
         if (this.hasUnmeasuredItems) {
-            const unmeasuredItems = [...this._unmeasuredItems];
-            fastRaf(() => {
-                let itemsWereMeasured = false;
-                for (const key of unmeasuredItems) {
-                    const item = this._items.get(key);
-                    if (item.size < 0) {
-                        const itemRef = this.getItemRef(key);
-                        const itemRect = itemRef.getBoundingClientRect();
-                        item.size = itemRect.height;
-                    }
-                    const hasRemoved = this._unmeasuredItems.delete(key);
-                    itemsWereMeasured ||= hasRemoved;
-                }
-
-                // recalculate item range as some elements were updated
-                this._shouldRecalculateItemRange = itemsWereMeasured;
-            });
+            void this.measureItems();
             return false;
         }
+
+        if (!isRecalculationForced &&  !this._shouldRecalculateItemRange && this._itemRange)
+            return false;
 
         if (isRecalculationForced)
             this.updateOrderedItems();
@@ -985,19 +991,15 @@ export class VirtualList {
             return false;
 
         const orderedItems = this._orderedItems;
+        // find rightmost measured item
         let cornerStoneItemIndex = orderedItems.length - 1;
         let cornerStoneItem = orderedItems[cornerStoneItemIndex];
-        for (let i = 0; i < orderedItems.length; i++) {
-            const item = orderedItems[i];
-            if (!item.range)
-                continue;
+        while (cornerStoneItemIndex > 0 && !cornerStoneItem.isMeasured)
+            cornerStoneItem = orderedItems[--cornerStoneItemIndex];
 
-            if (!(cornerStoneItem?.range) || cornerStoneItem?.range.end > item.range.end) {
-                cornerStoneItem = item;
-                cornerStoneItemIndex = i;
-            }
-        }
         if (!cornerStoneItem.range) {
+            cornerStoneItemIndex = orderedItems.length - 1;
+            cornerStoneItem = orderedItems[cornerStoneItemIndex];
             cornerStoneItem.range = new NumberRange(-cornerStoneItem.size, 0);
         }
         let prevItem = cornerStoneItem;
@@ -1101,6 +1103,11 @@ export class VirtualList {
         if (!viewport || !alreadyLoaded)
             return this._lastQuery;
 
+        if (this.hasUnmeasuredItems) { // Let's wait for measurement to complete first
+            void this.measureItems();
+            return this._lastQuery;
+        }
+
         const viewportSize = viewport.size;
         const lastQuerySide = this._lastQuery.expandStartBy == 0 && this._lastQuery.expandEndBy == 0
             ? 'none'
@@ -1162,9 +1169,6 @@ export class VirtualList {
         if (loadEnd > alreadyLoaded.end && rs.hasVeryLastItem)
             loadEnd = alreadyLoaded.end;
         const loadZone = new NumberRange(loadStart, loadEnd);
-
-        if (this.hasUnmeasuredItems) // Let's wait for measurement to complete first
-            return this._lastQuery;
 
         if (this._items.size == 0) // No entries -> nothing to "align" the query to
             return this._lastQuery;
