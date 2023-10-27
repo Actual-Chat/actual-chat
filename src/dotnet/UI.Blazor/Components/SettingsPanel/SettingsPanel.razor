@@ -37,9 +37,9 @@
             @if (tab.TitleComment.IsNullOrEmpty()) {
                 <span>@tab.Title</span>
             } else {
-                <div class="flex-y items-start">
+                <div class="c-title">
                     <span>@tab.Title</span>
-                    <span class="text-xxs text-primary">@tab.TitleComment</span>
+                    <span class="c-comment">@tab.TitleComment</span>
                 </div>
             }
             <div class="flex-x">
@@ -58,11 +58,12 @@
                 @foreach (var tab in Tabs) {
                     var isActive = tab == ActiveTab;
                     var activeCls = $"{(isActive ? "on" : "")}";
+                    var tabCls = tab.Class;
                     var containerCls = tab.IsToggle ? "container-toggle" : "";
                     @if (tab.HasSeparatorBefore) {
                         <div class="w-auto bg-04 h-px my-4 mx-4"></div>
                     }
-                    <div class="c-tab-item @containerCls @activeCls">
+                    <div class="c-tab-item @containerCls @activeCls @tabCls">
                         @switch (tab.Id) {
                             case "signOut":
                                 @RenderSignOutButton(tab)

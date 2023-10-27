@@ -4,7 +4,7 @@
     var isDark = m is Theme.Dark;
 }
 
-<Toggle IsChecked="@isDark" IsCheckedChanged="OnThemeChanged" Class="toggle-sm"/>
+<Toggle IsChecked="@isDark" IsCheckedChanged="OnThemeChanged"/>
 
 @code {
     [Inject] ThemeUI ThemeUI { get; init; } = null!;

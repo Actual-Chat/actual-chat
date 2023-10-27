@@ -13,7 +13,7 @@
     var showNotification = !isGuestOrNone && _enableIncompleteUI;
     var showLanguages = true;
     var showUserInterface = true;
-    var showThemeToggle = _enableIncompleteUI;
+    var showThemeToggle = true;
     var showLogout = !isGuestOrNone;
     var showQuit = HostInfo.AppKind.IsMauiApp() && HostInfo.ClientKind == ClientKind.Windows;
 }
@@ -67,7 +67,7 @@
         }
 
         @if (showThemeToggle) {
-            <SettingsTab @key="90" Title="Dark Theme" TitleComment="Work in progress" Id="darkTheme" IconTitle="night-mode" IsToggle="true">
+            <SettingsTab @key="90" Title="Dark Theme" TitleComment="βeta" Id="darkTheme" IconTitle="night-mode" IsToggle="true" Class="theme-toggle">
                 <TitleContent>
                     <ThemeToggle/>
                 </TitleContent>
