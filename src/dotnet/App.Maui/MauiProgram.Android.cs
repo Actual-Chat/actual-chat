@@ -94,7 +94,7 @@ public static partial class MauiProgram
             return false;
 
         var js = scopedServices.JSRuntime();
-        await js.InvokeVoidAsync("eval", "history.back()").ConfigureAwait(false);
+        await js.InvokeVoidAsync("history.back").ConfigureAwait(false);
         return true;
     }
 }

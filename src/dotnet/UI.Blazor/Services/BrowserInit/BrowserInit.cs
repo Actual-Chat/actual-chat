@@ -1,23 +1,25 @@
+using ActualChat.Hosting;
+
 namespace ActualChat.UI.Blazor.Services;
 
-public class BrowserInit
+public class BrowserInit(IJSRuntime js)
 {
     private readonly TaskCompletionSource _whenInitializedSource = new();
 
-    private IJSRuntime JS { get; }
+    private IJSRuntime JS { get; } = js;
 
     public Task WhenInitialized => _whenInitializedSource.Task;
 
-    public BrowserInit(IJSRuntime js)
-        => JS = js;
-
-    public async ValueTask Initialize(string apiVersion, string baseUri, string sessionHash, Func<List<object?>, ValueTask> callsBuilder)
+    public async ValueTask Initialize(
+        string apiVersion,
+        string baseUri,
+        string sessionHash,
+        DotNetObjectReference<IBrowserInfoBackend> browserInfoBackendRef,
+        AppKind appKind)
     {
         try {
-            var calls = new List<object?>();
-            await callsBuilder.Invoke(calls).ConfigureAwait(false);
             await JS
-                .InvokeVoidAsync("window.App.browserInit", apiVersion, baseUri, sessionHash, calls.ToArray())
+                .InvokeVoidAsync("window.App.browserInit", apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind)
                 .ConfigureAwait(false);
         }
         finally {

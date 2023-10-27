@@ -54,8 +54,8 @@ public class MauiWebViewLivenessProbe(IServiceProvider services)
             var jsRuntime = scopedServices.GetRequiredService<IJSRuntime>();
             var browserInit = scopedServices.GetRequiredService<BrowserInit>();
             var checkState = browserInit.WhenInitialized.IsCompletedSuccessfully;
-            var script = checkState ? "window.ui.BrowserInit.isStateOk()" : "true";
-            var isAliveTask = jsRuntime.Eval<bool>(script, cts2.Token);
+            var script = checkState ? "window.ui.BrowserInit.isStateOk" : "window.App.isBundleReady";
+            var isAliveTask = jsRuntime.InvokeAsync<bool>(script, cts2.Token);
             _ = Dispatcher.DispatchAsync(() => {
                 // Will cancel check in 500ms after BeginInvokeJS message is dispatched.
                 try {

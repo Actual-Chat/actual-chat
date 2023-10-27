@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Chat.Controllers;
@@ -8,6 +9,7 @@ public sealed class ContentController(IBlobStorageProvider blobs) : ControllerBa
 {
     [HttpGet("{**blobId}")]
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client, VaryByQueryKeys = new[] { "blobId" })]
+    [EnableCors("CDN")]
     public async Task<ActionResult> Download(string blobId, CancellationToken cancellationToken)
     {
         if (blobId.IsNullOrEmpty())

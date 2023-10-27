@@ -197,21 +197,34 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
             services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(dataProtection));
         }
         // TODO: setup security headers: better CSP, Referrer-Policy / X-Content-Type-Options / X-Frame-Options etc
+        var origins = new List<string> {
+            "http://0.0.0.0",
+            "https://0.0.0.0",
+            "app://0.0.0.0",
+        };
+        if (Env.IsDevelopment()) {
+            origins.Add("https://local.actual.chat");
+            origins.Add("https://dev.actual.chat");
+        }
+        else if (Env.IsStaging()) {
+            origins.Add("https://dev.actual.chat");
+            origins.Add("https://stg.actual.chat");
+        }
+        else
+            origins.Add("https://actual.chat");
+
         services.AddCors(options => {
             options.AddPolicy("Default", builder => {
-                builder.AllowAnyOrigin();
-                builder.WithOrigins(
-                        "http://0.0.0.0",
-                        "https://0.0.0.0",
-                        "app://0.0.0.0",
-                        "http://0.0.0.0:7080",
-                        "https://0.0.0.0:7080",
-                        "https://0.0.0.0:7081",
-                        "https://cdpn.io"
-                    )
+                builder.WithOrigins(origins.ToArray())
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
+            });
+            options.AddPolicy("CDN", builder => {
+                builder
+                    .AllowAnyOrigin()
+                    .AllowAnyMethod()
+                    .AllowAnyHeader();
             });
         });
         /*

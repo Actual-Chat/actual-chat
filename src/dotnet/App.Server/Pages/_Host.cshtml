@@ -26,6 +26,7 @@
     var blazorMaxReconnectRetries = 10_000_000;
     var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : HostHelper.GetBlazorScriptSuffix();
     Layout = null;
+    // TODO(AK): remove unsafe-eval at .NET 8
 }
 
 <!DOCTYPE html>
@@ -33,6 +34,18 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        img-src 'self' https://*.actual.chat https://*.dicebear.com blob: data:;
+        media-src 'self' https://*.actual.chat;
+        style-src 'self' 'unsafe-inline';
+        script-src 'self' 'unsafe-eval' 'sha256-TQG0nhCVumRsqqfkWb8epzJ2/x1FXZIOIvQ2zk5yjL4='
+                            'sha256-Uyxb4HftA7a8BKLPmLggdilbIX/Ed7l2BW1tM8jCffE='
+                            'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
+                            'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg=';
+        connect-src 'self' https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com/;
+        worker-src 'self' blob:;
+        " />
     <link rel="icon" href="/favicon.svg">
     <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#0036a3">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -103,10 +116,41 @@
             },
             whenBundleReady: null,
             markBundleReady: function() { },
+            isBundleReady: async function() {
+                if (!window.App.whenBundleReady)
+                    return false;
+
+                await window.App.whenBundleReady;
+                return true;
+            },
             browserInit: async function(apiVersion, baseUri, sessionHash, calls) {
                 await window.App.whenBundleReady;
                 await window.ui.BrowserInit.init(apiVersion, baseUri, sessionHash, calls);
             },
+            getAuthSchemas: function () {
+                return window.FusionAuth.schemas;
+            },
+            overlay: {
+                show: function() {
+                    const overlay = document.getElementById('until-ui-is-ready');
+                    if (overlay) {
+                      overlay.innerHTML = `
+                          <div class="c-box">
+                              <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="Loading...">
+                          </div>
+                          <div class="c-rotating-bg"></div>
+                      `;
+                    }
+                },
+                hide: function () {
+                    const overlay = document.getElementById('until-ui-is-ready');
+                    if (overlay) {
+                        overlay.style.opacity = '0';
+                        setTimeout(function() { overlay.remove(); }, 500);
+                    }
+                }
+            },
+
         };
         window.App.whenBundleReady = new Promise((resolve, _) => {
             window.App.markBundleReady = resolve;
@@ -124,17 +168,7 @@
     <div id="until-ui-is-ready" class="loading-overlay"></div>
     <script>
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
-        (function() {
-            const overlay = document.getElementById('until-ui-is-ready');
-            if (overlay) {
-                overlay.innerHTML = `
-                    <div class="c-box">
-                        <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="Loading...">
-                    </div>
-                    <div class="c-rotating-bg"></div>
-                `;
-            }
-        })();
+        window.App.overlay.show();
     </script>
 }
 

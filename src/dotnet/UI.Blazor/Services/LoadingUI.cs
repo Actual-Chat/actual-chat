@@ -106,16 +106,6 @@ public sealed class LoadingUI
 
     private void RemoveLoadingOverlay()
     {
-        // We want to do this via script, coz BrowserInit might not be loaded yet
-        const string script = """
-        (function() {
-            const overlay = document.getElementById('until-ui-is-ready');
-            if (overlay) {
-                overlay.style.opacity = '0';
-                setTimeout(function() { overlay.remove(); }, 500);
-            }
-        })();
-        """;
-        _ = Services.JSRuntime().EvalVoid(script);
+        _ = Services.JSRuntime().InvokeVoidAsync("window.App.overlay.hide");
     }
 }

@@ -18,6 +18,7 @@ export * from './Services/ScreenSize/screen-size';
 export * from './Services/Security/session-tokens';
 export * from './Services/Settings/local-settings';
 export * from './Services/TuneUI/tune-ui'
+export * from './Services/ThemeUI/theme-ui'
 export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
 

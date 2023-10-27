@@ -86,11 +86,13 @@ public class AppServiceStarter
             Tracer.Point("BulkInitUI.Invoke");
             var browserInit = Services.GetRequiredService<BrowserInit>();
             var baseUri = HostInfo.BaseUrl;
+            await browserInfo.Initialize(true).ConfigureAwait(false);
             var browserInitTask = browserInit.Initialize(
-                Constants.Api.Version, baseUri, sessionHash,
-                async initCalls => {
-                    await browserInfo.Initialize(initCalls).ConfigureAwait(false);
-                });
+                Constants.Api.Version,
+                baseUri,
+                sessionHash,
+                browserInfo.BackendRef!,
+                browserInfo.AppKind);
 
             // Start AccountUI & UIEventHub
             Services.GetRequiredService<AccountUI>();

@@ -68,7 +68,7 @@ public partial class History
         return NavigationQueue.Enqueue(addInFront,
                 "NavigateBack",
                 () => {
-                    _ = JS.EvalVoid("window.history.back()");
+                    _ = JS.InvokeVoidAsync("window.history.back");
                     return 0; // "Fits" any itemId
                 })
             .WhenCompleted;

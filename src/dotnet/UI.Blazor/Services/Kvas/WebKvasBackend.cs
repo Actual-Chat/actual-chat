@@ -23,7 +23,7 @@ public sealed class WebKvasBackend : IBatchingKvasBackend
         _clearName = $"{name}.clear";
         _isPrerendering = services.GetRequiredService<RenderModeSelector>().IsPrerendering;
         WhenReady = _isPrerendering ? Task.CompletedTask
-            : JS.EvalVoid("App.whenBundleReady").AsTask();
+            : JS.InvokeVoidAsync("window.App.isBundleReady").AsTask();
     }
 
     public async ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)

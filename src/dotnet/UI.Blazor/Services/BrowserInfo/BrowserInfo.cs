@@ -11,7 +11,6 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     private readonly IMutableState<bool> _isVisible;
 
     protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
-    protected DotNetObjectReference<IBrowserInfoBackend>? BackendRef;
     protected readonly object Lock = new();
 
     protected IServiceProvider Services { get; }
@@ -20,6 +19,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     protected UICommander UICommander { get; }
     protected ILogger Log { get; }
 
+    public DotNetObjectReference<IBrowserInfoBackend>? BackendRef { get; private set; }
     public AppKind AppKind { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ScreenSize> ScreenSize => _screenSize;
@@ -55,18 +55,12 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public void Dispose()
         => BackendRef.DisposeSilently();
 
-    public virtual ValueTask Initialize(List<object?>? initCalls = null)
+    public virtual ValueTask Initialize(bool skipJsInit = false)
     {
         BackendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
-        if (initCalls != null) {
-            initCalls.Add(JSInitMethod);
-            initCalls.Add(2);
-            initCalls.Add(BackendRef);
-            initCalls.Add(AppKind.ToString());
-            return default;
-        }
-
-        return JS.InvokeVoidAsync(JSInitMethod, BackendRef, AppKind.ToString());
+        return skipJsInit
+            ? default
+            : JS.InvokeVoidAsync(JSInitMethod, BackendRef, AppKind.ToString());
     }
 
     [JSInvokable]

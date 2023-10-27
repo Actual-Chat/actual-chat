@@ -1,10 +1,13 @@
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
 public class ThemeUI : WorkerBase
 {
     private const Theme DefaultTheme = Theme.Light;
+    private static readonly string JSReplaceMethod = $"{BlazorUICoreModule.ImportName}.ThemeUI.replace";
+
     private readonly ISyncedState<ThemeSettings> _settings;
     private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
     // Nearly every service here is requested only when the theme is applied,
@@ -69,13 +72,8 @@ public class ThemeUI : WorkerBase
             var oldTheme = _appliedTheme;
             _appliedTheme = theme;
             try {
-                // Ideally we don't want to use any external JS here,
-                // coz this code may start before BulkInitUI completes
-                var script = $"""
-                document.body.classList.remove('{oldTheme.ToCssClass()}');
-                document.body.classList.add('{theme.ToCssClass()}');
-                """;
-                await JS.EvalVoid(script).ConfigureAwait(false);
+                await JS.InvokeVoidAsync(JSReplaceMethod, oldTheme.ToCssClass(), theme.ToCssClass())
+                    .ConfigureAwait(false);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogError(e, "Failed to apply the new theme");

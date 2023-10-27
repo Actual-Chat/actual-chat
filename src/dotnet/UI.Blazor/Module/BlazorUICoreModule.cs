@@ -36,13 +36,13 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         var fusion = services.AddFusion();
         fusion.AddBlazor();
         // The only thing we use from fusion.AddBlazor().AddAuthentication():
-        services.AddScoped(c => new ClientAuthHelper(c));
+        services.AddScoped(c => new WebClientAuthHelper(c));
         if (appKind.IsClient())
             fusion.AddRpcPeerStateMonitor();
 
         // Authentication
         // fusion.AddAuthClient();
-        services.AddScoped<ClientAuthHelper>(c => new ClientAuthHelper(c));
+        services.AddScoped<ClientAuthHelper>(c => c.GetRequiredService<WebClientAuthHelper>());
 
         // Default update delay is 0.2s
         services.AddTransient<IUpdateDelayer>(c => new UpdateDelayer(c.UIActionTracker(), 0.2));

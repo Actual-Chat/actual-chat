@@ -8,7 +8,7 @@ public class MauiBrowserInfo : BrowserInfo
 {
     public MauiBrowserInfo(IServiceProvider services) : base(services) { }
 
-    public override ValueTask Initialize(List<object?>? initCalls = null)
+    public override ValueTask Initialize(bool skipJsInit = false)
     {
         var clientKind = HostInfo.ClientKind;
         var isWindowsOrMacOS = clientKind is ClientKind.Windows or ClientKind.MacOS;
@@ -32,7 +32,7 @@ public class MauiBrowserInfo : BrowserInfo
         Update(screenSize, !isMobile, false);
 
         WhenReadySource.TrySetResult();
-        return base.Initialize(initCalls);
+        return base.Initialize(skipJsInit);
     }
 
     [JSInvokable]

@@ -5,6 +5,7 @@ import { AudioRecorder } from "../../../Audio.UI.Blazor/Components/AudioRecorder
 import { AudioPlayer } from "../../../Audio.UI.Blazor/Components/AudioPlayer/audio-player";
 import { audioContextSource } from "../../../Audio.UI.Blazor/Services/audio-context-source";
 import { DeviceInfo } from 'device-info';
+import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
 
 const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
@@ -23,7 +24,7 @@ export class BrowserInit {
     public static connectionState = "";
     public static isTerminated = false;
 
-    public static async init(apiVersion: string, baseUri: string, sessionHash: string, calls: Array<unknown>): Promise<void> {
+    public static async init(apiVersion: string, baseUri: string, sessionHash: string, browserInfoBackendRef: DotNet.DotNetObject, appKind: AppKind): Promise<void> {
         if (this.whenInitialized.isCompleted()) {
             errorLog?.log('init: already initialized, skipping');
             return;
@@ -38,18 +39,7 @@ export class BrowserInit {
                 document.body.classList.add("zoom-ios");
             this.initWindowId();
             this.initAndroid();
-            calls = Array.from(calls);
-            const results = new Array<unknown>();
-            for (let i = 0; i < calls.length;) {
-                const name = calls[i] as string;
-                const argumentCount = calls[i + 1] as number;
-                const nextIndex = i + 2 + argumentCount;
-                const args = calls.slice(i + 2, nextIndex);
-                i = nextIndex;
-                results.push(globalInvoke(name, args));
-
-            }
-            await Promise.all(results);
+            BrowserInfo.init(browserInfoBackendRef, appKind);
         }
         catch (e) {
             errorLog?.log('init: error:', e);
@@ -298,39 +288,3 @@ export class BrowserInit {
 // This call must be done as soon as possible
 BrowserInit.startReloadWatchers();
 void BrowserInit.startLoadingOverlayRemoval(5_000);
-
-// Helpers
-
-function globalInvoke(name: string, args: unknown[]): any {
-    const fn = globalEval(name) as Function;
-    if (typeof fn === 'function') {
-        const [typeName, methodName] = splitLast(name, '.');
-        if (methodName === '') {
-            infoLog?.log(`globalInvoke:`, name, ', arguments:', args);
-            return fn(...args);
-        }
-        else {
-            const self = globalEval(typeName);
-            infoLog?.log(`globalInvoke:`, name, ', this:', self?.name, ', arguments:', args);
-            return fn.apply(self, args);
-        }
-    }
-    else {
-        infoLog?.log(`globalInvoke: script:`, name);
-        return fn as any;
-    }
-}
-
-function globalEval(...args: any): any {
-    return eval.apply(this, args);
-}
-
-function splitLast(source, by) {
-    const lastIndex = source.lastIndexOf(by);
-    if (lastIndex < 0)
-        return [source, ''];
-
-    const before = source.slice(0, lastIndex);
-    const after = source.slice(lastIndex + 1);
-    return [before, after];
-}
