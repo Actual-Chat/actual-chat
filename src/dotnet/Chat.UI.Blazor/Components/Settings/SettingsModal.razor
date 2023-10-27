@@ -13,7 +13,7 @@
     var showNotification = !isGuestOrNone && _enableIncompleteUI;
     var showLanguages = true;
     var showUserInterface = true;
-    var showThemeToggle = account.IsAdmin;
+    var showThemeToggle = _enableIncompleteUI;
     var showLogout = !isGuestOrNone;
     var showQuit = HostInfo.AppKind.IsMauiApp() && HostInfo.ClientKind == ClientKind.Windows;
 }
