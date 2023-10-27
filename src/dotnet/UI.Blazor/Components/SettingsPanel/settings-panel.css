@@ -182,7 +182,13 @@ body.hoverable .tile-btn:hover {
 }
 
 .settings-tab-item {
-    @apply flex-x items-center gap-x-4;
+    @apply flex-1 flex-x items-center gap-x-4;
+}
+.settings-tab-item .c-title {
+    @apply flex-1 flex-y items-start;
+}
+.settings-tab-item .c-comment {
+    @apply text-xxs text-primary;
 }
 .settings-tab-item span {
     @apply font-semibold md:font-medium;
@@ -221,4 +227,8 @@ body.hoverable .tile-btn:hover {
 }
 .tile-item-my-account-link .btn.btn-share {
     @apply mr-0.5 md:mr-1.5;
+}
+
+.theme-toggle .settings-tab-item .c-comment {
+    @apply absolute left-36;
 }
