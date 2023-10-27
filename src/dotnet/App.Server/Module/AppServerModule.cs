@@ -223,8 +223,9 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
             options.AddPolicy("CDN", builder => {
                 builder
                     .AllowAnyOrigin()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader();
+                    .WithMethods("GET")
+                    .AllowAnyHeader()
+                    .WithExposedHeaders("Content-Encoding","Content-Length","Content-Range", "Content-Type");
             });
         });
         /*
