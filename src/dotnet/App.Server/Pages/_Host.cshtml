@@ -33,7 +33,7 @@
     var showOverlayNonce = nonceGenerator.Next(12);
     var closeLoginNonce = nonceGenerator.Next(12);
     // TODO(AK): remove unsafe-eval at .NET 8
-    var unsafeEval = isBlazorServer ? "" : "unsafe-eval";
+    var unsafeEval = isBlazorServer ? "" : "'unsafe-eval'";
 }
 
 <!DOCTYPE html>
@@ -47,7 +47,7 @@
         media-src 'self' https://*.actual.chat;
         style-src 'self' 'unsafe-inline';
         object-src 'none';
-        script-src 'self'   '@unsafeEval'
+        script-src 'self'   @unsafeEval
                             'nonce-@startupNonce'
                             'nonce-@blazorReloadNonce'
                             'nonce-@showOverlayNonce'
