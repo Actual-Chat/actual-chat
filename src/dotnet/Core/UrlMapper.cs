@@ -138,6 +138,9 @@ public sealed partial class UrlMapper
         if (ExtensionsToExclude.Contains(extension, StringComparer.OrdinalIgnoreCase))
             return imageUrl;
 
+        if (imageUrl.StartsWith("https://source.boringavatars.com/"))
+            return imageUrl;
+
         var sMaxWidth = maxWidth?.Format();
         var sMaxHeight = maxHeight?.Format();
         var cropping = crop ? "sc" : ",fit";

@@ -8,6 +8,7 @@
 @using ActualChat.Web
 @using Stl.Fusion.Server.Authentication
 @using Stl.Fusion.Server.Endpoints
+@using Stl.Generators
 
 @inject HostInfo HostInfo
 @inject ServerAuthHelper ServerAuthHelper
@@ -26,7 +27,13 @@
     var blazorMaxReconnectRetries = 10_000_000;
     var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : HostHelper.GetBlazorScriptSuffix();
     Layout = null;
+    var nonceGenerator = RandomStringGenerator.Default;
+    var startupNonce = nonceGenerator.Next(12);
+    var blazorReloadNonce = nonceGenerator.Next(12);
+    var showOverlayNonce = nonceGenerator.Next(12);
+    var closeLoginNonce = nonceGenerator.Next(12);
     // TODO(AK): remove unsafe-eval at .NET 8
+    var unsafeEval = isBlazorServer ? "" : "unsafe-eval";
 }
 
 <!DOCTYPE html>
@@ -36,15 +43,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        img-src 'self' https://*.actual.chat https://*.dicebear.com blob: data:;
+        img-src 'self' https://*.actual.chat https://*.dicebear.com https://*.boringavatars.com/  blob: data:;
         media-src 'self' https://*.actual.chat;
         style-src 'self' 'unsafe-inline';
-        script-src 'self' 'unsafe-eval' 'sha256-TQG0nhCVumRsqqfkWb8epzJ2/x1FXZIOIvQ2zk5yjL4='
-                            'sha256-Uyxb4HftA7a8BKLPmLggdilbIX/Ed7l2BW1tM8jCffE='
+        object-src 'none';
+        script-src 'self'   '@unsafeEval'
+                            'nonce-@startupNonce'
+                            'nonce-@blazorReloadNonce'
+                            'nonce-@showOverlayNonce'
+                            'nonce-@closeLoginNonce'
                             'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
                             'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg=';
-        connect-src 'self' https://firebaseinstallations.googleapis.com https://fcmregistrations.googleapis.com/;
+        connect-src 'self'
+                            https://*.actual.chat
+                            https://*.dicebear.com
+                            https://*.ingest.sentry.io
+                            https://firebaseinstallations.googleapis.com
+                            https://fcmregistrations.googleapis.com;
         worker-src 'self' blob:;
+        upgrade-insecure-requests;
         " />
     <link rel="icon" href="/favicon.svg">
     <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#0036a3">
@@ -106,7 +123,7 @@
     <link rel="prefetch" href="/dist/fonts/TT-Commons-Pro-Light.woff2" as="font" crossorigin />
     <link href="/dist/bundle.css" rel="stylesheet" asp-append-version="true"/>
     <script src="_content/Stl.Fusion.Blazor.Authentication/scripts/fusionAuth.js" asp-append-version="true"></script>
-    <script>
+    <script nonce="@startupNonce">
         history.scrollRestoration = "manual";
         window.FusionAuth.schemas = "@authSchemas";
         window.App = {
@@ -166,14 +183,14 @@
 
 @if (!isBlazorServer && !isCloseWindowRequest) {
     <div id="until-ui-is-ready" class="loading-overlay"></div>
-    <script>
+    <script nonce="@showOverlayNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
         window.App.overlay.show();
     </script>
 }
 
 @if (isCloseWindowRequest) {
-    <script>
+    <script nonce="@closeLoginNonce">
         setTimeout(function () {
             window.open('','_self').close();
         }, 500)
@@ -220,7 +237,7 @@
 
     @if (isBlazorServer) {
         <script src="_framework/blazor.server@(blazorScriptSuffix).js" autostart="false"></script>
-        <script>
+        <script nonce="@blazorReloadNonce">
             Blazor.start({
                 reconnectionOptions: {
                      maxRetries: @(blazorMaxReconnectRetries),
