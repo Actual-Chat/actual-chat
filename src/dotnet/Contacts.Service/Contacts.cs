@@ -92,21 +92,10 @@ public class Contacts(IServiceProvider services) : IContacts
             .ConfigureAwait(false);
     }
 
+    [Obsolete("2023.10: No not available for clients anymore")]
     // [CommandHandler]
-    public virtual async Task OnGreet(Contacts_Greet command, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
-        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
-        if (!account.IsActive())
-            return;
-
-        if (account.IsGreetingCompleted)
-            return;
-
-        await Commander.Call(new ContactsBackend_Greet(account.Id), cancellationToken).ConfigureAwait(false);
-    }
+    public virtual Task OnGreet(Contacts_Greet command, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     // Private methods
 

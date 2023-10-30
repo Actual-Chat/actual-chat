@@ -6,6 +6,7 @@ using Stl.Versioning;
 
 namespace ActualChat.Users.Db;
 
+[Index(nameof(IsGreetingCompleted))]
 public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     [Key] public string Id { get; set; } = null!;

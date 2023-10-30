@@ -10,12 +10,11 @@ using Stl.Fusion.EntityFramework.Operations;
 namespace ActualChat.Contacts.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class ContactsServiceModule : HostModule<ContactsSettings>
+public sealed class ContactsServiceModule(IServiceProvider moduleServices) : HostModule<ContactsSettings>(moduleServices)
 {
-    public ContactsServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
+        base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
