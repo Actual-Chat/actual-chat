@@ -7,17 +7,20 @@
 }
 
 @foreach (var item in Tile.Items) {
+    var itemCls = IsLastTile && ReferenceEquals(item, Tile.Items[^1])
+        ? "item anchor"
+        : "item";
     @if (item.CountAs != 1) {
         <li id="@item.Key.Value"
             @key="@item.Key"
-            class="item"
+            class="@itemCls"
             data-count-as="@item.CountAs.Format()">
             @Item(item)
         </li>
     } else {
         <li id="@item.Key.Value"
             @key="@item.Key"
-            class="item">
+            class="@itemCls">
             @Item(item)
         </li>
     }
@@ -28,6 +31,7 @@
 
     [Parameter, EditorRequired] public VirtualListTile<TItem> Tile { get; set; } = null!;
     [Parameter] public RenderFragment<TItem> Item { get; set; } = null!;
+    [Parameter] public bool IsLastTile { get; set; }
 
     protected override bool ShouldRender()
         => !ReferenceEquals(_renderedDataTile, Tile);

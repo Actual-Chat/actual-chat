@@ -550,13 +550,6 @@ export class VirtualList {
             if (rs.requestedEndExpansion > 0 && !rs.hasVeryLastItem)
                 this._statistics.addResponse(rs.endExpansion, rs.requestedEndExpansion * ratio);
 
-            if (rs.hasVeryLastItem && !rs.scrollToKey) {
-                // scroll to the last item automatically
-                const lastItem = this.getLastItemRef();
-                if (lastItem)
-                    lastItem.style.overflowAnchor = 'auto';
-            }
-
             const scrollToItemRef = this.getItemRef(rs.scrollToKey);
             if (scrollToItemRef != null) {
                 // Server-side scroll request
@@ -604,6 +597,12 @@ export class VirtualList {
                 warnLog?.log(`endRender: there are no pivots`);
             }
         } finally {
+            const anchorRefs = [...this._containerRef.querySelectorAll<HTMLLIElement>(':scope > li.item.anchor')]
+            for (const anchorRef of anchorRefs) {
+                // remove native anchor after restoring position
+                anchorRef.classList.remove('anchor');
+            }
+
             this._renderStartedAt = null;
             this._whenRequestDataCompleted?.resolve(undefined);
 
@@ -799,9 +798,13 @@ export class VirtualList {
         if (pivots.length)
             this._pivots = pivots;
 
-        for (const pivotRef of pivotRefs) {
-            // set native scroll pivot
-            pivotRef.style.overflowAnchor = 'auto';
+        if (this._visibleItems.size) {
+            const visibleItems = [...this._visibleItems.values()];
+            const medianVisibleKey = visibleItems[Math.floor(visibleItems.length/2)];
+            const medianRef = this.getItemRef(medianVisibleKey);
+            if (medianRef)
+                if (!medianRef.classList.contains('anchor'))
+                    medianRef.classList.add('anchor');
         }
     }
 
@@ -967,6 +970,7 @@ export class VirtualList {
                     } else
                         debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
 
+
                     whenRestoreCompleted.resolve(undefined);
                 },
             });
@@ -974,7 +978,7 @@ export class VirtualList {
             await whenRestoreCompleted;
             // check position again, on Chromium scrollTop can be stale
             if (DeviceInfo.isChromium && (shouldResync || iteration < 2 ))
-                return this.restoreScrollPosition(renderTime, iteration+1);
+                await this.restoreScrollPosition(renderTime, iteration+1);
 
             return;
         }

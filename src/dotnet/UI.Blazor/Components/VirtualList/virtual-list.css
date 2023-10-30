@@ -60,3 +60,7 @@
     overflow-anchor: none;
     min-height: 1.5rem;
 }
+
+.virtual-list > ul.c-virtual-container > li.item.anchor {
+    overflow-anchor: auto;
+}
