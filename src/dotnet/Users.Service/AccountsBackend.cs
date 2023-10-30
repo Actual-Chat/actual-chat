@@ -1,6 +1,8 @@
 using System.Net.Mail;
 using ActualChat.Chat;
+using ActualChat.Commands;
 using ActualChat.Users.Db;
+using ActualChat.Users.Events;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -145,6 +147,16 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         // authors
         var removeAuthorsCommand = new AuthorsBackend_Remove(ChatId.None, AuthorId.None, userId);
         await Commander.Call(removeAuthorsCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    [EventHandler]
+    public virtual Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return Task.CompletedTask; // It just notifies GreetingDispatcher
+
+        GreetingDispatcher.OnGreetingNeeded();
+        return Task.CompletedTask;
     }
 
     // Private methods

@@ -333,15 +333,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
-    [EventHandler]
-    public virtual async Task OnNewUserEvent(NewUserEvent eventCommand, CancellationToken cancellationToken)
-    {
-        if (Computed.IsInvalidating())
-            return; // It just spawns other commands, so nothing to do here
-
-        await Commander.Call(new ContactsBackend_Greet(eventCommand.UserId), cancellationToken).ConfigureAwait(false);
-    }
-
     // private methods
 
     private static string ToRedisKey(UserId userId)
