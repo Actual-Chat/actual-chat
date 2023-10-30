@@ -1,5 +1,6 @@
 using ActualChat.App.Server;
 using ActualChat.Testing.Host;
+using Stl.Versioning;
 
 namespace ActualChat.Users.IntegrationTests;
 
@@ -38,6 +39,8 @@ public class UserStatusTest : AppHostTestBase
         // arrange
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
         await _tester.SignIn(new User("Bob"));
+        var log = _tester.AppServices.LogFor<UserStatusTest>();
+        var versionGenerator = _tester.AppServices.GetRequiredService<VersionGenerator<long>>();
 
         // act
         var account = await GetOwnAccount();
@@ -52,12 +55,16 @@ public class UserStatusTest : AppHostTestBase
             AccountStatus.Suspended, AccountStatus.Active,
         };
         foreach (var newStatus in newStatuses) {
-            var newAccount = account with { Status = newStatus };
+            var newAccount = account with { Status = newStatus, Version = versionGenerator.NextVersion(account.Version) };
+            log.LogInformation("About to update Status to '{NewStatus}'", newStatus);
             await _tester.Commander.Call(new Accounts_Update(_adminSession, newAccount, account.Version));
+            log.LogInformation("Updated Status to '{NewStatus}'", newStatus);
 
             // assert
             await TestExt.WhenMetAsync(async () => {
                 account = await GetOwnAccount();
+                log.LogInformation("About to test Status. Expected status: '{ExpectedStatus}', Account: '{Account}'",
+                    newStatus, account);
                 account.Status.Should().Be(newStatus);
             }, TimeSpan.FromSeconds(3));
         }
