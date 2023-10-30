@@ -416,7 +416,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var range = (query.IsNone, oldData.Tiles.Count == 0) switch {
             (true, true) => new Range<long>(chatIdRange.End - MinLoadLimit, chatIdRange.End),
             (true, false) when Math.Abs(oldData.Tiles[^1].Items[^1].Entry.LocalId - chatIdRange.End) <= minTileSize // reduce range when new messages were added
-                => new Range<long>(chatIdRange.End - MinLoadLimit, chatIdRange.End),
+                => new Range<long>(chatIdRange.End - Math.Min(chatIdRange.Size(), MinLoadLimit * 2), chatIdRange.End),
             (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId, oldData.Tiles[^1].Items[^1].Entry.LocalId),
             _ => query.KeyRange
                 .ToLongRange()
