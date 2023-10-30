@@ -550,6 +550,13 @@ export class VirtualList {
             if (rs.requestedEndExpansion > 0 && !rs.hasVeryLastItem)
                 this._statistics.addResponse(rs.endExpansion, rs.requestedEndExpansion * ratio);
 
+            if (rs.hasVeryLastItem && !rs.scrollToKey) {
+                // scroll to the last item automatically
+                const lastItem = this.getLastItemRef();
+                if (lastItem)
+                    lastItem.style.overflowAnchor = 'auto';
+            }
+
             const scrollToItemRef = this.getItemRef(rs.scrollToKey);
             if (scrollToItemRef != null) {
                 // Server-side scroll request
@@ -622,6 +629,7 @@ export class VirtualList {
 
         await fastReadRaf();
 
+        const viewportSize = this._ref.clientHeight;
         const prevViewportSize = this._viewport?.size ?? Number.MAX_SAFE_INTEGER;
         const rangeStarts = new Array<number>();
         const rangeEnds = new Array<number>();
@@ -646,9 +654,11 @@ export class VirtualList {
             }
         }
 
-        let viewport: NumberRange | null = (!this.fullRange || rangeStarts.length === 0)
-            ? null
-            : new NumberRange(Math.min(...rangeStarts), Math.max(...rangeEnds));
+        let viewport: NumberRange | null = null;
+        if (this.fullRange && rangeStarts.length !== 0) {
+            const viewportEnd = Math.max(...rangeEnds);
+            viewport = new NumberRange(viewportEnd - viewportSize, viewportEnd);
+        }
 
         if (viewport && viewport.size > prevViewportSize + MinViewPortSize) {
             // probably we have invalid visible items that provide wrong viewport size
@@ -902,7 +912,7 @@ export class VirtualList {
         return false;
     }
 
-    private async restoreScrollPosition(renderTime: number): Promise<void> {
+    private async restoreScrollPosition(renderTime: number, iteration: number = 0): Promise<void> {
         debugLog?.log(`restoreScrollPosition: pivots`, [...this._pivots], renderTime);
 
         let pivots = this._pivots;
@@ -916,7 +926,9 @@ export class VirtualList {
             let scrollTop: number | null = null;
             let shouldResync = false;
 
+            const pivotEpsilon = PivotSyncEpsilon + 100 * iteration;
             // fastRaf performs read\update in proper order during single call to requestAnimationFrame
+            const whenRestoreCompleted = new PromiseSource();
             fastRaf({
                 read: () => {
                     const pivotOffset = pivot.offset;
@@ -924,7 +936,7 @@ export class VirtualList {
                     const currentPivotOffset = itemRect.bottom;
                     const dPivotOffset = pivotOffset - currentPivotOffset;
                     scrollTop = this._ref.scrollTop;
-                    if (Math.abs(dPivotOffset) > PivotSyncEpsilon) {
+                    if (Math.abs(dPivotOffset) > pivotEpsilon) {
                         debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${itemRect.bottom} + ${dPivotOffset}`, pivot);
                         scrollTop -= dPivotOffset;
                         shouldResync = true;
@@ -954,8 +966,15 @@ export class VirtualList {
                         this.scrollTo(pivotRef, false, 'center');
                     } else
                         debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
+
+                    whenRestoreCompleted.resolve(undefined);
                 },
             });
+
+            await whenRestoreCompleted;
+            // check position again, on Chromium scrollTop can be stale
+            if (DeviceInfo.isChromium && (shouldResync || iteration < 2 ))
+                return this.restoreScrollPosition(renderTime, iteration+1);
 
             return;
         }

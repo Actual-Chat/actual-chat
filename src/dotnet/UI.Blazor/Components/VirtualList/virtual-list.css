@@ -9,6 +9,7 @@
     animation-fill-mode: forwards;
     animation-duration: 1ms;
     @apply flex flex-nowrap flex-col-reverse items-stretch content-start justify-start;
+    overflow-anchor: none;
 }
 
 .virtual-list > .data.render-index {
@@ -59,9 +60,3 @@
     overflow-anchor: none;
     min-height: 1.5rem;
 }
-
-.virtual-list > ul.c-virtual-container > li.item.anchor {
-    /*temporarily disable native scroll pivots as it doesn't work well on chromium 117*/
-    overflow-anchor: none;
-}
-
