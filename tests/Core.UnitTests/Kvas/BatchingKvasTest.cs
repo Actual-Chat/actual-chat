@@ -99,10 +99,14 @@ public class BatchingKvasTest : TestBase
 
         var s2 = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
         s2.Value = "b";
-        await Task.Delay(300); // Let it flush
 
+        // NOTE: Let flush BatchingKvas instance before clearing read cache.
+        // Otherwise it might happen that cache is cleared, but data is not processed yet by Writer of BatchingKvas
+        // and next read will not see stored data.
+        await kvas.Flush();
         // Let's wait it can be actually read
         kvas.ClearReadCache();
+
         Out.WriteLine("Cleared read cache");
         var s2t = stateFactory.NewKvasStored<string>(new(prefixedKvas, "s2"));
         Out.WriteLine("Created s2t");
