@@ -1,6 +1,7 @@
 .selection-header {
     @apply flex-x items-center justify-between gap-x-2;
     @apply w-full;
+    @apply text-03;
 }
 .selection-header .selection-header-title {
     @apply flex-grow;

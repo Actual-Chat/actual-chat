@@ -156,6 +156,7 @@ body.hoverable .tile-btn:hover {
     @apply h-12 px-1;
     @apply rounded-lg;
     @apply bg-selected;
+    @apply border-transparent;
 }
 .add-avatar-btn * {
     @apply text-sm font-medium;
