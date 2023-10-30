@@ -18,7 +18,8 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
         return await Backend.List(account.Id, deviceId, cancellationToken).ConfigureAwait(false);
     }
 
-    // TODO: bulk change?
+    [Obsolete("2023.10: Replaced with OnBulkChange")]
+
     // [CommandHandler]
     public virtual async Task<ExternalContact?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken)
     {
@@ -36,8 +37,36 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
         if (id.OwnerId != account.Id)
             throw Unauthorized();
 
+        var results = await Commander
+            .Call(new ExternalContactsBackend_BulkChange(ApiArray.New<ExternalContactChange>(new ExternalContactChange(id, expectedVersion, change))), cancellationToken)
+            .ConfigureAwait(false);
+        if (results[0].Error is { } error)
+            throw error;
+
+        return results[0].Value;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<ApiArray<ChangeResult<ExternalContact>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default!; // It just spawns other commands, so nothing to do here
+
+        var (session, changes) = command;
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return Enumerable.Repeat(ChangeResult.From<ExternalContact>(null), changes.Count).ToApiArray();
+
+        foreach (var itemChange in changes) {
+            var (id, _, change) = itemChange;
+            id.Require();
+            change.RequireValid();
+            if (id.OwnerId != account.Id)
+                throw Unauthorized();
+        }
+
         return await Commander
-            .Call(new ExternalContactsBackend_Change(id, expectedVersion, change), cancellationToken)
+            .Call(new ExternalContactsBackend_BulkChange(changes), cancellationToken)
             .ConfigureAwait(false);
     }
 

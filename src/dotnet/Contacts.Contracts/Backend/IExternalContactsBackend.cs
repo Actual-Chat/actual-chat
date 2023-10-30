@@ -7,7 +7,7 @@ public interface IExternalContactsBackend : IComputeService
     [ComputeMethod]
     Task<ApiArray<ExternalContact>> List(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken);
     [CommandHandler]
-    Task<ExternalContact?> OnChange(ExternalContactsBackend_Change command, CancellationToken cancellationToken);
+    Task<ApiArray<ChangeResult<ExternalContact>>> OnBulkChange(ExternalContactsBackend_BulkChange command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveAccount(ExternalContactsBackend_RemoveAccount command, CancellationToken cancellationToken);
     // Not compute method!
@@ -16,11 +16,9 @@ public interface IExternalContactsBackend : IComputeService
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ExternalContactsBackend_Change(
-    [property: DataMember, MemoryPackOrder(0)] ExternalContactId Id,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
-    [property: DataMember, MemoryPackOrder(2)] Change<ExternalContact> Change
-) : ICommand<ExternalContact?>, IBackendCommand;
+public sealed partial record ExternalContactsBackend_BulkChange(
+    [property: DataMember, MemoryPackOrder(0)] ApiArray<ExternalContactChange> Changes
+) : ICommand<ApiArray<ChangeResult<ExternalContact>>>, IBackendCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming

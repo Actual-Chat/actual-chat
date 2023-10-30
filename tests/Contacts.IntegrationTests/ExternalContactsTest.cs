@@ -39,7 +39,6 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         _contacts = _appHost.Services.GetRequiredService<IContacts>();
         _commander = _appHost.Services.Commander();
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
-
     }
 
     public override async Task DisposeAsync()
@@ -332,7 +331,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         }
     }
 
-    [Theory(Skip = "Flaky")]
+    [Theory]
     [InlineData(5)]
     [InlineData(37)]
     public async Task StressTest_UsersCreatedSequentially_AllAreConnected(int count)
@@ -363,16 +362,22 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
         => _sut.List(_tester.Session, deviceId, CancellationToken.None);
 
-    private Task<ExternalContact[]> Add(params ExternalContact[] externalContacts)
-        => externalContacts.Select(x
-                => _commander.Call(new ExternalContacts_Change(_tester.Session, x.Id, null, Change.Create(x))))
-            .Collect()!;
+    private async Task Add(params ExternalContact[] externalContacts)
+    {
+        var changes = externalContacts.Select(x => new ExternalContactChange(x.Id, null, Change.Create(x)));
+        var results = await _commander.Call(new ExternalContacts_BulkChange(_tester.Session, changes.ToApiArray()));
+        var errors = results.Select(x => x.Error).SkipNullItems().ToList();
+        if (errors.Count > 0)
+            throw new AggregateException("Failed to create external contacts", errors);
+    }
 
     private Task Update(ExternalContact externalContact)
-        => _commander.Call(new ExternalContacts_Change(_tester.Session, externalContact.Id, null, Change.Update(externalContact)));
+        => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
+            ApiArray.New(new ExternalContactChange(externalContact.Id, null, Change.Update(externalContact)))));
 
     private Task Remove(ExternalContact externalContact)
-        => _commander.Call(new ExternalContacts_Change(_tester.Session, externalContact.Id, null, Change.Remove<ExternalContact>()));
+        => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
+            ApiArray.New(new ExternalContactChange(externalContact.Id, null, Change.Remove<ExternalContact>()))));
 
     private async Task AssertConnectedUsers(AccountFull account, AccountFull[] allAccounts)
     {

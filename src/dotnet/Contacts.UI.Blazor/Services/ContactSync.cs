@@ -6,6 +6,8 @@ namespace ActualChat.Contacts.UI.Blazor.Services;
 
 public class ContactSync(IServiceProvider services) : WorkerBase, IComputeService
 {
+    private static readonly TimeSpan ThrottlingInterval = TimeSpan.FromSeconds(30);
+    private const int BatchSize = 100;
     private Session Session { get; } = services.Session();
     private AccountUI AccountUI { get; } = services.GetRequiredService<AccountUI>();
     private IExternalContacts ExternalContacts { get; } = services.GetRequiredService<IExternalContacts>();
@@ -70,35 +72,39 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
             .SkipNullItems()
             .ToList();
 
-        var commands = ToCommands(toRemove, Change.Remove)
-            .Concat(ToCommands(toUpdate, Change.Update))
-            .Concat(ToCommands(toAdd, Change.Create))
+        var changes = ToChanges(toRemove, Change.Remove)
+            .Concat(ToChanges(toUpdate, Change.Update))
+            .Concat(ToChanges(toAdd, Change.Create))
             .ToList();
 
-        var errors = new List<Exception>();
-        foreach (var command in commands) {
+        foreach (var bulk in changes.Chunk(BatchSize)) {
             cancellationToken.ThrowIfCancellationRequested();
-            try {
-                await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var changeResults = await Commander
+                    .Call(new ExternalContacts_BulkChange(Session, bulk.ToApiArray()), cancellationToken)
+                    .ConfigureAwait(false);
+                var succeedCount = changeResults.Count(x => x.Error is null);
+                if (bulk.Length > succeedCount)
+                    Log.LogWarning("Synced {SucceedCount} of {Count} contacts", succeedCount, bulk.Length);
+                else
+                    Log.LogDebug("Synced {Count} contacts", succeedCount);
+                await Task.Delay(ThrottlingInterval, cancellationToken).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) {
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
-            catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
-                Log.LogWarning(e, "Failed to sync contact {ContactId}", command.Id.DeviceContactId);
-                errors.Add(e);
-                await Task.Delay(TimeSpan.FromSeconds(5000), cancellationToken).ConfigureAwait(false);
+            catch (Exception e)
+            {
+                Log.LogWarning(e, "Failed to sync {Count} contacts", bulk.Length);
             }
         }
-        if (errors.Count > 0)
-            throw new AggregateException("Some errors occured while syncing contacts", errors);
-
         return;
 
-        IEnumerable<ExternalContacts_Change> ToCommands(
+        IEnumerable<ExternalContactChange> ToChanges(
             IEnumerable<ExternalContact> externalContacts,
             Func<ExternalContact, Change<ExternalContact>> toChange)
-            => externalContacts.Select(x => new ExternalContacts_Change(Session, x.Id, x.Version, toChange(x)));
+            => externalContacts.Select(x => new ExternalContactChange(x.Id, x.Version, toChange(x)));
     }
 
     private Task<Computed<AccountFull>> WhenAuthenticated(CancellationToken cancellationToken)
