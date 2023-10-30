@@ -323,6 +323,8 @@
     <Content Remove="Platforms\Android\Resources\google-services.json.dev" />
     <Content Remove="Platforms\Android\Resources\google-services.json.prod" />
     <Content Remove="Resources\Images\**" />
+    <Content Remove="wwwroot\dist\images\webonly\**" />
+    <None Remove="wwwroot\dist\images\webonly\**" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
