@@ -120,10 +120,6 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .chat-audio-panel .recorder-wrapper:active {
     @apply translate-y-0.5;
 }
-.narrow .chat-audio-panel .btn.chat-language-toggle {
-    @apply text-primary;
-}
-.narrow .chat-audio-panel .btn.btn-round.chat-language-toggle .btn-content,
 .narrow .chat-audio-panel .playback-wrapper.listen-off,
 .narrow .chat-audio-panel .playback-wrapper.listen-on-to-off {
     @apply bg-gradient-to-b from-[var(--background-02)] to-[var(--background-01)];
@@ -396,7 +392,34 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply gap-y-1;
 }
 .transcription-options-modal .language-btn-group {
-    @apply mb-2;
+    @apply flex-y gap-y-4 mb-2;
+}
+.transcription-options-modal .language-btn-group .configure-hint {
+    @apply text-02;
+}
+.transcription-options-modal .language-btn-group a.link {
+    @apply md:cursor-pointer text-primary underline;
+}
+.two-btn-group {
+    @apply flex-x gap-x-2;
+    @apply p-2;
+    @apply rounded-lg;
+    @apply bg-03;
+}
+.two-btn-group > span {
+    @apply flex-1 flex items-center justify-center;
+    @apply text-03;
+}
+.two-btn-group > button {
+    @apply flex-1 flex items-center justify-center;
+    @apply h-8;
+    @apply rounded-lg;
+    @apply bg-transparent;
+    @apply text-02;
+}
+.two-btn-group > button.active {
+    @apply bg-01;
+    @apply text-primary;
 }
 .options-item {
     @apply flex-x items-center gap-x-4;

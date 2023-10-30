@@ -78,6 +78,13 @@ public sealed partial class AudioProcessor : IAudioProcessor
             var author = await Authors
                 .EnsureJoined(record.Session, record.ChatId, cancellationToken)
                 .ConfigureAwait(false);
+
+            var transcriptionSettings = new TranscriptionSettings(Chats, Authors, ServerKvas.GetClient(record.Session));
+            var mustRecordVoice = await transcriptionSettings
+                .GetMustRecordVoice(record.Session, record.ChatId, cancellationToken)
+                .ConfigureAwait(false);
+            // TODO(AK): use mustRecordVoice for recording audio
+
             var recordedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
             var audio = new AudioSource(
                 new Moment(recordedAt),

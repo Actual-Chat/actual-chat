@@ -2,7 +2,7 @@ namespace ActualChat.Kvas;
 
 public static class ServerKvasExt
 {
-    public static IKvas GetClient(this IServerKvas serverKvas, Session session)
+    public static IKvas<User> GetClient(this IServerKvas serverKvas, Session session)
         => new ServerKvasClient(serverKvas, session);
 
     public static Task Set(this IServerKvas serverKvas,

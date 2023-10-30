@@ -438,21 +438,3 @@ body.narrow .btn-h.inverted {
 .btn-submit:disabled {
     @apply text-04;
 }
-
-.two-btn-group {
-    @apply flex-x gap-x-2;
-    @apply p-2;
-    @apply rounded-lg;
-    @apply bg-03;
-}
-.two-btn-group > button {
-    @apply flex-1 flex items-center justify-center;
-    @apply h-8;
-    @apply rounded-lg;
-    @apply bg-transparent;
-    @apply text-02;
-}
-.two-btn-group > button.active {
-    @apply bg-01;
-    @apply text-primary;
-}
