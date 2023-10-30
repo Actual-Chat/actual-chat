@@ -1,54 +1,60 @@
-@inherits ComputedStateComponent<(UserLanguageSettings, Language)>
+@inherits ComputedStateComponent<(UserLanguageSettings, Language)?>
 @{
     var m = State.Value;
-    var userLanguages = m.Item1;
+    if (!m.HasValue)
+        return;
+    var userLanguages = m.Value.Item1;
+    var selectedLanguage = m.Value.Item2;
+    var primary = userLanguages.Primary;
+    var nSecondary = userLanguages.Secondary;
 }
 
 <div class="language-btn-group two-btn-group">
-    @foreach (var language in Languages.All) {
-        if (language == userLanguages.Primary) {
-            <button
-                class="@(language == m.Item2 ? "active" : "")"
-                @onclick="@(() => OnClick(language))">
-                @userLanguages.Primary.Title
-            </button>
-        }
-        if (language == userLanguages.Secondary) {
-            <button
-                class="@(language == m.Item2 ? "active" : "")"
-                @onclick="@(() => OnClick(language))">
-                @userLanguages.Secondary.Value.Title
-            </button>
-        }
+    @if (IsValid(primary)) {
+        <button
+            class="@(primary == selectedLanguage ? "active" : "")"
+            @onclick="@(() => OnClick(primary))">
+            @primary.Title
+        </button>
+    }
+    @if (nSecondary.HasValue && IsValid(nSecondary.Value)) {
+        var secondary = nSecondary.Value;
+        <button
+            class="@(secondary == selectedLanguage ? "active" : "")"
+            @onclick="@(() => OnClick(secondary))">
+            @secondary.Title
+        </button>
     }
 </div>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+    private ChatId _chatId;
+
     [Inject] private LanguageUI LanguageUI { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public string ChatSid { get; set; } = null!;
 
-    protected override ComputedState<(UserLanguageSettings, Language)>.Options GetStateOptions()
+    protected override void OnInitialized() {
+        _chatId = ChatId.Parse(ChatSid);
+        base.OnInitialized();
+    }
+
+    protected override ComputedState<(UserLanguageSettings, Language)?>.Options GetStateOptions()
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<(UserLanguageSettings, Language)> ComputeState(CancellationToken cancellationToken) {
-        var languages = await LanguageUI.Settings.Use(cancellationToken);
-        var chatLanguage = await LanguageUI.GetChatLanguage(Chat.Id, cancellationToken).ConfigureAwait(false);
-        return (languages, chatLanguage);
+    protected override async Task<(UserLanguageSettings, Language)?> ComputeState(CancellationToken cancellationToken) {
+        var userLanguages = await LanguageUI.Settings.Use(cancellationToken);
+        var chatLanguage = await LanguageUI.GetChatLanguage(_chatId, cancellationToken).ConfigureAwait(false);
+        return (userLanguages, chatLanguage);
     }
 
-    private async Task OnClick(Language language, CancellationToken cancellationToken = default) {
-        var languages = await LanguageUI.Settings.Use(cancellationToken);
-        if (languages.Secondary != null) {
-            await LanguageUI.ChangeChatLanguage(Chat.Id, language);
-        } else
-            _ = ModalUI.Show(new NoSecondaryLanguageModal.Model());
-    }
+    private bool IsValid(Language? language)
+        => language != null && Languages.All.Contains(language.Value);
+
+    private async Task OnClick(Language language)
+        => await LanguageUI.ChangeChatLanguage(_chatId, language);
 }

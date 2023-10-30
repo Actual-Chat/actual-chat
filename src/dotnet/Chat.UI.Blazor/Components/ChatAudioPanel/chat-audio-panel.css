@@ -120,10 +120,6 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .chat-audio-panel .recorder-wrapper:active {
     @apply translate-y-0.5;
 }
-.narrow .chat-audio-panel .btn.chat-language-toggle {
-    @apply text-primary;
-}
-.narrow .chat-audio-panel .btn.btn-round.chat-language-toggle .btn-content,
 .narrow .chat-audio-panel .playback-wrapper.listen-off,
 .narrow .chat-audio-panel .playback-wrapper.listen-on-to-off {
     @apply bg-gradient-to-b from-[var(--background-02)] to-[var(--background-01)];

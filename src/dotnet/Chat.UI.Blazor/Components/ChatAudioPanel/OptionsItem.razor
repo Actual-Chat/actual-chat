@@ -1,16 +1,12 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-@{
-    var status = IsOn ? "On" : "Off";
-}
-
 <div class="options-item">
     <div class="c-left">
         @Left
     </div>
     <div class="c-title">
         <span class="text-headline-1 text-02">@Title</span>
-        <span class="text-caption-2 text-03">@status</span>
+        <span class="text-caption-2 text-03">@Status</span>
     </div>
     <div class="c-right">
         @Right
@@ -18,10 +14,9 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Left { get; set; }
     [Parameter] public RenderFragment? Title { get; set; }
     [Parameter] public RenderFragment? Right { get; set; }
-    [Parameter] public bool IsOn { get; set; }
+    [Parameter] public string Status { get; set; } = "";
 }

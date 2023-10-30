@@ -67,4 +67,7 @@ public static class KvasExt
             return new PrefixedKvas(kvp.Upstream, $"{prefix}.{kvp.Prefix}");
         return new PrefixedKvas(kvas, prefix);
     }
+
+    public static IKvas<TScope> WithScope<TScope>(this IKvas kvas)
+        => new ScopedKvasProxy<TScope>(kvas);
 }
