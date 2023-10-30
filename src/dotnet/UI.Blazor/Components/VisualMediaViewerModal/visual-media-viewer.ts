@@ -28,11 +28,10 @@ export class VisualMediaViewer {
     private media: HTMLElement;
     private readonly header: HTMLElement;
     private readonly footer: HTMLElement;
-    private mainCarousel: HTMLElement;
     private footerCarousel: HTMLElement;
     private nextButton: HTMLElement = null;
     private prevButton: HTMLElement = null;
-    private mediaArray: Element[] = null;
+    private mediaArray: HTMLElement[] = null;
     private movePoints: PointerEvent[] = null;
     private stopMovement: boolean = true;
     private readonly fadingRate: number = 1.05;
@@ -78,6 +77,27 @@ export class VisualMediaViewer {
             .subscribe(() => this.onScreenSizeChange());
 
         this.media = imageViewer.querySelector('.active');
+        this.mediaArray = [...imageViewer.querySelectorAll<HTMLElement>(':scope img.c-main-image')];
+        for (const element of this.mediaArray) {
+            const id = element.id;
+            const cachedId = 'cached:' + id;
+            const imageElement = element as HTMLImageElement;
+            if (imageElement.complete && imageElement.naturalWidth !== 0) {
+                const cachedImageElement = document.getElementById(cachedId);
+                if (cachedImageElement)
+                    cachedImageElement.remove();
+            }
+            else {
+                element.classList.add('hidden');
+                element.addEventListener('load', (e) => {
+                    element.classList.remove('hidden');
+
+                    const cachedImageElement = document.getElementById(cachedId);
+                    if (cachedImageElement)
+                        cachedImageElement.remove();
+                });
+            }
+        }
 
         this.overlay = this.imageViewer.closest('.modal-overlay');
         this.header = this.overlay.querySelector('.image-viewer-header');
@@ -218,13 +238,10 @@ export class VisualMediaViewer {
     }
 
     private initCarousels() {
-        this.mainCarousel = this.imageViewer;
         this.footerCarousel = this.footer.querySelector('.footer-gallery');
-        let allMedia = this.mainCarousel.querySelectorAll('.active, .inactive');
         let allFooterMedia = this.footerCarousel.querySelectorAll('.active, .inactive');
-        if (allMedia.length < 2)
+        if (!this.mediaArray || this.mediaArray.length < 2)
             return;
-        this.mediaArray = Array.from(allMedia);
 
         fromEvent(allFooterMedia, 'pointerdown')
             .pipe(takeUntil(this.disposed$))
@@ -504,7 +521,7 @@ export class VisualMediaViewer {
         let currentMediaIndex = this.mediaArray.indexOf(this.media);
         if (currentMediaIndex == 0)
             return;
-        let newMedia = this.mediaArray[currentMediaIndex - 1] as HTMLElement;
+        let newMedia = this.mediaArray[currentMediaIndex - 1];
         let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
         this.changeMedia(footerMedia, newMedia, newMedia);
     }
@@ -513,7 +530,7 @@ export class VisualMediaViewer {
         let currentMediaIndex = this.mediaArray.indexOf(this.media);
         if (currentMediaIndex == this.mediaArray.length - 1)
             return;
-        let newMedia = this.mediaArray[currentMediaIndex + 1] as HTMLElement;
+        let newMedia = this.mediaArray[currentMediaIndex + 1];
         let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
         this.changeMedia(footerMedia, newMedia, newMedia);
     }

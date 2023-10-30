@@ -79,6 +79,8 @@ public static partial class Constants
     {
         public const int FileSizeLimit = 100 * 1024 * 1024;
         public const int FileCountLimit = 10;
+        public const int MaxImageWidth = 480; // In pixels
+        public const int MaxImageHeight = 480; // In pixels
     }
 
     public static class Contacts

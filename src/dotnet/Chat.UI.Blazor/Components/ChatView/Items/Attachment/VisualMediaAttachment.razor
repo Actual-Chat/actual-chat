@@ -7,7 +7,7 @@
     if (attachment.IsGif()) {
         previewUrl = url; // currently image proxy fails on large gifs
     } else if(attachment.IsImage()) {
-        previewUrl = UrlMapper.ImagePreviewUrl(url, MaxWidth * ActualResolutionMultiplier, MaxHeight * ActualResolutionMultiplier);
+        previewUrl = UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxImageWidth, Constants.Attachments.MaxImageHeight);
     }
 }
 
@@ -15,29 +15,23 @@
     <a class="cursor-pointer"
        href="@url"
        role="button"
-       @onclick="@(_ => VisualMediaViewerUI.Show(url, null, ChatEntry))"
+       @onclick="@(_ => VisualMediaViewerUI.Show(url, previewUrl, null, ChatEntry))"
        @onclick:preventDefault="true">
         @if (attachment.IsVideo()) {
-            <video preload="auto" oncanplay="this.muted = true; this.play()"
-                   autoplay muted playsinline loop>
+            <video preload="auto" autoplay muted playsinline loop>
                 <source src="@url#t=,5" />
             </video>
         } else {
-            <img draggable="false"
-                 crossorigin="anonymous"
-                 class="inline skeleton"
-                 src="@previewUrl"
-                 alt="Image attachment"
-                 onload="this.classList.remove('skeleton')"/>
+            <image-skeleton
+                class="loading"
+                src="@previewUrl"
+            />
         }
     </a>
 </div>
 
 @code {
-    private const int MaxWidth = 400; // In pixels
-    private const int MaxHeight = 300; // In pixels
-    private static readonly Vector2 MaxSize = new(MaxWidth, MaxHeight);
-    private const int ActualResolutionMultiplier = 2;
+    private static readonly Vector2 MaxSize = new(Constants.Attachments.MaxImageWidth, Constants.Attachments.MaxImageHeight);
 
     [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;

@@ -130,7 +130,8 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         if (storageBucket.IsNullOrEmpty()) {
             services.AddSingleton<IContentTypeProvider>(c
                 => c.GetRequiredService<IOptions<StaticFileOptions>>().Value.ContentTypeProvider);
-            services.AddSingleton<IBlobStorageProvider>(c => new TempFolderBlobStorageProvider(c));
+            services.AddSingleton<LocalFolderBlobStorage.Options>();
+            services.AddSingleton<IBlobStorageProvider>(c => new LocalFolderBlobStorageProvider(c));
         }
         else
             services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));

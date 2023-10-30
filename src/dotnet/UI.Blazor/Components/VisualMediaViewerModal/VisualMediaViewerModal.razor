@@ -31,7 +31,10 @@
                            <source src="@url#t=,5"/>
                        </video>
                    } else {
-                       <img draggable="false" class="inline skeleton" src="@previewUrl" alt="image" onload="this.classList.remove('skeleton')"/>
+                       <image-skeleton
+                           class="loading"
+                           src="@previewUrl"
+                       />
                    }
                </div>;
     }
@@ -44,7 +47,11 @@
             foreach (var media in mediaList) {
                 var url = UrlMapper.ContentUrl(media.Media.ContentId);
                 var id = media.Media.ContentId;
+                var idCached = "cached:" + id;
                 var mediaCls = url == ModalModel.Url ? "active" : "inactive";
+                var cachedImageUrl = url == ModalModel.Url
+                    ? ModalModel.CachedImageUrl
+                    : UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxImageWidth, Constants.Attachments.MaxImageHeight);
                 @if (media.IsVideo()) {
                     <video
                         id="@id"
@@ -57,11 +64,20 @@
                         <source src="@url"/>
                     </video>
                 } else {
-                    <img class="image-container @mediaCls"
+                    <img class="image-container c-main-image @mediaCls"
                          id="@id"
                          width="@media.Media.Width"
                          height="@media.Media.Height"
-                         src="@url" alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"/>
+                         src="@url"
+                         alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"
+                         />
+                    <img id="@idCached"
+                         class="image-container @mediaCls"
+                         width="@media.Media.Width"
+                         height="@media.Media.Height"
+                         src="@cachedImageUrl"
+                         alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"/>
+
                 }
             }
         }
@@ -130,12 +146,13 @@
     [JSInvokable]
     public void ChangeMedia(string mediaId) {
         var url = UrlMapper.ContentUrl(mediaId);
-        ModalModel = new Model(url, "", ModalModel.ChatEntry);
+        ModalModel = new Model(url, "","", ModalModel.ChatEntry);
         StateHasChanged();
     }
 
     public sealed record Model(
         string Url,
+        string? CachedImageUrl,
         string? AltText,
         ChatEntry? ChatEntry = default);
 }

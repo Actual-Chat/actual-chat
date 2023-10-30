@@ -32,6 +32,14 @@
 .file-attachment-size {
     @apply text-03 text-xs;
 }
-.image-attachment img.skeleton {
+.image-attachment image-skeleton.loading {
     @apply bg-skeleton rounded-md animate-pulse;
+    @apply w-full;
+}
+.image-attachment image-skeleton {
+    @apply rounded-md;
+    @apply w-fit;
+}
+.message-image-attachments:has(image-skeleton.loading) {
+    @apply w-full;
 }

@@ -4,20 +4,20 @@ using Stl.IO;
 
 namespace ActualChat.Blobs.Internal;
 
-internal class LocalFolderBlobStorage : IBlobStorage
+internal class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, IServiceProvider services)
+    : IBlobStorage
 {
+    public record Options
+    {
+        public FilePath BaseDirectory { get; init; } = ".";
+    }
+
     private IContentTypeProvider? _contentTypeProvider;
-    private FilePath BaseDirectory { get; }
-    private IServiceProvider Services { get; }
+    private FilePath BaseDirectory { get; } = options.BaseDirectory.FullPath.DirectoryPath;
+    private IServiceProvider Services { get; } = services;
 
     private IContentTypeProvider ContentTypeProvider
         => _contentTypeProvider ??= Services.GetRequiredService<IContentTypeProvider>();
-
-    public LocalFolderBlobStorage(FilePath directory, IServiceProvider services)
-    {
-        Services = services;
-        BaseDirectory = directory.DirectoryPath;
-    }
 
     public ValueTask DisposeAsync()
         => default;
