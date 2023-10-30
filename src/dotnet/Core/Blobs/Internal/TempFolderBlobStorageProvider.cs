@@ -1,9 +1,8 @@
-using Microsoft.AspNetCore.StaticFiles;
 using Stl.IO;
 
 namespace ActualChat.Blobs.Internal;
 
-internal class TempFolderBlobStorageProvider(IServiceProvider services) : IBlobStorageProvider
+public class TempFolderBlobStorageProvider(IServiceProvider services) : IBlobStorageProvider
 {
     private IServiceProvider Services { get; } = services;
 

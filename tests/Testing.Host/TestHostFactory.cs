@@ -1,4 +1,5 @@
 using ActualChat.App.Server;
+using ActualChat.Blobs.Internal;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -61,6 +62,7 @@ public static class TestHostFactory
                 services.AddSettings<TestSettings>();
                 services.AddSingleton(output);
                 services.AddSingleton<PostgreSqlPoolCleaner>();
+                services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
             },
             AppConfigurationBuilder = builder => {
                 ConfigureTestApp(builder, output);
