@@ -7,10 +7,10 @@
     @apply cursor-pointer;
 }
 .reaction-badge.icons {
-    @apply pr-0.75 md:pr-0.5;
+    @apply p-0.5;
 }
 .reaction-badge .c-emoji {
-    @apply w-5 md:w-4.5 h-5 md:h-4.5;
+    @apply w-5 md:w-4 h-5 md:h-4;
 }
 .reaction-badge.own {
     @apply bg-reaction-own;
