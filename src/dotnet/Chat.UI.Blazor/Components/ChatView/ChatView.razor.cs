@@ -412,8 +412,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         NavigationAnchor? scrollAnchor,
         Range<long> chatIdRange)
     {
+        var minTileSize = IdTileStack.MinTileSize;
         var range = (query.IsNone, oldData.Tiles.Count == 0) switch {
             (true, true) => new Range<long>(chatIdRange.End - MinLoadLimit, chatIdRange.End),
+            (true, false) when Math.Abs(oldData.Tiles[^1].Items[^1].Entry.LocalId - chatIdRange.End) <= minTileSize // reduce range when new messages were added
+                => new Range<long>(chatIdRange.End - MinLoadLimit, chatIdRange.End),
             (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId, oldData.Tiles[^1].Items[^1].Entry.LocalId),
             _ => query.KeyRange
                 .ToLongRange()
@@ -431,7 +434,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
         range = range.MoveEnd(1); // tiles excludes the end element
 
-        var minTileSize = IdTileStack.MinTileSize;
         // Fix queryRange start
         if (range.Start < chatIdRange.Start)
             range = new Range<long>(chatIdRange.Start, range.End);
