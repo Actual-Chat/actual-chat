@@ -1,18 +1,33 @@
 using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Contacts.Db;
+using ActualChat.Contacts.Module;
 using ActualChat.Users;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 using Stl.Fusion.EntityFramework;
+using Stl.Redis;
 
 namespace ActualChat.Contacts;
 
 public class ContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services), IContactsBackend
 {
-    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
-    private IExternalContactsBackend ExternalContactsBackend { get; } = services.GetRequiredService<IExternalContactsBackend>();
-    private IDbEntityResolver<string, DbContact> DbContactResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
+    private const string RedisKeyPrefix = ".ContactGreetingLocks.";
+    private ContactsSettings? _settings;
+    private IAccountsBackend? _accountsBackend;
+    private IExternalContactsBackend? _externalContactsBackend;
+    private IDbEntityResolver<string, DbContact>? _dbContactResolver;
+    private RedisDb<ContactsDbContext>? _redisDb;
+
+    private ContactsSettings Settings => _settings ??= Services.GetRequiredService<ContactsSettings>();
+    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
+
+    private IExternalContactsBackend ExternalContactsBackend => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
+
+    private IDbEntityResolver<string, DbContact> DbContactResolver => _dbContactResolver ??= Services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
+
+    public RedisDb<ContactsDbContext> RedisDb => _redisDb ??= Services.GetRequiredService<RedisDb<ContactsDbContext>>();
 
     // [ComputeMethod]
     public virtual async Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken)
@@ -229,16 +244,27 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (account is null || account.IsGreetingCompleted)
             return;
 
-        var referencingUserIds = await ExternalContactsBackend.ListReferencingUserIds(userToGreetId, cancellationToken)
-            .ConfigureAwait(false);
-        await referencingUserIds
-            .Where(userId => userId != account.Id)
-            .Select(CreateContact)
-            .Collect()
-            .ConfigureAwait(false);
+        var alreadyGreetingKey = ToRedisKey(account.Id);
+        var canStart = await RedisDb.Database.StringSetAsync(alreadyGreetingKey, Clocks.SystemClock.Now.ToString(), Settings.GreetingTimeout, When.NotExists).ConfigureAwait(false);
+        if (!canStart)
+            return;
 
-        var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);
-        await Commander.Call(completeCmd, true, cancellationToken).ConfigureAwait(false);
+        try {
+            var referencingUserIds = await ExternalContactsBackend.ListReferencingUserIds(userToGreetId, cancellationToken)
+                .ConfigureAwait(false);
+            await referencingUserIds
+                .Where(userId => userId != account.Id)
+                .Select(CreateContact)
+                .Collect()
+                .ConfigureAwait(false);
+
+            var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);
+            await Commander.Call(completeCmd, true, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            await RedisDb.Database.KeyDeleteAsync(alreadyGreetingKey).ConfigureAwait(false);
+        }
+        return;
 
         Task<Contact?> CreateContact(UserId ownerId) {
             var contact = new Contact(ContactId.Peer(ownerId, userToGreetId));
@@ -315,4 +341,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
         await Commander.Call(new ContactsBackend_Greet(eventCommand.UserId), cancellationToken).ConfigureAwait(false);
     }
+
+    // private methods
+
+    private static string ToRedisKey(UserId userId)
+        => $"{RedisKeyPrefix}{userId.Value}";
 }

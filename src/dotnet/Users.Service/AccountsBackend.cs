@@ -9,13 +9,19 @@ namespace ActualChat.Users;
 
 public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbContext>(services), IAccountsBackend
 {
+    private IAuthBackend? _authBackend;
+    private IAvatarsBackend? _avatarsBackend;
+    private IServerKvasBackend? _serverKvasBackend;
+    private GreetingDispatcher? _greetingDispatcher;
+    private IDbEntityResolver<string, DbAccount>? _dbAccountResolver;
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
 
-    private IAuthBackend AuthBackend { get; } = services.GetRequiredService<IAuthBackend>();
-    private IAvatarsBackend AvatarsBackend { get; } = services.GetRequiredService<IAvatarsBackend>();
-    private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
-    private IDbEntityResolver<string, DbAccount> DbAccountResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
+    private IAuthBackend AuthBackend => _authBackend ??= Services.GetRequiredService<IAuthBackend>();
+    private IAvatarsBackend AvatarsBackend => _avatarsBackend ??= Services.GetRequiredService<IAvatarsBackend>();
+    private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
+    private GreetingDispatcher GreetingDispatcher => _greetingDispatcher ??= Services.GetRequiredService<GreetingDispatcher>();
+    private IDbEntityResolver<string, DbAccount> DbAccountResolver => _dbAccountResolver ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
 
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
@@ -87,8 +93,12 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .FirstOrDefaultAsync(a => a.Id == account.Id, cancellationToken)
             .ConfigureAwait(false);
         dbAccount = dbAccount.RequireVersion(expectedVersion);
+        var needsGreeting = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        if (needsGreeting)
+            GreetingDispatcher.OnGreetingNeeded();
     }
 
     // [CommandHandler]

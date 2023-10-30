@@ -15,6 +15,7 @@ public interface IContacts : IComputeService
     Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnTouch(Contacts_Touch command, CancellationToken cancellationToken);
+    [Obsolete("2023.10: No not available for clients anymore")]
     [CommandHandler]
     Task OnGreet(Contacts_Greet command, CancellationToken cancellationToken);
 }
@@ -35,7 +36,7 @@ public sealed partial record Contacts_Change(
     [property: DataMember, MemoryPackOrder(3)] Change<Contact> Change
 ) : ISessionCommand<Contact?>;
 
-
+[Obsolete("2023.10: No not available for clients anymore")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Contacts_Greet(

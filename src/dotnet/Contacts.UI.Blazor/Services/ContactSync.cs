@@ -1,4 +1,5 @@
 using ActualChat.Permissions;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.Contacts.UI.Blazor.Services;
@@ -6,7 +7,7 @@ namespace ActualChat.Contacts.UI.Blazor.Services;
 public class ContactSync(IServiceProvider services) : WorkerBase, IComputeService
 {
     private Session Session { get; } = services.Session();
-    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private AccountUI AccountUI { get; } = services.GetRequiredService<AccountUI>();
     private IExternalContacts ExternalContacts { get; } = services.GetRequiredService<IExternalContacts>();
     private DeviceContacts DeviceContacts { get; } = services.GetRequiredService<DeviceContacts>();
     private ContactsPermissionHandler ContactsPermission { get; } = services.GetRequiredService<ContactsPermissionHandler>();
@@ -17,7 +18,6 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var baseChains = new[] {
-            AsyncChainExt.From(EnsureGreeted),
             AsyncChainExt.From(SyncUntilSignedOut),
         };
         var retryDelays = RetryDelaySeq.Exp(3, 600);
@@ -27,16 +27,6 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
             ).RunIsolated(cancellationToken);
-    }
-
-    private async Task EnsureGreeted(CancellationToken cancellationToken)
-    {
-        // TODO: this code is backing up ExternalContactsBackend.OnUserEvent
-        var (account, _) = await WhenAuthenticated(cancellationToken).ConfigureAwait(false);
-        if (account.IsGreetingCompleted)
-            return;
-
-        await Commander.Call(new Contacts_Greet(Session), cancellationToken).ConfigureAwait(false);
     }
 
     private async Task SyncUntilSignedOut(CancellationToken cancellationToken)
@@ -112,6 +102,5 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
     }
 
     private Task<Computed<AccountFull>> WhenAuthenticated(CancellationToken cancellationToken)
-        => Computed.Capture(() => Accounts.GetOwn(Session, cancellationToken))
-            .When(x => x.IsActive(), cancellationToken);
+        => AccountUI.OwnAccount.When(x => x.IsActive(), cancellationToken);
 }
