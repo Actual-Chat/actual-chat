@@ -235,8 +235,15 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply min-w-20 max-w-20;
     @apply m-0;
 }
-.narrow-panel.narrow .chat-audio-panel .playback-button .playback-wrapper {
+.narrow-panel.narrow .chat-audio-panel .playback-button .playback-wrapper,
+.narrow-panel.narrow .chat-audio-panel .playback-button .playback-wrapper.listen-on-to-off {
     @apply min-h-12 max-h-12;
+    background: var(--audio-panel-button);
+}
+.narrow-panel.narrow .chat-audio-panel .playback-button .playback-wrapper.listen-on,
+.narrow-panel.narrow .chat-audio-panel .playback-button .playback-wrapper.listen-off-to-on {
+    @apply min-h-12 max-h-12;
+    background: var(--playback-on);
 }
 .narrow-panel.narrow .chat-audio-panel .playback-button .playback-wrapper .btn {
     @apply left-4;
