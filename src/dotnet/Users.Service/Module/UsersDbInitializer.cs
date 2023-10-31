@@ -86,7 +86,7 @@ public class UsersDbInitializer : DbInitializer<UsersDbContext>
         var avatarBio = isAdmin ? "Admin" : $"I'm just a {name} test bot";
         var avatarPicture = isAdmin
             ? Constants.User.Admin.Picture
-            : $"https://avatars.dicebear.com/api/bottts/{userId.Value.GetDjb2HashCode()}.svg";
+            : $"https://api.dicebear.com/7.x/bottts/svg?seed={userId.Value.GetDjb2HashCode()}";
         var changeAvatarCommand = new Avatars_Change(session, Symbol.Empty, null, new Change<AvatarFull> {
             Create = new AvatarFull(account.Id) {
                 Name = name,

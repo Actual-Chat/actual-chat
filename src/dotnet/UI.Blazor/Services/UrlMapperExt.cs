@@ -14,7 +14,8 @@ public static class UrlMapperExt
         if (pictureUrl.OrdinalStartsWith(DefaultUserPicture.BoringAvatarsBaseUrl))
             return mapper.BoringAvatar(pictureUrl);
 
-        return mapper.ImagePreview128Url(pictureUrl);    }
+        return mapper.ImagePreview128Url(pictureUrl);
+    }
 
     public static string PictureUrl(this UrlMapper mapper, Picture picture)
         => picture.MediaContent != null

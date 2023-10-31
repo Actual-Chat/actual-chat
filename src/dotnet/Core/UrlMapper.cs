@@ -138,7 +138,7 @@ public sealed partial class UrlMapper
         if (ExtensionsToExclude.Contains(extension, StringComparer.OrdinalIgnoreCase))
             return imageUrl;
 
-        if (imageUrl.StartsWith("https://source.boringavatars.com/"))
+        if (imageUrl.StartsWith("https://source.boringavatars.com/", StringComparison.OrdinalIgnoreCase))
             return imageUrl;
 
         var sMaxWidth = maxWidth?.Format();
@@ -155,6 +155,9 @@ public sealed partial class UrlMapper
 
         var imageExtension = Path.GetExtension(imageUrl);
         if (ExtensionsToExclude.Contains(imageExtension, StringComparer.OrdinalIgnoreCase))
+            return imageUrl;
+
+        if (imageUrl.StartsWith("https://api.dicebear.com", StringComparison.OrdinalIgnoreCase))
             return imageUrl;
 
         return $"{ImageProxyBaseUrl}128/{imageUrl}";
