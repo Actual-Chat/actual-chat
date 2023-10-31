@@ -2,17 +2,18 @@ using ActualChat.Contacts;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
+using Stl.Interception;
 
 namespace ActualChat.Users;
 
-internal sealed class GreetingDispatcher : WorkerBase, IHasServices
+internal class GreetingDispatcher : WorkerBase, IComputeService, INotifyInitialized, IHasServices
 {
+    private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);
     private readonly IMutableState<bool> _needsGreeting;
     private const int SelectBatchSize = 100;
     private DbHub<UsersDbContext>? _dbHub;
     private ICommander? _commander;
     private ILogger? _log;
-    private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);
 
     public IServiceProvider Services { get; }
 
@@ -25,6 +26,9 @@ internal sealed class GreetingDispatcher : WorkerBase, IHasServices
         Services = services;
         _needsGreeting = services.StateFactory().NewMutable<bool>();
     }
+
+    void INotifyInitialized.Initialized()
+        => this.Start();
 
     public void OnGreetingNeeded()
         => _needsGreeting.Value = true;

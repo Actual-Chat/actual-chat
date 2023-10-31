@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Contacts.Db;
@@ -7,6 +6,7 @@ namespace ActualChat.Contacts.Db;
 [Table("ExternalContactLinks")]
 [PrimaryKey(nameof(DbExternalContactId), nameof(Value))]
 [Index(nameof(Value))]
+[Index(nameof(IsChecked))]
 public class DbExternalContactLink
 {
     private const string PhonePrefix = "tel:";
@@ -15,6 +15,7 @@ public class DbExternalContactLink
     [Column("ExternalContactId")]
     public string DbExternalContactId { get; set; } = "";
     public string Value { get; set; } = "";
+    public bool IsChecked { get; set; }
 
     public string? ToPhoneHash()
         => Value.OrdinalStartsWith(PhonePrefix) ? Value[PhonePrefix.Length..] : null;
