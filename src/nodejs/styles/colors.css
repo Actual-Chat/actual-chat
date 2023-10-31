@@ -9,8 +9,8 @@
     --gray-40: #777777;
     --gray-30: #535353;
     --gray-20: #393939;
-    --gray-15: #2F2F2F;
-    --gray-10: #232323;
+    --gray-15: #323232;
+    --gray-10: #282828;
     --gray-05: #1C1C1C;
 
     --blue-99: #E5F2FF;
@@ -266,8 +266,8 @@
 }
 .theme-dark {
     /* Background */
-    --background-01: var(--gray-15);
-    --background-02: var(--gray-10);
+    --background-01: var(--gray-20);
+    --background-02: var(--gray-15);
     --background-03: var(--gray-10);
     --background-04: var(--gray-05);
     --background-05: var(--gray-30);
@@ -347,7 +347,7 @@
 
     /* Post Audio Panel */
     --post-panel: var(--gray-10);
-    --post-panel-wide: var(--gray-20);
+    --post-panel-wide: var(--gray-30);
     --post-panel-text: var(--gray-80);
     --playback-on: var(--blue-10);
     --playback-outline: var(--transparent);
