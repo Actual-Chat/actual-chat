@@ -43,7 +43,7 @@ public static partial class Constants
         {
             public static readonly UserId UserId = new("actual-admin", AssumeValid.Option);
             public static readonly string Name =  "Actual Chat Admin";
-            public static readonly string Picture = "https://avatars.dicebear.com/api/avataaars/12333323132.svg";
+            public static readonly string Picture = "https://api.dicebear.com/7.x/bottts/svg?seed=12333323132";
         }
 
         public static class Walle
@@ -51,10 +51,9 @@ public static partial class Constants
             public static readonly UserId UserId = new("walle", AssumeValid.Option);
             public static readonly long AuthorLocalId = -1;
             public static readonly string Name =  "Wall-E";
-            public static readonly string Picture = "https://avatars.dicebear.com/api/bottts/12.svg";
+            public static readonly string Picture = "https://api.dicebear.com/7.x/bottts/svg?seed=12";
         }
 
-        public static IReadOnlySet<UserId> SystemUserIds = new HashSet<UserId>(new [] { Admin.UserId, Walle.UserId });
         public static readonly int TestBotCount = 30;
     }
 
