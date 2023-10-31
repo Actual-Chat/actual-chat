@@ -13,5 +13,5 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
     private void OnClick()
-        => ModalUI.Show(new TranscriptionOptionsModal.Model(Chat.Id));
+        => ModalUI.Show(new VoiceSettingsModal.Model(Chat.Id));
 }

@@ -79,9 +79,9 @@ public sealed partial class AudioProcessor : IAudioProcessor
                 .EnsureJoined(record.Session, record.ChatId, cancellationToken)
                 .ConfigureAwait(false);
 
-            var transcriptionSettings = new TranscriptionSettings(Chats, Authors, ServerKvas.GetClient(record.Session));
-            var mustRecordVoice = await transcriptionSettings
-                .GetPersistVoice(record.Session, record.ChatId, cancellationToken)
+            var transcriptionSettings = new VoiceSettings(Chats, Authors, ServerKvas.GetClient(record.Session));
+            var voiceMode = await transcriptionSettings
+                .GetVoiceMode(record.Session, record.ChatId, cancellationToken)
                 .ConfigureAwait(false);
 
             var recordedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
@@ -118,7 +118,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
                 cancellationToken);
 
             var transcribeTask = BackgroundTask.Run(
-                () => TranscribeAudio(openSegment, audioEntryTask, mustRecordVoice.Value, CancellationToken.None),
+                () => TranscribeAudio(openSegment, audioEntryTask, voiceMode.MustStreamVoice, CancellationToken.None),
                 Log,
                 $"{nameof(TranscribeAudio)} failed",
                 CancellationToken.None);
@@ -134,7 +134,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
             var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
             // we don't use cancellationToken there because we should finalize audio entry
             // if it has been created successfully no matter of method cancellation
-            var audioBlobId = mustRecordVoice.Value
+            var audioBlobId = voiceMode.MustStreamVoice
                 ? await AudioSegmentSaver.Save(closedSegment, CancellationToken.None).ConfigureAwait(false)
                 : null;
             // this should already have been completed by this time

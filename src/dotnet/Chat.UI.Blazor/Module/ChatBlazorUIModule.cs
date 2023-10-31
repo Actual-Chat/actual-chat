@@ -79,7 +79,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         // IModalViews
         services.AddTypeMap<IModalView>(map => map
             .Add<AvatarSelectModal.Model, AvatarSelectModal>()
-            .Add<TranscriptionOptionsModal.Model, TranscriptionOptionsModal>()
+            .Add<VoiceSettingsModal.Model, VoiceSettingsModal>()
             .Add<ChatSettingsModal.Model, ChatSettingsModal>()
             .Add<AddMemberModal.Model, AddMemberModal>()
             .Add<NewChatModal.Model, NewChatModal>()
