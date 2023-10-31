@@ -4,5 +4,5 @@ public enum VoiceMode
 {
     TextAndVoice,
     JustText,
-    JustVoice
+    JustVoice,
 }

@@ -63,7 +63,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
         CancellationToken cancellationToken)
     {
         Log.LogTrace(nameof(ProcessAudio) + ": record #{RecordId} = {Record}", record.Id, record);
-
+        var beginsAt = Clocks.SystemClock.Now;
         string? streamId = null;
         try {
             var rules = await Chats.GetRules(record.Session, record.ChatId, cancellationToken).ConfigureAwait(false);
@@ -105,20 +105,29 @@ public sealed partial class AudioProcessor : IAudioProcessor
                 .GetFrames(cancellationToken)
                 .Select(f => f.Data)
                 .Prepend(new ActualOpusStreamHeader(audio.CreatedAt, audio.Format).Serialize());
-            var publishAudioTask = BackgroundTask.Run(
-                () => AudioStreamServer.Write(openSegment.StreamId, audioStream, cancellationToken),
-                Log,
-                $"{nameof(AudioStreamServer.Write)} failed",
-                cancellationToken);
+            var publishAudioTask = voiceMode.MustStreamVoice
+                ? BackgroundTask.Run(
+                    () => AudioStreamServer.Write(openSegment.StreamId, audioStream, cancellationToken),
+                    Log,
+                    $"{nameof(AudioStreamServer.Write)} failed",
+                    cancellationToken)
+                : Task.CompletedTask;
 
-            var audioEntryTask = BackgroundTask.Run(
-                () => CreateAudioEntry(openSegment, recordedAt, cancellationToken),
-                Log,
-                $"{nameof(CreateAudioEntry)} failed",
-                cancellationToken);
+            var audioEntryTask = voiceMode.MustStreamVoice
+                ? BackgroundTask.Run(
+                    () => CreateAudioEntry(openSegment, beginsAt, recordedAt, cancellationToken),
+                    Log,
+                    $"{nameof(CreateAudioEntry)} failed",
+                    cancellationToken)
+                : Task.FromResult<ChatEntry?>(null);
 
             var transcribeTask = BackgroundTask.Run(
-                () => TranscribeAudio(openSegment, audioEntryTask, voiceMode.MustStreamVoice, CancellationToken.None),
+                () => TranscribeAudio(
+                    openSegment,
+                    beginsAt,
+                    audioEntryTask,
+                    voiceMode.MustStreamVoice,
+                    CancellationToken.None),
                 Log,
                 $"{nameof(TranscribeAudio)} failed",
                 CancellationToken.None);
@@ -126,8 +135,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
             // TODO(AY): We should make sure finalization happens no matter what (later)!
             // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
 
-            await publishAudioTask.ConfigureAwait(false);
-            await audioEntryTask.ConfigureAwait(false);
+            await Task.WhenAll(publishAudioTask, audioEntryTask).ConfigureAwait(false);
             await openSegment.Audio.WhenDurationAvailable.ConfigureAwait(false);
             // close open audio segment when the duration become available
             openSegment.Close(openSegment.Audio.Duration);
@@ -139,8 +147,9 @@ public sealed partial class AudioProcessor : IAudioProcessor
                 : null;
             // this should already have been completed by this time
             var audioEntry = await audioEntryTask.ConfigureAwait(false);
-            await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, CancellationToken.None)
-                .ConfigureAwait(false);
+            if (audioEntry != null)
+                await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, CancellationToken.None)
+                    .ConfigureAwait(false);
 
             // we don't care much about transcription errors - basically we should finalize audio entry before
             await transcribeTask.ConfigureAwait(false);
@@ -165,9 +174,10 @@ public sealed partial class AudioProcessor : IAudioProcessor
         return language;
     }
 
-    private async Task TranscribeAudio(
+    private Task TranscribeAudio(
         OpenAudioSegment audioSegment,
-        Task<ChatEntry> audioEntryTask,
+        Moment beginsAt,
+        Task<ChatEntry?> audioEntryTask,
         bool mustPersistAudio,
         CancellationToken cancellationToken)
     {
@@ -187,21 +197,24 @@ public sealed partial class AudioProcessor : IAudioProcessor
             transcripts.Replay(cancellationToken).ToTranscriptDiffs(),
             cancellationToken);
         var textEntryTask = CreateAndFinalizeTextEntry(
+            audioSegment.AudioRecord.ChatId,
+            audioSegment.Author.Id,
+            beginsAt,
             audioEntryTask,
             transcriptStreamId,
             audioSegment.AudioRecord.RepliedChatEntryId,
             transcripts.Replay(cancellationToken),
             mustPersistAudio);
-        await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
+        return Task.WhenAll(publishTask, textEntryTask);
     }
 
-    private async Task<ChatEntry> CreateAudioEntry(
+    private async Task<ChatEntry?> CreateAudioEntry(
         OpenAudioSegment audioSegment,
+        Moment beginsAt,
         Moment recordedAt,
         CancellationToken cancellationToken)
     {
-        var now = Clocks.SystemClock.Now;
-        var delay = now - recordedAt;
+        var delay = beginsAt - recordedAt;
         DebugLog?.LogDebug("CreateAudioEntry: delay={Delay:N1}ms", delay.TotalMilliseconds);
 
         var chatId = audioSegment.AudioRecord.ChatId;
@@ -210,7 +223,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
             AuthorId = audioSegment.Author.Id,
             Content = "",
             StreamId = audioSegment.StreamId,
-            BeginsAt = now,
+            BeginsAt = beginsAt,
             ClientSideBeginsAt = recordedAt,
         });
         var audioEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
@@ -238,14 +251,16 @@ public sealed partial class AudioProcessor : IAudioProcessor
     }
 
     private async Task CreateAndFinalizeTextEntry(
-        Task<ChatEntry> audioEntryTask,
+        ChatId chatId,
+        AuthorId authorId,
+        Moment beginsAt,
+        Task<ChatEntry?> audioEntryTask,
         string transcriptStreamId,
         ChatEntryId repliedChatEntryId,
         IAsyncEnumerable<Transcript> transcripts,
         bool mustPersistAudio)
     {
         Transcript? lastTranscript = null;
-        ChatEntry? chatAudioEntry = null;
         ChatEntry? textEntry = null;
         ChatsBackend_UpsertEntry? command;
 
@@ -258,13 +273,12 @@ public sealed partial class AudioProcessor : IAudioProcessor
                     continue;
 
                 // Got first non-empty transcript -> create text entry
-                chatAudioEntry ??= await audioEntryTask.ConfigureAwait(false);
-                var entryId = new ChatEntryId(chatAudioEntry.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
+                var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
                 textEntry = new ChatEntry(entryId) {
-                    AuthorId = chatAudioEntry.AuthorId,
+                    AuthorId = authorId,
                     Content = "",
                     StreamId = transcriptStreamId,
-                    BeginsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
+                    BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
                     RepliedEntryLocalId = repliedChatEntryId is { IsNone: false, LocalId: var localId }
                         ? localId
                         : null,
@@ -278,12 +292,13 @@ public sealed partial class AudioProcessor : IAudioProcessor
         }
         finally {
             if (lastTranscript != null && textEntry != null) {
+                var chatAudioEntry = await audioEntryTask.ConfigureAwait(false);
                 var timeMap = lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0);
                 textEntry = textEntry with {
                     Content = lastTranscript.Text,
                     StreamId = Symbol.Empty,
-                    AudioEntryId = mustPersistAudio ? chatAudioEntry!.LocalId : null,
-                    EndsAt = chatAudioEntry!.BeginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
+                    AudioEntryId = mustPersistAudio ? chatAudioEntry?.LocalId : null,
+                    EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
                     TimeMap = mustPersistAudio ? timeMap : default,
                 };
                 if (EmptyRegex.IsMatch(textEntry.Content)) {
