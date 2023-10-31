@@ -3,8 +3,8 @@
 @inherits ComputedStateComponent<TranscriptionOptionsModal.ComputedModel>
 @{
     var m = State.Value;
-    var status = m.CanChangeMustRecordVoice
-        ? m.MustRecordVoice ? "On" : "Off"
+    var status = m.CanChangePersistVoice
+        ? m.PersistVoice ? "On" : "Off"
         : "disabled";
 }
 
@@ -13,19 +13,17 @@
     <FormBlock>
         <LanguageButtonGroup ChatSid="@ModalModel.ChatId"/>
 
-        @if (m.EnableIncompleteUI) {
-            <OptionsItem Status="@status">
-                <Left><i class="icon-radio-button-on-fill text-2xl"></i></Left>
-                <Title>Record voice</Title>
-                <Right>
-                    <Toggle
-                        Class="toggle-sm"
-                        IsDisabled="@(!m.CanChangeMustRecordVoice)"
-                        IsChecked="@m.MustRecordVoice"
-                        IsCheckedChanged="OnMustRecordVoiceChanged"/>
-                </Right>
-            </OptionsItem>
-        }
+        <OptionsItem Status="@status">
+            <Left><i class="icon-radio-button-on-fill text-2xl"></i></Left>
+            <Title>Record voice</Title>
+            <Right>
+                <Toggle
+                    Class="toggle-sm"
+                    IsDisabled="@(!m.CanChangePersistVoice)"
+                    IsChecked="@m.PersistVoice"
+                    IsCheckedChanged="OnMustRecordVoiceChanged"/>
+            </Right>
+        </OptionsItem>
     </FormBlock>
     </Body>
 </DialogFrame>
@@ -38,7 +36,7 @@
     private Session Session => ChatHub.Session;
     private ChatId ChatId => ModalModel.ChatId;
     private TranscriptionSettings TranscriptionSettings
-        => _transcriptionSettings ??= new TranscriptionSettings(ChatHub.Chats, ChatHub.Authors, ChatHub.AccountSettings);
+        => _transcriptionSettings ??= new (ChatHub.Chats, ChatHub.Authors, ChatHub.AccountSettings);
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
@@ -48,19 +46,18 @@
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
-            InitialValue = new ComputedModel(false, false, false),
+            InitialValue = new (false, false),
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var mustRecordVoice = await TranscriptionSettings.GetMustRecordVoice(Session, ChatId, cancellationToken);
-        var enableIncompleteUI = await ChatHub.Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
-        return new ComputedModel(enableIncompleteUI, mustRecordVoice.CanChange, mustRecordVoice.Value);
+        var persistVoice = await TranscriptionSettings.GetPersistVoice(Session, ChatId, cancellationToken);
+        return new (persistVoice.Value, persistVoice.CanChange);
     }
 
     private async Task OnMustRecordVoiceChanged(bool value)
-        => await TranscriptionSettings.SetMustRecordVoice(Session, ChatId, value, default);
+        => await TranscriptionSettings.SetPersistVoice(Session, ChatId, value, default);
 
-    public sealed record ComputedModel(bool EnableIncompleteUI, bool CanChangeMustRecordVoice, bool MustRecordVoice);
+    public sealed record ComputedModel(bool PersistVoice, bool CanChangePersistVoice);
 
     public sealed record Model(ChatId ChatId);
 }

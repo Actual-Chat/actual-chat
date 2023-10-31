@@ -81,9 +81,8 @@ public sealed partial class AudioProcessor : IAudioProcessor
 
             var transcriptionSettings = new TranscriptionSettings(Chats, Authors, ServerKvas.GetClient(record.Session));
             var mustRecordVoice = await transcriptionSettings
-                .GetMustRecordVoice(record.Session, record.ChatId, cancellationToken)
+                .GetPersistVoice(record.Session, record.ChatId, cancellationToken)
                 .ConfigureAwait(false);
-            // TODO(AK): use mustRecordVoice for recording audio
 
             var recordedAt = default(Moment) + TimeSpan.FromSeconds(record.ClientStartOffset);
             var audio = new AudioSource(
@@ -119,7 +118,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
                 cancellationToken);
 
             var transcribeTask = BackgroundTask.Run(
-                () => TranscribeAudio(openSegment, audioEntryTask, CancellationToken.None),
+                () => TranscribeAudio(openSegment, audioEntryTask, mustRecordVoice.Value, CancellationToken.None),
                 Log,
                 $"{nameof(TranscribeAudio)} failed",
                 CancellationToken.None);
@@ -135,8 +134,9 @@ public sealed partial class AudioProcessor : IAudioProcessor
             var closedSegment = await openSegment.ClosedSegment.ConfigureAwait(false);
             // we don't use cancellationToken there because we should finalize audio entry
             // if it has been created successfully no matter of method cancellation
-            var audioBlobId = await AudioSegmentSaver.Save(closedSegment, CancellationToken.None)
-                .ConfigureAwait(false);
+            var audioBlobId = mustRecordVoice.Value
+                ? await AudioSegmentSaver.Save(closedSegment, CancellationToken.None).ConfigureAwait(false)
+                : null;
             // this should already have been completed by this time
             var audioEntry = await audioEntryTask.ConfigureAwait(false);
             await FinalizeAudioEntry(openSegment, audioEntry, audioBlobId, CancellationToken.None)
@@ -168,6 +168,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
     private async Task TranscribeAudio(
         OpenAudioSegment audioSegment,
         Task<ChatEntry> audioEntryTask,
+        bool mustPersistAudio,
         CancellationToken cancellationToken)
     {
         var transcriptionOptions = new TranscriptionOptions {
@@ -189,7 +190,8 @@ public sealed partial class AudioProcessor : IAudioProcessor
             audioEntryTask,
             transcriptStreamId,
             audioSegment.AudioRecord.RepliedChatEntryId,
-            transcripts.Replay(cancellationToken));
+            transcripts.Replay(cancellationToken),
+            mustPersistAudio);
         await Task.WhenAll(publishTask, textEntryTask).ConfigureAwait(false);
     }
 
@@ -239,7 +241,8 @@ public sealed partial class AudioProcessor : IAudioProcessor
         Task<ChatEntry> audioEntryTask,
         string transcriptStreamId,
         ChatEntryId repliedChatEntryId,
-        IAsyncEnumerable<Transcript> transcripts)
+        IAsyncEnumerable<Transcript> transcripts,
+        bool mustPersistAudio)
     {
         Transcript? lastTranscript = null;
         ChatEntry? chatAudioEntry = null;
@@ -279,9 +282,9 @@ public sealed partial class AudioProcessor : IAudioProcessor
                 textEntry = textEntry with {
                     Content = lastTranscript.Text,
                     StreamId = Symbol.Empty,
-                    AudioEntryId = chatAudioEntry!.LocalId,
-                    EndsAt = chatAudioEntry.BeginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
-                    TimeMap = timeMap,
+                    AudioEntryId = mustPersistAudio ? chatAudioEntry!.LocalId : null,
+                    EndsAt = chatAudioEntry!.BeginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
+                    TimeMap = mustPersistAudio ? timeMap : default,
                 };
                 if (EmptyRegex.IsMatch(textEntry.Content)) {
                     // Final transcript is empty -> remove text entry
