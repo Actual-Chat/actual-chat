@@ -175,7 +175,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddService<ISystemProperties, SystemProperties>();
         fusion.AddService<IAccounts, Accounts>();
         fusion.AddService<IAccountsBackend, AccountsBackend>();
-        services.AddSingleton<GreetingDispatcher>().AddHostedService(c => c.GetRequiredService<GreetingDispatcher>());
+        fusion.AddService<GreetingDispatcher>();
         fusion.AddService<IUserPresences, UserPresences>();
         fusion.AddService<IUserPresencesBackend, UserPresencesBackend>();
         fusion.AddService<IAvatars, Avatars>();
