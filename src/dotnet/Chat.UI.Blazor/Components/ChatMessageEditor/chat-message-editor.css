@@ -214,7 +214,8 @@ body.wide .attachment-mode .post-panel-btn.post-message {
 .attachment-list-wrapper {
     @apply relative flex-y;
     @apply px-2;
-    @apply border-y bg-01;
+    @apply bg-01;
+    @apply border-y border-bg-02;
 }
 .attachment-list-wrapper > .c-btn-group {
     @apply flex-1 flex-x justify-between;

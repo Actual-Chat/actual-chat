@@ -156,8 +156,8 @@
     /* Webkit */
     .custom-scrollbar::-webkit-scrollbar,
     .custom-scrollbar-x::-webkit-scrollbar {
-        @apply w-1.5;
-        @apply h-1.5;
+        @apply w-1;
+        @apply h-1;
     }
     body.narrow .custom-scrollbar::-webkit-scrollbar,
     body.narrow .custom-scrollbar-x::-webkit-scrollbar {

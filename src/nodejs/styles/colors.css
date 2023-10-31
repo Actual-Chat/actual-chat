@@ -251,7 +251,7 @@
     --dot-selected: #4b5e71;
     --skeleton: var(--gray-90);
     --skeleton-border: var(--gray-95);
-    --scrollbar: var(--gray-40);
+    --scrollbar: var(--gray-70);
     --quote: var(--gray-90);
     --place: var(--indigo-80);
     --menuitem-hover: var(--blue-50-10);
@@ -398,7 +398,7 @@
     --dot-selected: #4b5e71;
     --skeleton: var(--gray-05);
     --skeleton-border: var(--gray-10);
-    --scrollbar: var(--gray-60);
+    --scrollbar: var(--gray-30);
     --quote: var(--gray-10);
     --place: var(--indigo-80);
     --menuitem-hover: var(--white-05);
