@@ -113,6 +113,11 @@
     @apply border-danger ring-0;
 }
 
+.form .form-section-content.label-inside-input option {
+    @apply bg-02;
+    @apply text-03;
+}
+
 .form .tile-item {
     @apply min-h-10;
     @apply h-auto;

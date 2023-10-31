@@ -153,14 +153,17 @@ module.exports = {
         'hover': 'var(--hover)',
         'place': 'var(--place)',
         'bubble': 'var(--bubble)',
+        'bubble-text': 'var(--bubble-text)',
+        'bubble-btn-hover': 'var(--bubble-btn-hover)',
         'new-separator': 'var(--new-separator)',
         'menuitem-hover': 'var(--menuitem-hover)',
         'menuitem-hover-warning': 'var(--menuitem-hover-warning)',
-        'bubble-btn-hover': 'var(--bubble-btn-hover)',
 
         // Post Audio Panel
         'post-panel': 'var(--post-panel)',
+        'post-panel-wide': 'var(--post-panel-wide)',
         'playback-on': 'var(--playback-on)',
+        'playback-outline': 'var(--playback-outline)',
         'audio-panel-gradient-top': 'rgb(var(--audio-panel-gradient-top) / <alpha-value>)',
         'audio-panel-gradient-bottom': 'rgb(var(--audio-panel-gradient-bottom) / <alpha-value>)',
         'recorder-off-top': 'var(--recorder-off-top)',
@@ -169,6 +172,8 @@ module.exports = {
         'recorder-on-top': 'var(--recorder-on-top)',
         'recorder-on-bottom': 'var(--recorder-on-bottom)',
         'recorder-on-middle': 'var(--recorder-on-middle)',
+        'audio-panel-button': 'var(--audio-panel-button)',
+        'audio-panel-button-text': 'var(--audio-panel-button-text)',
 
         // Download Banner
         'download-banner-left': 'var(--download-banner-left)',

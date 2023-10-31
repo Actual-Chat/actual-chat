@@ -29,7 +29,7 @@
 /* Buttons */
 .chat-audio-panel .btn.btn-round .btn-content {
     @apply rounded-full;
-    @apply bg-03;
+    @apply bg-post-panel md:bg-post-panel-wide;
 }
 .chat-audio-panel .record-off-btn.btn .btn-content,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover .btn-content {
@@ -76,7 +76,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 .playback-wrapper.listen-off-to-on,
 .playback-wrapper.listen-on {
-    @apply outline outline-1 outline-primary outline-offset-0;
+    @apply outline outline-1 outline-playback-outline outline-offset-0;
     @apply bg-round-focus;
 }
 
@@ -121,15 +121,21 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply translate-y-0.5;
 }
 .narrow .chat-audio-panel .playback-wrapper.listen-off,
-.narrow .chat-audio-panel .playback-wrapper.listen-on-to-off {
+.narrow .chat-audio-panel .playback-wrapper.listen-on-to-off,
+.narrow .chat-audio-panel .language-button {
     @apply bg-gradient-to-b from-[var(--background-02)] to-[var(--background-01)];
 }
 .narrow .chat-audio-panel .playback-wrapper.listen-on,
 .narrow .chat-audio-panel .playback-wrapper.listen-off-to-on {
     @apply bg-playback-on;
 }
-.narrow .chat-audio-panel .playback-wrapper .btn.btn-round .btn-content {
-    @apply bg-transparent;
+.narrow .chat-audio-panel .playback-wrapper .btn.btn-round,
+.narrow .chat-audio-panel .transcription-options-btn.btn.btn-round {
+    @apply text-audio-panel-button-text;
+}
+.narrow .chat-audio-panel .playback-wrapper .btn.btn-round .btn-content,
+.narrow .chat-audio-panel .transcription-options-btn.btn.btn-round .btn-content {
+    @apply bg-audio-panel-button;
 }
 .narrow .chat-audio-panel .playback-wrapper .btn.btn-round.on .btn-content {
     @apply bg-playback-on;
@@ -404,7 +410,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply flex-x gap-x-2;
     @apply p-2;
     @apply rounded-lg;
-    @apply bg-03;
+    @apply bg-04;
 }
 .two-btn-group > span {
     @apply flex-1 flex items-center justify-center;

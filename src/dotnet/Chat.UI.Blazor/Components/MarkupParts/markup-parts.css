@@ -51,33 +51,28 @@ body.hoverable .playable-text-markup > span:hover {
     border-radius: 6px 0 0 0;
 }
 .playable-text-color-blue .playing {
-    background: #2970FF;
-    color: white;
+    @apply bg-[var(--blue-50-20)];
 }
-
 .playable-text-color-blue .played {
-    background: #E1EFFA;
+    @apply bg-[var(--blue-80-20)];
 }
 .playable-text-color-green .playing {
-    background: #13BA6A;
-    color: white;
+    @apply bg-[var(--green-50-20)];
 }
 .playable-text-color-green .played {
-    background: #B8FFDD;
+    @apply bg-[var(--green-80-20)];
 }
 .playable-text-color-purple .playing {
-    background: #5429FF;
-    color: white;
+    @apply bg-[var(--violet-50-20)];
 }
 .playable-text-color-purple .played {
-    background: #E6E0FF;
+    @apply bg-[var(--violet-80-20)];
 }
-.playable-text-color-cyan .playing {
-    background: #00B1D8;
-    color: white;
+.playable-text-color-yellow .playing {
+    @apply bg-[var(--sienna-50-20)];
 }
-.playable-text-color-cyan .played {
-    background: #D3F7FF;
+.playable-text-color-yellow .played {
+    @apply bg-[var(--sienna-80-20)];
 }
 
 .preformatted-text-markup {

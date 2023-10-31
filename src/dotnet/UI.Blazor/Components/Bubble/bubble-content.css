@@ -1,6 +1,6 @@
 /* Content */
 .bubble-content {
-    @apply text-06;
+    @apply text-bubble-text;
 }
 .bubble-content > video {
     @apply rounded-lg;
@@ -42,7 +42,7 @@
     @apply min-w-20;
     @apply px-2;
     @apply border-0;
-    @apply text-06 text-headline-1;
+    @apply text-bubble-text text-headline-1;
 }
 .btn.btn-bubble .btn-content {
     @apply bg-transparent;

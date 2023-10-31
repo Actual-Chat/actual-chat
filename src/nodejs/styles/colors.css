@@ -27,6 +27,7 @@
 
     --blue-50-20: #007AFF33;
     --blue-50-10: #007AFF1A;
+    --blue-80-20: #7CBBFF33;
 
     --magenta-99: #FFF5F9;
     --magenta-95: #FFDFEB;
@@ -79,6 +80,7 @@
     --violet-60-20: #A635FF33;
     --violet-50-20: #5200FF33;
     --violet-50-10: #5200FF1A;
+    --violet-80-20: #D39AFF33;
 
     --navy-50: #0038FF;
     --navy-40: #3360FF;
@@ -96,6 +98,9 @@
     --green-10: #005F15;
     --green-05: #00320B;
 
+    --green-50-20: #00FF3833;
+    --green-80-20: #9CFFB233;
+
     --sienna-90: #FFF2D0;
     --sienna-80: #FFE6A5;
     --sienna-70: #FFD569;
@@ -105,6 +110,9 @@
     --sienna-30: #BA8600;
     --sienna-20: #6A4C00;
     --sienna-10: #352600;
+
+    --sienna-50-20: #FFB80033;
+    --sienna-80-20: #FFE6A533;
 
     --white: #FFFFFF;
     --black: #000000;
@@ -184,15 +192,17 @@
     --round-title: var(--gray-05);
 
     /* Hover */
-    --more-colored: var(--background-01);
-    --less-colored: var(--background-08);
+    --more-colored: var(--white);
+    --less-colored: var(--black);
     --primary-colored: var(--primary);
     --danger-colored: var(--danger);
 
     /* Post Audio Panel */
     --post-panel: var(--gray-20);
+    --post-panel-wide: var(--gray-95);
     --post-panel-text: var(--gray-95);
     --playback-on: var(--blue-90);
+    --playback-outline: var(--primary);
     --audio-panel-gradient-top: var(--background-01);
     --audio-panel-gradient-bottom: var(--post-panel);
     --recorder-off-top: var(--blue-50);
@@ -201,6 +211,8 @@
     --recorder-on-top: var(--magenta-60);
     --recorder-on-bottom: var(--violet-60);
     --recorder-on-middle: var(--magenta-50);
+    --audio-panel-button: rgba(0,0,0,0);
+    --audio-panel-button-text: var(--gray-40);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -244,7 +256,8 @@
     --place: var(--indigo-80);
     --menuitem-hover: var(--blue-50-10);
     --menuitem-hover-warning: var(--magenta-50-10);
-    --bubble: var(--indigo-60);
+    --bubble: var(--indigo-70);
+    --bubble-text: var(--white);
     --bubble-btn-hover: var(--black-10);
     --reaction-own: var(--blue-50-20);
     --viewer-header: var(--black-50);
@@ -253,8 +266,8 @@
 }
 .theme-dark {
     /* Background */
-    --background-01: var(--gray-20);
-    --background-02: var(--gray-15);
+    --background-01: var(--gray-15);
+    --background-02: var(--gray-10);
     --background-03: var(--gray-10);
     --background-04: var(--gray-05);
     --background-05: var(--gray-30);
@@ -327,15 +340,17 @@
     --round-title: var(--gray-95);
 
     /* Hover */
-    --more-colored: var(--background-01);
-    --less-colored: var(--background-08);
+    --more-colored: var(--white);
+    --less-colored: var(--black);
     --primary-colored: var(--primary);
     --danger-colored: var(--danger);
 
     /* Post Audio Panel */
     --post-panel: var(--gray-10);
+    --post-panel-wide: var(--gray-20);
     --post-panel-text: var(--gray-80);
     --playback-on: var(--blue-10);
+    --playback-outline: var(--transparent);
     --audio-panel-gradient-top: var(--background-01);
     --audio-panel-gradient-bottom: var(--post-panel);
     --recorder-off-top: var(--blue-50);
@@ -344,6 +359,8 @@
     --recorder-on-top: var(--magenta-60);
     --recorder-on-bottom: var(--violet-60);
     --recorder-on-middle: var(--magenta-50);
+    --audio-panel-button: var(--gray-20);
+    --audio-panel-button-text: var(--gray-60);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -386,7 +403,8 @@
     --place: var(--indigo-80);
     --menuitem-hover: var(--white-05);
     --menuitem-hover-warning: var(--magenta-50-10);
-    --bubble: var(--indigo-40);
+    --bubble: var(--indigo-70);
+    --bubble-text: var(--white);
     --bubble-btn-hover: var(--white-10);
     --reaction-own: var(--white-10);
     --viewer-header: var(--white-10);

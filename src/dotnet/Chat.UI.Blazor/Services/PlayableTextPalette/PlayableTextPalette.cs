@@ -6,7 +6,7 @@ public class PlayableTextPalette
     private static readonly ApiArray<PlayableTextColor> _colors = ApiArray.New(
         PlayableTextColor.Blue,
         PlayableTextColor.Purple,
-        PlayableTextColor.Cyan,
+        PlayableTextColor.Yellow,
         PlayableTextColor.Green);
 
     private readonly List<PaletteColorLease> _leasingHistory = new (HistoryLength);

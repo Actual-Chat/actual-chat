@@ -412,7 +412,7 @@ body.narrow .landing.new .page-1 .main-text .main-text-wrapper .c-btn-group {
     @apply absolute;
     @apply h-full w-screen;
     @apply bg-no-repeat;
-    background: radial-gradient(circle at 40% 95%, #FF3880F5, #0036A3 50%) 0 60% / 120% 200%;
+    background: radial-gradient(circle at 40% 95%, var(--magenta-60), var(--indigo-30) 50%) 0 60% / 120% 200%;
 }
 .landing.new .page-1 .bg-wrapper > .c-image {
     @apply absolute;
@@ -422,7 +422,7 @@ body.narrow .landing.new .page-1 .main-text .main-text-wrapper .c-btn-group {
     @apply bg-[url('/dist/images/ellipses.svg')];
 }
 body.narrow .landing.new .page-1 .bg-wrapper > .c-ground {
-    background: radial-gradient(circle at 50% 95%, #FF3880F5, #0036A3 40%);
+    background: radial-gradient(circle at 50% 95%, var(--magenta-60), var(--indigo-30) 40%);
 }
 body.narrow .landing.new .page-1 .bg-wrapper > .c-image {
     @apply bg-cover bg-repeat-round;
@@ -798,7 +798,7 @@ body.narrow .landing.new .landing-menu {
     @apply flex-1 flex-y lg:flex-x items-center justify-between gap-2 lg:gap-8;
     @apply p-2 lg:p-8 my-12;
     @apply rounded-lg;
-    @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
+    @apply bg-gradient-to-r from-[var(--magenta-40)] to-[var(--primary)];
 }
 body.narrow .landing.new .landing-links {
     @apply hidden;
@@ -824,7 +824,7 @@ body.narrow .landing.new .landing-links {
     @apply h-10;
     @apply px-6;
     @apply rounded-full;
-    @apply bg-gradient-to-r from-[#C20279] to-[#2D6EFC];
+    @apply bg-gradient-to-r from-[var(--magenta-40)] to-[var(--primary)];
     @apply text-06 text-headline-1;
 }
 .btn-download.light {
