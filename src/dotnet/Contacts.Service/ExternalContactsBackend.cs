@@ -8,7 +8,11 @@ namespace ActualChat.Contacts;
 public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services),
     IExternalContactsBackend
 {
-    private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
+    private IAccountsBackend? _accountsBackend;
+    private ContactLinkingJob? _contactLinkingJob;
+
+    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
+    private ContactLinkingJob ContactLinkingJob => _contactLinkingJob ??= Services.GetRequiredService<ContactLinkingJob>();
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<ExternalContact>> List(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken)
@@ -86,6 +90,8 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                 Log.LogError(e, "Failed to change external contact #{ExternalContactId}", itemChange.Id);
                 result.Add(ChangeResult.Error<ExternalContact>(e));
             }
+        if (command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
+            ContactLinkingJob.OnSyncNeeded();
         return result.ToApiArray();
 
         async Task<ExternalContact?> ChangeItem(ExternalContactChange itemChange)
@@ -134,10 +140,8 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                 dbContext.Remove(dbExternalContact);
             }
 
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false); // TODO(FC): bulk save
             externalContact = dbExternalContact.ToModel();
-            if (change.Kind is ChangeKind.Update or ChangeKind.Create)
-                await CreateMissingContacts(ownerId, externalContact, existing, cancellationToken).ConfigureAwait(false);
             return externalContact;
         }
     }
@@ -160,46 +164,5 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             .ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task CreateMissingContacts(
-        UserId ownerId,
-        ExternalContact externalContact,
-        ExternalContact? existing,
-        CancellationToken cancellationToken)
-    {
-        var addedPhoneHashes = existing != null
-            ? externalContact.PhoneHashes.Where(x => !existing.PhoneHashes.Contains(x))
-            : externalContact.PhoneHashes;
-        foreach (var phoneHash in addedPhoneHashes) {
-            var userId = await AccountsBackend.GetIdByPhoneHash(phoneHash, cancellationToken).ConfigureAwait(false);
-            await CreateContact(ownerId, userId, cancellationToken).ConfigureAwait(false);
-        }
-
-        var addedEmailHashes = existing != null
-            ? externalContact.EmailHashes.Where(x => !existing.EmailHashes.Contains(x))
-            : externalContact.EmailHashes;
-        foreach (var emailHash in addedEmailHashes) {
-            var userId = await AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken).ConfigureAwait(false);
-            await CreateContact(ownerId, userId, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private async Task CreateContact(UserId ownerId, UserId userId, CancellationToken cancellationToken)
-    {
-        if (userId.IsNone || ownerId == userId)
-            return;
-
-        var peerChatId = new PeerChatId(ownerId, userId);
-        var contactId = new ContactId(ownerId, peerChatId);
-
-        try {
-            var contact = new Contact(contactId);
-            var cmd = new ContactsBackend_Change(contactId, null, Change.Create(contact));
-            await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to create contact #{ContactId} from external contact", contactId);
-        }
     }
 }
