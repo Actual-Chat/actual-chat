@@ -886,7 +886,7 @@ export class VirtualList {
         useSmoothScroll: boolean = false,
         blockPosition: ScrollLogicalPosition = 'nearest') {
         debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef));
-        this._inertialScroll.interrupt();
+        this._inertialScroll.freeze();
         this._scrollTime = Date.now();
         if (itemRef) {
             const authorBadge = itemRef.querySelector('div.c-author-badge');
@@ -897,12 +897,17 @@ export class VirtualList {
                 inline: 'nearest',
             });
         }
+        fastRaf({
+            write: () => {
+                this._inertialScroll.unfreeze();
+            }
+        });
     }
 
     private scrollToEnd(
         useSmoothScroll: boolean = false) {
         debugLog?.log('scrollTo end');
-        this.scrollTo(this._endAnchorRef, useSmoothScroll, 'end');
+        this.scrollTo(this._endAnchorRef, useSmoothScroll, 'center');
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
@@ -952,12 +957,9 @@ export class VirtualList {
 
                         // set scroll styles to improve UX on iOS before setting scrollTop
                         this._inertialScroll.freeze();
-                        this._ref.style.overscrollBehaviorY = 'none';
                         this._ref.scrollTop = scrollTop;
                         fastRaf({
                             write: () => {
-                                // reset scroll styles
-                                this._ref.style.overscrollBehaviorY = 'auto';
                                 this._inertialScroll.unfreeze();
                             }
                         });
