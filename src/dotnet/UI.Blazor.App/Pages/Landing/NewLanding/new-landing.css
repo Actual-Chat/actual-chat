@@ -412,7 +412,7 @@ body.narrow .landing.new .page-1 .main-text .main-text-wrapper .c-btn-group {
     @apply absolute;
     @apply h-full w-screen;
     @apply bg-no-repeat;
-    background: radial-gradient(circle at 40% 95%, var(--magenta-60), var(--indigo-30) 50%) 0 60% / 120% 200%;
+    background: radial-gradient(circle at 40% 95%, var(--magenta-60), var(--blue-30) 50%) 0 60% / 120% 200%;
 }
 .landing.new .page-1 .bg-wrapper > .c-image {
     @apply absolute;
@@ -422,7 +422,7 @@ body.narrow .landing.new .page-1 .main-text .main-text-wrapper .c-btn-group {
     @apply bg-[url('/dist/images/ellipses.svg')];
 }
 body.narrow .landing.new .page-1 .bg-wrapper > .c-ground {
-    background: radial-gradient(circle at 50% 95%, var(--magenta-60), var(--indigo-30) 40%);
+    background: radial-gradient(circle at 50% 95%, var(--magenta-60), var(--blue-30) 40%);
 }
 body.narrow .landing.new .page-1 .bg-wrapper > .c-image {
     @apply bg-cover bg-repeat-round;

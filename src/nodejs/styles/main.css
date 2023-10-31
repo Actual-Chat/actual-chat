@@ -205,7 +205,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .fusion-close {
     @apply flex-y justify-center;
     @apply h-screen;
-    @apply bg-[var(--indigo-30)];
+    @apply bg-[var(--blue-30)];
 }
 .fusion-close > .c-content {
     @apply flex-1 flex-y items-center justify-center gap-y-4;
