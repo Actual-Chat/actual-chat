@@ -17,6 +17,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private readonly IMutableState<AudioRecorderState> _state;
     private Activity? _recordingActivity;
     private IJSObjectReference _jsRef = null!;
+    private SessionTokens? _sessionTokens;
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -83,12 +84,19 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         else if (!state.ChatId.IsNone)
             await StopRecordingUnsafe();
 
+        var sessionToken = "";
+        if (HostInfo.AppKind.IsClient()) {
+            var sessionTokens = _sessionTokens ??= Services.GetRequiredService<SessionTokens>();
+            var secureToken = await sessionTokens.Get(cancellationToken).ConfigureAwait(false);
+            sessionToken = secureToken.Token;
+        }
+
         MarkStarting(chatId);
         var cts = cancellationToken.CreateLinkedTokenSource();
         cts.CancelAfter(StartRecordingTimeout);
         try {
             var isStarted = await _jsRef
-                .InvokeAsync<bool>("startRecording", cts.Token, chatId, repliedChatEntryId)
+                .InvokeAsync<bool>("startRecording", cts.Token, chatId, repliedChatEntryId, sessionToken)
                 .ConfigureAwait(false);
             if (!isStarted) {
                 MicrophonePermission.ForgetCached();

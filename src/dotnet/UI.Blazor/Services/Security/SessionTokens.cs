@@ -28,36 +28,12 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private Moment Now => Clock.Now;
 
-    public TimeSpan RefreshLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(15);
-    public TimeSpan NoRefreshLifespan { get; init; } = SecureToken.Lifespan - TimeSpan.FromMinutes(5);
+    public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(60);
+    public TimeSpan RefreshLifespan { get; init; } = TimeSpan.FromMinutes(15);
     public SecureToken? Current => _current;
 
     public ValueTask<SecureToken> Get(CancellationToken cancellationToken = default)
-        => Get(RefreshLifespan, cancellationToken);
-
-    public async ValueTask<SecureToken> Get(TimeSpan minLifespan, CancellationToken cancellationToken = default)
-    {
-        minLifespan = minLifespan.Clamp(default, NoRefreshLifespan);
-        var minExpiresAt = Now + minLifespan;
-        var result = _current;
-        if (result != null && result.ExpiresAt >= minExpiresAt)
-            return result;
-
-        result = await GetNew(cancellationToken).ConfigureAwait(false);
-        return result;
-    }
-
-    public async ValueTask<SecureToken> GetNew(CancellationToken cancellationToken = default)
-    {
-        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
-        var result = _current;
-        if (result != null && result.ExpiresAt >= Now + NoRefreshLifespan)
-            return result;
-
-        result = await SecureTokens.CreateSessionToken(Session, cancellationToken).ConfigureAwait(false);
-        Interlocked.Exchange(ref _current, result);
-        return result;
-    }
+        => Get(MinLifespan, cancellationToken);
 
     // Protected & private methods
 
@@ -81,9 +57,37 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
                 jsToken = current.Token;
             }
 
+            var now = Clock.Now;
             await DeviceAwakeUI
-                .SleepUntil(Clock, current.ExpiresAt - minLifespan, cancellationToken)
+                .SleepUntil(Clock,  now + ((current.ExpiresAt - now) / 2) , cancellationToken)
                 .ConfigureAwait(false);
         }
     }
+
+    private async ValueTask<SecureToken> Get(TimeSpan minLifespan, CancellationToken cancellationToken = default)
+    {
+        minLifespan = minLifespan
+            .Add(TimeSpan.FromMinutes(1))
+            .Clamp(default, SecureToken.Lifespan / 2);
+        var minExpiresAt = Now + minLifespan;
+        var result = _current;
+        if (result != null && result.ExpiresAt >= minExpiresAt)
+            return result;
+
+        result = await GetNew(cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
+    private async ValueTask<SecureToken> GetNew(CancellationToken cancellationToken = default)
+    {
+        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        var result = _current;
+        if (result != null && result.ExpiresAt >= Now + (SecureToken.Lifespan / 2))
+            return result;
+
+        result = await SecureTokens.CreateSessionToken(Session, cancellationToken).ConfigureAwait(false);
+        Interlocked.Exchange(ref _current, result);
+        return result;
+    }
+
 }

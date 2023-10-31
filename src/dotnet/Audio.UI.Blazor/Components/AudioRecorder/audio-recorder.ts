@@ -146,11 +146,14 @@ export class AudioRecorder {
     }
 
     /** Called from Blazor  */
-    public async startRecording(chatId: string, repliedChatEntryId: string): Promise<boolean> {
+    public async startRecording(chatId: string, repliedChatEntryId: string, sessionToken: string): Promise<boolean> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
         await AudioRecorder.whenInitialized;
 
         try {
+            if (sessionToken)
+                await opusMediaRecorder.setSessionToken(sessionToken);
+
             if (this.state === 'recording' || this.state === 'starting') {
                 warnLog?.log('startRecording: seems like server and client state are not consistent');
                 return true;
