@@ -32,6 +32,7 @@
 }
 .banner.add-members-banner .banner-body .btn-content {
     @apply gap-x-4 text-headline-1;
+    @apply text-06;
 }
 .banner.add-members-banner .banner-buttons .btn.btn-transparent .btn-content {
     @apply text-06;
