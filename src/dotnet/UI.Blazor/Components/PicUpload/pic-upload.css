@@ -20,6 +20,7 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
 }
 
 .pic-upload-input-file-label {
+    @apply z-10;
     @apply flex items-center justify-center;
     @apply w-full h-full;
     @apply cursor-pointer;
