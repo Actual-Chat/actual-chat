@@ -17,6 +17,7 @@ public static partial class MauiProgram
         services.AddScoped<IRecordingPermissionRequester>(_ => new IOSRecordingPermissionRequester());
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c));
+        services.AddSingleton<Action<Theme>>(_ => MauiApplyThemeHandler.Instance.OnApplyTheme);
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
