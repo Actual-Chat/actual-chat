@@ -6,7 +6,7 @@ using Stl.Interception;
 
 namespace ActualChat.Contacts;
 
-internal class ContactLinkingJob : WorkerBase, IComputeService, IHasServices, INotifyInitialized
+internal class ContactLinkingJob : WorkerBase, IHasServices, INotifyInitialized
 {
     private const int SelectBatchSize = 100;
     private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);
