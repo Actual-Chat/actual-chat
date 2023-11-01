@@ -4,14 +4,17 @@
 @inherits ComputedStateComponent<AuthorModal.ComputedModel>
 @{
     var m = State.Value;
+    var cls = "author-modal modal-sm";
     var title = "User profile";
     if (m.IsOwn)
         title = "Your profile";
     else if (m.Author.IsAnonymous)
         title = "Anonymous profile";
+    else
+        cls += " wide-dialog-buttons";
 }
 
-<DialogFrame Title="@title" Class="author-modal modal-sm" HasCloseButton="true">
+<DialogFrame Title="@title" Class="@cls" HasCloseButton="true">
     <Body>
     <FormBlock>
         <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn" EditMemberModel="@m.EditMemberModel" />
@@ -19,16 +22,21 @@
     </Body>
     <Buttons>
         @if (m.IsOwn) {
-            <Button Class="btn-modal" Click="OnSettingsClick">Edit profile</Button>
             if (!m.Author.IsAnonymous) {
+                <Button Class="btn-modal" Click="OnSettingsClick">Edit profile</Button>
                 <Button Class="btn-modal" Click="OnChangeAvatarClicked">Change avatar</Button>
             } else if (m.EnableIncompleteUI) {
+                <Button Class="btn-modal" Click="@(_ => OnEditAvatarClicked(m.Author))">Change avatar</Button>
                 <Button Class="btn-modal danger" Click="OnRevealClicked">Reveal</Button>
             }
         } else if (m.Author.IsAnonymous) {
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
+                <Button Class="btn-modal" Click="OnStartAnonymousPeerChat">
+                    <i class="icon-anonym text-xl"></i>
+                    Start anonymous chat
+                </Button>
                 <Button Class="btn-modal btn-primary" Click="OnStartPeerChat">
                     <i class="icon-message-ellipse text-xl"></i>
                     Chat with @m.Author.Avatar.Name
@@ -101,6 +109,9 @@
     private async Task OnStartPeerChat()
         => await ChatHub.AuthorUI.StartPeerChat(AuthorId);
 
+    private async Task OnStartAnonymousPeerChat()
+        => await ChatHub.AuthorUI.StartAnonymousPeerChat(AuthorId);
+
     private async Task OnAvatarSelected(AvatarFull avatar) {
         var command = new Authors_SetAvatar(ChatHub.Session, AuthorId.ChatId, avatar.Id);
         await ChatHub.UICommander.Run(command);
@@ -109,6 +120,11 @@
     private void OnSettingsClick() {
         Modal.Close();
         _ = ChatHub.UIEventHub.Publish(new ShowSettingsEvent());
+    }
+
+    private void OnEditAvatarClicked(Author author) {
+        Modal.Close();
+        _ = ChatHub.ModalUI.Show(new OwnAvatarEditorModal.Model(author.Avatar.Id, author.ChatId, "Edit avatar"));
     }
 
     public sealed record ComputedModel {

@@ -16,17 +16,19 @@
         <FormBlock>
             <DataAnnotationsValidator/>
             <ValidationSummary/>
-            <PicUpload
-                UploadUrl="@UploadUrl"
-                Picked="OnImagePicked"
-                Size="SquareSize.Size24"
-                Title="@_form.Bio"
-                Picture="_form.Picture"
-                GenerateAvatar="OnGenerateAvatarClick">
-                <NoPicture>
-                    <AnonymousIcon Class="w-24 h-24"/>
-                </NoPicture>
-            </PicUpload>
+            @if (!_isAnonymous) {
+                <PicUpload
+                    UploadUrl="@UploadUrl"
+                    Picked="OnImagePicked"
+                    Size="SquareSize.Size24"
+                    Title="@_form.Bio"
+                    Picture="_form.Picture"
+                    GenerateAvatar="OnGenerateAvatarClick">
+                    <NoPicture>
+                        <AnonymousIcon Class="w-24 h-24"/>
+                    </NoPicture>
+                </PicUpload>
+            }
 
             <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
@@ -37,38 +39,40 @@
             </FormSection>
         </FormBlock>
 
-        <FormBlock>
-            <FormSection For="() => _form.IsDefault" InputId="@_form.IsDefaultFieldId" Class="is-default-avatar">
-                <button
-                    type="button"
-                    class="default-avatar-btn"
-                    @onclick="@ChangeDefaultAvatar">
-                    <div>
-                        <i class="icon-star text-xl hover:text-primary @(_form.IsDefault ? "text-primary" : "text-03")"></i>
-                    </div>
-                    <div class="flex w-full px-8 text-02">
-                        Make default
-                    </div>
-                    <ToggleEdit @bind-Value="@_form.IsDefault" Id="@_form.IsDefaultFieldId"/>
-                </button>
-            </FormSection>
-
-            <button type="button" class="delete-avatar-btn" @onclick="@OnDeleteAvatarClick">
-                <div>
-                    <i class="icon-trash03 text-xl text-danger"></i>
-                </div>
-                <div class="flex w-full px-8 text-danger">
-                    Delete avatar
-                </div>
-            </button>
-
-            @if (!ModalModel.ChatId.IsNone) {
-                <FormSection For="() => _form.IsActive" InputId="@_form.IsActiveFieldId">
-                    <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
-                                Label="Used in this chat (otherwise the default one is used)"/>
+        @if (!_isAnonymous) {
+            <FormBlock>
+                <FormSection For="() => _form.IsDefault" InputId="@_form.IsDefaultFieldId" Class="is-default-avatar">
+                    <button
+                        type="button"
+                        class="default-avatar-btn"
+                        @onclick="@ChangeDefaultAvatar">
+                        <div>
+                            <i class="icon-star text-xl hover:text-primary @(_form.IsDefault ? "text-primary" : "text-03")"></i>
+                        </div>
+                        <div class="flex w-full px-8 text-02">
+                            Make default
+                        </div>
+                        <ToggleEdit @bind-Value="@_form.IsDefault" Id="@_form.IsDefaultFieldId"/>
+                    </button>
                 </FormSection>
-            }
-        </FormBlock>
+
+                <button type="button" class="delete-avatar-btn" @onclick="@OnDeleteAvatarClick">
+                    <div>
+                        <i class="icon-trash03 text-xl text-danger"></i>
+                    </div>
+                    <div class="flex w-full px-8 text-danger">
+                        Delete avatar
+                    </div>
+                </button>
+
+                @if (!ModalModel.ChatId.IsNone) {
+                    <FormSection For="() => _form.IsActive" InputId="@_form.IsActiveFieldId">
+                        <ToggleEdit @bind-Value="@_form.IsActive" Id="@_form.IsActiveFieldId"
+                                    Label="Used in this chat (otherwise the default one is used)"/>
+                    </FormSection>
+                }
+            </FormBlock>
+        }
         </Body>
         <Buttons>
             <FormButtons>
@@ -88,6 +92,7 @@
 
     private Form _formRef = null!;
     private FormModel _form = null!;
+    private bool _isAnonymous;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
@@ -102,6 +107,7 @@
     protected override async Task OnParametersSetAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var avatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
+        _isAnonymous = avatar?.IsAnonymous ?? false;
         var account = await Accounts.GetOwn(Session, default);
         var isDefault = ModalModel.AvatarId == account.Avatar.Id;
         var isActive = false;
@@ -131,7 +137,9 @@
             });
             return;
         }
-        avatar = avatar.WithPicture(_form.Picture) with {
+        if (!_isAnonymous)
+            avatar = avatar.WithPicture(_form.Picture);
+        avatar = avatar with {
             Name = _form.Name,
             Bio = _form.Bio,
             };
@@ -142,10 +150,12 @@
         if (error != null)
             return;
 
-        if (_form is { IsDefault: true, Base.IsDefault: false })
-            await SetDefaultAvatar(_form.IsDefault ? avatarId : default);
-        if (!chatId.IsNone && _form is { IsActive: true, Base.IsActive: false })
-            await SetActiveAvatar(_form.IsActive ? avatarId : default);
+        if (!avatar.IsAnonymous) {
+            if (_form is { IsDefault: true, Base.IsDefault: false })
+                await SetDefaultAvatar(_form.IsDefault ? avatarId : default);
+            if (!chatId.IsNone && _form is { IsActive: true, Base.IsActive: false })
+                await SetActiveAvatar(_form.IsActive ? avatarId : default);
+        }
 
         _form.CopyToBase();
         CloseModal();

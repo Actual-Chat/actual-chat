@@ -6,11 +6,15 @@
         return;
 
     var rules = m.Chat.Rules;
+    var isPeerChat = m.Chat.Id.IsPeerChat(out _);
 }
 
 <CascadingValue Value="m">
     @if (rules.CanWrite()) {
         <ChatMenuRecord/>
+    }
+    @if (isPeerChat) {
+        <ChatMenuStartAnonymous />
     }
     <ChatMenuPin/>
     <ChatMenuListen/>

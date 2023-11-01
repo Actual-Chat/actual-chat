@@ -52,7 +52,8 @@ public sealed partial record Authors_SetAvatar(
 public sealed partial record Authors_Invite(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
-    [property: DataMember, MemoryPackOrder(2)] UserId[] UserIds
+    [property: DataMember, MemoryPackOrder(2)] UserId[] UserIds,
+    [property: DataMember, MemoryPackOrder(3)] bool? JoinAnonymously = null
 ) : ISessionCommand<Unit>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

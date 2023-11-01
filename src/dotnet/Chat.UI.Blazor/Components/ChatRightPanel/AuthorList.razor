@@ -19,11 +19,18 @@
                     Click="@_onClickCallback"/>
             }
         } else {
-            var groups = new List<(string,IReadOnlyCollection<AuthorId>, bool)> {
-                ("Owners", m.OwnerAuthorIds, false),
-                ("Online", m.OnlineAuthorIds, false),
-                ("Offline", m.OfflineAuthorIds, true)
-            };
+            var groups = new List<(string,IReadOnlyCollection<AuthorId>, bool)>();
+            if (m.OwnerAuthorIds.Count > 0)
+                groups.Add(("Owners", m.OwnerAuthorIds, false));
+            if (m.AllAreAnonymous) {
+                if (m.UnreportedAuthorIds.Count > 0)
+                    groups.Add(("Unreported", m.UnreportedAuthorIds, false));
+            } else {
+                groups.Add(("Online", m.OnlineAuthorIds, false));
+                if (m.UnreportedAuthorIds.Count > 0)
+                    groups.Add(("Unreported", m.UnreportedAuthorIds, false));
+                groups.Add(("Offline", m.OfflineAuthorIds, true));
+            }
             foreach (var group in groups) {
                 var title = $"{group.Item1} — {group.Item2.Count}";
                 <Collapsed Title="@title" IsCollapsed="@group.Item3">
@@ -73,22 +80,26 @@
         var ownerAuthors = new List<(AuthorId,string)>();
         var onlineAuthors = new List<(AuthorId,string)>();
         var offlineAuthors = new List<(AuthorId,string)>();
+        var unreportedAuthors = new List<(AuthorId,string)>();
         var presences = await allAuthorIds
             .Select(async authorId => {
                 var presenceTask = Authors.GetPresence(Session, Chat.Id, authorId, cancellationToken);
                 var authorTask = Authors.Get(Session, Chat.Id, authorId, cancellationToken);
                 var presence = await presenceTask.ConfigureAwait(false);
                 var author = await authorTask.ConfigureAwait(false);
+                var isAnonymous = author?.IsAnonymous ?? false;
                 var authorName = author?.Avatar.Name ?? "";
-                return (authorId, presence, authorName);
+                return (authorId, isAnonymous, presence, authorName);
             })
             .Collect(); // Add concurrency
-        foreach (var (authorId, presence, authorName) in presences) {
+        foreach (var (authorId, isAnonymous, presence, authorName) in presences) {
             var collection = ownerIds.Contains(authorId)
                 ? ownerAuthors
-                : presence is Presence.Online or Presence.Recording or Presence.Away
-                    ? onlineAuthors
-                    : offlineAuthors;
+                : isAnonymous
+                    ? unreportedAuthors
+                    : presence is Presence.Online or Presence.Recording or Presence.Away
+                        ? onlineAuthors
+                        : offlineAuthors;
             collection.Add((authorId, authorName));
         }
 
@@ -97,14 +108,18 @@
         ownerAuthors.Sort(comparison);
         onlineAuthors.Sort(comparison);
         offlineAuthors.Sort(comparison);
+        unreportedAuthors.Sort(comparison);
 
         var ownAuthor = await Authors.GetOwn(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+        var allAreAnonymous = presences.Length > 0 && presences.All(c => c.isAnonymous);
         return new() {
             AllAuthorIds = allAuthorIds,
             OwnAuthorId = ownAuthor?.Id ?? AuthorId.None,
             OwnerAuthorIds = ownerAuthors.Select(c => c.Item1).ToApiArray(),
             OnlineAuthorIds = onlineAuthors.Select(c => c.Item1).ToApiArray(),
             OfflineAuthorIds = offlineAuthors.Select(c => c.Item1).ToApiArray(),
+            UnreportedAuthorIds = unreportedAuthors.Select(c => c.Item1).ToApiArray(),
+            AllAreAnonymous = allAreAnonymous
         };
     }
 
@@ -116,5 +131,7 @@
         public ApiArray<AuthorId> OwnerAuthorIds { get; init; }
         public ApiArray<AuthorId> OnlineAuthorIds { get; init; }
         public ApiArray<AuthorId> OfflineAuthorIds { get; init; }
+        public ApiArray<AuthorId> UnreportedAuthorIds { get; init; }
+        public bool AllAreAnonymous { get; init; }
     }
 }
