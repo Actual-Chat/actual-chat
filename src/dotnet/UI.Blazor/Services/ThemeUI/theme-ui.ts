@@ -4,7 +4,10 @@
         document.body.classList.add(newTheme);
     }
 
-    public static getPostPanelColor() : string {
-        return getComputedStyle(document.body).getPropertyValue('--post-panel');
+    public static getBarColors() : string {
+        const style = getComputedStyle(document.body);
+        const headerColor = style.getPropertyValue('--background-01');
+        const postPanelColor = style.getPropertyValue('--post-panel');
+        return headerColor + ";" + postPanelColor;
     }
 }
