@@ -185,7 +185,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddService<IPhoneAuth, PhoneAuth>();
         commander.AddService<IUsersUpgradeBackend, UsersUpgradeBackend>();
-        services.AddSingleton<GreetingDispatcher>();
+        services.AddSingleton<GreetingDispatcher>().AddHostedService(c => c.GetRequiredService<GreetingDispatcher>());
         services.AddTransient<Rfc6238AuthenticationService>();
         services.AddSingleton<TotpRandomSecrets>();
         services.AddSingleton<ITwilioRestClient>(_ => {
