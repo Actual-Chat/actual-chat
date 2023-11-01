@@ -56,6 +56,7 @@ public partial class MainPage
         settings.AllowFileAccess = true;
         settings.MediaPlaybackRequiresUserGesture = false;
         settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
+        settings.CacheMode = CacheModes.Default;
         // settings.OffscreenPreRaster = true;
  #pragma warning disable CS0618
         settings.EnableSmoothTransition();

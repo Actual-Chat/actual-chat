@@ -17,6 +17,13 @@
         whenBundleReady: null,
         markBundleReady: function () {
         },
+        isBundleReady: async function() {
+            if (!window.App.whenBundleReady)
+                return false;
+
+            await window.App.whenBundleReady;
+            return true;
+        },
         browserInit: async function(apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind) {
             await window.App.whenBundleReady;
             await window.ui.BrowserInit.init(apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind);
