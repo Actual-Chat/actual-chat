@@ -7,6 +7,7 @@ public class ThemeUI : WorkerBase
 {
     private const Theme DefaultTheme = Theme.Light;
     private static readonly string JSReplaceMethod = $"{BlazorUICoreModule.ImportName}.ThemeUI.replace";
+    private static readonly string JSGetPostPanelColorMethod = $"{BlazorUICoreModule.ImportName}.ThemeUI.getPostPanelColor";
 
     private readonly ISyncedState<ThemeSettings> _settings;
     private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
@@ -15,6 +16,7 @@ public class ThemeUI : WorkerBase
     private Dispatcher? _dispatcher;
     private IJSRuntime? _js;
     private ILogger? _log;
+    private IEnumerable<Action<Theme>>? _applyThemeHandlers;
 
     private Theme _appliedTheme = DefaultTheme;
 
@@ -22,6 +24,8 @@ public class ThemeUI : WorkerBase
     private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     private IJSRuntime JS => _js ??= Services.JSRuntime();
     private ILogger Log => _log ??= Services.LogFor(GetType());
+    private IEnumerable<Action<Theme>> ApplyThemeHandlers =>
+        _applyThemeHandlers ??= Services.GetRequiredService<IEnumerable<Action<Theme>>>();
 
     public IState<ThemeSettings> Settings => _settings;
     public Theme Theme {
@@ -45,6 +49,10 @@ public class ThemeUI : WorkerBase
         Log.LogInformation("State created");
     }
 
+    public async Task<string> GetPostPanelColor()
+        => await JS.InvokeAsync<string>(JSGetPostPanelColorMethod)
+            .ConfigureAwait(false);
+
     protected override Task DisposeAsyncCore()
     {
         _settings.Dispose();
@@ -65,18 +73,33 @@ public class ThemeUI : WorkerBase
 
     private Task ApplyTheme(Theme theme)
         => Dispatcher.InvokeAsync(async () => {
-            _whenReadySource.TrySetResult();
-            if (_appliedTheme == theme)
+            var isInitialized = _whenReadySource.TrySetResult();
+            if (_appliedTheme == theme) {
+                if (isInitialized)
+                    OnThemeApplied(theme);
                 return;
+            }
 
             var oldTheme = _appliedTheme;
             _appliedTheme = theme;
             try {
                 await JS.InvokeVoidAsync(JSReplaceMethod, oldTheme.ToCssClass(), theme.ToCssClass())
                     .ConfigureAwait(false);
+                OnThemeApplied(theme);
             }
             catch (Exception e) when (e is not OperationCanceledException) {
                 Log.LogError(e, "Failed to apply the new theme");
             }
         });
+
+    private void OnThemeApplied(Theme theme)
+    {
+        foreach (var handler in ApplyThemeHandlers)
+            try {
+                handler(theme);
+            }
+            catch {
+                // Ignore
+            }
+    }
 }

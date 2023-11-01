@@ -3,9 +3,7 @@ using Android.App;
 using Android.Content.PM;
 using Android.OS;
 using Android.Content;
-using ActualChat.Notification;
 using ActualChat.Notification.UI.Blazor;
-using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
 using Android.Views.Animations;
@@ -40,8 +38,6 @@ namespace ActualChat.App.Maui;
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 public partial class MainActivity : MauiAppCompatActivity
 {
-    internal static readonly int NotificationId = 101;
-    internal static readonly int NotificationPermissionId = 832;
     private static volatile MainActivity? _current;
 
     public static MainActivity Current => _current
@@ -78,15 +74,7 @@ public partial class MainActivity : MauiAppCompatActivity
         base.OnCreate(savedInstanceState);
         _tracer.Point("OnCreate, base.OnCreate completed");
 
-        if (Window != null) {
-            // Set System bars colors
-            // See https://developer.android.com/design/ui/mobile/guides/layout-and-content/layout-basics
-            // I do it from here because I can not modify theme 'Maui.MainTheme'
-            // which is applied after calling base.OnCreate.
-            var bg07 = Android.Graphics.Color.Rgb(68, 68, 68);
-            Window.SetStatusBarColor(bg07);
-            Window.SetNavigationBarColor(bg07);
-        }
+        AndroidApplyThemeHandler.Instance.TryRestoreLastTheme();
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
