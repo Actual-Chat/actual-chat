@@ -5,7 +5,7 @@
         @if (!stepper.CanMoveBack) {
             <div class="sign-in-modal-header-wrapper">
                 <div class="sign-in-modal-header">Sign-in to Actual Chat</div>
-                @if (!string.IsNullOrEmpty(Reason)) {
+                @if (!Reason.IsNullOrEmpty()) {
                     <div class="sign-in-modal-reason">@Reason</div>
                 }
             </div>
