@@ -56,6 +56,7 @@ public partial class MainPage
         e.Configuration.AllowsInlineMediaPlayback = true;
         e.Configuration.MediaTypesRequiringUserActionForPlayback = WebKit.WKAudiovisualMediaTypes.None;
         e.Configuration.UpgradeKnownHostsToHttps = true;
+        e.Configuration.Preferences.JavaScriptCanOpenWindowsAutomatically = true;
     }
 
     private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
