@@ -321,7 +321,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         }
     }
 
-    [Theory(Skip = "Flaky")]
+    [Theory]
     [InlineData(5)]
     [InlineData(37)]
     public async Task StressTest_UsersCreatedSequentially_AllAreConnected(int count)

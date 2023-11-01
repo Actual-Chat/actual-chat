@@ -3,7 +3,6 @@ using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Contacts.Module;
 using ActualChat.Users;
-using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using Stl.Fusion.EntityFramework;
