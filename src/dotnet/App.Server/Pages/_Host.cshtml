@@ -140,9 +140,9 @@
                 await window.App.whenBundleReady;
                 return true;
             },
-            browserInit: async function(apiVersion, baseUri, sessionHash, calls) {
+            browserInit: async function(apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind) {
                 await window.App.whenBundleReady;
-                await window.ui.BrowserInit.init(apiVersion, baseUri, sessionHash, calls);
+                await window.ui.BrowserInit.init(apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind);
             },
             getAuthSchemas: function () {
                 return window.FusionAuth.schemas;

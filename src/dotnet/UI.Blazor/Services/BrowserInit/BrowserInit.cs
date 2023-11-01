@@ -19,7 +19,7 @@ public class BrowserInit(IJSRuntime js)
     {
         try {
             await JS
-                .InvokeVoidAsync("window.App.browserInit", apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind)
+                .InvokeVoidAsync("window.App.browserInit", apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind.ToString())
                 .ConfigureAwait(false);
         }
         finally {
