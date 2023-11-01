@@ -175,7 +175,6 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddService<ISystemProperties, SystemProperties>();
         fusion.AddService<IAccounts, Accounts>();
         fusion.AddService<IAccountsBackend, AccountsBackend>();
-        fusion.AddService<GreetingDispatcher>();
         fusion.AddService<IUserPresences, UserPresences>();
         fusion.AddService<IUserPresencesBackend, UserPresencesBackend>();
         fusion.AddService<IAvatars, Avatars>();
@@ -186,6 +185,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddService<IPhoneAuth, PhoneAuth>();
         commander.AddService<IUsersUpgradeBackend, UsersUpgradeBackend>();
+        services.AddSingleton<GreetingDispatcher>();
         services.AddTransient<Rfc6238AuthenticationService>();
         services.AddSingleton<TotpRandomSecrets>();
         services.AddSingleton<ITwilioRestClient>(_ => {

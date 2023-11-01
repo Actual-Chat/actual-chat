@@ -54,10 +54,10 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices) : Hos
         fusion.AddService<IContacts, Contacts>();
         fusion.AddService<IContactsBackend, ContactsBackend>();
         fusion.AddService<IExternalContacts, ExternalContacts>();
-        fusion.AddService<ContactLinkingJob>();
         fusion.AddService<IExternalContactsBackend, ExternalContactsBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+        services.AddSingleton<ContactLinkingJob>();
     }
 }

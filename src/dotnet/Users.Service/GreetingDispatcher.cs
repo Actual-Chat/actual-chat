@@ -6,7 +6,7 @@ using Stl.Interception;
 
 namespace ActualChat.Users;
 
-internal class GreetingDispatcher : WorkerBase, IComputeService, INotifyInitialized, IHasServices
+internal class GreetingDispatcher : WorkerBase, INotifyInitialized, IHasServices
 {
     private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);
     private readonly IMutableState<bool> _needsGreeting;
