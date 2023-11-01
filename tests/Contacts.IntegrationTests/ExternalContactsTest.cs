@@ -41,10 +41,6 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         _contacts = _appHost.Services.GetRequiredService<IContacts>();
         _commander = _appHost.Services.Commander();
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
-        var job = _appHost.Services.GetRequiredService<ContactLinkingJob>();
-        job.Start();
-        var dispatcher = _appHost.Services.GetRequiredService<GreetingDispatcher>();
-        dispatcher.Start();
     }
 
     public override async Task DisposeAsync()
@@ -159,13 +155,13 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         await Add(externalContact);
-        var bobContacts = await ListContacts(1);
+        var bobContacts = await ListContactIds(1);
 
         jack = await _tester.SignIn(Jack);
-        var jackContacts = await ListContacts(0);
+        var jackContacts = await ListContactIds(0);
 
         // assert
-        bobContacts.Select(x => x.Id)
+        bobContacts
             .Should()
             .BeEquivalentTo(new[] { BuildContactId(bob, jack) });
         jackContacts.Should().BeEmpty("external contacts have synced for Bob only");
@@ -183,20 +179,20 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         await Add(externalContact);
-        var bobContacts = await ListContacts(0);
+        var bobContacts = await ListContactIds(0);
 
         // assert
         bobContacts.Should().BeEmpty();
 
         // act
         var jack = await _tester.SignIn(Jack);
-        var jackContacts = await ListContacts(0);
+        var jackContacts = await ListContactIds(0);
 
         bob = await _tester.SignIn(Bob);
-        bobContacts = await ListContacts(1);
+        bobContacts = await ListContactIds(1);
 
         // assert
-        bobContacts.Select(x => x.Id)
+        bobContacts
             .Should()
             .BeEquivalentTo(new[] { BuildContactId(bob, jack) });
         jackContacts.Should().BeEmpty("external contacts have synced for Bob only");
@@ -213,22 +209,20 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         await Add(externalContact);
-        var bobContacts = await ListContacts(0);
+        var bobContacts = await ListContactIds(0);
 
         // assert
         bobContacts.Should().BeEmpty();
 
         // act
         var jack = await _tester.SignIn(Jack);
-        var jackContacts = await ListContacts(0);
+        var jackContacts = await ListContactIds(0);
 
         bob = await _tester.SignIn(Bob);
-        bobContacts = await ListContacts(1);
+        bobContacts = await ListContactIds(1);
 
         // assert
-        bobContacts.Select(x => x.Id)
-            .Should()
-            .BeEquivalentTo(new[] { BuildContactId(bob, jack) });
+        bobContacts.Should().BeEquivalentTo(new[] { BuildContactId(bob, jack) });
         jackContacts.Should().BeEmpty("external contacts have synced for Bob only");
     }
 
@@ -244,12 +238,10 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         await Add(externalContact);
-        var contacts = await ListContacts(1);
+        var contacts = await ListContactIds(1);
 
         // assert
-        contacts.Select(x => x.Id)
-            .Should()
-            .BeEquivalentTo(new[] { BuildContactId(bob, jack) });
+        contacts.Should().BeEquivalentTo(new[] { BuildContactId(bob, jack) });
     }
 
     [Fact]
@@ -264,15 +256,13 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         await Add(externalContact);
-        var bobContacts = await ListContacts(1);
+        var bobContacts = await ListContactIds(1);
 
         var jack = await _tester.SignIn(Jack);
-        var jackContacts = await ListContacts(0);
+        var jackContacts = await ListContactIds(0);
 
         // assert
-        bobContacts.Select(x => x.Id)
-            .Should()
-            .BeEquivalentTo(new[] { BuildContactId(bob, jack) });
+        bobContacts.Should().BeEquivalentTo(new[] { BuildContactId(bob, jack) });
         jackContacts.Should().BeEmpty();
     }
 
@@ -290,7 +280,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         await Add(externalContact);
-        var contacts = await ListContacts(0);
+        var contacts = await ListContactIds(0);
         contacts.Should().BeEmpty("no matching phones or emails");
     }
 
@@ -386,30 +376,33 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     private async Task AssertConnectedUsers(AccountFull account, AccountFull[] allAccounts)
     {
         var userMap = allAccounts.ToDictionary(x => x.Id, x => x.User);
-        var contacts = await ListContacts(allAccounts.Length - 1);
-        var connectedUsers = contacts.ConvertAll(x => userMap[x.UserId]).OrderBy(x => x.Name);
+        var contactIds = await ListContactIds(allAccounts.Length - 1);
+        var connectedUsers = contactIds.ConvertAll(GetUser).OrderBy(x => x.Name);
         var otherUsers = allAccounts.Where(x => x.Id != account.Id).Select(x => x.User).OrderBy(x => x.Name);
         connectedUsers.Should().BeEquivalentTo(otherUsers);
+        return;
+
+        User GetUser(ContactId x)
+            => userMap[x.ChatId.IsPeerChat(out var peerChatId)
+                ? peerChatId.UserIds.OtherThan(account.Id)
+                : throw new Exception("Peer chat contact was expected")];
     }
 
-    private async Task<List<Contact>> ListContacts(int expectedCount, TimeSpan? timeout = null)
+    private async Task<List<ContactId>> ListContactIds(int expectedCount)
     {
-        using var _1 = Tracer.Default.Region($"Awaiting for ListContacts({expectedCount}, {timeout})");
         await TestExt.WhenMetAsync(async () => {
                 var peerContactIds = await ListContactIds();
                 peerContactIds.Should().HaveCountGreaterOrEqualTo(expectedCount);
             },
-            timeout ?? TimeSpan.FromSeconds(10));
+            TimeSpan.FromSeconds(10));
 
-        var contactIds = await ListContactIds();
-        var contacts = await contactIds.Select(id => _contacts.Get(_tester.Session, id, CancellationToken.None)).Collect();
-        return contacts.SkipNullItems().ToList();
+        return await ListContactIds();
+    }
 
-        async Task<List<ContactId>> ListContactIds()
-        {
-            var ids = await _contacts.ListIds(_tester.Session, CancellationToken.None);
-            return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
-        }
+    private async Task<List<ContactId>> ListContactIds()
+    {
+        var ids = await _contacts.ListIds(_tester.Session, CancellationToken.None);
+        return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
     }
 
     private static ExternalContact NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
