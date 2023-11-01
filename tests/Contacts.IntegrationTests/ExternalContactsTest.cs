@@ -41,6 +41,10 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         _contacts = _appHost.Services.GetRequiredService<IContacts>();
         _commander = _appHost.Services.Commander();
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
+        var job = _appHost.Services.GetRequiredService<ContactLinkingJob>();
+        job.Start();
+        var dispatcher = _appHost.Services.GetRequiredService<GreetingDispatcher>();
+        dispatcher.Start();
     }
 
     public override async Task DisposeAsync()
