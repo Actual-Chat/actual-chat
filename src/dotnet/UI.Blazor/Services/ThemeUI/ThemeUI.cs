@@ -7,7 +7,7 @@ public class ThemeUI : WorkerBase
 {
     private const Theme DefaultTheme = Theme.Light;
     private static readonly string JSReplaceMethod = $"{BlazorUICoreModule.ImportName}.ThemeUI.replace";
-    private static readonly string JSGetPostPanelColorMethod = $"{BlazorUICoreModule.ImportName}.ThemeUI.getPostPanelColor";
+    private static readonly string JSGetBarColorsMethod = $"{BlazorUICoreModule.ImportName}.ThemeUI.getBarColors";
 
     private readonly ISyncedState<ThemeSettings> _settings;
     private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
@@ -49,9 +49,9 @@ public class ThemeUI : WorkerBase
         Log.LogInformation("State created");
     }
 
-    public async Task<string> GetPostPanelColor()
-        => await JS.InvokeAsync<string>(JSGetPostPanelColorMethod)
-            .ConfigureAwait(false);
+    public async Task<string> GetBarColors()
+        => await JS.InvokeAsync<string>(JSGetBarColorsMethod)
+            .ConfigureAwait(true);
 
     protected override Task DisposeAsyncCore()
     {
