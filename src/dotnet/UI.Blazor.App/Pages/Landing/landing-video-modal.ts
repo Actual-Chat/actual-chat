@@ -19,6 +19,8 @@ export class LandingVideoModal {
     private readonly progressBar: HTMLProgressElement;
     private readonly timeline: HTMLElement;
 
+    private isVideoPlayStarted = false;
+
     static create(landingVideoModal: HTMLElement): LandingVideoModal {
         return new LandingVideoModal(landingVideoModal);
     }
@@ -41,6 +43,10 @@ export class LandingVideoModal {
 
         const plug = this.landingVideoModal.querySelector('.c-video-plug') as HTMLImageElement;
         if (this.video != null) {
+            fromEvent(document, 'touchend', { passive: false, once: true })
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event: TouchEvent) => this.onTouchEnd(event));
+
             fromEvent(this.video, 'playing')
                 .pipe(takeUntil(this.disposed$))
                 .subscribe(() => this.onVideoState());
@@ -70,13 +76,16 @@ export class LandingVideoModal {
                 .pipe(takeUntil(this.disposed$))
                 .subscribe(() => this.showControl(false));
 
-            this.video.play().then(() => {
-                let durationDiv = this.controlFooter.querySelector('.c-duration');
-                durationDiv.innerHTML = this.formatTime(this.video.duration);
-                plug.classList.remove('flex');
-                plug.hidden = true;
-                this.video.hidden = false;
-            });
+            this.video.oncanplay = _ => {
+                this.video.muted = true;
+                this.video.play().then(() => {
+                    let durationDiv = this.controlFooter.querySelector('.c-duration');
+                    durationDiv.innerHTML = this.formatTime(this.video.duration);
+                    plug.classList.remove('flex');
+                    plug.hidden = true;
+                    this.video.hidden = false;
+                });
+            };
         }
     }
 
@@ -148,5 +157,23 @@ export class LandingVideoModal {
         this.video.currentTime = percent * this.video.duration;
         let value = progressBar.value = Math.floor(percent / 100);
         progressBar.innerHTML = value + '% played';
+    }
+
+    private onTouchEnd(event: TouchEvent): void {
+        if (this.isVideoPlayStarted)
+            return;
+
+        if (!this.video)
+            return;
+
+        this.video.muted = true;
+        const isVideoPlaying = !!(this.video.currentTime > 0 && !this.video.paused && !this.video.ended && this.video.readyState > 2);
+        if (!isVideoPlaying) {
+            this.isVideoPlayStarted = true;
+            void this.video.play().then(_ => {
+                debugLog.log('onTouchEnd: tutorial video playback started.');
+            });
+            debugLog.log('onTouchEnd: tutorial video play...');
+        }
     }
 }
