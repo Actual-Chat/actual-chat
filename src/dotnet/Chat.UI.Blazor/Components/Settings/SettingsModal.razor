@@ -9,7 +9,6 @@
 
     var isGuestOrNone = account.IsGuestOrNone;
     var showMyAccount = !isGuestOrNone;
-    var showChatFolder = !isGuestOrNone && _enableIncompleteUI;
     var showNotification = !isGuestOrNone && _enableIncompleteUI;
     var showLanguages = true;
     var showUserInterface = true;
@@ -24,13 +23,6 @@
         @if (showMyAccount) {
             <SettingsTab @key="1" Title="Your Account" Id="account" IconTitle="person">
                 <YourAccount/>
-            </SettingsTab>
-        }
-
-        @if (showChatFolder) {
-            <SettingsTab @key="2" Title="Chat Folder" Id="chatFolder" IconTitle="folder">
-                <ChildContent>
-                </ChildContent>
             </SettingsTab>
         }
 
