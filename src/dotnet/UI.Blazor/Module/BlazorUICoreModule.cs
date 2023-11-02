@@ -61,7 +61,7 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         else
             services.AddScoped(_ => new RenderModeSelector()); // Should be scoped on server
         services.AddScoped(_ => new DisposeMonitor());
-        services.AddScoped(c => new BrowserInit(c.GetRequiredService<IJSRuntime>()));
+        services.AddScoped(c => new BrowserInit(c));
         services.AddScoped(c => new BrowserInfo(c));
         services.AddScoped(c => new WebShareInfo(c));
         services.AddScoped(_ => new ComponentIdGenerator());

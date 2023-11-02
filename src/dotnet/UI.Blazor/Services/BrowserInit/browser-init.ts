@@ -71,7 +71,7 @@ export class BrowserInit {
         this.reconnectedEvents.triggerSilently();
     }
 
-    public static startReconnecting(mustReconnectBlazor): void {
+    public static startReconnecting(mustReconnectBlazor : boolean): void {
         if (BrowserInit.isTerminated)
             return;
 
