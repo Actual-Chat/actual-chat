@@ -27,7 +27,7 @@
             cls += " active";
         return @<div class="@cls" id="@id">
                    @if (media.IsVideo()) {
-                       <video preload="metadata">
+                       <video preload="metadata" playsinline>
                            <source src="@url#t=,5"/>
                        </video>
                    } else {
