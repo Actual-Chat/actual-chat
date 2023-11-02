@@ -26,6 +26,13 @@ public class DbTest: AppHostTestBase
         var range = new Range<long>(1500, 1601);
 
         var dbHub = appHost.Services.GetRequiredService<DbHub<ChatDbContext>>();
+
+        var dbContext = dbHub.CreateDbContext(true);
+        await using var __ = dbContext.ConfigureAwait(false);
+        var q = dbContext.Database.SqlQuery<string>(FormattableStringFactory.Create("SHOW max_connections;"));
+        var maxConnections = q.AsEnumerable().FirstOrDefault();
+        logger.LogInformation("max_connections='{MaxConnections}'", maxConnections);
+
         var writeTasks = new List<Task<TimeSpan>>();
 
         var usedLocalIds = new List<long>();
