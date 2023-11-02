@@ -13,6 +13,7 @@ export class NewLanding {
     private readonly downloadLinksPage: HTMLElement;
     private readonly scrollContainer: HTMLElement;
     private lastPosition: number = 0;
+    private isVideoPlayStarted = false;
 
     static create(landing: HTMLElement): NewLanding {
         return new NewLanding(landing);
@@ -35,6 +36,10 @@ export class NewLanding {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: TouchEvent) => this.onTouch(event));
 
+        fromEvent(document, 'touchend', { passive: false, once: true })
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: TouchEvent) => this.onTouchEnd(event));
+
         fromEvent(document, 'wheel', { passive: false }) // WheelEvent is passive by default
             .pipe(takeUntil(this.disposed$))
             .subscribe((event: WheelEvent) => this.onWheel(event));
@@ -43,14 +48,24 @@ export class NewLanding {
             .pipe(takeUntil(this.disposed$))
             .subscribe(() => this.onScroll());
 
-        const plug = this.landing.querySelector('.landing-video-plug') as HTMLImageElement;
-        const video = this.landing.querySelector('.landing-video') as HTMLVideoElement;
-        if (video != null) {
-            video.play().then(() => {
-                plug.classList.remove('flex');
-                plug.hidden = true;
-                video.hidden = false;
-            });
+        const plug = this.landing.querySelector<HTMLImageElement>('.landing-video-plug');
+        const video = this.landing.querySelector<HTMLVideoElement>('.landing-video');
+        if (video) {
+            video.muted = true;
+            video.oncanplay = _ => {
+                video.play().then(() => {
+                    plug.classList.remove('flex');
+                    plug.hidden = true;
+                    video.hidden = false;
+                });
+            };
+        }
+        const cardVideos = [...this.landing.querySelectorAll<HTMLVideoElement>('.landing-card-video')];
+        for (const cardVideo of cardVideos) {
+            cardVideo.muted = true;
+            cardVideo.oncanplay = _ => {
+                void cardVideo.play();
+            };
         }
 
         this.downloadLinksPage = this.landing.querySelector('.page-links');
@@ -123,6 +138,24 @@ export class NewLanding {
         if (!isNotLinksPage) {
             preventDefaultForEvent(event);
             return;
+        }
+    }
+
+    private onTouchEnd(event: TouchEvent): void {
+        if (this.isVideoPlayStarted)
+            return;
+
+        const cardVideos = [...this.landing.querySelectorAll<HTMLVideoElement>('.landing-card-video')];
+        for (const cardVideo of cardVideos) {
+            cardVideo.muted = true;
+            const isVideoPlaying = !!(cardVideo.currentTime > 0 && !cardVideo.paused && !cardVideo.ended && cardVideo.readyState > 2);
+            if (!isVideoPlaying) {
+                this.isVideoPlayStarted = true;
+                void cardVideo.play().then(_ => {
+                    debugLog.log('onTouchEnd: card video playback started.');
+                });
+                debugLog.log('onTouchEnd: card video play...');
+            }
         }
     }
 
