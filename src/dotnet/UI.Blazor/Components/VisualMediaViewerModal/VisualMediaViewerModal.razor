@@ -16,7 +16,7 @@
         var id = media.Media.ContentId;
         var url = UrlMapper.ContentUrl(media.Media.ContentId);
         string? previewUrl = null;
-        if (media.IsGif()) {
+        if (media.IsGif() || media.IsSvg()) {
             previewUrl = url; // currently image proxy fails on large gifs
         } else if(media.IsSupportedImage()) {
             previewUrl = UrlMapper.ImagePreviewUrl(url, 80, 54);
