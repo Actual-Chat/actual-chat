@@ -1,5 +1,4 @@
 import { debounceTime, fromEvent, Subject, takeUntil } from 'rxjs';
-import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 
 import { Log } from 'logging';
 import { setTimeout } from 'timerQueue';
@@ -11,6 +10,7 @@ export class LandingVideoModal {
     private readonly videoWrapper: HTMLElement;
     private readonly controlWrapper: HTMLElement;
     private readonly video: HTMLVideoElement;
+    private readonly plug: HTMLImageElement;
     private readonly controlHeader: HTMLElement;
     private readonly controlFooter: HTMLElement;
     private readonly controlBody: HTMLElement;
@@ -39,9 +39,14 @@ export class LandingVideoModal {
         this.progressBar = this.controlFooter.querySelector('.c-progress-bar');
         this.timeline = this.controlFooter.querySelector('.c-timeline');
 
-        this.controlWrapper.style.display = 'none';
+        this.showControl(true);
+        const durationDiv = this.controlFooter.querySelector('.c-duration');
+        durationDiv.innerHTML = this.formatTime(46);
+        const currentTimeDiv = this.controlFooter.querySelector('.c-current');
+        currentTimeDiv.innerHTML = this.formatTime(0);
 
-        const plug = this.landingVideoModal.querySelector('.c-video-plug') as HTMLImageElement;
+        this.plug = this.landingVideoModal.querySelector('.c-video-plug') as HTMLImageElement;
+
         if (this.video != null) {
             fromEvent(document, 'touchend', { passive: false, once: true })
                 .pipe(takeUntil(this.disposed$))
@@ -81,8 +86,8 @@ export class LandingVideoModal {
                 this.video.play().then(() => {
                     let durationDiv = this.controlFooter.querySelector('.c-duration');
                     durationDiv.innerHTML = this.formatTime(this.video.duration);
-                    plug.classList.remove('flex');
-                    plug.hidden = true;
+                    this.plug.classList.remove('flex');
+                    this.plug.hidden = true;
                     this.video.hidden = false;
                 });
             };
@@ -134,11 +139,13 @@ export class LandingVideoModal {
         if (this.video.paused)
             this.video.play().then(() => {
                 setTimeout(() => {
-                    this.controlWrapper.style.display = 'none';
+                    this.showControl(false);
                 }, 200);
             });
-        else
+        else {
             this.video.pause();
+            this.showControl(false);
+        }
     }
 
     private updateTimeline() {
@@ -163,17 +170,16 @@ export class LandingVideoModal {
         if (this.isVideoPlayStarted)
             return;
 
-        if (!this.video)
-            return;
-
         this.video.muted = true;
-        const isVideoPlaying = !!(this.video.currentTime > 0 && !this.video.paused && !this.video.ended && this.video.readyState > 2);
-        if (!isVideoPlaying) {
+        void this.video.play().then(_ => {
             this.isVideoPlayStarted = true;
-            void this.video.play().then(_ => {
-                debugLog.log('onTouchEnd: tutorial video playback started.');
-            });
-            debugLog.log('onTouchEnd: tutorial video play...');
-        }
+            const durationDiv = this.controlFooter.querySelector('.c-duration');
+            durationDiv.innerHTML = this.formatTime(this.video.duration);
+            this.plug.classList.remove('flex');
+            this.plug.hidden = true;
+            this.video.hidden = false;
+            debugLog.log('onTouchEnd: tutorial video playback started.');
+        });
+        debugLog.log('onTouchEnd: tutorial video play...');
     }
 }
