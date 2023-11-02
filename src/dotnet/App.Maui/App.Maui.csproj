@@ -368,4 +368,14 @@
     <Message Importance="High" Text="$(ArtifactVersion)" />
   </Target>
 
+  <Target Name="CopyServiseWorkerToTheRoot" AfterTargets="Build">
+    <PropertyGroup>
+      <InputFile>$(MSBuildThisFileDirectory)\wwwroot\dist\sw.js</InputFile>
+      <OutputFile>$(MSBuildThisFileDirectory)\wwwroot\sw.js</OutputFile>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(OutputFile)" Lines="$([System.IO.File]::ReadAllText($(InputFile)))" Overwrite="true" />
+
+    <Message Importance="High" Text="Service Worker has been copied." />
+  </Target>
+
 </Project>

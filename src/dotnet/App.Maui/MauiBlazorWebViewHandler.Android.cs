@@ -68,7 +68,7 @@ public partial class MauiBlazorWebViewHandler
             if (resourceResponse == null)
                 return null;
 
-            if (OrdinalEquals(requestUrl?.Host, AppHostAddress))
+            if (!OrdinalEquals(requestUrl?.Host, AppHostAddress))
                 return resourceResponse;
 
             resourceResponse.ResponseHeaders?.Remove(cacheControlKey);

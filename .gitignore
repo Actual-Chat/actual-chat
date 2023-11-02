@@ -53,3 +53,4 @@ node_modules/
 
 # MAUI replaced index.html
 index.html
+sw.js
