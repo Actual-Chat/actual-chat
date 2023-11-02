@@ -15,7 +15,7 @@
 }
 
 .url-markup:not(.url-markup-image) {
-    @apply cursor-pointer no-underline hover:underline text-cyan-600;
+    @apply cursor-pointer no-underline hover:underline text-primary;
 }
 .url-markup.url-markup-image {
     @apply cursor-pointer;
