@@ -2,6 +2,8 @@ using ActualChat.Permissions;
 using AVFoundation;
 using Foundation;
 using Microsoft.AspNetCore.Components.WebView;
+using Microsoft.Maui.Controls.PlatformConfiguration;
+using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
 using WebKit;
 
 namespace ActualChat.App.Maui;
@@ -57,6 +59,7 @@ public partial class MainPage
         e.Configuration.MediaTypesRequiringUserActionForPlayback = WebKit.WKAudiovisualMediaTypes.None;
         e.Configuration.UpgradeKnownHostsToHttps = true;
         e.Configuration.Preferences.JavaScriptCanOpenWindowsAutomatically = true;
+        On<iOS>().SetUseSafeArea(false);
     }
 
     private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e)
@@ -64,6 +67,7 @@ public partial class MainPage
         var webView = PlatformWebView = e.WebView;
         if (DeviceInfo.Version >= new Version("16.4"))
             webView.Inspectable = true;
+        On<iOS>().SetUseSafeArea(false);
     }
 
     private partial void OnWebViewLoaded(object? sender, EventArgs e)

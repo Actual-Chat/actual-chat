@@ -357,6 +357,8 @@ module.exports = {
       200: '50rem',
       240: '60rem',
       320: '80rem',
+      'safe-top': 'var(--safe-area-inset-top)',
+      'safe-bottom': 'var(--safe-area-inset-bottom)',
     },
     'relativeSpacing' : {
       '1/2': '50%',
@@ -875,6 +877,7 @@ module.exports = {
       min: 'min-content',
       max: 'max-content',
       fit: 'fit-content',
+      'full-safe': 'calc(100% - var(--safe-area-inset-top) - var(--safe-area-inset-bottom))',
     }),
     inset: ({ theme }) => ({
       auto: 'auto',

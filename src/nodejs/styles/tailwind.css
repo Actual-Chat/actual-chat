@@ -229,3 +229,10 @@
         @apply text-[var(--white)];
     }
 }
+
+@layer utilities {
+    :root {
+        --safe-area-inset-top: env(safe-area-inset-top);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom);
+    }
+}

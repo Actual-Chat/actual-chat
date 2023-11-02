@@ -8,8 +8,8 @@
     @apply bg-transparent;
     @apply backdrop-blur-sm;
     @apply backdrop-brightness-30;
-    height: calc(var(--vh, 1vh) * 100);
-    min-height: calc(var(--vh, 1vh) * 100);
+    height: calc(var(--vh, 1vh) * 100 - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+    min-height: calc(var(--vh, 1vh) * 100 - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
 }
 
 /* Image viewer header */

@@ -3,7 +3,7 @@
 .modal-overlay {
     @apply z-modal-overlay fixed;
     @apply flex-1 flex-y justify-center;
-    @apply top-0 left-0 h-full w-full;
+    @apply top-safe-top left-0 h-full-safe w-full;
     @apply overflow-x-hidden overflow-y-hidden;
     @apply outline-0;
     background-color: rgba(0,0,0,0.5);
@@ -82,7 +82,7 @@ body.narrow .modal-frame.modal-xs .c-text {
 }
 
 .modal-chrome-overlay {
-    @apply block fixed left-0 top-0 h-full w-full;
+    @apply block fixed left-0 top-safe-top h-full-safe w-full;
 }
 
 .modal-chrome {

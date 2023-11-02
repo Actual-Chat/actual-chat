@@ -1,9 +1,9 @@
 .side-nav {
     @apply fixed md:static;
     @apply z-60 left-0;
-    @apply h-full w-full;
+    @apply h-full-safe w-full;
     @apply text-02 bg-02;
-    @apply top-0 bottom-0;
+    @apply top-safe-top bottom-safe-bottom;
     transform: none;
     touch-action: manipulation;
     will-change: custom; /* Ensures its own composition layer */

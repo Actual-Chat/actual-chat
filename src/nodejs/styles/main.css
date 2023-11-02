@@ -83,6 +83,16 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 
 /* Layouts */
 
+.safe-area-top {
+    @apply h-safe-top;
+    @apply bg-01;
+}
+
+.safe-area-bottom {
+    @apply h-safe-bottom;
+    @apply bg-post-panel;
+}
+
 .base-layout {
     @apply relative;
     @apply flex-1 flex-x;
