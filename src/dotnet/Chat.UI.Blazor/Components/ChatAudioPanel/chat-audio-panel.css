@@ -405,10 +405,13 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply gap-y-1;
 }
 .transcription-options-modal .language-btn-group {
-    @apply flex-y gap-y-4 mb-2;
+    @apply flex-y mb-2;
 }
 .transcription-options-modal .language-btn-group .configure-hint {
-    @apply text-02;
+    @apply text-02 mb-4;
+}
+.transcription-options-modal .language-btn-group .c-title {
+    @apply text-02 mb-2;
 }
 .transcription-options-modal .language-btn-group a.link {
     @apply md:cursor-pointer text-primary underline;
