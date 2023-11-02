@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
@@ -105,7 +106,8 @@ public sealed class LoadingUI
     // Private methods
 
     private void RemoveLoadingOverlay()
-    {
-        _ = Services.JSRuntime().InvokeVoidAsync("window.App.overlay.hide");
-    }
+        => _ = Services.JSRuntime().InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.BrowserInit.removeLoadingOverlay")
+            .AsTask()
+            .WithErrorHandler(
+                e => Services.LogFor<LoadingUI>().LogError(e, "An error occurred during RemoveLoadingOverlay call"));
 }

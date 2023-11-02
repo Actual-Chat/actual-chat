@@ -2,11 +2,9 @@ using ActualChat.Hosting;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class BrowserInit(IJSRuntime js)
+public class BrowserInit(IServiceProvider services)
 {
     private readonly TaskCompletionSource _whenInitializedSource = new();
-
-    private IJSRuntime JS { get; } = js;
 
     public Task WhenInitialized => _whenInitializedSource.Task;
 
@@ -18,9 +16,18 @@ public class BrowserInit(IJSRuntime js)
         AppKind appKind)
     {
         try {
-            await JS
-                .InvokeVoidAsync("window.App.browserInit", apiVersion, baseUri, sessionHash, browserInfoBackendRef, appKind.ToString())
+            await services.JSRuntime()
+                .InvokeVoidAsync("window.App.browserInit",
+                    apiVersion,
+                    baseUri,
+                    sessionHash,
+                    browserInfoBackendRef,
+                    appKind.ToString())
                 .ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            services.LogFor<BrowserInit>().LogError(e, "An error occurred during browserInit call");
+            throw;
         }
         finally {
             _whenInitializedSource.TrySetResult();
