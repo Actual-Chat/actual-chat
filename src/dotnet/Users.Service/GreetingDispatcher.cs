@@ -62,8 +62,10 @@ public class GreetingDispatcher : WorkerBase, IHasServices
             .Take(SelectBatchSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (dbAccounts.Count == 0)
+        if (dbAccounts.Count == 0) {
+            _needsGreeting.Value = false;
             return false;
+        }
 
         _needsGreeting.Value = false;
         foreach (var userId in dbAccounts.Select(dbAccount => new UserId(dbAccount.Id)))

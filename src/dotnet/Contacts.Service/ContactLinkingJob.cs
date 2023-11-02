@@ -69,8 +69,10 @@ internal class ContactLinkingJob : WorkerBase, IHasServices, INotifyInitialized
             .Take(SelectBatchSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        if (dbExternalContactLinks.Count == 0)
+        if (dbExternalContactLinks.Count == 0) {
+            _needsSync.Value = false;
             return false;
+        }
 
         _needsSync.Value = false;
         using var _2 = Tracer.Default.Region($"Check {dbExternalContactLinks.Count} external contact links");
