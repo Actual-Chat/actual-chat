@@ -18,10 +18,13 @@
 <div class="language-btn-group">
     @if (!nSecondary.HasValue) {
         <div class="configure-hint">
-            Your secondary language is not selected. You can choose your secondary language in
+            You secondary language is not selected. You can add it in
             <a class="link" @onclick="@OnConfigureSecondLanguage" @onclick:preventDefault="true">Settings</a>.
         </div>
     }
+    <div class="c-title">
+        Transcription language
+    </div>
     <div class="two-btn-group">
         <button
             class="@(primary == selectedLanguage ? "active" : "")"
