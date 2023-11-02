@@ -150,20 +150,20 @@
 
     /* Banners */
     --background-banner-success: var(--green-99);
-    --text-banner-success: var(--success);
+    --text-banner-success: var(--green-40);
     --background-banner-info: var(--blue-99);
-    --text-banner-info: var(--primary);
+    --text-banner-info: var(--blue-50);
     --background-banner-warning: var(--sienna-90);
-    --text-banner-warning: var(--warning);
-    --background-banner-error: var(--magenta-99);
-    --text-banner-error: var(--danger);
+    --text-banner-warning: var(--sienna-50);
+    --background-banner-error: var(--red-99);
+    --text-banner-error: var(--magenta-60);
 
     /* Toasts */
     --toast-body: var(--gray-20);
     --toast-text: var(--gray-95);
     --toast-action: var(--blue-60);
     --error-toast-body: var(--magenta-70);
-    --error-toast-text: var(--text-06);
+    --error-toast-text: var(--white);
 
     /* Buttons */
     --disabled: #E7E7E7;
@@ -293,11 +293,11 @@
     --background-banner-success: var(--green-20);
     --text-banner-success: var(--green-80);
     --background-banner-info: var(--blue-20);
-    --text-banner-info: var(--blue-80);
+    --text-banner-info: var(--blue-60);
     --background-banner-warning: var(--sienna-20);
     --text-banner-warning: var(--sienna-80);
-    --background-banner-error: var(--magenta-20);
-    --text-banner-error: var(--magenta-80);
+    --background-banner-error: var(--gray-90);
+    --text-banner-error: var(--magenta-20);
 
     /* Toasts */
     --toast-body: var(--gray-80);
@@ -383,7 +383,9 @@
     --toggle-on: var(--blue-60);
     --toggle-hover: var(--blue-50);
     --message-hover: var(--white-05);
-    --mention-other: var(--gray-95);
+    --mention-message: #FFF7ED;
+    --mention-message-hover: #FFF7E5;
+    --mention-other: var(--blue-80-20);
     --mention-other-text: var(--blue-60);
     --mention-own: var(--violet-60-20);
     --mention-own-text: var(--violet-70);
@@ -393,9 +395,9 @@
     --replied-message-border: var(--blue-60);
     --context-menu: var(--white-05);
     --context-border: var(--gray-05);
-    --selection: var(--white-05);
-    --dot: #e2e7ec;
-    --dot-selected: #4b5e71;
+    --selection: #CCBBDD;
+    --dot: #E2E7EC;
+    --dot-selected: #4B5E71;
     --skeleton: var(--gray-05);
     --skeleton-border: var(--gray-10);
     --scrollbar: var(--gray-30);
