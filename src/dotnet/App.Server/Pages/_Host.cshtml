@@ -147,27 +147,6 @@
             getAuthSchemas: function () {
                 return window.FusionAuth.schemas;
             },
-            overlay: {
-                show: function() {
-                    const overlay = document.getElementById('until-ui-is-ready');
-                    if (overlay) {
-                      overlay.innerHTML = `
-                          <div class="c-box">
-                              <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="Loading...">
-                          </div>
-                          <div class="c-rotating-bg"></div>
-                      `;
-                    }
-                },
-                hide: function () {
-                    const overlay = document.getElementById('until-ui-is-ready');
-                    if (overlay) {
-                        overlay.style.opacity = '0';
-                        setTimeout(function() { overlay.remove(); }, 500);
-                    }
-                }
-            },
-
         };
         window.App.whenBundleReady = new Promise((resolve, _) => {
             window.App.markBundleReady = resolve;
