@@ -79,7 +79,7 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
         // only recent versions of apple hw have decent performance to run NN with WASM SIMD for VAD
         return int.TryParse(match.Groups["version"].Value, CultureInfo.InvariantCulture, out var hwVersion)
-            && hwVersion >= 12;
+            && hwVersion >= 11;
     }
 
     private async Task UpdateBackgroundState(CancellationToken cancellationToken)
