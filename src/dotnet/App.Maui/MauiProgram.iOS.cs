@@ -20,6 +20,7 @@ public static partial class MauiProgram
         services.AddScoped<TuneUI>(c => new IosTuneUI(c));
         services.AddSingleton<Action<Theme>>(_ => MauiApplyThemeHandler.Instance.OnApplyTheme);
         services.AddScoped<IVisualMediaViewerFileDownloader, IosVisualMediaViewerFileDownloader>();
+        services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c));
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
