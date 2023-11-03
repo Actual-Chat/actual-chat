@@ -27,7 +27,9 @@
                 <Button Class="btn-modal" Click="OnChangeAvatarClicked">Change avatar</Button>
             } else {
                 <Button Class="btn-modal" Click="@(_ => OnEditAvatarClicked(m.Author))">Change avatar</Button>
-                <Button Class="btn-modal danger" Click="OnRevealClicked">Reveal</Button>
+                @if (m.EnableIncompleteUI) {
+                    <Button Class="btn-modal danger" Click="OnRevealClicked">Reveal</Button>
+                }
             }
         } else if (m.Author.IsAnonymous) {
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
@@ -78,6 +80,7 @@
         var ownAccount = await ChatHub.Accounts.GetOwn(session, cancellationToken);
         var account = await ChatHub.Authors.GetAccount(session, ChatId, AuthorId, cancellationToken);
         var canStartPeerChat = await ChatHub.AuthorUI.CanStartPeerChat(AuthorId, cancellationToken);
+        var enableIncompleteUI = await ChatHub.Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
         EditMemberModel? editMemberModel = null;
         var canEditMembers = chat != null && chat.Rules.CanEditMembers();
@@ -89,7 +92,8 @@
             Account = account,
             OwnAccount = ownAccount,
             CanStartPeerChat = canStartPeerChat,
-            EditMemberModel = editMemberModel
+            EditMemberModel = editMemberModel,
+            EnableIncompleteUI = enableIncompleteUI
         };
     }
 
@@ -135,6 +139,7 @@
         public bool IsOwn => Account?.Id == OwnAccount.Id;
         public bool CanStartPeerChat { get; init; }
         public EditMemberModel? EditMemberModel { get; init; }
+        public bool EnableIncompleteUI { get; init; }
     }
 
     public sealed record Model(AuthorId AuthorId);
