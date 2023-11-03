@@ -3,9 +3,7 @@
 @inherits ComputedStateComponent<VoiceSettingsModal.ComputedModel>
 @{
     var m = State.Value;
-    var status = m.CanChangeMustStreamVoice
-        ? m.MustStreamVoice ? "On" : "Off"
-        : "disabled";
+    var status = !m.CanChangeMustStreamVoice ? "Disabled for anonymous users" : "";
 }
 
 <DialogFrame Title="Voice settings" Class="transcription-options-modal modal-sm" HasCloseButton="true">
