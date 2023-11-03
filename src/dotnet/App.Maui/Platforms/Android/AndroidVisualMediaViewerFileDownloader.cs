@@ -19,7 +19,7 @@ public class AndroidVisualMediaViewerFileDownloader : IVisualMediaViewerFileDown
         Log = log;
     }
 
-    public Task Download(string sUri)
+    public Task Download(string sUri, string contentType)
     {
         var uri = Android.Net.Uri.Parse(sUri);
         if (uri == null) {

@@ -34,7 +34,7 @@
 }
 
 <ModalFrame Class="image-viewer-modal">
-    <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry" DownloadUrl="@selectedAttachmentDownloadUrl"/>
+    <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry" DownloadUrl="@selectedAttachmentDownloadUrl" ContentType="@(selectedAttachment?.Media.ContentType ?? "")"/>
     <div @ref="@Ref" class="image-viewer-content invisible">
         @if (_attachments != null) {
             foreach (var attachment in _attachments) {
