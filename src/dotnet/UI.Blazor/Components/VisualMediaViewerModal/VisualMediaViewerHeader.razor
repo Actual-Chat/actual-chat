@@ -22,8 +22,8 @@
                 <i class="icon-share"></i>
             </HeaderButton>
         }
-        @if (_isDownloadEnabled) {
-            if (_saver != null) {
+        @if (!DownloadUrl.IsNullOrEmpty()) {
+            @if (_saver != null) {
                 <a href="#" download class="c-link" @onclick="() => _saver.Download(DownloadUrl)" @onclick:preventDefault>
                     <HeaderButton Class="inverted">
                         <i class="icon-download"></i>
@@ -62,7 +62,6 @@
     protected override async Task OnInitializedAsync() {
         _saver = Services.GetService<IVisualMediaViewerFileDownloader>();
         _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
-        _isDownloadEnabled = await Features.Get<Features_EnableDownloadVisualMediaUI, bool>(CancellationToken.None);
     }
 
     protected override async Task OnParametersSetAsync() {

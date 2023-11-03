@@ -1,5 +1,6 @@
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
+using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
 using Plugin.Firebase.CloudMessaging;
@@ -18,6 +19,7 @@ public static partial class MauiProgram
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c));
         services.AddSingleton<Action<Theme>>(_ => MauiApplyThemeHandler.Instance.OnApplyTheme);
+        services.AddScoped<IVisualMediaViewerFileDownloader, IosVisualMediaViewerFileDownloader>();
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)

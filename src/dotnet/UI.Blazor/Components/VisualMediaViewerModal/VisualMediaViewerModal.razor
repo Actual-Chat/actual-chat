@@ -1,4 +1,3 @@
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat
 @using ActualChat.UI.Blazor.Module
 @implements IAsyncDisposable
@@ -6,27 +5,18 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @{
-    List<TextEntryAttachment>? mediaList = null;
-    if (ModalModel.ChatEntry?.Attachments.Count > 0) {
-        mediaList = ModalModel.ChatEntry.Attachments.ToList();
-    }
-
-    RenderFragment RenderMedia(TextEntryAttachment media) {
-        var cls = "gallery-item";
-        var id = media.Media.ContentId;
-        var url = UrlMapper.ContentUrl(media.Media.ContentId);
+    RenderFragment RenderThumbnail(TextEntryAttachment attachment) {
+        var id = attachment.MediaId;
+        var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
         string? previewUrl = null;
-        if (media.IsGif() || media.IsSvg()) {
+        if (attachment.IsGif() || attachment.IsSvg()) {
             previewUrl = url; // currently image proxy fails on large gifs
-        } else if(media.IsSupportedImage()) {
+        } else if(attachment.IsSupportedImage()) {
             previewUrl = UrlMapper.ImagePreviewUrl(url, 80, 54);
         }
-        if (url != ModalModel.Url)
-            cls += " inactive";
-        else
-            cls += " active";
-        return @<div class="@cls" id="@id">
-                   @if (media.IsSupportedVideo()) {
+        var activeCls = IsActive(id) ? " active" : " inactive";
+        return @<div class="gallery-item @activeCls" id="@id">
+                   @if (attachment.IsSupportedVideo()) {
                        <video preload="metadata" playsinline>
                            <source src="@url#t=,5"/>
                        </video>
@@ -38,43 +28,46 @@
                    }
                </div>;
     }
+
+    var selectedAttachment = _attachments?.FirstOrDefault(x => x.MediaId == _activeMediaId);
+    var selectedAttachmentDownloadUrl = selectedAttachment != null ? UrlMapper.ContentUrl(selectedAttachment.Media.ContentId) : ModalModel.Url;
 }
 
 <ModalFrame Class="image-viewer-modal">
-    <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry" DownloadUrl="@ModalModel.Url"/>
+    <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry" DownloadUrl="@selectedAttachmentDownloadUrl"/>
     <div @ref="@Ref" class="image-viewer-content invisible">
-        @if (mediaList != null) {
-            foreach (var media in mediaList) {
-                var url = UrlMapper.ContentUrl(media.Media.ContentId);
-                var id = media.Media.ContentId;
+        @if (_attachments != null) {
+            foreach (var attachment in _attachments) {
+                var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
+                var id = attachment.MediaId;
                 var idCached = "cached:" + id;
-                var mediaCls = url == ModalModel.Url ? "active" : "inactive";
+                var mediaCls = IsActive(id) ? "active" : "inactive";
                 var cachedImageUrl = url == ModalModel.Url
                     ? ModalModel.CachedImageUrl
                     : UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxImageWidth, Constants.Attachments.MaxImageHeight);
-                @if (media.IsSupportedVideo()) {
+                @if (attachment.IsSupportedVideo()) {
                     <video
                         id="@id"
-                        class="video-container @mediaCls"
-                        width="@media.Media.Width"
-                        height="@media.Media.Height"
+                        class="video-container c-full-media @mediaCls"
+                        width="@attachment.Media.Width"
+                        height="@attachment.Media.Height"
                         preload="auto"
-                        autoplay controls
+                        controls
                         onclick="this.play()">
                         <source src="@url"/>
                     </video>
                 } else {
-                    <img class="image-container c-main-image @mediaCls"
+                    <img class="image-container c-full-media @mediaCls"
                          id="@id"
-                         width="@media.Media.Width"
-                         height="@media.Media.Height"
+                         width="@attachment.Media.Width"
+                         height="@attachment.Media.Height"
                          src="@url"
                          alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"
                          />
                     <img id="@idCached"
                          class="image-container @mediaCls"
-                         width="@media.Media.Width"
-                         height="@media.Media.Height"
+                         width="@attachment.Media.Width"
+                         height="@attachment.Media.Height"
                          src="@cachedImageUrl"
                          alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"/>
 
@@ -82,7 +75,7 @@
             }
         }
     </div>
-    @if (mediaList?.Count > 1) {
+    @if (_attachments?.Count > 1) {
         <div class="c-previous invisible">
             <i class="icon-gallery-arrow-left text-3.5xl"></i>
         </div>
@@ -92,9 +85,9 @@
     }
     <div class="image-viewer-footer">
         <div class="footer-gallery">
-            @if (mediaList != null) {
-                foreach (var media in mediaList) {
-                    @RenderMedia(media)
+            @if (_attachments != null) {
+                foreach (var attachment in _attachments) {
+                    @RenderThumbnail(attachment)
                 }
             }
         </div>
@@ -103,13 +96,14 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VisualMediaViewer.create";
+    private List<TextEntryAttachment>? _attachments;
+    private MediaId _activeMediaId;
 
     private DotNetObjectReference<VisualMediaViewerModal> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private ComponentIdGenerator IdGenerator { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ILogger<VisualMediaViewerModal> Log { get; init; } = null!;
 
@@ -124,6 +118,12 @@
         BlazorRef = null!;
     }
 
+    protected override void OnInitialized() {
+        _attachments = ModalModel.ChatEntry?.Attachments.ToList();
+        var selectedAttachment = _attachments?.FirstOrDefault(x => OrdinalIgnoreCaseEquals(UrlMapper.ContentUrl(x.Media.ContentId), ModalModel.Url));
+        _activeMediaId = selectedAttachment?.MediaId ?? MediaId.None;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create(this);
@@ -133,6 +133,9 @@
 
     private void CloseModal()
         => Modal.Close();
+
+    private bool IsActive(MediaId id)
+        => _activeMediaId.IsNone || id == _activeMediaId;
 
     [JSInvokable]
     public void LogJS(string text)
@@ -144,8 +147,7 @@
 
     [JSInvokable]
     public void ChangeMedia(string mediaId) {
-        var url = UrlMapper.ContentUrl(mediaId);
-        ModalModel = new Model(url, "","", ModalModel.ChatEntry);
+        _activeMediaId = new MediaId(mediaId);
         StateHasChanged();
     }
 
