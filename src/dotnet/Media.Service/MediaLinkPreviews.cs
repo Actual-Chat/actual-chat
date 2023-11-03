@@ -17,7 +17,7 @@ internal class MediaLinkPreviews(IServiceProvider services) : IMediaLinkPreviews
 
     [Obsolete("2023.10: Remaining only for backward compability")]
     // [ComputeMethod]
-    public virtual Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken)
+    public virtual Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
         => entryId.IsNone
             ? Task.FromResult<LinkPreview?>(null)
             : Backend.GetForEntry(entryId, cancellationToken);
