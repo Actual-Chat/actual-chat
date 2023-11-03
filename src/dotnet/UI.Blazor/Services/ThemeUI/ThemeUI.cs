@@ -98,8 +98,8 @@ public class ThemeUI : WorkerBase
             try {
                 handler(theme);
             }
-            catch {
-                // Ignore
+            catch(Exception e) {
+                Log.LogError(e, "An error occurred on OnThemeApplied");
             }
     }
 }

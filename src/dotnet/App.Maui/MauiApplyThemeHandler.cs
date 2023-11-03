@@ -6,8 +6,11 @@ public class MauiApplyThemeHandler
 {
     private const string BarsColor = "Theme_BarsColor";
     private string _lastAppliedColor = "";
+    private ILogger? _log;
 
     public static readonly MauiApplyThemeHandler Instance = new ();
+
+    protected ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(GetType());
 
     protected MauiApplyThemeHandler()
     { }
@@ -30,8 +33,8 @@ public class MauiApplyThemeHandler
             Preferences.Default.Set(BarsColor, themeBarColors);
             ApplyBarColors(themeBarColors);
         }
-        catch {
-            // Ignore
+        catch(Exception e) {
+            Log.LogWarning(e, "An error occurred on OnApplyThemeAsync");
         }
     }
 
@@ -40,7 +43,7 @@ public class MauiApplyThemeHandler
         if (sColors.IsNullOrEmpty())
             return;
 
-        _ = DispatchToBlazor(_ => {
+        MainThread.BeginInvokeOnMainThread(() => {
             if (OrdinalEquals(sColors, _lastAppliedColor))
                 return;
 
@@ -56,11 +59,10 @@ public class MauiApplyThemeHandler
                 if (ApplyBarColors(sTopBarColor, sBottomBarColor))
                     _lastAppliedColor = sColors;
             }
-            catch {
-                // Ignore
+            catch(Exception e) {
+                Log.LogWarning(e, "An error occurred on ApplyBarColors");
             }
         });
-
     }
 
     protected virtual bool ApplyBarColors(string sTopBarColor, string sBottomBarColor)
@@ -71,6 +73,5 @@ public class MauiApplyThemeHandler
 
         mainPage.BackgroundColor = Color.FromArgb(sBottomBarColor);
         return true;
-
     }
 }
