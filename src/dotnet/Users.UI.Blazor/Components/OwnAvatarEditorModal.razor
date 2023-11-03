@@ -4,6 +4,12 @@
 @using Stl.Generators
 @implements IModalView<OwnAvatarEditorModal.Model>
 @namespace ActualChat.Users.UI.Blazor.Components
+@{
+    RenderFragment? noPictureRenderFragment = null;
+    if (_isAnonymous && _form.Picture is null) {
+        noPictureRenderFragment = @<AvatarCircle Size="SquareSize.Size24" Avatar="_avatar"></AvatarCircle>;
+    }
+}
 
 <Form @ref="_formRef" Class="h-full" Model="@_form" OnSubmit="@OnSave">
     <DialogFrame
@@ -16,19 +22,15 @@
         <FormBlock>
             <DataAnnotationsValidator/>
             <ValidationSummary/>
-            @if (!_isAnonymous) {
-                <PicUpload
-                    UploadUrl="@UploadUrl"
-                    Picked="OnImagePicked"
-                    Size="SquareSize.Size24"
-                    Title="@_form.Bio"
-                    Picture="_form.Picture"
-                    GenerateAvatar="OnGenerateAvatarClick">
-                    <NoPicture>
-                        <AnonymousIcon Class="w-24 h-24"/>
-                    </NoPicture>
-                </PicUpload>
-            }
+            <PicUpload
+                UploadUrl="@UploadUrl"
+                Picked="OnImagePicked"
+                Size="SquareSize.Size24"
+                Title="@_form.Name"
+                Picture="_form.Picture"
+                GenerateAvatar="OnGenerateAvatarClick"
+                NoPicture="@noPictureRenderFragment">
+            </PicUpload>
 
             <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
@@ -93,6 +95,7 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private bool _isAnonymous;
+    private Avatar _avatar = Avatar.None;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
@@ -108,6 +111,7 @@
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var avatar = await Avatars.GetOwn(Session, ModalModel.AvatarId, default);
         _isAnonymous = avatar?.IsAnonymous ?? false;
+        _avatar = avatar ?? Avatar.None;
         var account = await Accounts.GetOwn(Session, default);
         var isDefault = ModalModel.AvatarId == account.Avatar.Id;
         var isActive = false;
@@ -137,9 +141,7 @@
             });
             return;
         }
-        if (!_isAnonymous)
-            avatar = avatar.WithPicture(_form.Picture);
-        avatar = avatar with {
+        avatar = avatar.WithPicture(_form.Picture) with {
             Name = _form.Name,
             Bio = _form.Bio,
             };

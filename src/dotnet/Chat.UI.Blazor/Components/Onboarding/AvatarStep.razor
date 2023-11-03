@@ -17,11 +17,8 @@
         Model="@_model">
         <DataAnnotationsValidator/>
         <div class="flex-none flex-x my-8">
-            <Pic Title="@_model.Name" Picture="@_model.Picture" Size="SquareSize.Size24">
-                <NoPicture>
-                    <AnonymousIcon Class="w-24 h-24"/>
-                </NoPicture>
-            </Pic>
+            <Pic Title="@_model.Name" Picture="@_model.Picture" Size="SquareSize.Size24" />
+
             <div class="flex-y">
                 <Button Class="transparent border-none" Click="OnGenerateAvatarClick">
                     <div class="flex min-w-10 items-center justify-center">

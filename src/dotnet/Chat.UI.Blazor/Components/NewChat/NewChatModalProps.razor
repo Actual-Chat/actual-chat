@@ -10,15 +10,7 @@
             Picked="OnImagePicked"
             Size="SquareSize.Size24"
             Title="@_form.Title"
-            Picture="_form.Picture">
-            <NoPicture>
-                @if (_form.Title.IsNullOrEmpty()) {
-                    <AnonymousIcon Class="w-24 h-24"></AnonymousIcon>
-                } else {
-                    <Pic Title="@_form.Title" Size="SquareSize.Size24"/>
-                }
-            </NoPicture>
-        </PicUpload>
+            Picture="_form.Picture" />
         <FormSection
             For="() => _form.Title"
             Label="Name"

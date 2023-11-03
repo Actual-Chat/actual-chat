@@ -2,11 +2,7 @@
 @using ActualChat.Media
 @namespace ActualChat.Users.UI.Blazor.Components
 
-<Pic Class="@Class" Picture="@Avatar.Picture" Title="@Avatar.Name" Size="@Size">
-    <NoPicture>
-        <AnonymousIcon/>
-    </NoPicture>
-</Pic>
+<Pic Class="@Class" Picture="@Avatar.Picture" Title="@Avatar.Name" Size="@Size" />
 
 @code {
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = AvatarFull.None;
