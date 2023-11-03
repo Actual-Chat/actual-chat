@@ -68,11 +68,9 @@ public sealed record RandomNameGenerator
     {
         var prefixIndex = IntArithmetics.Default.Mod(seed, Prefixes.Length);
         var suffixIndex = IntArithmetics.Default.Mod(seed * 1019, Suffixes.Length);
-        var extraIndex = IntArithmetics.Default.Mod(seed * 353, 10);
         var name = ZString.Concat(
             Prefixes[prefixIndex], WordDelimiter,
-            Suffixes[suffixIndex], WordDelimiter,
-            extraIndex.ToString(CultureInfo.InvariantCulture));
+            Suffixes[suffixIndex], WordDelimiter);
         return name;
     }
 }

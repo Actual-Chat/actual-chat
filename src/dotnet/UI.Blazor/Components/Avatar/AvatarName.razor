@@ -15,9 +15,6 @@
     var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
     <span class="@Class @extraClass avatar-name" @onclick="@Click">
         @Avatar.Name
-        @if (IsAnonymous) {
-            <span class="c-anonymous" title="This author is anonymous">ā</span>
-        }
     </span>
 
 }
