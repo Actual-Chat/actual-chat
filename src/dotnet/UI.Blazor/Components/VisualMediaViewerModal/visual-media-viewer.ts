@@ -77,7 +77,7 @@ export class VisualMediaViewer {
             .subscribe(() => this.onScreenSizeChange());
 
         this.media = imageViewer.querySelector('.active');
-        this.mediaArray = [...imageViewer.querySelectorAll<HTMLElement>(':scope img.c-main-image')];
+        this.mediaArray = [...imageViewer.querySelectorAll<HTMLElement>(":scope .c-full-media")];
         for (const element of this.mediaArray) {
             const id = element.id;
             const cachedId = 'cached:' + id;
@@ -827,8 +827,8 @@ export class VisualMediaViewer {
         let newFooterMedia = event.currentTarget as HTMLElement;
         if (newFooterMedia == null || !newFooterMedia.classList.contains('gallery-item') || newFooterMedia.classList.contains('active'))
             return;
-        let newMediaId = newFooterMedia.getAttribute('id');
-        let newMedia = this.mediaArray.find(item => item.getAttribute('id') == newMediaId) as HTMLElement;
+        let newMediaId = newFooterMedia.id;
+        let newMedia = this.mediaArray.find(item => item.id == newMediaId) as HTMLElement;
         let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
         this.changeMedia(footerMedia, newFooterMedia, newMedia);
     }
@@ -847,7 +847,7 @@ export class VisualMediaViewer {
         newMedia.classList.replace('inactive', 'active');
         newFooterMedia.classList.replace('inactive', 'active');
         this.media = newMedia;
-        let newMediaId = newMedia.getAttribute('id');
+        let newMediaId = newMedia.id;
         this.getOriginWidthAndHeight();
         this.controlButtonsVisibilityToggle();
         this.blazorRef.invokeMethodAsync('ChangeMedia', newMediaId);

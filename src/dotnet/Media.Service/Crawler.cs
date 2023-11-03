@@ -26,10 +26,10 @@ public class Crawler(IServiceProvider services) : IHasServices
     private ILogger? _log;
 
     public IServiceProvider Services { get; } = services;
-    private MediaSettings Settings => _settings ??= services.GetRequiredService<MediaSettings>();
-    private IMediaBackend MediaBackend => _mediaBackend ??= services.GetRequiredService<IMediaBackend>();
+    private MediaSettings Settings => _settings ??= Services.GetRequiredService<MediaSettings>();
+    private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
     private HttpClient HttpClient { get; } = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(LinkPreviewsBackend));
-    private IReadOnlyCollection<IUploadProcessor> UploadProcessors => _uploadProcessors ??= services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
+    private IReadOnlyCollection<IUploadProcessor> UploadProcessors => _uploadProcessors ??= Services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
     private IContentSaver ContentSaver => _contentSaver ??= Services.GetRequiredService<IContentSaver>();
     private ICommander Commander => _commander ??= Services.Commander();
     private ILogger Log => _log ??= Services.LogFor(GetType());
