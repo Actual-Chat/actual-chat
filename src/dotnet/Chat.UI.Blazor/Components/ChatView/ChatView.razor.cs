@@ -394,7 +394,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
             // load second layer stack to improve reuse if large tiles during scroll
             tiles.AddRange(secondLayer.GetCoveringTiles(coldRange));
-            tiles.AddRange(firstLayer.GetCoveringTiles(hotRange));
+            tiles.AddRange(firstLayer.GetCoveringTiles(hotRange).SkipWhile(hr => hr.Range.Overlaps(tiles[^1].Range)));
             var result = tiles.ToArray();
             // DebugLog?.LogDebug("GetIdTilesToLoad: slow {SlowRange}, fast {FastRange}", slowRange.Format(), fastRange.Format());
             // if (result.DistinctBy(x => x.Range).Count() != result.Length)
