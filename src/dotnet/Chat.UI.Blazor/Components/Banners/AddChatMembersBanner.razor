@@ -57,6 +57,8 @@
             return false;
 
         var allAuthorIds = await Authors.ListAuthorIds(Session, Chat.Id, cancellationToken);
+        if (allAuthorIds.Count > 1)
+            return false;
         var ownerIds = await Roles.ListOwnerIds(Session, Chat.Id, cancellationToken);
         var hasRegularMembers = allAuthorIds.Except(ownerIds).Any();
         if (hasRegularMembers)

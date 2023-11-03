@@ -255,14 +255,26 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var (session, chatId, userIds) = command;
+        var (session, chatId, userIds, joinAnonymously) = command;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.CanInvite().RequireTrue("You can't invite members in this chat.");
 
         foreach (var userId in userIds) {
-            var author = await Backend.EnsureJoined(chatId, userId, cancellationToken).ConfigureAwait(false);
-            if (author.HasLeft)
-                await RestoreAuthorMembership(cancellationToken, author).ConfigureAwait(false);
+            var author = await Backend.GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
+            if (author != null) {
+                if (author.HasLeft)
+                    await RestoreAuthorMembership(cancellationToken, author).ConfigureAwait(false);
+            }
+            else {
+                if (joinAnonymously == true && !chat.AllowAnonymousAuthors)
+                    throw StandardError.Constraint("The chat does not allow to join anonymously.");
+                var authorDiff = new AuthorDiff {
+                    IsAnonymous = joinAnonymously.GetValueOrDefault(chat.AllowAnonymousAuthors)
+                };
+                var upsertAuthorCommand = new AuthorsBackend_Upsert(chatId, default, userId, null, authorDiff);
+                var commander = Backend.GetCommander();
+                await commander.Call(upsertAuthorCommand, true, cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 

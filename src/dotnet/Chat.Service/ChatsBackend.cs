@@ -894,12 +894,20 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             if (readAuthor?.Avatar != null)
                 break;
         }
-        var authorName = readAuthor?.Avatar.Name.NullIfEmpty() ?? MentionMarkup.NotAvailableName;
+        var authorId = author.Id;
+        string authorName = "";
+        if (readAuthor != null) {
+            if (readAuthor.IsAnonymous)
+                authorId = AuthorId.None;
+            authorName = readAuthor.IsAnonymous ? "someone" : readAuthor.Avatar.Name;
+        }
+        if (authorName.IsNullOrEmpty())
+            authorName = MentionMarkup.NotAvailableName;
 
         var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
         var command = new ChatsBackend_UpsertEntry(new ChatEntry(entryId) {
             AuthorId = Bots.GetWalleId(author.ChatId),
-            SystemEntry = new MembersChangedOption(author.Id, authorName, author.HasLeft),
+            SystemEntry = new MembersChangedOption(authorId, authorName, author.HasLeft),
         });
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

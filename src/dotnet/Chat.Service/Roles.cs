@@ -9,6 +9,7 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IRolesBackend Backend { get; } = services.GetRequiredService<IRolesBackend>();
 
     // [ComputeMethod]
@@ -69,7 +70,11 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
             .Require()
             .ConfigureAwait(false);
 
-        return await Backend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
+        var authorIds = await Backend.ListAuthorIds(chatId, ownerRole.Id, cancellationToken).ConfigureAwait(false);
+        // Mask anonymous owners
+        if (!rules.IsOwner())
+            authorIds = await MaskAnonymousAuthors(authorIds, cancellationToken).ConfigureAwait(false);
+        return authorIds;
     }
 
     // [CommandHandler]
@@ -115,5 +120,23 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         var ownerRole = await Backend.GetSystem(chatId, SystemRole.Owner, cancellationToken).ConfigureAwait(false);
         if (ownerRole == null || !author.RoleIds.Contains(ownerRole.Id))
             throw StandardError.Unauthorized("Only this chat's Owners role members can perform this action.");
+    }
+
+    private async Task<ApiArray<AuthorId>> MaskAnonymousAuthors(
+        ApiArray<AuthorId> authorIds,
+        CancellationToken cancellationToken)
+    {
+        List<AuthorId>? toExclude = null;
+        foreach (var authorId in authorIds) {
+            var author = await AuthorsBackend.Get(authorId.ChatId, authorId, cancellationToken).ConfigureAwait(false);
+            if (author != null && author.IsAnonymous) {
+                toExclude ??= new List<AuthorId>();
+                toExclude.Add(authorId);
+            }
+        }
+        if (toExclude == null)
+            return authorIds;
+
+        return authorIds.Except(toExclude).ToApiArray();
     }
 }

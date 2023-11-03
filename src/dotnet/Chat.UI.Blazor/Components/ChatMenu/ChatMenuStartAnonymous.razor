@@ -1,0 +1,28 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Audio.UI.Blazor.Components
+@inherits FusionComponentBase
+@if (_peerChatId.IsNone) {
+    return;
+}
+
+<MenuEntry
+    Icon="icon-anonym"
+    Text="Start anonymous chat"
+    Click="@OnStartChatClick">
+</MenuEntry>
+
+@code {
+    private PeerChatId _peerChatId;
+
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+
+    protected override void OnParametersSet()
+        => ChatState.Id.IsPeerChat(out _peerChatId);
+
+    private void OnStartChatClick() {
+        var otherUserId = _peerChatId.UserIds.OtherThanOrDefault(ChatHub.AccountUI.OwnAccount.Value.Id);
+        _ = ChatHub.AuthorUI.StartAnonymousPeerChat(otherUserId);
+    }
+}

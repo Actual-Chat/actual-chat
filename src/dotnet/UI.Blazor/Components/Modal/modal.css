@@ -159,6 +159,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply flex-none px-4;
     @apply flex-x gap-x-4 overflow-hidden;
 }
+.wide-dialog-buttons .dialog-buttons {
+    @apply -flex-y gap-y-2;
+}
 body.narrow .dialog-buttons {
     @apply -flex-y gap-y-2;
 }

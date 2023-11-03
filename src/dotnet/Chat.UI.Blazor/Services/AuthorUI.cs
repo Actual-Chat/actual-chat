@@ -3,25 +3,18 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public sealed class AuthorUI
+public sealed class AuthorUI(IServiceProvider services)
 {
-    private IAccounts? _accounts;
-    private IAuthors? _authors;
-    private ModalUI? _modalUI;
-    private History? _history;
+    private ChatHub? _chatHub;
 
-    private IServiceProvider Services { get; }
-    private Session Session { get; }
-    private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
-    private IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
-    private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
-    private History History => _history ??= Services.GetRequiredService<History>();
-
-    public AuthorUI(IServiceProvider services)
-    {
-        Services = services;
-        Session = services.Session();
-    }
+    private IServiceProvider Services { get; } = services;
+    private ChatHub ChatHub => _chatHub ??= Services.GetRequiredService<ChatHub>();
+    private Session Session => ChatHub.Session;
+    private IAccounts Accounts => ChatHub.Accounts;
+    private IAuthors Authors => ChatHub.Authors;
+    private ModalUI ModalUI => ChatHub.ModalUI;
+    private History History => ChatHub.History;
+    private UICommander UICommander => ChatHub.UICommander;
 
     public async Task Show(AuthorId authorId, CancellationToken cancellationToken = default)
     {
@@ -59,5 +52,51 @@ public sealed class AuthorUI
         var peerChatId = new PeerChatId(ownAccount.Id, account!.Id);
         var localUrl = Links.Chat(peerChatId);
         _ = History.NavigateTo(localUrl);
+    }
+
+    public async Task StartAnonymousPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
+    {
+        if (authorId.IsNone)
+            return;
+
+        var account = await Authors.GetAccount(Session, authorId.ChatId, authorId, cancellationToken).ConfigureAwait(true);
+        if (account == null)
+            return;
+
+        await StartAnonymousPeerChat(account.Id, cancellationToken).ConfigureAwait(true);
+    }
+
+    public async Task StartAnonymousPeerChat(UserId userId, CancellationToken cancellationToken = default)
+    {
+        if (userId.IsNone)
+            return;
+
+        var createCommand = new Chats_Change(Session, default, null, new() {
+            Create = new ChatDiff {
+                Title = $"Anonymous chat ({ChatHub.Clocks.SystemClock.Now.ToString("d")})",
+                Kind = ChatKind.Group,
+                IsPublic = false,
+                AllowAnonymousAuthors = true,
+            },
+        });
+        var chatResult = await UICommander.Run(createCommand, cancellationToken).ConfigureAwait(true);
+        if (chatResult.HasError)
+            return;
+
+        var chatId = chatResult.Value.Id;
+        var addOtherUserCommand = new Authors_Invite(Session, chatId, new[] { userId }, JoinAnonymously: true);
+        var authorResult = await UICommander.Run(addOtherUserCommand, cancellationToken).ConfigureAwait(true);
+        if (authorResult.HasError)
+            return;
+
+        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(true);
+        var authorIds = await Authors.ListAuthorIds(Session, chatId, cancellationToken).ConfigureAwait(true);
+        var otherAuthorId = authorIds.Items.First(c => c.Id != ownAuthor!.Id);
+        var promoteCommand = new Authors_PromoteToOwner(Session, otherAuthorId);
+        var promoteResult = await UICommander.Run(promoteCommand, cancellationToken).ConfigureAwait(true);
+        if (promoteResult.HasError)
+            return;
+
+        _ = History.NavigateTo(Links.Chat(chatId));
     }
 }
