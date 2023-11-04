@@ -20,43 +20,44 @@ namespace ActualChat.Users.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            UpAsync(migrationBuilder).Wait();
+            // NOTE(EK): Obsolete: applied to all of our DBs. Now it causes migration in tests to fail.
+            // UpAsync(migrationBuilder).Wait();
         }
 
-        private async Task UpAsync(MigrationBuilder migrationBuilder)
-        {
-            var dbInitializer = DbInitializer.GetCurrent<UsersDbInitializer>();
-            var mediaDbInitializer = await DbInitializer.GetOther<MediaDbInitializer>()
-                .CompleteEarlierMigrations(this);
-            var log = dbInitializer.Services.LogFor(GetType());
-
-            var clocks = dbInitializer.Services.Clocks();
-
-            using var dbContext = dbInitializer.CreateDbContext(true);
-            using var mediaDbContext = mediaDbInitializer.CreateDbContext(true);
-
-            var dbAvatars = await dbContext.Avatars
-                .Where(a => !string.IsNullOrEmpty(a.Picture))
-                .Where(a => !a.Picture.StartsWith("http"))
-                .OrderBy(c => c.Id)
-                .ToListAsync();
-            log.LogInformation("Fixing picture for {Count} avatars", dbAvatars.Count);
-            foreach (var dbAvatar in dbAvatars) {
-                var contentId = dbAvatar.Picture;
-                if (dbAvatar.MediaId.IsNullOrEmpty()) {
-                    var media = await mediaDbContext.Media.FirstOrDefaultAsync(x => x.ContentId == contentId);
-                    dbAvatar.MediaId = media?.Id;
-                }
-                if (!dbAvatar.MediaId.IsNullOrEmpty()) {
-                    dbAvatar.Picture = "";
-                }
-                log.LogInformation("- Fixed picture for {AvatarId}", dbAvatar.Id);
-                continue;
-            }
-            log.LogInformation("- Saving changes");
-            await dbContext.SaveChangesAsync();
-            log.LogInformation("Upgrading avatars: done");
-        }
+        // private async Task UpAsync(MigrationBuilder migrationBuilder)
+        // {
+        //     var dbInitializer = DbInitializer.GetCurrent<UsersDbInitializer>();
+        //     var mediaDbInitializer = await DbInitializer.GetOther<MediaDbInitializer>()
+        //         .CompleteEarlierMigrations(this);
+        //     var log = dbInitializer.Services.LogFor(GetType());
+        //
+        //     var clocks = dbInitializer.Services.Clocks();
+        //
+        //     using var dbContext = dbInitializer.CreateDbContext(true);
+        //     using var mediaDbContext = mediaDbInitializer.CreateDbContext(true);
+        //
+        //     var dbAvatars = await dbContext.Avatars
+        //         .Where(a => !string.IsNullOrEmpty(a.Picture))
+        //         .Where(a => !a.Picture.StartsWith("http"))
+        //         .OrderBy(c => c.Id)
+        //         .ToListAsync();
+        //     log.LogInformation("Fixing picture for {Count} avatars", dbAvatars.Count);
+        //     foreach (var dbAvatar in dbAvatars) {
+        //         var contentId = dbAvatar.Picture;
+        //         if (dbAvatar.MediaId.IsNullOrEmpty()) {
+        //             var media = await mediaDbContext.Media.FirstOrDefaultAsync(x => x.ContentId == contentId);
+        //             dbAvatar.MediaId = media?.Id;
+        //         }
+        //         if (!dbAvatar.MediaId.IsNullOrEmpty()) {
+        //             dbAvatar.Picture = "";
+        //         }
+        //         log.LogInformation("- Fixed picture for {AvatarId}", dbAvatar.Id);
+        //         continue;
+        //     }
+        //     log.LogInformation("- Saving changes");
+        //     await dbContext.SaveChangesAsync();
+        //     log.LogInformation("Upgrading avatars: done");
+        // }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)

@@ -134,6 +134,9 @@ public sealed partial class UrlMapper
         if (!HasImageProxy)
             return imageUrl;
 
+        if (imageUrl.IsNullOrEmpty())
+            return "";
+
         var extension = Path.GetExtension(imageUrl);
         if (ExtensionsToExclude.Contains(extension, StringComparer.OrdinalIgnoreCase))
             return imageUrl;
@@ -152,6 +155,9 @@ public sealed partial class UrlMapper
     {
         if (!HasImageProxy)
             return imageUrl;
+
+        if (imageUrl.IsNullOrEmpty())
+            return "";
 
         var imageExtension = Path.GetExtension(imageUrl);
         if (ExtensionsToExclude.Contains(imageExtension, StringComparer.OrdinalIgnoreCase))

@@ -197,7 +197,7 @@
     }
 
     private void OnGenerateAvatarClick() {
-        _form.Picture = new Picture(null, DefaultUserPicture.GetBoringAvatar(IdGenerator.Next()));
+        _form.Picture = new Picture(null, null, DefaultUserPicture.GetAvatarKey(IdGenerator.Next()));
         _form.CopyToBase();
         StateHasChanged();
     }
