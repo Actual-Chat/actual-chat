@@ -11,11 +11,16 @@
     <div class="c-content">
         @if (ReferenceEquals(Avatar, Avatar.Loading)) {
             <div class="c-skeleton @_class"></div>
-        } else {
+        } else if (!_pictureUrl.IsNullOrEmpty()){
             <image-skeleton
                 class="c-avatar @_class"
                 src="@_pictureUrl"
                 title="@title"
+                @onclick="@Click"/>
+        } else if (!_avatarKey.IsNullOrEmpty()){
+            <beam-avatar
+                class="c-avatar @_class"
+                name="@_avatarKey"
                 @onclick="@Click"/>
         }
 
@@ -26,6 +31,7 @@
 @code {
     private string _class = "";
     private string _pictureUrl = "";
+    private string _avatarKey = "";
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
@@ -39,7 +45,13 @@
         _class = GetSizeClass();
         if (Click.HasDelegate)
             _class += " cursor-pointer";
-        _pictureUrl = UrlMapper.AvatarPicturePreview128Url(Avatar);
+
+        if (Avatar.Picture != null) {
+            _pictureUrl = UrlMapper.PicturePreview128Url(Avatar.Picture);
+            _avatarKey = _pictureUrl.IsNullOrEmpty() ? Avatar.Picture.AvatarKey ?? "" : "";
+        } else {
+            _avatarKey = DefaultUserPicture.GetAvatarKey(Avatar.Id);
+        }
     }
 
     private string GetSizeClass() {

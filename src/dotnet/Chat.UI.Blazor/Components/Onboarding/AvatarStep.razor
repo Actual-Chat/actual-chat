@@ -142,7 +142,7 @@
     }
 
     private void OnGenerateAvatarClick() {
-        _model.Picture = new(null, DefaultUserPicture.GetBoringAvatar(IdGenerator.Next()));
+        _model.Picture = new(null, null, DefaultUserPicture.GetAvatarKey(IdGenerator.Next()));
     }
 
     public class Model {

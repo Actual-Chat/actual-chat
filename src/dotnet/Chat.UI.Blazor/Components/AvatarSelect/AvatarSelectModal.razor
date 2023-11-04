@@ -112,7 +112,7 @@
         return new (Symbol.Empty) {
             Name = RandomNameGenerator.Default.Generate(),
             Bio = "Someone anonymous",
-            PictureUrl = DefaultUserPicture.GetBoringAvatar(next),
+            AvatarKey = DefaultUserPicture.GetAvatarKey(next),
         };
     }
 

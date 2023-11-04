@@ -13,7 +13,7 @@ public class TestMentionSearchProvider : ISearchProvider<MentionSearchResult>
             .Where(x => x.searchMatch.Rank > 0 || searchPhrase.IsEmpty)
             .OrderByDescending(@t => t.searchMatch.Rank)
             .ThenBy(x => x.author.Name, StringComparer.Ordinal)
-            .Select(x => new MentionSearchResult(new MentionId(x.author.AuthorId, AssumeValid.Option), x.searchMatch, new (null, DefaultUserPicture.GetBoringAvatar(x.author.AuthorId))))
+            .Select(x => new MentionSearchResult(new MentionId(x.author.AuthorId, AssumeValid.Option), x.searchMatch, new (null, null, DefaultUserPicture.GetAvatarKey(x.author.AuthorId))))
             .Take(limit)
             .ToArray();
         return Task.FromResult(mentions);

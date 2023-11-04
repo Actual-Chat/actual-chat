@@ -19,6 +19,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Name { get; set; } = "";
     public string Picture { get; set; } = "";
     public string MediaId { get; set; } = "";
+    public string AvatarKey { get; set; } = "";
     public string Bio { get; set; } = "";
     public bool IsAnonymous { get; set; }
 
@@ -31,6 +32,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
             MediaId = new MediaId(MediaId),
             Bio = Bio,
             PictureUrl = Picture,
+            AvatarKey = AvatarKey,
             IsAnonymous = IsAnonymous,
         };
 
@@ -52,6 +54,7 @@ public class DbAvatar : IHasId<string>, IHasVersion<long>, IRequirementTarget
         MediaId = model.MediaId;
         Bio = model.Bio;
         Picture = model.PictureUrl;
+        AvatarKey = model.AvatarKey;
         if (isNew)
             IsAnonymous = model.IsAnonymous;
         else if (IsAnonymous != model.IsAnonymous)

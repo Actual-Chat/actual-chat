@@ -14,7 +14,9 @@
             src="@_pictureUrl"
             @onclick="@OnPictureClick"
             @onclick:preventDefault="true"/>
-    } else if(NoPicture != null) {
+    } else if (!_avatarKey.IsNullOrEmpty()) {
+        <beam-avatar name="@_avatarKey" />
+    } else if (NoPicture != null) {
         @NoPicture
     } else {
         <div class="pic-generated @sizeClass"
@@ -27,6 +29,7 @@
 @code {
     private string _picStyle = "";
     private string _pictureUrl = "";
+    private string _avatarKey = "";
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
@@ -41,10 +44,11 @@
 
     protected override void OnParametersSet() {
         if (Picture != null) {
-            _pictureUrl = UrlMapper.ImagePreview128Url(UrlMapper.PictureUrl(Picture));
+            _pictureUrl = UrlMapper.PicturePreview128Url(Picture);
+            _avatarKey = _pictureUrl.IsNullOrEmpty() ? Picture.AvatarKey ?? "" : "";
             _picStyle = "";
-        }
-        else {
+        } else {
+            _avatarKey = "";
             _pictureUrl = "";
             _picStyle = $"background-color: {GetBackgroundColor()}";
         }
