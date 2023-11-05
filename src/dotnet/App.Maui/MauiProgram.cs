@@ -30,6 +30,7 @@ public static partial class MauiProgram
         using var _1 = Tracer.Region();
 
         FusionSettings.Mode = FusionMode.Client;
+        RpcOutboundCommandCallMiddleware.DefaultTimeout = TimeSpan.FromSeconds(20);
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
         if (OSInfo.IsAndroid || OSInfo.IsWindows)
@@ -48,7 +49,6 @@ public static partial class MauiProgram
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
-            RpcOutboundCommandCallMiddleware.DefaultTimeout = TimeSpan.FromSeconds(20);
 #if true
             // Normal start
             ConfigureApp(appBuilder, false);
