@@ -32,18 +32,26 @@ public class AppServiceStarter
         Tracer = Services.Tracer(GetType());
     }
 
+    public static void WarmupStaticServices(HostInfo hostInfo)
+    {
+        if (hostInfo.ClientKind.HasJit())
+            _ = Task.Run(() => {
+                WarmupByteSerializer();
+                WarmupNewtonsoftJsonSerializer();
+                WarmupSystemJsonSerializer();
+            });
+        _ = Task.Run(() => {
+            var markup = "**b** *i* @`a`a:chatId:1 http://google.com `code`\r\n```cs\r\ncode\r\n```";
+            return new MarkupParser().Parse(markup);
+        });
+    }
+
     public Task StartNonScopedServices()
         => Task.Run(async () => {
             using var _1 = Tracer.Region();
             try {
                 // NOTE(AY): !!! This code runs in the root scope,
                 // so you CAN'T access any scoped services here!
-
-                if (HostInfo.ClientKind.HasJit()) {
-                    _ = Task.Run(WarmupByteSerializer, CancellationToken.None);
-                    _ = Task.Run(WarmupNewtonsoftJsonSerializer, CancellationToken.None);
-                    _ = Task.Run(WarmupSystemJsonSerializer, CancellationToken.None);
-                }
 
                 var startHostedServicesTask = StartHostedServices();
                 if (HostInfo.AppKind.IsWasmApp()) {
@@ -67,9 +75,6 @@ public class AppServiceStarter
                 var contactIds = await contactIdsTask.ConfigureAwait(false);
                 foreach (var contactId in contactIds.Take(Constants.Contacts.MinLoadLimit))
                     _ = contacts.Get(session, contactId, cancellationToken);
-
-                // Warmup other UI services
-                _ = new MarkupParser();
 
                 // Complete the tasks we started earlier
                 await ownAccountTask.ConfigureAwait(false);
@@ -198,7 +203,7 @@ public class AppServiceStarter
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    private void WarmupByteSerializer()
+    private static void WarmupByteSerializer()
     {
         Warmup(new ThemeSettings(Theme.Dark));
         Warmup(new UserLanguageSettings() { Primary = Languages.English, Secondary = Languages.German });
@@ -215,7 +220,7 @@ public class AppServiceStarter
         }
     }
 
-    private void WarmupNewtonsoftJsonSerializer()
+    private static void WarmupNewtonsoftJsonSerializer()
     {
         var media = new Media.Media() {
             ContentId = "1",
@@ -228,7 +233,7 @@ public class AppServiceStarter
         _ = new Media.Media() { MetadataJson = media.MetadataJson };
     }
 
-    private void WarmupSystemJsonSerializer()
+    private static void WarmupSystemJsonSerializer()
     {
         Warmup(new VirtualListRenderState {
             RenderIndex = 1,

@@ -49,6 +49,7 @@ public static partial class MauiProgram
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
+            AppServiceStarter.WarmupStaticServices(HostInfo);
 #if true
             // Normal start
             ConfigureApp(appBuilder, false);
