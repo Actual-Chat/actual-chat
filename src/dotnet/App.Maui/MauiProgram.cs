@@ -64,11 +64,12 @@ public static partial class MauiProgram
                 whenAppServicesReady,
                 CreateLazyServiceFilter(),
                 earlyApp);
-            AppServicesReady(appServices);
-            return (MauiApp)typeof(MauiApp)
+            var app = (MauiApp)typeof(MauiApp)
                 .GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
                 .First()
                 .Invoke(new object[] { appServices });
+            AppServicesReady(app);
+            return app;
 #endif
         }
         catch (Exception ex) {
