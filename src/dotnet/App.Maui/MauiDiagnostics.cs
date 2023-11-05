@@ -97,8 +97,9 @@ public static class MauiDiagnostics
 
     private static LoggerConfiguration AddPlatformLoggerSinks(LoggerConfiguration logging)
     {
+        // We should not use FilePath here, since it triggers MemoryPack formatter registration for FilePath
 #if WINDOWS
-        var logPath = (FilePath)FileSystem.AppDataDirectory & LogFolder & LogFile;
+        var logPath = Path.Combine(FileSystem.AppDataDirectory, LogFolder, LogFile);
         logging = logging.WriteTo.Debug(outputTemplate: AppLogging.DebugOutputTemplate);
         logging = logging.WriteTo.File(logPath,
             outputTemplate: AppLogging.OutputTemplate,

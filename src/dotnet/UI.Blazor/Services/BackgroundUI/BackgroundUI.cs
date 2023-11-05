@@ -36,7 +36,7 @@ public partial class BackgroundUI(IServiceProvider services) : WorkerBase,
     protected virtual async Task<bool> GetIsBackground(CancellationToken cancellationToken)
     {
         var isBackground = _isBackground != 0;
-        if (HostInfo.IsMobileMauiApp()) {
+        if (HostInfo.ClientKind.IsMobile()) {
             Log.LogDebug("GetIsBackground(Mobile): {IsBackground}", isBackground);
             return isBackground;
         }

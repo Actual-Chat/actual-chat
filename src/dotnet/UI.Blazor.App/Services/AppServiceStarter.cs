@@ -4,6 +4,7 @@ using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Contacts;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
@@ -38,6 +39,12 @@ public class AppServiceStarter
                 // NOTE(AY): !!! This code runs in the root scope,
                 // so you CAN'T access any scoped services here!
 
+                if (HostInfo.ClientKind.HasJit()) {
+                    _ = Task.Run(WarmupByteSerializer, CancellationToken.None);
+                    _ = Task.Run(WarmupNewtonsoftJsonSerializer, CancellationToken.None);
+                    _ = Task.Run(WarmupSystemJsonSerializer, CancellationToken.None);
+                }
+
                 var startHostedServicesTask = StartHostedServices();
                 if (HostInfo.AppKind.IsWasmApp()) {
                     await startHostedServicesTask.ConfigureAwait(false);
@@ -61,7 +68,8 @@ public class AppServiceStarter
                 foreach (var contactId in contactIds.Take(Constants.Contacts.MinLoadLimit))
                     _ = contacts.Get(session, contactId, cancellationToken);
 
-                // _ = Task.Run(WarmupSystemJsonSerializer, CancellationToken.None);
+                // Warmup other UI services
+                _ = new MarkupParser();
 
                 // Complete the tasks we started earlier
                 await ownAccountTask.ConfigureAwait(false);
@@ -190,25 +198,57 @@ public class AppServiceStarter
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-#if false
-    private void WarmupSystemJsonSerializer()
+    private void WarmupByteSerializer()
     {
-        Read<ThemeSettings>("{\"theme\":1,\"origin\":\"\"}");
-        Read<UserLanguageSettings>("{\"primary\":\"fr-FR\",\"secondary\":null,\"origin\":\"\"}");
-        Read<UserOnboardingSettings>("{\"isPhoneStepCompleted\":false,\"isAvatarStepCompleted\":true,\"lastShownAt\":\"1970-01-01T00:00:00.0000000Z\",\"origin\":\"\"}");
-        Read<UserBubbleSettings>("{\"readBubbles\":[\"x\"],\"origin\":\"\"}");
-        Read<ChatListSettings>("{\"order\":3,\"filterId\":\"\"}");
-        Read<ApiArray<ActiveChat>>("[{\"chatId\":\"dpwo1tm0tw\",\"isListening\":false,\"isRecording\":false,\"recency\":\"1970-01-01T00:00:00.0000000Z\",\"listeningRecency\":\"1970-01-01T00:00:00.0000000Z\"}]");
+        Warmup(new ThemeSettings(Theme.Dark));
+        Warmup(new UserLanguageSettings() { Primary = Languages.English, Secondary = Languages.German });
+        Warmup(new UserOnboardingSettings());
+        Warmup(new LocalOnboardingSettings());
+        Warmup(new UserBubbleSettings() { ReadBubbles = new ApiArray<string>(new [] {"test"})});
+        Warmup(new ChatListSettings());
+        Warmup(new ApiArray<ActiveChat>(new[] { new ActiveChat(Constants.Chat.AnnouncementsChatId)}));
 
-        static void Read<T>(string json)
-        {
-            try {
-                SystemJsonSerializer.Default.Read<T>(json);
-            }
-            catch {
-                // Intended
-            }
+        static void Warmup<T>(T instance) {
+            var s = ByteSerializer.Default;
+            using var buffer = s.Write(instance);
+            s.Read<T>(buffer.WrittenMemory);
         }
     }
-#endif
+
+    private void WarmupNewtonsoftJsonSerializer()
+    {
+        var media = new Media.Media() {
+            ContentId = "1",
+            FileName = "1",
+            ContentType = "image/jpeg",
+            Height = 1,
+            Width = 1,
+            Length = 1,
+        };
+        _ = new Media.Media() { MetadataJson = media.MetadataJson };
+    }
+
+    private void WarmupSystemJsonSerializer()
+    {
+        Warmup(new VirtualListRenderState {
+            RenderIndex = 1,
+            Query = new VirtualListDataQuery(new Range<string>("1", "2")),
+            KeyRange = new Range<string>("1", "2"),
+            SpacerSize = 1,
+            EndSpacerSize = 1,
+            RequestedStartExpansion = 1,
+            RequestedEndExpansion = 1,
+            StartExpansion = 1,
+            EndExpansion = 1,
+            HasVeryFirstItem = true,
+            HasVeryLastItem = true,
+            ScrollToKey = "1",
+        });
+
+        static void Warmup<T>(T instance) {
+            var s = SystemJsonSerializer.Default;
+            var json = s.Write(instance);
+            s.Read<T>(json);
+        }
+    }
 }

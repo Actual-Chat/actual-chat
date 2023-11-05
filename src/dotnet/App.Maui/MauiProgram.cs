@@ -12,6 +12,7 @@ using ActualChat.UI.Blazor.Diagnostics;
 using banditoth.MAUI.DeviceId;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
+using Sentry;
 using Serilog;
 using Stl.CommandR.Rpc;
 
@@ -28,10 +29,12 @@ public static partial class MauiProgram
     {
         using var _1 = Tracer.Region();
 
-        OtelDiagnostics.SetupConditionalPropagator();
         FusionSettings.Mode = FusionMode.Client;
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
+        if (OSInfo.IsAndroid || OSInfo.IsWindows)
+            _ = Task.Run(() => new SentryOptions()); // JIT compile SentryOptions in advance
+        OtelDiagnostics.SetupConditionalPropagator();
 
 #if WINDOWS
         if (Tracer.IsEnabled) {
@@ -208,7 +211,7 @@ public static partial class MauiProgram
         // and since it doesn't have them registered (inside the actual service provider
         // backing the lazy one), they won't be resolved unless we re-register them somehow.
         var externallyResolvedTypes = new [] {
-            typeof(Microsoft.JSInterop.IJSRuntime),
+            typeof(IJSRuntime),
             typeof(Microsoft.AspNetCore.Components.Routing.INavigationInterception),
             typeof(Microsoft.AspNetCore.Components.NavigationManager),
             typeof(Microsoft.AspNetCore.Components.Web.IErrorBoundaryLogger),
