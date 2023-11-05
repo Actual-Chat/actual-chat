@@ -205,13 +205,18 @@ public class AppServiceStarter
 
     private static void WarmupByteSerializer()
     {
+        var chatId = Constants.Chat.AnnouncementsChatId;
+        var userId = Constants.User.Walle.UserId;
+        var authorId = new AuthorId(chatId, 1L, AssumeValid.Option);
+        var account = new AccountFull(new User(userId, "User"), 1);
+        Warmup(new Chat.Chat(chatId) { Rules = new AuthorRules(chatId, new AuthorFull(userId, authorId), account) });
         Warmup(new ThemeSettings(Theme.Dark));
         Warmup(new UserLanguageSettings() { Primary = Languages.English, Secondary = Languages.German });
         Warmup(new UserOnboardingSettings());
         Warmup(new LocalOnboardingSettings());
         Warmup(new UserBubbleSettings() { ReadBubbles = new ApiArray<string>(new [] {"test"})});
         Warmup(new ChatListSettings());
-        Warmup(new ApiArray<ActiveChat>(new[] { new ActiveChat(Constants.Chat.AnnouncementsChatId)}));
+        Warmup(new ApiArray<ActiveChat>(new[] { new ActiveChat(chatId)}));
 
         static void Warmup<T>(T instance) {
             var s = ByteSerializer.Default;
