@@ -19,8 +19,8 @@ public partial class ChatListUI
         return (
             from chain in baseChains
             select chain
-                .Log(LogLevel.Debug, DebugLog)
-                .RetryForever(retryDelays, DebugLog)
+                .Log(Log)
+                .RetryForever(retryDelays, Log)
             ).RunIsolated(cancellationToken);
     }
 

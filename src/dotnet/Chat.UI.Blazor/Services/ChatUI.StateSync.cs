@@ -20,8 +20,8 @@ public partial class ChatUI
         await (
             from chain in baseChains
             select chain
-                .Log(LogLevel.Debug, DebugLog)
-                .RetryForever(retryDelays, DebugLog)
+                .Log(Log)
+                .RetryForever(retryDelays, Log)
             ).RunIsolated(cancellationToken)
             .ConfigureAwait(false);
     }
