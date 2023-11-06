@@ -12,7 +12,11 @@ public class DbConnectionConfigurator(DbKind dbKind) : IDbConnectionInterceptor
             return;
 
         using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SET enable_bitmapscan to off;";
+        cmd.CommandText =
+            """
+            SET enable_bitmapscan = OFF;
+            SET enable_seqscan = OFF;
+            """;
         cmd.ExecuteNonQuery();
     }
 
@@ -26,7 +30,11 @@ public class DbConnectionConfigurator(DbKind dbKind) : IDbConnectionInterceptor
 
         var cmd = connection.CreateCommand();
         await using var _ = cmd.ConfigureAwait(false);
-        cmd.CommandText = "SET enable_bitmapscan to off;";
+        cmd.CommandText =
+            """
+            SET enable_bitmapscan = OFF;
+            SET enable_seqscan = OFF;
+            """;
         await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 }

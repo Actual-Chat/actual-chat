@@ -5,18 +5,18 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
-    <AspNetCoreVersion>7.0.12</AspNetCoreVersion>
+    <AspNetCoreVersion>7.0.13</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>7.0.12</EntityFrameworkCoreVersion>
-    <EntityFrameworkCoreNpgsqlVersion>7.0.4</EntityFrameworkCoreNpgsqlVersion>
+    <EntityFrameworkCoreVersion>7.0.13</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreNpgsqlVersion>7.0.11</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>7.0.2</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
     <MicrosoftExtensionsVersion>7.0.1</MicrosoftExtensionsVersion>
     <MicrosoftExtensionsBaseVersion>7.0.0</MicrosoftExtensionsBaseVersion>
-    <NpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</NpgsqlVersion>
+    <NpgsqlVersion>7.0.6</NpgsqlVersion>
     <RedisVersion>2.6.122</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>6.5.12</StlFusionVersion>
+    <StlFusionVersion>6.5.36</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.5.1</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.0.0-rc9.13</OpenTelemetryAspNetCoreVersion>

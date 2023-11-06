@@ -286,10 +286,12 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             if (entryIdsWithAttachments1.Count == 0)
                 return EmptyAttachmentsTask.Result;
 
+            var attachmentPrefixes = entryIdsWithAttachments1
+                .Select(id => $"{id}:%")
+                .ToArray();
+
             var dbAttachments = await dbContext1.TextEntryAttachments
-                #pragma warning disable MA0002
-                .Where(x => entryIdsWithAttachments1.Contains(x.EntryId))
-                #pragma warning restore MA0002
+                .Where(x => attachmentPrefixes.Any(entryIdPrefix => EF.Functions.Like(x.Id, entryIdPrefix)))
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
