@@ -1,16 +1,17 @@
 @using ActualChat.Notification.UI.Blazor
 @namespace ActualChat.Chat.UI.Blazor.Components
+@implements IDisposable
 @{
     var activeClass = IsSelected ? "active" : "inactive";
-    var isCurrent = History.LocalUrl.Value == Url;
+    _isCurrent = CalculateIsCurrent();
 }
 
-<div class="@Class @activeClass navbar-item group" @attributes="@Attributes">
+<div class="@Class @activeClass navbar-item group" data-test-url="@Url" data-test-local-url="@History.LocalUrl.Value" @attributes="@Attributes">
     @if (Url.IsNullOrEmpty()) { /* IsSelected is needed to make sure click events work on iOS */
         <div class="navbar-item-content">
             @ChildContent
         </div>
-    } else if (isCurrent) {
+    } else if (_isCurrent) {
         <div class="navbar-item-content" @onclick="@OnCurrentClick">
             @ChildContent
         </div>
@@ -25,6 +26,8 @@
 </div>
 
 @code {
+    private bool _isCurrent;
+
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
@@ -37,6 +40,21 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> Attributes { get; set; } = new();
 
+    protected override void OnInitialized() {
+        if (Url.IsNullOrEmpty())
+            return;
+        History.LocationChanged += HistoryOnLocationChanged;
+    }
+
+    public void Dispose() {
+        History.LocationChanged -= HistoryOnLocationChanged;
+    }
+
+    private void HistoryOnLocationChanged(object? sender, LocationChangedEventArgs e) {
+        if (CalculateIsCurrent() != _isCurrent)
+            StateHasChanged();
+    }
+
     private void OnCurrentClick() {
         // Navigation doesn't happen when we click on the current URL,
         // but we still need to pretend it is happening.
@@ -45,4 +63,7 @@
         var tuneUI = Services.GetRequiredService<TuneUI>();
         _ = tuneUI.Play(Tune.SelectNavbarItem);
     }
+
+    private bool CalculateIsCurrent()
+        => History.LocalUrl.Value == Url;
 }
