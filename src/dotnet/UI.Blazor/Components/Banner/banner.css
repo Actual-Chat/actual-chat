@@ -3,6 +3,8 @@
     @apply w-full h-14;
     @apply px-4;
     @apply border-bg-04 border-b;
+    @apply bg-02;
+    @apply text-02;
 }
 .banner-body {
     @apply flex-1;
@@ -26,6 +28,23 @@ body.hoverable .banner .btn:hover {
     @apply flex items-center justify-center;
     @apply rounded-full;
     @apply text-01;
+}
+
+.banner-success {
+    @apply bg-banner-success;
+    @apply text-banner-success;
+}
+.banner-info {
+    @apply bg-banner-info;
+    @apply text-banner-info;
+}
+.banner-warning {
+    @apply bg-banner-warning;
+    @apply text-banner-warning;
+}
+.banner-error {
+    @apply bg-banner-error;
+    @apply text-banner-error;
 }
 
 .bg-banner-info .btn .btn-content,

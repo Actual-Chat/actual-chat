@@ -8,13 +8,13 @@
         return;
 }
 
-<div class="banner @BannerBgColor @Class @_animator.Class">
+<div class="banner @BannerCls @Class @_animator.Class">
     @if (Icon != null) {
         @Icon
     } else {
         <SeverityIcon Severity="@Severity"/>
     }
-    <div class="banner-body @TextColor">
+    <div class="banner-body">
         @Body
     </div>
     @if (Buttons != null || ShowDismissButton) {
@@ -66,19 +66,11 @@
         StateHasChanged();
     }
 
-    private string BannerBgColor => Severity switch {
-        BannerSeverity.Success => "bg-banner-success",
-        BannerSeverity.Info => "bg-banner-info",
-        BannerSeverity.Error => "bg-banner-error",
-        BannerSeverity.Warning => "bg-banner-warning",
+    private string BannerCls => Severity switch {
+        BannerSeverity.Success => "banner-success",
+        BannerSeverity.Info => "banner-info",
+        BannerSeverity.Error => "banner-error",
+        BannerSeverity.Warning => "banner-warning",
         _ => "bg-02",
-        };
-
-    private string TextColor => Severity switch {
-        BannerSeverity.Success => "text-banner-success",
-        BannerSeverity.Info => "text-banner-info",
-        BannerSeverity.Error => "text-banner-error",
-        BannerSeverity.Warning => "text-banner-warning",
-        _ => "text-02",
         };
 }

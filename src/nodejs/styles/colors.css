@@ -162,8 +162,8 @@
     --toast-body: var(--gray-20);
     --toast-text: var(--gray-95);
     --toast-action: var(--blue-60);
-    --error-toast-body: var(--magenta-70);
-    --error-toast-text: var(--white);
+    --error-toast-body: var(--magenta-90);
+    --error-toast-text: var(--gray-20);
 
     /* Buttons */
     --disabled: #E7E7E7;
@@ -304,7 +304,7 @@
     --toast-text: var(--gray-05);
     --toast-action: var(--blue-50);
     --error-toast-body: var(--magenta-90);
-    --error-toast-text: var(--magenta-20);
+    --error-toast-text: var(--gray-20);
 
     /* Buttons */
     --disabled: #E7E7E7;

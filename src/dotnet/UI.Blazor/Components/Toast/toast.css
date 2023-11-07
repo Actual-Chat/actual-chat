@@ -44,12 +44,15 @@
 /* Error toast */
 
 .error-toast {
-    @apply flex-x z-50 items-start gap-x-4 overflow-hidden;
-    @apply md:w-110;
+    @apply z-50;
+    @apply flex-x items-start gap-x-4;
+    @apply w-full md:w-110;
     @apply p-2 pl-4;
-    @apply drop-shadow-md shadow-shadow-main rounded-3.5xl;
-    @apply text-02;
+    @apply overflow-hidden;
+    @apply rounded-3.5xl;
+    @apply drop-shadow-md shadow-shadow-main;
     @apply bg-error-toast-body;
+    @apply text-error-toast-text;
 }
 .error-toast * {
     @apply bg-error-toast-body;
