@@ -22,7 +22,8 @@ export * from './Services/ThemeUI/theme-ui'
 export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
 
-export * from './Components/BeamAvatar/beam-avatar.lit';
+export * from './Components/Avatars/beam-avatar.lit';
+export * from './Components/Avatars/marble-avatar.lit';
 export * from './Components/Bubble/bubble-host';
 export * from './Components/Clipboard/copy-trigger';
 export * from './Components/Dropdown/dropdown';

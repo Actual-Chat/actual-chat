@@ -9,7 +9,6 @@ let id = 0;
 
 @customElement('beam-avatar')
 class BeamAvatar extends LitElement {
-    @property() size: number = 24;
     @property() name: string;
     @property() square: boolean = false;
     @property() colors: string[] = ['FFDBA0', 'BBBEFF', '9294E1', 'FF9BC0', '0F2FE8'];
