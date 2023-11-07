@@ -254,7 +254,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             var author = dbAuthor.ToModel();
             context.Operation().Items.Set((author, existingAuthor));
 
-            if (peerChatId.IsNone) {
+            if (existingAuthor == null) {
                 // Set chat read position to the very end
                 var chatTextIdRange = await ChatsBackend
                     .GetIdRange(command.ChatId, ChatEntryKind.Text, false, cancellationToken)
