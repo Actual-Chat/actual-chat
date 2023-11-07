@@ -60,7 +60,7 @@ public class MauiApplyThemeHandler
                     _lastAppliedColor = sColors;
             }
             catch(Exception e) {
-                Log.LogWarning(e, "An error occurred on ApplyBarColors");
+                Log.LogWarning(e, "An error occurred on ApplyBarColors. Colors: '{Colors}'", sColors);
             }
         });
     }
