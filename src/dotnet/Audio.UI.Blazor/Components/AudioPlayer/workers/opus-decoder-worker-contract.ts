@@ -9,3 +9,7 @@ export interface OpusDecoderWorker {
     close(streamId: string, noWait?: RpcNoWait): Promise<void>;
     releaseBuffer(streamId: string, buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
 }
+
+export interface BufferHandler {
+    releaseBuffer(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
+}

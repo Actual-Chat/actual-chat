@@ -7,10 +7,11 @@ import {
     FeederState,
     PlaybackState,
 } from './feeder-audio-worklet-contract';
-import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
+import { rpcClientServer, rpcNoWait, RpcNoWait } from 'rpc';
 import { Disposable } from 'disposable';
-import { PromiseSource, ResolvedPromise } from 'promises';
+import { ResolvedPromise } from 'promises';
 import { Log } from 'logging';
+import { BufferHandler } from "../workers/opus-decoder-worker-contract";
 
 const { logScope, debugLog, warnLog } = Log.get('FeederProcessor');
 
@@ -30,7 +31,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
      */
     private id: string;
     private node: FeederAudioWorkletEventHandler & Disposable;
-    private worker: Disposable;
+    private decoder: BufferHandler & Disposable;
     private chunkOffset = 0;
     /** In seconds from the start of playing, excluding starving time and processing time */
     private playingAt = 0;
@@ -61,7 +62,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
 
     public async init(id: string, workerPort: MessagePort): Promise<void> {
         this.id = id;
-        this.worker = rpcServer(`${logScope}.worker`, workerPort, this);
+        this.decoder = rpcClientServer<BufferHandler>(`${logScope}.worker`, workerPort, this);
         debugLog?.log(`#${this.id}.init`);
     }
 
@@ -140,7 +141,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
         // We're in 'playing' state anywhere below this point
 
         for (let channelOffset = 0; channelOffset < channel.length;) {
-            const chunk = this.chunks.peekFront();
+            let chunk = this.chunks.peekFront();
             if (chunk === undefined) {
                 // Not enough data to continue playing => starving
                 channel.fill(0, channelOffset);
@@ -154,6 +155,11 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
                 this.playbackState = 'ended';
                 this.chunkOffset = 0;
                 this.playingAt = 0;
+                while (chunk) {
+                    chunk = this.chunks.shift();
+                    if (chunk !== 'end' && chunk)
+                        void this.decoder.releaseBuffer(chunk.buffer, rpcNoWait);
+                }
                 this.chunks.clear();
                 this.stateHasChanged();
                 // Keep worklet up and running even in ended state for reuse
@@ -172,6 +178,7 @@ class FeederAudioWorkletProcessor extends AudioWorkletProcessor implements Feede
             if (available < remaining) {
                 this.chunkOffset = 0;
                 this.chunks.shift();
+                void this.decoder.releaseBuffer(chunk.buffer, rpcNoWait);
             }
         }
 

@@ -74,12 +74,14 @@ const serverImpl: OpusDecoderWorker = {
         const decoder = opusDecoder.decoder;
         try {
             await opusDecoder.end(true);
+            await opusDecoder.disposeAsync();
+            decoder.delete();
         }
         catch (e) {
             errorLog?.log(`#${streamId}.close: error while closing the decoder:`, e);
         }
         finally {
-            decoder.reset();
+            decoders.delete(streamId);
         }
     },
 
@@ -100,7 +102,7 @@ const serverImpl: OpusDecoderWorker = {
     },
 
     releaseBuffer: async(streamId: string, buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void>  => {
-        getDecoder(streamId).releaseBuffer(buffer);
+        await getDecoder(streamId).releaseBuffer(buffer, _noWait);
     }
 };
 
