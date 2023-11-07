@@ -5,7 +5,7 @@ public sealed record ChatViewItemVisibility(
     IReadOnlySet<long> VisibleEntryLids,
     bool IsEndAnchorVisible)
 {
-    public static readonly ChatViewItemVisibility Empty = new(ImmutableHashSet<long>.Empty, true);
+    public static readonly ChatViewItemVisibility Empty = new(ImmutableHashSet<long>.Empty, false);
 
     // EntryLid = Entry's LocalId
     public long MinEntryLid { get; } = VisibleEntryLids.Count == 0 ? -1 : VisibleEntryLids.Min();
