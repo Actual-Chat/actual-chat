@@ -203,7 +203,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var scrollAnchor = isFirstRender && readEntryLid != 0
             ? new NavigationAnchor(readEntryLid)
             : null;
-        var lastAuthorEntryLid = await LastAuthorTextEntryLidState.Use(cancellationToken);
+        var lastAuthorEntryLid = LastAuthorTextEntryLidState.Value;
         if (lastAuthorEntryLid > _lastReadEntryLid) {
             // Scroll to the latest Author's entry - e.g.m when the author submits a new one
             _lastReadEntryLid = lastAuthorEntryLid;
@@ -390,7 +390,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
             var coldRange = hotRange.IsEmpty
                 ? idRangeToLoad
-                : new Range<long>(idRangeToLoad.Start, hotRange.Start);
+                : new Range<long>(secondLayer.GetTile(idRangeToLoad.Start).Start, hotRange.Start);
 
             // load second layer stack to improve reuse if large tiles during scroll
             tiles.AddRange(secondLayer.GetCoveringTiles(coldRange));
@@ -415,11 +415,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         NavigationAnchor? scrollAnchor,
         Range<long> chatIdRange)
     {
+        var secondLayer = IdTileStack.Layers[1];
         var minTileSize = IdTileStack.MinTileSize;
         var range = (query.IsNone, oldData.Tiles.Count == 0) switch {
-            (true, true) => new Range<long>(chatIdRange.End - MinLoadLimit, chatIdRange.End),
+            (true, true) => new Range<long>(secondLayer.GetTile(chatIdRange.End - MinLoadLimit).Start, chatIdRange.End + minTileSize),
             (true, false) when Math.Abs(oldData.Tiles[^1].Items[^1].Entry.LocalId - chatIdRange.End) <= minTileSize // reduce range when new messages were added
-                => new Range<long>(chatIdRange.End - Math.Min(chatIdRange.Size(), MinLoadLimit * 2), chatIdRange.End),
+                => new Range<long>(secondLayer.GetTile(chatIdRange.End - Math.Min(chatIdRange.Size(), MinLoadLimit * 2)).Start, chatIdRange.End + minTileSize),
             (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId, oldData.Tiles[^1].Items[^1].Entry.LocalId),
             _ => query.KeyRange
                 .ToLongRange()
