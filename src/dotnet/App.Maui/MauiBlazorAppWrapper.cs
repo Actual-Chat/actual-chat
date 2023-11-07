@@ -18,7 +18,9 @@ public class MauiBlazorAppWrapper : ComponentBase
     private bool _shouldRender;
     private bool _rendered;
 
+    [Inject] private IServiceProvider Services { get; set; } = null!;
     [Inject] private ILogger<MauiBlazorAppWrapper> Log { get; set; } = null!;
+
     [Parameter] public BlazorWebViewDisconnectMarker DisconnectMarker { get; set; } = null!;
 
     protected override void OnInitialized()
@@ -56,6 +58,18 @@ public class MauiBlazorAppWrapper : ComponentBase
         }).ConfigureAwait(false);
         // Wait a while till WebViewRenderer finish disposing components
         await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
+
+        // Call DisposeAsync explicitly on Blazor scope service provider to avoid
+        // blocking awaiting on disposing it inside 'DisconnectMarker.BlazorWebView.Handler?.DisconnectHandler'.
+        // Because it will cause deadlock on main thread and app will become unresponsive.
+        // See https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Windows/BlazorWebViewHandler.Windows.cs#L35
+        // See https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Android/BlazorWebViewHandler.Android.cs#L70
+        // See https://github.com/dotnet/aspnetcore/blob/main/src/Components/WebView/WebView/src/WebViewManager.cs#L264
+        // See https://github.com/dotnet/aspnetcore/blob/main/src/Components/WebView/WebView/src/PageContext.cs#L58
+        if (Services is IAsyncDisposable asyncDisposable)
+            await asyncDisposable.DisposeSilentlyAsync().ConfigureAwait(false);
+        await Task.Delay(1).ConfigureAwait(false);
+
         var disconnectTask = MainThread.InvokeOnMainThreadAsync(() => {
             try {
                 DisconnectMarker.BlazorWebView.Handler?.DisconnectHandler();

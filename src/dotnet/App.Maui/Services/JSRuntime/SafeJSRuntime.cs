@@ -24,7 +24,7 @@ namespace ActualChat.App.Maui.Services;
 //   wraps a disconnected JS runtime.
 public sealed class SafeJSRuntime : IJSRuntime
 {
-    private const DynamicallyAccessedMemberTypes JsonSerialized =
+    internal const DynamicallyAccessedMemberTypes JsonSerialized =
         DynamicallyAccessedMemberTypes.PublicConstructors
         | DynamicallyAccessedMemberTypes.PublicFields
         | DynamicallyAccessedMemberTypes.PublicProperties;
@@ -49,11 +49,12 @@ public sealed class SafeJSRuntime : IJSRuntime
     internal void MarkDisconnected()
         => Interlocked.Exchange(ref _isDisconnected, 1);
 
-    public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(JsonSerialized)] TValue>(
+    public async ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(JsonSerialized)] TValue>(
         string identifier, object?[]? args)
     {
         try {
-            return RequireConnected().InvokeAsync<TValue>(identifier, args);
+            var result = await RequireConnected().InvokeAsync<TValue>(identifier, UnwrapArgs(args)).ConfigureAwait(false);
+            return Map(result);
         }
         catch (JSDisconnectedException) {
             throw;
@@ -65,11 +66,12 @@ public sealed class SafeJSRuntime : IJSRuntime
         }
     }
 
-    public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(JsonSerialized)] TValue>(
+    public async ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(JsonSerialized)] TValue>(
         string identifier, CancellationToken cancellationToken, object?[]? args)
     {
         try {
-            return RequireConnected().InvokeAsync<TValue>(identifier, cancellationToken, args);
+            var result = await RequireConnected().InvokeAsync<TValue>(identifier, cancellationToken, UnwrapArgs(args)).ConfigureAwait(false);
+            return Map(result);
         }
         catch (JSDisconnectedException) {
             throw;
@@ -79,6 +81,41 @@ public sealed class SafeJSRuntime : IJSRuntime
                 throw JSRuntimeErrors.Disconnected(e);
             throw;
         }
+    }
+
+    internal void EnsureConnected()
+        => _ = RequireConnected();
+
+    internal object?[]? UnwrapArgs(object?[]? args)
+    {
+        if (args == null || args.Length == 0)
+            return args;
+
+        var needUnwrap = args.Any(static c => c is SafeJSObjectReference);
+        if (!needUnwrap)
+            return args;
+
+        var newArgs = new object?[args.Length];
+        for (int i = 0; i < args.Length; i++)
+            newArgs[i] = UnwrapArg(args[i]);
+        return newArgs;
+    }
+
+    private object? UnwrapArg(object? o)
+    {
+        if (o is SafeJSObjectReference safeJSObjectReference)
+            return safeJSObjectReference.JSObjectReference;
+
+        return o;
+    }
+
+    private TValue Map<TValue>(TValue value)
+    {
+        if (value is IJSObjectReference jsObjectReference)
+            // Convert original JSObjectReference to SafeJSObjectReference to make
+            // calling IJSObjectReference.InvokeAsync respect SafeJSRuntime disconnected state.
+            return (TValue)(object)new SafeJSObjectReference(this, jsObjectReference);
+        return value;
     }
 
     private IJSRuntime RequireConnected()
