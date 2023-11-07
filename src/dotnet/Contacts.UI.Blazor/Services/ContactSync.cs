@@ -19,36 +19,32 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        var baseChains = new[] {
-            AsyncChainExt.From(SyncUntilSignedOut),
-        };
         var retryDelays = RetryDelaySeq.Exp(3, 600);
-        return (
-            from chain in baseChains
-            select chain
-                .Log(Log)
-                .RetryForever(retryDelays, Log)
-            ).RunIsolated(cancellationToken);
+        return AsyncChainExt.From(TrySync)
+            .Log(Log)
+            .RetryForever(retryDelays, Log)
+            .RunIsolated(cancellationToken);
     }
 
-    private async Task SyncUntilSignedOut(CancellationToken cancellationToken)
+    private async Task TrySync(CancellationToken cancellationToken)
     {
         var deviceId = DeviceContacts.DeviceId;
         if (deviceId.IsEmpty)
             return;
 
         var isCompleted = false;
-        while (!isCompleted && !cancellationToken.IsCancellationRequested) {
-            using var cts = cancellationToken.CreateLinkedTokenSource();
+        while (!cancellationToken.IsCancellationRequested && !isCompleted) {
+            var cts = cancellationToken.CreateLinkedTokenSource();
             try {
                 var cAccount = await WhenAuthenticated(cancellationToken).ConfigureAwait(false);
                 var whenSignedOut = cAccount.When(x => x.IsGuestOrNone || x.Id != cAccount.Value.Id, cts.Token);
                 var whenSynced = Sync(cts.Token);
                 await Task.WhenAny(whenSynced, whenSignedOut).ConfigureAwait(false);
                 isCompleted = whenSynced.IsCompletedSuccessfully;
-                cts.Cancel();
             }
-            catch (OperationCanceledException) { }
+            finally {
+                cts.CancelAndDisposeSilently();
+            }
         }
     }
 
@@ -108,5 +104,5 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
     }
 
     private Task<Computed<AccountFull>> WhenAuthenticated(CancellationToken cancellationToken)
-        => AccountUI.OwnAccount.When(x => x.IsActive(), cancellationToken);
+        => AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, cancellationToken);
 }
