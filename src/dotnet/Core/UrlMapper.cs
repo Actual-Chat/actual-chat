@@ -129,7 +129,7 @@ public sealed partial class UrlMapper
         => ToAbsolute(ContentBaseUrl, contentId, true);
 
     // Returns absolute URL
-    public string ImagePreviewUrl(string imageUrl, int? maxWidth, int? maxHeight, bool crop)
+    public string ImagePreviewUrl(string imageUrl, int? maxWidth, int? maxHeight, bool crop = false)
     {
         if (!HasImageProxy)
             return imageUrl;
