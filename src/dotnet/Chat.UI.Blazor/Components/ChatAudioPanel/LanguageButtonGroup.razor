@@ -51,6 +51,7 @@
     [Inject] private UIEventHub UIEventHub { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = null!;
+    [Parameter] public EventCallback Click { get; set; }
 
     protected override void OnInitialized() {
         _chatId = ChatId.Parse(ChatSid);
@@ -72,8 +73,10 @@
     private bool IsValid(Language? language)
         => language != null && Languages.All.Contains(language.Value);
 
-    private async Task OnClick(Language language)
-        => await LanguageUI.ChangeChatLanguage(_chatId, language);
+    private async Task OnClick(Language language) {
+        await LanguageUI.ChangeChatLanguage(_chatId, language);
+        await Click.InvokeAsync();
+    }
 
     private void OnConfigureSecondLanguage()
         => _ = UIEventHub.Publish(new ShowSettingsEvent());
