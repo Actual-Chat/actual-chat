@@ -19,15 +19,15 @@
     } else if (NoPicture != null) {
         @NoPicture
     } else {
-        <div class="pic-generated @sizeClass"
-             style="@_picStyle">
-            @((Title.NullIfEmpty() ?? " ")[..1])
-        </div>
+        <marble-avatar
+            name="@((Title.NullIfEmpty() ?? " ").GetDjb2HashCode())"
+            title="@((Title.NullIfEmpty() ?? " ")[..1])"
+            class="pic-generated @sizeClass">
+        </marble-avatar>
     }
 </div>
 
 @code {
-    private string _picStyle = "";
     private string _pictureUrl = "";
     private string _avatarKey = "";
 
@@ -46,18 +46,10 @@
         if (Picture != null) {
             _pictureUrl = UrlMapper.PicturePreview128Url(Picture);
             _avatarKey = _pictureUrl.IsNullOrEmpty() ? Picture.AvatarKey ?? "" : "";
-            _picStyle = "";
         } else {
             _avatarKey = "";
             _pictureUrl = "";
-            _picStyle = $"background-color: {GetBackgroundColor()}";
         }
-    }
-
-    private string GetBackgroundColor() {
-        var hash = Title.GetDjb2HashCode();
-        var h = hash % 360;
-        return $"hsl({h}, 30%, 80%)";
     }
 
     private async Task OnPictureClick(MouseEventArgs arg) {
