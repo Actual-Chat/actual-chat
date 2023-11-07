@@ -1,7 +1,7 @@
 import { customElement, property } from 'lit/decorators.js';
 import { html, LitElement } from 'lit';
 
-import { hashCode, getUnit, getRandomColor } from './utilities';
+import { getRandomColor, getUnit, hashCode } from './avatar-utils';
 
 const SIZE = 80;
 const ELEMENTS = 3;
@@ -10,7 +10,7 @@ let id = 0;
 
 @customElement('marble-avatar')
 class MarbleAvatar extends LitElement {
-    @property() name: string;
+    @property() key: string;
     @property() title: string;
     @property() square: boolean = false;
     @property() colors: string[] = ['FF649C', 'FFD569', '00D193', '39DBFF', '3395FF'];
@@ -18,7 +18,7 @@ class MarbleAvatar extends LitElement {
     private maskId = `marble-avatar-${++id}`;
 
     render() {
-        const properties = this.generateColors(this.name, this.colors);
+        const properties = this.generateColors(this.key, this.colors);
         return html`
             <svg
                 viewBox='${'0 0 ' + SIZE + ' ' + SIZE}'
@@ -76,10 +76,10 @@ class MarbleAvatar extends LitElement {
                     />
                 </g>
                 <text x="50%"
-                      y="55%"
-                      dominant-baseline="middle"
+                      y="50%"
+                      dominant-baseline="central"
                       text-anchor="middle"
-                      style='fill: white; font-size: 2.5em; font-weight: 500;'>
+                      style='fill: white; font-size: 2.5em; font-weight: 5000;'>
                     ${this.title}
                 </text>
                 <defs>
@@ -97,18 +97,15 @@ class MarbleAvatar extends LitElement {
         `;
     }
 
-    private generateColors(name, colors) {
-        const numFromName = hashCode(name);
+    private generateColors(key: string, colors: string[]) {
+        const numFromName = hashCode(key);
         const range = colors && colors.length;
-
-        const elementsProperties = Array.from({ length: ELEMENTS }, (_, i) => ({
+        return Array.from({ length: ELEMENTS }, (_, i) => ({
             color: getRandomColor(numFromName + i, colors, range),
             translateX: getUnit(numFromName * (i + 1), SIZE / 10, 1),
             translateY: getUnit(numFromName * (i + 1), SIZE / 10, 2),
             scale: 1.2 + getUnit(numFromName * (i + 1), SIZE / 20, undefined) / 10,
             rotate: getUnit(numFromName * (i + 1), 360, 1),
         }));
-
-        return elementsProperties;
     }
 }

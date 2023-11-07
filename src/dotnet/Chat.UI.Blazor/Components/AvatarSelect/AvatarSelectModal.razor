@@ -25,12 +25,12 @@
         <div class="avatar-select">
             @if (mode == Mode.Change) {
                 <div class="c-hint">
-                    You can change your avatar in the current chat here:
+                    Change your avatar in this chat:
                 </div>
             }
             else if (mode == Mode.Reveal) {
                 <div class="c-hint">
-                    Choose the avatar to use for the reveal:
+                    The avatar to use after the reveal:
                 </div>
             }
             @foreach (var avatar in m.Avatars) {

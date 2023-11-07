@@ -15,15 +15,22 @@
             @onclick="@OnPictureClick"
             @onclick:preventDefault="true"/>
     } else if (!_avatarKey.IsNullOrEmpty()) {
-        <beam-avatar name="@_avatarKey" />
+        switch (AvatarKind) {
+        case AvatarKind.Beam:
+            <beam-avatar
+                class="pic-generated @sizeClass"
+                key="@_avatarKey" />
+            break;
+        case AvatarKind.Marble:
+            var title = Title.IsNullOrEmpty() ? "" : char.ToUpperInvariant(Title[0]).ToString();
+            <marble-avatar
+                class="pic-generated @sizeClass"
+                key="@_avatarKey"
+                title="@title"/>
+            break;
+        }
     } else if (NoPicture != null) {
         @NoPicture
-    } else {
-        <marble-avatar
-            name="@((Title.NullIfEmpty() ?? " ").GetDjb2HashCode())"
-            title="@((Title.NullIfEmpty() ?? " ")[..1])"
-            class="pic-generated @sizeClass">
-        </marble-avatar>
     }
 </div>
 
@@ -38,18 +45,15 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public AvatarKind AvatarKind { get; set; } = AvatarKind.Beam;
+    [Parameter] public string? AvatarKey { get; set; }
     [Parameter] public bool EnableImagePreview { get; set; }
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
     protected override void OnParametersSet() {
-        if (Picture != null) {
-            _pictureUrl = UrlMapper.PicturePreview128Url(Picture);
-            _avatarKey = _pictureUrl.IsNullOrEmpty() ? Picture.AvatarKey ?? "" : "";
-        } else {
-            _avatarKey = "";
-            _pictureUrl = "";
-        }
+        _avatarKey = AvatarKey ?? Picture?.AvatarKey ?? "";
+        _pictureUrl = UrlMapper.PicturePreview128Url(Picture);
     }
 
     private async Task OnPictureClick(MouseEventArgs arg) {

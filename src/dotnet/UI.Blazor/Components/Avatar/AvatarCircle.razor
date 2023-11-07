@@ -20,10 +20,9 @@
         } else if (!_avatarKey.IsNullOrEmpty()){
             <beam-avatar
                 class="c-avatar @_class"
-                name="@_avatarKey"
+                key="@_avatarKey"
                 @onclick="@Click"/>
         }
-
         @BadgeContent
     </div>
 </div>

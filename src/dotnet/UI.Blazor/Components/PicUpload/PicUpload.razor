@@ -12,11 +12,14 @@
 }
 
 <div class="pic-upload pic-upload-drop-zone" @ref="_dropZoneRef">
-    <Pic Title="@Title"
-         Size="@Size"
-         Picture="Picture"
-         Click="Click"
-         NoPicture="NoPicture"/>
+    <Pic
+        Title="@Title"
+        Picture="@Picture"
+        Size="@Size"
+        NoPicture="@NoPicture"
+        AvatarKind="@AvatarKind"
+        AvatarKey="@AvatarKey"
+        Click="@Click"/>
     <div class="pic-upload-picker @(sizeClass)">
         <FileUpload
             id="@_inputId"
@@ -62,6 +65,8 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public AvatarKind AvatarKind { get; set; } = AvatarKind.Beam;
+    [Parameter] public string? AvatarKey { get; set; }
     [Parameter] public string UploadUrl { get; set; } = "";
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }

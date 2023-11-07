@@ -24,13 +24,12 @@
             <ValidationSummary/>
             <PicUpload
                 UploadUrl="@UploadUrl"
-                Picked="OnImagePicked"
-                Size="SquareSize.Size24"
                 Title="@_form.Name"
-                Picture="_form.Picture"
-                GenerateAvatar="OnGenerateAvatarClick"
-                NoPicture="@noPictureRenderFragment">
-            </PicUpload>
+                Picture="@_form.Picture"
+                Size="@SquareSize.Size24"
+                GenerateAvatar="@OnGenerateAvatarClick"
+                NoPicture="@noPictureRenderFragment"
+                Picked="@OnImagePicked"/>
 
             <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
                 <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>

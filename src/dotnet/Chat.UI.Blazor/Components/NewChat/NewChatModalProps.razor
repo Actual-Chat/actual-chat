@@ -5,12 +5,16 @@
 <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
     <FormBlock>
         <DataAnnotationsValidator/>
+
         <PicUpload
             UploadUrl="@UploadUrl"
-            Picked="OnImagePicked"
-            Size="SquareSize.Size24"
+            Size="@SquareSize.Size24"
             Title="@_form.Title"
-            Picture="_form.Picture" />
+            Picture="@_form.Picture"
+            AvatarKind="@AvatarKind"
+            AvatarKey="@AvatarKey"
+            Picked="@OnImagePicked"/>
+
         <FormSection
             For="() => _form.Title"
             Label="Name"
@@ -104,6 +108,8 @@
 
 @code {
     private static readonly string UploadUrl = "/api/avatars/upload-picture";
+    private static readonly AvatarKind AvatarKind = AvatarKind.Marble;
+    private static readonly string AvatarKey = "a-random-string";
     private Form _formRef = null!;
     private FormModel _form = null!;
 

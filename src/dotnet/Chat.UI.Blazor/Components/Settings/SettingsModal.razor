@@ -9,7 +9,7 @@
 
     var isGuestOrNone = account.IsGuestOrNone;
     var showMyAccount = !isGuestOrNone;
-    var showNotification = !isGuestOrNone && _enableIncompleteUI;
+    var showNotifications = !isGuestOrNone && _enableIncompleteUI;
     var showLanguages = true;
     var showUserInterface = true;
     var showThemeToggle = true;
@@ -26,8 +26,8 @@
             </SettingsTab>
         }
 
-        @if (showNotification) {
-            <SettingsTab @key="3" Title="Notification" Id="notification" IconTitle="bell">
+        @if (showNotifications) {
+            <SettingsTab @key="3" Title="Notifications" Id="notifications" IconTitle="bell">
                 <ChildContent>
                 </ChildContent>
             </SettingsTab>

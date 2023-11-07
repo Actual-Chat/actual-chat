@@ -28,11 +28,12 @@
 
         <PicUpload
             UploadUrl="@_form.ImageUploadUrl"
-            Picked="OnImagePicked"
-            Size="SquareSize.Size24"
+            Size="@SquareSize.Size24"
             Title="@_form.Title"
-            Picture="@_form.Picture">
-        </PicUpload>
+            Picture="@_form.Picture"
+            AvatarKind="@_avatarKind"
+            AvatarKey="@_avatarKey"
+            Picked="@OnImagePicked"/>
 
         <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
             <TextBox
@@ -191,6 +192,8 @@
     private FormModel? _form;
     private Symbol _newInviteId = Symbol.Empty;
     private DialogButtonInfo _submitButtonInfo = null!;
+    private AvatarKind _avatarKind;
+    private string? _avatarKey;
 
     [Inject] private ChatHub ChatHub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -206,6 +209,13 @@
         base.OnInitialized();
         ChatId = Context.GetTypedModel<ChatId>();
         Context.SetTitle("Edit chat settings");
+        if (ChatId.IsPeerChat(out _)) {
+            _avatarKind = AvatarKind.Beam;
+            _avatarKey = null;
+        } else {
+            _avatarKind = AvatarKind.Marble;
+            _avatarKey = ChatId.Value;
+        }
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
     }
@@ -215,6 +225,7 @@
         _form = Context.PageDataBag.Get<FormModel>(formBagKey);
         if (_form != null)
             return;
+
         var chat = await ChatHub.Chats.Get(Session, ChatId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             Title = chat.Title,

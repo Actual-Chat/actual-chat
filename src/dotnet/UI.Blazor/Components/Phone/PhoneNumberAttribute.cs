@@ -7,5 +7,7 @@ namespace ActualChat.UI.Blazor.Components;
 public class PhoneNumberAttribute : ValidationAttribute
 {
     protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
-        => PhoneFormatterExt.FromReadable(value as string ?? "").IsValid ? ValidationResult.Success : validationContext.Error(ErrorMessage ?? "Phone number is incorrect");
+        => PhoneFormatterExt.FromReadable(value as string ?? "").IsValid
+            ? ValidationResult.Success
+            : validationContext.Error(ErrorMessage ?? "Your phone number is incorrect");
 }

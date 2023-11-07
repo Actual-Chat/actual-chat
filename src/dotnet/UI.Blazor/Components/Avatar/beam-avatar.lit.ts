@@ -1,7 +1,7 @@
 import { customElement, property } from 'lit/decorators.js';
-import { html, svg, LitElement } from 'lit';
+import { html, LitElement, svg } from 'lit';
 
-import { hashCode, getUnit, getBoolean, getRandomColor, getContrast } from './utilities';
+import { getBoolDigit, getContrast, getRandomColor, getUnit, hashCode } from './avatar-utils';
 
 const SIZE = 36;
 
@@ -9,14 +9,14 @@ let id = 0;
 
 @customElement('beam-avatar')
 class BeamAvatar extends LitElement {
-    @property() name: string;
+    @property() key: string;
     @property() square: boolean = false;
     @property() colors: string[] = ['FFDBA0', 'BBBEFF', '9294E1', 'FF9BC0', '0F2FE8'];
 
     private maskId = `beam-avatar-${++id}`;
 
     render() {
-        const data = this.generateData(this.name, this.colors);
+        const data = this.generateData(this.key, this.colors);
         const mouth = data.isMouthOpen
             ? svg`
                 <path
@@ -110,16 +110,15 @@ class BeamAvatar extends LitElement {
         `;
     }
 
-    private generateData(name, colors) {
-        const numFromName = hashCode(name);
+    private generateData(key: string, colors: string[]) {
+        const numFromName = hashCode(key);
         const range = colors && colors.length;
         const wrapperColor = getRandomColor(numFromName, colors, range);
         const preTranslateX = getUnit(numFromName, 10, 1);
         const wrapperTranslateX = preTranslateX < 5 ? preTranslateX + SIZE / 9 : preTranslateX;
         const preTranslateY = getUnit(numFromName, 10, 2);
         const wrapperTranslateY = preTranslateY < 5 ? preTranslateY + SIZE / 9 : preTranslateY;
-
-        const data = {
+        return {
             wrapperColor: wrapperColor,
             faceColor: getContrast(wrapperColor),
             backgroundColor: getRandomColor(numFromName + 13, colors, range),
@@ -127,15 +126,13 @@ class BeamAvatar extends LitElement {
             wrapperTranslateY: wrapperTranslateY,
             wrapperRotate: getUnit(numFromName, 360, undefined),
             wrapperScale: 1 + getUnit(numFromName, SIZE / 12, undefined) / 10,
-            isMouthOpen: getBoolean(numFromName, 2),
-            isCircle: getBoolean(numFromName, 1),
+            isMouthOpen: getBoolDigit(numFromName, 2),
+            isCircle: getBoolDigit(numFromName, 1),
             eyeSpread: getUnit(numFromName, 5, undefined),
             mouthSpread: getUnit(numFromName, 3, undefined),
             faceRotate: getUnit(numFromName, 10, 3),
             faceTranslateX: wrapperTranslateX > SIZE / 6 ? wrapperTranslateX / 2 : getUnit(numFromName, 8, 1),
             faceTranslateY: wrapperTranslateY > SIZE / 6 ? wrapperTranslateY / 2 : getUnit(numFromName, 7, 2),
         };
-
-        return data;
     }
 }
