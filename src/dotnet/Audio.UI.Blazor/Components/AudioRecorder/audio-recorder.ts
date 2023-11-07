@@ -160,48 +160,6 @@ export class AudioRecorder {
             }
 
             this.state = 'starting';
-            const isMaui = BrowserInfo.appKind == 'MauiApp';
-            if (!DetectRTC.hasMicrophone) {
-                errorLog?.log(`startRecording: microphone is unavailable`);
-                return false;
-            }
-            debugLog?.log(`startRecording(), after hasMicrophone`);
-
-            let hasMicrophonePermission = false;
-            if ('permissions' in navigator && !DeviceInfo.isFirefox) {
-                // @ts-ignore
-                const status = await navigator.permissions.query({ name: 'microphone' });
-                hasMicrophonePermission = status.state !== 'denied';
-            }
-            else
-                hasMicrophonePermission = DetectRTC.isWebsiteHasMicrophonePermissions;
-
-            if (!hasMicrophonePermission && !isMaui) {
-                if (DeviceInfo.isFirefox) {
-                    // Firefox doesn't support microphone permissions query
-                    const hasMicrophonePromise = new PromiseSource<boolean>();
-                    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-                        .then(
-                            stream => {
-                                stream.getAudioTracks().forEach(t => t.stop());
-                                stream.getVideoTracks().forEach(t => t.stop());
-                                hasMicrophonePromise.resolve(true);
-                            },
-                            () => {
-                                hasMicrophonePromise.resolve(false);
-                            });
-                    const hasMicrophone = await hasMicrophonePromise;
-                    if (!hasMicrophone) {
-                        errorLog?.log(`startRecording: microphone permission is required`);
-                        return false;
-                    }
-                }
-                else {
-                    errorLog?.log(`startRecording: microphone permission is required`);
-                    return false;
-                }
-            }
-            debugLog?.log(`startRecording(), after isWebsiteHasMicrophonePermissions`);
 
             await opusMediaRecorder.start(
                 chatId,
