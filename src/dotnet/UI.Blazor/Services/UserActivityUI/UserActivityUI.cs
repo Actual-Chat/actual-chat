@@ -23,7 +23,7 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
             Now + Constants.Presence.CheckPeriod,
             nameof(ActiveUntil));
         _blazorRef = DotNetObjectReference.Create<IUserActivityUIBackend>(this);
-        _ = JS.InvokeAsync<IJSObjectReference>(JSInitMethod, _blazorRef,
+        _ = JS.InvokeVoidAsync(JSInitMethod, _blazorRef,
             Constants.Presence.ActivityPeriod.TotalMilliseconds,
             Constants.Presence.CheckPeriod.TotalMilliseconds);
     }
