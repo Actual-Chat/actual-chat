@@ -68,7 +68,6 @@
         if (!isVisible)
             return Model.Invisible;
 
-
         var chat = await ChatUI.Get(Chat.Id, cancellationToken);
         if (chat == null)
             return Model.Invisible;
@@ -77,6 +76,7 @@
         if (lastEntryId.IsNone)
             return Model.Invisible;
 
+        await Task.Delay(TimeSpan.FromSeconds(0.333), cancellationToken);
         var unreadCount = await ChatUI.GetUnreadCount(Chat.Id, cancellationToken);
         var isAboveUnread = await IsViewportAboveUnreadEntryState(cancellationToken);
         return new(true, lastEntryId, unreadCount, isAboveUnread);
@@ -100,9 +100,14 @@
         }
     }
 
-    public sealed record Model(bool IsVisible, ChatEntryId LastEntryId, Trimmed<int> UnreadCount, bool IsAboveUnreadEntry)
+    public sealed record Model(
+        bool IsVisible,
+        ChatEntryId LastEntryId,
+        Trimmed<int> UnreadCount,
+        bool IsAboveUnreadEntry)
     {
         public static readonly Model None = new(false, default, default, default);
         public static readonly Model Invisible = new(false, default, default, default);
+        public static readonly Model InvisibleToVisible = new(false, default, default, default);
     }
 }
