@@ -36,10 +36,9 @@ public partial class SharedResourcePool<TKey, TResource>
             CancellationTokenSource endRentDelayTokenSource;
             CancellationToken endRentDelayToken;
             lock (Lock) {
-                if (_renterCount != 1 || _endRentTask != null)
+                _renterCount = Math.Max(0, _renterCount - 1);
+                if (_renterCount != 0 || _endRentTask != null)
                     return;
-
-                _renterCount = 0;
                 if (_endRentDelayTokenSource != null)
                     return; // Weird case, shouldn't happen
 
