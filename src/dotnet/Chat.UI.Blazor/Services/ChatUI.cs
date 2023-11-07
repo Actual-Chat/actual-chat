@@ -300,17 +300,29 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     public async ValueTask<SyncedStateLease<ReadPosition>> LeaseReadPositionState(ChatId chatId, CancellationToken cancellationToken)
     {
         var lease = await _readPositionStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
-        var result = new SyncedStateLease<ReadPosition>(lease);
-        await result.WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return result;
+        try {
+            var result = new SyncedStateLease<ReadPosition>(lease);
+            await result.WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch {
+            lease.Dispose();
+            throw;
+        }
     }
 
     public async ValueTask<ComputedStateLease<Range<long>>> LeaseChatIdRangeState(ChatId chatId, CancellationToken cancellationToken)
     {
         var lease = await _chatIdRangeStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
-        var result = new ComputedStateLease<Range<long>>(lease);
-        await result.WhenSynchronized(cancellationToken).ConfigureAwait(false);
-        return result;
+        try {
+            var result = new ComputedStateLease<Range<long>>(lease);
+            await result.WhenSynchronized(cancellationToken).ConfigureAwait(false);
+            return result;
+        }
+        catch {
+            lease.Dispose();
+            throw;
+        }
     }
 
     // Private methods

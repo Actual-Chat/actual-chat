@@ -7,14 +7,17 @@ namespace ActualChat;
 public interface IMutableStateLease<T> : IMutableState<T>, IDisposable
 { }
 
-public class MutableStateLease<T, TKey, TState, TResource> : IMutableStateLease<T>
+public class MutableStateLease<T, TKey, TState, TResource>(
+    SharedResourcePool<TKey, TResource>.Lease lease,
+    TState state
+    ) : IMutableStateLease<T>
     where TState : class, IMutableState<T>
     where TResource : class
     where TKey : notnull
 {
-    protected SharedResourcePool<TKey, TResource>.Lease Lease { get; }
+    protected SharedResourcePool<TKey, TResource>.Lease Lease { get; } = lease;
 
-    public TState State { get; }
+    public TState State { get; } = state;
     public IServiceProvider Services => State.Services;
 
     public T Value {
@@ -45,12 +48,6 @@ public class MutableStateLease<T, TKey, TState, TResource> : IMutableStateLease<
 
     IComputed IState.Computed => ((IState)State).Computed;
     public Computed<T> Computed => State.Computed;
-
-    public MutableStateLease(SharedResourcePool<TKey, TResource>.Lease lease, Func<TResource, TState> stateGetter)
-    {
-        Lease = lease;
-        State = stateGetter(lease.Resource);
-    }
 
     public virtual void Dispose()
         => Lease.Dispose();
@@ -121,15 +118,9 @@ public class MutableStateLease<T, TKey, TState, TResource> : IMutableStateLease<
     }
 }
 
-public class MutableStateLease<T, TState> : MutableStateLease<T, Symbol, TState, TState>
-    where TState : class, IMutableState<T>
-{
-    // ReSharper disable once MemberCanBeProtected.Global
-    public MutableStateLease(SharedResourcePool<Symbol, TState>.Lease lease) : base(lease, state => state) { }
-}
+public class MutableStateLease<T, TState>(SharedResourcePool<Symbol, TState>.Lease lease)
+    : MutableStateLease<T, Symbol, TState, TState>(lease, lease.Resource)
+    where TState : class, IMutableState<T>;
 
-public class MutableStateLease<T> : MutableStateLease<T, IMutableState<T>>
-{
-    // ReSharper disable once MemberCanBeProtected.Global
-    public MutableStateLease(SharedResourcePool<Symbol, IMutableState<T>>.Lease lease) : base(lease) { }
-}
+public class MutableStateLease<T>(SharedResourcePool<Symbol, IMutableState<T>>.Lease lease)
+    : MutableStateLease<T, IMutableState<T>>(lease);

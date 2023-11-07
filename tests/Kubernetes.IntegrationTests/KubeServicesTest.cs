@@ -1,11 +1,7 @@
 namespace ActualChat.Kubernetes.IntegrationTests;
 
-public class KubeServicesTest: TestBase
+public class KubeServicesTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public KubeServicesTest(ITestOutputHelper @out) : base(@out)
-    {
-    }
-
     [Fact]
     public void KubeServiceEndpointsStructuralComparisionDoesntWork()
     {

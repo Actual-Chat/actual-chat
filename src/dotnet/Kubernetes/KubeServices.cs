@@ -40,14 +40,25 @@ public class KubeServices : IKubeInfo
         await KubeInfo.RequireKube(cancellationToken).ConfigureAwait(false);
         var lease = await _discoveryWorkerPool.Rent(kubeService, cancellationToken).ConfigureAwait(false);
         var state = lease.Resource.State;
-        // We want to wait for the first update, otherwise we'll get an empty set of endpoints
-        while (state.Snapshot.IsInitial)
-            await state.Computed.WhenInvalidated(cancellationToken).ConfigureAwait(false);
-        return new MutableStateLease<
-            KubeServiceEndpoints,
-            KubeService,
-            IMutableState<KubeServiceEndpoints>,
-            EndpointDiscoveryWorker>(lease, w => w._state);
+        try {
+            // We want to wait for the first update, otherwise we'll get an empty set of endpoints
+            while (true) {
+                var snapshot = state.Snapshot;
+                if (!snapshot.IsInitial)
+                    break;
+
+                await snapshot.WhenUpdated().WaitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            return new MutableStateLease<
+                KubeServiceEndpoints,
+                KubeService,
+                IMutableState<KubeServiceEndpoints>,
+                EndpointDiscoveryWorker>(lease, lease.Resource._state);
+        }
+        catch {
+            lease.Dispose();
+            throw;
+        }
     }
 
     // Private methods
