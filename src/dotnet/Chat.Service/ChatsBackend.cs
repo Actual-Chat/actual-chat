@@ -901,7 +901,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (readAuthor != null) {
             if (readAuthor.IsAnonymous)
                 authorId = AuthorId.None;
-            authorName = readAuthor.IsAnonymous ? "someone" : readAuthor.Avatar.Name;
+            authorName = readAuthor.IsAnonymous ? "Someone" : readAuthor.Avatar.Name;
         }
         if (authorName.IsNullOrEmpty())
             authorName = MentionMarkup.NotAvailableName;
