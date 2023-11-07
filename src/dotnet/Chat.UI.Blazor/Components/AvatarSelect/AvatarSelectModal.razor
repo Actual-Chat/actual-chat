@@ -8,7 +8,7 @@
         ? Mode.Reveal
         : ModalModel.ChatId.IsNone ? Mode.Join : Mode.Change;
     var title = mode switch {
-        Mode.Join =>  "Choose avatar",
+        Mode.Join =>  "Choose your avatar",
         Mode.Reveal => "Reveal yourself",
         _ => "Change your avatar",
         };
@@ -65,7 +65,7 @@
                                 @avatar.Name
                             </Content>
                             <Right>
-                                <AnonymousIcon Class="w-5 h-5"/>
+                                <i class="w-5 h-5 icon-question-mark-bubble text-xl text-[var(--violet-60)]"></i>
                             </Right>
                         </TileItem>
                     </Tile>
