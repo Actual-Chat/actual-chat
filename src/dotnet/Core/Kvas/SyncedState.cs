@@ -92,8 +92,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
             return;
 
         _disposeTokenSource.CancelAndDisposeSilently();
-        if (!WhenFirstTimeRead.IsCompleted)
-            _whenFirstTimeReadSource.TrySetCanceled(DisposeToken);
+        _whenFirstTimeReadSource.TrySetCanceled(DisposeToken);
         ReadState.Dispose();
     }
 
@@ -194,6 +193,7 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     {
         if (result.IsValue(out var value)) {
             if (IsPreviouslyWritten(value)) {
+                _whenFirstTimeReadSource.TrySetResult();
                 DebugLog?.LogDebug("{State}: Read: skipping previously written value", this);
                 return;
             }

@@ -301,7 +301,7 @@ public partial class ChatUI : WorkerBase, IHasServices, IComputeService, INotify
     {
         var lease = await _readPositionStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
         var result = new SyncedStateLease<ReadPosition>(lease);
-        await result.WhenFirstTimeRead.ConfigureAwait(false);
+        await result.WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
         return result;
     }
 

@@ -33,38 +33,56 @@ public partial class SharedResourcePool<TKey, TResource>
 
         public void Dispose()
         {
+            CancellationTokenSource endRentDelayTokenSource;
+            CancellationToken endRentDelayToken;
             lock (Lock) {
-                if (--_renterCount != 0)
+                if (_renterCount != 1 || _endRentTask != null)
                     return;
 
-                var endRentDelayTokenSource = new CancellationTokenSource();
-                var endRentDelayToken = endRentDelayTokenSource.Token;
-                _endRentDelayTokenSource = endRentDelayTokenSource;
+                _renterCount = 0;
+                if (_endRentDelayTokenSource != null)
+                    return; // Weird case, shouldn't happen
 
-                _ = BackgroundTask.Run(async () => {
+                endRentDelayTokenSource = new CancellationTokenSource();
+                endRentDelayToken = endRentDelayTokenSource.Token;
+                _endRentDelayTokenSource = endRentDelayTokenSource;
+            }
+
+            // Start delayed EndRent
+            _ = Task
+                .Delay(Pool.ResourceDisposeDelay, endRentDelayToken)
+                .ContinueWith(delayTask => {
+                    if (delayTask.IsCanceled)
+                        return;
+
+                    Monitor.Enter(Lock);
                     try {
-                        await Task.Delay(Pool.ResourceDisposeDelay, endRentDelayToken).ConfigureAwait(false);
-                        lock (Lock)
-                            _endRentTask ??= EndRent();
+                        // It's possible that BeginRent was called up right before we entered this lock.
+                        // BeginRent sets _endRentDelayTokenSource to null when it succeeds,
+                        // so all we need to do here is to check if it's still the same.
+                        if (_endRentDelayTokenSource != endRentDelayTokenSource)
+                            return;
+
+                        _endRentDelayTokenSource = null;
+                        _endRentTask ??= EndRent();
                     }
                     finally {
-                        endRentDelayTokenSource.CancelAndDisposeSilently();
+                        Monitor.Exit(Lock);
+                        endRentDelayTokenSource.Dispose();
                     }
-                }, CancellationToken.None);
-            }
+                }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         internal async ValueTask<Task?> BeginRent(CancellationToken cancellationToken)
         {
-            Task? endRentTask;
             lock (Lock) {
+                if (_endRentTask != null)
+                    return _endRentTask;
+
                 ++_renterCount;
                 _endRentDelayTokenSource.CancelAndDisposeSilently();
                 _endRentDelayTokenSource = null;
-                endRentTask = _endRentTask;
             }
-            if (endRentTask != null)
-                return endRentTask;
 
             // If we're here, _endRentTask == null, i.e. no resource is allocated yet
             try {
@@ -80,17 +98,18 @@ public partial class SharedResourcePool<TKey, TResource>
                 // the pool - EndRent, which is responsible for this otherwise,
                 // won't be called in this case.
                 lock (Lock) {
+                    _renterCount = 0;
                     _endRentTask = Task.CompletedTask;
-                    --_renterCount;
                 }
                 Pool._leases.TryRemove(Key, this);
                 throw;
             }
             catch (Exception e) {
                 Pool.Log.LogError(e, nameof(Pool.ResourceFactory) + " failed");
-                lock (Lock)
-                    endRentTask = _endRentTask ??= EndRent();
-                return endRentTask;
+                lock (Lock) {
+                    _renterCount = 0;
+                    return _endRentTask ??= EndRent();
+                }
             }
         }
 
@@ -101,7 +120,8 @@ public partial class SharedResourcePool<TKey, TResource>
             }
             catch (Exception e) {
                 Pool.Log.LogError(e,
-                    "Failed to dispose pooled resource of type {ResourceType}", typeof(TResource).FullName);
+                    "Failed to dispose pooled resource of type {ResourceType}",
+                    typeof(TResource).GetName());
             }
             finally {
                 Pool._leases.TryRemove(Key, this);
