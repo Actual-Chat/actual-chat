@@ -338,9 +338,19 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (author == null || author.AvatarId == command.AvatarId)
             return;
 
+        var authorDiff = new AuthorDiff() {
+            AvatarId = avatarId
+        };
+        if (author.IsAnonymous) {
+            var avatar = await Avatars.GetOwn(session, avatarId, cancellationToken).Require().ConfigureAwait(false);
+            if (!avatar.IsAnonymous)
+                // Revealing anonymous author
+                authorDiff = authorDiff with { IsAnonymous = false };
+        }
+
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, default, author.Version,
-            new AuthorDiff() { AvatarId = avatarId });
+            authorDiff);
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 

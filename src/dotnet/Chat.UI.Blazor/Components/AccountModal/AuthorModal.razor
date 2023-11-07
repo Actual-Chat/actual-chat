@@ -100,8 +100,19 @@
     private void OnCancel()
         => Modal.Close();
 
-    private Task OnRevealClicked()
-        => ChatHub.FeedbackUI.AskFeatureRequestFeedback("reveal-author", "Reveal yourself");
+    private async Task OnRevealClicked() {
+        var revealed = false;
+        var modelRef = await ChatHub.ModalUI.Show(new AvatarSelectModal.RevealModel(ChatId, SetAvatar));
+        await modelRef.WhenClosed;
+        if (revealed)
+            Modal.Close();
+
+        async Task SetAvatar(AvatarFull avatar) {
+            var command = new Authors_SetAvatar(ChatHub.Session, ChatId, avatar.Id);
+            await ChatHub.UICommander.Run(command);
+            revealed = true;
+        }
+    }
 
     private async Task OnChangeAvatarClicked() {
         Modal.Close();

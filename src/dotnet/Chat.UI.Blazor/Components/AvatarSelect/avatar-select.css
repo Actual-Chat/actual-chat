@@ -5,9 +5,15 @@
 .avatar-select-modal.modal-frame .dialog-body {
     @apply pb-2;
 }
+.avatar-select-modal .form-block {
+    @apply py-0;
+}
 .avatar-select {
     @apply flex-y gap-y-2;
     @apply w-full md:w-80;
+}
+.avatar-select .c-hint {
+    @apply text-sm font-normal;
 }
 .avatar-select-item, .avatar-select-item *   {
     @apply cursor-pointer;

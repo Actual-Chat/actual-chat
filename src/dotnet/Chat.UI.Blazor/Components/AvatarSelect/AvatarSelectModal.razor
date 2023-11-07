@@ -4,8 +4,14 @@
 @inherits ComputedStateComponent<AvatarSelectModal.ViewModel>
 @{
     var m = State.Value;
-    var mode = ModalModel.ChatId.IsNone ? Mode.Join : Mode.Change;
-    var title = mode == Mode.Join ? "Choose avatar" : "Change your avatar";
+    var mode = ModalModel is RevealModel
+        ? Mode.Reveal
+        : ModalModel.ChatId.IsNone ? Mode.Join : Mode.Change;
+    var title = mode switch {
+        Mode.Join =>  "Choose avatar",
+        Mode.Reveal => "Reveal yourself",
+        _ => "Change your avatar",
+        };
 }
 
 <DialogFrame
@@ -18,8 +24,13 @@
     <FormBlock>
         <div class="avatar-select">
             @if (mode == Mode.Change) {
-                <div class="flex-x gap-x-1 text-sm font-normal">
-                    You can change your avatar in the current chat here.
+                <div class="c-hint">
+                    You can change your avatar in the current chat here:
+                </div>
+            }
+            else if (mode == Mode.Reveal) {
+                <div class="c-hint">
+                    Choose the avatar to use for the reveal:
                 </div>
             }
             @foreach (var avatar in m.Avatars) {
@@ -156,9 +167,10 @@
 
     // Nested types
 
-    private enum Mode { Join, Change }
+    private enum Mode { Join, Change, Reveal }
 
-    public sealed record Model(ChatId ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
+    public record Model(ChatId ChatId, bool AllowAnonymous, Func<AvatarFull, Task> OnAvatarSelected);
+    public record RevealModel(ChatId ChatId, Func<AvatarFull, Task> OnAvatarSelected) : Model(ChatId, false, OnAvatarSelected);
 
     public sealed record ViewModel(ApiArray<AvatarFull> Avatars, Symbol SelectedAvatarId, Avatar? Anonymous) {
         public static readonly ViewModel None = new(default, default, null);
