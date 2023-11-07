@@ -306,7 +306,7 @@ public partial class ChatAudioUI
         catch (OperationCanceledException) {
             mustStop = false;
         }
-        catch (Exception e) when (e is not OperationCanceledException) {
+        catch (Exception e) {
             Log.LogError(e, "StopListeningWhenIdle failed");
             throw;
         }
