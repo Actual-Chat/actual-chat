@@ -102,9 +102,9 @@ public static class ChatMarkupHubExt
         var videoCount = 0;
         TextEntryAttachment? firstFile = null;
         foreach (var x in attachments) // No LINQ to avoid boxing allocation
-            if (x.IsImage())
+            if (x.IsSupportedImage())
                 imageCount++;
-            else if (x.IsVideo())
+            else if (x.IsSupportedVideo())
                 videoCount++;
             else if (firstFile is null)
                 firstFile = x;
