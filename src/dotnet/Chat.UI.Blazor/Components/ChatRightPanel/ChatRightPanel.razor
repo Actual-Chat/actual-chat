@@ -74,7 +74,7 @@
         _wasEverVisible |= isVisible;
         return new () {
             IsVisible = isVisible,
-            RenderContent = _wasEverVisible,
+            RenderContent = true,
             ShowMembers = showMembers,
             EnableIncompleteUI = enableIncompleteUI,
         };
