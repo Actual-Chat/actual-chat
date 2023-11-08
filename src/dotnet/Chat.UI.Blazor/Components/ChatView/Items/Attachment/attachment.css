@@ -6,15 +6,9 @@
     @apply /*flex-1*/ flex-x;
     @apply bg-01;
 }
-.image-line .image-item img {
-    @apply h-full;
-    max-height: 30rem;
-}
-.image-line .image-item img,
 .image-line .image-item a {
     @apply flex-1 flex;
 }
-.image-line .image-item img,
 .image-line .image-item video {
     @apply object-cover;
 }
@@ -38,7 +32,7 @@
 }
 .image-attachment image-skeleton {
     @apply rounded-md;
-    @apply w-fit;
+    @apply w-full;
 }
 .message-image-attachments:has(image-skeleton.loading) {
     @apply w-full;
