@@ -166,18 +166,24 @@ body.narrow .dialog-buttons {
     @apply -flex-y gap-y-2;
 }
 .dialog-buttons .btn {
-    @apply flex-1 max-w-none;
+    @apply flex-1;
+    @apply max-w-none;
 }
 
 .dialog-body .validation-errors {
-    @apply rounded-md mb-2;
+    @apply mb-2;
+    @apply rounded-md;
 }
 .dialog-body .validation-errors .validation-message {
-    @apply flex justify-center rounded-md p-2 bg-danger text-06 font-normal text-base;
+    @apply flex justify-center;
+    @apply p-2;
+    @apply rounded-md;
+    @apply bg-danger text-06 font-normal text-base;
 }
 
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
-    @apply border rounded-md outline-none p-1 px-2;
+    @apply p-1 px-2;
+    @apply border outline-none;
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled).invalid {
     @apply border-danger;

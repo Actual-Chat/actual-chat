@@ -28,7 +28,7 @@ body.hoverable .default-avatar-btn:hover {
 .delete-avatar-btn {
     @apply flex-x items-center justify-between;
     @apply h-12 w-full;
-    @apply px-2;
+    @apply px-3;
     @apply rounded-lg;
 }
 body.hoverable .delete-avatar-btn:hover {

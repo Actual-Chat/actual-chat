@@ -147,7 +147,12 @@
     </div>
 </div>
 
+<input placeholder="Placeholder"/>
+<TextBox @bind-Value="@_textBox"></TextBox>
+
 @code {
+    private string _textBox = "Test TextBox";
+
     [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private ILogger<UIColorsTestPage> Log { get; init; } = null!;

@@ -13,6 +13,9 @@
     --gray-10: #282828;
     --gray-05: #1C1C1C;
 
+    --gray-10-20: #28282833;
+    --gray-80-20: #D3D3D333;
+
     --blue-99: #E5F2FF;
     --blue-95: #C9E3FF;
     --blue-90: #A4CFFF;
@@ -220,6 +223,7 @@
 
     /* Utils */
     --transparent: rgba(0, 0, 0, 0);
+    --input: var(--gray-80-20);
     --online: var(--green-30);
     --away: var(--warning);
     --selected: var(--blue-50-20);
@@ -368,6 +372,7 @@
 
     /* Utils */
     --online: var(--success);
+    --input: var(--gray-10-20);
     --away: var(--warning);
     --selected: var(--white-10);
     --hover: var(--white-05);

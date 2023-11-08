@@ -1,10 +1,13 @@
 .form section {
     @apply flex-y;
     @apply mt-2;
+    @apply rounded-t-md;
+}
+.form section:has(.form-section-content.label-inside-input) {
+    @apply bg-input;
 }
 .form-section-content {
-    @apply flex-x items-center;
-    @apply flex-1;
+    @apply flex-1 flex-x items-center;
 }
 .form-section-content > .c-left {
     @apply flex-y flex-1 items-start justify-center gap-y-1;
@@ -16,12 +19,16 @@
     @apply gap-y-0;
 }
 
+.form input {
+    @apply bg-input;
+}
+
 .form label {
     @apply font-medium text-03;
 }
 .form input:not([type='checkbox']):not(.dialog-unstyled),
 .form select {
-    @apply border rounded-md outline-none p-1 px-2;
+    @apply border outline-none p-1 px-2;
 }
 .form input:not([type='checkbox']):not(.dialog-unstyled).invalid,
 .form select.invalid {
@@ -43,8 +50,7 @@
     @apply flex-none w-full;
 }
 .form.form-y section .form-section-content {
-    @apply mt-1;
-    @apply rounded-t-lg;
+    @apply mt-1 px-1;
 }
 
 .form.form-x section {
@@ -72,7 +78,9 @@
 
 /*Label inside input*/
 .form-section-content.label-inside-input {
-    @apply bg-02 border-b border-text-03 gap-y-0 px-2;
+    @apply gap-y-0;
+    @apply bg-transparent;
+    @apply border-b border-text-03;
 }
 .form-section-content.label-inside-input:focus-within {
     @apply border-primary;
@@ -83,8 +91,10 @@
 }
 .label-inside-input input,
 .label-inside-input select {
-    @apply bg-transparent border-none rounded-none text-02 font-normal;
     @apply h-8 min-h-8 md:h-6 md:min-h-6;
+    @apply border-none rounded-none;
+    @apply bg-transparent;
+    @apply text-02 font-normal;
 }
 
 .form .form-section-content.label-inside-input label {
@@ -98,7 +108,9 @@
 }
 .form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled),
 .form .form-section-content.label-inside-input select {
-    @apply border-none rounded-none outline-none p-0;
+    @apply p-0;
+    @apply border-none outline-none;
+    @apply custom-scrollbar;
 }
 .form .form-section-content.label-inside-input input:not([type='checkbox']):not(.dialog-unstyled).invalid,
 .form .form-section-content.label-inside-input select.invalid {

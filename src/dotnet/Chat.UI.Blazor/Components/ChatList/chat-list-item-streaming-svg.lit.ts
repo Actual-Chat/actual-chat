@@ -5,7 +5,7 @@ import {css, html, LitElement} from "lit";
 class ChatListItemStreamingSvg extends LitElement {
     protected render(): unknown {
         return html`
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="-2 -2 30 30" fill="none" stroke="#444444" stroke-width="2" stroke-linecap="butt" stroke-linejoin="bevel">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="-2 -2 30 30" fill="none" stroke="var(--text-02)" stroke-width="2" stroke-linecap="butt" stroke-linejoin="bevel">
                 <polygon id="stream-svg-polygon" points="11 5 6 9 2 9 2 15 6 15 11 19 11 5">
                     <animate
                         href="#stream-svg-polygon"

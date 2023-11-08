@@ -86,6 +86,7 @@ module.exports = {
         'toast-action': 'var(--toast-action)',
         'error-toast-body': 'var(--error-toast-body)',
         'error-toast-text': 'var(--error-toast-text)',
+        'input': 'var(--input)',
         'online': 'var(--online)',
         'away': 'var(--away)',
         'separator': 'var(--separator)',

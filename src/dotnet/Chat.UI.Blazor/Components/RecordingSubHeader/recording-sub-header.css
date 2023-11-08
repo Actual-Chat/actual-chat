@@ -35,7 +35,7 @@
 .recording-sub-header > .c-line-1 .c-text,
 .recording-sub-header > .c-line-2 .c-text {
     @apply shrink-0;
-    @apply text-caption-4 text-02;
+    @apply text-caption-4 text-banner-error;
 }
 .recording-sub-header > .c-line-2 .c-text {
     @apply text-banner-error;

@@ -91,7 +91,7 @@ body.hoverable .settings-panel > .c-tabs .c-tab-item:hover i {
     @apply md:w-3/5;
 }
 .hide-tabs .settings-tab {
-    @apply hidden md:flex-y;
+    @apply hidden md:flex-y items-center;
 }
 .tile {
     @apply flex-y gap-y-2;
