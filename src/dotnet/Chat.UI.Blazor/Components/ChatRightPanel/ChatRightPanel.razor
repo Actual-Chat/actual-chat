@@ -66,9 +66,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
         var showMemberTab = rules.CanSeeMembers();
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         return new () {
             IsVisible = isVisible,
             RenderContent = true,
