@@ -9,7 +9,7 @@ public class MauiContactsPermissionHandler : ContactsPermissionHandler
     public MauiContactsPermissionHandler(IServiceProvider services, bool mustStart = true)
         : base(services, false)
     {
-        ExpirationPeriod = TimeSpan.FromDays(1); // No need to check this frequently
+        ExpirationPeriod = TimeSpan.FromMinutes(30); // No need to check this frequently
         if (mustStart)
             this.Start();
     }
