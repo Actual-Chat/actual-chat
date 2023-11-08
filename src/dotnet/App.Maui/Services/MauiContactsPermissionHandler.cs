@@ -17,7 +17,7 @@ public class MauiContactsPermissionHandler : ContactsPermissionHandler
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {
         var status = await MauiPermissions.CheckStatusAsync<MauiPermissions.ContactsRead>().ConfigureAwait(false);
-        Log.LogInformation("Got MauiPermissions.ContactsRead: '{Status}'", status);
+        Log.LogWarning("Get: CheckStatusAsync<MauiPermissions.ContactsRead>() response: {Status}", status);
         // Android returns Denied when permission is not set, also you can request permissions again
         return status switch {
             PermissionStatus.Granted => true,

@@ -24,6 +24,7 @@ public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {
         var status = await MauiPermissions.CheckStatusAsync<MauiPermissions.Microphone>().ConfigureAwait(true);
+        Log.LogWarning("Get: CheckStatusAsync<MauiPermissions.Microphone>() response: {Status}", status);
         // Android returns Denied when permission is not set, also you can request permissions again
         return status switch {
             PermissionStatus.Granted => true,
