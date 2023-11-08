@@ -9,7 +9,7 @@
     if (ReferenceEquals(m, Model.Loading))
         return;
 
-    var isVisible = m is { IsPermissionGranted: false or null, IsDismissed: false };
+    var isVisible = m is { IsPermissionGranted: not true, IsDismissed: false };
 }
 
 @if (isVisible) {
@@ -19,7 +19,7 @@
             IsVisible="@isVisible"
             Severity="BannerSeverity.Info"
             ShowDismissButton="true"
-            Dismiss="OnDismiss">
+            Dismiss="@OnDismiss">
             <Body>
                 Actual Chat can import your <strong>contacts</strong> to find them here
             </Body>
