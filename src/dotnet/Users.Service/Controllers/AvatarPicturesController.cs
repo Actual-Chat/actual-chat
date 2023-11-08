@@ -13,6 +13,8 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
     private ICommander Commander => services.Commander();
 
     [HttpPost("upload-picture")]
+    [RequestSizeLimit(Constants.Attachments.AvatarPictureFileSizeLimit * 2)]
+    [RequestFormLimits(MultipartBodyLengthLimit = Constants.Attachments.AvatarPictureFileSizeLimit * 2)]
     public async Task<ActionResult<MediaContent>> UploadPicture(CancellationToken cancellationToken)
     {
         AccountFull account;
@@ -37,7 +39,7 @@ public sealed class AvatarPicturesController(IServiceProvider services) : Contro
         if (file.Length == 0)
             return BadRequest("Image is empty.");
 
-        if (file.Length > Constants.Attachments.FileSizeLimit)
+        if (file.Length > Constants.Attachments.AvatarPictureFileSizeLimit)
             return BadRequest("Image is too big.");
 
         var mediaId = new MediaId(account.Id, Generate.Option);
