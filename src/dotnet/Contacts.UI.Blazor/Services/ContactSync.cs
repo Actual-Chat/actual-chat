@@ -75,8 +75,7 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
 
         foreach (var bulk in changes.Chunk(BatchSize)) {
             cancellationToken.ThrowIfCancellationRequested();
-            try
-            {
+            try {
                 var changeResults = await Commander
                     .Call(new ExternalContacts_BulkChange(Session, bulk.ToApiArray()), cancellationToken)
                     .ConfigureAwait(false);
@@ -90,8 +89,7 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 Log.LogWarning(e, "Failed to sync {Count} contacts", bulk.Length);
             }
         }
