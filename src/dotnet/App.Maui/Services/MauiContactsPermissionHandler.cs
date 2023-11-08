@@ -9,7 +9,7 @@ public class MauiContactsPermissionHandler : ContactsPermissionHandler
     public MauiContactsPermissionHandler(IServiceProvider services, bool mustStart = true)
         : base(services, false)
     {
-        ExpirationPeriod = TimeSpan.FromMinutes(30); // No need to check this frequently
+        ExpirationPeriod = TimeSpan.FromDays(1); // No need to check this frequently
         if (mustStart)
             this.Start();
     }
@@ -17,6 +17,7 @@ public class MauiContactsPermissionHandler : ContactsPermissionHandler
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {
         var status = await MauiPermissions.CheckStatusAsync<MauiPermissions.ContactsRead>().ConfigureAwait(false);
+        Log.LogInformation("Got MauiPermissions.ContactsRead: '{Status}'", status);
         // Android returns Denied when permission is not set, also you can request permissions again
         return status switch {
             PermissionStatus.Granted => true,
