@@ -79,7 +79,7 @@ class MarbleAvatar extends LitElement {
                       y="50%"
                       dominant-baseline="central"
                       text-anchor="middle"
-                      style='fill: white; font-size: 2.5em; font-weight: 5000;'>
+                      style='fill: white; font-size: 2.5em; font-weight: 500;'>
                     ${this.title}
                 </text>
                 <defs>
