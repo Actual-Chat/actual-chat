@@ -72,7 +72,7 @@ public sealed class DbModule : HostModule<DbSettings>
         */
 
         services.AddSingleton(dbInfo);
-        services.AddTransientDbContextFactory<TDbContext>(db => {
+        services.AddPooledDbContextFactory<TDbContext>(db => {
             switch (dbKind) {
             case DbKind.InMemory:
                 Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).GetName());
@@ -96,7 +96,7 @@ public sealed class DbModule : HostModule<DbSettings>
             if (IsDevelopmentInstance)
                 db.EnableSensitiveDataLogging();
             db.AddInterceptors(new DbConnectionConfigurator(dbKind));
-        });
+        }, 32);
         services.AddDbContextServices<TDbContext>(db => {
             services.AddSingleton(new CompletionProducer.Options {
                 // Let's not waste log with successful completed command
