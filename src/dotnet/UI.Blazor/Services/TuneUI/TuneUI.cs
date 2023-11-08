@@ -33,8 +33,7 @@ public class TuneUI : ITuneUIBackend, IDisposable
         [Tune.EditMessage] = new (new[] { 20 }/*, "edit-message"*/),
         [Tune.ReplyMessage] = new (new[] { 20 }/*, "reply-message"*/),
         [Tune.ChangeAttachments] = new (new[] { 20 }/*, "change-attachments"*/),
-        [Tune.SelectPrimaryLanguage] = new (new[] { 50, 50, 50 }/*, "select-primary-language"*/),
-        [Tune.SelectSecondaryLanguage] = new (new[] { 50 }/*, "select-secondary-language"*/),
+        [Tune.ChangeLanguage] = new (new[] { 20, 20 }/*, "change-language"*/),
         [Tune.ShowMenu] = new (new[] { 20 }/*, "show-menu"*/),
     };
 
@@ -115,8 +114,7 @@ public enum Tune
     EditMessage,
     ReplyMessage,
     ChangeAttachments,
-    SelectPrimaryLanguage,
-    SelectSecondaryLanguage,
+    ChangeLanguage,
     ShowMenu,
     React,
 }

@@ -28,8 +28,7 @@ export enum Tune
     EditMessage,
     ReplyMessage,
     ChangeAttachments,
-    SelectPrimaryLanguage,
-    SelectSecondaryLanguage,
+    ChangeLanguage,
     ShowMenu,
     React,
 }

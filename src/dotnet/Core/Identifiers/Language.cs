@@ -35,7 +35,7 @@ public readonly partial struct Language : ISymbolIdentifier<Language>
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public Language(Symbol id)
-        => this = Parse(id);
+        => this = ParseOrNone(id); // Intended: if we remove the language, we want the deserialization to work
     public Language(string? id)
         => this = Parse(id);
     public Language(string? id, ParseOrNone _)
@@ -43,6 +43,9 @@ public readonly partial struct Language : ISymbolIdentifier<Language>
 
     internal Language(Symbol id, Symbol shortcut, string title, AssumeValid _)
         => _handle = new LanguageHandle(id, shortcut, title);
+
+    public Language? NullIfNone()
+        => IsNone ? (Language?)null : this;
 
     // Conversion
 

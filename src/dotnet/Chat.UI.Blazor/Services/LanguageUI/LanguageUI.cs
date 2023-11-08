@@ -46,18 +46,12 @@ public class LanguageUI : IDisposable
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         var settings = Settings.Value;
         var userChatSettings = await AccountSettings.GetUserChatSettings(chatId, default).ConfigureAwait(false);
-        if (language.IsNone) {
-            language = userChatSettings.Language.Or(settings.Primary);
-            language = settings.Next(language);
-        }
+        var oldLanguage = userChatSettings.Language.Or(settings.Primary);
+        language = language.Or(oldLanguage);
         if (language == userChatSettings.Language)
             return language;
 
-        var tune = language == settings.Primary
-            ? Tune.SelectPrimaryLanguage
-            : Tune.SelectSecondaryLanguage;
-        _ = TuneUI.Play(tune);
-
+        _ = TuneUI.Play(Tune.ChangeLanguage);
         userChatSettings = userChatSettings with { Language = language };
         await AccountSettings.SetUserChatSettings(chatId, userChatSettings, default).ConfigureAwait(false);
         return language;

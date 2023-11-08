@@ -6,9 +6,10 @@
     if (ReferenceEquals(m, Model.Loading))
         return;
 
-    var languages = m.Languages;
-    _formModel.PrimaryLanguageId = languages.Primary.Id;
-    _formModel.SecondaryLanguageId = languages.Secondary?.Id ?? "";
+    var languages = m.Languages.ToList();
+    _formModel.PrimaryLanguageId = languages.GetOrDefault(0).Value;
+    _formModel.SecondaryLanguageId = languages.GetOrDefault(1).Value;
+    _formModel.TertiaryLanguageId = languages.GetOrDefault(2).Value;
 }
 
 <TileTopic Topic="Languages"/>
@@ -24,10 +25,11 @@
                 For="() => _formModel.PrimaryLanguageId"
                 InputId="@_formModel.PrimaryLanguageFormId"
                 IsLabelInsideInput="true"
-                Label="My primary language">
-                <InputSelect Value="_formModel.PrimaryLanguageId"
-                             ValueExpression="@(() => _formModel.PrimaryLanguageId)"
-                             ValueChanged="@((string languageId) => OnPrimaryChanged(languageId))">
+                Label="Primary language">
+                <InputSelect
+                    Value="_formModel.PrimaryLanguageId"
+                    ValueExpression="@(() => _formModel.PrimaryLanguageId)"
+                    ValueChanged="@((string languageId) => OnLanguageChanged(0, languageId))">
                     @foreach (var language in Languages.All) {
                         <option value="@language.Id">@language.Title</option>
                     }
@@ -39,10 +41,28 @@
                 For="() => _formModel.SecondaryLanguageId"
                 InputId="@_formModel.SecondaryLanguageFormId"
                 IsLabelInsideInput="true"
-                Label="My secondary language">
-                <InputSelect Value="_formModel.SecondaryLanguageId"
-                             ValueExpression="@(() => _formModel.SecondaryLanguageId)"
-                             ValueChanged="@((string languageId) => OnSecondaryChanged(languageId))">
+                Label="2nd language">
+                <InputSelect
+                    Value="_formModel.SecondaryLanguageId"
+                    ValueExpression="@(() => _formModel.SecondaryLanguageId)"
+                    ValueChanged="@((string languageId) => OnLanguageChanged(1, languageId))">
+                    <option value="">None</option>
+                    @foreach (var language in Languages.All) {
+                        <option value="@language.Id">@language.Title</option>
+                    }
+                </InputSelect>
+            </FormSection>
+
+            <FormSection
+                Class="field-transcription-tertiary-language"
+                For="() => _formModel.TertiaryLanguageId"
+                InputId="@_formModel.TertiaryLanguageFormId"
+                IsLabelInsideInput="true"
+                Label="3rd language">
+                <InputSelect
+                    Value="_formModel.TertiaryLanguageId"
+                    ValueExpression="@(() => _formModel.TertiaryLanguageId)"
+                    ValueChanged="@((string languageId) => OnLanguageChanged(2, languageId))">
                     <option value="">None</option>
                     @foreach (var language in Languages.All) {
                         <option value="@language.Id">@language.Title</option>
@@ -76,52 +96,32 @@
         return new(languages);
     }
 
-    private Language? GetLanguage(string id)
-        => Languages.All.FirstOrDefault(c => c.Id == id);
-
-    private void OnPrimaryChanged(string languageId) {
-        var language = !languageId.IsNullOrEmpty() ? GetLanguage(languageId) : null;
-        if (language.HasValue)
-            SetPrimary(language.Value);
-    }
-
-    private void OnSecondaryChanged(string languageId) {
-        var language = !languageId.IsNullOrEmpty() ? GetLanguage(languageId) : null;
-        SetSecondary(language);
-    }
-
-    private void SetPrimary(Language language) {
+    private void OnLanguageChanged(int index, string languageId) {
+        var language = Language.ParseOrNone(languageId);
         var languages = State.Value.Languages;
-        if (languages.Secondary == language)
-            languages = languages with { Secondary = languages.Primary };
-
-        LanguageUI.UpdateSettings(languages with { Primary = language });
+        LanguageUI.UpdateSettings(languages.With(index, language));
+        State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
 
-    private void SetSecondary(Language? language) {
-        var languages = State.Value.Languages;
-        if (languages.Primary == language && languages.Secondary != null)
-            languages = languages with { Primary = languages.Secondary.Value };
-
-        LanguageUI.UpdateSettings(languages with { Secondary = language });
-    }
+    // Nested types
 
     public sealed class FormModel {
         public string PrimaryLanguageId { get; set; } = "";
         public string SecondaryLanguageId { get; set; } = "";
+        public string TertiaryLanguageId { get; set; } = "";
 
         private string FormId { get; }
         public string PrimaryLanguageFormId { get; }
         public string SecondaryLanguageFormId { get; }
+        public string TertiaryLanguageFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
             PrimaryLanguageFormId = $"{FormId}-primary-language";
             SecondaryLanguageFormId = $"{FormId}-secondary-language";
+            TertiaryLanguageFormId = $"{FormId}-tertiary-language";
         }
     }
-
-    // Nested types
 
     public sealed record Model(UserLanguageSettings Languages) {
         public static readonly Model Loading = new(new UserLanguageSettings());

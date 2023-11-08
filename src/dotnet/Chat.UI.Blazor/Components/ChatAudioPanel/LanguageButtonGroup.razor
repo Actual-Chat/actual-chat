@@ -1,45 +1,32 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Events
-@inherits ComputedStateComponent<(UserLanguageSettings, Language)?>
+@inherits ComputedStateComponent<(List<Language>?, Language)>
 @{
     var m = State.Value;
-    if (!m.HasValue)
-        return;
-    var userLanguages = m.Value.Item1;
-    var selectedLanguage = m.Value.Item2;
-    var primary = userLanguages.Primary;
-    var nSecondary = userLanguages.Secondary;
-    if (!IsValid(primary))
-        primary = Languages.Main;
-    if (nSecondary.HasValue && !IsValid(nSecondary.Value))
-        nSecondary = null;
+    var (languages, language) = m;
+    if (languages == null)
+        return; // Loading
+
+    var useShortTitle = languages.Count > 2;
 }
 
 <div class="language-btn-group">
-    @if (!nSecondary.HasValue) {
-        <div class="configure-hint">
+    @if (languages.Count < 2) {
+        <div class="c-settings-hint">
             You secondary language is not selected. You can add it in
             <a class="link" @onclick="@OnConfigureSecondLanguage" @onclick:preventDefault="true">Settings</a>.
         </div>
     }
     <div class="c-title">
-        Transcription language
+        Transcription language:
     </div>
-    <div class="two-btn-group">
-        <button
-            class="@(primary == selectedLanguage ? "active" : "")"
-            @onclick="@(() => OnClick(primary))">
-            @primary.Title
-        </button>
-        @if (nSecondary.HasValue) {
-            var secondary = nSecondary.Value;
+    <div class="c-languages">
+        @foreach (var l in languages) {
             <button
-                class="@(secondary == selectedLanguage ? "active" : "")"
-                @onclick="@(() => OnClick(secondary))">
-                @secondary.Title
+                class="@(l == language ? "active" : "")"
+                @onclick="@(() => OnClick(l))">
+                @(useShortTitle ? l.ShortTitle : l.Title)
             </button>
-        } else {
-            <span>None</span>
         }
     </div>
 </div>
@@ -58,20 +45,17 @@
         base.OnInitialized();
     }
 
-    protected override ComputedState<(UserLanguageSettings, Language)?>.Options GetStateOptions()
+    protected override ComputedState<(List<Language>?, Language)>.Options GetStateOptions()
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<(UserLanguageSettings, Language)?> ComputeState(CancellationToken cancellationToken) {
-        var userLanguages = await LanguageUI.Settings.Use(cancellationToken);
-        var chatLanguage = await LanguageUI.GetChatLanguage(_chatId, cancellationToken).ConfigureAwait(false);
-        return (userLanguages, chatLanguage);
+    protected override async Task<(List<Language>?, Language)> ComputeState(CancellationToken cancellationToken) {
+        var languages = await LanguageUI.Settings.Use(cancellationToken);
+        var language = await LanguageUI.GetChatLanguage(_chatId, cancellationToken).ConfigureAwait(false);
+        return (languages.ToList(), language);
     }
-
-    private bool IsValid(Language? language)
-        => language != null && Languages.All.Contains(language.Value);
 
     private async Task OnClick(Language language) {
         await LanguageUI.ChangeChatLanguage(_chatId, language);

@@ -407,36 +407,38 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .transcription-options-modal .language-btn-group {
     @apply flex-y mb-2;
 }
-.transcription-options-modal .language-btn-group .configure-hint {
+.transcription-options-modal .language-btn-group > .c-settings-hint {
     @apply text-02 mb-4;
 }
-.transcription-options-modal .language-btn-group .c-title {
+.transcription-options-modal .language-btn-group > .c-title {
     @apply text-02 mb-2;
 }
 .transcription-options-modal .language-btn-group a.link {
     @apply md:cursor-pointer text-primary underline;
 }
-.two-btn-group {
+
+.transcription-options-modal .language-btn-group > .c-languages{
     @apply flex-x gap-x-2;
     @apply p-2;
     @apply rounded-lg;
     @apply bg-04;
 }
-.two-btn-group > span {
+.transcription-options-modal .language-btn-group > .c-languages > span {
     @apply flex-1 flex items-center justify-center;
     @apply text-03;
 }
-.two-btn-group > button {
+.transcription-options-modal .language-btn-group > .c-languages > button {
     @apply flex-1 flex items-center justify-center;
     @apply h-8;
     @apply rounded-lg;
     @apply bg-transparent;
     @apply text-02;
 }
-.two-btn-group > button.active {
+.transcription-options-modal .language-btn-group > .c-languages > button.active {
     @apply bg-01;
     @apply text-primary;
 }
+
 .options-item {
     @apply flex-x items-center gap-x-4;
     @apply h-12;
