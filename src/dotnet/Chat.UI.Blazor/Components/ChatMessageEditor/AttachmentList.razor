@@ -231,8 +231,8 @@
 
     private record Attachment(int Id, string Url, string FileName, string FileType, int Length, int Progress = 0, MediaId MediaId = default)
     {
-        public bool IsImage => FileType?.OrdinalIgnoreCaseStartsWith("image") ?? false;
-        public bool IsVideo => FileType?.OrdinalIgnoreCaseStartsWith("video") ?? false;
+        public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
+        public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
         public bool Failed { get; init; }
         public bool Uploaded => Progress == 100 && !MediaId.IsNone;
     }

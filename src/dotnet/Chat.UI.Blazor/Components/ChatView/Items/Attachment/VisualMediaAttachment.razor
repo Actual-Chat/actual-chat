@@ -4,9 +4,9 @@
     var attachment = Attachment;
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
     string? previewUrl = null;
-    if (attachment.IsGif()) {
+    if (attachment.IsGif() || attachment.IsSvg()) {
         previewUrl = url; // currently image proxy fails on large gifs
-    } else if(attachment.IsImage()) {
+    } else if(attachment.IsSupportedImage()) {
         previewUrl = UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxImageWidth * ActualResolutionMultiplier, Constants.Attachments.MaxImageHeight * ActualResolutionMultiplier);
     }
 }
@@ -17,7 +17,7 @@
        role="button"
        @onclick="@(_ => VisualMediaViewerUI.Show(url, previewUrl, null, ChatEntry))"
        @onclick:preventDefault="true">
-        @if (attachment.IsVideo()) {
+        @if (attachment.IsSupportedVideo()) {
             <video preload="metadata" muted playsinline>
                 <source src="@url#t=,5" />
             </video>

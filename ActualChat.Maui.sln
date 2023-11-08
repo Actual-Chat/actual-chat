@@ -197,6 +197,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\timeout.ts = src\nodejs\src\timeout.ts
 		src\nodejs\src\timerQueue.ts = src\nodejs\src\timerQueue.ts
 		src\nodejs\src\versioning.ts = src\nodejs\src\versioning.ts
+		src\nodejs\src\media-types.ts = src\nodejs\src\media-types.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"
