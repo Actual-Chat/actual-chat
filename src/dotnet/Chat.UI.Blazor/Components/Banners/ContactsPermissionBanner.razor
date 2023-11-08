@@ -34,6 +34,8 @@
 
 @code {
     private IStoredState<Moment> _dismissedAt = null!;
+    private bool _permissionStateWasDefined;
+    private bool _checkIsRequired;
 
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private DeviceContacts DeviceContacts { get; init; } = null!;
@@ -61,12 +63,21 @@
         if (!_dismissedAt.WhenRead.IsCompleted)
             await _dismissedAt.WhenRead;
 
-        var permissionState = await ContactsPermission.Cached.Use(cancellationToken);
         // NOTE(AY): I intentionally don't use IFusionTime here - prob. fine to don't show it back on timer
         var dismissedAt = await _dismissedAt.Use(cancellationToken);
         var dismissPeriod = Clocks.SystemClock.Now - dismissedAt;
         var isDismissed = dismissPeriod < Constants.Contacts.PermissionRequestDismissPeriod;
-        return new(permissionState, isDismissed);
+
+        var permissionState = await ContactsPermission.Cached.Use(cancellationToken);
+        if (permissionState == null && _permissionStateWasDefined)
+            _checkIsRequired = true;
+        if (_checkIsRequired && !isDismissed) {
+            permissionState = await ContactsPermission.Check(cancellationToken);
+            _checkIsRequired = false;
+        }
+        _permissionStateWasDefined = permissionState.HasValue;
+
+        return new Model(permissionState, isDismissed);
     }
 
     // Event handlers
