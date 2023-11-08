@@ -53,6 +53,7 @@
 .virtual-list > ul.c-virtual-container {
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     list-style-type: none;
+    overflow-anchor: none;
 }
 
 .virtual-list > ul.c-virtual-container > li.item {
