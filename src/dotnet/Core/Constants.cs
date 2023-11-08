@@ -80,7 +80,7 @@ public static partial class Constants
         public const int AvatarPictureFileSizeLimit = 50 * 1024 * 1024;
         public const int FileCountLimit = 10;
         public const int MaxImageWidth = 480; // In pixels
-        public const int MaxImageHeight = 480; // In pixels
+        public const int MaxImageHeight = 360; // In pixels
     }
 
     public static class Contacts

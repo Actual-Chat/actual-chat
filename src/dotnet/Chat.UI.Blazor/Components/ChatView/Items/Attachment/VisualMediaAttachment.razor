@@ -7,7 +7,7 @@
     if (attachment.IsGif()) {
         previewUrl = url; // currently image proxy fails on large gifs
     } else if(attachment.IsImage()) {
-        previewUrl = UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxImageWidth, Constants.Attachments.MaxImageHeight);
+        previewUrl = UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxImageWidth * ActualResolutionMultiplier, Constants.Attachments.MaxImageHeight * ActualResolutionMultiplier);
     }
 }
 
@@ -31,6 +31,7 @@
 </div>
 
 @code {
+    private const int ActualResolutionMultiplier = 2;
     private static readonly Vector2 MaxSize = new(Constants.Attachments.MaxImageWidth, Constants.Attachments.MaxImageHeight);
 
     [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
