@@ -222,6 +222,7 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
             });
             options.AddPolicy("CDN", builder => {
                 builder
+                    .WithOrigins(origins.ToArray())
                     .AllowAnyOrigin()
                     .WithMethods("GET")
                     .AllowAnyHeader()
