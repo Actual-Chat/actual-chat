@@ -81,6 +81,7 @@ public static class Change
         };
 }
 
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record ChangeResult<T>(
     [property: DataMember, MemoryPackOrder(0)] T? Value,
     [property: DataMember, MemoryPackOrder(1)] Exception? Error
