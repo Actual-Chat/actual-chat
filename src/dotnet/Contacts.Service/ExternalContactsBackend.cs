@@ -65,7 +65,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<ChangeResult<ExternalContact>>> OnBulkChange(
+    public virtual async Task<ApiArray<Result<ExternalContact?>>> OnBulkChange(
         ExternalContactsBackend_BulkChange command,
         CancellationToken cancellationToken)
     {
@@ -79,16 +79,16 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var result = new List<ChangeResult<ExternalContact>>(command.Changes.Count);
+        var result = new List<Result<ExternalContact?>>(command.Changes.Count);
         foreach (var itemChange in command.Changes)
             try {
                 var externalContact = await ChangeItem(itemChange).ConfigureAwait(false);
-                result.Add(ChangeResult.From(externalContact));
+                result.Add(new Result<ExternalContact?>(externalContact, null));
             }
             catch (Exception e)
             {
                 Log.LogError(e, "Failed to change external contact #{ExternalContactId}", itemChange.Id);
-                result.Add(ChangeResult.Error<ExternalContact>(e));
+                result.Add(new Result<ExternalContact?>(null, e));
             }
         if (command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
             ContactLinkingJob.OnSyncNeeded();

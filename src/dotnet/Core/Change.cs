@@ -80,17 +80,3 @@ public static class Change
             Remove = true,
         };
 }
-
-[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record ChangeResult<T>(
-    [property: DataMember, MemoryPackOrder(0)] T? Value,
-    [property: DataMember, MemoryPackOrder(1)] Exception? Error
-);
-
-public static class ChangeResult
-{
-    public static ChangeResult<T> From<T>(T? result)
-        => new (result, null);
-    public static ChangeResult<T> Error<T>(Exception error)
-        => new (default, error);
-}

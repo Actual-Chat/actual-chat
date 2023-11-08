@@ -12,7 +12,7 @@ public interface IExternalContacts : IComputeService
     Task<ExternalContact?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<ApiArray<ChangeResult<ExternalContact>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
+    Task<ApiArray<Result<ExternalContact?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
 }
 
 [Obsolete("2023.10: Replaced with ExternalContacts_BulkChange")]
@@ -30,7 +30,7 @@ public sealed partial record ExternalContacts_Change(
 public sealed partial record ExternalContacts_BulkChange(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ApiArray<ExternalContactChange> Changes
-) : ISessionCommand<ApiArray<ChangeResult<ExternalContact>>>;
+) : ISessionCommand<ApiArray<Result<ExternalContact?>>>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record ExternalContactChange(
