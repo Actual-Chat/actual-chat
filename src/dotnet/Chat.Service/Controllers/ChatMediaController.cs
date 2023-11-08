@@ -19,6 +19,8 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
     private ICommander Commander { get; } = services.Commander();
 
     [HttpPost("{chatId}/upload")]
+    [RequestSizeLimit(Constants.Attachments.FileSizeLimit * 2)]
+    [RequestFormLimits(MultipartBodyLengthLimit = Constants.Attachments.FileSizeLimit * 2)]
     public async Task<ActionResult<MediaContent>> Upload(ChatId chatId, CancellationToken cancellationToken)
     {
         try {
