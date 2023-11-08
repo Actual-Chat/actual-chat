@@ -29,7 +29,8 @@
     <!-- MA0074: Use an overload of 'Replace' that has a StringComparison parameter -->
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
     <!-- VSTHRD002: .Wait() deadlock -->
-    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;MA0002;MA0004;MA0006;MA0011;MA0074;RCS1090;VSTHRD002;</NoWarn>
+    <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
+    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;MA0002;MA0004;MA0006;MA0011;MA0074;RCS1090;VSTHRD002;CA2007</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
