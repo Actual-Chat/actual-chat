@@ -109,7 +109,7 @@
     }
 
     <FormBlock>
-        @if (_form.IsPublic) {
+        @if (_isAdmin && _form.IsPublic) {
             <TileItem Class="field-allow-guest">
                 <Icon>
                     <i class="icon-guest"></i>
@@ -194,6 +194,7 @@
     private DialogButtonInfo _submitButtonInfo = null!;
     private AvatarKind _avatarKind;
     private string? _avatarKey;
+    private bool _isAdmin;
 
     [Inject] private ChatHub ChatHub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -206,6 +207,7 @@
     private ChatId ChatId { get; set; }
 
     protected override void OnInitialized() {
+        _isAdmin = ChatHub.AccountUI.OwnAccount.Value.IsAdmin;
         base.OnInitialized();
         ChatId = Context.GetTypedModel<ChatId>();
         Context.SetTitle("Edit chat settings");

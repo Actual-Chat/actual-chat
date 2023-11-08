@@ -56,7 +56,7 @@
         </InputRadioGroup>
     </FormBlock>
     <FormBlock>
-        @if (_form.IsPublic) {
+        @if (_isAdmin && _form.IsPublic) {
             <TileItem Class="field-allow-guest">
                 <Icon>
                     <i class="icon-guest"></i>
@@ -112,11 +112,9 @@
     private static readonly string AvatarKey = "a-random-string";
     private Form _formRef = null!;
     private FormModel _form = null!;
+    private bool _isAdmin;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -124,8 +122,10 @@
     [Parameter, EditorRequired] public Action<Chat> ChatCreated { get; set; } = null!;
     [Parameter, EditorRequired] public Action Cancelled { get; set; } = null!;
 
-    protected override void OnInitialized()
-        => _form = new(ComponentIdGenerator);
+    protected override void OnInitialized() {
+        _form = new(ComponentIdGenerator);
+        _isAdmin = ChatHub.AccountUI.OwnAccount.Value.IsAdmin;
+    }
 
     private void OnImagePicked(MediaContent mediaContent) {
         _form.Picture = new(mediaContent);
@@ -136,7 +136,7 @@
         if (!_formRef.IsValid)
             return;
         try {
-            var command = new Chats_Change(Session, default, null, new() {
+            var command = new Chats_Change(ChatHub.Session, default, null, new() {
                 Create = new ChatDiff {
                     Title = _form.Title,
                     Kind = ChatKind.Group,
@@ -146,7 +146,7 @@
                     AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
                 },
             });
-            var (chat, createChatError) = await UICommander.Run(command, CancellationToken.None);
+            var (chat, createChatError) = await ChatHub.UICommander.Run(command, CancellationToken.None);
             if (createChatError != null)
                 return;
 
