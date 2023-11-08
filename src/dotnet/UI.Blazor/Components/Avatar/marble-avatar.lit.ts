@@ -13,7 +13,7 @@ class MarbleAvatar extends LitElement {
     @property() key: string;
     @property() title: string;
     @property() square: boolean = false;
-    @property() colors: string[] = ['FF649C', 'FFD569', '00D193', '39DBFF', '3395FF'];
+    @property() colors: string[] = ['F56095', 'F5CD65', '00B27D', '37D3F5', '2F89EB'];
 
     private maskId = `marble-avatar-${++id}`;
 
