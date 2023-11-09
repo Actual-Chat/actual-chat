@@ -850,6 +850,8 @@ export class VisualMediaViewer {
         footerMedia.classList.replace('active', 'inactive');
         newMedia.classList.replace('inactive', 'active');
         newFooterMedia.classList.replace('inactive', 'active');
+        if (this.media instanceof HTMLVideoElement)
+            (this.media as HTMLVideoElement).pause();
         this.media = newMedia;
         if (this.media instanceof HTMLVideoElement)
             void (this.media as HTMLVideoElement).play();
