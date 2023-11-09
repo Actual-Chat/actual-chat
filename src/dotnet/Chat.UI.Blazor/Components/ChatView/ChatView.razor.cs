@@ -202,7 +202,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var scrollAnchor = isFirstRender && readEntryLid != 0
             ? new NavigationAnchor(readEntryLid)
             : null;
-        var lastAuthorEntryLid = LastAuthorTextEntryLidState.Value;
+        var lastAuthorEntryLid = await LastAuthorTextEntryLidState.Use(cancellationToken);
         if (lastAuthorEntryLid > _lastReadEntryLid) {
             // Scroll to the latest Author's entry - e.g.m when the author submits a new one
             _lastReadEntryLid = lastAuthorEntryLid;
@@ -420,10 +420,22 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var secondLayer = IdTileStack.Layers[1];
         var minTileSize = IdTileStack.MinTileSize;
         var range = (query.IsNone, oldData.Tiles.Count == 0) switch {
-            (true, true) => new Range<long>(secondLayer.GetTile(chatIdRange.End - MinLoadLimit).Start, chatIdRange.End + minTileSize),
-            (true, false) when Math.Abs(oldData.Tiles[^1].Items[^1].Entry.LocalId - chatIdRange.End) <= minTileSize // reduce range when new messages were added
-                => new Range<long>(secondLayer.GetTile(chatIdRange.End - Math.Min(chatIdRange.Size(), MinLoadLimit * 2)).Start, chatIdRange.End + minTileSize),
-            (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId, oldData.Tiles[^1].Items[^1].Entry.LocalId),
+            (true, true) => new Range<long>(secondLayer.GetTile(chatIdRange.End - MinLoadLimit).Start,
+                chatIdRange.End + minTileSize),
+            (true, false) when
+                Math.Abs(oldData.Tiles[^1].Items[^1].Entry.LocalId - chatIdRange.End) <= minTileSize // reduce range when new messages were added
+                => new Range<long>(secondLayer.GetTile(
+                            oldData.Tiles.SelectMany(t => t.Items)
+                                .Reverse()
+                                .Skip((int)MinLoadLimit * 2)
+                                .FirstOrDefault()
+                                ?.Entry.LocalId
+                            ?? oldData.Tiles[0].Items[0].Entry.LocalId
+                        )
+                        .Start,
+                    chatIdRange.End + minTileSize),
+            (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId,
+                oldData.Tiles[^1].Items[^1].Entry.LocalId),
             _ => query.KeyRange
                 .ToLongRange()
                 .Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),
