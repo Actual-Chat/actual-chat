@@ -44,7 +44,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     private IMutableState<NavigationAnchor?> NavigationAnchorState { get; set; } = null!;
-    private IMutableState<long> LastAuthorTextEntryLidState { get; set; } = null!;
+    private IMutableState<(AuthorId AuthorId, long EntryLid)> LastAuthorTextEntryLidState { get; set; } = null!;
     private SyncedStateLease<ReadPosition> ReadPositionState { get; set; } = null!;
     private ComputedStateLease<Range<long>> ChatIdRangeState { get; set; } = null!;
 
@@ -64,7 +64,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 (NavigationAnchor?)null,
                 StateCategories.Get(GetType(), nameof(NavigationAnchorState)));
             LastAuthorTextEntryLidState = StateFactory.NewMutable(
-                0L,
+                (AuthorId.None, 0L),
                 StateCategories.Get(GetType(), nameof(LastAuthorTextEntryLidState)));
             _itemVisibility = StateFactory.NewMutable(
                 ChatViewItemVisibility.Empty,
@@ -202,7 +202,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var scrollAnchor = isFirstRender && readEntryLid != 0
             ? new NavigationAnchor(readEntryLid)
             : null;
-        var lastAuthorEntryLid = await LastAuthorTextEntryLidState.Use(cancellationToken);
+        var (authorId, lastAuthorEntryLid) = await LastAuthorTextEntryLidState.Use(cancellationToken);
         if (lastAuthorEntryLid > _lastReadEntryLid) {
             // Scroll to the latest Author's entry - e.g.m when the author submits a new one
             _lastReadEntryLid = lastAuthorEntryLid;
@@ -544,11 +544,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chatIdRange = ChatIdRangeState.Value;
         var entryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var authorId = author?.Id;
+        var authorId = author?.Id ?? AuthorId.None;
         var newEntries = entryReader.Observe(chatIdRange.End, cancellationToken);
         // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-        await foreach (var newOwnEntry in newEntries.Where(e => e.AuthorId == authorId && e is { IsStreaming: false, AudioEntryId: null }).ConfigureAwait(false))
-            LastAuthorTextEntryLidState.Value = newOwnEntry.LocalId;
+        var authorEntries = newEntries
+            .Where(e => e.AuthorId == authorId && e is { IsStreaming: false, AudioEntryId: null })
+            .ConfigureAwait(false);
+        await foreach (var newOwnEntry in authorEntries) {
+            LastAuthorTextEntryLidState.Value = (authorId, newOwnEntry.LocalId);
+            if (ReadPositionState.Value.EntryLid < newOwnEntry.LocalId)
+                ReadPositionState.Value = new ReadPosition(Chat.Id, newOwnEntry.LocalId);
+        }
     }
 
     // Nested types
