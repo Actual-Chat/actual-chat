@@ -129,7 +129,7 @@ public sealed partial class UrlMapper
         => ToAbsolute(ContentBaseUrl, contentId, true);
 
     // Returns absolute URL
-    public string ImagePreviewUrl(string imageUrl, int? maxWidth, int? maxHeight, bool crop = false)
+    public string ImagePreviewUrl(string imageUrl, int? maxWidth, int? maxHeight)
     {
         if (!HasImageProxy)
             return imageUrl;
@@ -146,8 +146,7 @@ public sealed partial class UrlMapper
 
         var sMaxWidth = maxWidth?.Format();
         var sMaxHeight = maxHeight?.Format();
-        var cropping = crop ? "sc" : "";
-        return $"{ImageProxyBaseUrl}{sMaxWidth}x{sMaxHeight}{cropping}/{imageUrl}";
+        return $"{ImageProxyBaseUrl}{sMaxWidth}x{sMaxHeight}/{imageUrl}";
     }
 
     // Returns absolute URL

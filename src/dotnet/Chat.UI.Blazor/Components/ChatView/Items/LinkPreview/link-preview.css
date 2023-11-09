@@ -23,10 +23,12 @@
 }
 /* thumbnail */
 .link-preview .c-thumbnail {
-    @apply w-max md:max-w-34 lg:max-w-60 object-cover;
+    @apply max-w-full md:max-w-34 lg:max-w-60;
+    @apply h-40 md:h-34;
 }
 .link-preview.compact .c-thumbnail {
     @apply max-w-20 md:max-w-30;
+    @apply h-20 md:h-30;
 }
 /* icon */
 .link-preview .c-icon {
