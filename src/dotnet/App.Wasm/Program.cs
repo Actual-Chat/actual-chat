@@ -54,7 +54,7 @@ public static class Program
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
             builder.RootComponents.Add<Microsoft.AspNetCore.Components.Web.HeadOutlet>("head::after");
             var baseUrl = builder.HostEnvironment.BaseAddress;
-            builder.Services.AddSingleton(Tracer);
+            builder.Services.AddTracer(Tracer);
             ConfigureServices(builder.Services, builder.Configuration, baseUrl);
 
             var region = Tracer.Region($"{nameof(WebAssemblyHostBuilder)}.Build");

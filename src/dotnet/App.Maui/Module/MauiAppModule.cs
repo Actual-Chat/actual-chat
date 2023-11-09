@@ -7,6 +7,7 @@ using ActualChat.UI;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Stl.Fusion.Client.Caching;
 using Stl.IO;
 
@@ -24,7 +25,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
 
         // UI
-        services.AddSingleton<ReloadUI>(c => new MauiReloadUI(c)); // Note that it replaces scoped ReloadUI
+        services.Replace(ServiceDescriptor.Singleton<ReloadUI>(c => new MauiReloadUI(c))); // Note that it replaces scoped ReloadUI
         services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
@@ -55,6 +56,9 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
                 },
             };
         });
+        // Make LocalSettings singleton
+        services.Replace(ServiceDescriptor.Singleton(c
+            => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c)));
 
         // Contacts
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));

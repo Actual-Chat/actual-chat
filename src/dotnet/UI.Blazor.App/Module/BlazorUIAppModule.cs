@@ -19,7 +19,8 @@ public sealed class BlazorUIAppModule : HostModule, IBlazorUIModule
         if (!appKind.HasBlazorUI())
             return; // Blazor UI only module
 
-        services.AddScoped<AppServiceStarter>(c => new AppServiceStarter(c));
+        services.AddScoped<AppScopedServiceStarter>(c => new AppScopedServiceStarter(c));
+        services.AddSingleton<AppNonScopedServiceStarter>(c => new AppNonScopedServiceStarter(c));
         services.AddScoped<AppIconBadgeUpdater>(c => new AppIconBadgeUpdater(c));
         services.AddScoped<AutoNavigationUI>(c => new AppAutoNavigationUI(c));
 
