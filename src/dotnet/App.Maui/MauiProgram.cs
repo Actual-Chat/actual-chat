@@ -282,6 +282,7 @@ public static partial class MauiProgram
         var services = appBuilder.Services;
         // NOTE(DF): MAUI has issues with internal services scope that causes validation errors.
         // Replace these registrations to pass validation. It should be safe for MAUI behavior.
+        // See https://github.com/dotnet/maui/blob/main/src/Core/src/Hosting/Dispatching/AppHostBuilderExtensions.cs
         services.Replace(typeof(IDispatcher), static sd => sd.ChangeLifetime(ServiceLifetime.Singleton));
         services.ReplaceAll(typeof(IMauiInitializeScopedService), static sd => sd.ChangeLifetime(ServiceLifetime.Transient));
         // Enable validation on container
