@@ -15,7 +15,7 @@
     @apply h-10;
     @apply pl-10 pr-4;
     @apply rounded-full;
-    @apply text-left bg-04;
+    @apply text-left bg-input;
 }
 .search-box input::placeholder {
     @apply text-left;

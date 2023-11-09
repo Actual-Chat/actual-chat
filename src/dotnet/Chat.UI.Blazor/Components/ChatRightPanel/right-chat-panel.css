@@ -1,7 +1,7 @@
 .right-chat-panel {
     @apply flex-y;
     @apply lg:w-80 h-full;
-    @apply border-l border-bg-04;
+    @apply border-l border-separator;
     @apply bg-03;
 }
 
@@ -43,12 +43,12 @@
 }
 .right-chat-panel > .c-panel-content > .c-panel-tabs {
     @apply flex-y;
-    @apply border-t-4 border-bg-04;
+    @apply border-t border-separator;
 }
 
 .right-chat-panel > .c-header {
     @apply ordinary-header;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
 }
 .right-chat-panel > .c-header > .c-center {
     @apply flex gap-x-4 grow;

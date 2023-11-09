@@ -172,7 +172,7 @@
 
 /* separator between form blocks */
 .form-block:not(:first-of-type) {
-    @apply border-bg-04 border-t-8;
+    @apply border-separator border-t;
 }
 
 .form-block section {

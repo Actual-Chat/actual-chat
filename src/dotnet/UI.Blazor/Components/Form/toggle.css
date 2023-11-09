@@ -1,38 +1,49 @@
 .toggle {
-    @apply flex-1 flex-x items-center gap-x-2 overflow-hidden;
+    @apply flex-1 flex-x items-center gap-x-2;
+    @apply overflow-hidden;
+}
+.toggle:hover {
+    @apply opacity-90;
 }
 .toggle input {
     /* The actual input is hidden */
     @apply absolute z-minus;
-    @apply flex-none w-0 h-0 overflow-hidden invisible;
+    @apply flex-none;
+    @apply w-0 h-0;
+    @apply overflow-hidden;
+    @apply invisible;
 }
 .toggle > .c-label {
-    @apply flex-1 flex-x items-center overflow-hidden;
+    @apply flex-1 flex-x items-center;
+    @apply overflow-hidden;
 }
 .toggle > .c-label > .c-text {
-    @apply flex-1 truncate;
+    @apply flex-1;
+    @apply truncate;
 }
 
 /* "Dash" and "O" styling */
 .toggle > .dash {
-    @apply self-center flex-none relative;
+    @apply relative;
+    @apply flex-none self-center;
     @apply my-2 h-3.5 w-8;
-    @apply rounded-3xl bg-05;
+    @apply rounded-3xl;
+    @apply bg-toggle;
     @apply text-sm;
     transition: .2s;
 }
 .toggle > .dash > .o {
     @apply absolute -left-0 -top-[3px];
     @apply w-5 h-5;
-    @apply bg-01 border-[1.5px] border-text-04 rounded-full;
+    @apply bg-toggle-circle border-[1.5px] border-toggle rounded-full;
     transition: .15s;
 }
 
 .toggle[data-input-checked] > .dash {
-    @apply bg-primary;
+    @apply bg-toggle-on;
 }
 .toggle[data-input-checked] > .dash > .o {
-    @apply bg-01 border-primary;
+    @apply bg-toggle-circle border-toggle-on;
     @apply translate-x-3;
 }
 
@@ -55,7 +66,7 @@
 
 /* Disabled */
 .toggle[data-input-disabled] > .dash {
-    @apply border-text-04;
+    @apply border-toggle;
     filter: grayscale(60%);
 }
 .toggle[data-input-disabled] > .dash > .o {

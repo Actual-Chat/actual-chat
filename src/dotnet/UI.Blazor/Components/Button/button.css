@@ -243,7 +243,17 @@ body.hoverable .btn.btn-modal.btn-danger:hover::after {
     @apply inline-block overflow-hidden;
     @apply p-0 mx-0 min-w-0 h-auto min-h-0;
     @apply border-0;
-    @apply text-base font-semibold text-03;
+    @apply rounded-xl md:rounded-lg;
+    @apply bg-square;
+}
+.btn.btn-square:focus > .btn-content {
+    @apply bg-square-focus;
+}
+.btn.btn-square:active > .btn-content {
+    @apply bg-square-active;
+}
+body.hoverable .btn.btn-square:hover > .btn-content {
+    @apply bg-square-hover;
 }
 .btn.btn-square:disabled {
     @apply opacity-70;
@@ -252,31 +262,36 @@ body.hoverable .btn.btn-modal.btn-danger:hover::after {
     @apply opacity-100;
 }
 .btn.btn-square .btn-content {
-    @apply flex-none flex-x w-full h-full;
-}
-.btn.btn-square:focus > .btn-content {
-    @apply bg-square-focus rounded-sm;
-}
-.btn.btn-square:active > .btn-content {
-    @apply bg-square-active;
-}
-body.hoverable .btn.btn-square:hover > .btn-content {
-    @apply bg-square-hover;
+    @apply flex-none flex-x;
+    @apply w-full h-full;
+    @apply bg-transparent;
+    @apply text-square-title text-base font-semibold;
 }
 .btn.btn-square.show-on-hover {
     @apply invisible z-10 absolute;
 }
 .btn.btn-square .btn-content-inner {
-    @apply p-1 self-center;
+    @apply p-0.5 self-center;
 }
 
 /* Button Round */
 .btn.btn-round {
-    @apply flex overflow-hidden;
-    @apply p-0 mx-0 min-w-0 h-full min-h-0;
-    @apply border-0 bg-transparent;
-    @apply text-base text-03;
-    @apply rounded-full w-fit h-fit self-center;
+    @apply flex self-center;
+    @apply min-w-0 min-h-0 h-fit w-fit;
+    @apply p-0 mx-0 ;
+    @apply rounded-full border-0;
+    @apply overflow-hidden;
+    @apply text-base text-round-title;
+    @apply bg-round;
+}
+.btn.btn-round:focus > .btn-content {
+    @apply bg-round-focus;
+}
+.btn.btn-round:active > .btn-content {
+    @apply bg-round-active;
+}
+body.hoverable .btn.btn-round:hover > .btn-content {
+    @apply bg-round-hover;
 }
 .btn.btn-round:disabled {
     @apply opacity-70;
@@ -287,9 +302,10 @@ body.hoverable .btn.btn-square:hover > .btn-content {
 .btn.btn-round .btn-content {
     @apply items-center justify-center;
     @apply min-h-12 min-w-12 max-h-12 max-w-12;
-    @apply bg-round;
+    @apply bg-transparent;
+    @apply text-round-title;
 }
-.btn.btn-round.transparent .btn-content {
+.btn.btn-round.transparent  {
     @apply bg-transparent;
 }
 .btn.btn-round.btn-md .btn-content {
@@ -307,20 +323,10 @@ body.hoverable .btn.btn-square:hover > .btn-content {
 .btn.btn-round.hover-primary-icon .btn-content {
     @apply hover:text-primary;
 }
-.btn.btn-round:focus .btn-content,
-.btn.btn-round.transparent:focus .btn-content,
-.btn.btn-round:active .btn-content,
-.btn.btn-round.transparent:active .btn-content {
-    @apply bg-round-focus;
-}
-body.hoverable .btn.btn-round:hover .btn-content,
-body.hoverable .btn.btn-round.transparent:hover .btn-content {
-    @apply bg-round-focus;
-}
 body.hoverable .btn.blackout:hover .btn-content,
 .btn.blackout:focus .btn-content,
 .btn.blackout:active .btn-content {
-    @apply text-03;
+    @apply text-02;
 }
 .btn.btn-round.show-on-hover {
     @apply invisible z-10 absolute;
@@ -361,8 +367,11 @@ body.hoverable .btn.blackout:hover .btn-content,
 button.on, .btn.on, .btn.btn-square.on, .btn.btn-round.on {
     @apply text-primary;
 }
-button.off, .btn.off, .btn.btn-square.off, .btn.btn-round.off {
+button.off, .btn.off {
     @apply text-03;
+}
+.btn.btn-square.off, .btn.btn-round.off {
+    @apply text-round-title;
 }
 
 /* Specific buttons */

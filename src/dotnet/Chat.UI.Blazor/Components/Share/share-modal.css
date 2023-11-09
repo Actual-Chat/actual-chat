@@ -28,7 +28,7 @@
 .share-modal .link-info {
     @apply flex-x gap-x-4;
     @apply mx-4 mt-3;
-    @apply border rounded-lg border-bg-04;
+    @apply border rounded-lg border-separator;
 }
 .share-modal .link-info .c-icon {
     @apply flex items-center;

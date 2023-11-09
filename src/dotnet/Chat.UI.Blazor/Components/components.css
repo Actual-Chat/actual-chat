@@ -3,7 +3,7 @@
 .historical-playback-sub-header {
     @apply relative flex-x py-1 px-2;
     @apply bg-01 shadow-lg text-02;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
     @apply animate-display-from-top;
 }
 .historical-playback-sub-header-content {

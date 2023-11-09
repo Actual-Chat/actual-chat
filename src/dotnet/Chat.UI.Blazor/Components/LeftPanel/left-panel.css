@@ -36,18 +36,21 @@
 .left-panel-content {
     @apply -flex-y md:flex-y;
     @apply w-full lg:w-80 h-full;
-    @apply bg-03 border-r border-bg-04;
+    @apply bg-03 border-l border-separator;
     @apply overflow-hidden;
+}
+body.wide .left-panel-content {
+    @apply border-r;
 }
 .left-panel-content > .c-search {
     @apply ordinary-header;
     @apply px-2;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
 }
 .left-panel-content > .c-title {
     @apply ordinary-header;
     @apply justify-center;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
 }
 .left-panel-content > .download-app-banner {
     @apply px-2 py-2 md:py-0 md:pt-2;

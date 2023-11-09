@@ -114,7 +114,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .layout-header > .c-content {
     @apply ordinary-header;
     @apply justify-items-stretch;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
 }
 
 .layout-subheader {
@@ -165,7 +165,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply ordinary-header;
     @apply px-0;
     @apply bg-01;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
 }
 .default-layout .layout-header .c-content {
     @apply flex-1 flex-x gap-x-4;

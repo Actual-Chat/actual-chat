@@ -134,7 +134,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .modal-header-interactive {
     @apply ordinary-header;
-    @apply bg-02 border-bg-04 border-b;
+    @apply bg-02 border-separator border-b;
 }
 
 .modal-header-interactive .btn .btn-content {

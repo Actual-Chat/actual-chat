@@ -42,7 +42,7 @@ body.hoverable .author-modal .tile:hover {
 }
 
 .author-modal .separator {
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
 }
 
 .author-modal .tile-promote-to-owner {

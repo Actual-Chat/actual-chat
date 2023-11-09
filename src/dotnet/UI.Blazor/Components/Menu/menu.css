@@ -69,7 +69,7 @@ body.hoverable .ac-menu-hover .btn.btn-round:hover .btn-content {
 }
 .ac-menu-separator {
     @apply h-0 mx-2 my-1;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
     @apply bg-transparent;
 }
 .ac-menu-content {
