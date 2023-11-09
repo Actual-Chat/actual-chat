@@ -31,25 +31,25 @@ public class ChatActivityTest : AppHostTestBase
         var ct = cts.Token;
         try {
             var chatActivity = clientServices.GetRequiredService<ChatActivity>();
-            using var recordingActivity = await chatActivity.GetRecordingActivity(TestChatId, ct);
-            var cActiveChatEntries = await Computed.Capture(() => recordingActivity.GetActiveChatEntries(ct));
-            var cActiveAuthorIds = await Computed.Capture(() => recordingActivity.GetActiveAuthorIds(ct));
-            cActiveChatEntries.Value.Count.Should().Be(0);
+            using var recordingActivity = await chatActivity.GetStreamingActivity(TestChatId, ct);
+            var cStreamingEntries = await Computed.Capture(() => recordingActivity.GetStreamingEntries(ct));
+            var cStreamingAuthorIds = await Computed.Capture(() => recordingActivity.GetStreamingAuthorIds(ct));
+            cStreamingEntries.Value.Count.Should().Be(0);
 
             // 2s pause, create entry, 2s pause, complete it
             _ = Task.Run(() => AddChatEntries(session, authors, ct), ct);
 
-            await cActiveChatEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
-            await cActiveAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            await cStreamingEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            await cStreamingAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
 
-            await cActiveChatEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
-            cActiveAuthorIds = await cActiveAuthorIds.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
-            var authorId = cActiveAuthorIds.Value.Single();
-            var cIsAuthorActive = await Computed.Capture(() => recordingActivity.IsAuthorActive(authorId, ct));
+            await cStreamingEntries.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
+            cStreamingAuthorIds = await cStreamingAuthorIds.When(x => x.Count == 1, ct).WaitAsync(TimeSpan.FromSeconds(1), ct);
+            var authorId = cStreamingAuthorIds.Value.Single();
+            var cIsAuthorActive = await Computed.Capture(() => recordingActivity.IsAuthorStreaming(authorId, ct));
             await cIsAuthorActive.When(x => x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
 
-            await cActiveChatEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
-            await cActiveAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
+            await cStreamingEntries.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(3), ct);
+            await cStreamingAuthorIds.When(x => x.Count == 0, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
             await cIsAuthorActive.When(x => !x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
         }
         finally {

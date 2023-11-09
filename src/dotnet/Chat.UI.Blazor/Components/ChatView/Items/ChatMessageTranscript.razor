@@ -5,7 +5,11 @@
 
 <p class="@Class chat-message-transcript">
     @if (ShowEntryKind) {
-        <ChatEntryKindView Kind="@ChatEntryKind.Audio"/>
+        if (Message.Entry.HasAudioEntry) {
+            <ChatEntryKindView Kind="@ChatEntryKind.Audio"/>
+        } else {
+            <ChatEntryKindView Kind="@ChatEntryKind.Text"/>
+        }
     }@*
     *@<span class="retained">@RetainedPart</span>@*
     *@<span class="changes">@ChangedPart</span>

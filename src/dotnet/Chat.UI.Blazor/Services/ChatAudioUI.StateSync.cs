@@ -172,7 +172,7 @@ public partial class ChatAudioUI
                     AudioSettings.IdleRecordingTimeout,
                     AudioSettings.IdleRecordingPreCountdownTimeout,
                     AudioSettings.IdleRecordingCheckPeriod);
-                await foreach (var stopAt in WatchRecordingIdleBoundaries(chatId, options, cts.Token).ConfigureAwait(false))
+                await foreach (var stopAt in ObserveStreamingIdleBoundaries(chatId, options, cts.Token).ConfigureAwait(false))
                     _stopRecordingAt.Value = stopAt;
             }, cts.Token);
             await Task.WhenAny(whenStopped, whenIdle).ConfigureAwait(false);
@@ -324,7 +324,7 @@ public partial class ChatAudioUI
         }
 
         async Task WhenIdle(CancellationToken ct) {
-            var idleBoundaries = WatchRecordingIdleBoundaries(chatId, options, ct);
+            var idleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, ct);
             await foreach (var _ in idleBoundaries.ConfigureAwait(false)) { }
         }
     }
@@ -443,7 +443,7 @@ public partial class ChatAudioUI
         return new(isRecording, activeUntil, recordingStopsAt != null);
     }
 
-    private async IAsyncEnumerable<Moment?> WatchRecordingIdleBoundaries(
+    private async IAsyncEnumerable<Moment?> ObserveStreamingIdleBoundaries(
         ChatId chatId,
         RecordingIdleOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -455,9 +455,9 @@ public partial class ChatAudioUI
         // We just started, so it's ok to await for the countdown interval first
         await Task.Delay(options.PreCountdownTimeout, cancellationToken).ConfigureAwait(false);
 
-        using var recordingActivity = await ChatActivity.GetRecordingActivity(chatId, cancellationToken).ConfigureAwait(false);
+        using var streamingActivity = await ChatActivity.GetStreamingActivity(chatId, cancellationToken).ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
-            lastTranscribedAt = Moment.Max(lastTranscribedAt, recordingActivity.LastTranscribedAt.Value ?? Now);
+            lastTranscribedAt = Moment.Max(lastTranscribedAt, streamingActivity.LastTranscribedAt.Value ?? Now);
             var idleAt = lastTranscribedAt + options.IdleTimeout;
             var idleDelay = (idleAt - Now).Positive();
             if (idleDelay <= Epsilon) {

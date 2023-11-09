@@ -2,28 +2,29 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 // NOTE(AY): This type can't be tagged as IComputeService, coz it has a few fields,
 // so we tag the implementation instead
-public interface IChatRecordingActivity : IDisposable
+public interface IChatStreamingActivity : IDisposable
 {
     ChatActivity Owner { get; }
     ChatId ChatId { get; }
     IState<Moment?> LastTranscribedAt { get; }
 
     [ComputeMethod]
-    Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken);
+    Task<ImmutableList<ChatEntry>> GetStreamingEntries(CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> GetStreamingAuthorIds(CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken);
+    Task<bool> IsAuthorStreaming(AuthorId authorId, CancellationToken cancellationToken);
 }
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComputeService
+public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComputeService
 {
     public static readonly TimeSpan ExtraActivityDuration = TimeSpan.FromMilliseconds(250);
 
     private readonly ILogger _log;
     private readonly IMutableState<Moment?> _lastTranscribedAt;
-    private ChatEntryReader? _entryReader;
+    private ChatEntryReader? _textEntryReader;
+    private ChatEntryReader? _audioEntryReader;
     private volatile ImmutableList<ChatEntry> _activeEntries = ImmutableList<ChatEntry>.Empty;
 
     public ChatActivity Owner { get; }
@@ -33,10 +34,12 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
     public IState<Moment?> LastTranscribedAt => _lastTranscribedAt;
     private Moment Now => Clocks.SystemClock.Now;
 
-    public ChatEntryReader EntryReader
-        => _entryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryKind.Audio);
+    public ChatEntryReader TextEntryReader
+        => _textEntryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryKind.Text);
+    public ChatEntryReader AudioEntryReader
+        => _audioEntryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryKind.Audio);
 
-    public ChatRecordingActivity(ChatActivity owner)
+    public ChatStreamingActivity(ChatActivity owner)
     {
         Owner = owner;
         Clocks = owner.Services.Clocks();
@@ -46,43 +49,61 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
     }
 
     // [ComputeMethod]
-    public virtual Task<ImmutableList<ChatEntry>> GetActiveChatEntries(CancellationToken cancellationToken)
+    public virtual Task<ImmutableList<ChatEntry>> GetStreamingEntries(CancellationToken cancellationToken)
         => Task.FromResult(_activeEntries);
 
     // [ComputeMethod]
-    public virtual Task<ApiArray<AuthorId>> GetActiveAuthorIds(CancellationToken cancellationToken)
+    public virtual Task<ApiArray<AuthorId>> GetStreamingAuthorIds(CancellationToken cancellationToken)
         => Task.FromResult(_activeEntries.Select(e => e.AuthorId).Distinct().ToApiArray());
 
     // [ComputeMethod]
-    public virtual Task<bool> IsAuthorActive(AuthorId authorId, CancellationToken cancellationToken)
+    public virtual Task<bool> IsAuthorStreaming(AuthorId authorId, CancellationToken cancellationToken)
         => Task.FromResult(_activeEntries.Any(e => e.AuthorId == authorId));
 
     // Protected & private methods
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        await Task.WhenAll(
+            PushStreamingEntries(ChatEntryKind.Audio, cancellationToken),
+            PushStreamingEntries(ChatEntryKind.Text, cancellationToken)
+            ).ConfigureAwait(false);
+    }
+
+    protected override Task OnStop()
+    {
+        foreach (var entry in _activeEntries)
+            RemoveEntry(entry);
+        return Task.CompletedTask;
+    }
+
+    private async Task PushStreamingEntries(ChatEntryKind entryKind, CancellationToken cancellationToken)
+    {
         var startAt = Owner.Clocks.SystemClock.Now;
-        var idRange = await Owner.Chats.GetIdRange(Owner.Session, ChatId, ChatEntryKind.Audio, cancellationToken)
+        var entryReader = GetEntryReader(entryKind);
+        var idRange = await Owner.Chats
+            .GetIdRange(Owner.Session, ChatId, entryKind, cancellationToken)
             .ConfigureAwait(false);
-        var startEntry = await EntryReader
+        var startEntry = await entryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
             .ConfigureAwait(false);
         var startId = startEntry?.LocalId ?? idRange.End;
 
-        var entries = EntryReader.Observe(startId, cancellationToken);
+        var entries = entryReader.Observe(startId, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
             if (entry.EndsAt < startAt || !entry.IsStreaming || entry.AuthorId.IsNone)
                 continue;
-            AddActiveEntry(entry);
+
+            AddEntry(entry);
             _ = BackgroundTask.Run(async () => {
                 try {
                     using var maxDurationTokenSource = new CancellationTokenSource(Constants.Chat.MaxEntryDuration);
                     using var commonTokenSource = cancellationToken.LinkWith(maxDurationTokenSource.Token);
-                    await EntryReader.GetWhen(
-                            entry.LocalId,
-                            e => e is not { IsStreaming: true },
-                            commonTokenSource.Token
-                        ).ConfigureAwait(false);
+                    await entryReader.GetWhen(
+                        entry.LocalId,
+                        e => e is not { IsStreaming: true },
+                        commonTokenSource.Token
+                    ).ConfigureAwait(false);
                     await Owner.Clocks.CpuClock.Delay(ExtraActivityDuration, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e) {
@@ -91,20 +112,20 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
                     // We should catch every exception here
                 }
                 finally {
-                    RemoveActiveEntry(entry);
+                    RemoveEntry(entry);
                 }
             }, CancellationToken.None);
         }
     }
 
-    protected override Task OnStop()
-    {
-        foreach (var entry in _activeEntries)
-            RemoveActiveEntry(entry);
-        return Task.CompletedTask;
-    }
+    private ChatEntryReader GetEntryReader(ChatEntryKind entryKind)
+        => entryKind switch {
+            ChatEntryKind.Text => TextEntryReader,
+            ChatEntryKind.Audio => AudioEntryReader,
+            _ => throw new ArgumentOutOfRangeException(nameof(entryKind), entryKind, null)
+        };
 
-    private void AddActiveEntry(ChatEntry entry)
+    private void AddEntry(ChatEntry entry)
     {
         int thisAuthorEntryCount;
         lock (Lock) {
@@ -113,15 +134,15 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
             thisAuthorEntryCount = _activeEntries.Count(e => e.AuthorId == entry.AuthorId);
         }
         using (Computed.Invalidate()) {
-            _ = GetActiveChatEntries(default);
+            _ = GetStreamingEntries(default);
             if (thisAuthorEntryCount == 1) {
-                _ = GetActiveAuthorIds(default);
-                _ = IsAuthorActive(entry.AuthorId, default);
+                _ = GetStreamingAuthorIds(default);
+                _ = IsAuthorStreaming(entry.AuthorId, default);
             }
         }
     }
 
-    private void RemoveActiveEntry(ChatEntry entry)
+    private void RemoveEntry(ChatEntry entry)
     {
         int thisAuthorEntryCount;
         lock (Lock) {
@@ -131,10 +152,10 @@ public class ChatRecordingActivity : WorkerBase, IChatRecordingActivity, IComput
             thisAuthorEntryCount = _activeEntries.Count(e => e.AuthorId == entry.AuthorId);
         }
         using (Computed.Invalidate()) {
-            _ = GetActiveChatEntries(default);
+            _ = GetStreamingEntries(default);
             if (thisAuthorEntryCount == 0) {
-                _ = GetActiveAuthorIds(default);
-                _ = IsAuthorActive(entry.AuthorId, default);
+                _ = GetStreamingAuthorIds(default);
+                _ = IsAuthorStreaming(entry.AuthorId, default);
             }
         }
     }

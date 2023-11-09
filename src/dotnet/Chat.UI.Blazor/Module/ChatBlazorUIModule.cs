@@ -52,7 +52,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c));
-        fusion.AddService<ChatRecordingActivity>(ServiceLifetime.Transient);
+        fusion.AddService<ChatStreamingActivity>(ServiceLifetime.Transient);
 
         // Settings
         services.AddSingleton(_ => new AudioSettings());

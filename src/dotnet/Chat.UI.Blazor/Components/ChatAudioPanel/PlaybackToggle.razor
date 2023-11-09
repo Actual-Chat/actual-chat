@@ -67,7 +67,7 @@
         var isAnimated = false;
         if (!audioState.IsListening) {
             var chatInfo = await ChatUI.Get(Chat.Id, cancellationToken);
-            if (chatInfo?.News.LastTextEntry is { IsStreaming: true } lastTextEntry) {
+            if (chatInfo?.News.LastTextEntry is { IsStreaming: true, HasAudioEntry: true } lastTextEntry) {
                 var ownAuthor = await Authors.GetOwn(Session, Chat.Id, cancellationToken);
                 isAnimated = ownAuthor == null || lastTextEntry.AuthorId != ownAuthor.Id;
             }
