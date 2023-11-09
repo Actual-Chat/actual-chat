@@ -106,7 +106,7 @@ export class VisualMediaViewer {
         this.footerTop = this.round(this.footer.getBoundingClientRect().top);
         setTimeout(() => {
             this.toggleFooterHeaderVisibility()
-        }, 1000);
+        }, 3000);
         this.maxHeight = window.innerHeight * 3;
         this.maxWidth = window.innerWidth * 3;
 
