@@ -20,10 +20,10 @@
 
 @code {
 
-    [Inject] private ReloadUI ReloadUI { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
 
     private Task OnReloadClick() {
-        ReloadUI.Reload();
+        Services.GetRequiredService<ReloadUI>().Reload();
         return Task.CompletedTask;
     }
 }

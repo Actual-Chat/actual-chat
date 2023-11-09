@@ -58,20 +58,19 @@ public partial class AccountUI
     private void ProcessOwnAccountChange(AccountFull account, AccountFull oldAccount)
     {
         Changed?.Invoke(account);
-        var reloadUI = Services.GetRequiredService<ReloadUI>();
         var history = Services.GetRequiredService<History>();
         var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
         if (account.IsGuestOrNone) {
             // We're signed out now
             if (!oldAccount.IsGuestOrNone)
-                reloadUI.Reload(true); // And were signed in -> it's a sign-out
+                Services.GetRequiredService<ReloadUI>().Reload(true); // And were signed in -> it's a sign-out
             return;
         }
 
         // We're signed in now
         if (!oldAccount.IsGuestOrNone) {
             // And were signed in -> it's an account change
-            reloadUI.Reload(true);
+            Services.GetRequiredService<ReloadUI>().Reload(true);
             return;
         }
 

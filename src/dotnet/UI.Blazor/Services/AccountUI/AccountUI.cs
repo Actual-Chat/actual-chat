@@ -20,12 +20,12 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private SignInRequesterUI SignInRequesterUI =>
         _signInRequesterUI ??= Services.GetRequiredService<SignInRequesterUI>();
+    private IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }
     public Session Session { get; }
     public IAccounts Accounts { get; }
-    public IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
     public IMomentClock Clock { get; }
 
     public Task WhenLoaded => _whenLoadedSource.Task;
@@ -72,4 +72,7 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
         var changedAt = Moment.Max(LastChangedAt.Value, StartedAt + TimeSpan.FromSeconds(1));
         return (changedAt + maxInvalidationDelay - Clock.Now).Positive();
     }
+
+    public Task SignOut()
+        => ClientAuth.SignOut();
 }

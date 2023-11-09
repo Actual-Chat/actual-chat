@@ -73,7 +73,7 @@
         var deleteOwnAccountCommand = new Accounts_DeleteOwn(Session);
         _ = UICommander.Run(deleteOwnAccountCommand);
 
-        await AccountUI.ClientAuth.SignOut();
+        await AccountUI.SignOut();
     }
 
     public sealed class FormModel : FormModel<FormModel> {
