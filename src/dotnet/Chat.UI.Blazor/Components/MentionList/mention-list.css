@@ -9,7 +9,7 @@
     @apply flex-y;
     @apply max-h-48 md:max-h-64;
     @apply overflow-x-hidden overflow-y-auto;
-    @apply border-y-2 border-bg-04;
+    @apply border-y border-separator;
     @apply bg-01 text-03;
 }
 /* Firefox workaround: it somehow displays the border otherwise */

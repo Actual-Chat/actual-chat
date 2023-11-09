@@ -52,6 +52,11 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .narrow .chat-audio-panel .recorder-wrapper {
     @apply drop-shadow-lg;
 }
+.chat-audio-panel .language-button .btn.btn-round,
+.chat-audio-panel .playback-wrapper .btn.btn-round,
+.chat-audio-panel .recorder-wrapper .btn.btn-round {
+    @apply bg-transparent;
+}
 .chat-audio-panel .recorder-wrapper {
     @apply border-none;
 }
@@ -74,9 +79,9 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .playback-wrapper .btn.btn-round.on .btn-content {
     @apply bg-playback-on;
 }
-.playback-wrapper.listen-off-to-on,
-.playback-wrapper.listen-on {
-    @apply outline outline-1 outline-playback-outline outline-offset-0;
+.playback-wrapper.listen-off-to-on .btn.btn-round,
+.playback-wrapper.listen-on .btn.btn-round {
+    @apply outline outline-1 outline-primary outline-offset-0;
     @apply bg-round-focus;
 }
 

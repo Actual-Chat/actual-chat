@@ -67,7 +67,7 @@
 .side-nav .tab-panel-tabs {
     @apply max-h-14;
     @apply p-0 m-0;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
 }
 .side-nav .tab-panel-tabs .btn-group {
     @apply items-center justify-start gap-x-0;

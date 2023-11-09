@@ -45,7 +45,7 @@
     @apply bg-02;
 }
 .navbar-chats .c-active-chats > .c-delimiter {
-    /*@apply border-t-4 border-bg-04;*/
+    /*@apply border-t-4 border-separator;*/
     @apply hidden;
 }
 .navbar-chats .chat-list {
@@ -56,7 +56,7 @@
 /* Top-level container - active-chats, pinned-chats, etc. */
 .active-chats {
     @apply relative flex-y bottom-0 p-2;
-    @apply border-t border-bg-04;
+    @apply border-t border-separator;
 }
 .active-chats > .c-title {
     @apply px-2 pb-2;
@@ -87,6 +87,11 @@
 }
 body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
     @apply text-primary;
+    @apply bg-transparent;
+}
+.navbar-chats .chat-list-sort-btn.btn:active .btn-content,
+.navbar-chats .chat-list-sort-btn.btn:focus .btn-content {
+    @apply bg-transparent;
 }
 
 /* Chat list */

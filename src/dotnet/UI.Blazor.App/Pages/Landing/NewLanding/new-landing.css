@@ -272,7 +272,7 @@ body.narrow .landing.new .landing-header .c-btn-group {
 .landing.new .landing-header .signin-button-group {
     @apply flex gap-3;
     @apply px-6;
-    @apply border border-bg-04;
+    @apply border border-separator;
     @apply bg-transparent;
     @apply text-06;
 }
@@ -975,7 +975,7 @@ body.narrow .landing.new .extra-content {
 }
 .docs-layout .layout-header {
     @apply px-4;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
 }
 body.narrow .docs-layout .layout-header {
     @apply border-none;
@@ -998,7 +998,7 @@ body.narrow .side-nav-left:has(.docs-left-panel) {
     @apply h-full w-110;
     @apply pl-24 pr-4;
     @apply bg-03;
-    @apply border-r border-bg-04;
+    @apply border-r border-separator;
 }
 body.narrow .docs-left-panel {
     @apply hidden;

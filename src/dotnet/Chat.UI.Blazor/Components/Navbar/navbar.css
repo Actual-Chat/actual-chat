@@ -1,15 +1,9 @@
 .left-panel-buttons .btn.btn-square .navbar-button-content.btn-content {
     @apply w-10 md:w-12 h-10 md:h-12;
-    @apply bg-03;
     @apply text-primary;
 }
 .left-panel-buttons .btn.btn-square.on .navbar-button-content.btn-content {
-    @apply text-03;
-}
-body.hoverable .left-panel-buttons .btn.btn-square:hover .btn-content,
-body.hoverable .left-panel-buttons .btn.btn-square.on .btn-content,
-body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
-    @apply bg-01;
+    @apply text-square-title;
 }
 
 /* Group toggle button on the left side of the navbar */
@@ -56,7 +50,7 @@ body.hoverable .left-panel-buttons .btn.btn-square.on:hover .btn-content {
     @apply flex-1 flex-y;
 }
 .navbar-group > .c-container > .c-delimiter {
-    @apply border-t-4 border-bg-04;
+    @apply border-t border-separator;
 }
 /* Navgar subgroup */
 .navbar-subgroup {

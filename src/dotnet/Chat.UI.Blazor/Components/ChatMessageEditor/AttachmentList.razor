@@ -31,7 +31,7 @@
                     <div class="flex-y relative">
                         <div class="attachment-item">
                             <ButtonSquare Click="@(() => OnRemoveClick(attachment))" Class="remove-attachment-btn">
-                                <i class="icon-trash03 text-2xl font-thin text-06"></i>
+                                <i class="icon-trash03 text-2xl font-thin"></i>
                             </ButtonSquare>
                             @if (attachment.IsImage) {
                                 <img src="@attachment.Url" alt="Image attachment"/>
