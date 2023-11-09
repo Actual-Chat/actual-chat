@@ -83,21 +83,23 @@ export class VisualMediaViewer {
         for (const element of this.mediaArray) {
             const id = element.id;
             const cachedId = 'cached:' + id;
-            const imageElement = element as HTMLImageElement;
-            if (imageElement.complete && imageElement.naturalWidth !== 0) {
-                const cachedImageElement = document.getElementById(cachedId);
-                if (cachedImageElement)
-                    cachedImageElement.remove();
-            }
-            else {
-                element.classList.add('hidden');
-                element.addEventListener('load', (e) => {
-                    element.classList.remove('hidden');
-
+            if (element instanceof HTMLImageElement){
+                const imageElement = element as HTMLImageElement;
+                if (imageElement.complete && imageElement.naturalWidth !== 0) {
                     const cachedImageElement = document.getElementById(cachedId);
                     if (cachedImageElement)
                         cachedImageElement.remove();
-                });
+                }
+                else {
+                    element.classList.add('hidden');
+                    element.addEventListener('load', (e) => {
+                        element.classList.remove('hidden');
+
+                        const cachedImageElement = document.getElementById(cachedId);
+                        if (cachedImageElement)
+                            cachedImageElement.remove();
+                    });
+                }
             }
         }
 
