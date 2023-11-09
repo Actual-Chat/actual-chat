@@ -72,7 +72,7 @@ public class AndroidVisualMediaViewerFileDownloader : IVisualMediaViewerFileDown
         if (uri == null)
             return;
         MainThread.BeginInvokeOnMainThread(() => {
-            ToastUI.Show("1 file downloaded", ToastDismissDelay.Short);
+            ToastUI.Show("1 file downloaded", "icon-checkmark-circle-2", ToastDismissDelay.Short);
         });
     }
 
@@ -84,7 +84,7 @@ public class AndroidVisualMediaViewerFileDownloader : IVisualMediaViewerFileDown
         public DownloadCompletedBroadcastReceiver() {}
 
         public DownloadCompletedBroadcastReceiver(Action<long> onDownloadCompleted)
-            => this._onDownloadCompleted = onDownloadCompleted;
+            => _onDownloadCompleted = onDownloadCompleted;
 
         public override void OnReceive(Context? context, Intent? intent)
         {

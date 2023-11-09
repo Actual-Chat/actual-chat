@@ -12,5 +12,5 @@ public static class TextEntryAttachmentExt
     public static bool IsSupportedVideo(this TextEntryAttachment attachment)
         => attachment.Media.ContentType.OrdinalIgnoreCaseStartsWith("video");
     public static bool IsVisualMedia(this TextEntryAttachment attachment)
-        => attachment.IsSupportedImage() || attachment.IsSupportedVideo();
+        => MediaTypeExt.IsSupportedVisualMedia(attachment.Media.ContentType);
 }

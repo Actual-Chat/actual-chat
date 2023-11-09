@@ -77,6 +77,8 @@ export class VisualMediaViewer {
             .subscribe(() => this.onScreenSizeChange());
 
         this.media = imageViewer.querySelector('.active');
+        if (this.media instanceof HTMLVideoElement)
+            void (this.media as HTMLVideoElement).play();
         this.mediaArray = [...imageViewer.querySelectorAll<HTMLElement>(":scope .c-full-media")];
         for (const element of this.mediaArray) {
             const id = element.id;
@@ -847,10 +849,12 @@ export class VisualMediaViewer {
         newMedia.classList.replace('inactive', 'active');
         newFooterMedia.classList.replace('inactive', 'active');
         this.media = newMedia;
+        if (this.media instanceof HTMLVideoElement)
+            void (this.media as HTMLVideoElement).play();
         let newMediaId = newMedia.id;
         this.getOriginWidthAndHeight();
         this.controlButtonsVisibilityToggle();
-        this.blazorRef.invokeMethodAsync('ChangeMedia', newMediaId);
+        void this.blazorRef.invokeMethodAsync('ChangeMedia', newMediaId);
     }
 
     private wheelAndKeyboardScale(event: Event, scaleUp: boolean) {
