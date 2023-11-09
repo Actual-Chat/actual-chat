@@ -433,8 +433,8 @@
     --recorder-on-top: var(--magenta-60);
     --recorder-on-bottom: var(--violet-60);
     --recorder-on-middle: var(--magenta-50);
-    --audio-panel-button: var(--gray-20);
-    --audio-panel-button-text: var(--gray-60);
+    --audio-panel-button: var(--ash-26);
+    --audio-panel-button-text: var(--ash-70);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -456,7 +456,7 @@
     --code: var(--magenta-60);
     --avatar: var(--ash-70);
     --toggle: var(--ash-50);
-    --toggle-circle: var(--ash-20);
+    --toggle-circle: var(--ash-30);
     --toggle-on: var(--blue-60);
     --message-hover: var(--ash-99-08);
     --mention-message: #FFF7ED;
@@ -471,7 +471,7 @@
     --replied-message-border: var(--blue-60);
     --context-menu: var(--white-05);
     --context-border: var(--gray-05);
-    --selection: #CCBBDD;
+    --selection: var(--ash-99-08);
     --dot: #E2E7EC;
     --dot-selected: #4B5E71;
     --skeleton: var(--gray-05);

@@ -8,7 +8,7 @@
 /* ChatAudioPanel, Mobile view */
 .narrow .chat-audio-panel {
     @apply self-stretch items-center;
-    @apply gap-x-6;
+    @apply gap-x-8;
     @apply py-2 mb-0.5;
     @apply rounded-b-4xl;
     background: linear-gradient(to top, var(--background-01) 40%, transparent);
@@ -29,7 +29,7 @@
 /* Buttons */
 .chat-audio-panel .btn.btn-round .btn-content {
     @apply rounded-full;
-    @apply bg-post-panel md:bg-post-panel-wide;
+    @apply bg-post-panel md:bg-input;
 }
 .chat-audio-panel .record-off-btn.btn .btn-content,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover .btn-content {
@@ -141,6 +141,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .chat-audio-panel .playback-wrapper .btn.btn-round .btn-content,
 .narrow .chat-audio-panel .transcription-options-btn.btn.btn-round .btn-content {
     @apply bg-audio-panel-button;
+    @apply text-audio-panel-button-text;
 }
 .narrow .chat-audio-panel .playback-wrapper .btn.btn-round.on .btn-content {
     @apply bg-playback-on;
@@ -426,7 +427,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply flex-x gap-x-2;
     @apply p-2;
     @apply rounded-lg;
-    @apply bg-04;
+    @apply bg-input;
 }
 .transcription-options-modal .language-btn-group > .c-languages > span {
     @apply flex-1 flex items-center justify-center;

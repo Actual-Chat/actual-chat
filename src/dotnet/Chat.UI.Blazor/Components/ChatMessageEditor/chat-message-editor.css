@@ -33,7 +33,7 @@
     @apply min-h-12;
     @apply py-1 md:py-0 px-1.5;
     @apply border-bg-01  md:rounded-3xl outline-none;
-    @apply bg-post-panel md:bg-post-panel-wide;
+    @apply bg-post-panel md:bg-input;
     @apply overflow-hidden;
     @apply break-all;
 }
@@ -43,7 +43,7 @@
     @apply overflow-hidden;
     @apply outline-none;
     @apply text-post-panel-text md:text-02;
-    @apply bg-post-panel md:bg-post-panel-wide;
+    @apply bg-post-panel md:bg-transparent;
     @apply cursor-text;
     word-break: break-word;
 }

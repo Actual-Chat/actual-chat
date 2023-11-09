@@ -31,7 +31,8 @@
 /* Placeholder */
 .markup-editor .editor-content:empty:not(:focus):before {
     content: attr(data-placeholder);
-    @apply text-counter md:text-03 !opacity-100 truncate;
+    /*@apply text-counter md:text-03 !opacity-100 truncate;*/
+    @apply text-04 !opacity-100 truncate;
 }
 
 /* Permanent mobile cursor */
