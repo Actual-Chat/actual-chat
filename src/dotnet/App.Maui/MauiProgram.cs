@@ -49,6 +49,7 @@ public static partial class MauiProgram
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
 #if DEBUG
+            // NOTE: It's enabled in Debug mode only hence there is no performance penalties in Release mode.
             EnableContainerValidation(appBuilder);
 #endif
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
@@ -283,6 +284,7 @@ public static partial class MauiProgram
         services.Replace(typeof(IDispatcher), static sd => sd.ChangeLifetime(ServiceLifetime.Singleton));
         services.ReplaceAll(typeof(IMauiInitializeScopedService), static sd => sd.ChangeLifetime(ServiceLifetime.Transient));
         // Enable validation on container
+        // NOTE: will be improved later, see https://github.com/dotnet/maui/issues/18519
         appBuilder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions {
             ValidateOnBuild = true,
             ValidateScopes = true,
