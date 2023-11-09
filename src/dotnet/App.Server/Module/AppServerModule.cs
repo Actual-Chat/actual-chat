@@ -115,7 +115,8 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
         */
 
         // Response compression
-        app.UseResponseCompression();
+        if (!Env.IsDevelopment()) // disable compression for local development and hot reload
+            app.UseResponseCompression();
 
         // API controllers
         app.UseRouting();
@@ -244,11 +245,13 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
         });
 
         // Compression
-        services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
-        services.AddResponseCompression(o => {
-            o.EnableForHttps = true;
-            o.Providers.Add<BrotliCompressionProvider>();
-        });
+        if (!Env.IsDevelopment()) { // Disable compression for local development and hot reload
+            services.Configure<BrotliCompressionProviderOptions>(o => o.Level = CompressionLevel.Fastest);
+            services.AddResponseCompression(o => {
+                o.EnableForHttps = true;
+                o.Providers.Add<BrotliCompressionProvider>();
+            });
+        }
 
         // Controllers, etc.
         services.AddRouting();

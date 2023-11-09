@@ -197,7 +197,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chat = Chat;
         var chatId = chat.Id;
         activity?.SetTag("AC." + nameof(ChatId), chatId);
-        var chatIdRange = ChatIdRangeState.Value; // do not subscribe to Id range change
         var readEntryLid = ReadPositionState.Value.EntryLid;
         var isFirstRender = oldData.IsNone;
         var scrollAnchor = isFirstRender && readEntryLid != 0
@@ -216,6 +215,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             scrollAnchor = navigationAnchor;
         }
         var mustScrollToEntry = scrollAnchor != null && !ItemVisibility.Value.IsFullyVisible(scrollAnchor.EntryLid);
+        var chatIdRange = oldData.IsNone || !oldData.HasVeryLastItem
+            ? ChatIdRangeState.Value
+            : await ChatIdRangeState.Use(cancellationToken).ConfigureAwait(false);
         var idRangeToLoad = GetIdRangeToLoad(query, oldData, scrollAnchor, chatIdRange);
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End >= chatIdRange.End;
