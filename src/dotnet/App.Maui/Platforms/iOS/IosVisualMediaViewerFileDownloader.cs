@@ -25,7 +25,6 @@ public class IosVisualMediaViewerFileDownloader(IServiceProvider services) : IVi
     public async Task Download(string uri, string contentType)
     {
         try {
-
             var stream = await HttpClient.GetStreamAsync(uri).ConfigureAwait(false);
             await using var _ = stream.ConfigureAwait(false);
             var nsData = NSData.FromStream(stream) ?? throw StandardError.External("Could not load media.");
@@ -38,7 +37,7 @@ public class IosVisualMediaViewerFileDownloader(IServiceProvider services) : IVi
             ToastUI.Show("Successfully saved media to library", "icon-checkmark-circle-2", ToastDismissDelay.Short);
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to save media to photo library");
+            Log.LogError(e, "Failed to save media to library");
             UICommander.ShowError(e);
         }
         return;
