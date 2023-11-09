@@ -1,10 +1,14 @@
 @using ActualChat.Chat
+@using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @using Microsoft.AspNetCore.StaticFiles
 @namespace ActualChat.UI.Blazor.Components
 @{
     var canSave = MediaTypeExt.IsSupportedVisualMedia(ContentType) && !MediaTypeExt.IsSvg(ContentType);
+    if (HostInfo is { AppKind: AppKind.MauiApp,ClientKind: ClientKind.Ios } && MediaTypeExt.IsSupportedVideo(ContentType)) {
+        canSave = false; // TODO: temporary, support video
+    }
 }
 
 <div class="image-viewer-header">
@@ -57,6 +61,7 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public EventCallback CloseClick { set; get; }
