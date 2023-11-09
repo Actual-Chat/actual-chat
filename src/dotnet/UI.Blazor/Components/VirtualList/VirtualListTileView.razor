@@ -7,7 +7,7 @@
 }
 
 @foreach (var item in Tile.Items) {
-    var itemCls = IsLastTile && ReferenceEquals(item, Tile.Items[^1])
+    var itemCls = IsLastTileVisible && ReferenceEquals(item, Tile.Items[^1])
         ? "item anchor"
         : "item";
     @if (item.CountAs != 1) {
@@ -31,7 +31,7 @@
 
     [Parameter, EditorRequired] public VirtualListTile<TItem> Tile { get; set; } = null!;
     [Parameter] public RenderFragment<TItem> Item { get; set; } = null!;
-    [Parameter] public bool IsLastTile { get; set; }
+    [Parameter] public bool IsLastTileVisible { get; set; }
 
     protected override bool ShouldRender()
         => !ReferenceEquals(_renderedDataTile, Tile);
