@@ -3,6 +3,9 @@
 @using ActualChat.Users
 @using Microsoft.AspNetCore.StaticFiles
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var canSave = MediaTypeExt.IsSupportedVisualMedia(ContentType) && !MediaTypeExt.IsSvg(ContentType);
+}
 
 <div class="image-viewer-header">
     @if (ChatEntry != null && _author != null) {
@@ -24,7 +27,7 @@
             </HeaderButton>
         }
         @if (!DownloadUrl.IsNullOrEmpty()) {
-            @if (_saver != null && !ContentType.IsNullOrEmpty()) {
+            if (_saver != null && canSave) {
                 <a href="#" download class="c-link" @onclick="@(_ => _saver.Download(DownloadUrl, ContentType))" @onclick:preventDefault>
                     <HeaderButton Class="inverted">
                         <i class="icon-download"></i>

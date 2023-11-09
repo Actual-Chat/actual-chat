@@ -13,4 +13,6 @@ public static class MediaTypeExt
         => OrdinalIgnoreCaseEquals(contentType, "image/svg+xml");
     public static bool IsSupportedVideo(string? contentType)
         => !contentType.IsNullOrEmpty() && _supportedVideoTypes.Contains(contentType.ToLowerInvariant());
+    public static bool IsSupportedVisualMedia(string? contentType)
+        => IsSupportedImage(contentType) || IsSupportedVideo(contentType);
 }
