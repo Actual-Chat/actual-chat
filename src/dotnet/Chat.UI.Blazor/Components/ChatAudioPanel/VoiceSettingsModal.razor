@@ -18,7 +18,7 @@
                 <Toggle
                     IsDisabled="@(!m.CanChangeMustStreamVoice)"
                     IsChecked="@m.MustStreamVoice"
-                    IsCheckedChanged="OnMustRecordVoiceChanged"/>
+                    IsCheckedChanged="OnMustStreamVoiceChanged"/>
             </Right>
         </OptionsItem>
     </FormBlock>
@@ -26,14 +26,14 @@
 </DialogFrame>
 
 @code {
-    private VoiceSettings? _transcriptionSettings;
+    private ChatVoiceSettings? _chatVoiceSettings;
 
     [Inject] private ChatHub ChatHub { get; init; } = null!;
 
     private Session Session => ChatHub.Session;
     private ChatId ChatId => ModalModel.ChatId;
-    private VoiceSettings TranscriptionSettings
-        => _transcriptionSettings ??= new (ChatHub.Chats, ChatHub.Authors, ChatHub.AccountSettings);
+    private ChatVoiceSettings ChatVoiceSettings
+        => _chatVoiceSettings ??= new(ChatHub.Services, ChatHub.AccountSettings());
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
@@ -47,12 +47,17 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var persistVoice = await TranscriptionSettings.GetVoiceMode(Session, ChatId, cancellationToken);
-        return new (persistVoice.MustStreamVoice, persistVoice.CanChange);
+        var settings = await ChatVoiceSettings.Get(Session, ChatId, cancellationToken);
+        var mustStreamVoice = settings.VoiceMode.HasVoice();
+        return new (mustStreamVoice, settings.CanChange);
     }
 
-    private async Task OnMustRecordVoiceChanged(bool value)
-        => await TranscriptionSettings.SetVoiceMode(Session, ChatId, value, default);
+    private async Task OnMustStreamVoiceChanged(bool mustStreamVoice) {
+        var voiceMode = mustStreamVoice
+            ? VoiceMode.TextAndVoice
+            : VoiceMode.JustText;
+        await ChatVoiceSettings.Set(Session, ChatId, voiceMode);
+    }
 
     public sealed record ComputedModel(bool MustStreamVoice, bool CanChangeMustStreamVoice);
 

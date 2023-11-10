@@ -9,7 +9,8 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Invite;
 
-internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
+internal class InvitesBackend(IServiceProvider services)
+    : DbServiceBase<InviteDbContext>(services), IInvitesBackend
 {
     private IAccounts? _accounts;
     private IChatsBackend? _chatsBackend;
@@ -17,15 +18,11 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
 
     private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
-    private IServerKvas ServerKvas => _serverKvas ??= Services.GetRequiredService<IServerKvas>();
+    private IServerKvas ServerKvas => _serverKvas ??= Services.ServerKvas();
     private IDbEntityResolver<string, DbInvite> DbInviteResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();
     private IDbEntityResolver<string, DbActivationKey> DbActivationKeyResolver { get; }
-
-    public InvitesBackend(IServiceProvider services) : base(services)
-    {
-        DbInviteResolver = services.GetRequiredService<IDbEntityResolver<string, DbInvite>>();
-        DbActivationKeyResolver = services.GetRequiredService<IDbEntityResolver<string, DbActivationKey>>();
-    }
+        = services.GetRequiredService<IDbEntityResolver<string, DbActivationKey>>();
 
     // [ComputeMethod]
     public virtual async Task<Invite?> Get(string id, CancellationToken cancellationToken)
@@ -143,7 +140,8 @@ internal class InvitesBackend : DbServiceBase<InviteDbContext>, IInvitesBackend
             dbContext.Add(dbActivationKey);
             context.Operation().Items.Set(dbActivationKey.Id);
 
-            await ServerKvas.GetClient(session)
+            var accountSettings = new AccountSettings(ServerKvas, session);
+            await accountSettings
                 .Set(ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id, cancellationToken)
                 .ConfigureAwait(false);
             break;

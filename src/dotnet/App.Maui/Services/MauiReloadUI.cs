@@ -7,16 +7,15 @@ public class MauiReloadUI : ReloadUI
 {
     public MauiReloadUI(IServiceProvider services) : base(services) { }
 
-    public override void Reload(bool clearCaches = false)
+    public override void Reload(bool clearCaches = false, bool clearLocalSettings = false)
     {
         Log.LogInformation("Reloading requested");
         _ = MainThread.InvokeOnMainThreadAsync(async () => {
             Log.LogWarning("Reloading...");
             try {
-                if (clearCaches)
-                    await ClearCaches().ConfigureAwait(true);
+                await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true);
 
-                // terminate recording, playback and all markup
+                // Terminate recording, playback, etc.
                 var request = new EvaluateJavaScriptAsyncRequest("window.ui.BrowserInit.terminate()");
                 MainPage.Current?.PlatformWebView?.EvaluateJavaScript(request);
                 await request.Task.ConfigureAwait(true);

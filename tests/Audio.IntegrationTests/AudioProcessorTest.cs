@@ -25,9 +25,9 @@ public class AudioProcessorTest : AppHostTestBase
         _ = await appHost.SignIn(session, new User("Bob"));
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
-        var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
+        var accountSettings = services.AccountSettings(session);
         if (mustSetUserLanguageSettings)
-            await kvas.SetUserLanguageSettings(new () { Primary = Languages.Main, }, CancellationToken.None);
+            await accountSettings.SetUserLanguageSettings(new () { Primary = Languages.Main, }, CancellationToken.None);
 
         var audioRecord = AudioRecord.New(session, Constants.Chat.DefaultChatId,
             CpuClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
@@ -52,8 +52,8 @@ public class AudioProcessorTest : AppHostTestBase
         var audioStreamer = services.GetRequiredService<IAudioStreamer>();
         var transcriptStreamer = services.GetRequiredService<ITranscriptStreamer>();
         var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
-        var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
-        await kvas.Set(UserLanguageSettings.KvasKey,
+        var accountSettings = services.AccountSettings(session);
+        await accountSettings.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -69,7 +69,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var cts = new CancellationTokenSource();
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
-        await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
+        await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
         var audioRecord = AudioRecord.New(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
         var ctsToken = cts.Token;
         var readTask = BackgroundTask.Run(
@@ -99,8 +99,8 @@ public class AudioProcessorTest : AppHostTestBase
         var transcriptStreamer = services.GetRequiredService<ITranscriptStreamer>();
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
-        var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
-        await kvas.Set(UserLanguageSettings.KvasKey,
+        var accountSettings = services.AccountSettings(session);
+        await accountSettings.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -116,7 +116,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var cts = new CancellationTokenSource();
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
-        await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
+        await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
         var audioRecord = AudioRecord.New(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
 
         var ctsToken = cts.Token;
@@ -164,8 +164,8 @@ public class AudioProcessorTest : AppHostTestBase
         var transcriptStreamer = services.GetRequiredService<ITranscriptStreamer>();
         var chats = services.GetRequiredService<IChatsBackend>();
         var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
-        var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
-        await kvas.Set(UserLanguageSettings.KvasKey,
+        var accountSettings = services.AccountSettings(session);
+        await accountSettings.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -181,7 +181,7 @@ public class AudioProcessorTest : AppHostTestBase
         using var cts = new CancellationTokenSource();
 
         var userChatSettings = new UserChatSettings { Language = Languages.Russian };
-        await kvas.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
+        await accountSettings.SetUserChatSettings(chat.Id, userChatSettings, CancellationToken.None);
         var audioRecord = AudioRecord.New(session, chat.Id, SystemClock.Now.EpochOffset.TotalSeconds, ChatEntryId.None);
 
         var ctsToken = cts.Token;
@@ -228,8 +228,8 @@ public class AudioProcessorTest : AppHostTestBase
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer =services.GetRequiredService<IAudioStreamer>();
         var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
-        var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
-        await kvas.Set(UserLanguageSettings.KvasKey,
+        var accountSettings = services.AccountSettings(session);
+        await accountSettings.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });
@@ -267,8 +267,8 @@ public class AudioProcessorTest : AppHostTestBase
         var audioProcessor = services.GetRequiredService<AudioProcessor>();
         var audioStreamer =services.GetRequiredService<IAudioStreamer>();
         var log = services.GetRequiredService<ILogger<AudioProcessorTest>>();
-        var kvas = new ServerKvasClient(services.GetRequiredService<IServerKvas>(), session);
-        await kvas.Set(UserLanguageSettings.KvasKey,
+        var accountSettings = services.AccountSettings(session);
+        await accountSettings.Set(UserLanguageSettings.KvasKey,
             new UserLanguageSettings {
                 Primary = Languages.Russian,
             });

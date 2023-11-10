@@ -56,7 +56,7 @@ public sealed class MauiSession
             Log.LogWarning("Stored session is invalid - will reload");
             await Store(validSession).ConfigureAwait(false);
             TrueSessionResolver.Replace(validSession);
-            Services.GetRequiredService<ReloadUI>().Reload(true);
+            Services.GetRequiredService<ReloadUI>().Reload(true, true);
         });
     }
 

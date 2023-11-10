@@ -1,6 +1,7 @@
 using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Invite;
+using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 

@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
+using ActualChat.Kvas;
 using ActualChat.Permissions;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
@@ -47,8 +48,9 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         var appDataDir = new FilePath(FileSystem.AppDataDirectory);
         services.AddSingleton(c => {
             var dbPath = appDataDir & "LocalSettings.db3";
+            var backend = new SQLiteBatchingKvasBackend(dbPath, "1.0", c);
             return new LocalSettings.Options() {
-                BackendOverride = new SQLiteBatchingKvasBackend(dbPath, "1.0", c),
+                BackendFactory = _ => backend,
                 ReaderWorkerPolicy = new BatchProcessorWorkerPolicy() {
                     MinWorkerCount = 2,
                     MaxWorkerCount = HardwareInfo.ProcessorCount.Clamp(2, 16),

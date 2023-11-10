@@ -64,14 +64,14 @@ public partial class AccountUI
         if (account.IsGuestOrNone) {
             // We're signed out now
             if (!oldAccount.IsGuestOrNone)
-                reloadUI.Reload(true); // And were signed in -> it's a sign-out
+                reloadUI.Reload(true, true); // And were signed in -> it's a sign-out
             return;
         }
 
         // We're signed in now
         if (!oldAccount.IsGuestOrNone) {
             // And were signed in -> it's an account change
-            reloadUI.Reload(true);
+            reloadUI.Reload(true, true);
             return;
         }
 

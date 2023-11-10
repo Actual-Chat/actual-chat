@@ -68,11 +68,11 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(_ => new RenderVars());
 
         // Settings
-        services.AddSingleton(_ => new LocalSettings.Options());
+        services.AddSingleton(_ => new LocalSettings.Options() {
+            BackendFactory = c => new WebKvasBackend($"{ImportName}.localSettings", c),
+        });
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
-        services.AddScoped(c => new AccountSettings(
-            c.GetRequiredService<IServerKvas>(),
-            c.Session()));
+        services.AddScoped(c => c.AccountSettings(c.Session()));
         if (appKind.IsServer()) {
             services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
