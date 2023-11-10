@@ -58,12 +58,12 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
 
         var toAdd = deviceContacts.Where(x => !existingMap.ContainsKey(x.Id)).ToList();
         var toRemove = existingContacts.ExceptBy(deviceContacts.Select(x => x.Id), x => x.Id).ToList();
-        var toUpdate = deviceContacts.Select(x => {
-                if (!existingMap.TryGetValue(x.Id, out var externalContact))
+        var toUpdate = deviceContacts.Select(deviceContact => {
+                if (!existingMap.TryGetValue(deviceContact.Id, out var existing))
                     return null;
 
-                var diff = DiffEngine.Diff<ExternalContact, ExternalContactDiff>(x, externalContact);
-                return diff == ExternalContactDiff.Empty ? null : DiffEngine.Patch(externalContact, diff);
+                var diff = DiffEngine.Diff<ExternalContact, ExternalContactDiff>(existing, deviceContact);
+                return diff != ExternalContactDiff.Empty ? DiffEngine.Patch(existing, diff) : null;
             })
             .SkipNullItems()
             .ToList();
