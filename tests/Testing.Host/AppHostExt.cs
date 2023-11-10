@@ -6,8 +6,10 @@ namespace ActualChat.Testing.Host;
 
 public static class AppHostExt
 {
-    public static WebClientTester NewWebClientTester(this AppHost appHost)
-        => new(appHost);
+    public static WebClientTester NewWebClientTester(
+        this AppHost appHost,
+        Action<IServiceCollection>? configureClientServices = null)
+        => new(appHost, configureClientServices);
 
     public static PlaywrightTester NewPlaywrightTester(this AppHost appHost)
         => new(appHost);

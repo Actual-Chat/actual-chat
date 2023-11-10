@@ -1,4 +1,6 @@
-namespace ActualChat.Contacts.IntegrationTests;
+using ActualChat.Contacts;
+
+namespace ActualChat.Testing;
 
 public static class ExternalContactExt
 {
