@@ -38,7 +38,7 @@ public class BackgroundActivitiesTest: TestBase
         var backgroundHandler = backgroundUI as IBackgroundStateHandler;
         var activityHandler = (BackgroundActivitiesStub)Services.GetRequiredService<IBackgroundActivities>();
 
-        backgroundHandler.SetBackgroundState(true);
+        backgroundHandler.SetIsBackground(true);
         activityHandler.SetIsActiveInBackground(true);
 
         backgroundUI.State.Value.Should().Be(BackgroundState.Foreground);
@@ -68,7 +68,7 @@ public class BackgroundActivitiesTest: TestBase
         _ = BackgroundTask.Run(async () => {
             for (int i = 0; i < 10; i++) {
                 await testClock.Delay(random.Next(10,200), cancellationToken: cts.Token);
-                backgroundHandler.SetBackgroundState(random.Next(3) >= 1);
+                backgroundHandler.SetIsBackground(random.Next(3) >= 1);
 
             }
         }, cts.Token);

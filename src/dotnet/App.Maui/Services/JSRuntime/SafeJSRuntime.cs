@@ -22,32 +22,25 @@ namespace ActualChat.App.Maui.Services;
 //   in DisposeSilentlyAsync
 // - Manually throw JSRuntimeDisconnected from SafeJSRuntime, if it
 //   wraps a disconnected JS runtime.
-public sealed class SafeJSRuntime : IJSRuntime
+public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
 {
     internal const DynamicallyAccessedMemberTypes JsonSerialized =
         DynamicallyAccessedMemberTypes.PublicConstructors
         | DynamicallyAccessedMemberTypes.PublicFields
         | DynamicallyAccessedMemberTypes.PublicProperties;
 
-    private long _isDisconnected;
-    private long _hasAccessedOnce;
+    private volatile int _state; // 1 = ready, 2 = disconnected
 
-    private bool IsDisconnected =>
-        Interlocked.Read(ref _isDisconnected) == 1;
+    public bool IsDisconnected => _state == 2;
+    public bool IsReady => _state != 0;
 
-    internal bool IsReady
-        => Interlocked.Read(ref _hasAccessedOnce) == 1;
+    internal IJSRuntime WebViewJSRuntime { get; } = webViewJSRuntime;
 
-    internal IJSRuntime WebViewJSRuntime { get; }
-
-    public SafeJSRuntime(IJSRuntime webViewJSRuntime)
-        => WebViewJSRuntime = webViewJSRuntime;
-
-    internal void MarkReady()
-        => Interlocked.Exchange(ref _hasAccessedOnce, 1);
+    internal bool MarkReady()
+        => Interlocked.CompareExchange(ref _state, 1, 0) == 0;
 
     internal void MarkDisconnected()
-        => Interlocked.Exchange(ref _isDisconnected, 1);
+        => Interlocked.Exchange(ref _state, 2);
 
     public async ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(JsonSerialized)] TValue>(
         string identifier, object?[]? args)
@@ -83,8 +76,10 @@ public sealed class SafeJSRuntime : IJSRuntime
         }
     }
 
-    internal void EnsureConnected()
-        => _ = RequireConnected();
+    internal IJSRuntime RequireConnected()
+        => IsDisconnected
+            ? throw JSRuntimeErrors.Disconnected()
+            : WebViewJSRuntime;
 
     internal object?[]? UnwrapArgs(object?[]? args)
     {
@@ -101,13 +96,10 @@ public sealed class SafeJSRuntime : IJSRuntime
         return newArgs;
     }
 
-    private object? UnwrapArg(object? o)
-    {
-        if (o is SafeJSObjectReference safeJSObjectReference)
-            return safeJSObjectReference.JSObjectReference;
-
-        return o;
-    }
+    private object? UnwrapArg(object? obj)
+        => obj is SafeJSObjectReference safeJSObjectReference
+            ? safeJSObjectReference.JSObjectReference
+            : obj;
 
     private TValue Map<TValue>(TValue value)
     {
@@ -117,7 +109,4 @@ public sealed class SafeJSRuntime : IJSRuntime
             return (TValue)(object)new SafeJSObjectReference(this, jsObjectReference);
         return value;
     }
-
-    private IJSRuntime RequireConnected()
-        => IsDisconnected ? throw JSRuntimeErrors.Disconnected() : WebViewJSRuntime;
 }

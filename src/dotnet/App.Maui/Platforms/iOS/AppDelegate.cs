@@ -26,7 +26,7 @@ public class AppDelegate : MauiUIApplicationDelegate
     public override void OnActivated(UIApplication application)
     {
         _ = DispatchToBlazor(
-            c => c.GetRequiredService<IBackgroundStateHandler>().SetBackgroundState(false),
+            c => c.GetRequiredService<IBackgroundStateHandler>().SetIsBackground(false),
             "IBackgroundStateHandler.SetBackgroundState(false)");
         base.OnActivated(application);
     }
@@ -34,7 +34,7 @@ public class AppDelegate : MauiUIApplicationDelegate
     public override void DidEnterBackground(UIApplication application)
     {
         _ = DispatchToBlazor(
-            c => c.GetRequiredService<IBackgroundStateHandler>().SetBackgroundState(true),
+            c => c.GetRequiredService<IBackgroundStateHandler>().SetIsBackground(true),
             "IBackgroundStateHandler.SetBackgroundState(true)");
         base.DidEnterBackground(application);
     }

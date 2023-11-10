@@ -132,19 +132,19 @@ public static partial class MauiProgram
         services.Remove(jsRuntimeRegistration);
         services.Add(new ServiceDescriptor(
             typeof(SafeJSRuntime),
-            svp => new SafeJSRuntime((IJSRuntime)ActivatorUtilities.CreateInstance(svp, webViewJSRuntimeType)),
+            c => new SafeJSRuntime((IJSRuntime)ActivatorUtilities.CreateInstance(c, webViewJSRuntimeType)),
             jsRuntimeRegistration.Lifetime));
         services.Add(new ServiceDescriptor(
             typeof(IJSRuntime),
-            svp => {
-                var safeJSRuntime = svp.GetRequiredService<SafeJSRuntime>();
+            c => {
+                var safeJSRuntime = c.GetRequiredService<SafeJSRuntime>();
                 if (!safeJSRuntime.IsReady) {
-                    // In MAUI Hybrid Blazor IJSRuntime service is resolved first time from PageContext and casted to WebViewJSRuntime,
+                    // In MAUI Hybrid Blazor IJSRuntime service is resolved first time from PageContext and cast to WebViewJSRuntime,
                     // to being attached with WebView. So we need to return original WebViewJSRuntime instance.
                     // After that we can return 'safe' IJSRuntime implementation.
                     // See https://github.com/dotnet/aspnetcore/blob/410efd482f494d1ab05ce25b932b5788699c2308/src/Components/WebView/WebView/src/PageContext.cs#L44
-                    safeJSRuntime.MarkReady();
-                    return safeJSRuntime.WebViewJSRuntime;
+                    if (safeJSRuntime.MarkReady())
+                        return safeJSRuntime.WebViewJSRuntime;
                 }
                 // After that there is no more bindings with implementation type, so we can return protected JSRuntime.
                 return safeJSRuntime;

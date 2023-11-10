@@ -25,6 +25,6 @@ public static partial class MauiProgram
         events.AddWindows(builder => {
             builder.OnWindowCreated(WindowConfigurator.Configure);
         });
-        new WindowsWebViewLivenessProbeAdapter().Subscribe();
+        WindowsLivenessProbe.Activate();
     }
 }

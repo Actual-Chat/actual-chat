@@ -6,7 +6,7 @@ import {audioContextSource} from "./audio-context-source";
 
 const { infoLog, warnLog } = Log.get('AudioInfo');
 
-export type BackgroundState = 'Foreground' | 'BackgroundActive' | 'BackgroundIdle';
+export type BackgroundState = 'Foreground' | 'BackgroundIdle' | 'BackgroundActive';
 
 export class AudioInitializer {
     private static backendRef: DotNet.DotNetObject = null;
@@ -48,16 +48,12 @@ export class AudioInitializer {
     }
 
     /** Called by Blazor */
-    public static async updateBackgroundState(backgroundState: BackgroundState): Promise<void> {
-        infoLog?.log(`-> updateBackgroundState`);
-        if (backgroundState === 'BackgroundActive' || backgroundState === 'Foreground') {
-            await audioContextSource.resumeAudio();
-        }
-        else {
-            await audioContextSource.suspendAudio();
-        }
+    public static async setBackgroundState(backgroundState: BackgroundState): Promise<void> {
+        infoLog?.log(`setBackgroundState:`, backgroundState);
         this.backgroundState = backgroundState;
-        infoLog?.log(`<- updateBackgroundState`);
+        if (backgroundState === 'Foreground' || backgroundState === 'BackgroundActive')
+            await audioContextSource.resumeAudio();
+        else
+            await audioContextSource.suspendAudio();
     }
 }
-

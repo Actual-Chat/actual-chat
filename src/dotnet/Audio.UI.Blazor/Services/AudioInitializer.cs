@@ -8,7 +8,7 @@ namespace ActualChat.Audio.UI.Blazor.Services;
 public sealed partial class AudioInitializer(IServiceProvider services) : WorkerBase, IAudioInfoBackend
 {
     private static readonly string JSInitMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.init";
-    private static readonly string JSUpdateBackgroundStateMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.updateBackgroundState";
+    private static readonly string JSUpdateBackgroundStateMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.setBackgroundState";
 
     [GeneratedRegex(@"^(?<type>mac|iPhone|iPad)(?:(?<version>\d+),\d*)?$")]
     private static partial Regex IosDeviceRegexFactory();
@@ -84,19 +84,18 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
     private async Task UpdateBackgroundState(CancellationToken cancellationToken)
     {
-        var previousState = BackgroundState.Foreground;
-        var stateChanges = BackgroundUI.State.Changes(cancellationToken);
-        await foreach (var cState in stateChanges.ConfigureAwait(false)) {
+        var prevState = (BackgroundState?)null; // Assuming "unknown"
+        var changes = BackgroundUI.State.Changes(cancellationToken);
+        await foreach (var cState in changes.ConfigureAwait(false)) {
             var state = cState.Value;
-            if (state.IsActive() != previousState.IsActive()) {
-                Log.LogInformation("Activity state has changed: {OldState} -> {State}", previousState, state);
-                await JS.InvokeVoidAsync(JSUpdateBackgroundStateMethod, cancellationToken, state.ToString())
-                    .ConfigureAwait(false);
-            }
-            else
-                Log.LogInformation("Activity state change ignored: {OldState} -> {State}", previousState, state);
+            if (state == prevState)
+                continue;
 
-            previousState = state;
+            Log.LogInformation("Background state has changed: {OldState} -> {State}", prevState, state);
+            prevState = state;
+            await JS
+                .InvokeVoidAsync(JSUpdateBackgroundStateMethod, cancellationToken, state.ToString())
+                .ConfigureAwait(false);
         }
     }
 }

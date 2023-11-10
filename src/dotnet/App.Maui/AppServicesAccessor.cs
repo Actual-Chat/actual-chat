@@ -15,6 +15,8 @@ public class AppServicesAccessor
     private static ILogger? _log;
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
+    private static readonly TaskCompletionSource<IServiceProvider> _appServicesSource =
+        TaskCompletionSourceExt.New<IServiceProvider>();
     private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesSource =
         TaskCompletionSourceExt.New<IServiceProvider>();
 
@@ -32,6 +34,7 @@ public class AppServicesAccessor
                     throw Errors.AlreadyInitialized(nameof(AppServices));
 
                 _appServices = value;
+                _appServicesSource.TrySetResult(value);
                 Log.LogDebug("AppServices ready");
             }
         }
@@ -54,6 +57,9 @@ public class AppServicesAccessor
             }
         }
     }
+
+    public static Task<IServiceProvider> WhenAppServicesReady(CancellationToken cancellationToken = default)
+        => _appServicesSource.Task.WaitAsync(cancellationToken);
 
     public static bool TryGetScopedServices([NotNullWhen(true)] out IServiceProvider? scopedServices)
     {
@@ -159,20 +165,27 @@ public class AppServicesAccessor
             var scopedServices = _scopedServices;
             if (scopedServices == null)
                 return;
-            if (expectedScopedServices != null && !ReferenceEquals(scopedServices, expectedScopedServices))
+            if (expectedScopedServices != null && !ReferenceEquals(scopedServices, expectedScopedServices)) {
+                DisconnectSafeJSRuntime(expectedScopedServices);
                 return;
+            }
 
             _scopedServicesSource.TrySetCanceled();
             _scopedServicesSource = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
             _scopedServices = null;
-            try {
-                if (scopedServices.GetService<IJSRuntime>() is SafeJSRuntime js)
-                    js.MarkDisconnected();
-            }
-            catch {
-                // Intended
-            }
+            DisconnectSafeJSRuntime(scopedServices);
         }
         AppServices.LogFor(nameof(AppServicesAccessor)).LogDebug("ScopedServices discarded");
+
+        static void DisconnectSafeJSRuntime(IServiceProvider services)
+        {
+            try {
+                if (services.GetService<SafeJSRuntime>() is { } safeJSRuntime)
+                    safeJSRuntime.MarkDisconnected();
+            }
+            catch {
+                // Intended: services might be already disposed, so GetService may fail
+            }
+        }
     }
 }
