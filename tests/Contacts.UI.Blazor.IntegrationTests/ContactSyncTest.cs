@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ActualChat.App.Server;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Security;
+using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -17,7 +18,7 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 
     private Symbol DeviceId { get; set; } = RandomStringGenerator.Default.Next();
     private List<ExternalContact> DeviceContacts { get; set; } = new ();
-    private static Phone BobPhone => new ("1-2345678901");
+    private static Phone BobPhone { get; } = new ("1-2345678901");
     private static string BobEmail => "bob@actual.chat";
 
     private static User Bob { get; } = new User("", "BobAdmin")
@@ -25,12 +26,11 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         .WithPhone(BobPhone)
         .WithClaim(ClaimTypes.Email, BobEmail);
 
-    private static string JackEmail => "jack@actual.chat";
     private static Phone JackPhone => new ("1-3456789012");
-    private static User Jack { get; } = new User("", "JackAdmin")
-        .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "222"))
-        .WithPhone(JackPhone)
-        .WithClaim(ClaimTypes.Email, JackEmail);
+    private static string JackEmail => "jack@actual.chat";
+
+    private static Phone JanePhone => new ("1-3456789012");
+    private static string JaneEmail => "jane@actual.chat";
 
     public override async Task InitializeAsync()
     {
@@ -62,18 +62,33 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     }
 
     [Fact]
-    public async Task ShouldAdd()
+    public async Task ShouldAddAndUpdate()
     {
         // arrange
         var bob = await _tester.SignIn(Bob);
         DeviceContacts.Add(NewExternalContact(bob).WithPhone(JackPhone).WithEmail(JackEmail));
 
         // act
-        var sut = _tester.ClientServices.GetRequiredService<ContactSync>();
+        var sut = new ContactSync(_tester.ClientServices);
         sut.Start();
 
         // assert
-        await ListExternalContacts(1);
+        var externalContacts = await ListExternalContacts(1);
+        externalContacts.Should().BeEquivalentTo(DeviceContacts, options => options.ExcludingSystemProperties());
+        await sut.DisposeAsync();
+
+        // arrange
+        DeviceContacts[0] = DeviceContacts[0].WithoutPhone(JackPhone).WithPhone(new Phone("1-1002003000"));
+        DeviceContacts.Add(NewExternalContact(bob).WithPhone(JanePhone).WithEmail(JaneEmail));
+
+        // act
+        sut = new ContactSync(_tester.ClientServices);
+        sut.Start();
+
+        // assert
+        externalContacts = await ListExternalContacts(2);
+        externalContacts.Should().BeEquivalentTo(DeviceContacts, options => options.ExcludingSystemProperties());
+        await sut.DisposeAsync();
     }
 
     private ExternalContact NewExternalContact(AccountFull account)
@@ -81,14 +96,13 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 
     private async Task<ApiArray<ExternalContact>> ListExternalContacts(int expectedCount)
     {
-        ApiArray<ExternalContact> externalContacts;
         await TestExt.WhenMetAsync(async () => {
-                externalContacts = await ListExternalContacts();
+                var externalContacts = await ListExternalContacts();
                 externalContacts.Should().HaveCountGreaterOrEqualTo(expectedCount);
             },
             TimeSpan.FromSeconds(10));
 
-        return externalContacts;
+        return await ListExternalContacts();
     }
 
     private Task<ApiArray<ExternalContact>> ListExternalContacts()
