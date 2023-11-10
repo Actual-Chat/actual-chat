@@ -109,6 +109,18 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply py-0 md:py-1.5 px-2;
     @apply bg-01;
 }
+.chat-footer.readonly {
+    @apply text-lg;
+}
+.chat-footer.readonly .c-content {
+    @apply flex justify-center items-center;
+    @apply w-full min-h-14 md:min-h-12;
+    @apply mx-10;
+    @apply rounded-full;
+    @apply md:bg-03;
+    @apply text-02;
+    @apply cursor-default;
+}
 .signin-footer {
     @apply flex justify-center items-center;
     @apply w-full md:w-auto min-h-footer;

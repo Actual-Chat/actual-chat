@@ -427,7 +427,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply flex-x gap-x-2;
     @apply p-2;
     @apply rounded-lg;
-    @apply bg-input;
+    @apply bg-04;
 }
 .transcription-options-modal .language-btn-group > .c-languages > span {
     @apply flex-1 flex items-center justify-center;
@@ -441,7 +441,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply text-02;
 }
 .transcription-options-modal .language-btn-group > .c-languages > button.active {
-    @apply bg-01;
+    @apply bg-cancel;
     @apply text-primary;
 }
 

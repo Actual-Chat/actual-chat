@@ -7,26 +7,31 @@
     if (ReferenceEquals(m, Model.NotRecording))
         return;
     var recordingElsewhereCls = m.RecordingChat != null ? "recording-elsewhere" : "";
+    var isWarning = m.RecordingChat == null;
 }
 
 <div class="recording-sub-header @recordingElsewhereCls">
     <div class="c-round-container">
-        <div class="c-round"></div>
+        @if (isWarning) {
+            <i class="icon-alert-triangle text-banner-warning"></i>
+        } else {
+            <div class="c-round"></div>
+        }
     </div>
 
-    <div class="c-line-1">
-        @if (m.RecordingChat != null) {
+    @if (m.RecordingChat != null) {
+        <div class="c-line-1">
             <div class="c-text">
                 Recording in
             </div>
             <a class="c-text highlight" href="@m.RecordingChatUrl">@(m.RecordingChat.Title)</a>
             <div class="c-text">chat!</div>
-        }
-    </div>
+        </div>
+    }
 
     @if (m.StopRecordingAt != null) {
         <div class="c-line-2">
-            <div class="c-text">Stop in </div>
+            <div class="c-text">Recording will stop in </div>
             <Countdown EndsAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
         </div>
     }

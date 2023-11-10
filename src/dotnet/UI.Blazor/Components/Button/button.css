@@ -367,6 +367,9 @@ body.hoverable .btn.blackout:hover .btn-content,
 button.on, .btn.on, .btn.btn-square.on, .btn.btn-round.on {
     @apply text-primary;
 }
+button.on .btn-content, .btn.on .btn-content, .btn.btn-square.on .btn-content, .btn.btn-round.on .btn-content {
+    @apply text-primary;
+}
 button.off, .btn.off {
     @apply text-03;
 }

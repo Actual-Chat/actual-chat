@@ -87,7 +87,7 @@ body.narrow .modal-frame.modal-xs .c-text {
 
 .modal-chrome {
     @apply rounded-lg md:shadow-2xl;
-    @apply bg-01 text-03;
+    @apply bg-02 text-03;
     @apply overflow-hidden;
     @apply z-10;
 }
