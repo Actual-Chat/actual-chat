@@ -35,7 +35,7 @@ public sealed class AudioServiceModule : HostModule<AudioSettings>, IWebModule
         // SignalR hub & related services
         var signalR = services.AddSignalR(options => {
             options.StreamBufferCapacity = 20;
-            options.EnableDetailedErrors = true;
+            options.EnableDetailedErrors = false;
         });
         signalR.AddJsonProtocol();
         signalR.AddMessagePackProtocol();
