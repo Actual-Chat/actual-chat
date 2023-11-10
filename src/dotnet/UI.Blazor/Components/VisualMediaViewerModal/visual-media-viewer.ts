@@ -1,5 +1,5 @@
 import { preventDefaultForEvent } from 'event-handling';
-import { fromEvent, Subject, takeUntil, debounceTime } from 'rxjs';
+import { fromEvent, Subject, takeUntil } from 'rxjs';
 
 import { Log } from 'logging';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
@@ -53,7 +53,8 @@ export class VisualMediaViewer {
     private startImageLeft: number = 0;
     private headerBottom: number = 0;
     private footerTop: number = 0;
-    private isFooterAndHeaderShown: boolean = false;
+    private isHeaderAndFooterVisible: boolean = true;
+    private isHeaderAndFooterVisibilityForced: boolean = false;
     private points: PointerEvent[] = new Array<PointerEvent>();
     private minWidth: number = 100;
     private minHeight: number = 100;
@@ -109,7 +110,10 @@ export class VisualMediaViewer {
         this.footer = this.overlay.querySelector('.image-viewer-footer');
         this.footerTop = this.round(this.footer.getBoundingClientRect().top);
         setTimeout(() => {
-            this.toggleFooterHeaderVisibility()
+            this.hideHeaderAndFooter();
+            fromEvent(this.overlay, 'mousemove')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event: MouseEvent) => this.onMouseMove(event));
         }, 3000);
         this.maxHeight = window.innerHeight * 3;
         this.maxWidth = window.innerWidth * 3;
@@ -253,6 +257,10 @@ export class VisualMediaViewer {
     }
 
     private hideHeaderAndFooter() {
+        if (!this.isHeaderAndFooterVisible)
+            return;
+
+        this.isHeaderAndFooterVisible = false;
         this.header.classList.remove('hide-to-show');
         this.header.classList.add('show-to-hide');
         this.footer.classList.remove('hide-to-show');
@@ -260,23 +268,22 @@ export class VisualMediaViewer {
     }
 
     private showHeaderAndFooter() {
+        if (this.isHeaderAndFooterVisible)
+            return;
+
+        this.isHeaderAndFooterVisible = true;
         this.header.classList.remove('show-to-hide');
         this.header.classList.add('hide-to-show');
         this.footer.classList.remove('show-to-hide');
         this.footer.classList.add('hide-to-show');
     }
 
-    private toggleFooterHeaderVisibility(hide: boolean = false) {
-        if (hide) {
+    private toggleFooterHeaderVisibility() {
+        this.isHeaderAndFooterVisibilityForced = true;
+        if (this.isHeaderAndFooterVisible) {
             this.hideHeaderAndFooter();
-            this.isFooterAndHeaderShown = false;
         } else {
-            this.isFooterAndHeaderShown = !this.isFooterAndHeaderShown;
-            if (this.isFooterAndHeaderShown) {
-                this.hideHeaderAndFooter();
-            } else {
-                this.showHeaderAndFooter();
-            }
+            this.showHeaderAndFooter();
         }
     }
 
@@ -385,6 +392,20 @@ export class VisualMediaViewer {
     }
 
     // Event handlers
+
+    private onMouseMove = (event: MouseEvent) => {
+        if (this.isHeaderAndFooterVisibilityForced === true)
+            return;
+
+        const { pageY } = event;
+        const cursorInHeaderArea = pageY <= this.header.offsetHeight;
+        const cursorInFooterArea = this.overlay.offsetHeight - pageY <= this.footer.offsetHeight;
+        if (cursorInHeaderArea || cursorInFooterArea) {
+            this.showHeaderAndFooter();
+        } else {
+            this.hideHeaderAndFooter();
+        }
+    };
 
     private onWheel = (event: WheelEvent) => {
         this.wheelAndKeyboardScale(event,event.deltaY < 0);
@@ -736,7 +757,7 @@ export class VisualMediaViewer {
         this.curState.imageRect = this.curState.viewerRect = this.media.getBoundingClientRect();
         this.centerImage();
         if (this.curState.imageRect.height > this.footerTop - this.headerBottom) {
-            this.toggleFooterHeaderVisibility(true);
+            this.hideHeaderAndFooter();
         }
     }
 
