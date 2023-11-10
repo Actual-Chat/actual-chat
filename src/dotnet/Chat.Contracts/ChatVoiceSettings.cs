@@ -3,15 +3,15 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-public class ChatVoiceSettings(IServiceProvider services, AccountSettings accountSettings)
+public sealed class ChatVoiceSettings(IServiceProvider services, AccountSettings accountSettings)
 {
     private IChats? _chats;
     private IAuthors? _authors;
 
-    protected IServiceProvider Services { get; } = services;
-    protected IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    protected IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
-    protected AccountSettings AccountSettings { get; } = accountSettings;
+    private IServiceProvider Services { get; } = services;
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
+    private AccountSettings AccountSettings { get; } = accountSettings;
 
     public async Task<ChatVoiceMode> Get(Session session, ChatId chatId, CancellationToken cancellationToken = default)
     {

@@ -53,7 +53,7 @@ export class BrowserInit {
         }
     }
 
-    public static isStateOk() : boolean {
+    public static isAlive() : boolean {
         return this.apiVersion.length > 0;
     }
 

@@ -143,7 +143,9 @@
                     <ChatMessageQuote Entry="@m.RepliedEntry" IsOwn="@isReplyToOwnMessage"/>
                 }
                 @if (entry.IsStreaming) {
-                    <ChatMessageTranscript Message="@message" ShowEntryKind="@message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)"/>
+                    <ChatMessageTranscript
+                        Message="@message"
+                        ShowEntryKind="@message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)"/>
                 } else {
                     <p class="chat-message-markup">
                         @if (message.Flags.HasFlag(ChatMessageFlags.HasEntryKindSign)) {
