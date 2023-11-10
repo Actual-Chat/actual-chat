@@ -34,16 +34,17 @@ public sealed partial class AudioProcessor : IAudioProcessor
     private ITranscriptStreamServer TranscriptStreamServer { get; }
     private IChats Chats { get; }
     private IAuthors Authors { get; }
-    private IAccounts Accounts { get; }
+    private IServerKvas ServerKvas { get; }
     private ICommander Commander { get; }
     private MomentClockSet Clocks { get; }
-    private IServerKvas ServerKvas { get; }
 
     public AudioProcessor(Options settings, IServiceProvider services)
     {
         Settings = settings;
-        Log = services.LogFor(GetType());
         Services = services;
+        Log = services.LogFor(GetType());
+        OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
+        AudioSourceLog = services.LogFor<AudioSource>();
 
         Transcriber = services.GetRequiredService<ITranscriber>();
         AudioSegmentSaver = services.GetRequiredService<AudioSegmentSaver>();
@@ -51,12 +52,9 @@ public sealed partial class AudioProcessor : IAudioProcessor
         TranscriptStreamServer = services.GetRequiredService<ITranscriptStreamServer>();
         Chats = services.GetRequiredService<IChats>();
         Authors = services.GetRequiredService<IAuthors>();
-        Accounts = services.GetRequiredService<IAccounts>();
+        ServerKvas = services.ServerKvas();
         Commander = services.Commander();
         Clocks = services.Clocks();
-        OpenAudioSegmentLog = services.LogFor<OpenAudioSegment>();
-        AudioSourceLog = services.LogFor<AudioSource>();
-        ServerKvas = services.ServerKvas();
     }
 
     public async Task ProcessAudio(
