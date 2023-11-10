@@ -133,6 +133,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                 ModifiedAt = now,
             };
             dbExternalContact.UpdateFrom(externalContact);
+            dbContext.ExternalContacts.Update(dbExternalContact);
         }
         else {
             // Remove
