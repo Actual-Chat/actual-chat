@@ -54,7 +54,7 @@ public partial class ChatUI
             var isForwardFromOtherChat = prevForwardChatId != entry.ForwardedChatEntryId.ChatId;
             var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
             var isEntryUnread = isUnread ?? entry.LocalId > lastReadEntryId;
-            var isAudio = entry.AudioEntryId != null || entry.IsStreaming;
+            var isAudio = entry.AudioEntryId != null;
             var shouldAddToResult = idRange.Contains(entry.LocalId);
             var flags = default(ChatMessageFlags);
             if (isBlockStart)
