@@ -111,11 +111,6 @@ public class AppServiceStarter
             Services.GetRequiredService<AccountUI>();
             Services.GetRequiredService<UIEventHub>();
 
-            // Starting ThemeUI
-            Tracer.Point("ThemeUI.Start");
-            var themeUI = Services.GetRequiredService<ThemeUI>();
-            _ = Task.Run(() => themeUI.Start(), CancellationToken.None);
-
             // Awaiting for completion of initialization tasks.
             // NOTE(AY): it's fine to use .ConfigureAwait(false) below this point,
             //           coz tasks were started on Dispatcher thread already.
@@ -127,10 +122,6 @@ public class AppServiceStarter
             var timeZoneConverter = Services.GetRequiredService<TimeZoneConverter>();
             if (timeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
                 serverSideTimeZoneConverter.Initialize(browserInfo.UtcOffset);
-
-            // Finishing w/ ThemeUI
-            await themeUI.WhenReady.ConfigureAwait(false);
-            Tracer.Point("ThemeUI is ready");
 
             // Finishing with BrowserInit
             await browserInitTask.ConfigureAwait(false); // Must be completed before the next call
@@ -161,6 +152,7 @@ public class AppServiceStarter
     {
         // Starts in Blazor dispatcher
         try {
+            Services.GetRequiredService<ThemeUI>().Start();
             await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(true);
             _ = Services.GetRequiredService<OnboardingUI>().TryShow();
 
@@ -210,7 +202,6 @@ public class AppServiceStarter
         var authorId = new AuthorId(chatId, 1L, AssumeValid.Option);
         var account = new AccountFull(new User(userId, "User"), 1);
         Warmup(new Chat.Chat(chatId) { Rules = new AuthorRules(chatId, new AuthorFull(userId, authorId), account) });
-        Warmup(new ThemeSettings(Theme.Dark));
         Warmup(new UserLanguageSettings() { Primary = Languages.English, Secondary = Languages.German });
         Warmup(new UserOnboardingSettings());
         Warmup(new LocalOnboardingSettings());

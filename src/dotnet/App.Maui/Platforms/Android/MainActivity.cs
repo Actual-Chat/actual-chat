@@ -74,7 +74,7 @@ public partial class MainActivity : MauiAppCompatActivity
         base.OnCreate(savedInstanceState);
         _tracer.Point("OnCreate, base.OnCreate completed");
 
-        AndroidApplyThemeHandler.Instance.TryRestoreLastTheme();
+        MauiThemeHandler.Instance.TryRestoreLastTheme();
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061

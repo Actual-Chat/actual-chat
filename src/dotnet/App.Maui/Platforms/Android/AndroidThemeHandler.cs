@@ -1,21 +1,15 @@
 using AndroidX.Core.View;
-using Microsoft.Maui.Controls.PlatformConfiguration;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidApplyThemeHandler : MauiApplyThemeHandler
+public class AndroidThemeHandler : MauiThemeHandler
 {
     private Android.Views.Window? Window => (Platform.CurrentActivity as MainActivity)?.Window;
 
-    public static new readonly AndroidApplyThemeHandler Instance = new ();
-
-    private AndroidApplyThemeHandler()
-    { }
-
-    protected override bool ApplyBarColors(string sTopBarColor, string sBottomBarColor)
+    protected override bool ApplyColors(string topBarColor, string bottomBarColor)
     {
-        var topBarColor = Android.Graphics.Color.ParseColor(sTopBarColor);
-        var bottomBarColor = Android.Graphics.Color.ParseColor(sBottomBarColor);
+        var cTopBar = Android.Graphics.Color.ParseColor(topBarColor);
+        var cBottomBar = Android.Graphics.Color.ParseColor(bottomBarColor);
         var window = Window;
         if (window == null)
             return false;
@@ -24,14 +18,14 @@ public class AndroidApplyThemeHandler : MauiApplyThemeHandler
         // See https://developer.android.com/design/ui/mobile/guides/layout-and-content/layout-basics
         // I do it from here because I can not modify theme 'Maui.MainTheme'
         // which is applied after calling base.OnCreate.
-        window.SetStatusBarColor(topBarColor);
+        window.SetStatusBarColor(cTopBar);
         var wic = new WindowInsetsControllerCompat(window, window.DecorView);
-        var isDarkStatusBar = IsColorDark(topBarColor);
+        var isDarkStatusBar = IsDark(cTopBar);
         wic.AppearanceLightStatusBars = !isDarkStatusBar;
-        window.SetNavigationBarColor(bottomBarColor);
+        window.SetNavigationBarColor(cBottomBar);
         return true;
 
-        bool IsColorDark(Android.Graphics.Color color) {
+        static bool IsDark(Android.Graphics.Color color) {
             var darkness = 1 - (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255;
             return darkness >= 0.5;
         }

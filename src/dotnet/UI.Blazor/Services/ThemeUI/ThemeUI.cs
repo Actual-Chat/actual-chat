@@ -1,105 +1,82 @@
-using ActualChat.Kvas;
-using ActualChat.UI.Blazor.Module;
-
 namespace ActualChat.UI.Blazor.Services;
 
 public class ThemeUI : WorkerBase
 {
-    private const Theme DefaultTheme = Theme.Light;
-    private static readonly string JSReplaceMethod = $"{BlazorUICoreModule.ImportName}.ThemeUI.replace";
-    private static readonly string JSGetBarColorsMethod = $"{BlazorUICoreModule.ImportName}.ThemeUI.getBarColors";
+    private static readonly string JSThemeClassName = "Theme";
+    private static readonly string JSSetMethod = $"{JSThemeClassName}.set";
 
-    private readonly ISyncedState<ThemeSettings> _settings;
-    private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
-    // Nearly every service here is requested only when the theme is applied,
-    // so it makes sense to postpone their resolution
-    private Dispatcher? _dispatcher;
+    private IEnumerable<Action<Theme, string>>? _themeHandlers;
+    private BrowserInfo? _browserInfo;
     private IJSRuntime? _js;
     private ILogger? _log;
-    private IEnumerable<Action<Theme>>? _applyThemeHandlers;
-
-    private Theme _appliedTheme = DefaultTheme;
 
     private IServiceProvider Services { get; }
-    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
+    private BrowserInfo BrowserInfo => _browserInfo ??= Services.GetRequiredService<BrowserInfo>();
+    private IEnumerable<Action<Theme, string>> ThemeHandlers =>
+        _themeHandlers ??= Services.GetRequiredService<IEnumerable<Action<Theme, string>>>();
     private IJSRuntime JS => _js ??= Services.JSRuntime();
     private ILogger Log => _log ??= Services.LogFor(GetType());
-    private IEnumerable<Action<Theme>> ApplyThemeHandlers =>
-        _applyThemeHandlers ??= Services.GetRequiredService<IEnumerable<Action<Theme>>>();
 
-    public IState<ThemeSettings> Settings => _settings;
-    public Theme Theme {
-        get => _settings.Value.Theme.GetValueOrDefault(DefaultTheme);
-        set => _settings.Value = new ThemeSettings(value);
-    }
-    public Task WhenReady => _whenReadySource.Task;
+    public IMutableState<Theme?> Theme => BrowserInfo.Theme;
+    public IState<Theme> DefaultTheme => BrowserInfo.DefaultTheme;
+    public IState<(Theme? Theme, Theme FinalTheme)> ComputedTheme { get; }
+    public Task WhenReady => ComputedTheme.WhenSynchronized();
 
     public ThemeUI(IServiceProvider services)
     {
         Services = services;
-
-        var stateFactory = services.StateFactory();
-        var accountSettings = services.LocalSettings().WithPrefix(nameof(ThemeUI));
-        _settings = stateFactory.NewKvasSynced<ThemeSettings>(
-            new(accountSettings, nameof(ThemeSettings)) {
-                InitialValue = new ThemeSettings(null),
-                UpdateDelayer = FixedDelayer.Instant,
-                Category = StateCategories.Get(GetType(), nameof(Settings)),
-            });
-        Log.LogInformation("State created");
-    }
-
-    public async Task<string> GetBarColors()
-        => await JS.InvokeAsync<string>(JSGetBarColorsMethod)
-            .ConfigureAwait(true);
-
-    protected override Task DisposeAsyncCore()
-    {
-        _settings.Dispose();
-        return base.DisposeAsyncCore();
+        ComputedTheme = services.StateFactory().NewComputed<(Theme?, Theme)>(new () {
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = StateCategories.Get(GetType(), nameof(ComputedTheme)),
+        }, async (_, cancellationToken) => {
+            await BrowserInfo.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+            var theme = await Theme.Use(cancellationToken).ConfigureAwait(false);
+            var defaultTheme = await DefaultTheme.Use(cancellationToken).ConfigureAwait(false);
+            return (theme, theme ?? defaultTheme);
+        });
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        Log.LogInformation("Worker started");
-        await _settings.WhenFirstTimeRead.ConfigureAwait(false);
-        Log.LogInformation("State first time read");
+        await WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await ComputedTheme.WhenSynchronized(cancellationToken).ConfigureAwait(false);
 
-        await foreach (var cTheme in Settings.Changes(cancellationToken).ConfigureAwait(false)) {
-            Log.LogInformation("State change. Theme: '{Theme}'", cTheme.Value.Theme);
-            await ApplyTheme(cTheme.Value.Theme.GetValueOrDefault(DefaultTheme)).ConfigureAwait(false);
+        var lastTheme = ComputedTheme.Value;
+        var (theme, finalTheme) = lastTheme;
+        await ApplyTheme(theme, finalTheme).ConfigureAwait(false);
+
+        await foreach (var cTheme in ComputedTheme.Changes(cancellationToken).ConfigureAwait(false)) {
+            (theme, finalTheme) = cTheme.Value;
+            if ((theme, finalTheme) == lastTheme)
+                continue;
+
+            Log.LogInformation("Theme changed: ({Theme}, {AppliedTheme})", theme, finalTheme);
+            lastTheme = (theme, finalTheme);
+            await ApplyTheme(theme, finalTheme).ConfigureAwait(false);
         }
     }
 
-    private Task ApplyTheme(Theme theme)
-        => Dispatcher.InvokeAsync(async () => {
-            var isInitialized = _whenReadySource.TrySetResult();
-            if (_appliedTheme == theme) {
-                if (isInitialized)
-                    OnThemeApplied(theme);
-                return;
-            }
-
-            var oldTheme = _appliedTheme;
-            _appliedTheme = theme;
-            try {
-                await JS.InvokeVoidAsync(JSReplaceMethod, oldTheme.ToCssClass(), theme.ToCssClass())
-                    .ConfigureAwait(false);
-                OnThemeApplied(theme);
-            }
-            catch (Exception e) when (e is not OperationCanceledException) {
-                Log.LogError(e, "Failed to apply the new theme");
-            }
-        });
-
-    private void OnThemeApplied(Theme theme)
+    private async Task ApplyTheme(Theme? theme, Theme finalTheme)
     {
-        foreach (var handler in ApplyThemeHandlers)
+        try {
+            var colors = await JS
+                .InvokeAsync<string>(JSSetMethod, theme?.ToString().ToLowerInvariant())
+                .ConfigureAwait(false);
+            InvokeThemeHandlers(finalTheme, colors);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogError(e, "Failed to apply theme");
+        }
+    }
+
+    private void InvokeThemeHandlers(Theme theme, string colors)
+    {
+        foreach (var handler in ThemeHandlers)
             try {
-                handler(theme);
+                handler.Invoke(theme, colors);
             }
-            catch(Exception e) {
-                Log.LogError(e, "An error occurred on OnThemeApplied");
+            catch (Exception e) {
+                Log.LogError(e, "Theme handler of type {Type} failed", handler.GetType().GetName());
             }
     }
 }

@@ -5,6 +5,7 @@ import { Interactive } from 'interactive';
 import { ScreenSize } from '../ScreenSize/screen-size';
 import { Log } from 'logging';
 import { DocumentEvents } from 'event-handling';
+import {Theme} from "theme";
 
 const { infoLog } = Log.get('BrowserInfo');
 
@@ -33,6 +34,8 @@ export class BrowserInfo {
             screenSizeText: ScreenSize.size,
             isVisible: !document.hidden,
             isHoverable: ScreenSize.isHoverable,
+            theme: Theme.theme,
+            defaultTheme: Theme.defaultTheme,
             utcOffset: this.utcOffset,
             isMobile: DeviceInfo.isMobile,
             isAndroid: DeviceInfo.isAndroid,
@@ -57,12 +60,17 @@ export class BrowserInfo {
 
     private static onScreenSizeChanged(screenSize: string, isHoverable: boolean): void {
         infoLog?.log(`onScreenSizeChanged, screenSize:`, screenSize);
-        this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable);
+        this.backendRef?.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable);
     };
 
     private static onVisibilityChanged(): void {
         infoLog?.log(`onVisibilityChanged, visible:`, !document.hidden);
-        this.backendRef.invokeMethodAsync('OnIsVisibleChanged', !document.hidden);
+        this.backendRef?.invokeMethodAsync('OnIsVisibleChanged', !document.hidden);
+    };
+
+    public static onDefaultThemeChanged(defaultTheme: string): void {
+        infoLog?.log(`onDefaultThemeChanged:`, defaultTheme);
+        this.backendRef?.invokeMethodAsync('OnDefaultThemeChanged', defaultTheme);
     };
 
     private static initBodyClasses() {
@@ -109,6 +117,8 @@ export interface InitResult {
     screenSizeText: string;
     isVisible: boolean,
     isHoverable: boolean,
+    theme: string | null,
+    defaultTheme: string,
     utcOffset: number;
     isMobile: boolean;
     isAndroid: boolean;

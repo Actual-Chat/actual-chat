@@ -42,7 +42,6 @@ export type LogScope =
     | 'KeepAwakeUI'
     | 'LanguageUI'
     | 'NotificationUI'
-    | 'ThemeUI'
     | 'TuneUI'
     | 'UserActivityUI'
     | 'VibrationUI'
@@ -81,6 +80,7 @@ export type LogScope =
     | 'SideNav'
     | 'SelectionHost'
     | 'TextBox'
+    | 'Theme'
     | 'TooltipHost'
     | 'UserInterface'
     | 'VisualMediaViewer';

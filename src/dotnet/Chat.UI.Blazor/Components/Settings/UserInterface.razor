@@ -35,7 +35,10 @@
 </Tile>
 
 @code {
-    private static readonly string JSFontSizesClassName = $"{ChatBlazorUIModule.ImportName}.UserInterface.fontSizes";
+    private static readonly string JSFontSizesClassName = "FontSizes";
+    private static readonly string JSFontSizeListMethod = $"{JSFontSizesClassName}.list";
+    private static readonly string JSFontSizeGetMethod = $"{JSFontSizesClassName}.get";
+    private static readonly string JSFontSizeSetMethod = $"{JSFontSizesClassName}.set";
 
     private FormModel _formModel = null!;
     private string? _fontSize;
@@ -54,14 +57,14 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            _fontSizes = await JS.InvokeAsync<Dictionary<string, string>>($"{JSFontSizesClassName}.list");
-            _fontSize = await JS.InvokeAsync<string>($"{JSFontSizesClassName}.get");
+            _fontSizes = await JS.InvokeAsync<Dictionary<string, string>>(JSFontSizeListMethod);
+            _fontSize = await JS.InvokeAsync<string>(JSFontSizeGetMethod);
             StateHasChanged();
         }
     }
 
     private async ValueTask OnFontSizeChanged(string fontSize) {
-        await JS.InvokeAsync<string>($"{JSFontSizesClassName}.set", fontSize);
+        await JS.InvokeAsync<string>(JSFontSizeSetMethod, fontSize);
         StateHasChanged();
     }
 

@@ -9,6 +9,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
     private readonly IMutableState<bool> _isVisible;
+    private readonly IMutableState<Theme> _defaultTheme;
 
     protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
     protected readonly object Lock = new();
@@ -25,6 +26,8 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public IState<ScreenSize> ScreenSize => _screenSize;
     public IState<bool> IsHoverable => _isHoverable;
     public IState<bool> IsVisible => _isVisible;
+    public IMutableState<Theme?> Theme { get; }
+    public IState<Theme> DefaultTheme => _defaultTheme;
     public TimeSpan UtcOffset { get; protected set; }
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
@@ -50,6 +53,8 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         _screenSize = stateFactory.NewMutable<ScreenSize>();
         _isHoverable = stateFactory.NewMutable(false);
         _isVisible = stateFactory.NewMutable(true);
+        Theme = stateFactory.NewMutable<Theme?>();
+        _defaultTheme = stateFactory.NewMutable<Theme>();
     }
 
     public void Dispose()
@@ -71,6 +76,8 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
             screenSize = Blazor.Services.ScreenSize.Unknown;
 
+        Theme.Value = Enum.TryParse<Theme>(initResult.Theme ?? "", true, out var theme) ? theme : null;
+        _defaultTheme.Value = Enum.TryParse(initResult.DefaultTheme, true, out theme) ? theme : default;
         Update(screenSize, initResult.IsHoverable, initResult.IsVisible);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
@@ -95,6 +102,10 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     [JSInvokable]
     public void OnIsVisibleChanged(bool isVisible)
         => Update(isVisible: isVisible);
+
+    [JSInvokable]
+    public void OnDefaultThemeChanged(string defaultTheme)
+        => _defaultTheme.Value = Enum.TryParse<Theme>(defaultTheme, true, out var theme) ? theme : default;
 
     // Protected methods
 
