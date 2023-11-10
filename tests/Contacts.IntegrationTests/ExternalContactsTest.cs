@@ -405,6 +405,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         return ids.Where(x => x.ChatId.Kind == ChatKind.Peer && !Constants.Chat.SystemChatIds.Contains(x.ChatId)).ToList();
     }
 
+
     private static ExternalContact NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (new ExternalContactId(owner.Id, ownerDeviceId, NewDeviceContactId()));
 

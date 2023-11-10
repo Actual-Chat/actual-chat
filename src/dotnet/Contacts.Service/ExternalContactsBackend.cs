@@ -76,9 +76,6 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             return default!;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
         var result = new List<Result<ExternalContact?>>(command.Changes.Count);
         foreach (var itemChange in command.Changes)
             try {
@@ -102,6 +99,9 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             id.Require();
             ownerId.Require();
             change.RequireValid();
+
+            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
 
             var dbExternalContact = await dbContext.ExternalContacts.ForUpdate()
                 .Include(x => x.ExternalContactLinks)

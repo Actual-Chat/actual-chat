@@ -1,6 +1,8 @@
 using ActualChat.App.Wasm;
 using ActualChat.App.Server;
+using ActualChat.UI;
 using ActualChat.Users;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Testing.Host;
@@ -25,7 +27,6 @@ public interface IWebClientTester : IWebTester
 
 public class WebClientTester : IWebClientTester
 {
-    private readonly bool _mustDisposeClientServices;
     private readonly Lazy<IServiceProvider> _clientServicesLazy;
 
     public AppHost AppHost { get; }
@@ -40,14 +41,13 @@ public class WebClientTester : IWebClientTester
     public ICommander ClientCommander => ClientServices.Commander();
     public IAuth ClientAuth => ClientServices.GetRequiredService<IAuth>();
 
-    public WebClientTester(AppHost appHost, IServiceProvider? clientServices = null)
+    public WebClientTester(AppHost appHost, Action<IServiceCollection>? configureClientServices = null)
     {
         AppHost = appHost;
         Session = Session.New();
         var sessionInfo = Commander.Call(new AuthBackend_SetupSession(Session)).Result;
         sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
-        _mustDisposeClientServices = clientServices == null;
-        _clientServicesLazy = new Lazy<IServiceProvider>(() => clientServices ?? CreateClientServices());
+        _clientServicesLazy = new Lazy<IServiceProvider>(() => CreateClientServices(configureClientServices));
     }
 
     public virtual void Dispose()
@@ -55,7 +55,7 @@ public class WebClientTester : IWebClientTester
 
     public virtual async ValueTask DisposeAsync()
     {
-        if (!_mustDisposeClientServices || !_clientServicesLazy.IsValueCreated)
+        if (!_clientServicesLazy.IsValueCreated)
             return;
 
         if (ClientServices is IAsyncDisposable ad)
@@ -64,7 +64,7 @@ public class WebClientTester : IWebClientTester
             d.Dispose();
     }
 
-    protected virtual IServiceProvider CreateClientServices()
+    protected virtual IServiceProvider CreateClientServices(Action<IServiceCollection>? configureClientServices)
     {
         var output = AppHost.Services.GetRequiredService<ITestOutputHelper>();
         var services = new ServiceCollection();
@@ -72,8 +72,20 @@ public class WebClientTester : IWebClientTester
         Program.ConfigureServices(services, configuration, UrlMapper.BaseUrl, true);
         services.ConfigureLogging(output); // Override logging
 
+        services.AddSingleton<IDispatcherResolver>(c => new TestDispatcherResolver(c));
+
+        configureClientServices?.Invoke(services);
+
         var serviceProvider = services.BuildServiceProvider();
         serviceProvider.HostedServices().Start().Wait();
         return serviceProvider;
     }
+}
+
+public class TestDispatcherResolver(IServiceProvider services) : IDispatcherResolver
+{
+    public IServiceProvider Services { get; } = services;
+    public Task WhenReady { get; } = Task.CompletedTask;
+    public Dispatcher Dispatcher { get; } = Dispatcher.CreateDefault();
+    public CancellationToken StopToken { get; } = CancellationToken.None;
 }

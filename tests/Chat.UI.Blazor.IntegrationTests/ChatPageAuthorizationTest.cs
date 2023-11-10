@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Http;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
-public class ChatPageAuthorizationTest : AppHostTestBase
+public class ChatPageAuthorizationTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
     private const string ChatId = "the-actual-one";
 
@@ -14,8 +14,6 @@ public class ChatPageAuthorizationTest : AppHostTestBase
     private TestSettings _testSettings = null!;
     private IAccounts _accounts = null!;
     private Session _adminSession = null!;
-
-    public ChatPageAuthorizationTest(ITestOutputHelper @out) : base(@out) { }
 
     public override async Task InitializeAsync()
     {

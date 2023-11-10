@@ -98,7 +98,9 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
         IEnumerable<ExternalContactChange> ToChanges(
             IEnumerable<ExternalContact> externalContacts,
             Func<ExternalContact, Change<ExternalContact>> toChange)
-            => externalContacts.Select(x => new ExternalContactChange(x.Id, x.Version, toChange(x)));
+        {
+            return externalContacts.Select(x => new ExternalContactChange(x.Id, x.Version, toChange(x)));
+        }
     }
 
     private Task<Computed<AccountFull>> WhenAuthenticated(CancellationToken cancellationToken)

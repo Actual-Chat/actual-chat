@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\dotnet\Contacts\Contacts.csproj" />
     <ProjectReference Include="..\..\src\dotnet\Core\Core.csproj" />
   </ItemGroup>
 
