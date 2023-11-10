@@ -229,8 +229,8 @@
     --text-banner-success: var(--green-40);
     --background-banner-info: var(--blue-99);
     --text-banner-info: var(--blue-50);
-    --background-banner-warning: var(--sienna-90);
-    --text-banner-warning: var(--sienna-50);
+    --background-banner-warning: var(--orange-95);
+    --text-banner-warning: var(--orange-50);
     --background-banner-error: var(--red-99);
     --text-banner-error: var(--magenta-60);
 
@@ -332,7 +332,7 @@
     --place: var(--indigo-80);
     --menuitem-hover: var(--blue-50-10);
     --menuitem-hover-warning: var(--magenta-50-10);
-    --bubble: var(--indigo-70);
+    --bubble: var(--indigo-60);
     --bubble-text: var(--white);
     --bubble-btn-hover: var(--black-10);
     --reaction-own: var(--blue-50-20);
@@ -370,8 +370,8 @@
     --text-banner-success: var(--emerald-80);
     --background-banner-info: var(--blue-20);
     --text-banner-info: var(--blue-60);
-    --background-banner-warning: var(--sienna-20);
-    --text-banner-warning: var(--sienna-90);
+    --background-banner-warning: var(--orange-20);
+    --text-banner-warning: var(--orange-90);
     --background-banner-error: var(--magenta-20);
     --text-banner-error: var(--magenta-80);
 
@@ -390,8 +390,8 @@
     --secondary-hover: var(--blue-95);
     --secondary-title: var(--primary);
 
-    --cancel: var(--background-03);
-    --cancel-hover: var(--background-04);
+    --cancel: var(--ash-30);
+    --cancel-hover: var(--ash-40);
     --cancel-title: var(--background-06);
 
     --outline: var(--background-01);
@@ -456,7 +456,7 @@
     --code: var(--magenta-60);
     --avatar: var(--ash-70);
     --toggle: var(--ash-50);
-    --toggle-circle: var(--ash-30);
+    --toggle-circle: var(--ash-40);
     --toggle-on: var(--blue-60);
     --message-hover: var(--ash-99-08);
     --mention-message: #FFF7ED;

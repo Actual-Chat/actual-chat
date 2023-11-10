@@ -3,7 +3,7 @@
     @apply flex-x items-center justify-start gap-x-2;
     @apply min-h-10;
     @apply px-4;
-    @apply bg-recording-countdown shadow-lg;
+    @apply bg-banner-warning shadow-lg;
     @apply animate-opacity-from-0;
 }
 .recording-sub-header.recording-elsewhere {
@@ -29,21 +29,31 @@
     text-decoration: none;
 }
 .recording-sub-header > .c-line-2 {
-    @apply flex-none flex-x items-center gap-x-1;
-    @apply px-4;
+    @apply flex-1 flex-x items-center gap-x-1;
 }
 .recording-sub-header > .c-line-1 .c-text,
 .recording-sub-header > .c-line-2 .c-text {
     @apply shrink-0;
+    @apply text-caption-4 text-banner-warning;
+}
+.recording-sub-header.recording-elsewhere > .c-line-1 .c-text,
+.recording-sub-header.recording-elsewhere > .c-line-2 .c-text {
+    @apply shrink-0;
     @apply text-caption-4 text-banner-error;
 }
 .recording-sub-header > .c-line-2 .c-text {
+    @apply text-banner-warning;
+}
+.recording-sub-header.recording-elsewhere > .c-line-2 .c-text {
     @apply text-banner-error;
 }
 .recording-sub-header > .c-line-1 .c-text.highlight {
     @apply shrink;
     @apply truncate;
     @apply text-caption-1;
+}
+.recording-sub-header .btn .btn-content {
+    @apply text-banner-error;
 }
 .recording-sub-header.recording-elsewhere .btn:hover {
     @apply brightness-125 ;
