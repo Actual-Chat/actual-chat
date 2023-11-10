@@ -11,7 +11,7 @@ public partial class BackgroundUI
         return (
             from chain in baseChains
             select chain
-                .Log(Log)
+                .Log(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
             ).RunIsolated(cancellationToken);
     }

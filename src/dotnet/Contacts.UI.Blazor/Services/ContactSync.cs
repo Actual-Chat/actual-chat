@@ -21,7 +21,7 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
     {
         var retryDelays = RetryDelaySeq.Exp(3, 600);
         return AsyncChainExt.From(TrySync)
-            .Log(Log)
+            .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .RunIsolated(cancellationToken);
     }
