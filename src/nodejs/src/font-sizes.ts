@@ -13,7 +13,7 @@ const AvailableSizes : { [title: string]: string } = {
     // '24px': '24px',
 }
 const Storage = globalThis?.localStorage;
-const IsEnabled = document?.body != null && Storage != null;
+const IsEnabled = window != null && Storage != null;
 
 export class FontSizes {
     public static init(): void {

@@ -157,7 +157,7 @@ export class BrowserInit {
 
     public static async reload(): Promise<void> {
         // Force stop recording before reload
-        warnLog.log('reloading...');
+        warnLog?.log('reloading...');
         await globalThis['opusMediaRecorder']?.stop();
         if (BrowserInit.isTerminated)
             return;
@@ -173,7 +173,7 @@ export class BrowserInit {
 
     public static terminate(): void {
         // Force stop recording
-        warnLog.log('terminate()');
+        warnLog?.log('terminate()');
         BrowserInit.isTerminated  = true;
 
         void AudioRecorder.terminate();

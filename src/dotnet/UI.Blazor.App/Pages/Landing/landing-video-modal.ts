@@ -178,8 +178,8 @@ export class LandingVideoModal {
             this.plug.classList.remove('flex');
             this.plug.hidden = true;
             this.video.hidden = false;
-            debugLog.log('onTouchEnd: tutorial video playback started.');
+            debugLog?.log('onTouchEnd: tutorial video playback started.');
         });
-        debugLog.log('onTouchEnd: tutorial video play...');
+        debugLog?.log('onTouchEnd: tutorial video play...');
     }
 }

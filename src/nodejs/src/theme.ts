@@ -6,7 +6,7 @@ const { debugLog } = Log.get('Theme');
 const StorageKey = 'ui.theme'
 const AvailableThemes = ['light', 'dark'];
 const Storage = globalThis?.localStorage;
-const IsEnabled = document?.body != null && Storage != null;
+const IsEnabled = window != null && Storage != null;
 
 export interface ThemeInfo {
     theme: string | null;
@@ -32,13 +32,14 @@ export class Theme {
         });
     }
 
-    public static set(theme: string | null) : void {
+    public static setTheme(theme: string | null) : void {
         if (!AvailableThemes.find(x => x === theme))
             theme = null;
 
         if (this.theme === theme)
             return;
 
+        debugLog?.log('setTheme:', theme);
         this.theme = theme;
         save(theme);
         this.apply();

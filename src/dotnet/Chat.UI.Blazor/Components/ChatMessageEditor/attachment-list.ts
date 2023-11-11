@@ -59,10 +59,10 @@ export class AttachmentList {
                 .then(isAdded => {
                     if (isAdded) {
                         addedBlobs++;
-                        debugLog.log(`added a blob: ${url}`);
+                        debugLog?.log(`added a blob: ${url}`);
                     }
                 })
-                .catch(e => errorLog.log('failed to add a blob', e))
+                .catch(e => errorLog?.log('failed to add a blob', e))
         }
         this.changed();
         return addedBlobs;

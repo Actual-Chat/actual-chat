@@ -40,13 +40,11 @@ public class MauiBrowserInfo : BrowserInfo
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
 
-        if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
-            screenSize = UI.Blazor.Services.ScreenSize.Unknown;
-
+        UpdateThemeInfo(initResult.ThemeInfo);
+        var screenSize = TryParseScreenSize(initResult.ScreenSizeText) ?? UI.Blazor.Services.ScreenSize.Unknown;
         Update(screenSize, initResult.IsHoverable, initResult.IsVisible);
         WindowId = initResult.WindowId;
         // We don't want to change any other properties here
-
         WhenReadySource.TrySetResult();
     }
 }

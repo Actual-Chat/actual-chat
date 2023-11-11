@@ -71,7 +71,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
 
-        _themeInfo.Value = ParseThemeInfo(initResult.ThemeInfo);
+        UpdateThemeInfo(initResult.ThemeInfo);
         var screenSize = TryParseScreenSize(initResult.ScreenSizeText) ?? Blazor.Services.ScreenSize.Unknown;
         Update(screenSize, initResult.IsHoverable, initResult.IsVisible);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
@@ -100,7 +100,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
 
     [JSInvokable]
     public void OnThemeChanged(IBrowserInfoBackend.ThemeInfo themeInfo)
-        => _themeInfo.Value = ParseThemeInfo(themeInfo);
+        => UpdateThemeInfo(themeInfo);
 
     // Protected & private methods
 
@@ -131,16 +131,16 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
             Services.GetRequiredService<ReconnectUI>().ReconnectWhenDisconnected(); // To reconnect on showing up
     }
 
-    private static ScreenSize? TryParseScreenSize(string? screenSize)
-        => Enum.TryParse<ScreenSize>(screenSize ?? "", true, out var v) ? v : null;
-
-    private static Theme? TryParseTheme(string? theme)
-        => Enum.TryParse<Theme>(theme ?? "", true, out var v) ? v : null;
-
-    private static ThemeInfo ParseThemeInfo(IBrowserInfoBackend.ThemeInfo themeInfo)
-        => new(
+    protected void UpdateThemeInfo(IBrowserInfoBackend.ThemeInfo themeInfo)
+        => _themeInfo.Value = new(
             TryParseTheme(themeInfo.Theme),
             TryParseTheme(themeInfo.DefaultTheme) ?? Theme.Light,
             TryParseTheme(themeInfo.CurrentTheme) ?? Theme.Light,
             themeInfo.Colors);
+
+    protected static ScreenSize? TryParseScreenSize(string? screenSize)
+        => Enum.TryParse<ScreenSize>(screenSize ?? "", true, out var v) ? v : null;
+
+    protected static Theme? TryParseTheme(string? theme)
+        => Enum.TryParse<Theme>(theme ?? "", true, out var v) ? v : null;
 }

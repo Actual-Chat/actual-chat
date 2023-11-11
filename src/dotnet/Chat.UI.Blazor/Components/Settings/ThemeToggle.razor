@@ -1,9 +1,9 @@
 @inherits ComputedStateComponent<Theme>
 @{
-    var isDark = State.Value is Theme.Dark;
+    var isDark = State.Value == Theme.Dark;
 }
 
-<Toggle IsChecked="@isDark" IsCheckedChanged="OnThemeChanged"/>
+<Toggle IsChecked="@isDark" IsCheckedChanged="@(() => OnThemeChanged(!isDark))"/>
 
 @code {
     [Inject] ThemeUI ThemeUI { get; init; } = null!;
@@ -20,9 +20,6 @@
         return themeInfo.CurrentTheme;
     }
 
-    private void OnThemeChanged()
-        => ThemeUI.SetTheme(State.Value switch {
-            Theme.Light => Theme.Dark,
-            _ => Theme.Light,
-        });
+    private void OnThemeChanged(bool isDark)
+        => ThemeUI.SetTheme(isDark ? Theme.Dark : Theme.Light);
 }

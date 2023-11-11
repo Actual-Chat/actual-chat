@@ -264,7 +264,7 @@ export class VirtualList {
             const removedCount = mutations.reduce((prev, m) => prev + m.removedNodes.length, 0);
             const addedCount = mutations.reduce((prev, m) => prev + m.addedNodes.length, 0);
             const queryDuration = Math.max(0, startedAt - (this._lastQueryTime ?? startedAt));
-            debugLog.log(
+            debugLog?.log(
                 `onItemSetChange: query duration: `, queryDuration,
                 '; added: ', addedCount,
                 '; removed: ', removedCount,

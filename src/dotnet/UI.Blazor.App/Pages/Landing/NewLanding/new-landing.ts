@@ -152,9 +152,9 @@ export class NewLanding {
             if (!isVideoPlaying) {
                 this.isVideoPlayStarted = true;
                 void cardVideo.play().then(_ => {
-                    debugLog.log('onTouchEnd: card video playback started.');
+                    debugLog?.log('onTouchEnd: card video playback started.');
                 });
-                debugLog.log('onTouchEnd: card video play...');
+                debugLog?.log('onTouchEnd: card video play...');
             }
         }
     }
