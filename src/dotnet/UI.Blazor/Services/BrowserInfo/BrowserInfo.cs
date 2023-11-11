@@ -9,7 +9,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
     private readonly IMutableState<bool> _isVisible;
-    private readonly IMutableState<Theme> _defaultTheme;
+    private readonly IMutableState<ThemeInfo> _themeInfo;
 
     protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
     protected readonly object Lock = new();
@@ -26,8 +26,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public IState<ScreenSize> ScreenSize => _screenSize;
     public IState<bool> IsHoverable => _isHoverable;
     public IState<bool> IsVisible => _isVisible;
-    public IMutableState<Theme?> Theme { get; }
-    public IState<Theme> DefaultTheme => _defaultTheme;
+    public IState<ThemeInfo> ThemeInfo => _themeInfo;
     public TimeSpan UtcOffset { get; protected set; }
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
@@ -53,8 +52,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         _screenSize = stateFactory.NewMutable<ScreenSize>();
         _isHoverable = stateFactory.NewMutable(false);
         _isVisible = stateFactory.NewMutable(true);
-        Theme = stateFactory.NewMutable<Theme?>();
-        _defaultTheme = stateFactory.NewMutable<Theme>();
+        _themeInfo = stateFactory.NewMutable(Blazor.Services.ThemeInfo.Default);
     }
 
     public void Dispose()
@@ -73,11 +71,8 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
 
-        if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
-            screenSize = Blazor.Services.ScreenSize.Unknown;
-
-        Theme.Value = Enum.TryParse<Theme>(initResult.Theme ?? "", true, out var theme) ? theme : null;
-        _defaultTheme.Value = Enum.TryParse(initResult.DefaultTheme, true, out theme) ? theme : default;
+        _themeInfo.Value = ParseThemeInfo(initResult.ThemeInfo);
+        var screenSize = TryParseScreenSize(initResult.ScreenSizeText) ?? Blazor.Services.ScreenSize.Unknown;
         Update(screenSize, initResult.IsHoverable, initResult.IsVisible);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
@@ -104,10 +99,10 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         => Update(isVisible: isVisible);
 
     [JSInvokable]
-    public void OnDefaultThemeChanged(string defaultTheme)
-        => _defaultTheme.Value = Enum.TryParse<Theme>(defaultTheme, true, out var theme) ? theme : default;
+    public void OnThemeChanged(IBrowserInfoBackend.ThemeInfo themeInfo)
+        => _themeInfo.Value = ParseThemeInfo(themeInfo);
 
-    // Protected methods
+    // Protected & private methods
 
     protected void Update(ScreenSize? screenSize = null, bool? isHoverable = null, bool? isVisible = null)
     {
@@ -135,4 +130,17 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         if (becameVisible)
             Services.GetRequiredService<ReconnectUI>().ReconnectWhenDisconnected(); // To reconnect on showing up
     }
+
+    private static ScreenSize? TryParseScreenSize(string? screenSize)
+        => Enum.TryParse<ScreenSize>(screenSize ?? "", true, out var v) ? v : null;
+
+    private static Theme? TryParseTheme(string? theme)
+        => Enum.TryParse<Theme>(theme ?? "", true, out var v) ? v : null;
+
+    private static ThemeInfo ParseThemeInfo(IBrowserInfoBackend.ThemeInfo themeInfo)
+        => new(
+            TryParseTheme(themeInfo.Theme),
+            TryParseTheme(themeInfo.DefaultTheme) ?? Theme.Light,
+            TryParseTheme(themeInfo.CurrentTheme) ?? Theme.Light,
+            themeInfo.Colors);
 }

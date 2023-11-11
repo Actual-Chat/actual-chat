@@ -5,9 +5,6 @@ namespace ActualChat.App.Maui;
 public class MauiThemeHandler
 {
     private const string PreferencesKey = "Theme_Colors";
-    private string _lastAppliedColors = "";
-    private ILogger? _log;
-
     public static readonly MauiThemeHandler Instance =
 #if ANDROID
         new AndroidThemeHandler();
@@ -15,10 +12,10 @@ public class MauiThemeHandler
         new();
 #endif
 
-    protected ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(GetType());
+    private string _lastAppliedColors = "";
+    private ILogger? _log;
 
-    protected MauiThemeHandler()
-    { }
+    protected ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(GetType());
 
     public void TryRestoreLastTheme()
     {
@@ -26,10 +23,10 @@ public class MauiThemeHandler
         ApplyColors(colors);
     }
 
-    public void OnThemeChanged(Theme theme, string colors)
+    public void OnThemeChanged(ThemeInfo themeInfo)
     {
-        Preferences.Default.Set(PreferencesKey, colors);
-        ApplyColors(colors);
+        Preferences.Default.Set(PreferencesKey, themeInfo.Colors);
+        ApplyColors(themeInfo.Colors);
     }
 
     private void ApplyColors(string colors)

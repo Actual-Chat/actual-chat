@@ -119,6 +119,7 @@ public class AppServiceStarter
             await browserInfo.WhenReady.ConfigureAwait(false);
             Tracer.Point("BrowserInfo is ready");
 
+            Services.GetRequiredService<ThemeUI>().Start();
             var timeZoneConverter = Services.GetRequiredService<TimeZoneConverter>();
             if (timeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
                 serverSideTimeZoneConverter.Initialize(browserInfo.UtcOffset);
@@ -152,7 +153,6 @@ public class AppServiceStarter
     {
         // Starts in Blazor dispatcher
         try {
-            Services.GetRequiredService<ThemeUI>().Start();
             await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(true);
             _ = Services.GetRequiredService<OnboardingUI>().TryShow();
 

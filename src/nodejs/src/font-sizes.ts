@@ -12,6 +12,8 @@ const AvailableSizes : { [title: string]: string } = {
     '20px': '20px',
     // '24px': '24px',
 }
+const Storage = globalThis?.localStorage;
+const IsEnabled = document?.body != null && Storage != null;
 
 export class FontSizes {
     public static init(): void {
@@ -24,22 +26,22 @@ export class FontSizes {
     }
 
     public static get() : string {
-        const root = document?.querySelector(':root');
-        const rootStyle = window?.getComputedStyle(root);
-        if (!rootStyle)
-            return; // Nothing to do: there is no UI
+        if (!IsEnabled)
+            return null;
 
+        const root = document.querySelector(':root');
+        const rootStyle = window.getComputedStyle(root);
         const size = rootStyle.getPropertyValue('--font-size');
         return getValidOrDefault(size);
     }
 
     public static set(size: string) : void {
-        const root = document?.querySelector(':root');
-        const rootStyle = window?.getComputedStyle(root);
-        if (!rootStyle)
-            return; // Nothing to do: there is no UI
+        if (!IsEnabled)
+            return;
 
         size = getValidOrDefault(size);
+        const root = document.querySelector(':root');
+        const rootStyle = window.getComputedStyle(root);
         const rootFontSize = rootStyle.getPropertyValue('--font-size');
         if (rootFontSize != size) {
             (root as HTMLElement).style.setProperty('--font-size', size);
@@ -58,19 +60,12 @@ function getValidOrDefault(size: string) : string {
 }
 
 function load() : string | null {
-    const storage = globalThis?.localStorage;
-    if (!storage)
-        return null;
-
-    return storage.getItem(StorageKey);
+    return IsEnabled ? Storage.getItem(StorageKey) : null;
 }
 
 function save(size: string) : void {
-    const storage = globalThis?.localStorage;
-    if (!storage)
-        return null;
-
-    return storage.setItem(StorageKey, size);
+    if (IsEnabled)
+        Storage.setItem(StorageKey, size);
 }
 
 FontSizes.init();

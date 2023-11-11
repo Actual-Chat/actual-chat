@@ -4,7 +4,7 @@ public interface IBrowserInfoBackend
 {
     void OnScreenSizeChanged(string screenSizeText, bool isHoverable);
     void OnIsVisibleChanged(bool isVisible);
-    void OnDefaultThemeChanged(string defaultTheme);
+    void OnThemeChanged(ThemeInfo themeInfo);
 
     // Nested types
 
@@ -12,7 +12,7 @@ public interface IBrowserInfoBackend
         string ScreenSizeText,
         bool IsVisible,
         bool IsHoverable,
-        string? Theme,
+        ThemeInfo ThemeInfo,
         string DefaultTheme,
         double UtcOffset,
         bool IsMobile,
@@ -23,4 +23,10 @@ public interface IBrowserInfoBackend
         bool IsWebKit,
         bool IsTouchCapable,
         string WindowId);
+
+    public sealed record ThemeInfo(
+        string? Theme,
+        string DefaultTheme,
+        string CurrentTheme,
+        string Colors);
 }

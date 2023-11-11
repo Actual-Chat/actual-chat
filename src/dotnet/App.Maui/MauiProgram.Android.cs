@@ -29,7 +29,7 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c));
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
         services.AddScoped(c => new NativeGoogleAuth(c));
-        services.AddSingleton<Action<Theme, string>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
+        services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)

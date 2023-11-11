@@ -5,60 +5,91 @@ const { debugLog } = Log.get('Theme');
 
 const StorageKey = 'ui.theme'
 const AvailableThemes = ['light', 'dark'];
+const Storage = globalThis?.localStorage;
+const IsEnabled = document?.body != null && Storage != null;
+
+export interface ThemeInfo {
+    theme: string | null;
+    defaultTheme: string;
+    currentTheme: string;
+    colors: string;
+}
 
 export class Theme {
     public static theme : string | null = null;
-    public static defaultTheme : string;
-    public static appliedTheme = '';
+    public static defaultTheme = '';
+    public static currentTheme = '';
+    public static info: ThemeInfo = { theme: '', defaultTheme: '', currentTheme: '', colors: '' };
 
     public static init(): void {
+        this.theme = load();
         this.defaultTheme = detectDefaultTheme();
-        this.set(load());
+        this.apply(false);
         const defaultThemeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
         defaultThemeMediaQuery.addListener(_ => {
-            const defaultTheme = detectDefaultTheme();
-            if (Theme.defaultTheme !== defaultTheme) {
-                Theme.defaultTheme = defaultTheme;
-                BrowserInfo.onDefaultThemeChanged(defaultTheme);
-            }
+            Theme.defaultTheme = detectDefaultTheme();
+            this.apply();
         });
     }
 
-    public static set(theme: string | null) : string {
-        const classList = document?.body?.classList;
-        if (!classList)
-            return;
-
+    public static set(theme: string | null) : void {
         if (!AvailableThemes.find(x => x === theme))
             theme = null;
 
-        if (this.theme !== theme) {
-            save(theme);
-            this.theme = theme;
-        }
+        if (this.theme === theme)
+            return;
 
-        const appliedTheme = theme ?? this.defaultTheme;
-        if (this.appliedTheme !== appliedTheme) {
-            const oldClass = `theme-${this.appliedTheme}`;
-            const newClass = `theme-${appliedTheme}`;
-            classList.remove(oldClass);
-            classList.add(newClass);
-            this.appliedTheme = appliedTheme;
-        }
-        return this.getColors();
+        this.theme = theme;
+        save(theme);
+        this.apply();
     }
 
-    public static getColors() : string {
-        const style = getComputedStyle(document.body);
-        const headerColor = style.getPropertyValue('--background-01');
-        const postPanelColor = style.getPropertyValue('--post-panel');
-        return normalizeColor(headerColor) + ";" + normalizeColor(postPanelColor);
+    public static apply(mustNotify = true) : ThemeInfo {
+        this.currentTheme = this.theme ?? this.defaultTheme;
+        if (this.currentTheme === this.info.currentTheme && this.defaultTheme === this.info.defaultTheme)
+            return;
+
+        if (!IsEnabled)
+            return;
+
+        const classList = document.body.classList;
+        const oldClass = `theme-${this.info.currentTheme}`;
+        const newClass = `theme-${this.currentTheme}`;
+        classList.remove(oldClass);
+        classList.add(newClass);
+
+        this.info = createThemeInfo();
+        if (mustNotify)
+            BrowserInfo.onThemeChanged(this.info);
+    }
+
+}
+
+function createThemeInfo() : ThemeInfo {
+    return {
+        theme: Theme.theme,
+        defaultTheme: Theme.defaultTheme,
+        currentTheme: Theme.currentTheme,
+        colors: getColors(),
     }
 }
 
 function detectDefaultTheme() {
+    if (!IsEnabled)
+        return 'light';
+
     const defaultThemeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     return defaultThemeMediaQuery.matches ? 'dark' : 'light';
+}
+
+function getColors() : string {
+    if (!IsEnabled)
+        return '';
+
+    const style = getComputedStyle(document.body);
+    const headerColor = style.getPropertyValue('--background-01');
+    const postPanelColor = style.getPropertyValue('--post-panel');
+    return normalizeColor(headerColor) + ";" + normalizeColor(postPanelColor);
 }
 
 function normalizeColor(hexColor : string) : string {
@@ -68,19 +99,23 @@ function normalizeColor(hexColor : string) : string {
 }
 
 function load() : string | null {
-    const storage = globalThis?.localStorage;
-    if (!storage)
-        return null;
+    if (!IsEnabled)
+        return;
 
-    return storage.getItem(StorageKey);
+    const theme = Storage.getItem(StorageKey) ?? null;
+    debugLog?.log('load:', theme);
+    return theme;
 }
 
 function save(theme: string | null) : void {
-    const storage = globalThis?.localStorage;
-    if (!storage)
-        return null;
+    if (!IsEnabled)
+        return;
 
-    return storage.setItem(StorageKey, theme);
+    debugLog?.log('save:', theme);
+    if (theme)
+        Storage.setItem(StorageKey, theme);
+    else
+        Storage.removeItem(StorageKey);
 }
 
 Theme.init();
