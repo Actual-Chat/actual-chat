@@ -27,20 +27,14 @@ public partial class MauiBlazorWebViewHandler
         base.DisconnectHandler(platformView);
     }
 
-    private class WebViewClientOverride : WebViewClient
+    private class WebViewClientOverride(WebViewClient original, ILogger log, AndroidContentDownloader contentDownloader)
+        : WebViewClient
     {
         private const string AppHostAddress = "0.0.0.0";
 
-        private WebViewClient Original { get; }
-        private ILogger Log { get; }
-        private AndroidContentDownloader ContentDownloader { get; }
-
-        public WebViewClientOverride(WebViewClient original, ILogger log, AndroidContentDownloader contentDownloader)
-        {
-            Original = original;
-            Log = log;
-            ContentDownloader = contentDownloader;
-        }
+        private WebViewClient Original { get; } = original;
+        private ILogger Log { get; } = log;
+        private AndroidContentDownloader ContentDownloader { get; } = contentDownloader;
 
         public override bool ShouldOverrideUrlLoading(WebView? view, IWebResourceRequest? request)
             => Original.ShouldOverrideUrlLoading(view, request);
@@ -57,9 +51,10 @@ public partial class MauiBlazorWebViewHandler
                 var (stream, mimeType) = ContentDownloader.OpenInputStream(requestUrl.EncodedPath!);
                 if (stream == null)
                     return null;
+
                 // Prevent response caching by WebView
                 var headers = new Dictionary<string, string>(StringComparer.Ordinal) {
-                    { cacheControlKey, "no-store, no-cache, max-age=0" }
+                    { cacheControlKey, "no-store, no-cache, max-age=0" },
                 };
                 return new WebResourceResponse(mimeType, null, 200, "OK", headers, stream);
             }

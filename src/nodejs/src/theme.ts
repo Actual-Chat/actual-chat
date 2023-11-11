@@ -60,7 +60,7 @@ export class Theme {
 
         this.info = createThemeInfo();
         if (mustNotify)
-            BrowserInfo.onThemeChanged(this.info);
+            void BrowserInfo.onThemeChanged(this.info);
     }
 
 }

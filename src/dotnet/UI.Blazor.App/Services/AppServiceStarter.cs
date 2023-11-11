@@ -66,6 +66,7 @@ public class AppServiceStarter
                 var accounts = Services.GetRequiredService<IAccounts>();
                 var contacts = Services.GetRequiredService<IContacts>();
                 Services.GetRequiredService<IChats>();
+                _ = Services.StateFactory().NewMutable<bool>();
 
                 // Preload own account
                 var ownAccountTask = accounts.GetOwn(session, cancellationToken);
@@ -193,6 +194,12 @@ public class AppServiceStarter
             tasks.Add(hostedService.StartAsync(default));
         }
         await Task.WhenAll(tasks).ConfigureAwait(false);
+    }
+
+    private static void WarmupFusion()
+    {
+
+
     }
 
     private static void WarmupByteSerializer()

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components.WebView;
 
 namespace ActualChat.App.Maui.Services;
 
-public class MauiNavigationInterceptor
+public class MauiNavigationInterceptor(IServiceProvider services)
 {
     // ReSharper disable once CollectionNeverUpdated.Local
     private static readonly HashSet<string> AllowedExternalHosts = MauiSettings.WebAuth.UseSystemBrowser
@@ -17,11 +17,8 @@ public class MauiNavigationInterceptor
     private bool _isOnLocalUri = true;
     private ILogger? _log;
 
-    private IServiceProvider Services { get; } // This is root IServiceProvider!
+    private IServiceProvider Services { get; } = services; // This is root IServiceProvider!
     private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    public MauiNavigationInterceptor(IServiceProvider services)
-        => Services = services;
 
     public void TryIntercept(Uri uri, UrlLoadingEventArgs eventArgs)
     {
