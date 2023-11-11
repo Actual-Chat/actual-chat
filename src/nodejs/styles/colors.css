@@ -285,7 +285,7 @@
     --recorder-on-top: var(--magenta-60);
     --recorder-on-bottom: var(--violet-60);
     --recorder-on-middle: var(--magenta-50);
-    --audio-panel-button: rgba(0,0,0,0);
+    --audio-panel-button: var(--white);
     --audio-panel-button-text: var(--gray-40);
 
     /* Download Banner */
