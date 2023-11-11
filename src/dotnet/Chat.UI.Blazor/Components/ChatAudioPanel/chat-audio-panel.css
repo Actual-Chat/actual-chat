@@ -79,8 +79,8 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .playback-wrapper .btn.btn-round.on .btn-content {
     @apply bg-playback-on;
 }
-.playback-wrapper.listen-off-to-on .btn.btn-round,
-.playback-wrapper.listen-on .btn.btn-round {
+.playback-wrapper.listen-off-to-on,
+.playback-wrapper.listen-on {
     @apply outline outline-1 outline-primary outline-offset-0;
     @apply bg-round-focus;
 }
