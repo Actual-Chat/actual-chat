@@ -16,10 +16,10 @@ export interface ThemeInfo {
 }
 
 export class Theme {
-    public static theme : string | null = null;
+    public static theme : string | null;
     public static defaultTheme = '';
     public static currentTheme = '';
-    public static info: ThemeInfo = { theme: '', defaultTheme: '', currentTheme: '', colors: '' };
+    public static info: ThemeInfo = null;
 
     public static init(): void {
         this.theme = load();
@@ -32,7 +32,7 @@ export class Theme {
         });
     }
 
-    public static setTheme(theme: string | null) : void {
+    public static set(theme: string | null) : void {
         if (!AvailableThemes.find(x => x === theme))
             theme = null;
 
@@ -45,19 +45,18 @@ export class Theme {
         this.apply();
     }
 
-    public static apply(mustNotify = true) : ThemeInfo {
+    private static apply(mustNotify = true) : ThemeInfo {
         this.currentTheme = this.theme ?? this.defaultTheme;
-        if (this.currentTheme === this.info.currentTheme && this.defaultTheme === this.info.defaultTheme)
+        if (this.currentTheme === this.info?.currentTheme && this.defaultTheme === this.info?.defaultTheme)
             return;
 
-        if (!IsEnabled)
-            return;
-
-        const classList = document.body.classList;
-        const oldClass = `theme-${this.info.currentTheme}`;
-        const newClass = `theme-${this.currentTheme}`;
-        classList.remove(oldClass);
-        classList.add(newClass);
+        if (IsEnabled) {
+            const classList = document.body.classList;
+            const oldClass = `theme-${this.info.currentTheme}`;
+            const newClass = `theme-${this.currentTheme}`;
+            classList.remove(oldClass);
+            classList.add(newClass);
+        }
 
         this.info = createThemeInfo();
         if (mustNotify)
