@@ -47,7 +47,7 @@ export class BrowserInfo {
             windowId: this.windowId,
         };
         infoLog?.log(`init:`, JSON.stringify(initResult), appKind);
-        await this.backendRef.invokeMethodAsync('OnInitialized', initResult);
+        void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
         this.whenReady.resolve(undefined);
 
         ScreenSize.change$.subscribe(_ => void this.onScreenSizeChanged(ScreenSize.size, ScreenSize.isHoverable));
