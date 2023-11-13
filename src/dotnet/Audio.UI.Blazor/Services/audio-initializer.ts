@@ -51,9 +51,13 @@ export class AudioInitializer {
     public static async setBackgroundState(backgroundState: BackgroundState): Promise<void> {
         infoLog?.log(`setBackgroundState:`, backgroundState);
         this.backgroundState = backgroundState;
-        if (backgroundState === 'Foreground' || backgroundState === 'BackgroundActive')
+        if (backgroundState === 'Foreground' || backgroundState === 'BackgroundActive') {
             await audioContextSource.resumeAudio();
-        else
+            await opusMediaRecorder.reconnect();
+        }
+        else {
             await audioContextSource.suspendAudio();
+            await opusMediaRecorder.disconnect();
+        }
     }
 }

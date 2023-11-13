@@ -8,6 +8,7 @@ export interface OpusEncoderWorker {
     setSessionToken(sessionToken: string, noWait?: RpcNoWait): Promise<void>;
     stop(): Promise<void>;
     reconnect(noWait?: RpcNoWait): Promise<void>;
+    disconnect(noWait?: RpcNoWait): Promise<void>;
 
     onEncoderWorkletSamples(buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void>;
     onVoiceActivityChange(change: VoiceActivityChange, noWait?: RpcNoWait): Promise<void>;

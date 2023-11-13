@@ -23,7 +23,7 @@ import {VoiceActivityChange} from './audio-vad-contract';
 import {RecorderStateEventHandler} from "../opus-media-recorder-contracts";
 import {Log} from 'logging';
 
-const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
+const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
 /// #if MEM_LEAK_DETECTION
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
@@ -126,6 +126,8 @@ const serverImpl: OpusEncoderWorker = {
         lastInitArguments = { chatId, repliedChatEntryId };
         debugLog?.log(`start`);
 
+        if (hubConnection.state !== HubConnectionState.Connected)
+            await serverImpl.reconnect();
         state = 'encoding';
         if (vadState === 'voice')
             await startRecording();
@@ -148,6 +150,7 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     reconnect: async (_noWait?: RpcNoWait): Promise<void> => {
+        infoLog?.log(`reconnect: `, hubConnection.state);
         if (hubConnection.state === HubConnectionState.Connected)
             return;
 
@@ -170,6 +173,11 @@ const serverImpl: OpusEncoderWorker = {
             await hubConnection.start();
         }
         void onReconnect();
+    },
+
+    disconnect: async (_noWait?: RpcNoWait): Promise<void> => {
+        infoLog?.log(`disconnect: `, hubConnection.state);
+        await hubConnection.stop();
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
