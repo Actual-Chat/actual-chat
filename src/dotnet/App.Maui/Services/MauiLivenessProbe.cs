@@ -14,26 +14,28 @@ public class MauiLivenessProbe : WorkerBase
     private static readonly int DisconnectedCheckCount = 2; // 1s more
 
     private static readonly object _lock = new();
-    private static MauiLivenessProbe? _instance;
+    private static MauiLivenessProbe? _current;
     private static volatile bool _isVeryFirstCheck = true;
     private static ILogger? _log;
 
     private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<MauiLivenessProbe>();
 
+    public static MauiLivenessProbe? Current => _current;
+
     public static void Check()
     {
         lock (_lock)
-            _instance ??= new MauiLivenessProbe();
+            _current ??= new MauiLivenessProbe();
     }
 
-    public static void CancelCheck(MauiLivenessProbe? instance = null)
+    public static void CancelCheck(MauiLivenessProbe? expectedCurrent = null)
     {
         lock (_lock) {
-            if (instance != null && instance != _instance)
+            if (expectedCurrent != null && expectedCurrent != _current)
                 return;
 
-            _instance.DisposeSilently();
-            _instance = null;
+            _current.DisposeSilently();
+            _current = null;
         }
     }
 
@@ -114,7 +116,7 @@ public class MauiLivenessProbe : WorkerBase
         }
 
         Log.LogError("WebView is dead, reloading...");
-        var appServices = await WhenAppServicesReady(CancellationToken.None).ConfigureAwait(false);
+        var appServices = await WhenAppServicesReady(cancellationToken).ConfigureAwait(false);
         appServices.GetRequiredService<ReloadUI>().Reload();
     }
 
