@@ -72,7 +72,6 @@
     <PackageVersion Include="Twilio" Version="6.7.0" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="6.32.0" />
     <PackageVersion Include="libphonenumber-csharp" Version="8.13.22" />
-    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.9.0.2" />
   </ItemGroup>
   <!--
     MAUI is not compatible with centralized packages management https://github.com/dotnet/sdk/issues/27840
@@ -153,6 +152,7 @@
     <!-- MAUI  -->
     <PackageVersion Include="banditoth.MAUI.DeviceId" Version="1.0.0" />
     <!-- MAUI - Android -->
+    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.9.0.2" />
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.4.0.1" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="117.0.1" />
     <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.1.1.1" />
