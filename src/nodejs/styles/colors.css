@@ -339,6 +339,12 @@
     --viewer-header: var(--black-50);
     --left-side-logo: var(--black);
     --link-preview-icon: var(--blue-70);
+
+    /* Specific colors */
+    --cat-color-01: var(--gray-70);
+    --cat-color-02: var(--gray-40);
+    --cat-color-03: var(--gray-30);
+    --cat-color-04: var(--white);
 }
 .theme-dark {
     /* Background */
@@ -480,4 +486,10 @@
     --reaction-own: var(--white-10);
     --viewer-header: var(--white-10);
     --left-side-logo: var(--white);
+
+    /* Specific colors */
+    --cat-color-01: var(--ash-80);
+    --cat-color-02: var(--ash-50);
+    --cat-color-03: var(--ash-30);
+    --cat-color-04: var(--white);
 }
