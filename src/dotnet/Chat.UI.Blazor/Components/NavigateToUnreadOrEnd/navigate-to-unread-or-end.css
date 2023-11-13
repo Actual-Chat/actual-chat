@@ -22,6 +22,7 @@
     @apply text-06 cursor-pointer;
 }
 .navigate-to-end .btn.btn-round {
+    @apply bg-cancel;
     @apply shadow-md md:shadow-none;
 }
 .navigate-to-end .btn.btn-round .btn-content {
