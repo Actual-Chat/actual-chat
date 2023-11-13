@@ -6,9 +6,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var canSave = MediaTypeExt.IsSupportedVisualMedia(ContentType) && !MediaTypeExt.IsSvg(ContentType);
-    if (HostInfo is { AppKind: AppKind.MauiApp,ClientKind: ClientKind.Ios } && MediaTypeExt.IsSupportedVideo(ContentType)) {
-        canSave = false; // TODO: temporary, support video
-    }
 }
 
 <div class="image-viewer-header">
