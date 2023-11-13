@@ -35,10 +35,12 @@ public static class ServiceCollectionExt
             return new ServiceDescriptor(serviceDescriptor.ServiceType,
                 serviceDescriptor.ImplementationFactory,
                 serviceLifetime);
+
         if (serviceDescriptor.ImplementationType != null)
             return new ServiceDescriptor(serviceDescriptor.ServiceType,
                 serviceDescriptor.ImplementationType,
                 serviceLifetime);
+
         return new ServiceDescriptor(serviceDescriptor.ServiceType,
             serviceDescriptor.ImplementationInstance!);
     }
