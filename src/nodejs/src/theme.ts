@@ -28,11 +28,11 @@ export class Theme {
         const defaultThemeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
         defaultThemeMediaQuery.addListener(_ => {
             Theme.defaultTheme = detectDefaultTheme();
-            this.apply();
+            Theme.apply();
         });
     }
 
-    public static set(theme: string | null) : void {
+    public static set(theme: string | null): void {
         if (!AvailableThemes.find(x => x === theme))
             theme = null;
 
@@ -45,14 +45,14 @@ export class Theme {
         this.apply();
     }
 
-    private static apply(mustNotify = true) : ThemeInfo {
+    private static apply(mustNotify = true): void {
         this.currentTheme = this.theme ?? this.defaultTheme;
         if (this.currentTheme === this.info?.currentTheme && this.defaultTheme === this.info?.defaultTheme)
             return;
 
         if (IsEnabled) {
             const classList = document.body.classList;
-            const oldClass = `theme-${this.info.currentTheme}`;
+            const oldClass = `theme-${this.info?.currentTheme ?? ''}`;
             const newClass = `theme-${this.currentTheme}`;
             classList.remove(oldClass);
             classList.add(newClass);
@@ -65,7 +65,7 @@ export class Theme {
 
 }
 
-function createThemeInfo() : ThemeInfo {
+function createThemeInfo(): ThemeInfo {
     return {
         theme: Theme.theme,
         defaultTheme: Theme.defaultTheme,
@@ -82,7 +82,7 @@ function detectDefaultTheme() {
     return defaultThemeMediaQuery.matches ? 'dark' : 'light';
 }
 
-function getColors() : string {
+function getColors(): string {
     if (!IsEnabled)
         return '';
 
@@ -92,13 +92,13 @@ function getColors() : string {
     return normalizeColor(headerColor) + ";" + normalizeColor(postPanelColor);
 }
 
-function normalizeColor(hexColor : string) : string {
+function normalizeColor(hexColor: string): string {
     if (hexColor && hexColor.length === 4)
         return '#' + hexColor[1] + hexColor[1] + hexColor[2] + hexColor[2] + hexColor[3] + hexColor[3];
     return hexColor;
 }
 
-function load() : string | null {
+function load(): string | null {
     if (!IsEnabled)
         return;
 
@@ -107,7 +107,7 @@ function load() : string | null {
     return theme;
 }
 
-function save(theme: string | null) : void {
+function save(theme: string | null): void {
     if (!IsEnabled)
         return;
 

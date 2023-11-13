@@ -2,7 +2,6 @@
 @using ActualChat.Module
 @using ActualChat.Security
 @implements IRootComponent
-@implements IDisposable
 @{
     if (_isPrerendering) {
         <NewLandingWeb/>
@@ -38,8 +37,6 @@
     private static Assembly UIAssembly { get; } = typeof(AppBase).Assembly;
     private static Assembly[] UIModuleAssemblies { get; set; } = null!;
 
-    private readonly CancellationTokenSource _disposeTokenSource;
-    private readonly CancellationToken _disposeToken;
     private bool _isPrerendering;
     private bool _readyToRender;
     private bool _shouldRender;
@@ -60,11 +57,8 @@
     [Parameter] public string SessionHash { get; set; } = "";
     [Parameter] public string SessionToken { get; set; } = "";
 
-    public AppBase() {
-        LoadingUI.MarkAppCreated();
-        _disposeTokenSource = new CancellationTokenSource();
-        _disposeToken = _disposeTokenSource.Token;
-    }
+    public AppBase()
+        => LoadingUI.MarkAppCreated();
 
     protected override void OnInitialized() {
         // Hit StaticImportsInitializer to make sure DefaultLog is set
@@ -106,19 +100,8 @@
         await prepareFirstRenderTask;
         _readyToRender = true;
         _shouldRender = true;
-        _ = AppServiceStarter.AfterFirstRender(_disposeToken);
+        _ = AppServiceStarter.AfterFirstRender(CircuitContext.StopToken);
     }
-
-    public void Dispose() {
-        if (_disposeToken.IsCancellationRequested)
-            return;
-
-        _disposeTokenSource.CancelAndDisposeSilently();
-        Dispose(true);
-    }
-
-    protected virtual void Dispose(bool disposing)
-        => CircuitContext.Dispose();
 
     public void SimulateCrash(Exception error) {
         _simulatedCrashError = error;

@@ -25,7 +25,7 @@ export class FontSizes {
         return AvailableSizes;
     }
 
-    public static get() : string {
+    public static get(): string {
         if (!IsEnabled)
             return null;
 
@@ -35,7 +35,7 @@ export class FontSizes {
         return getValidOrDefault(size);
     }
 
-    public static set(size: string) : void {
+    public static set(size: string): void {
         if (!IsEnabled)
             return;
 
@@ -55,15 +55,15 @@ function getDefault() {
     return DeviceInfo.isIos ? '18px' : '16px';
 }
 
-function getValidOrDefault(size: string) : string {
+function getValidOrDefault(size: string): string {
     return AvailableSizes[size] ?? getDefault();
 }
 
-function load() : string | null {
+function load(): string | null {
     return IsEnabled ? Storage.getItem(StorageKey) : null;
 }
 
-function save(size: string) : void {
+function save(size: string): void {
     if (IsEnabled)
         Storage.setItem(StorageKey, size);
 }

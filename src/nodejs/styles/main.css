@@ -29,12 +29,6 @@ body {
     }
 }
 
-/* Zoom */
-
-body.zoom-ios {
-    /* zoom: 1.125; */
-}
-
 /* Styled inputs */
 
 input.input-imprinted {
@@ -209,14 +203,15 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 }
 .fusion-close > .c-content {
     @apply flex-1 flex-y items-center justify-center gap-y-4;
+    @apply text-white;
 }
 .fusion-close > .c-content > .c-title {
     @apply flex-y items-center;
-    @apply text-3.5xl leading-9 text-06 font-normal;
+    @apply text-3.5xl leading-9 font-normal;
 }
 .fusion-close > .c-content > .c-footer {
     @apply flex-y items-center;
-    @apply text-lg text-06;
+    @apply text-lg;
 }
 
 /* Page with header and footer */

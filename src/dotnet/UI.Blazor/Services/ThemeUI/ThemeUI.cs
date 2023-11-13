@@ -3,7 +3,7 @@ namespace ActualChat.UI.Blazor.Services;
 public class ThemeUI(IServiceProvider services) : WorkerBase
 {
     private static readonly string JSThemeClassName = "window.Theme";
-    private static readonly string JSSetThemeMethod = $"{JSThemeClassName}.setTheme";
+    private static readonly string JSSetMethod = $"{JSThemeClassName}.set";
 
     private IEnumerable<Action<ThemeInfo>>? _themeHandlers;
     private BrowserInfo? _browserInfo;
@@ -23,7 +23,7 @@ public class ThemeUI(IServiceProvider services) : WorkerBase
     public ValueTask SetTheme(Theme? theme)
     {
         var sTheme = theme?.ToString().ToLowerInvariant();
-        return JS.InvokeVoidAsync(JSSetThemeMethod, sTheme);
+        return JS.InvokeVoidAsync(JSSetMethod, sTheme);
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)

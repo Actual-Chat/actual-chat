@@ -24,22 +24,21 @@ export class BrowserInit {
     public static connectionState = "";
     public static isTerminated = false;
 
-    public static async init(apiVersion: string, baseUri: string, sessionHash: string, browserInfoBackendRef: DotNet.DotNetObject, appKind: AppKind): Promise<void> {
-        if (this.whenInitialized.isCompleted()) {
-            errorLog?.log('init: already initialized, skipping');
-            return;
-        }
-
+    public static async init(
+        appKind: AppKind,
+        apiVersion: string,
+        baseUri: string,
+        sessionHash: string,
+        browserInfoBackendRef: DotNet.DotNetObject,
+    ): Promise<void> {
         try {
             infoLog?.log(`-> init, apiVersion: ${apiVersion}, baseUri: ${baseUri}, sessionHash: ${sessionHash}`);
             this.apiVersion = apiVersion;
             this.baseUri = baseUri;
             this.sessionHash = sessionHash;
-            if (DeviceInfo.isIos)
-                document.body.classList.add("zoom-ios");
             this.initWindowId();
             this.initAndroid();
-            BrowserInfo.init(browserInfoBackendRef, appKind);
+            await BrowserInfo.init(browserInfoBackendRef, appKind);
         }
         catch (e) {
             errorLog?.log('init: error:', e);

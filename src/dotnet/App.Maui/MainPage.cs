@@ -1,70 +1,59 @@
-using Microsoft.AspNetCore.Components.WebView;
-using ActualChat.App.Maui.Services;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.App.Maui;
 
-public partial class MainPage : ContentPage
+public class MainPage : ContentPage
 {
-    private MauiNavigationInterceptor? _navigationInterceptor;
-    private ILogger? _logger;
+    private static MainPage _current = null!;
 
-    // ReSharper disable once ConditionalAccessQualifierIsNonNullableAccordingToAPIContract
-    public static MainPage? Current => (MainPage?)App.Current?.MainPage;
+    public static MainPage Current => _current;
 
-    private Tracer Tracer { get; } = Tracer.Default[nameof(MainPage)];
-    private MauiNavigationInterceptor NavigationInterceptor =>
-        _navigationInterceptor ??= Services.GetRequiredService<MauiNavigationInterceptor>();
-    private ILogger Log =>
-        _logger ??= Services.LogFor(GetType());
+    public BlazorWebView BlazorWebView { get; private set; } = null!;
 
-    private IServiceProvider Services { get; } // This is root IServiceProvider!
-
-    public MainPage(IServiceProvider services)
+    public MainPage()
     {
-        Tracer.Point(".ctor");
-        Services = services;
         BackgroundColor = Color.FromRgb(0x44, 0x44, 0x44);
+        Interlocked.Exchange(ref _current, this);
         RecreateWebView();
     }
 
     public void RecreateWebView()
     {
-        if (Content is BlazorWebView oldWebView)
-            oldWebView.GetDisconnectMarker()?.MarkAsDisconnected();
-        var webView = new BlazorWebView {
+        MauiWebView.Current?.Deactivate();
+        var webView = BlazorWebView = new BlazorWebView {
             HostPage = "wwwroot/index.html",
         };
-        var disconnectMarker = new BlazorWebViewDisconnectMarker(webView);
-        webView.SetDisconnectMarker(disconnectMarker);
-        webView.BlazorWebViewInitializing += OnWebViewInitializing;
-        webView.BlazorWebViewInitialized += OnWebViewInitialized;
-        webView.UrlLoading += OnWebViewUrlLoading;
-        webView.Loaded += OnWebViewLoaded;
+        webView.BlazorWebViewInitializing += (_, ea) => MauiWebView.IfActive(webView)?.OnInitializing(ea);
+        webView.BlazorWebViewInitialized += (_, ea) => MauiWebView.IfActive(webView)?.OnInitialized(ea);
+        webView.UrlLoading += (_, ea) => MauiWebView.IfActive(webView)?.OnUrlLoading(ea);
+        webView.Loaded += (_, ea) => MauiWebView.IfActive(webView)?.OnLoaded(ea);
+        webView.Unloaded += (sender, ea) => {
+            // BlazorWebView.Handler.DisconnectHandler synchronously waits for DisposeAsync task completion,
+            // which may cause a deadlock on the main thread. We workaround it by:
+            // - Deactivating webView synchronously
+            // - Starting to dispose Handler._webViewManager in the main thread
+            // - Once it completes, we call DisconnectHandler, which shouldn't dispose anything at that point.
+            //
+            // See:
+            // - https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Windows/BlazorWebViewHandler.Windows.cs#L35
+            // - https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Android/BlazorWebViewHandler.Android.cs#L70
+            // - https://github.com/dotnet/aspnetcore/blob/main/src/Components/WebView/WebView/src/WebViewManager.cs#L264
+            // - https://github.com/dotnet/aspnetcore/blob/main/src/Components/WebView/WebView/src/PageContext.cs#L58
+            MauiWebView.IfActive(webView)?.Deactivate();
+            if (webView.Handler is not BlazorWebViewHandler handler)
+                return;
+
+            if (handler.GetWebViewManager() is { } webViewManager)
+                _ = MainThread.InvokeOnMainThreadAsync(async () => {
+                    await webViewManager.DisposeSilentlyAsync().ConfigureAwait(true);
+                    webView.Handler?.DisconnectHandler();
+                });
+        };
         webView.RootComponents.Add(
             new RootComponent {
                 ComponentType = typeof(MauiBlazorAppWrapper),
                 Selector = "#app",
-                Parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
-                    { nameof(MauiBlazorAppWrapper.DisconnectMarker), disconnectMarker }
-                }
             });
         Content = webView;
     }
-
-    public partial void SetupSessionCookie(Session session);
-
-    // Private methods
-
-    private partial void OnWebViewLoaded(object? sender, EventArgs e);
-
-    private void OnWebViewUrlLoading(object? sender, UrlLoadingEventArgs eventArgs)
-    {
-        var uri = eventArgs.Url;
-        NavigationInterceptor.TryIntercept(uri, eventArgs);
-        Tracer.Point($"{nameof(OnWebViewUrlLoading)}: Url: '{uri}' -> {eventArgs.UrlLoadingStrategy}");
-    }
-
-    private partial void OnWebViewInitializing(object? sender, BlazorWebViewInitializingEventArgs e);
-    private partial void OnWebViewInitialized(object? sender, BlazorWebViewInitializedEventArgs e);
 }

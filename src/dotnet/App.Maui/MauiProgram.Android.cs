@@ -45,7 +45,6 @@ public static partial class MauiProgram
             android.OnNewIntent(incomingShare.OnNewIntent);
             android.OnResume(AndroidLivenessProbe.Check);
             android.OnPause(AndroidLivenessProbe.AbortCheck);
-            android.OnStop(AndroidLivenessProbe.AbortCheck);
             android.OnActivityResult(OnActivityResult);
             android.OnBackPressed(activity => {
                 _ = HandleBackPressed(activity);
@@ -58,23 +57,14 @@ public static partial class MauiProgram
 
     private static async Task HandleBackPressed(Activity activity)
     {
-        var handler = ScopedServices.GetService<BackButtonHandler>();
-        if (handler != null) {
-            var eventArgs = new BackPressedEventArgs(MoveToBack);
-            handler.OnBackPressed(eventArgs);
-            if (eventArgs.Handled)
-                return;
-        }
-        var webView = MainPage.Current!.PlatformWebView;
-        var goBack = webView != null && await TryGoBack(webView).ConfigureAwait(false);
-        if (goBack)
+        var webView = MauiWebView.Current?.AndroidWebView;
+        var wentBack = webView != null && await TryGoBack(webView).ConfigureAwait(false);
+        if (wentBack)
             return;
-        MoveToBack();
 
-        void MoveToBack()
-            // Move app to background as Home button acts.
-            // It prevents scenario when app is running, but activity is destroyed.
-            => activity.MoveTaskToBack(true);
+        // Moves the app to the background as Home button acts.
+        // It handles the scenario when the app is running, but the activity is destroyed.
+        activity.MoveTaskToBack(true);
     }
 
     private static async Task<bool> TryGoBack(Android.Webkit.WebView webView)

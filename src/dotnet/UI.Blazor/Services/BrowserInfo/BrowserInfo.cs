@@ -1,11 +1,9 @@
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
 public class BrowserInfo : IBrowserInfoBackend, IDisposable
 {
-    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.BrowserInfo.init";
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
     private readonly IMutableState<bool> _isVisible;
@@ -13,15 +11,16 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
 
     protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
     protected readonly object Lock = new();
+    private HostInfo? _hostInfo;
+    private UICommander? _uiCommander;
+    private ILogger? _log;
 
     protected IServiceProvider Services { get; }
-    protected HostInfo HostInfo { get; }
-    protected IJSRuntime JS { get; }
-    protected UICommander UICommander { get; }
-    protected ILogger Log { get; }
+    protected HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    protected UICommander UICommander => _uiCommander ??= Services.GetRequiredService<UICommander>();
+    protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public DotNetObjectReference<IBrowserInfoBackend>? BackendRef { get; private set; }
-    public AppKind AppKind { get; }
+    public DotNetObjectReference<IBrowserInfoBackend> BackendRef { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ScreenSize> ScreenSize => _screenSize;
     public IState<bool> IsHoverable => _isHoverable;
@@ -41,13 +40,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public BrowserInfo(IServiceProvider services)
     {
         Services = services;
-        Log = services.LogFor(GetType());
-
-        HostInfo = services.GetRequiredService<HostInfo>();
-        JS = services.JSRuntime();
-        UICommander = services.GetRequiredService<UICommander>();
-        AppKind = HostInfo.AppKind;
-
+        BackendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         var stateFactory = services.StateFactory();
         _screenSize = stateFactory.NewMutable<ScreenSize>();
         _isHoverable = stateFactory.NewMutable(false);
@@ -57,14 +50,6 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
 
     public void Dispose()
         => BackendRef.DisposeSilently();
-
-    public virtual ValueTask Initialize(bool skipJsInit = false)
-    {
-        BackendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
-        return skipJsInit
-            ? default
-            : JS.InvokeVoidAsync(JSInitMethod, BackendRef, AppKind.ToString());
-    }
 
     [JSInvokable]
     public virtual void OnInitialized(IBrowserInfoBackend.InitResult initResult)

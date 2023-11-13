@@ -273,6 +273,9 @@
     <None Remove="GoogleService-Info.plist" />
     <Compile Remove="Resources\Images\**" />
     <None Remove="Resources\Images\**" />
+    <Compile Update="Platforms\MacCatalyst\NSErrorExt.cs">
+      <ExcludeFromCurrentConfiguration>false</ExcludeFromCurrentConfiguration>
+    </Compile>
   </ItemGroup>
 
   <!-- Both iOS and Mac Catalyst -->
@@ -355,6 +358,10 @@
 
   <ItemGroup>
     <Content Include="Platforms\Windows\Assets\**\*.*" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0-android'">
+    <PackageReference Include="Xamarin.AndroidX.Core" />
   </ItemGroup>
 
   <Target Name="UpdateBundleHash" AfterTargets="Build">

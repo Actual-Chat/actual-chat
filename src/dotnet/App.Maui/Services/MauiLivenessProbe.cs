@@ -9,7 +9,7 @@ public class MauiLivenessProbe : WorkerBase
     private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(0.5); // WebView reload?
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(0.5);
     private static readonly TimeSpan DisconnectToRetryDelay = TimeSpan.FromSeconds(0.05);
-    private static readonly int CheckCount = 3; // 1.5s
+    private static readonly int CheckCount = 4; // 2s
 
     private static readonly object _lock = new();
     private static MauiLivenessProbe? _instance;
@@ -81,7 +81,7 @@ public class MauiLivenessProbe : WorkerBase
                     disconnectedCount++;
                     Log.LogWarning("Liveness check #{Index}/{Count} failed (disconnected {DisconnectedCount} time(s))",
                         i, CheckCount, disconnectedCount);
-                    if (disconnectedCount >= 2)
+                    if (disconnectedCount >= 3)
                         break;
                 }
                 else

@@ -136,11 +136,17 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         return await StopRecordingUnsafe().ConfigureAwait(false);
     }
 
-    public ValueTask Reconnect(CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("reconnect", cancellationToken);
+    public async ValueTask Reconnect(CancellationToken cancellationToken)
+    {
+        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("reconnect", cancellationToken).ConfigureAwait(false);
+    }
 
-    public ValueTask ConversationSignal(CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("conversationSignal", cancellationToken);
+    public async ValueTask ConversationSignal(CancellationToken cancellationToken)
+    {
+        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("conversationSignal", cancellationToken).ConfigureAwait(false);
+    }
 
     // JS backend callback handlers
     [JSInvokable]

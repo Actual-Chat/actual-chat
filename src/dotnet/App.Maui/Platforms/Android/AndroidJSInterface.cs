@@ -5,19 +5,9 @@ using Java.Interop;
 
 namespace ActualChat.App.Maui;
 
-internal class AndroidJSInterface : Java.Lang.Object
+internal class AndroidJSInterface(Android.Webkit.WebView webView) : Java.Lang.Object
 {
-    private static readonly Tracer _tracer = Tracer.Default[nameof(AndroidJSInterface)];
-    private readonly MauiBlazorWebViewHandler _handler;
-    private readonly Android.Webkit.WebView _webView;
-
     public event Action<string> MessageReceived = _ => { };
-
-    public AndroidJSInterface(MauiBlazorWebViewHandler handler, Android.Webkit.WebView webView)
-    {
-        _handler = handler;
-        _webView = webView;
-    }
 
     [JavascriptInterface]
     [Export("DOMContentLoaded")]
@@ -27,7 +17,7 @@ internal class AndroidJSInterface : Java.Lang.Object
     [JavascriptInterface]
     [Export("postMessage")]
     public void OnPostMessage(string data)
-        => _webView.Post(() => {
+        => webView.Post(() => {
             MessageReceived.Invoke(data);
         });
 
@@ -35,7 +25,7 @@ internal class AndroidJSInterface : Java.Lang.Object
     [Export("writeTextToClipboard")]
     public void WriteTextToClipboard(string? newClipText)
     {
-        var clipboard = (ClipboardManager)_webView.Context!.GetSystemService(Context.ClipboardService)!;
+        var clipboard = (ClipboardManager)webView.Context!.GetSystemService(Context.ClipboardService)!;
         clipboard.Text = newClipText;
     }
 
@@ -43,7 +33,7 @@ internal class AndroidJSInterface : Java.Lang.Object
     [Export("readTextFromClipboard")]
     public string? ReadTextFromClipboard()
     {
-        var clipboard = (ClipboardManager)_webView.Context!.GetSystemService(Context.ClipboardService)!;
+        var clipboard = (ClipboardManager)webView.Context!.GetSystemService(Context.ClipboardService)!;
         return clipboard.Text;
     }
 }

@@ -28,10 +28,10 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
             var player = GetPlayer(tune);
 
             HapticEngine.Start(out var error);
-            error.Assert();
+            error.ThrowIfError();
 
             player.Start(0, out error);
-            error.Assert();
+            error.ThrowIfError();
         }
         catch (Exception e)
         {
@@ -45,10 +45,10 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
             try
             {
                 var engine = new CHHapticEngine(out var error);
-                error.Assert();
+                error.ThrowIfError();
 
                 engine.Start(out error);
-                error.Assert();
+                error.ThrowIfError();
                 return engine;
             }
             catch (Exception e)
@@ -68,7 +68,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
             var vibration = Tunes[tune].Vibration;
             var pattern = BuildPattern(vibration);
             player = HapticEngine.CreatePlayer(pattern, out var error);
-            error.Assert();
+            error.ThrowIfError();
 
             _players.Add(tune, player!);
             return player!;
@@ -80,7 +80,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
         var curve = BuildIntensityCurve(vibration);
         var hapticEvent = BuildHapticEvent(vibration);
         var pattern = new CHHapticPattern(new[] { hapticEvent }, new[] { curve, }, out var error);
-        error.Assert();
+        error.ThrowIfError();
 
         return pattern;
     }

@@ -60,7 +60,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
             services.AddSingleton(_ => new RenderModeSelector()); // Kinda no-op on the client
         else
             services.AddScoped(_ => new RenderModeSelector()); // Should be scoped on server
-        services.AddScoped(_ => new DisposeMonitor());
         services.AddScoped(c => new BrowserInit(c));
         services.AddScoped(c => new BrowserInfo(c));
         services.AddScoped(c => new WebShareInfo(c));
@@ -95,7 +94,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new InteractiveUI(c));
         services.AddScoped(c => new History(c));
         services.AddScoped(c => new HistoryStepper(c));
-        services.AddScoped(c => new BackButtonHandler());
         services.AddScoped(_ => new HistoryItemIdFormatter());
         services.AddScoped(c => new ModalUI(c));
         services.AddScoped(c => new BannerUI(c));

@@ -1,6 +1,5 @@
 using ActualChat.Notification.UI.Blazor;
 using Microsoft.Maui.LifecycleEvents;
-using Serilog;
 
 namespace ActualChat.App.Maui;
 

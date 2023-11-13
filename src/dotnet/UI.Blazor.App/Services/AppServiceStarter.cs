@@ -93,20 +93,17 @@ public class AppServiceStarter
         // Force LoadingUI instantiation to trigger ShowLoadingOverlay
         _ = LoadingUI;
         try {
+            var baseUri = HostInfo.BaseUrl;
+
             // Creating core services - this should be done as early as possible
             var browserInfo = Services.GetRequiredService<BrowserInfo>();
-
-            // Initializing them at once
-            Tracer.Point("BulkInitUI.Invoke");
             var browserInit = Services.GetRequiredService<BrowserInit>();
-            var baseUri = HostInfo.BaseUrl;
-            await browserInfo.Initialize(true).ConfigureAwait(false);
-            var browserInitTask = browserInit.Initialize(
+            _ = browserInit.Initialize(
+                HostInfo.AppKind,
                 Constants.Api.Version,
                 baseUri,
                 sessionHash,
-                browserInfo.BackendRef!,
-                browserInfo.AppKind);
+                browserInfo.BackendRef);
 
             // Start AccountUI & UIEventHub
             Services.GetRequiredService<AccountUI>();
@@ -126,8 +123,8 @@ public class AppServiceStarter
                 serverSideTimeZoneConverter.Initialize(browserInfo.UtcOffset);
 
             // Finishing with BrowserInit
-            await browserInitTask.ConfigureAwait(false); // Must be completed before the next call
-            Tracer.Point("Browser init has completed");
+            await browserInit.WhenInitialized.ConfigureAwait(false); // Must be completed before the next call
+            Tracer.Point("BrowserInit completed");
 
             // Finishing with auto-navigation & History init
             var url = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);

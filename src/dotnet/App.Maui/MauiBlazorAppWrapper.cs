@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using ActualChat.Security;
+using ActualChat.UI.Blazor;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Stl.Fusion.Blazor;
 
 namespace ActualChat.App.Maui;
 
@@ -15,78 +18,19 @@ namespace ActualChat.App.Maui;
 /// </remarks>
 public class MauiBlazorAppWrapper : ComponentBase
 {
-    private bool _shouldRender;
-    private bool _rendered;
-
-    [Inject] private IServiceProvider Services { get; set; } = null!;
-    [Inject] private ILogger<MauiBlazorAppWrapper> Log { get; set; } = null!;
-
-    [Parameter] public BlazorWebViewDisconnectMarker DisconnectMarker { get; set; } = null!;
+    private MauiWebView? _mauiWebView;
+    private Task? _whenDeactivated;
 
     protected override void OnInitialized()
-    {
-        _shouldRender = !DisconnectMarker.IsDisconnected;
-        if (_shouldRender)
-            _ = MonitorDisconnection();
-    }
+        => _mauiWebView = MauiWebView.Current;
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        if (_shouldRender) {
-            builder.OpenComponent<MauiBlazorApp>(0);
-            builder.CloseComponent();
-            _rendered = true;
-        }
-        else
-            _rendered = false;
-    }
+        if (!(_mauiWebView?.IsActive ?? false))
+            return;
 
-    private async Task MonitorDisconnection()
-    {
-        await DisconnectMarker.WhenDisconnected.ConfigureAwait(false);
-        // Wait a while to prevent using resources during loading new WebView and new MauiBlazorApp.
-        await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
-        Log.LogInformation("BlazorWebView cleaning routine started");
-        await InvokeAsync(() => {
-            if (_rendered) {
-                // BlazorWebView.Handler.DisconnectHandler call may cause deadlock if WebViewRenderer contains components which
-                // implements IAsyncDisposable.
-                // So to prevent deadlock Unload inner components to ensure WebViewRenderer dispose components.
-                _shouldRender = false;
-                StateHasChanged();
-            }
-        }).ConfigureAwait(false);
-        // Wait a while till WebViewRenderer finish disposing components
-        await Task.Delay(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
-
-        // Call DisposeAsync explicitly on Blazor scope service provider to avoid
-        // blocking awaiting on disposing it inside 'DisconnectMarker.BlazorWebView.Handler?.DisconnectHandler'.
-        // Because it will cause deadlock on main thread and app will become unresponsive.
-        // See https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Windows/BlazorWebViewHandler.Windows.cs#L35
-        // See https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Android/BlazorWebViewHandler.Android.cs#L70
-        // See https://github.com/dotnet/aspnetcore/blob/main/src/Components/WebView/WebView/src/WebViewManager.cs#L264
-        // See https://github.com/dotnet/aspnetcore/blob/main/src/Components/WebView/WebView/src/PageContext.cs#L58
-        if (Services is IAsyncDisposable asyncDisposable)
-            await asyncDisposable.DisposeSilentlyAsync().ConfigureAwait(false);
-        await Task.Delay(1).ConfigureAwait(false);
-
-        var disconnectTask = MainThread.InvokeOnMainThreadAsync(() => {
-            try {
-                DisconnectMarker.BlazorWebView.Handler?.DisconnectHandler();
-                Log.LogInformation("DisconnectHandler completed successfully");
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "An error occurred during invoking DisconnectHandler");
-            }
-        });
-        try {
-            await disconnectTask.WaitAsync(TimeSpan.FromSeconds(15)).ConfigureAwait(false);
-        }
-        catch (TimeoutException) {
-            Log.LogWarning("DisconnectHandler did not completed within 15 seconds");
-        }
-        // This should release as much resources as possible, but it seems this not enough:
-        // On Windows in memory profiler I still can see old WebView instances are available.
-        // On Android in developer tools I still can see old WebView is listed as detached.
+        _whenDeactivated ??= _mauiWebView.WhenDeactivated.ContinueWith(_ => StateHasChanged(), TaskScheduler.Current);
+        builder.OpenComponent<MauiBlazorApp>(0);
+        builder.CloseComponent();
     }
 }

@@ -2,9 +2,9 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components.WebView;
 
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.App.Maui;
 
-public class MauiNavigationInterceptor(IServiceProvider services)
+public partial class MauiWebView
 {
     // ReSharper disable once CollectionNeverUpdated.Local
     private static readonly HashSet<string> AllowedExternalHosts = MauiSettings.WebAuth.UseSystemBrowser
@@ -15,12 +15,8 @@ public class MauiNavigationInterceptor(IServiceProvider services)
     private CancellationTokenSource? _cancelNavigationCts;
     private Uri _lastLocalUri = BaseLocalUri;
     private bool _isOnLocalUri = true;
-    private ILogger? _log;
 
-    private IServiceProvider Services { get; } = services; // This is root IServiceProvider!
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    public void TryIntercept(Uri uri, UrlLoadingEventArgs eventArgs)
+    private void OnUrlLoading(Uri uri, UrlLoadingEventArgs eventArgs)
     {
         var wasOnLocalUri = _isOnLocalUri;
         _cancelNavigationCts.CancelAndDisposeSilently();
@@ -54,8 +50,6 @@ public class MauiNavigationInterceptor(IServiceProvider services)
         _ = NavigateTo(localUri, !wasOnLocalUri);
         eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
     }
-
-    // Private methods
 
     private bool IsAllowedHostUri(Uri uri)
     {

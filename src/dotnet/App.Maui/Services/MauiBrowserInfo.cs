@@ -6,9 +6,8 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiBrowserInfo : BrowserInfo
 {
-    public MauiBrowserInfo(IServiceProvider services) : base(services) { }
-
-    public override ValueTask Initialize(bool skipJsInit = false)
+    public MauiBrowserInfo(IServiceProvider services)
+        : base(services)
     {
         var clientKind = HostInfo.ClientKind;
         var isWindowsOrMacOS = clientKind is ClientKind.Windows or ClientKind.MacOS;
@@ -30,9 +29,7 @@ public class MauiBrowserInfo : BrowserInfo
         var isWide = !isMobile || display.Orientation == DisplayOrientation.Landscape;
         var screenSize = isWide ? UI.Blazor.Services.ScreenSize.Medium : UI.Blazor.Services.ScreenSize.Small;
         Update(screenSize, !isMobile, false);
-
         WhenReadySource.TrySetResult();
-        return base.Initialize(skipJsInit);
     }
 
     [JSInvokable]
