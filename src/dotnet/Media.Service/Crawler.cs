@@ -1,3 +1,4 @@
+using ActualChat.Chat;
 using ActualChat.Media.Module;
 using ActualChat.Uploads;
 using OpenGraphNet;
@@ -8,16 +9,6 @@ namespace ActualChat.Media;
 
 public class Crawler(IServiceProvider services) : IHasServices
 {
-    private static readonly Dictionary<string, string> ImageExtensionByContentType =
-        new (StringComparer.OrdinalIgnoreCase) {
-            ["image/bmp"] = ".bmp",
-            ["image/jpeg"] = ".jpg",
-            ["image/vnd.microsoft.icon"] = ".ico",
-            ["image/png"] = ".png",
-            ["image/svg+xml"] = ".svg",
-            ["image/webp"] = ".webp",
-        };
-
     private IContentSaver? _contentSaver;
     private MediaSettings? _settings;
     private IMediaBackend? _mediaBackend;
@@ -130,7 +121,8 @@ public class Crawler(IServiceProvider services) : IHasServices
             return null;
 
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-        if (!ImageExtensionByContentType.TryGetValue(contentType, out var ext))
+        var ext = MediaTypeExt.GetFileExtension(contentType);
+        if (ext.IsNullOrEmpty())
             return null;
 
         var imageBytes = await response.Content.ReadAsByteArrayAsync(cts.Token).ConfigureAwait(false);
