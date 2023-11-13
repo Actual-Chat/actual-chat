@@ -15,7 +15,7 @@ public class KeepAwakeUI(IServiceProvider services)
 
     public virtual ValueTask SetKeepAwake(bool value)
     {
-        Log.LogDebug("SetKeepAwake({MustKeepAwake})", value);
+        Log.LogInformation("SetKeepAwake({MustKeepAwake})", value);
         return JS.InvokeVoidAsync(JSSetKeepAwakeMethod, value);
     }
 }

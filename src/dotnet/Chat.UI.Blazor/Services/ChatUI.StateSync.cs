@@ -81,7 +81,7 @@ public partial class ChatUI
 
     private async Task PushKeepAwakeState(CancellationToken cancellationToken)
     {
-        var lastMustKeepAwake = false;
+        var lastMustKeepAwake = (bool?)null;
         var cMustKeepAwake0 = await Computed
             .Capture(() => MustKeepAwake(cancellationToken))
             .ConfigureAwait(false);
@@ -90,7 +90,6 @@ public partial class ChatUI
         await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
             var mustKeepAwake = cMustKeepAwake.Value;
             if (mustKeepAwake != lastMustKeepAwake) {
-                DebugLog?.LogDebug("PushKeepAwakeState: *");
                 await KeepAwakeUI.SetKeepAwake(mustKeepAwake).ConfigureAwait(false);
                 lastMustKeepAwake = mustKeepAwake;
             }
