@@ -137,10 +137,10 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         }
         else {
             // Remove
-            if (expectedVersion != null)
-                dbExternalContact.RequireVersion(expectedVersion);
             if (dbExternalContact == null)
                 return null;
+            if (expectedVersion != null)
+                dbExternalContact.RequireVersion(expectedVersion);
 
             dbContext.Remove(dbExternalContact);
         }
