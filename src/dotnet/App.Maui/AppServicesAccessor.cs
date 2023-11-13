@@ -18,6 +18,8 @@ public class AppServicesAccessor
         TaskCompletionSourceExt.New<IServiceProvider>();
     private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesSource =
         TaskCompletionSourceExt.New<IServiceProvider>();
+    private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesChangedSource =
+        TaskCompletionSourceExt.New<IServiceProvider>();
 
     private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
 
@@ -52,6 +54,8 @@ public class AppServicesAccessor
 
                 _scopedServices = value;
                 _scopedServicesSource.TrySetResult(value);
+                _scopedServicesChangedSource.TrySetResult(value);
+                _scopedServicesChangedSource = TaskCompletionSourceExt.New<IServiceProvider>();
                 Log.LogDebug("ScopedServices ready");
             }
         }
@@ -66,6 +70,8 @@ public class AppServicesAccessor
     public static Task<IServiceProvider> WhenAppServicesReady(CancellationToken cancellationToken = default)
         => _appServicesSource.Task.WaitAsync(cancellationToken);
 
+    public static Task<IServiceProvider> WhenScopedServicesChanged(CancellationToken cancellationToken = default)
+        => _scopedServicesChangedSource.Task.WaitAsync(cancellationToken);
     public static Task<IServiceProvider> WhenScopedServicesReady(CancellationToken cancellationToken = default)
         => WhenScopedServicesReady(false, cancellationToken);
     public static Task<IServiceProvider> WhenScopedServicesReady(
