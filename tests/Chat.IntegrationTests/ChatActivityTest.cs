@@ -13,7 +13,7 @@ public class ChatActivityTest : AppHostTestBase
     [Fact]
     public async Task BasicTest()
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost(TestAppHostConfiguration.WithDefaultChat);
         await using var tester = appHost.NewBlazorTester();
         var services = tester.AppServices;
         var clientServices = tester.ScopedAppServices;

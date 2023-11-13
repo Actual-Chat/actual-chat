@@ -5,7 +5,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 public class RemoveAccountTest : AppHostTestBase
 {
-    private ChatId TestChatId { get; } = new("the-actual-one");
+    private ChatId TestChatId { get; } = Constants.Chat.DefaultChatId;
 
     public RemoveAccountTest(ITestOutputHelper @out) : base(@out)
     { }
@@ -13,7 +13,7 @@ public class RemoveAccountTest : AppHostTestBase
     [Fact]
     public async Task RemoveOwnEntriesTest()
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost(TestAppHostConfiguration.WithDefaultChat);
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
         var bob = await tester.SignIn(new User("Bob"));

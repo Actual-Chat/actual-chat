@@ -14,7 +14,7 @@ public class RemoveOwnAccountTest : AppHostTestBase
     [Fact]
     public async Task DeleteOwnAccountTest()
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost(TestAppHostConfiguration.WithDefaultChat);
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
         var bob = await tester.SignIn(new User("Bob"));
