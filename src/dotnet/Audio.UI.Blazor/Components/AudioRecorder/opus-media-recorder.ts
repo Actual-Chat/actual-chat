@@ -199,7 +199,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             this.encoderWorker.create(
                 Versioning.artifactVersions,
                 audioHubUrl,
-               { type: 'rpc-timeout', timeoutMs: 20_000 }),
+                { type: 'rpc-timeout', timeoutMs: 20_000 }),
             this.vadWorker.create(
                 Versioning.artifactVersions,
                 canUseNNVad,
