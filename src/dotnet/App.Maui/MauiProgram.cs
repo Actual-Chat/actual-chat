@@ -48,8 +48,12 @@ public static partial class MauiProgram
             _ = MauiSession.Start();
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
+#if DEBUG
+            // NOTE: It's enabled in Debug mode only hence there is no performance penalties in Release mode.
+            EnableContainerValidation(appBuilder);
+#endif
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
-            AppServiceStarter.WarmupStaticServices(HostInfo);
+            AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
 #if true
             // Normal start
             ConfigureApp(appBuilder, false);
@@ -169,8 +173,8 @@ public static partial class MauiProgram
             _ = mauiSession.Acquire();
             var trueSessionResolver = AppServices.GetRequiredService<TrueSessionResolver>();
             await trueSessionResolver.SessionTask.ConfigureAwait(false);
-            var appServiceStarter = AppServices.GetRequiredService<AppServiceStarter>();
-            _ = appServiceStarter.StartNonScopedServices();
+            var appRootServiceStarter = AppServices.GetRequiredService<AppNonScopedServiceStarter>();
+            _ = appRootServiceStarter.StartNonScopedServices();
         });
     }
 
@@ -270,6 +274,24 @@ public static partial class MauiProgram
         AddPlatformServicesToSkip(servicesToSkip);
         return serviceType => !servicesToSkip.Contains(serviceType);
     }
+
+#if DEBUG
+    private static void EnableContainerValidation(MauiAppBuilder appBuilder)
+    {
+        var services = appBuilder.Services;
+        // NOTE(DF): MAUI has issues with internal services scope that causes validation errors.
+        // Replace these registrations to pass validation. It should be safe for MAUI behavior.
+        // See https://github.com/dotnet/maui/blob/main/src/Core/src/Hosting/Dispatching/AppHostBuilderExtensions.cs
+        services.Replace(typeof(IDispatcher), static sd => sd.ChangeLifetime(ServiceLifetime.Singleton));
+        services.ReplaceAll(typeof(IMauiInitializeScopedService), static sd => sd.ChangeLifetime(ServiceLifetime.Transient));
+        // Enable validation on container
+        // NOTE: will be improved later, see https://github.com/dotnet/maui/issues/18519
+        appBuilder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        }));
+    }
+#endif
 
     private static partial void AddPlatformServices(this IServiceCollection services);
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip);

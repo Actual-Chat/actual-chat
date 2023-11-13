@@ -49,7 +49,7 @@
     [Inject] protected ModuleHost Host { get; init; } = null!;
     [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] protected RenderModeSelector RenderModeSelector { get; init; } = null!;
-    [Inject] protected AppServiceStarter AppServiceStarter { get; init; } = null!;
+    [Inject] protected AppScopedServiceStarter AppServiceStarter { get; init; } = null!;
     [Inject] protected ISessionResolver SessionResolver { get; init; } = null!;
     [Inject] protected Tracer Tracer { get; init; } = null!;
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync

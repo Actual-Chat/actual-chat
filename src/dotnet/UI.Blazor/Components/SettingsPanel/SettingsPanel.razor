@@ -4,7 +4,6 @@
 @{
     var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
     var attr = _isRightSideVisible ? "hide-panel" : "hide-tabs";
-    var link = Links.User(AccountUI.OwnAccount.Value.Id);
 
     RenderFragment RenderCommonButton(SettingsTab tab) {
         var isActive = tab == ActiveTab;
@@ -106,8 +105,7 @@
     private SettingsTab? _activeTab;
 
     [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private ReloadUI ReloadUI { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
@@ -187,9 +185,9 @@
 
     private void SignOut() {
         Modal.Close();
-        AccountUI.ClientAuth.SignOut();
+        Services.GetRequiredService<AccountUI>().SignOut();
     }
 
     private void Quit()
-        => ReloadUI.Quit();
+        => Services.GetRequiredService<ReloadUI>().Quit();
 }
