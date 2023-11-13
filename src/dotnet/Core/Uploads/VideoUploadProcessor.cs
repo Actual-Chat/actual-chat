@@ -1,15 +1,11 @@
 using System.Net.Mime;
 using FFMpegCore;
-using SixLabors.ImageSharp;
 
 namespace ActualChat.Uploads;
 
-public class VideoUploadProcessor : IUploadProcessor
+public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadProcessor
 {
-    private ILogger<VideoUploadProcessor> Log { get; }
-
-    public VideoUploadProcessor(ILogger<VideoUploadProcessor> log)
-        => Log = log;
+    private ILogger<VideoUploadProcessor> Log { get; } = log;
 
     public bool Supports(FileInfo file)
         => file.ContentType.OrdinalIgnoreCaseContains("video");

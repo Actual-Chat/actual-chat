@@ -64,7 +64,7 @@ public partial class MauiWebView(BlazorWebView blazorWebView, object platformWeb
             ScopedServices = null;
         }
         if (scopedServices != null)
-            TryDiscardActiveScopedServices(scopedServices);
+            TryDiscardActiveScopedServices(scopedServices, "MauiWebView.Deactivate");
         try {
             _ = EvaluateJavaScript("window.ui.BrowserInit.terminate()");
         }

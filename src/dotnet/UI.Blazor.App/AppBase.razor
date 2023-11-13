@@ -41,9 +41,9 @@
     private bool _readyToRender;
     private bool _shouldRender;
     private Exception? _simulatedCrashError;
+    private ILogger? _log;
 
     [Inject] protected IServiceProvider Services { get; init; } = null!;
-    [Inject] protected ILogger<AppBase> Log { get; init; } = null!;
 
     [Inject] protected HostInfo HostInfo { get; init; } = null!;
     [Inject] protected ModuleHost Host { get; init; } = null!;
@@ -53,6 +53,7 @@
     [Inject] protected ISessionResolver SessionResolver { get; init; } = null!;
     [Inject] protected Tracer Tracer { get; init; } = null!;
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
+    protected ILogger Log => _log ??= Services.LogFor(GetType());
 
     [Parameter] public string SessionHash { get; set; } = "";
     [Parameter] public string SessionToken { get; set; } = "";

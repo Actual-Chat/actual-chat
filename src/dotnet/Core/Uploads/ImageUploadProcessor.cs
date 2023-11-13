@@ -1,11 +1,8 @@
 namespace ActualChat.Uploads;
 
-public class ImageUploadProcessor : IUploadProcessor
+public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadProcessor
 {
-    private ILogger<ImageUploadProcessor> Log { get; }
-
-    public ImageUploadProcessor(ILogger<ImageUploadProcessor> log)
-        => Log = log;
+    private ILogger<ImageUploadProcessor> Log { get; } = log;
 
     public bool Supports(FileInfo file)
         => file.ContentType.OrdinalIgnoreCaseContains("image");

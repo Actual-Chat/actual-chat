@@ -11,7 +11,7 @@ public class AppServicesAccessor
     private static readonly TimeSpan WhenRenderedTimeout = TimeSpan.FromSeconds(3);
 
     private static readonly object StaticLock = new();
-    private static ILogger? _log;
+    private static ILogger? _appServicesAccessorLog; // Otherwise Rider assumes we're referencing it from elsewhere
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
     private static readonly TaskCompletionSource<IServiceProvider> _appServicesSource =
@@ -21,7 +21,7 @@ public class AppServicesAccessor
     private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesChangedSource =
         TaskCompletionSourceExt.New<IServiceProvider>();
 
-    private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
+    private static ILogger Log => _appServicesAccessorLog ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
 
     public static IServiceProvider AppServices {
         get => _appServices ?? throw Errors.NotInitialized(nameof(AppServices));
@@ -50,7 +50,7 @@ public class AppServicesAccessor
                 if (ReferenceEquals(_scopedServices, value))
                     return;
                 if (_scopedServices != null)
-                    TryDiscardActiveScopedServices(_scopedServices);
+                    TryDiscardActiveScopedServices(_scopedServices, "ScopedServices.set");
 
                 _scopedServices = value;
                 _scopedServicesSource.TrySetResult(value);
@@ -168,7 +168,7 @@ public class AppServicesAccessor
         }
     }
 
-    public static void TryDiscardActiveScopedServices(IServiceProvider? scopedServices)
+    public static void TryDiscardActiveScopedServices(IServiceProvider? scopedServices, string reason)
     {
         if (scopedServices == null)
             return;
@@ -180,7 +180,9 @@ public class AppServicesAccessor
             _scopedServicesSource = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
             _scopedServices = null;
         }
-        Log.LogDebug("ScopedServices discarded");
+        Log.LogWarning(
+            "Active ScopedServices are discarded ({Reason}); stack trace:\n{StackTrace}",
+            reason, Environment.StackTrace);
         Dispose(scopedServices);
     }
 

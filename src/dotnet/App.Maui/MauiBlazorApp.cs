@@ -8,7 +8,7 @@ namespace ActualChat.App.Maui;
 public sealed class MauiBlazorApp : AppBase, IDisposable
 {
     public void Dispose()
-        => TryDiscardActiveScopedServices(Services);
+        => TryDiscardActiveScopedServices(Services, "MauiBlazorApp.Dispose");
 
     protected override async Task OnInitializedAsync()
     {
@@ -18,6 +18,7 @@ public sealed class MauiBlazorApp : AppBase, IDisposable
         try {
             var livenessProbe = MauiLivenessProbe.Current;
             await base.OnInitializedAsync().ConfigureAwait(false);
+            livenessProbe ??= MauiLivenessProbe.Current;
             if (livenessProbe != null)
                 MauiLivenessProbe.CancelCheck(livenessProbe); // We're ok for sure
         }

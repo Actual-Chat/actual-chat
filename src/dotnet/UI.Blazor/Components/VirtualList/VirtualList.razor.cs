@@ -11,9 +11,11 @@ public static class VirtualList
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
     where TItem : IVirtualListItem
 {
+    private ILogger? _log;
+
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    [Inject] private ILogger<VirtualList<TItem>> Log { get; init; } = null!;
+    private ILogger Log => _log ??= CircuitContext.Services.LogFor(GetType());
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;

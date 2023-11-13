@@ -5,13 +5,13 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiLivenessProbe : WorkerBase
 {
-    private static readonly TimeSpan VeryFirstCheckDelay = TimeSpan.FromSeconds(1); // JIT, etc., so might take longer
-    private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(0.5); // WebView reload?
+    private static readonly TimeSpan VeryFirstCheckDelay = TimeSpan.FromSeconds(3); // JIT, etc., so might take longer
+    private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(2); // WebView reload?
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(0.5);
     private static readonly TimeSpan MainThreadBusyTimeout = TimeSpan.FromMilliseconds(45); // ~3 timer ticks
-    private static readonly int CheckCount = 3; // 1.5s
+    private static readonly int CheckCount = 6; // 3s
     private static readonly int MainThreadBusyExtraCheckCount = 6; // 3s more
-    private static readonly int DisconnectedCheckCount = 2; // 1s more
+    private static readonly int DisconnectedCheckCount = 3; // 1.5s
 
     private static readonly object _lock = new();
     private static MauiLivenessProbe? _current;

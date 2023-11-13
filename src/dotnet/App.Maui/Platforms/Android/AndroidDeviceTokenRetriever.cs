@@ -4,12 +4,10 @@ using Firebase.Messaging;
 
 namespace ActualChat.App.Maui;
 
-internal class AndroidDeviceTokenRetriever : IDeviceTokenRetriever
+internal class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTokenRetriever
 {
-    private ILogger<AndroidDeviceTokenRetriever> Log { get; }
-
-    public AndroidDeviceTokenRetriever(IServiceProvider services)
-        => Log = services.GetRequiredService<ILogger<AndroidDeviceTokenRetriever>>();
+    private ILogger? _log;
+    private ILogger Log => _log ??= services.LogFor(GetType());
 
     public async Task<string?> GetDeviceToken(CancellationToken cancellationToken)
     {

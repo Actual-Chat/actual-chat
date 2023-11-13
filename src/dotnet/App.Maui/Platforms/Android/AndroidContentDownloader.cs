@@ -3,13 +3,13 @@ using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidContentDownloader(ILogger<AndroidContentDownloader> log)
-    : IIncomingShareFileDownloader
+public class AndroidContentDownloader(IServiceProvider services) : IIncomingShareFileDownloader
 {
     private const string Prefix = "/in/content/";
     private const string ContentSchemePrefix = "content://";
 
-    private ILogger<AndroidContentDownloader> Log { get; } = log;
+    private ILogger? _log;
+    private ILogger Log => _log ??= services.LogFor(GetType());
 
     public bool CanHandlePath(string? relativeUrl)
         => relativeUrl.OrdinalStartsWith(Prefix);

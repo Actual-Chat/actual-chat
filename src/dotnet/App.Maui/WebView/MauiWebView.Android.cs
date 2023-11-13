@@ -52,7 +52,7 @@ public partial class MauiWebView
         webView.SetWebChromeClient(new AndroidWebChromeClient(
             webView.WebChromeClient!,
             activity,
-            new AndroidFileChooser(AppServicesAccessor.AppServices.LogFor<AndroidFileChooser>())));
+            new AndroidFileChooser(AppServices.LogFor<AndroidFileChooser>())));
         webView.SetRendererPriorityPolicy(RendererPriority.Important, true);
     }
 

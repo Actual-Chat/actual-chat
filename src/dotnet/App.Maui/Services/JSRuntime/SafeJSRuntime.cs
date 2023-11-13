@@ -49,6 +49,9 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
             var result = await RequireConnected().InvokeAsync<TValue>(identifier, UnwrapArgs(args)).ConfigureAwait(false);
             return Map(result);
         }
+        catch (OperationCanceledException) {
+            throw;
+        }
         catch (JSDisconnectedException) {
             throw;
         }
@@ -65,6 +68,9 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
         try {
             var result = await RequireConnected().InvokeAsync<TValue>(identifier, cancellationToken, UnwrapArgs(args)).ConfigureAwait(false);
             return Map(result);
+        }
+        catch (OperationCanceledException) {
+            throw;
         }
         catch (JSDisconnectedException) {
             throw;

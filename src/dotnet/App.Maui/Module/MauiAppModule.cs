@@ -21,6 +21,9 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
 
     protected override void InjectServices(IServiceCollection services)
     {
+        // System
+        services.AddScoped<ScopedServicesDisposeTracker>(c => new ScopedServicesDisposeTracker(c));
+
         // Session & authentication
         services.AddSingleton(c => new MauiSession(c));
         services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
@@ -32,8 +35,7 @@ public sealed class MauiAppModule : HostModule, IBlazorUIModule
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
 
-        // Misc.
-        services.AddScoped<DisposeTracer>(c => new DisposeTracer(c));
+        // Permissions
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c));
 
         // ClientComputedCache
