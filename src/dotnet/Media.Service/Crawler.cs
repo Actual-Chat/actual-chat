@@ -3,7 +3,6 @@ using ActualChat.Media.Module;
 using ActualChat.Uploads;
 using OpenGraphNet;
 using OpenGraphNet.Metadata;
-using FileInfo = ActualChat.Uploads.FileInfo;
 
 namespace ActualChat.Media;
 
@@ -76,29 +75,28 @@ public class Crawler(IServiceProvider services) : IHasServices
         if (imageUri is null)
             return MediaId.None;
 
-        var fileInfo = await DownloadImageToFile(imageUri, cancellationToken).ConfigureAwait(false);
-        if (fileInfo is null)
+        var processedFile = await DownloadImageToFile(imageUri, cancellationToken).ConfigureAwait(false);
+        if (processedFile is null)
             return MediaId.None;
 
-        var mediaId = new MediaId(imageUri.AbsoluteUri.GetSHA256HashCode(HashEncoding.AlphaNumeric),
-            fileInfo.Content.GetSHA256HashCode(HashEncoding.AlphaNumeric));
+        var mediaIdScope = imageUri.AbsoluteUri.GetSHA256HashCode(HashEncoding.AlphaNumeric);
+        var mediaLid = await processedFile.File.GetSHA256HashCode(HashEncoding.AlphaNumeric).ConfigureAwait(false);
+        var mediaId = new MediaId(mediaIdScope, mediaLid);
         var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         if (media is not null)
             return media.Id;
 
         // TODO: extract common part with ChatMediaController
-        var (processedFile, size) = await ProcessFile(fileInfo, cancellationToken).ConfigureAwait(false);
         media = new Media(mediaId) {
-            ContentId = $"media/{mediaId.LocalId}/{fileInfo.FileName}",
-            FileName = fileInfo.FileName,
-            Length = fileInfo.Length,
-            ContentType = fileInfo.ContentType,
-            Width = size?.Width ?? 0,
-            Height = size?.Height ?? 0,
+            ContentId = $"media/{mediaId.LocalId}/{processedFile.File.FileName}",
+            FileName = processedFile.File.FileName,
+            Length = processedFile.File.Length,
+            ContentType = processedFile.File.ContentType,
+            Width = processedFile.Size?.Width ?? 0,
+            Height = processedFile.Size?.Height ?? 0,
         };
 
-        using var stream = new MemoryStream(processedFile.Content);
-        var content = new Content(media.ContentId, media.ContentType, stream);
+        var content = new Content(media.ContentId, media.ContentType, processedFile.File.Open());
         await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new MediaBackend_Change(
@@ -111,7 +109,7 @@ public class Crawler(IServiceProvider services) : IHasServices
         return mediaId;
     }
 
-    private async Task<FileInfo?> DownloadImageToFile(Uri imageUri, CancellationToken cancellationToken)
+    private async Task<ProcessedFile?> DownloadImageToFile(Uri imageUri, CancellationToken cancellationToken)
     {
         var cts = cancellationToken.CreateLinkedTokenSource();
         cts.CancelAfter(Settings.CrawlerImageDownloadTimeout);
@@ -120,23 +118,42 @@ public class Crawler(IServiceProvider services) : IHasServices
         if (!response.IsSuccessStatusCode)
             return null;
 
+        var file = await DownloadToTempFile(response, cts.Token).ConfigureAwait(false);
+        if (file is null)
+            return null;
+
+        var processedFile = await ProcessFile(file, cancellationToken).ConfigureAwait(false);
+        if (processedFile.File.TempFilePath != file.TempFilePath)
+            file.Delete();
+
+        return processedFile;
+    }
+
+    private Task<ProcessedFile> ProcessFile(UploadedFile file, CancellationToken cancellationToken)
+    {
+        var processor = UploadProcessors.FirstOrDefault(x => x.Supports(file));
+        return processor != null
+            ? processor.Process(file, cancellationToken)
+            : Task.FromResult(new ProcessedFile(file, null));
+    }
+
+    private async Task<UploadedFile?> DownloadToTempFile(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
         var ext = MediaTypeExt.GetFileExtension(contentType);
         if (ext.IsNullOrEmpty())
             return null;
 
-        var imageBytes = await response.Content.ReadAsByteArrayAsync(cts.Token).ConfigureAwait(false);
-        var fileName = new string(imageUri.Segments[^1].Where(Alphabet.AlphaNumeric.IsMatch).ToArray());
+        var fileName = new string(response.RequestMessage!.RequestUri!.Segments[^1].Where(Alphabet.AlphaNumeric.IsMatch).ToArray());
         fileName = Path.ChangeExtension(fileName, ext);
-        return new FileInfo(fileName, contentType, imageBytes.Length, imageBytes);
-    }
 
-    private Task<ProcessedFileInfo> ProcessFile(FileInfo file, CancellationToken cancellationToken)
-    {
-        var processor = UploadProcessors.FirstOrDefault(x => x.Supports(file));
-        return processor != null
-            ? processor.Process(file, cancellationToken)
-            : Task.FromResult(new ProcessedFileInfo(file, null));
+        var targetFilePath = Path.Combine(Path.GetTempPath(), $"{fileName}_{Guid.NewGuid()}");
+        var target = File.OpenWrite(targetFilePath);
+        await using (var _ = target.ConfigureAwait(false)) {
+            await response.Content.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+            target.Position = 0;
+        }
+        return new UploadedFile(fileName, contentType, new FileInfo(targetFilePath).Length, targetFilePath);
     }
 }
 

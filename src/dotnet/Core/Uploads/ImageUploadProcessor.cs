@@ -4,17 +4,17 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
 {
     private ILogger<ImageUploadProcessor> Log { get; } = log;
 
-    public bool Supports(FileInfo file)
+    public bool Supports(UploadedFile file)
         => file.ContentType.OrdinalIgnoreCaseContains("image");
 
-    public async Task<ProcessedFileInfo> Process(FileInfo file, CancellationToken cancellationToken)
+    public async Task<ProcessedFile> Process(UploadedFile file, CancellationToken cancellationToken)
     {
         var imageInfo = await GetImageInfo(file).ConfigureAwait(false);
         if (imageInfo == null) {
             var fileInfo = file with {
                 ContentType = System.Net.Mime.MediaTypeNames.Application.Octet,
             };
-            return new ProcessedFileInfo(fileInfo, null);
+            return new ProcessedFile(fileInfo, null);
         }
 
         const int sizeLimit = 1920;
@@ -25,13 +25,13 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
         // So we need to switch width and height to get appropriate size for image preview.
         var imageProcessingRequired = imageInfo.Metadata.ExifProfile != null || resizeRequired;
         if (!imageProcessingRequired)
-            return new ProcessedFileInfo(file, imageInfo.Size);
+            return new ProcessedFile(file, imageInfo.Size);
 
         Size imageSize;
-        byte[] content;
-        var targetStream = new MemoryStream(file.Content.Length);
+        var targetFilePath = Path.ChangeExtension(file.TempFilePath, ".converted" + Path.GetExtension(file.TempFilePath));
+        var targetStream = File.OpenWrite(targetFilePath);
         await using (var _ = targetStream.ConfigureAwait(false))
-        using (Image image = Image.Load(file.Content)) {
+        using (Image image = await Image.LoadAsync(file.TempFilePath, cancellationToken).ConfigureAwait(false)) {
             image.Mutate(img => {
                 // https://github.com/SixLabors/ImageSharp/issues/790#issuecomment-447581798
                 img.AutoOrient();
@@ -42,18 +42,15 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
             imageSize = image.Size;
             await image.SaveAsync(targetStream, image.Metadata.DecodedImageFormat!, cancellationToken: cancellationToken).ConfigureAwait(false);
             targetStream.Position = 0;
-            content = targetStream.ToArray();
         }
 
-        return new ProcessedFileInfo(file with { Content = content }, imageSize);
+        return new ProcessedFile(file with { TempFilePath = targetFilePath }, imageSize);
     }
 
-    private async Task<ImageInfo?> GetImageInfo(FileInfo file)
+    private async Task<ImageInfo?> GetImageInfo(UploadedFile file)
     {
         try {
-            using var stream = new MemoryStream(file.Content);
-            var imageInfo = await Image.IdentifyAsync(stream).ConfigureAwait(false);
-            return imageInfo;
+            return await Image.IdentifyAsync(file.TempFilePath).ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to extract image info from '{FileName}'", file.FileName);

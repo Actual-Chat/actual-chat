@@ -5,7 +5,6 @@ using ActualChat.Users;
 using ActualChat.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using FileInfo = ActualChat.Uploads.FileInfo;
 
 namespace ActualChat.Chat.Controllers;
 
@@ -40,28 +39,27 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
         if (httpRequest.Form.Files.Count > 1)
             return BadRequest("Too many files.");
 
-        var file = httpRequest.Form.Files[0];
-        if (file.Length == 0)
+        var formFile = httpRequest.Form.Files[0];
+        if (formFile.Length == 0)
             return BadRequest("File is empty.");
 
-        if (file.Length > Constants.Attachments.FileSizeLimit)
+        if (formFile.Length > Constants.Attachments.FileSizeLimit)
             return BadRequest("File is too big.");
 
-        var fileInfo = await ReadFileContent(file, cancellationToken).ConfigureAwait(false);
-        var (processedFile, size) = await ProcessFile(fileInfo, cancellationToken).ConfigureAwait(false);
-
+        using var processedFile = await Process(cancellationToken, formFile).ConfigureAwait(false);
         var mediaId = new MediaId(chatId, Generate.Option);
         var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
         var media = new Media.Media(mediaId) {
-            ContentId = $"media/{hashCode}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
-            FileName = fileInfo.FileName,
-            Length = fileInfo.Length,
-            ContentType = fileInfo.ContentType,
-            Width = size?.Width ?? 0,
-            Height = size?.Height ?? 0,
+            ContentId = $"media/{hashCode}/{mediaId.LocalId}{Path.GetExtension(formFile.FileName)}",
+            FileName = processedFile.File.FileName,
+            Length = processedFile.File.Length,
+            ContentType = processedFile.File.ContentType,
+            Width = processedFile.Size?.Width ?? 0,
+            Height = processedFile.Size?.Height ?? 0,
         };
-        using (var stream = new MemoryStream(processedFile.Content)) {
-            var content = new Content(media.ContentId, file.ContentType, stream);
+        var stream = processedFile.File.Open();
+        await using (stream.ConfigureAwait(false)) {
+            var content = new Content(media.ContentId, formFile.ContentType, stream);
             await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
         }
 
@@ -74,22 +72,30 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
         return Ok(new MediaContent(media.Id, media.ContentId));
     }
 
-    // Private methods
-
-    private Task<ProcessedFileInfo> ProcessFile(FileInfo file, CancellationToken cancellationToken)
+    private async Task<ProcessedFile> Process(CancellationToken cancellationToken, IFormFile formFile)
     {
-        var processor = UploadProcessors.FirstOrDefault(x => x.Supports(file));
-        return processor != null
-            ? processor.Process(file, cancellationToken)
-            : Task.FromResult(new ProcessedFileInfo(file, null));
+        var uploadedFile = await ReadFileContent(formFile, cancellationToken).ConfigureAwait(false);
+        var processor = UploadProcessors.FirstOrDefault(x => x.Supports(uploadedFile));
+        if (processor == null)
+            return new ProcessedFile(uploadedFile, null);
+
+        var processedFile = await processor.Process(uploadedFile, cancellationToken).ConfigureAwait(false);
+        if (processedFile.File.TempFilePath != uploadedFile.TempFilePath)
+            uploadedFile.Delete();
+
+        return processedFile;
     }
 
-    private async Task<FileInfo> ReadFileContent(IFormFile file, CancellationToken cancellationToken)
+    // Private methods
+
+    private async Task<UploadedFile> ReadFileContent(IFormFile file, CancellationToken cancellationToken)
     {
-        var targetStream = new MemoryStream();
-        await using var _ = targetStream.ConfigureAwait(false);
-        await file.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
-        targetStream.Position = 0;
-        return new FileInfo(file.FileName, file.ContentType, file.Length, targetStream.ToArray());
+        var fileName = Path.ChangeExtension(file.FileName, $"_{Guid.NewGuid()}" + Path.GetExtension(file.FileName));
+        var targetFilePath = Path.Combine(Path.GetTempPath(), fileName);
+        var target = System.IO.File.OpenWrite(targetFilePath);
+        await using var _ = target.ConfigureAwait(false);
+        await file.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+        target.Position = 0;
+        return new UploadedFile(file.FileName, file.ContentType, file.Length, targetFilePath);
     }
 }
