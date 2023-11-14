@@ -6,7 +6,7 @@ import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
-import { catchErrors, debounce, PromiseSource, ResolvedPromise, retry } from 'promises';
+import { catchErrors, debounce, PromiseSource, retry } from 'promises';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { Versioning } from 'versioning';
@@ -195,16 +195,21 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         }
         debugLog?.log(`init(): call create on workers`);
         const audioHubUrl = new URL('/api/hub/audio', this.origin).toString();
-        await Promise.all([
-            this.encoderWorker.create(
-                Versioning.artifactVersions,
-                audioHubUrl,
-                { type: 'rpc-timeout', timeoutMs: 20_000 }),
-            this.vadWorker.create(
-                Versioning.artifactVersions,
-                canUseNNVad,
-                { type: 'rpc-timeout', timeoutMs: 20_000 }),
-        ]);
+
+        await this.encoderWorker.create(
+            Versioning.artifactVersions,
+            audioHubUrl,
+            { type: 'rpc-timeout', timeoutMs: 5_000 });
+
+        debugLog?.log(`init(): encoderWorker created`);
+
+        await this.vadWorker.create(
+            Versioning.artifactVersions,
+            canUseNNVad,
+            { type: 'rpc-timeout', timeoutMs: 5_000 });
+
+        debugLog?.log(`init(): vadWorker created`);
+
         this.whenInitialized.resolve(undefined);
         debugLog?.log(`<- init()`);
     }

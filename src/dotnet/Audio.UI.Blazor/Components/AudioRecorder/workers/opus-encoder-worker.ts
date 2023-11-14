@@ -60,19 +60,21 @@ let chunkTimeOffset: number = 0;
 
 const serverImpl: OpusEncoderWorker = {
     create: async (artifactVersions: Map<string, string>, audioHubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
-        if (codecModule)
+        if (codecModule) {
+            if (hubConnection.state !== HubConnectionState.Connected)
+                await serverImpl.reconnect();
+
             return;
+        }
 
         debugLog?.log(`-> create`);
         Versioning.init(artifactVersions);
 
         // Connect to SignalR Hub
-        debugLog?.log(`create: hub connecting...`);
         hubConnection = new signalR.HubConnectionBuilder()
             .withUrl(audioHubUrl, {
                 skipNegotiation: true,
                 transport: signalR.HttpTransportType.WebSockets,
-                // headers: { [SessionTokens.headerName]: lastSessionToken },
             })
             // We use fixed number of attempts here, because the reconnection is anyway
             // triggered after SSB / Stl.Rpc reconnect. See:
@@ -84,18 +86,9 @@ const serverImpl: OpusEncoderWorker = {
             .withHubProtocol(new MessagePackHubProtocol())
             .configureLogging(signalR.LogLevel.Information)
             .build();
-        await hubConnection.start();
-
         hubConnection.onreconnected(() => onReconnect());
         hubConnection.onreconnecting(() => void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait));
-        void onReconnect();
-
-        // Ensure audio transport is up and running
-        debugLog?.log(`create: -> hub.ping()`);
-        const pong = await hubConnection.invoke('Ping');
-        debugLog?.log(`create: <- hub.ping():`, pong);
-        if (pong !== 'Pong')
-            warnLog?.log(`create: unexpected Ping call result`, pong);
+        debugLog?.log(`create: hub created`);
 
         // Get fade-in window
         kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
@@ -104,12 +97,18 @@ const serverImpl: OpusEncoderWorker = {
 
         // Loading codec
         codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
+        debugLog?.log(`create: codec loaded`);
 
         // Warming up codec
         encoder = new codecModule.Encoder();
-        for (let i=0; i < 2; i++)
+        for (let i= 0; i < 2; i++)
             encoder.encode(pinkNoiseChunk.buffer);
         encoder.reset();
+
+        // Connecting to the server
+        debugLog?.log(`create: hub connecting...`);
+        await hubConnection.start();
+        void onReconnect();
 
         debugLog?.log(`<- create`);
         state = 'created';

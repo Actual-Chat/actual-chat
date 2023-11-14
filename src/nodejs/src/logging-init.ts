@@ -170,9 +170,11 @@ function persist(minLevels: Map<string, LogLevel>): boolean {
 
 function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void {
     minLevels.clear();
-    isProduction ??= app?.['environment'] == 'Production';
-    if (isProduction)
-        return;
+    // enabled debug logging temporarily - do not add chatty log scopes!! - 14.11.2023 AK
+
+    // isProduction ??= app?.['environment'] == 'Production';
+    // if (isProduction)
+    //     return;
 
     // Bumping down levels of in-dev scopes
     // minLevels.set('Versioning', LogLevel.Debug);
@@ -185,7 +187,7 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     minLevels.set('OnDeviceAwake', LogLevel.Debug);
     minLevels.set('AudioContextRef', LogLevel.Debug);
     minLevels.set('AudioContextSource', LogLevel.Debug);
-    // minLevels.set('AudioPlayer', LogLevel.Debug);
+    minLevels.set('AudioPlayer', LogLevel.Debug);
     minLevels.set('FallbackPlayback', LogLevel.Debug);
     // minLevels.set('OpusDecoder', LogLevel.Debug);
     // minLevels.set('OpusDecoderWorker', LogLevel.Debug);
@@ -198,14 +200,14 @@ function reset(minLevels: Map<LogScope, LogLevel>, isProduction?: boolean): void
     // minLevels.set('OpusEncoderWorkletProcessor', LogLevel.Debug);
     // minLevels.set('InertialScroll', LogLevel.Debug);
     minLevels.set('VirtualList', LogLevel.Debug);
-    minLevels.set('Landing', LogLevel.Debug);
-    minLevels.set('LandingLeftMenu', LogLevel.Debug);
+    // minLevels.set('Landing', LogLevel.Debug);
+    // minLevels.set('LandingLeftMenu', LogLevel.Debug);
 
     // XxxUI
     // minLevels.set('FocusUI', LogLevel.Debug);
     // minLevels.set('KeepAwakeUI', LogLevel.Debug);
     // minLevels.set('NoSleep', LogLevel.Debug);
-    minLevels.set('NotificationUI', LogLevel.Debug);
+    // minLevels.set('NotificationUI', LogLevel.Debug);
     // minLevels.set('TuneUI', LogLevel.Debug);
     // minLevels.set('SoundsPlayer', LogLevel.Debug);
 

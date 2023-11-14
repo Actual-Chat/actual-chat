@@ -9,6 +9,7 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 {
     private static readonly string JSInitMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.init";
     private static readonly string JSUpdateBackgroundStateMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.setBackgroundState";
+    private static readonly TimeSpan InitializeTimeout = TimeSpan.FromSeconds(5);
 
     [GeneratedRegex(@"^(?<type>mac|iPhone|iPad)(?:(?<version>\d+),\d*)?$")]
     private static partial Regex IosDeviceRegexFactory();
@@ -41,14 +42,14 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
     {
         Log.LogInformation("AudioInitializer: started");
         var retryDelays = RetryDelaySeq.Exp(0.5, 3);
-        var whenInitialized = AsyncChainExt.From(Initialize)
+        var whenInitialized = AsyncChainExt.From(Initialize, $"{nameof(AudioInitializer)}.{nameof(Initialize)}")
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .Run(cancellationToken);
         await _whenInitializedSource.TrySetFromTaskAsync(whenInitialized, cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("AudioInitializer: initialized");
+        Log.LogInformation("AudioInitializer: initialized with status {Status}", whenInitialized.Status);
 
-        await AsyncChainExt.From(UpdateBackgroundState)
+        await AsyncChainExt.From(UpdateBackgroundState, $"{nameof(AudioInitializer)}.{nameof(UpdateBackgroundState)}")
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .Run(cancellationToken)
@@ -57,10 +58,22 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
     private async Task Initialize(CancellationToken cancellationToken)
     {
-        var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
-        await JS
-            .InvokeVoidAsync(JSInitMethod, cancellationToken, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
-            .ConfigureAwait(false);
+        var cts = cancellationToken.CreateLinkedTokenSource();
+        try {
+            Log.LogInformation("AudioInitializer: Initialize() is being called...");
+            var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
+            cts.CancelAfter(InitializeTimeout);
+            await JS
+                .InvokeVoidAsync(JSInitMethod, cts.Token, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is OperationCanceledException) {
+            if (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                throw StandardError.Timeout($"{nameof(AudioInitializer)}.{nameof(Initialize)}");
+
+            throw;
+        }
+
     }
 
     // ReSharper disable once InconsistentNaming
