@@ -18,7 +18,7 @@
         return @<div class="gallery-item @activeCls" id="@id">
                    @if (attachment.IsSupportedVideo()) {
                        <video preload="metadata" playsinline>
-                           <source src="@url#t=,5"/>
+                           <source src="@url#t=,5" type="@attachment.Media.ContentType"/>
                        </video>
                    } else {
                        <image-skeleton
@@ -53,7 +53,7 @@
                         height="@attachment.Media.Height"
                         preload="auto"
                         controls>
-                        <source src="@url"/>
+                        <source src="@url" type="@attachment.Media.ContentType"/>
                     </video>
                 } else {
                     <img class="image-container c-full-media @mediaCls"
