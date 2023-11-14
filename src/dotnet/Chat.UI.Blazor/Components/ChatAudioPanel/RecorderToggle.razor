@@ -165,6 +165,9 @@
 
         if (IsRecording) {
             _ = ChatAudioUI.SetRecordingChatId(default);
+            _cancelTroubleshootGuide?.CancelAndDisposeSilently();
+            _cancelTroubleshootGuide = null;
+            _isTroubleshootGuideTriggered = false;
         }
         else {
             if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
