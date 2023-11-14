@@ -15,6 +15,13 @@ public class AndroidWebViewClientOverride(
     private ILogger Log { get; } = log;
     private AndroidContentDownloader ContentDownloader { get; } = contentDownloader;
 
+    public override bool OnRenderProcessGone(WebView? view, RenderProcessGoneDetail? detail)
+    {
+        var msg = $"{detail}, DidCrash: {detail?.DidCrash()}, RendererPriorityAtExit: {detail?.RendererPriorityAtExit()}";
+        log.LogWarning("OnRenderProcessGone. Detail: '{Detail}'", msg);
+        return base.OnRenderProcessGone(view, detail);
+    }
+
     public override bool ShouldOverrideUrlLoading(WebView? view, IWebResourceRequest? request)
         => Original.ShouldOverrideUrlLoading(view, request);
 
