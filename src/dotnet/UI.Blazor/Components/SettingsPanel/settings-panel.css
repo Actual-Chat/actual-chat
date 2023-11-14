@@ -7,7 +7,6 @@
     @apply md:w-110;
     @apply p-0 md:pl-30;
     @apply bg-01 md:bg-03;
-    @apply md:border-r border-separator;
 }
 .hide-panel.settings-panel > .c-tabs {
     @apply hidden md:flex-y;
@@ -17,7 +16,6 @@
 .settings-panel > .c-tabs > .c-header {
     @apply ordinary-header;
     @apply flex-none;
-    @apply border-b border-separator md:border-none;
     @apply text-title-1;
     @apply bg-02 md:bg-transparent;
     @apply overflow-hidden;
@@ -155,7 +153,7 @@ body.hoverable .tile-btn:hover {
     @apply flex-x items-center justify-start;
     @apply h-12 px-1;
     @apply rounded-lg;
-    @apply bg-selected;
+    @apply bg-banner-info;
     @apply border-transparent;
 }
 .add-avatar-btn * {
@@ -177,7 +175,6 @@ body.hoverable .tile-btn:hover {
     @apply ordinary-header;
     @apply px-2 md:px-0;
     @apply w-full md:w-80;
-    @apply border-b border-separator md:border-none;
     @apply text-title-1;
     @apply bg-02 md:bg-transparent;
 }

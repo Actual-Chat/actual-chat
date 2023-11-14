@@ -90,6 +90,7 @@ module.exports = {
         'separator': 'var(--separator)',
         'placeholder': 'var(--placeholder)',
         'white': 'var(--white)',
+        'black': 'var(--black)',
         'rating': 'var(--rating)',
 
         // hover
@@ -210,6 +211,7 @@ module.exports = {
         'text-06': 'var(--text-06)',
         'bg-07': 'var(--background-07)',
         'bg-08': 'var(--background-08)',
+        'modal': 'var(--modal-border)',
       },
       backgroundColor: {
         '01': 'var(--background-01)',
@@ -225,6 +227,7 @@ module.exports = {
         'banner-info': 'var(--background-banner-info)',
         'banner-success': 'var(--background-banner-success)',
         'recording-countdown': 'var(--background-recording-countdown)',
+        'modal': 'var(--modal-background)',
       },
     },
     screens: {
