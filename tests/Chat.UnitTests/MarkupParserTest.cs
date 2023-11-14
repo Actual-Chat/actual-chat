@@ -40,11 +40,15 @@ public class MarkupParserTest : TestBase
         m.Kind.Should().Be(UrlMarkupKind.Www);
     }
 
-    [Fact]
-    public void UrlWithQueryTest()
+    [Theory]
+    [InlineData("https://habr.com/ru/all/?q=1")]
+    [InlineData("https://youtube.com/@some-channel?v=some-video-id")]
+    [InlineData("https://en.wikipedia.org/wiki/Sampling_(signal_processing)")]
+    public void UrlWithQueryTest(string input, string? expected = null)
     {
-        var m = Parse<UrlMarkup>("https://habr.com/ru/all/?q=1", out var text);
-        m.Url.Should().Be(text);
+        expected ??= input;
+        var m = Parse<UrlMarkup>(input, out var text);
+        m.Url.Should().Be(text).And.Be(expected);
         m.Kind.Should().Be(UrlMarkupKind.Www);
     }
 
