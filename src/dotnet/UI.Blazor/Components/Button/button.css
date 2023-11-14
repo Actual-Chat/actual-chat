@@ -192,7 +192,7 @@ body.hoverable .btn.btn-modal:hover::after {
 /* Modal primary button */
 .btn.btn-primary.btn-modal {
     @apply bg-primary;
-    @apply text-06;
+    @apply text-white;
 }
 body.hoverable .btn.btn-modal.btn-primary:hover::after {
     @apply more-colored-hover;

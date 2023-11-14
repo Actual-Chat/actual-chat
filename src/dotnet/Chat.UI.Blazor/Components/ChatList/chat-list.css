@@ -45,7 +45,6 @@
     @apply bg-02;
 }
 .navbar-chats .c-active-chats > .c-delimiter {
-    /*@apply border-t-4 border-separator;*/
     @apply hidden;
 }
 .navbar-chats .chat-list {

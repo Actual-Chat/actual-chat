@@ -60,7 +60,7 @@
                     var tabCls = tab.Class;
                     var containerCls = tab.IsToggle ? "container-toggle" : "";
                     @if (tab.HasSeparatorBefore) {
-                        <div class="w-auto bg-04 h-px my-4 mx-4"></div>
+                        <Divider Class="m-4"/>
                     }
                     <div class="c-tab-item @containerCls @activeCls @tabCls">
                         @switch (tab.Id) {

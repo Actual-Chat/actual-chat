@@ -18,7 +18,6 @@ body.narrow .thin-left-skeleton-panel .skeleton-panel-body {
 .wide-left-skeleton-panel {
     @apply flex-y;
     @apply bg-03;
-    @apply md:border-r border-separator;
     @apply w-full md:w-80;
 }
 body.narrow .wide-left-skeleton-panel {
@@ -37,7 +36,6 @@ body.narrow .wide-left-skeleton-panel {
 .right-skeleton-panel {
     @apply hidden md:flex-y;
     @apply bg-02;
-    @apply md:border-l border-separator;
     @apply w-full md:w-80;
 }
 .skeleton-panel-header {

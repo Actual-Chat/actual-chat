@@ -15,7 +15,7 @@
     @apply flex-x items-center;
     @apply gap-x-2 py-1 px-2;
     @apply rounded-md;
-    @apply hover:bg-secondary;
+    @apply hover:bg-hover;
 }
 .new-chat-modal-contact-list-item,
 .new-chat-modal-contact-list-item * {

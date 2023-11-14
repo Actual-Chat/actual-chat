@@ -86,10 +86,11 @@ body.narrow .modal-frame.modal-xs .c-text {
 }
 
 .modal-chrome {
-    @apply rounded-lg md:shadow-2xl;
-    @apply bg-02 text-03;
-    @apply overflow-hidden;
     @apply z-10;
+    @apply overflow-hidden;
+    @apply bg-modal text-03;
+    @apply rounded-lg border-modal border;
+    @apply md:shadow-2xl;
 }
 .modal-frame {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;

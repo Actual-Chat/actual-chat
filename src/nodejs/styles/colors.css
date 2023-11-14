@@ -28,6 +28,7 @@
     --ash-26: #3D3D47;
     --ash-22: #303038;
     --ash-20: #2C2C33;
+    --ash-18: #28282E;
     --ash-10: #16161A;
 
     --ash-99-04: #F5F5FC0A;
@@ -239,6 +240,10 @@
     --toast-text: var(--gray-95);
     --toast-action: var(--blue-60);
 
+    /* Modals */
+    --modal-background: var(--white);
+    --modal-border: var(--gray-90);
+
     /* Buttons */
     --disabled: #E7E7E7;
     --primary-hover: var(--blue-60);
@@ -348,10 +353,10 @@
 }
 .theme-dark {
     /* Background */
-    --background-01: var(--ash-20);
+    --background-01: var(--ash-18);
     --background-02: var(--ash-22);
     --background-03: var(--ash-22);
-    --background-04: var(--ash-20);
+    --background-04: var(--ash-18);
     --background-05: var(--gray-30);
     --background-06: var(--gray-20);
     --background-07: var(--gray-80);
@@ -385,6 +390,10 @@
     --toast-body: var(--ash-30);
     --toast-text: var(--ash-99);
     --toast-action: var(--blue-80);
+
+    /* Modals */
+    --modal-background: var(--ash-22);
+    --modal-border: var(--ash-26);
 
     /* Buttons */
     --disabled: #E7E7E7;
