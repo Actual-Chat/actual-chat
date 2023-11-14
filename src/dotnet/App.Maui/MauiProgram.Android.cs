@@ -41,6 +41,7 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddAndroid(android => {
+            AndroidLifecycleLogger.Activate(android);
             var incomingShare = new IncomingShareHandler();
             android.OnPostCreate(incomingShare.OnPostCreate);
             android.OnNewIntent(incomingShare.OnNewIntent);

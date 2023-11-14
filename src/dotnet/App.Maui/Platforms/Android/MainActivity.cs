@@ -111,36 +111,23 @@ public partial class MainActivity : MauiAppCompatActivity
     }
 #endif
 
-    protected override void OnStart()
-    {
-        _tracer.Point(nameof(OnStart));
-        base.OnStart();
-    }
-
-    protected override void OnResume()
-    {
-        _tracer.Point(nameof(OnResume));
-        base.OnResume();
-    }
-
-    protected override void OnStop()
-    {
-        _tracer.Point(nameof(OnStop));
-        base.OnStop();
-    }
-
     protected override void OnDestroy()
     {
-        _tracer.Point(nameof(OnDestroy));
         base.OnDestroy();
         Interlocked.CompareExchange(ref _current, null, this);
     }
 
     protected override void OnNewIntent(Intent? intent)
     {
-        _tracer.Point(nameof(OnNewIntent));
         base.OnNewIntent(intent);
         TryHandleNotificationTap(intent);
+    }
+
+    public override void OnTrimMemory(TrimMemory level)
+    {
+        Log.LogInformation("OnTrimMemory. Level: {Level}", level);
+        DumpMemoryInfo();
+        base.OnTrimMemory(level);
     }
 
     public Task RequestPermission(string permission, CancellationToken cancellationToken = default)
@@ -215,6 +202,29 @@ public partial class MainActivity : MauiAppCompatActivity
         autoNavigationTasks.Add(DispatchToBlazor(
             c => c.GetRequiredService<NotificationUI>().HandleNotificationNavigation(url),
             $"NotificationUI.HandleNotificationNavigation(\"{url}\")"));
+    }
+
+    private void DumpMemoryInfo()
+    {
+        var activityManager = (ActivityManager)GetSystemService(ActivityService)!;
+        var memoryClass = activityManager.MemoryClass;
+        Log.LogInformation("MemoryClass: {MemoryClass}", memoryClass);
+        var memoryInfo = new ActivityManager.MemoryInfo();
+        activityManager.GetMemoryInfo(memoryInfo);
+        Log.LogInformation("MemoryInfo. AvailMem={AvailMem}, TotalMem={TotalMem}, LowMemory={LowMemory}, Threshold={Threshold}",
+            memoryInfo.AvailMem,
+            memoryInfo.TotalMem,
+            memoryInfo.LowMemory,
+            memoryInfo.Threshold);
+        var processInfo = new ActivityManager.RunningAppProcessInfo();
+        ActivityManager.GetMyMemoryState(processInfo);
+        Log.LogInformation(
+            "MyMemoryState. Pid={Pid}, LastTrimLevel={LastTrimLevel}, Lru={Lru}, Importance={Importance}, ImportanceReasonCode={ImportanceReasonCode}",
+            processInfo.Pid,
+            processInfo.LastTrimLevel,
+            processInfo.Lru,
+            processInfo.Importance,
+            processInfo.ImportanceReasonCode);
     }
 
     public class SplashScreenExitAnimationListener : GenericAnimatorListener, ISplashScreenOnExitAnimationListener
