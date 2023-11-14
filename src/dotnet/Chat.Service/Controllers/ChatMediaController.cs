@@ -3,7 +3,6 @@ using ActualChat.Security;
 using ActualChat.Uploads;
 using ActualChat.Users;
 using ActualChat.Web;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Chat.Controllers;
@@ -46,7 +45,7 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
         if (formFile.Length > Constants.Attachments.FileSizeLimit)
             return BadRequest("File is too big.");
 
-        using var processedFile = await Process(cancellationToken, formFile).ConfigureAwait(false);
+        using var processedFile = await UploadProcessors.Process(formFile.FileName, formFile.ContentType, formFile.OpenReadStream(), cancellationToken).ConfigureAwait(false);
         var mediaId = new MediaId(chatId, Generate.Option);
         var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
         var media = new Media.Media(mediaId) {
@@ -59,7 +58,7 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
         };
         var stream = processedFile.File.Open();
         await using (stream.ConfigureAwait(false)) {
-            var content = new Content(media.ContentId, formFile.ContentType, stream);
+            var content = new Content(media.ContentId, processedFile.File.ContentType, stream);
             await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
         }
 
@@ -70,32 +69,5 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             });
         await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
         return Ok(new MediaContent(media.Id, media.ContentId));
-    }
-
-    private async Task<ProcessedFile> Process(CancellationToken cancellationToken, IFormFile formFile)
-    {
-        var uploadedFile = await ReadFileContent(formFile, cancellationToken).ConfigureAwait(false);
-        var processor = UploadProcessors.FirstOrDefault(x => x.Supports(uploadedFile));
-        if (processor == null)
-            return new ProcessedFile(uploadedFile, null);
-
-        var processedFile = await processor.Process(uploadedFile, cancellationToken).ConfigureAwait(false);
-        if (processedFile.File.TempFilePath != uploadedFile.TempFilePath)
-            uploadedFile.Delete();
-
-        return processedFile;
-    }
-
-    // Private methods
-
-    private async Task<UploadedFile> ReadFileContent(IFormFile file, CancellationToken cancellationToken)
-    {
-        var fileName = Path.ChangeExtension(file.FileName, $"_{Guid.NewGuid()}" + Path.GetExtension(file.FileName));
-        var targetFilePath = Path.Combine(Path.GetTempPath(), fileName);
-        var target = System.IO.File.OpenWrite(targetFilePath);
-        await using var _ = target.ConfigureAwait(false);
-        await file.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
-        target.Position = 0;
-        return new UploadedFile(file.FileName, file.ContentType, file.Length, targetFilePath);
     }
 }

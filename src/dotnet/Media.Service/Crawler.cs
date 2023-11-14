@@ -3,6 +3,7 @@ using ActualChat.Media.Module;
 using ActualChat.Uploads;
 using OpenGraphNet;
 using OpenGraphNet.Metadata;
+using Stl.IO;
 
 namespace ActualChat.Media;
 
@@ -118,42 +119,15 @@ public class Crawler(IServiceProvider services) : IHasServices
         if (!response.IsSuccessStatusCode)
             return null;
 
-        var file = await DownloadToTempFile(response, cts.Token).ConfigureAwait(false);
-        if (file is null)
-            return null;
-
-        var processedFile = await ProcessFile(file, cancellationToken).ConfigureAwait(false);
-        if (processedFile.File.TempFilePath != file.TempFilePath)
-            file.Delete();
-
-        return processedFile;
-    }
-
-    private Task<ProcessedFile> ProcessFile(UploadedFile file, CancellationToken cancellationToken)
-    {
-        var processor = UploadProcessors.FirstOrDefault(x => x.Supports(file));
-        return processor != null
-            ? processor.Process(file, cancellationToken)
-            : Task.FromResult(new ProcessedFile(file, null));
-    }
-
-    private async Task<UploadedFile?> DownloadToTempFile(HttpResponseMessage response, CancellationToken cancellationToken)
-    {
+        FilePath fileName = new string(response.RequestMessage!.RequestUri!.Segments[^1].Where(Alphabet.AlphaNumeric.IsMatch).ToArray());
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-        var ext = MediaTypeExt.GetFileExtension(contentType);
+        var ext = MediaTypeExt.GetFileExtension(contentType); // TODO: convert if icon is not supported
         if (ext.IsNullOrEmpty())
             return null;
-
-        var fileName = new string(response.RequestMessage!.RequestUri!.Segments[^1].Where(Alphabet.AlphaNumeric.IsMatch).ToArray());
-        fileName = Path.ChangeExtension(fileName, ext);
-
-        var targetFilePath = Path.Combine(Path.GetTempPath(), $"{fileName}_{Guid.NewGuid()}");
-        var target = File.OpenWrite(targetFilePath);
-        await using (var _ = target.ConfigureAwait(false)) {
-            await response.Content.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
-            target.Position = 0;
-        }
-        return new UploadedFile(fileName, contentType, new FileInfo(targetFilePath).Length, targetFilePath);
+        return await UploadProcessors.Process(fileName,
+            contentType,
+            await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false),
+            cts.Token);
     }
 }
 
