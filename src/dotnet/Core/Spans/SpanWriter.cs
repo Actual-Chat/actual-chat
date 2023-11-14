@@ -39,9 +39,7 @@ public ref struct SpanWriter
     }
 
     public byte[] ToArray()
-    {
-        return Span.Slice(0, Position).ToArray();
-    }
+        => Span[..Position].ToArray();
 
     public int Write(byte value, int? position = null)
     {
@@ -79,52 +77,70 @@ public ref struct SpanWriter
         return Write(bytes, position);
     }
 
+    public int Write(string value, int? position = null)
+    {
+        byte[] bytes = _encoding.GetBytes(value, 0, value.Length);
+        return Write(bytes, position);
+    }
+
     public int Write(decimal value, int? position = null) => Write(DecimalToBytes(value), position);
 
     public int Write(DateTime value, int? position = null) => Write(value.ToBinary(), position);
 
     public int Write(Guid value, int? position = null) => Write(value.ToByteArray(), position);
 
-    public int Write(short num, int? position = null)
+    public int Write(short num, int? position = null, bool isLittleEndian = false)
     {
         const int numSize = sizeof(short);
         var start = position ?? Position;
         var end = start + numSize;
         var span = Span[start..end];
-        BinaryPrimitives.WriteInt16BigEndian(span, num);
+        if (isLittleEndian)
+            BinaryPrimitives.WriteInt16LittleEndian(span, num);
+        else
+            BinaryPrimitives.WriteInt16BigEndian(span, num);
 
         return UpdatePosition(numSize, position);
     }
 
-    public int Write(ushort num, int? position = null)
+    public int Write(ushort num, int? position = null, bool isLittleEndian = false)
     {
         const int numSize = sizeof(ushort);
         var start = position ?? Position;
         var end = start + numSize;
         var span = Span[start..end];
-        BinaryPrimitives.WriteUInt16BigEndian(span, num);
+        if (isLittleEndian)
+            BinaryPrimitives.WriteUInt16LittleEndian(span, num);
+        else
+            BinaryPrimitives.WriteUInt16BigEndian(span, num);
 
         return UpdatePosition(numSize, position);
     }
 
-    public int Write(int num, int? position = null)
+    public int Write(int num, int? position = null, bool isLittleEndian = false)
     {
         const int numSize = sizeof(int);
         var start = position ?? Position;
         var end = start + numSize;
         var span = Span[start..end];
-        BinaryPrimitives.WriteInt32BigEndian(span, num);
+        if (isLittleEndian)
+            BinaryPrimitives.WriteInt32LittleEndian(span, num);
+        else
+            BinaryPrimitives.WriteInt32BigEndian(span, num);
 
         return UpdatePosition(numSize, position);
     }
 
-    public int Write(uint num, int? position = null)
+    public int Write(uint num, int? position = null, bool isLittleEndian = false)
     {
         const int numSize = sizeof(uint);
         var start = position ?? Position;
         var end = start + numSize;
         var span = Span[start..end];
-        BinaryPrimitives.WriteUInt32BigEndian(span, num);
+        if (isLittleEndian)
+            BinaryPrimitives.WriteUInt32LittleEndian(span, num);
+        else
+            BinaryPrimitives.WriteUInt32BigEndian(span, num);
 
         return UpdatePosition(numSize, position);
     }
