@@ -204,7 +204,7 @@
                 return;
             }
 
-            var model = new RecordingTroubleshooterModal.Model();
+            var model = new RecordingTroubleshooterModal.Model(IsUnknown:true);
             var modalRef = await ModalUI.Show(model, token);
             try {
                 await modalRef.WhenClosed.WaitAsync(token);

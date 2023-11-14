@@ -8,7 +8,10 @@
     @if (ModalModel.TestGuideType is { } testGuideType) {
         type = testGuideType;
     } else {
-        if (HostInfo.AppKind.IsMauiApp()) {
+        if (ModalModel.IsUnknown) {
+            type = GuideType.Unknown;
+        }
+        else if (HostInfo.AppKind.IsMauiApp()) {
             type = HostInfo.ClientKind switch {
                 ClientKind.Ios => GuideType.IosApp,
                 ClientKind.Android => GuideType.AndroidApp,
@@ -101,5 +104,5 @@
     private void OnOkClick()
         => Modal.Close();
 
-    public sealed record Model(GuideType? TestGuideType = null);
+    public sealed record Model(GuideType? TestGuideType = null, bool IsUnknown = false);
 }
