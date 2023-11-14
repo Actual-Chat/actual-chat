@@ -58,19 +58,6 @@ public partial class MauiWebView(BlazorWebView blazorWebView, object platformWeb
             return;
 
         Tracer.Point($"Deactivate: #{Id}");
-        IServiceProvider? scopedServices;
-        lock (Lock) {
-            scopedServices = ScopedServices;
-            ScopedServices = null;
-        }
-        if (scopedServices != null)
-            TryDiscardActiveScopedServices(scopedServices, "MauiWebView.Deactivate");
-        try {
-            _ = EvaluateJavaScript("window.ui.BrowserInit.terminate()");
-        }
-        catch {
-            // Intended
-        }
     }
 
     public static MauiWebView? IfActive(object webView)
@@ -93,19 +80,23 @@ public partial class MauiWebView(BlazorWebView blazorWebView, object platformWeb
     public partial void OnInitializing(BlazorWebViewInitializingEventArgs eventArgs);
     public partial void OnInitialized(BlazorWebViewInitializedEventArgs eventArgs);
     public partial void OnLoaded(EventArgs eventArgs);
+    public partial Task EvaluateJavaScript(string javaScript);
 
-    public void OnAppInitializing(IServiceProvider scopedServices, Session session)
+    public void OnAttach(IServiceProvider scopedServices, Session session)
     {
+        bool isSessionChanged;
         lock (Lock) {
-            if (!ReferenceEquals(ScopedServices, scopedServices)) {
-                ScopedServices = scopedServices;
-                AppServicesAccessor.ScopedServices = scopedServices;
-            }
-            if (Session != session) {
-                Session = session;
-                SetupSessionCookie(session);
-            }
+            if (ReferenceEquals(ScopedServices, scopedServices))
+                Log.LogWarning("OnAttach is called more than once for the same ScopedServices!");
+
+            isSessionChanged = Session != session;
+            ScopedServices = scopedServices;
+            Session = session;
+            scopedServices.GetRequiredService<Mutable<MauiWebView?>>().Value = this;
+            AppServicesAccessor.ScopedServices = scopedServices;
         }
+        if (isSessionChanged)
+            SetupSessionCookie(session);
     }
 
     public void OnUrlLoading(UrlLoadingEventArgs eventArgs)
@@ -118,5 +109,4 @@ public partial class MauiWebView(BlazorWebView blazorWebView, object platformWeb
     // Private methods
 
     private partial void SetupSessionCookie(Session session);
-    private partial Task EvaluateJavaScript(string javaScript);
 }

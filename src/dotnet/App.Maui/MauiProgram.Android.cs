@@ -18,6 +18,7 @@ public static partial class MauiProgram
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
 
+        services.AddSingleton<IHistoryExitHandler>(_ => new AndroidHistoryExitHandler());
         services.AddSingleton<AndroidContentDownloader>();
         services.AddAlias<IIncomingShareFileDownloader, AndroidContentDownloader>();
         services.AddScoped<IVisualMediaViewerFileDownloader, AndroidVisualMediaViewerFileDownloader>();
@@ -48,7 +49,7 @@ public static partial class MauiProgram
             android.OnActivityResult(OnActivityResult);
             android.OnBackPressed(activity => {
                 _ = HandleBackPressed(activity);
-                return true;
+                return true; // We handle it in HandleBackPressed
             });
         });
 
@@ -57,35 +58,44 @@ public static partial class MauiProgram
 
     private static async Task HandleBackPressed(Activity activity)
     {
+        // This method either moves the current activity to background (back),
+        // or makes AndroidWebView to navigate back.
         var webView = MauiWebView.Current?.AndroidWebView;
-        var wentBack = webView != null && await TryGoBack(webView).ConfigureAwait(false);
-        if (wentBack)
-            return;
-
-        // Moves the app to the background as Home button acts.
-        // It handles the scenario when the app is running, but the activity is destroyed.
-        activity.MoveTaskToBack(true);
+        if (webView == null || !await TryGoBack(webView).ConfigureAwait(false))
+            activity.MoveTaskToBack(true);
     }
 
     private static async Task<bool> TryGoBack(Android.Webkit.WebView webView)
     {
-        var canGoBack = webView.CanGoBack();
-        if (canGoBack) {
+        if (!TryGetScopedServices(out var scopedServices))
+            return false;
+
+        // We use History as our primary info source here, coz the actual browser history
+        // may have a few extra items in the beginning of the list
+        var history = scopedServices.GetRequiredService<History>();
+        var backStepCount = history.CurrentItem.BackStepCount;
+        Tracer.Point($"TryGoBack, back step count = {backStepCount}");
+        if (backStepCount == 0)
+            return false;
+
+        if (webView.CanGoBack()) {
             webView.GoBack();
             return true;
         }
+
         // Sometimes Chromium reports that it can't go back while there are 2 items in the history.
         // It seems that this bug exists for a while, not fixed yet and there is not plans to do it.
         // https://bugs.chromium.org/p/chromium/issues/detail?id=1098388
         // https://github.com/flutter/flutter/issues/59185
-        // But we can use web api to navigate back.
+        // We use history API to navigate back in this case.
         var list = webView.CopyBackForwardList();
-        var canGoBack2 = list is { Size: > 1, CurrentIndex: > 0 };
-        if (!canGoBack2 || !TryGetScopedServices(out var scopedServices))
-            return false;
+        if (list is { Size: > 1, CurrentIndex: > 0 }) {
+            var js = scopedServices.JSRuntime();
+            await js.InvokeVoidAsync("history.back").ConfigureAwait(false);
+            return true;
+        }
 
-        var js = scopedServices.JSRuntime();
-        await js.InvokeVoidAsync("history.back").ConfigureAwait(false);
-        return true;
+        // We tried everything & there is nothing we can do
+        return false;
     }
 }

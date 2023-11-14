@@ -20,6 +20,13 @@ public partial class MauiWebView
     public partial void OnInitialized(BlazorWebViewInitializedEventArgs eventArgs) { }
     public partial void OnLoaded(EventArgs eventArgs) { }
 
+    public partial Task EvaluateJavaScript(string javaScript)
+    {
+        var request = new EvaluateJavaScriptAsyncRequest(javaScript);
+        WindowsWebView.EvaluateJavaScript(request);
+        return request.Task;
+    }
+
     // Private methods
 
     private partial void SetupSessionCookie(Session session)
@@ -36,12 +43,5 @@ public partial class MauiWebView
         cookie.IsHttpOnly = true;
         cookie.IsSecure = true;
         webView.CookieManager.AddOrUpdateCookie(cookie);
-    }
-
-    private partial Task EvaluateJavaScript(string javaScript)
-    {
-        var request = new EvaluateJavaScriptAsyncRequest(javaScript);
-        WindowsWebView.EvaluateJavaScript(request);
-        return request.Task;
     }
 }

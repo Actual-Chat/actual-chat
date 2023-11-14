@@ -5,13 +5,12 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiLivenessProbe : WorkerBase
 {
-    private static readonly TimeSpan VeryFirstCheckDelay = TimeSpan.FromSeconds(3); // JIT, etc., so might take longer
-    private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(2); // WebView reload?
+    private static readonly TimeSpan VeryFirstCheckDelay = TimeSpan.FromSeconds(2); // JIT, etc., so might take longer
+    private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(0.1); // Background -> foreground
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(0.5);
     private static readonly TimeSpan MainThreadBusyTimeout = TimeSpan.FromMilliseconds(45); // ~3 timer ticks
-    private static readonly int CheckCount = 6; // 3s
+    private static readonly int CheckCount = 2; // 1s
     private static readonly int MainThreadBusyExtraCheckCount = 6; // 3s more
-    private static readonly int DisconnectedCheckCount = 3; // 1.5s
 
     private static readonly object _lock = new();
     private static MauiLivenessProbe? _current;
@@ -55,7 +54,6 @@ public class MauiLivenessProbe : WorkerBase
         var mainThreadBusyCheckCount = 0;
         while (!mustReload) {
             mustReload = true;
-            var disconnectedCount = 0;
             for (int i = 0; i < CheckCount; i++) {
                 var lastCheckDuration = lastCheckAt.Elapsed;
                 var delay = i == 0
@@ -102,16 +100,13 @@ public class MauiLivenessProbe : WorkerBase
 
                 // JS disconnected error
                 if (error is JSDisconnectedException) {
-                    disconnectedCount++;
                     Log.LogWarning(
-                        "Liveness check #{Index}/{Count} failed (disconnected {DisconnectedCount} time(s))",
-                        i, CheckCount, disconnectedCount);
-                    if (disconnectedCount >= DisconnectedCheckCount)
-                        break;
+                        "Liveness check #{Index}/{Count} failed (disconnected)",
+                        i, CheckCount);
+                    break;
                 }
-                else
-                    Log.LogWarning(error,
-                        "Liveness check #{Index}/{Count} failed (error)", i, CheckCount);
+                Log.LogWarning(error,
+                    "Liveness check #{Index}/{Count} failed (error)", i, CheckCount);
             }
         }
 
@@ -151,7 +146,9 @@ public class MauiLivenessProbe : WorkerBase
             var now = CpuTimestamp.Now;
             await MainThread.InvokeOnMainThreadAsync(() => { }).ConfigureAwait(false);
             var isMainThreadBusy = now.Elapsed >= MainThreadBusyTimeout;
-            var error = safeJSRuntime is { IsDisconnected: true } ? JSRuntimeErrors.Disconnected() : e;
+            var isDisconnected = e is ObjectDisposedException || safeJSRuntime is { IsDisconnected: true };
+            if (isDisconnected)
+                return (scopedServices ?? lastScopedServices, JSRuntimeErrors.Disconnected(), isMainThreadBusy);
             try {
                 // If there is some extra time, we can try pulling new scoped services
                 scopedServices = await whenScopedServicesChanged.ConfigureAwait(false);
@@ -159,7 +156,7 @@ public class MauiLivenessProbe : WorkerBase
             catch {
                 // Intended
             }
-            return (scopedServices ?? lastScopedServices, error, isMainThreadBusy);
+            return (scopedServices ?? lastScopedServices, e, isMainThreadBusy);
         }
     }
 }

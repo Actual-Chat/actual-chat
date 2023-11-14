@@ -45,7 +45,7 @@ public partial class History
                     }
                 }
                 else {
-                    // Navigation with keeping state but changing Uri happened
+                    // Navigation with keeping the state but changing the Uri happened
                     currentItem = _currentItem = existingItem.WithUri(uri);
                     ReplaceItem(ref currentItem, false);
                     locationChangeKind = LocationChangeKind.NewUri;
@@ -71,6 +71,14 @@ public partial class History
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 $"LocationChange: transition #{lastItem.Id} -> #{CurrentItem.Id}, {transition}");
             Transition(transition);
+            if (currentItem.BackStepCount == 0
+                && lastItem.BackStepCount == 0
+                && hasValidHistoryEntryState
+                && existingItemId < lastItem.Id) {
+                // Navigating back + both states don't have "back" states
+                Log.LogInformation("LocationChange: invoking history exit handler");
+                Services.GetService<IHistoryExitHandler>()?.Exit();
+            }
         }
         finally {
             try {

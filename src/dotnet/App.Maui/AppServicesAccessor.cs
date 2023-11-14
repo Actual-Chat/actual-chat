@@ -10,7 +10,7 @@ public class AppServicesAccessor
 {
     private static readonly TimeSpan WhenRenderedTimeout = TimeSpan.FromSeconds(3);
 
-    private static readonly object StaticLock = new();
+    private static readonly object AppServicesLock = new(); // Otherwise Rider assumes we're referencing it from elsewhere
     private static ILogger? _appServicesAccessorLog; // Otherwise Rider assumes we're referencing it from elsewhere
     private static volatile IServiceProvider? _appServices;
     private static volatile IServiceProvider? _scopedServices;
@@ -21,12 +21,13 @@ public class AppServicesAccessor
     private static volatile TaskCompletionSource<IServiceProvider> _scopedServicesChangedSource =
         TaskCompletionSourceExt.New<IServiceProvider>();
 
-    private static ILogger Log => _appServicesAccessorLog ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
+    private static ILogger AppServicesAccessorLog // Otherwise Rider assumes we're referencing it from elsewhere
+        => _appServicesAccessorLog ??= MauiDiagnostics.LoggerFactory.CreateLogger<AppServicesAccessor>();
 
     public static IServiceProvider AppServices {
         get => _appServices ?? throw Errors.NotInitialized(nameof(AppServices));
         set {
-            lock (StaticLock) {
+            lock (AppServicesLock) {
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
                 if (ReferenceEquals(_appServices, value))
@@ -36,7 +37,7 @@ public class AppServicesAccessor
 
                 _appServices = value;
                 _appServicesSource.TrySetResult(value);
-                Log.LogDebug("AppServices ready");
+                AppServicesAccessorLog.LogDebug("AppServices ready");
             }
         }
     }
@@ -44,7 +45,7 @@ public class AppServicesAccessor
     public static IServiceProvider ScopedServices {
         get => _scopedServices ?? throw Errors.NotInitialized(nameof(ScopedServices));
         set {
-            lock (StaticLock) {
+            lock (AppServicesLock) {
                 if (value == null)
                     throw new ArgumentNullException(nameof(value));
                 if (ReferenceEquals(_scopedServices, value))
@@ -56,7 +57,7 @@ public class AppServicesAccessor
                 _scopedServicesSource.TrySetResult(value);
                 _scopedServicesChangedSource.TrySetResult(value);
                 _scopedServicesChangedSource = TaskCompletionSourceExt.New<IServiceProvider>();
-                Log.LogDebug("ScopedServices ready");
+                AppServicesAccessorLog.LogDebug("ScopedServices ready");
             }
         }
     }
@@ -97,17 +98,17 @@ public class AppServicesAccessor
         => DispatchToBlazor(c => _ = ForegroundTask.Run(() => {
             workItem.Invoke(c);
             return Task.CompletedTask;
-        }, Log, $"{name} failed"));
+        }, AppServicesAccessorLog, $"{name} failed"));
 
     public static Task DispatchToBlazor(Func<IServiceProvider, Task> workItem, string name, bool whenRendered = false)
         => DispatchToBlazor(c => ForegroundTask.Run(
             async () => await workItem.Invoke(c).ConfigureAwait(false),
-            Log, $"{name} failed"));
+            AppServicesAccessorLog, $"{name} failed"));
 
     public static Task DispatchToBlazor<T>(Func<IServiceProvider, Task<T>> workItem, string name, bool whenRendered = false)
         => DispatchToBlazor(c => ForegroundTask.Run(
             async () => await workItem.Invoke(c).ConfigureAwait(false),
-            Log, $"{name} failed"));
+            AppServicesAccessorLog, $"{name} failed"));
 
     public static async Task DispatchToBlazor(Action<IServiceProvider> workItem, bool whenRendered = false)
     {
@@ -172,7 +173,7 @@ public class AppServicesAccessor
     {
         if (scopedServices == null)
             return;
-        lock (StaticLock) {
+        lock (AppServicesLock) {
             if (!ReferenceEquals(_scopedServices, scopedServices))
                 return;
 
@@ -180,13 +181,13 @@ public class AppServicesAccessor
             _scopedServicesSource = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
             _scopedServices = null;
         }
-        Log.LogWarning(
+        AppServicesAccessorLog.LogInformation(
             "Active ScopedServices are discarded ({Reason}); stack trace:\n{StackTrace}",
             reason, Environment.StackTrace);
-        Dispose(scopedServices);
+        EnsureDisposed(scopedServices);
     }
 
-    private static void Dispose(IServiceProvider scopedServices)
+    private static void EnsureDisposed(IServiceProvider scopedServices)
     {
         try {
             if (scopedServices.GetService<SafeJSRuntime>() is { } safeJSRuntime)
@@ -195,25 +196,18 @@ public class AppServicesAccessor
         catch {
             return; // Already disposed
         }
-        _ = DelayedDispose(scopedServices);
+        _ = DelayedEnsureDisposed(scopedServices);
     }
 
-    private static async Task DelayedDispose(IServiceProvider scopedServices)
+    private static async Task DelayedEnsureDisposed(IServiceProvider scopedServices)
     {
         try {
             var cancellationToken = scopedServices.GetRequiredService<AppBlazorCircuitContext>().StopToken;
-            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(15), cancellationToken).ConfigureAwait(false);
         }
         catch (Exception) {
-            Log.LogInformation($"{nameof(DelayedDispose)}: unnecessary");
             return; // Already disposed
         }
-        _ = MainThread.InvokeOnMainThreadAsync(async () => {
-            Log.LogInformation($"{nameof(DelayedDispose)}: started");
-            if (scopedServices is IAsyncDisposable ad)
-                await ad.DisposeSilentlyAsync().ConfigureAwait(false);
-            else if (scopedServices is IDisposable d)
-                d.DisposeSilently();
-        });
+        AppServicesAccessorLog.LogWarning("ScopedServices aren't disposed in 15 seconds!");
     }
 }

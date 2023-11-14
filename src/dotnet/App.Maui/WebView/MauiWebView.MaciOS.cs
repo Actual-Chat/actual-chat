@@ -36,6 +36,19 @@ public partial class MauiWebView
     public partial void OnLoaded(EventArgs eventArgs)
         => WKWebView.UIDelegate = UIDelegate.Instance;
 
+    public partial Task EvaluateJavaScript(string javaScript)
+    {
+        var tcs = new TaskCompletionSource<NSObject>();
+        WKWebView.EvaluateJavaScript(javaScript, (result, error) => {
+            var e = error.ToException();
+            if (e != null)
+                tcs.TrySetException(e);
+            else
+                tcs.TrySetResult(result);
+        });
+        return tcs.Task;
+    }
+
     // Private methods
 
     private partial void SetupSessionCookie(Session session)
@@ -128,18 +141,5 @@ public partial class MauiWebView
             bool IsGranted(AVAuthorizationMediaType type1)
                 => AVCaptureDevice.GetAuthorizationStatus(type1) == AVAuthorizationStatus.Authorized;
         }
-    }
-
-    private partial Task EvaluateJavaScript(string javaScript)
-    {
-        var tcs = new TaskCompletionSource<NSObject>();
-        WKWebView.EvaluateJavaScript(javaScript, (result, error) => {
-            var e = error.ToException();
-            if (e != null)
-                tcs.TrySetException(e);
-            else
-                tcs.TrySetResult(result);
-        });
-        return tcs.Task;
     }
 }

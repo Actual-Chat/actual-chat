@@ -58,6 +58,13 @@ public partial class MauiWebView
 
     public partial void OnLoaded(EventArgs eventArgs) { }
 
+    public partial Task EvaluateJavaScript(string javaScript)
+    {
+        var request = new EvaluateJavaScriptAsyncRequest(javaScript);
+        AndroidWebView.EvaluateJavaScript(request);
+        return request.Task;
+    }
+
     // Private methods
 
     private partial void SetupSessionCookie(Session session)
@@ -72,12 +79,5 @@ public partial class MauiWebView
         var sessionCookieValue = $"{cookieName}={sessionId}; path=/; secure; samesite=none; httponly";
         cookieManager.SetCookie("https://" + MauiSettings.LocalHost, sessionCookieValue);
         cookieManager.SetCookie("https://" + MauiSettings.Host, sessionCookieValue);
-    }
-
-    private partial Task EvaluateJavaScript(string javaScript)
-    {
-        var request = new EvaluateJavaScriptAsyncRequest(javaScript);
-        AndroidWebView.EvaluateJavaScript(request);
-        return request.Task;
     }
 }

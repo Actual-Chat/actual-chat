@@ -20,9 +20,13 @@ namespace ActualChat.App.Maui;
     MainLauncher = true,
     // When user tap on a notification which was created by FCM when app was in background mode,
     // It causes creating a new instance of MainActivity. Apparently this happens because Intent has NewTask flag.
-    // Creating a new instance of MainActivity causes creating a new instance of MauiBlazorApp even without disposing an existing one.
-    // Setting LaunchMode to SingleTask prevents this behavior. Existing instance of MainActivity is used and Intent is passed to OnNewIntent method.
+    // Creating a new instance of MainActivity causes creating a new instance of MauiBlazorApp
+    // even without disposing an existing one.
+    // Setting LaunchMode to SingleTask or SingleInstance prevents this behavior.
+    // Existing instance of MainActivity is used and Intent is passed to OnNewIntent method.
     // MauiBlazorApp instance is kept.
+    // See:
+    // - https://stackoverflow.com/questions/25773928/setting-launchmode-singletask-vs-setting-activity-launchmode-singletop
     LaunchMode = LaunchMode.SingleTask,
     ConfigurationChanges =
         ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |

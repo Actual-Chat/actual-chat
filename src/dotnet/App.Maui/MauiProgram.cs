@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
 using ActualChat.Security;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
@@ -15,6 +16,7 @@ using Microsoft.JSInterop;
 using Sentry;
 using Serilog;
 using Stl.CommandR.Rpc;
+using ILogger = Google.Apis.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
@@ -105,6 +107,7 @@ public static partial class MauiProgram
         // Core MAUI services
         services.AddMauiBlazorWebView();
         AddSafeJSRuntime(services);
+        services.AddScoped<Mutable<MauiWebView?>>();
 // #if DEBUG
         services.AddBlazorWebViewDeveloperTools();
 // #endif

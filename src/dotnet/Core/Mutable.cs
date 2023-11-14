@@ -1,11 +1,10 @@
-namespace ActualChat.UI.Blazor;
+namespace ActualChat;
 
 public sealed class Mutable<T>
 {
     private T _value = default!;
 
-    public T Value
-    {
+    public T Value {
         get => _value;
         set => Set(value);
     }
