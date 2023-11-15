@@ -13,7 +13,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
     public static readonly long MinLoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
 
-    private readonly CancellationTokenSource _disposeTokenSource = new();
+    private readonly CancellationTokenSource _disposeTokenSource;
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private readonly Suspender _getDataSuspender = new();
 
@@ -39,7 +39,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private TimeZoneConverter TimeZoneConverter => ChatContext.TimeZoneConverter;
     private IStateFactory StateFactory => ChatContext.StateFactory;
     private Dispatcher Dispatcher => ChatContext.Dispatcher;
-    private CancellationToken DisposeToken => _disposeTokenSource.Token;
+    private CancellationToken DisposeToken { get; }
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
@@ -54,6 +54,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
+
+    public ChatView()
+    {
+        _disposeTokenSource = new ();
+        DisposeToken = _disposeTokenSource.Token;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -84,7 +90,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _syncLastAuthorEntryLidState = new AsyncChain(nameof(SyncLastAuthorEntryLidState),  SyncLastAuthorEntryLidState)
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
-                .RunIsolated(_disposeTokenSource.Token);
+                .RunIsolated(DisposeToken);
         }
         catch {
             _whenInitializedSource.TrySetCanceled();
