@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Chat;
+﻿namespace ActualChat.Uploads;
 
 public static class MediaTypeExt
 {
@@ -38,5 +38,9 @@ public static class MediaTypeExt
     public static bool IsSupportedVisualMedia(string? contentType)
         => IsSupportedImage(contentType) || IsSupportedVideo(contentType);
     public static string? GetFileExtension(string? contentType)
-    => !contentType.IsNullOrEmpty() ? ExtensionByContentType.GetValueOrDefault(contentType).NullIfEmpty() : null;
+        => !contentType.IsNullOrEmpty() ? ExtensionByContentType.GetValueOrDefault(contentType).NullIfEmpty() : null;
+    public static bool IsImage(string? contentType)
+        => contentType?.OrdinalIgnoreCaseStartsWith("image/") ?? false;
+    public static bool IsVideo(string? contentType)
+        => contentType?.OrdinalIgnoreCaseStartsWith("video/") ?? false;
 }

@@ -1,6 +1,8 @@
 using System.Net.Mime;
 using FFMpegCore;
 using FFMpegCore.Enums;
+using FFMpegCore.Pipes;
+using Stl.IO;
 
 namespace ActualChat.Uploads;
 
@@ -8,8 +10,8 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
 {
     private ILogger<VideoUploadProcessor> Log { get; } = log;
 
-    public bool Supports(UploadedFile file)
-        => file.ContentType.OrdinalIgnoreCaseContains("video");
+    public bool Supports(string contentType)
+        => MediaTypeExt.IsVideo(contentType);
 
     public async Task<ProcessedFile> Process(UploadedFile file, CancellationToken cancellationToken)
     {
@@ -20,8 +22,12 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
             return new ProcessedFile(file, size);
 
         try {
-            var convertedFilePath = Path.ChangeExtension(file.TempFilePath, ".converted.mp4");
-            await FFMpegArguments.FromFileInput(file.TempFilePath)
+            var tempDir = FilePath.GetApplicationTempDirectory();
+            var convertedFileName = Guid.NewGuid().ToString("N") + "_" + Path.ChangeExtension(file.FileName, ".mp4");
+            var convertedFilePath = tempDir | convertedFileName;
+            var stream = file.Open();
+            await using var _ = stream.ConfigureAwait(false);
+            await FFMpegArguments.FromPipeInput(new StreamPipeSource(stream))
                 .OutputToFile(convertedFilePath,
                     false,
                     options => options.WithVideoCodec(VideoCodec.LibX264)
@@ -30,10 +36,9 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
                 .ProcessAsynchronously()
                 .ConfigureAwait(false);
             return new ProcessedFile(
-                new UploadedFile(
+                new UploadedTempFile(
                     Path.ChangeExtension(file.FileName, ".mp4"),
                     "video/mp4",
-                    new FileInfo(convertedFilePath).Length,
                     convertedFilePath),
                 size);
         }
@@ -49,7 +54,9 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
     private async Task<(bool NeedConversion, Size? Size)> GetVideoInfo(UploadedFile file, CancellationToken cancellationToken)
     {
         try {
-            var media = await FFProbe.AnalyseAsync(file.TempFilePath, cancellationToken: cancellationToken).ConfigureAwait(false);
+            var stream = file.Open();
+            await using var _ = stream.ConfigureAwait(false);
+            var media = await FFProbe.AnalyseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
             var video = media.PrimaryVideoStream;
             var size = video is null ? (Size?)null : new Size(video.Width, video.Height);
             var needsConversion = !OrdinalIgnoreCaseEquals(media.PrimaryVideoStream?.CodecName, "h264")

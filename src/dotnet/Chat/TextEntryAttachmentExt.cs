@@ -1,3 +1,6 @@
+using ActualChat.Media;
+using ActualChat.Uploads;
+
 namespace ActualChat.Chat;
 
 public static class TextEntryAttachmentExt
@@ -10,7 +13,7 @@ public static class TextEntryAttachmentExt
         => MediaTypeExt.IsSvg(attachment.Media.ContentType)
             || (attachment.IsSupportedImage() && OrdinalIgnoreCaseEquals(Path.GetExtension(attachment.Media.FileName), ".svg"));
     public static bool IsSupportedVideo(this TextEntryAttachment attachment)
-        => attachment.Media.ContentType.OrdinalIgnoreCaseStartsWith("video");
+        => MediaTypeExt.IsSupportedVideo(attachment.Media.ContentType);
     public static bool IsVisualMedia(this TextEntryAttachment attachment)
         => MediaTypeExt.IsSupportedVisualMedia(attachment.Media.ContentType);
 }
