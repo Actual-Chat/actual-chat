@@ -20,6 +20,7 @@ export class BrowserInfo {
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();
 
     public static async init(backendRef1: DotNet.DotNetObject, appKind: AppKind): Promise<void> {
+        Theme.changed.add(theme => this.onThemeChanged(theme));
         infoLog?.log(`initializing`);
         this.backendRef = backendRef1;
         this.appKind = appKind;
