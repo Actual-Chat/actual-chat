@@ -1,9 +1,6 @@
 import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
 import { Log } from "logging";
-import { AudioRecorder } from "../../../Audio.UI.Blazor/Components/AudioRecorder/audio-recorder";
-import { AudioPlayer } from "../../../Audio.UI.Blazor/Components/AudioPlayer/audio-player";
-import { audioContextSource } from "../../../Audio.UI.Blazor/Services/audio-context-source";
 import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
 
 const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
@@ -244,6 +241,7 @@ export class BrowserInit {
     }
 
     public static async tryReload(): Promise<void> {
+        return;
         try {
             const response = await fetch('/favicon.ico');
             if (response.ok)

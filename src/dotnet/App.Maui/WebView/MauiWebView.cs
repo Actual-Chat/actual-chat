@@ -100,8 +100,9 @@ public sealed partial class MauiWebView
                 return false;
 
             IsDead = true;
-            return true;
         }
+        Log.LogInformation("WebView is dead");
+        return true;
     }
 
     public partial void HardNavigateTo(string url);
@@ -116,6 +117,9 @@ public sealed partial class MauiWebView
 
     private void OnUnloaded(object? sender, EventArgs eventArgs)
     {
+        BlazorWebView.Handler?.DisconnectHandler();
+        return;
+
         if (BlazorWebView.Handler is not BlazorWebViewHandler handler)
             return;
 

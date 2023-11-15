@@ -55,7 +55,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     }
 
     [JSInvokable]
-    public virtual void OnInitialized(object sender, IBrowserInfoBackend.InitResult initResult)
+    public virtual void OnInitialized(IBrowserInfoBackend.InitResult initResult)
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
 

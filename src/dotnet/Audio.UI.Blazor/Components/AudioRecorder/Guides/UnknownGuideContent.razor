@@ -22,8 +22,6 @@
 
     [Inject] private IServiceProvider Services { get; init; } = null!;
 
-    private Task OnReloadClick() {
-        Services.GetRequiredService<ReloadUI>().Reload();
-        return Task.CompletedTask;
-    }
+    private void OnReloadClick()
+        => Services.GetRequiredService<ReloadUI>().Reload();
 }

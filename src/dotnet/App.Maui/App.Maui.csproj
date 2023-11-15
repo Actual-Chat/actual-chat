@@ -115,6 +115,9 @@
     <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
+  <ItemGroup>
+    <TrimmerRootAssembly Include="ActualChat" />
+  </ItemGroup>
 
   <!--
   <PropertyGroup Condition="$(TargetFramework.Contains('-windows')) and '$(Configuration)' == 'Release'">
@@ -156,11 +159,11 @@
     <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
     <!-- true: -150ms -->
     <AndroidEnablePreloadAssemblies>true</AndroidEnablePreloadAssemblies>
-    <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
+    <AndroidUseInterpreter>true</AndroidUseInterpreter>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
@@ -172,9 +175,6 @@
     <TrimMode>partial</TrimMode>
     <!-- <DebuggerSupport>false</DebuggerSupport> -->
   </PropertyGroup>
-  <ItemGroup>
-    <TrimmerRootAssembly Include="ActualChat" />
-  </ItemGroup>
 
   <!--
   Android AOT settings & AOT profile

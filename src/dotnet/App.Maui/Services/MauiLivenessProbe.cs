@@ -112,7 +112,7 @@ public class MauiLivenessProbe : WorkerBase
             }
         }
 
-        Log.LogError("WebView is dead, reloading...");
+        Log.LogWarning("WebView is dead, reloading...");
         var appServices = await WhenAppServicesReady(cancellationToken).ConfigureAwait(false);
         appServices.GetRequiredService<ReloadUI>().Reload();
     }

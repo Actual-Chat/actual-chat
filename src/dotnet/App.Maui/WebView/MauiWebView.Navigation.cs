@@ -1,5 +1,4 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components.WebView;
 

@@ -18,7 +18,6 @@ public class MainPage : ContentPage
 
     public void Reload()
     {
-        return;
         var mauiWebView = MauiWebView.Current;
         if (mauiWebView == null || mauiWebView.IsDead)
             RecreateWebView();
