@@ -53,7 +53,8 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
         while (!cancellationToken.IsCancellationRequested) {
             var current = await Get(minLifespan, cancellationToken).ConfigureAwait(false);
             if (!OrdinalEquals(jsToken, current.Token)) {
-                await JS.InvokeVoidAsync(JSSetCurrentMethod, cancellationToken, current.Token).ConfigureAwait(false);
+                await JS.InvokeVoidAsync(JSSetCurrentMethod, CancellationToken.None, current.Token)
+                    .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
                 jsToken = current.Token;
             }
 

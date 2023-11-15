@@ -144,8 +144,8 @@ public class MauiLivenessProbe : WorkerBase
             var browserInit = scopedServices.GetRequiredService<BrowserInit>();
             await browserInit.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
             var isAlive = await jsRuntime
-                .InvokeAsync<bool>("window.ui.BrowserInit.isAlive", cancellationToken)
-                .ConfigureAwait(false);
+                .InvokeAsync<bool>("window.ui.BrowserInit.isAlive")
+                .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
             return (scopedServices, isAlive ? null : JSRuntimeErrors.Disconnected(), false);
         }
         catch (Exception e) {

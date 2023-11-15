@@ -80,9 +80,8 @@ public class LanguageUI : IDisposable
 
     private async ValueTask<List<Language>> GetClientLanguages(CancellationToken cancellationToken)
     {
-        var languages = await JS
-            .InvokeAsync<string[]>(JSGetLanguagesMethod, cancellationToken)
-            .ConfigureAwait(false);
+        var languages = await JS.InvokeAsync<string[]>(JSGetLanguagesMethod, CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         return languages
             .Select(x => new Language(x, ParseOrNone.Option))
             .Where(x => !x.IsNone)

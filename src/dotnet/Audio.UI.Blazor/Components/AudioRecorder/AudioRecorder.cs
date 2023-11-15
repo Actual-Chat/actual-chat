@@ -92,12 +92,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         }
 
         MarkStarting(chatId);
-        var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(StartRecordingTimeout);
         try {
             var isStarted = await _jsRef
-                .InvokeAsync<bool>("startRecording", cts.Token, chatId, repliedChatEntryId, sessionToken)
-                .ConfigureAwait(false);
+                .InvokeAsync<bool>("startRecording", CancellationToken.None, chatId, repliedChatEntryId, sessionToken)
+                .AsTask().WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
             if (!isStarted) {
                 MicrophonePermission.ForgetCached();
                 Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);
@@ -108,7 +106,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             }
         }
         catch (Exception e) when (e is not AudioRecorderException) {
-            if (e is not OperationCanceledException)
+            if (e is OperationCanceledException)
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 DebugLog?.LogDebug(nameof(StartRecording) + " is cancelled");
             else
@@ -117,15 +115,11 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
             await StopRecordingUnsafe().ConfigureAwait(false);
 
-            if (e is OperationCanceledException) {
-                if (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-                    throw new AudioRecorderException("Failed to start recording in time.", e);
+            if (e is OperationCanceledException)
                 throw;
-            }
+            if (e is TimeoutException)
+                throw new AudioRecorderException("Failed to start recording in time.", e);
             throw new AudioRecorderException("Failed to start recording.", e);
-        }
-        finally {
-            cts.CancelAndDisposeSilently();
         }
     }
 
@@ -139,13 +133,15 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public async ValueTask Reconnect(CancellationToken cancellationToken)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _jsRef.InvokeVoidAsync("reconnect", cancellationToken).ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("reconnect", CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask ConversationSignal(CancellationToken cancellationToken)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await _jsRef.InvokeVoidAsync("conversationSignal", cancellationToken).ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("conversationSignal", CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // JS backend callback handlers
@@ -184,20 +180,17 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             return true; // Nothing to do
 
         // This method should reliably stop the recording, so we don't use normal cancellation here
-        var cts = new CancellationTokenSource(StopRecordingTimeout);
         try {
-            await _jsRef.InvokeVoidAsync("stopRecording", cts.Token).ConfigureAwait(false);
+            await _jsRef.InvokeVoidAsync("stopRecording", CancellationToken.None)
+                .AsTask().WaitAsync(StopRecordingTimeout).ConfigureAwait(false);
         }
         catch (JSDisconnectedException) { } // Circuit is disposed or disposing
         catch (ObjectDisposedException) { } // Circuit is disposed or disposing
         catch (Exception e) {
-            var reason = cts.IsCancellationRequested ? "timed out" : "failed";
+            var reason = e is TimeoutException ? "timed out" : "failed";
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
             Log.LogError(e, $"{nameof(StopRecordingUnsafe)}: chat #{{ChatId}} - {reason}, recorder state is in doubt", chatId);
             return false;
-        }
-        finally {
-            cts.CancelAndDisposeSilently();
         }
         MarkStopped();
         return true;
@@ -206,7 +199,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     internal async Task<bool?> CheckPermission(CancellationToken cancellationToken = default)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        var state = await _jsRef.InvokeAsync<string>("checkPermission", cancellationToken).ConfigureAwait(false);
+        var state = await _jsRef.InvokeAsync<string>("checkPermission", CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         return state switch {
             "prompt" => null,
             "denied" => false,
@@ -218,7 +212,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     internal async Task<bool> RequestPermission(CancellationToken cancellationToken = default)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return await _jsRef.InvokeAsync<bool>("requestPermission", cancellationToken).ConfigureAwait(false);
+        return await _jsRef.InvokeAsync<bool>("requestPermission", CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // MarkXxx

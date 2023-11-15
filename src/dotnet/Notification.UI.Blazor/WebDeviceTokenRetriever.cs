@@ -10,5 +10,6 @@ public class WebDeviceTokenRetriever(IServiceProvider services) : IDeviceTokenRe
     private IJSRuntime JS { get; } = services.GetRequiredService<IJSRuntime>();
 
     public Task<string?> GetDeviceToken(CancellationToken cancellationToken)
-        => JS.InvokeAsync<string?>(JSGetDeviceTokenMethod, cancellationToken).AsTask();
+        => JS.InvokeAsync<string?>(JSGetDeviceTokenMethod, CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken);
 }
