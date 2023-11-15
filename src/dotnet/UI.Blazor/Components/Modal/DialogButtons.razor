@@ -32,7 +32,7 @@
     }
 
     public void Dispose()
-        => Unsubscribe();
+        => Unsubscribe(); // Never throws
 
     private void Subscribe() {
         if (_subscribedButtonInfos != null)

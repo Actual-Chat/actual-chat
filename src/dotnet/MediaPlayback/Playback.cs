@@ -55,7 +55,7 @@ public sealed class Playback : ProcessorBase
     {
         var process = Abort();
         await process.WhenCompleted.SilentAwait(false);
-        await _messageProcessor.Complete().ConfigureAwait(false);
+        await _messageProcessor.Complete().SilentAwait(false);
         await Task.WhenAll(_trackPlayers.Values.Select(x => x.PlayTask)).SilentAwait(false);
         await _messageProcessor.DisposeAsync().ConfigureAwait(false);
     }

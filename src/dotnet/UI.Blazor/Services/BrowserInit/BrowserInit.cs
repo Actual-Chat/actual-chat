@@ -13,7 +13,7 @@ public class BrowserInit(IServiceProvider services)
         string apiVersion,
         string baseUri,
         string sessionHash,
-        DotNetObjectReference<IBrowserInfoBackend> browserInfoBackendRef)
+        DotNetObjectReference<IBrowserInfoBackend> browserInfoBlazorRef)
     {
         if (WhenInitialized.IsCompleted)
             return;
@@ -26,7 +26,7 @@ public class BrowserInit(IServiceProvider services)
                     apiVersion,
                     baseUri,
                     sessionHash,
-                    browserInfoBackendRef)
+                    browserInfoBlazorRef)
                 .ConfigureAwait(false);
             _whenInitializedSource.TrySetResult();
         }

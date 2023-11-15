@@ -590,21 +590,17 @@ public static class AsyncEnumerableExt
             => new AsyncEnumeratorAdapter<T>(_source);
     }
 
-    private sealed class AsyncEnumeratorAdapter<T> : IAsyncEnumerator<T>
+    private sealed class AsyncEnumeratorAdapter<T>(IList<T> source) : IAsyncEnumerator<T>
     {
-        private readonly IList<T> _source;
         private int _index = -1;
-
-        public AsyncEnumeratorAdapter(IList<T> source)
-            => _source = source;
 
         public ValueTask DisposeAsync()
             => ValueTask.CompletedTask;
 
         public ValueTask<bool> MoveNextAsync()
-            => new (++_index < _source.Count);
+            => new (++_index < source.Count);
 
-        public T Current => _source[_index];
+        public T Current => source[_index];
     }
 
     private record struct MoveNextResult(Task<bool> MOveNextTask, int Index);

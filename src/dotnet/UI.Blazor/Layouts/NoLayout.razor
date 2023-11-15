@@ -39,6 +39,7 @@
     }
 
     public void Dispose() {
+        Nav.LocationChanged -= OnLocationChanged;
         UIActionFailureTracker.Changed -= OnCommandFailureListChanged;
     }
 

@@ -3,29 +3,26 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services;
 
-public class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObjectReference jsObjectReference)
-    : IJSObjectReference
+public sealed class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObjectReference jsObjectReference)
+    : IJSObjectReference, IHasIsDisposed
 {
-    private volatile int _disposed;
+    private volatile int _isDisposed;
 
-    internal bool Disposed => _disposed != 0;
     internal IJSObjectReference JSObjectReference => jsObjectReference;
 
-    public ValueTask DisposeAsync()
-    {
-        if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
-            return default;
+    public bool IsDisposed => _isDisposed != 0;
 
-        safeJSRuntime.RequireConnected();
-        return jsObjectReference.DisposeAsync();
-    }
+    public ValueTask DisposeAsync()
+        => Interlocked.CompareExchange(ref _isDisposed, 1, 0) != 0 || safeJSRuntime.IsDisconnected
+            ? default
+            : jsObjectReference.DisposeSilentlyAsync();
 
     public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(SafeJSRuntime.JsonSerialized)] TValue>(
         string identifier, object?[]? args)
     {
         ThrowIfDisposed();
         safeJSRuntime.RequireConnected();
-        return jsObjectReference.InvokeAsync<TValue>(identifier, safeJSRuntime.UnwrapArgs(args));
+        return jsObjectReference.InvokeAsync<TValue>(identifier, safeJSRuntime.ToUnsafe(args));
     }
 
     public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(SafeJSRuntime.JsonSerialized)] TValue>(
@@ -33,11 +30,11 @@ public class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObjectReferen
     {
         ThrowIfDisposed();
         safeJSRuntime.RequireConnected();
-        return jsObjectReference.InvokeAsync<TValue>(identifier, cancellationToken, safeJSRuntime.UnwrapArgs(args));
+        return jsObjectReference.InvokeAsync<TValue>(identifier, cancellationToken, safeJSRuntime.ToUnsafe(args));
     }
 
     // Protected methods
 
-    protected void ThrowIfDisposed()
-        => ObjectDisposedException.ThrowIf(Disposed, this);
+    private void ThrowIfDisposed()
+        => ObjectDisposedException.ThrowIf(IsDisposed, this);
 }

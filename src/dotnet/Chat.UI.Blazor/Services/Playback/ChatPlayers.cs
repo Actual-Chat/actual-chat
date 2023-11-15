@@ -37,11 +37,11 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    protected override Task DisposeAsyncCore()
+    protected override async Task DisposeAsyncCore()
     {
         // ReSharper disable once InconsistentlySynchronizedField
         var playerCloseTasks = _players.Select(kv => Close(kv.Key.ChatId, kv.Key.PlayerKind));
-        return Task.WhenAll(playerCloseTasks);
+        await Task.WhenAll(playerCloseTasks).SilentAwait(false);
     }
 
     [ComputeMethod]
@@ -188,6 +188,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     {
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
+
         ChatPlayer? player;
         lock (Lock) {
             player = _players.GetValueOrDefault((chatId, playerKind));

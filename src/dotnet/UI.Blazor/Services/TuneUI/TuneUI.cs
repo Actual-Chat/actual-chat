@@ -65,7 +65,10 @@ public class TuneUI : ITuneUIBackend, IDisposable
     }
 
     public virtual void Dispose()
-        => _blazorRef.DisposeSilently();
+    {
+        _blazorRef.DisposeSilently();
+        _blazorRef = null!;
+    }
 
     public ValueTask Play(Tune tune)
     {

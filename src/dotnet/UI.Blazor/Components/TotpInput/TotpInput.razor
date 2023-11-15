@@ -45,8 +45,11 @@
     [Parameter] public string ErrorText { get; set; } = "Invalid code. Please correct it or request a new one.";
     [Parameter] public EventCallback<int> Completed { get; set; }
 
-    public ValueTask DisposeAsync()
-        => _jsRef.DisposeSilentlyAsync();
+    public ValueTask DisposeAsync() {
+        var jsRef = _jsRef;
+        _jsRef = null!;
+        return jsRef.DisposeSilentlyAsync();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {

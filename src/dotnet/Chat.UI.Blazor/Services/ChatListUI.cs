@@ -90,7 +90,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
 
     protected override Task DisposeAsyncCore()
     {
-        _unreadChatCount?.Dispose();
+        _unreadChatCount.DisposeSilently();
         return base.DisposeAsyncCore();
     }
 

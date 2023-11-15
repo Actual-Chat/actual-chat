@@ -45,7 +45,7 @@ public class AppScopedServiceStarter
                 Constants.Api.Version,
                 baseUri,
                 sessionHash,
-                browserInfo.BackendRef);
+                browserInfo.BlazorRef);
 
             // Start AccountUI & UIEventHub
             Services.GetRequiredService<AccountUI>();

@@ -213,6 +213,9 @@
         private bool _isRolledBack;
         public ApiArray<MediaId> Attachments { get; }
 
+        public ValueTask DisposeAsync()
+            => !_isRolledBack ? _confirm.Invoke() : default;
+
         internal ResetIntent(ApiArray<MediaId> attachments, Action rollback, Func<ValueTask> confirm) {
             Attachments = attachments;
             _rollback = rollback;
@@ -222,10 +225,6 @@
         public void Rollback() {
             _rollback();
             _isRolledBack = true;
-        }
-
-        public ValueTask DisposeAsync() {
-            return !_isRolledBack ? _confirm() : default;
         }
     }
 

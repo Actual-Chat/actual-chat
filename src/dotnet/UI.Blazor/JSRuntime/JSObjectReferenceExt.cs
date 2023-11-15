@@ -18,14 +18,10 @@ public static class JSObjectReferenceExt
                 try {
                     await jsRef1.InvokeVoidAsync(jsDisposeMethodName1).ConfigureAwait(false);
                 }
-                catch (OperationCanceledException) { }
-                catch (JSDisconnectedException) { }
-
-            try {
-                await jsRef1.DisposeAsync().ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) { }
-            catch (JSDisconnectedException) { }
+                catch {
+                    // Intended
+                }
+            await jsRef1.DisposeSilentlyAsync().SilentAwait(false);
         }
     }
 }

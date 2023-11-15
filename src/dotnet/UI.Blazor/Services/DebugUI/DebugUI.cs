@@ -9,7 +9,7 @@ public sealed class DebugUI : IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DebugUI.init";
 
-    private DotNetObjectReference<DebugUI>? _backendRef;
+    private DotNetObjectReference<DebugUI>? _blazorRef;
 
     private IServiceProvider Services { get; }
     private IJSRuntime JS { get; }
@@ -28,12 +28,15 @@ public sealed class DebugUI : IDisposable
     }
 
     public void Dispose()
-        => _backendRef.DisposeSilently();
+    {
+        _blazorRef.DisposeSilently();
+        _blazorRef = null;
+    }
 
     private Task Initialize()
     {
-        _backendRef = DotNetObjectReference.Create(this);
-        return JS.InvokeVoidAsync(JSInitMethod, _backendRef).AsTask();
+        _blazorRef = DotNetObjectReference.Create(this);
+        return JS.InvokeVoidAsync(JSInitMethod, _blazorRef).AsTask();
     }
 
     [JSInvokable]

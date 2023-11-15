@@ -20,7 +20,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     protected UICommander UICommander => _uiCommander ??= Services.GetRequiredService<UICommander>();
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public DotNetObjectReference<IBrowserInfoBackend> BackendRef { get; }
+    public DotNetObjectReference<IBrowserInfoBackend> BlazorRef { get; private set; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ScreenSize> ScreenSize => _screenSize;
     public IState<bool> IsHoverable => _isHoverable;
@@ -40,7 +40,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public BrowserInfo(IServiceProvider services)
     {
         Services = services;
-        BackendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
+        BlazorRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         var stateFactory = services.StateFactory();
         _screenSize = stateFactory.NewMutable<ScreenSize>();
         _isHoverable = stateFactory.NewMutable(false);
@@ -49,7 +49,10 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     }
 
     public void Dispose()
-        => BackendRef.DisposeSilently();
+    {
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
 
     [JSInvokable]
     public virtual void OnInitialized(IBrowserInfoBackend.InitResult initResult)

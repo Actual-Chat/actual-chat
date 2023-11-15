@@ -34,7 +34,7 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
     protected override Task DisposeAsyncCore()
     {
-        _backendRef?.DisposeSilently();
+        _backendRef.DisposeSilently();
         return base.DisposeAsyncCore();
     }
 

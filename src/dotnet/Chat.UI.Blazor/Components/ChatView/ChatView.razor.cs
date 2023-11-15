@@ -104,12 +104,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (_disposeTokenSource.IsCancellationRequested)
             return;
 
-        _disposeTokenSource.Cancel();
+        _disposeTokenSource.CancelAndDisposeSilently();
         _whenInitializedSource.TrySetCanceled();
         RegionVisibility.IsVisible.Updated -= OnRegionVisibilityChanged;
         Nav.LocationChanged -= OnLocationChanged;
         _getDataSuspender.IsSuspended = false;
-        _isViewportAboveUnreadEntry?.Dispose();
+        _isViewportAboveUnreadEntry.DisposeSilently();
         ReadPositionState.DisposeSilently();
         ChatIdRangeState.DisposeSilently();
     }

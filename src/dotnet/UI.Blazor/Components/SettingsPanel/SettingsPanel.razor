@@ -166,7 +166,10 @@
 
     public void UnregisterTab(SettingsTab tab) {
         var tabIndex = _tabs.IndexOf(tab);
-        _tabs.Remove(tab);
+        if (tabIndex < 0)
+            return;
+
+        _tabs.RemoveAt(tabIndex);
         tabIndex = tabIndex.Clamp(0, _tabs.Count - 1);
         ActiveTab = tabIndex >= 0 ? _tabs[tabIndex] : null;
         StateHasChanged();

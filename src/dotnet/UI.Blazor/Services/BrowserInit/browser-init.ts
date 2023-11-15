@@ -4,7 +4,6 @@ import { Log } from "logging";
 import { AudioRecorder } from "../../../Audio.UI.Blazor/Components/AudioRecorder/audio-recorder";
 import { AudioPlayer } from "../../../Audio.UI.Blazor/Components/AudioPlayer/audio-player";
 import { audioContextSource } from "../../../Audio.UI.Blazor/Services/audio-context-source";
-import { DeviceInfo } from 'device-info';
 import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
 
 const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
@@ -22,7 +21,6 @@ export class BrowserInit {
     public static readonly whenReloading = new PromiseSource<void>();
     public static readonly reconnectedEvents = new EventHandlerSet<void>();
     public static connectionState = "";
-    public static isTerminated = false;
 
     public static async init(
         appKind: AppKind,
@@ -71,9 +69,6 @@ export class BrowserInit {
     }
 
     public static startReconnecting(mustReconnectBlazor : boolean): void {
-        if (BrowserInit.isTerminated)
-            return;
-
         this.setAppConnectionState("Reconnecting...");
         if (mustReconnectBlazor) {
             const blazor = window['Blazor'];
@@ -85,8 +80,6 @@ export class BrowserInit {
     }
 
     public static startReloading(): void {
-        if (BrowserInit.isTerminated)
-            return;
         if (this.whenReloading.isCompleted())
             return;
 
@@ -101,9 +94,6 @@ export class BrowserInit {
         const blazorReconnectDiv = document.getElementById('components-reconnect-modal');
         if (blazorReconnectDiv) {
             const observer = new MutationObserver((mutations, _) => {
-                if (BrowserInit.isTerminated)
-                    return;
-
                 mutations.forEach(mutation => {
                     const target = mutation.target;
                     if (this.whenReloading.isCompleted() || !(target instanceof HTMLElement))
@@ -125,9 +115,6 @@ export class BrowserInit {
         const blazorErrorDiv = document.getElementById('blazor-error-ui');
         if (blazorErrorDiv) {
             const observer = new MutationObserver((mutations, _) => {
-                if (BrowserInit.isTerminated)
-                    return;
-
                 mutations.forEach(mutation => {
                     const target = mutation.target;
                     if (this.whenReloading.isCompleted() || !(target instanceof HTMLElement))
@@ -158,8 +145,6 @@ export class BrowserInit {
         // Force stop recording before reload
         warnLog?.log('reloading...');
         await globalThis['opusMediaRecorder']?.stop();
-        if (BrowserInit.isTerminated)
-            return;
 
         if (!window.location.hash) {
             // Refresh with GET
@@ -168,20 +153,6 @@ export class BrowserInit {
         } else {
             window.location.reload();
         }
-    }
-
-    public static terminate(): void {
-        // Force stop recording
-        warnLog?.log('terminate()');
-        BrowserInit.isTerminated  = true;
-
-        void AudioRecorder.terminate();
-        void AudioPlayer.terminate();
-        void audioContextSource.terminate();
-
-        // Clean up everything
-        document.open();
-        document.close();
     }
 
     // Private methods

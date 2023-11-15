@@ -1,25 +1,19 @@
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class PlayableTextColorLease : IPlayableTextColorLease
+public class PlayableTextColorLease(PaletteColorLease? owner, PlayableTextColor color, long chatEntryId)
+    : IPlayableTextColorLease
 {
-    private readonly PaletteColorLease? _owner;
     private bool _isReleased;
 
-    public PlayableTextColor Color { get; }
-    public long ChatEntryId { get; }
-
-    public PlayableTextColorLease(PaletteColorLease? owner, PlayableTextColor color, long chatEntryId)
-    {
-        _owner = owner;
-        Color = color;
-        ChatEntryId = chatEntryId;
-    }
+    public PlayableTextColor Color { get; } = color;
+    public long ChatEntryId { get; } = chatEntryId;
 
     public void Release()
     {
         if (_isReleased)
             return;
+
         _isReleased = true;
-        _owner?.Release(this);
+        owner?.Release(this);
     }
 }

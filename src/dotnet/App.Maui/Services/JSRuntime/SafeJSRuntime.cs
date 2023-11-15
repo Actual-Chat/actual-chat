@@ -36,23 +36,20 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
 
     internal IJSRuntime WebViewJSRuntime { get; } = webViewJSRuntime;
 
-    internal bool MarkReady()
+    public bool MarkReady()
         => Interlocked.CompareExchange(ref _state, 1, 0) == 0;
 
-    internal void MarkDisconnected()
+    public void MarkDisconnected()
         => Interlocked.Exchange(ref _state, 2);
 
     public async ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(JsonSerialized)] TValue>(
         string identifier, object?[]? args)
     {
         try {
-            var result = await RequireConnected().InvokeAsync<TValue>(identifier, UnwrapArgs(args)).ConfigureAwait(false);
-            return Map(result);
+            var result = await RequireConnected().InvokeAsync<TValue>(identifier, ToUnsafe(args)).ConfigureAwait(false);
+            return ToSafe(result);
         }
         catch (OperationCanceledException) {
-            throw;
-        }
-        catch (JSDisconnectedException) {
             throw;
         }
         catch (Exception e) {
@@ -66,13 +63,10 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
         string identifier, CancellationToken cancellationToken, object?[]? args)
     {
         try {
-            var result = await RequireConnected().InvokeAsync<TValue>(identifier, cancellationToken, UnwrapArgs(args)).ConfigureAwait(false);
-            return Map(result);
+            var result = await RequireConnected().InvokeAsync<TValue>(identifier, cancellationToken, ToUnsafe(args)).ConfigureAwait(false);
+            return ToSafe(result);
         }
         catch (OperationCanceledException) {
-            throw;
-        }
-        catch (JSDisconnectedException) {
             throw;
         }
         catch (Exception e) {
@@ -82,37 +76,43 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
         }
     }
 
-    internal IJSRuntime RequireConnected()
+    public IJSRuntime RequireConnected()
         => IsDisconnected
             ? throw JSRuntimeErrors.Disconnected()
             : WebViewJSRuntime;
 
-    internal object?[]? UnwrapArgs(object?[]? args)
+    public object?[]? ToUnsafe(object?[]? args)
     {
         if (args == null || args.Length == 0)
             return args;
 
-        var needUnwrap = args.Any(static c => c is SafeJSObjectReference);
-        if (!needUnwrap)
+        var containsSafeJSObjectReferences = false;
+        var i = 0;
+        for (; i < args.Length; i++) {
+            var arg = args[i];
+            if (arg is SafeJSObjectReference) {
+                containsSafeJSObjectReferences = true;
+                break;
+            }
+        }
+        if (!containsSafeJSObjectReferences)
             return args;
 
         var newArgs = new object?[args.Length];
-        for (int i = 0; i < args.Length; i++)
-            newArgs[i] = UnwrapArg(args[i]);
+        for (i = 0; i < args.Length; i++)
+            newArgs[i] = ToUnsafe(args[i]);
         return newArgs;
     }
 
-    private object? UnwrapArg(object? obj)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public object? ToUnsafe(object? obj)
         => obj is SafeJSObjectReference safeJSObjectReference
             ? safeJSObjectReference.JSObjectReference
             : obj;
 
-    private TValue Map<TValue>(TValue value)
-    {
-        if (value is IJSObjectReference jsObjectReference)
-            // Convert original JSObjectReference to SafeJSObjectReference to make
-            // calling IJSObjectReference.InvokeAsync respect SafeJSRuntime disconnected state.
-            return (TValue)(object)new SafeJSObjectReference(this, jsObjectReference);
-        return value;
-    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public TValue ToSafe<TValue>(TValue value)
+        => value is IJSObjectReference jsObjectReference
+            ? (TValue)(object)new SafeJSObjectReference(this, jsObjectReference)
+            : value;
 }

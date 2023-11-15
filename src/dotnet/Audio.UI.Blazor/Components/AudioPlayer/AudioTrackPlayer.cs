@@ -55,7 +55,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
                 null);
             Log.LogError(error, "[AudioTrackPlayer #{AudioTrackPlayerId}] Playback stopped with an error", _id);
         }
-        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnPlayEnded: {Message}", _id, errorMessage);
+        DebugLog?.LogDebug("[AudioTrackPlayer #{AudioTrackPlayerId}] OnEnded: {Message}", _id, errorMessage);
         SetEndState(error);
         return Task.CompletedTask;
     }

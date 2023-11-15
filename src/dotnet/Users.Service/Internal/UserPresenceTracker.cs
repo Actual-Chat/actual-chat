@@ -20,8 +20,8 @@ internal class UserPresenceTracker : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        var t1 = _awayTimers.DisposeAsync();
-        var t2 = _offlineTimers.DisposeAsync();
+        var t1 = _awayTimers.DisposeAsync(); // Reliably returns the same task on multiple calls
+        var t2 = _offlineTimers.DisposeAsync(); // Reliably returns the same task on multiple calls
         await t1.ConfigureAwait(false);
         await t2.ConfigureAwait(false);
     }

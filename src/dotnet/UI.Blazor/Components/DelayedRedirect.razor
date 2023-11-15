@@ -20,9 +20,8 @@
     [Parameter, EditorRequired] public string To { get; set; } = "";
     [Parameter] public TimeSpan Delay { get; set; } = TimeSpan.FromSeconds(3);
 
-    public void Dispose() {
-        _delayTask = null;
-    }
+    public void Dispose()
+        => _delayTask = null;
 
     protected override void OnParametersSet() {
         var clock = Clocks.SystemClock; // Coz they're used by LiveTime

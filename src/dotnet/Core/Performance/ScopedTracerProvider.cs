@@ -1,15 +1,13 @@
 namespace ActualChat.Performance;
 
-public class ScopedTracerProvider
+public class ScopedTracerProvider(Tracer tracer)
 {
     private static long _lastId;
 
-    public Tracer Tracer { get; }
+    public Tracer Tracer { get; } = tracer;
 
     public ScopedTracerProvider()
         : this(CreateScopeTracer()) { }
-    public ScopedTracerProvider(Tracer tracer)
-        => Tracer = tracer;
 
     public void Dispose()
         => Tracer.Point(nameof(Dispose));

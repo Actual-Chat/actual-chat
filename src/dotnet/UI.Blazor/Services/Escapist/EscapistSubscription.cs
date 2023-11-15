@@ -36,14 +36,9 @@ public class EscapistSubscription : IAsyncDisposable
         if (jsRef == null)
             return;
 
-        _blazorRef?.Dispose();
-        try {
-            await jsRef.InvokeVoidAsync("dispose", CancellationToken.None).ConfigureAwait(false);
-        }
-        catch {
-            // Intended
-        }
-        await jsRef.DisposeSilentlyAsync().ConfigureAwait(false);
+        await jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
+        _blazorRef.DisposeSilently();
+        _blazorRef = null;
     }
 
     [JSInvokable]

@@ -33,12 +33,12 @@
     private string ChangedPart { get; set; } = "";
 
     public ValueTask DisposeAsync() {
-        RestartCts?.CancelAndDisposeSilently();
+        RestartCts.CancelAndDisposeSilently();
         return default;
     }
 
     protected override void OnParametersSet() {
-        RestartCts?.CancelAndDisposeSilently();
+        RestartCts.CancelAndDisposeSilently();
         RestartCts = new();
         var cancellationToken = RestartCts.Token;
         BackgroundTask.Run(
