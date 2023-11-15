@@ -22,8 +22,8 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public Symbol Id { get; }
 
     // Set on deserialization
-    private readonly UserId UserId1;
-    private readonly UserId UserId2;
+    private readonly PeerChatId PeerChatId;
+    private readonly PlaceChatId PlaceChatId;
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -31,7 +31,11 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public ChatKind Kind => UserId1.IsNone ? ChatKind.Group : ChatKind.Peer;
+    public ChatKind Kind => !PlaceChatId.IsNone
+        ? ChatKind.Place
+        : PeerChatId.IsNone
+            ? ChatKind.Group
+            : ChatKind.Peer;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public ChatId(Symbol id)
@@ -43,27 +47,34 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public ChatId(Generate _)
         => this = new ChatId(IdGenerator.Next());
 
-    public ChatId(Symbol id, UserId userId1, UserId userId2, AssumeValid _)
+    private ChatId(Symbol id, PeerChatId peerChatId, PlaceChatId placeChatId, AssumeValid _)
     {
         if (id.IsEmpty) {
             this = None;
             return;
         }
         Id = id;
-        UserId1 = userId1;
-        UserId2 = userId2;
+        PeerChatId = peerChatId;
+        PlaceChatId = placeChatId;
     }
+
+    // Factory
+
+    public static ChatId CreateGroupChatId(string chatId)
+        => new (chatId, PeerChatId.None, PlaceChatId.None, AssumeValid.Option);
 
     // Helpers
 
     public bool IsPeerChat(out PeerChatId peerChatId)
     {
-        if (UserId1.IsNone) {
-            peerChatId = default;
-            return false;
-        }
-        peerChatId = new PeerChatId(Id, UserId1, UserId2, AssumeValid.Option);
-        return true;
+        peerChatId = PeerChatId;
+        return !peerChatId.IsNone;
+    }
+
+    public bool IsPlaceChat(out PlaceChatId placeChatId)
+    {
+        placeChatId = PlaceChatId;
+        return !placeChatId.IsNone;
     }
 
     // Conversion
@@ -71,6 +82,8 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public override string ToString() => Value;
     public static implicit operator Symbol(ChatId source) => source.Id;
     public static implicit operator string(ChatId source) => source.Id.Value;
+    public static implicit operator ChatId(PeerChatId source) => new(source.Id, source, PlaceChatId.None, AssumeValid.Option);
+    public static implicit operator ChatId(PlaceChatId source) => new(source.Id, PeerChatId.None, source, AssumeValid.Option);
 
     // Equality
 
@@ -101,14 +114,21 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
             if (!PeerChatId.TryParse(s, out var peerChatId))
                 return false;
 
-            result = new ChatId(peerChatId.Id, peerChatId.UserId1, peerChatId.UserId2, AssumeValid.Option);
+            result = new ChatId(peerChatId.Id, peerChatId, PlaceChatId.None, AssumeValid.Option);
+        }
+        else if (s.OrdinalStartsWith(PlaceChatId.IdPrefix)) {
+            // Place chat ID
+            if (!PlaceChatId.TryParse(s, out var placeChatId))
+                return false;
+
+            result = new ChatId(placeChatId.Id, PeerChatId.None, placeChatId, AssumeValid.Option);
         }
         else {
             if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIds.Contains(s)))
                 return false;
 
             // Group chat ID
-            result = new ChatId(s, default, default, AssumeValid.Option);
+            result = new ChatId(s, PeerChatId.None, PlaceChatId.None, AssumeValid.Option);
         }
         return true;
     }

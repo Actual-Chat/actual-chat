@@ -32,6 +32,9 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
             // DbChat
             db.AddEntityResolver<string, DbChat>();
 
+            // // DbPlace
+            // db.AddEntityResolver<string, DbPlace>();
+
             // DbChatEntry
             db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, DbChatEntryShardRef>(
                 dbContext => dbContext.ChatEntries,
@@ -73,6 +76,10 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddService<IChats, Chats>();
         fusion.AddService<IChatsBackend, ChatsBackend>();
         commander.AddService<IChatsUpgradeBackend, ChatsUpgradeBackend>();
+
+        // Places
+        fusion.AddService<IPlaces, Places>();
+        //fusion.AddService<IPlacesBackend, PlacesBackend>();
 
         // Authors
         fusion.AddService<IAuthors, Authors>();

@@ -18,6 +18,13 @@
     private void OnCreateChatClick()
         => ChatHub.ModalUI.Show(new NewChatModal.Model());
 
-    private void OnCreatePlaceClick()
-        => _ = ChatHub.FeedbackUI.AskFeatureRequestFeedback("create-place", "Create place");
+    private void OnCreatePlaceClick() {
+        _ = ChatHub.UICommander.Run(new Places_Change(ChatHub.Session, default, default, new Change<PlaceDiff>() {
+            Create = new PlaceDiff() {
+                Title = "New Place " + ChatHub.Clocks.SystemClock.Now.ToString("g"),
+                IsPublic = true,
+            }
+        }));
+    }
+
 }

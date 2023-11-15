@@ -14,6 +14,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public record ChatHub(IServiceProvider Services, Session Session) : IHasServices, IServiceProvider
 {
     private IChats? _chats;
+    private IPlaces? _places;
     private IChatPositions? _chatPositions;
     private IMentions? _mentions;
     private Media.IMediaLinkPreviews? _linkPreviews;
@@ -59,6 +60,7 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     private TuneUI? _tuneUI;
     private LoadingUI? _loadingUI;
     private ICommander? _commander;
+    private PlaceUI? _placeUI;
     private UICommander? _uiCommander;
     private UIEventHub? _uiEventHub;
     private History? _history;
@@ -80,6 +82,7 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     public IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
     public IMentions Mentions => _mentions ??= Services.GetRequiredService<IMentions>();
+    public IPlaces Places => _places ??= Services.GetRequiredService<IPlaces>();
     public Media.IMediaLinkPreviews MediaLinkPreviews => _linkPreviews ??= Services.GetRequiredService<Media.IMediaLinkPreviews>();
     public IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
     public IReactions Reactions => _reactions ??= Services.GetRequiredService<IReactions>();
@@ -121,6 +124,9 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
     public FeedbackUI FeedbackUI => _feedbackUI ??= Services.GetRequiredService<FeedbackUI>();
     public TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
+    public PlaceUI PlaceUI => _placeUI ??= Services.GetRequiredService<PlaceUI>();
+    public UICommander UICommander => _uiCommander ??= Services.UICommander();
+    public UIEventHub UIEventHub => _uiEventHub ??= Services.UIEventHub();
     public LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     public History History => _history ??= Services.GetRequiredService<History>();
     public Features Features => _features ??= Services.GetRequiredService<Features>();

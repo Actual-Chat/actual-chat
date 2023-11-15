@@ -45,6 +45,11 @@ public interface IChatsBackend : IComputeService
         bool includeRemoved,
         CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ApiArray<ChatId>> GetPublicChatIdsFor(
+        PlaceId placeId,
+        CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]

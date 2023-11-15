@@ -80,6 +80,30 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiArray<ChatId>> GetPublicChatIdsFor(PlaceId placeId, CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = PlaceChatId.IdPrefix + placeId.Value;
+        var sChatIds = await dbContext.Chats
+            .Where(c => c.Id.StartsWith(idPrefix))
+            .Where(c => c.IsPublic)
+            .Select(c => c.Id)
+            .OrderBy(c => c)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        var placeChatIds = sChatIds
+            .Select(c => new PlaceChatId(c))
+            .Where(c => !c.IsRoot)
+            .ToArray();
+        return placeChatIds
+            .ToApiArray(c => (ChatId)c);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(
         ChatId chatId,
         PrincipalId principalId,
@@ -351,6 +375,8 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 _ = Get(invChat.Id, default);
                 if (invChat is { TemplateId: not null, TemplatedForUserId: not null })
                     _ = GetTemplatedChatFor(invChat.TemplateId.Value, invChat.TemplatedForUserId.Value, default);
+                if (invChat.Id.IsPlaceChat(out var placeChatId))
+                    _ = GetPublicChatIdsFor(placeChatId.PlaceId, default);
             }
             return null!;
         }
@@ -368,11 +394,21 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         Chat chat;
         if (change.IsCreate(out var update)) {
             oldChat.RequireNull();
-            var chatKind = update.Kind ?? chatId.Kind;
+            var placeId = update.PlaceId ?? PlaceId.None;
+            var chatKind = update.Kind ?? (chatId.IsNone && !placeId.IsNone ? ChatKind.Place : chatId.Kind);
             if (chatKind == ChatKind.Group) {
                 if (chatId.IsNone)
                     chatId = new ChatId(Generate.Option);
                 else if (!Constants.Chat.SystemChatIds.Contains(chatId))
+                    throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+            }
+            else if (chatKind == ChatKind.Place) {
+                if (chatId.IsNone) {
+                    chatId = placeId.IsNone
+                        ? PlaceChatId.GetForRoot(new PlaceId(Generate.Option))
+                        : new PlaceChatId(placeId, Generate.Option);
+                }
+                else
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
             }
             else if (chatKind != ChatKind.Peer)
@@ -411,7 +447,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     .Collect()
                     .ConfigureAwait(false);
             }
-            else if (chatId.Kind == ChatKind.Group) {
+            else if (chatId.Kind == ChatKind.Group || chatId.Kind == ChatKind.Place) {
                 // Group chat
                 ownerId.Require("Command.OwnerId");
                 // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
@@ -470,6 +506,8 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         }
         else if (change.IsUpdate(out update)) {
             ownerId.RequireNone();
+            if (update.PlaceId.HasValue)
+                throw new ArgumentOutOfRangeException(nameof(command), "ChatDiff.PlaceId should be null.");
             dbChat.RequireVersion(expectedVersion);
 
             chat = ApplyDiff(dbChat.ToModel(), update);
@@ -562,6 +600,10 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             case ChatKind.Peer:
                 if (!newChat.Title.IsNullOrEmpty())
                     throw StandardError.Constraint("Peer chat title must be empty.");
+                break;
+            case ChatKind.Place:
+                if (newChat.Title.IsNullOrEmpty())
+                    throw StandardError.Constraint("Place chat title must be empty.");
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat kind.");
