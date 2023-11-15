@@ -1,5 +1,5 @@
-import { BrowserInfo } from "../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info";
 import { Log } from 'logging';
+import { EventHandlerSet } from 'event-handling';
 
 const { debugLog } = Log.get('Theme');
 
@@ -20,12 +20,13 @@ export class Theme {
     public static defaultTheme = '';
     public static currentTheme = '';
     public static info: ThemeInfo = null;
+    public static changed: EventHandlerSet<ThemeInfo> = new EventHandlerSet<ThemeInfo>();
 
     public static init(): void {
         this.theme = load();
         this.defaultTheme = detectDefaultTheme();
         this.apply(false);
-        const defaultThemeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+        const defaultThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         defaultThemeMediaQuery.addListener(_ => {
             Theme.defaultTheme = detectDefaultTheme();
             Theme.apply();
@@ -60,9 +61,8 @@ export class Theme {
 
         this.info = createThemeInfo();
         if (mustNotify)
-            void BrowserInfo.onThemeChanged(this.info);
+            this.changed.triggerSilently(this.info);
     }
-
 }
 
 function createThemeInfo(): ThemeInfo {
@@ -78,7 +78,7 @@ function detectDefaultTheme() {
     if (!IsEnabled)
         return 'light';
 
-    const defaultThemeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const defaultThemeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     return defaultThemeMediaQuery.matches ? 'dark' : 'light';
 }
 
@@ -89,7 +89,7 @@ function getColors(): string {
     const style = getComputedStyle(document.body);
     const headerColor = style.getPropertyValue('--background-01');
     const postPanelColor = style.getPropertyValue('--post-panel');
-    return normalizeColor(headerColor) + ";" + normalizeColor(postPanelColor);
+    return normalizeColor(headerColor) + ';' + normalizeColor(postPanelColor);
 }
 
 function normalizeColor(hexColor: string): string {
