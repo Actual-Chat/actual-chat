@@ -181,9 +181,7 @@ public class AppServicesAccessor
             _scopedServicesSource = TaskCompletionSourceExt.New<IServiceProvider>(); // Must go first
             _scopedServices = null;
         }
-        AppServicesAccessorLog.LogInformation(
-            "Active ScopedServices are discarded ({Reason}); stack trace:\n{StackTrace}",
-            reason, Environment.StackTrace);
+        AppServicesAccessorLog.LogInformation("Active ScopedServices are discarded ({Reason})", reason);
         EnsureDisposed(scopedServices);
     }
 

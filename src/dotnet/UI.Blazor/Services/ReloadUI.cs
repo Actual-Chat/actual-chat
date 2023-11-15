@@ -16,10 +16,10 @@ public class ReloadUI
 
     public virtual void Reload(bool clearCaches = false, bool clearLocalSettings = false)
     {
-        Log.LogInformation("Reloading requested");
+        Log.LogInformation("Reload requested");
         var blazorCircuitContext = Services.GetRequiredService<AppBlazorCircuitContext>();
         _ = blazorCircuitContext.WhenReady.ContinueWith(_ => blazorCircuitContext.Dispatcher.InvokeAsync(async () => {
-            Log.LogWarning("Reloading...");
+            Log.LogInformation("Reloading...");
             try {
                 await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true); // Nav requires UI context
                 var nav = Services.GetRequiredService<NavigationManager>();

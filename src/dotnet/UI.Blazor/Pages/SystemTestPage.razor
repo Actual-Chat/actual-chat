@@ -63,8 +63,6 @@
         }
     }
 
-    private Task OnReloadUIClick() {
-        Services.GetRequiredService<ReloadUI>().Reload();
-        return Task.CompletedTask;
-    }
+    private void OnReloadUIClick()
+        => Services.GetRequiredService<ReloadUI>().Reload();
 }

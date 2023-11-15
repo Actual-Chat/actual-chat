@@ -6,7 +6,6 @@ namespace ActualChat.App.Maui.Services;
 public class MauiLivenessProbe : WorkerBase
 {
     private static readonly TimeSpan VeryFirstCheckDelay = TimeSpan.FromSeconds(2); // JIT, etc., so might take longer
-    private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(0.1); // Background -> foreground
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(0.5);
     private static readonly TimeSpan MainThreadBusyTimeout = TimeSpan.FromMilliseconds(45); // ~3 timer ticks
     private static readonly int CheckCount = 2; // 1s
@@ -15,11 +14,14 @@ public class MauiLivenessProbe : WorkerBase
     private static readonly object _lock = new();
     private static MauiLivenessProbe? _current;
     private static volatile bool _isVeryFirstCheck = true;
-    private static ILogger? _log;
-
-    private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<MauiLivenessProbe>();
 
     public static MauiLivenessProbe? Current => _current;
+
+    private ILogger? _log;
+    private ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(GetType());
+
+    public static void Check(TimeSpan delay)
+        => _ = Task.Delay(delay).ContinueWith(_ => Check(), TaskScheduler.Default);
 
     public static void Check()
     {
@@ -48,18 +50,19 @@ public class MauiLivenessProbe : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
+        if (_isVeryFirstCheck) {
+            _isVeryFirstCheck = false;
+            await Task.Delay(VeryFirstCheckDelay, cancellationToken).ConfigureAwait(false);
+        }
         var lastScopedServices = (IServiceProvider?)null;
-        var lastCheckAt = CpuTimestamp.Now;
+        var lastCheckAt = CpuTimestamp.Now - TimeSpan.FromHours(1);
         var mustReload = false;
         var mainThreadBusyCheckCount = 0;
         while (!mustReload) {
             mustReload = true;
             for (int i = 0; i < CheckCount; i++) {
                 var lastCheckDuration = lastCheckAt.Elapsed;
-                var delay = i == 0
-                    ? _isVeryFirstCheck ? VeryFirstCheckDelay : FirstCheckDelay
-                    : CheckTimeout;
-                await Task.Delay((delay - lastCheckDuration).Positive(), cancellationToken).ConfigureAwait(false);
+                await Task.Delay((CheckTimeout - lastCheckDuration).Positive(), cancellationToken).ConfigureAwait(false);
 
                 var timeoutCts = new CancellationTokenSource();
                 var timeoutToken = timeoutCts.Token;
@@ -72,7 +75,6 @@ public class MauiLivenessProbe : WorkerBase
 
                 // No error
                 if (error == null) {
-                    _isVeryFirstCheck = false;
                     Log.LogInformation("Liveness check #{Index}/{Count} succeeded", i, CheckCount);
                     return;
                 }
@@ -110,7 +112,7 @@ public class MauiLivenessProbe : WorkerBase
             }
         }
 
-        Log.LogError("WebView is dead, reloading...");
+        Log.LogWarning("WebView is dead, reloading...");
         var appServices = await WhenAppServicesReady(cancellationToken).ConfigureAwait(false);
         appServices.GetRequiredService<ReloadUI>().Reload();
     }
@@ -128,7 +130,12 @@ public class MauiLivenessProbe : WorkerBase
         var scopedServices = (IServiceProvider?)null;
         var safeJSRuntime = (SafeJSRuntime?)null;
         try {
-            scopedServices = await WhenScopedServicesReady(true, cancellationToken).ConfigureAwait(false);
+            if (TryGetScopedServices(out scopedServices)) {
+                if (MauiWebView.Current?.IsDead == true)
+                    return (scopedServices, JSRuntimeErrors.Disconnected(), false);
+            }
+            else
+                scopedServices = await WhenScopedServicesReady(true, cancellationToken).ConfigureAwait(false);
             safeJSRuntime = scopedServices.GetRequiredService<SafeJSRuntime>();
             if (safeJSRuntime.IsDisconnected)
                 return (scopedServices, JSRuntimeErrors.Disconnected(), false);
@@ -137,8 +144,8 @@ public class MauiLivenessProbe : WorkerBase
             var browserInit = scopedServices.GetRequiredService<BrowserInit>();
             await browserInit.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
             var isAlive = await jsRuntime
-                .InvokeAsync<bool>("window.ui.BrowserInit.isAlive", cancellationToken)
-                .ConfigureAwait(false);
+                .InvokeAsync<bool>("window.ui.BrowserInit.isAlive")
+                .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
             return (scopedServices, isAlive ? null : JSRuntimeErrors.Disconnected(), false);
         }
         catch (Exception e) {

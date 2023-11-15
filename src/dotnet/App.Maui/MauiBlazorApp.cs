@@ -6,21 +6,24 @@ using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.App.Maui;
 
-public sealed class MauiBlazorApp : AppBase
+public sealed class MauiBlazorApp : AppBase, IDisposable
 {
+    private MauiWebView? _mauiWebView;
+
     [Inject] private Mutable<MauiWebView?> MauiWebViewRef { get; init; } = null!;
+    [Inject] private ScopedServicesDisposeTracker ScopedServicesDisposeTracker { get; init; } = null!;
+
+    public void Dispose()
+        => _mauiWebView?.ResetScopedServices(Services);
 
     protected override async Task OnInitializedAsync()
     {
+        _mauiWebView = MauiWebView.Current;
         TrueSessionResolver = Services.GetRequiredService<TrueSessionResolver>();
         var session = await TrueSessionResolver.SessionTask.ConfigureAwait(true);
-        MauiWebView.Current!.OnAttach(Services, session);
+        _mauiWebView?.SetScopedServices(Services, session);
         try {
-            var livenessProbe = MauiLivenessProbe.Current;
             await base.OnInitializedAsync().ConfigureAwait(false);
-            livenessProbe ??= MauiLivenessProbe.Current;
-            if (livenessProbe != null)
-                MauiLivenessProbe.CancelCheck(livenessProbe); // We're ok for sure
         }
         catch (Exception e) {
             Log.LogError(e, "OnInitializedAsync failed, will reload...");

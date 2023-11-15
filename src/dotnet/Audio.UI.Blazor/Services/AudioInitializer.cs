@@ -58,22 +58,11 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
     private async Task Initialize(CancellationToken cancellationToken)
     {
-        var cts = cancellationToken.CreateLinkedTokenSource();
-        try {
-            Log.LogInformation("AudioInitializer: Initialize() is being called...");
-            var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
-            cts.CancelAfter(InitializeTimeout);
-            await JS
-                .InvokeVoidAsync(JSInitMethod, cts.Token, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
-                .ConfigureAwait(false);
-        }
-        catch (Exception e) when (e is OperationCanceledException) {
-            if (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-                throw StandardError.Timeout($"{nameof(AudioInitializer)}.{nameof(Initialize)}");
-
-            throw;
-        }
-
+        Log.LogInformation("AudioInitializer: Initialize() is being called...");
+        var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
+        await JS
+            .InvokeVoidAsync(JSInitMethod, CancellationToken.None, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
+            .AsTask().WaitAsync(InitializeTimeout, cancellationToken).ConfigureAwait(false);
     }
 
     // ReSharper disable once InconsistentNaming
@@ -107,8 +96,8 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
             Log.LogInformation("Background state has changed: {OldState} -> {State}", prevState, state);
             prevState = state;
             await JS
-                .InvokeVoidAsync(JSUpdateBackgroundStateMethod, cancellationToken, state.ToString())
-                .ConfigureAwait(false);
+                .InvokeVoidAsync(JSUpdateBackgroundStateMethod, CancellationToken.None, state.ToString())
+                .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 }

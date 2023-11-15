@@ -15,14 +15,18 @@ public class WindowsLivenessProbe : MauiLivenessProbe
             // Current SynchronizationContext on the MainThread is Microsoft.UI.Dispatching.DispatcherQueueSynchronizationContext.
             // It does not support Send method and invocation fails.
             SystemEvents.PowerModeChanged += static (_, e) => {
-                if (e.Mode is PowerModes.Resume)
-                    Check();
+                if (e.Mode is PowerModes.Resume) {
+                    MauiWebView.LogResume();
+                    Check(TimeSpan.FromSeconds(0.1));
+                }
                 else if (e.Mode is PowerModes.Suspend)
                     CancelCheck();
             };
             SystemEvents.SessionSwitch += static (_, e) => {
-                if (e.Reason is SessionSwitchReason.ConsoleConnect or SessionSwitchReason.RemoteConnect)
-                    Check();
+                if (e.Reason is SessionSwitchReason.ConsoleConnect or SessionSwitchReason.RemoteConnect) {
+                    MauiWebView.LogResume();
+                    Check(TimeSpan.FromSeconds(0.1));
+                }
             };
         }
         finally {

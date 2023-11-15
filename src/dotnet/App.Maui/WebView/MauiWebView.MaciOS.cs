@@ -9,32 +9,25 @@ namespace ActualChat.App.Maui;
 public partial class MauiWebView
 {
     // ReSharper disable once InconsistentNaming
-    public WKWebView WKWebView { get; } = (WKWebView)platformWebView;
+    public WKWebView WKWebView { get; private set; } = null!;
 
-    public partial void OnHandlerConnected()
+    public partial void SetPlatformWebView(object platformWebView)
     {
+        if (ReferenceEquals(PlatformWebView, platformWebView))
+            return;
+
+        PlatformWebView = platformWebView;
+        WKWebView = (WKWebView)platformWebView;
         WKWebView.ScrollView.Bounces = false;
         WKWebView.AllowsBackForwardNavigationGestures = false;
     }
 
-    public partial void OnHandlerDisconnected() { }
-
-    public partial void OnInitializing(BlazorWebViewInitializingEventArgs eventArgs)
+    public partial void HardNavigateTo(string url)
     {
-        eventArgs.Configuration.AllowsInlineMediaPlayback = true;
-        eventArgs.Configuration.MediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypes.None;
-        eventArgs.Configuration.UpgradeKnownHostsToHttps = true;
-        eventArgs.Configuration.Preferences.JavaScriptCanOpenWindowsAutomatically = true;
+        var nsUrl = new NSUrl(url, false);
+        var nsUrlRequest = new NSUrlRequest(nsUrl, NSUrlRequestCachePolicy.ReloadRevalidatingCacheData, 30);
+        WKWebView.LoadRequest(nsUrlRequest);
     }
-
-    public partial void OnInitialized(BlazorWebViewInitializedEventArgs eventArgs)
-    {
-        if (DeviceInfo.Version >= new Version("16.4"))
-            WKWebView.Inspectable = true;
-    }
-
-    public partial void OnLoaded(EventArgs eventArgs)
-        => WKWebView.UIDelegate = UIDelegate.Instance;
 
     public partial Task EvaluateJavaScript(string javaScript)
     {
@@ -50,6 +43,23 @@ public partial class MauiWebView
     }
 
     // Private methods
+
+    private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs)
+    {
+        eventArgs.Configuration.AllowsInlineMediaPlayback = true;
+        eventArgs.Configuration.MediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypes.None;
+        eventArgs.Configuration.UpgradeKnownHostsToHttps = true;
+        eventArgs.Configuration.Preferences.JavaScriptCanOpenWindowsAutomatically = true;
+    }
+
+    private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
+    {
+        if (DeviceInfo.Version >= new Version("16.4"))
+            WKWebView.Inspectable = true;
+    }
+
+    private partial void OnLoaded(object? sender, EventArgs eventArgs)
+        => WKWebView.UIDelegate = UIDelegate.Instance;
 
     private partial void SetupSessionCookie(Session session)
     {
@@ -95,8 +105,13 @@ public partial class MauiWebView
             WKMediaCaptureType type,
             Action<WKPermissionDecision> decisionHandler)
         {
+            if (Current?.IsOnLocalUri == false) {
+                decisionHandler.Invoke(WKPermissionDecision.Deny);
+                return;
+            }
+
             if (IsMediaCaptureGranted(origin, type)) {
-                decisionHandler(WKPermissionDecision.Grant);
+                decisionHandler.Invoke(WKPermissionDecision.Grant);
                 return;
             }
 

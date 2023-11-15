@@ -22,11 +22,9 @@ public class EscapistSubscription : IAsyncDisposable
             _once = once,
         };
         subscription._blazorRef = DotNetObjectReference.Create(subscription);
-        subscription._jsRef = await js.InvokeAsync<IJSObjectReference>(
-            JSCreateMethod,
-            cancellationToken,
-            subscription._blazorRef
-            ).ConfigureAwait(false);
+        subscription._jsRef = await js
+            .InvokeAsync<IJSObjectReference>(JSCreateMethod, CancellationToken.None, subscription._blazorRef)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         return subscription;
     }
 

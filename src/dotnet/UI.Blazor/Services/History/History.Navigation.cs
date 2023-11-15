@@ -52,9 +52,9 @@ public partial class History
         await entry.WhenCompleted.ConfigureAwait(false);
     }
 
-    public ValueTask ForceReload(string eventName, string url, bool mustReplace = true)
+    public ValueTask ForceReload(string reason, string url, bool mustReplace = true)
     {
-        Log.LogWarning("ForceReload on {EventName}: {Url} (mustReplace = {MustReplace})", eventName, url, mustReplace);
+        Log.LogWarning("ForceReload ({Reason}): {Url} (mustReplace = {MustReplace})", reason, url, mustReplace);
         // return JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.History.forceReload", url, mustReplace, NewItemId());
         var method = mustReplace ? "replace" : "assign";
         return JS.InvokeVoidAsync($"window.location.{method}", url);
