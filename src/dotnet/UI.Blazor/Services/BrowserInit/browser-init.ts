@@ -5,6 +5,7 @@ import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
 
 const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
+const IsReloadEnabled = true;
 const window = globalThis as undefined as Window;
 const sessionStorage = window.sessionStorage;
 
@@ -241,7 +242,9 @@ export class BrowserInit {
     }
 
     public static async tryReload(): Promise<void> {
-        return;
+        if (!IsReloadEnabled)
+            return;
+
         try {
             const response = await fetch('/favicon.ico');
             if (response.ok)
