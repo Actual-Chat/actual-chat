@@ -117,6 +117,11 @@ public sealed partial class MauiWebView
 
     private void OnUnloaded(object? sender, EventArgs eventArgs)
     {
+        if (BlazorWebView.Window?.Handler == null)
+            // NOTE: OnUnloaded is invoked on disconnecting Handler from the Window during quiting App.
+            // Do nothing. Invoking DisconnectHandler on BlazorWebView.Handler will causes deadlock on Main thread.
+            // And App won't be closed.
+            return;
         BlazorWebView.Handler?.DisconnectHandler();
 
         // The code below is an alternative to code above which must not block the main thread;
