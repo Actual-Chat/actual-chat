@@ -9,12 +9,15 @@ namespace ActualChat.App.Maui;
 
 public partial class MauiWebView
 {
-    public WebView AndroidWebView { get; } = (WebView)platformWebView;
+    public WebView AndroidWebView { get; private set; } = null!;
 
-    // Private methods
-
-    public partial void OnHandlerConnected()
+    public partial void SetPlatformWebView(object platformWebView)
     {
+        if (ReferenceEquals(PlatformWebView, platformWebView))
+            return;
+
+        PlatformWebView = platformWebView;
+        AndroidWebView = (WebView)platformWebView;
         AndroidWebView.Settings.JavaScriptEnabled = true;
         var jsInterface = new AndroidJSInterface(AndroidWebView);
         // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
@@ -26,10 +29,21 @@ public partial class MauiWebView
                 AppServices.LogFor<AndroidWebViewClientOverride>()));
     }
 
-    public partial void OnHandlerDisconnected() { }
-    public partial void OnInitializing(BlazorWebViewInitializingEventArgs eventArgs) { }
+    public partial void HardNavigateTo(string url)
+        => AndroidWebView.LoadUrl(url);
 
-    public partial void OnInitialized(BlazorWebViewInitializedEventArgs eventArgs)
+    public partial Task EvaluateJavaScript(string javaScript)
+    {
+        var request = new EvaluateJavaScriptAsyncRequest(javaScript);
+        AndroidWebView.EvaluateJavaScript(request);
+        return request.Task;
+    }
+
+    // Private methods
+
+    private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs) { }
+
+    private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
     {
         var webView = AndroidWebView;
         if (webView.Context?.GetActivity() is not ComponentActivity activity)
@@ -56,16 +70,7 @@ public partial class MauiWebView
         webView.SetRendererPriorityPolicy(RendererPriority.Important, true);
     }
 
-    public partial void OnLoaded(EventArgs eventArgs) { }
-
-    public partial Task EvaluateJavaScript(string javaScript)
-    {
-        var request = new EvaluateJavaScriptAsyncRequest(javaScript);
-        AndroidWebView.EvaluateJavaScript(request);
-        return request.Task;
-    }
-
-    // Private methods
+    private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
 
     private partial void SetupSessionCookie(Session session)
     {

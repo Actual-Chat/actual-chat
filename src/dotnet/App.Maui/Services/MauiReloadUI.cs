@@ -8,12 +8,12 @@ public class MauiReloadUI : ReloadUI
 
     public override void Reload(bool clearCaches = false, bool clearLocalSettings = false)
     {
-        Log.LogInformation("Reloading requested");
-        _ = MainThread.InvokeOnMainThreadAsync(async () => {
-            Log.LogWarning("Reloading...");
+        Log.LogInformation("Reload requested");
+        _ = MainThreadExt.InvokeLaterAsync(async () => {
+            Log.LogInformation("Reloading...");
             try {
                 await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true);
-                MainPage.Current.RecreateWebView(); // No MainPage.Current = no reload needed
+                MainPage.Current.Reload();
             }
             catch (Exception e) {
                 Log.LogError(e, "Reload failed, terminating");

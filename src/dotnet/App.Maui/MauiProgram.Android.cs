@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
@@ -45,8 +46,8 @@ public static partial class MauiProgram
             var incomingShare = new IncomingShareHandler();
             android.OnPostCreate(incomingShare.OnPostCreate);
             android.OnNewIntent(incomingShare.OnNewIntent);
-            android.OnResume(AndroidLivenessProbe.Check);
-            android.OnPause(AndroidLivenessProbe.AbortCheck);
+            android.OnResume(_ => MauiWebView.LogResume());
+            android.OnPause(_ => MauiLivenessProbe.CancelCheck());
             android.OnActivityResult(OnActivityResult);
             android.OnBackPressed(activity => {
                 _ = HandleBackPressed(activity);

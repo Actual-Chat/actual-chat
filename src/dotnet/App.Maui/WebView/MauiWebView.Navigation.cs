@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components.WebView;
@@ -10,45 +11,91 @@ public partial class MauiWebView
     private static readonly HashSet<string> AllowedExternalHosts = MauiSettings.WebAuth.UseSystemBrowser
         ? new(StringComparer.Ordinal)
         : new(StringComparer.Ordinal) { "accounts.google.com", "appleid.apple.com" };
-    private static readonly Uri BaseLocalUri = new($"https://{MauiSettings.LocalHost}/");
 
-    private CancellationTokenSource? _cancelNavigationCts;
-    private Uri _lastLocalUri = BaseLocalUri;
-    private bool _isOnLocalUri = true;
+    public static readonly Uri BaseLocalUri = new($"https://{MauiSettings.LocalHost}/");
+    public Uri LastUri { get; private set; }= BaseLocalUri;
+    public Uri LastLocalUri { get; private set; } = BaseLocalUri;
+    public bool IsOnLocalUri => LastUri != LastLocalUri;
 
-    private void OnUrlLoading(Uri uri, UrlLoadingEventArgs eventArgs)
+    public async Task NavigateTo(string uri, bool hardReload = false)
     {
-        var wasOnLocalUri = _isOnLocalUri;
-        _cancelNavigationCts.CancelAndDisposeSilently();
-        if (OrdinalEquals(uri.Host, MauiSettings.LocalHost)) {
-            // Local MAUI app URL
-            _lastLocalUri = uri;
-            _isOnLocalUri = true;
-            eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.OpenInWebView;
-            return;
+        if (!hardReload && ScopedServices is { } scopedServices) {
+            // Soft navigation
+            try {
+                var history = scopedServices.GetRequiredService<History>();
+                await history.Dispatcher.InvokeAsync(() => history.Nav.NavigateTo(uri)).ConfigureAwait(false);
+                return;
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Soft NavigateTo failed, retrying with hard navigation...");
+            }
         }
 
-        _isOnLocalUri = false;
+        HardNavigateTo(uri);
+    }
+
+    // Private methods
+
+    private void OnLoading(object? sender, UrlLoadingEventArgs eventArgs)
+    {
+        if (IsDead && Current == this) {
+            MainThreadExt.InvokeLater(() => {
+                if (Current == this)
+                    MainPage.Current.RecreateWebView();
+            });
+            eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
+            return;
+        }
+        if (LastResumeAt.Elapsed < TimeSpan.FromSeconds(0.5))
+            MauiLivenessProbe.Check();
+
+        var uri = eventArgs.Url;
+        var isLocalUri = HandleLoading(uri, eventArgs);
+        Tracer.Point($"{nameof(HandleLoading)}: Url: '{uri}' -> {eventArgs.UrlLoadingStrategy}, {(isLocalUri ? "local" : "external")}");
+        if (eventArgs.UrlLoadingStrategy != UrlLoadingStrategy.OpenInWebView)
+            return;
+
+        LastUri = uri;
+        if (isLocalUri)
+            LastLocalUri = uri;
+    }
+
+    private bool HandleLoading(Uri uri, UrlLoadingEventArgs eventArgs)
+    {
+        var wasOnLocalUri = IsOnLocalUri;
+        if (OrdinalEquals(uri.Host, MauiSettings.LocalHost)) {
+            // Local MAUI app URL
+            eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.OpenInWebView;
+            return true;
+        }
+
         if (!MauiSettings.BaseUri.IsBaseOf(uri)) {
             // Neither local MAUI app URL nor host URL
-            eventArgs.UrlLoadingStrategy = AllowedExternalHosts.Contains(uri.Host)
+            var isAllowedExternalUri = AllowedExternalHosts.Contains(uri.Host);
+            eventArgs.UrlLoadingStrategy = isAllowedExternalUri
                 ? UrlLoadingStrategy.OpenInWebView
                 : UrlLoadingStrategy.OpenExternally;
-            return;
+            return false;
         }
 
         // If we're here, it's a host URL
+
         if (IsAllowedHostUri(uri)) {
-            if (uri.PathAndQuery.OrdinalIgnoreCaseStartsWith("/fusion/close"))
-                _ = NavigateTo(_lastLocalUri.ToString(), true);
+            // We never land here, coz IsAllowedHostUri(...) always returns false now
+            if (uri.PathAndQuery.OrdinalIgnoreCaseStartsWith("/fusion/close")) {
+                MainThreadExt.InvokeLater(() => HardNavigateTo(LastLocalUri.ToString()));
+                eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
+                return false;
+            }
             eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.OpenInWebView;
-            return;
+            return false;
         }
 
         // It's a host URL, so we have to re-route it to the local one
         var localUri = HostToAbsoluteLocalUri(uri);
-        _ = NavigateTo(localUri, !wasOnLocalUri);
+        MainThreadExt.InvokeLater(() => _ = NavigateTo(localUri, !wasOnLocalUri));
         eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
+        return false;
     }
 
     private bool IsAllowedHostUri(Uri uri)
@@ -76,33 +123,4 @@ public partial class MauiWebView
 
     private string RelativeToAbsoluteLocalUri(string relativeUri)
         => new Uri(BaseLocalUri, relativeUri).ToString();
-
-    private async Task NavigateTo(string uri, bool mustReload)
-    {
-        var cts = _cancelNavigationCts = new();
-        var cancellationToken = cts.Token;
-        while (true) {
-            try {
-                // MainPage.Current!.NavigateTo(uri);
-                // break;
-                var services = await WhenScopedServicesReady(cancellationToken).ConfigureAwait(false);
-                var blazorCircuitContext = services.GetRequiredService<AppBlazorCircuitContext>();
-                await blazorCircuitContext.Dispatcher.InvokeAsync(async () => {
-                    var history = services.GetRequiredService<History>();
-                    if (mustReload)
-                        await history.ForceReload("return to MAUI app", uri).ConfigureAwait(false);
-                    else
-                        history.Nav.NavigateTo(uri);
-                }).ConfigureAwait(false);
-                break;
-            }
-            catch (Exception e) {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-
-                Log.LogError(e, "NavigateTo failed, retrying...");
-            }
-            await Task.Delay(250, cancellationToken).ConfigureAwait(false);
-        }
-    }
 }

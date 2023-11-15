@@ -10,15 +10,25 @@ public class AndroidWebViewClientOverride(
     ) : WebViewClient
 {
     private const string AppHostAddress = "0.0.0.0";
+    private ILogger? _log;
 
+    private ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(GetType());
     private WebViewClient Original { get; } = original;
-    private ILogger Log { get; } = log;
     private AndroidContentDownloader ContentDownloader { get; } = contentDownloader;
 
     public override bool OnRenderProcessGone(WebView? view, RenderProcessGoneDetail? detail)
     {
-        var msg = $"{detail}, DidCrash: {detail?.DidCrash()}, RendererPriorityAtExit: {detail?.RendererPriorityAtExit()}";
-        log.LogWarning("OnRenderProcessGone. Detail: '{Detail}'", msg);
+        var didCrash = detail?.DidCrash() == true;
+        var details = $"DidCrash: {didCrash}, RendererPriorityAtExit: {detail?.RendererPriorityAtExit()}, {detail}";
+        log.LogWarning("OnRenderProcessGone: {Details}", details);
+        var markedDead = view != null
+            && MauiWebView.Current is { } mauiWebView
+            && ReferenceEquals(mauiWebView.AndroidWebView, view)
+            && mauiWebView.MarkDead();
+        if (didCrash && markedDead) {
+            MainThread.BeginInvokeOnMainThread(() => MainPage.Current.RecreateWebView());
+            return true; // Indicates that we've handled this gracefully
+        }
         return base.OnRenderProcessGone(view, detail);
     }
 

@@ -5,89 +5,63 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.App.Maui;
 
-public partial class MauiWebView(BlazorWebView blazorWebView, object platformWebView)
+public sealed partial class MauiWebView
 {
     private static readonly Tracer Tracer = Tracer.Default[nameof(MauiWebView)];
     private static readonly object StaticLock = new();
     private static MauiWebView? _current;
     private static int _lastId;
-
-    public static MauiWebView? Current => _current;
-
-    private readonly TaskCompletionSource _whenDeactivatedSource = TaskCompletionSourceExt.New();
+    private static long _lastResumeAt = CpuTimestamp.Now.Value;
     private static ILogger? _log;
 
-    public BlazorWebView BlazorWebView { get; } = blazorWebView;
-    public object PlatformWebView { get; } = platformWebView;
+    private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<MainPage>();
 
-    public long Id { get; } = Interlocked.Increment(ref _lastId);
-    public bool IsActive => _current == this;
-    public Task WhenDeactivated => _whenDeactivatedSource.Task;
+    public static MauiWebView? Current => _current;
+    public static CpuTimestamp LastResumeAt => new(Interlocked.Read(ref _lastResumeAt));
+
+    private readonly object _lock = new();
+    public long Id { get; }
+    public BlazorWebView BlazorWebView { get; }
+    public object PlatformWebView { get; private set; } = null!;
     public IServiceProvider? ScopedServices { get; private set; }
     public Session? Session { get; private set; }
+    public bool IsDead { get; private set; }
 
-    private object Lock => _whenDeactivatedSource;
-    private ILogger Log => _log ??= AppServices.LogFor(GetType());
-
-    public static MauiWebView Activate(object platformWebView)
+    public MauiWebView()
     {
-        MauiWebView? mauiWebView;
-        lock (StaticLock) {
-            mauiWebView = IfActive(platformWebView);
-            if (mauiWebView != null)
-                return mauiWebView; // Somehow already active
-
-            _current?.Deactivate();
-            mauiWebView = _current = new MauiWebView(MainPage.Current.BlazorWebView, platformWebView);
-        }
-        Tracer.Point($"Activate: #{mauiWebView.Id}");
-        mauiWebView.OnHandlerConnected();
-        return mauiWebView;
+        Id = Interlocked.Increment(ref _lastId);
+        BlazorWebView = new BlazorWebView {
+            HostPage = "wwwroot/index.html",
+        };
+        BlazorWebView.BlazorWebViewInitializing += OnInitializing;
+        BlazorWebView.BlazorWebViewInitialized += OnInitialized;
+        BlazorWebView.UrlLoading += OnLoading;
+        BlazorWebView.Loaded += OnLoaded;
+        BlazorWebView.Unloaded += OnUnloaded;
+        BlazorWebView.RootComponents.Add(
+            new RootComponent {
+                ComponentType = typeof(MauiBlazorApp),
+                Selector = "#app",
+            });
+        lock (StaticLock)
+            _current = this;
+        Tracer.Point($"Current = #{Id}");
     }
 
-    public void Deactivate()
+    public static void LogResume()
     {
-        bool wasDeactivated;
-        lock (StaticLock) {
-            if (_current == this)
-                _current = null;
-
-            wasDeactivated = _whenDeactivatedSource.TrySetResult();
-        }
-        if (!wasDeactivated)
-            return;
-
-        Tracer.Point($"Deactivate: #{Id}");
+        Interlocked.Exchange(ref _lastResumeAt, CpuTimestamp.Now.Value);
+        Log.LogInformation("Resume logged");
     }
 
-    public static MauiWebView? IfActive(object webView)
-    {
-        var current = Current;
-        return ReferenceEquals(current?.PlatformWebView, webView) ? current : null;
-    }
+    public partial void SetPlatformWebView(object platformWebView);
 
-    public static MauiWebView? IfActive(BlazorWebView blazorWebView)
-    {
-        var current = Current;
-        return ReferenceEquals(current?.BlazorWebView, blazorWebView) ? current : null;
-    }
-
-    public MauiWebView? IfActive()
-        => IsActive ? this : null;
-
-    public partial void OnHandlerConnected();
-    public partial void OnHandlerDisconnected();
-    public partial void OnInitializing(BlazorWebViewInitializingEventArgs eventArgs);
-    public partial void OnInitialized(BlazorWebViewInitializedEventArgs eventArgs);
-    public partial void OnLoaded(EventArgs eventArgs);
-    public partial Task EvaluateJavaScript(string javaScript);
-
-    public void OnAttach(IServiceProvider scopedServices, Session session)
+    public void SetScopedServices(IServiceProvider scopedServices, Session session)
     {
         bool isSessionChanged;
-        lock (Lock) {
+        lock (_lock) {
             if (ReferenceEquals(ScopedServices, scopedServices))
-                Log.LogWarning("OnAttach is called more than once for the same ScopedServices!");
+                return;
 
             isSessionChanged = Session != session;
             ScopedServices = scopedServices;
@@ -99,14 +73,72 @@ public partial class MauiWebView(BlazorWebView blazorWebView, object platformWeb
             SetupSessionCookie(session);
     }
 
-    public void OnUrlLoading(UrlLoadingEventArgs eventArgs)
+    public void ResetScopedServices(IServiceProvider scopedServices)
     {
-        var uri = eventArgs.Url;
-        OnUrlLoading(uri, eventArgs);
-        Tracer.Point($"{nameof(OnUrlLoading)}: Url: '{uri}' -> {eventArgs.UrlLoadingStrategy}");
+        lock (_lock) {
+            if (ScopedServices == null)
+                return;
+            if (!ReferenceEquals(ScopedServices, scopedServices)) {
+                Log.LogWarning($"{nameof(ResetScopedServices)} is called w/ wrong ScopedServices instance!");
+                return;
+            }
+
+            try {
+                scopedServices.GetRequiredService<Mutable<MauiWebView?>>().Value = null;
+            }
+            catch {
+                // Intended, may fail on dispose
+            }
+            ScopedServices = null;
+        }
     }
+
+    public bool MarkDead()
+    {
+        lock (_lock) {
+            if (IsDead)
+                return false;
+
+            IsDead = true;
+            return true;
+        }
+    }
+
+    public partial void HardNavigateTo(string url);
+    public partial Task EvaluateJavaScript(string javaScript);
 
     // Private methods
 
+    private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs);
+    private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs);
+    private partial void OnLoaded(object? sender, EventArgs eventArgs);
     private partial void SetupSessionCookie(Session session);
+
+    private void OnUnloaded(object? sender, EventArgs eventArgs)
+    {
+        if (BlazorWebView.Handler is not BlazorWebViewHandler handler)
+            return;
+
+        if (handler.GetWebViewManager() is { } webViewManager)
+            _ = MainThread.InvokeOnMainThreadAsync(async () => {
+                // BlazorWebView.Handler.DisconnectHandler synchronously waits for DisposeAsync task completion,
+                // which may cause a deadlock on the main thread. We workaround it by:
+                // - Deactivating webView synchronously
+                // - Starting to dispose Handler._webViewManager in the main thread
+                // - Once it completes, we call DisconnectHandler, which shouldn't dispose anything at that point.
+                //
+                // See:
+                // - https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Windows/BlazorWebViewHandler.Windows.cs#L35
+                // - https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Android/BlazorWebViewHandler.Android.cs#L70
+                // - https://github.com/dotnet/aspnetcore/blob/main/src/Components/WebView/WebView/src/WebViewManager.cs#L264
+                // - https://github.com/dotnet/aspnetcore/blob/main/src/Components/WebView/WebView/src/PageContext.cs#L58
+                var pageContext = webViewManager.GetCurrentPageContext();
+                webViewManager.ResetCurrentPageContext();
+                if (pageContext != null) {
+                    Log.LogInformation("Disposing PageContext");
+                    await pageContext.DisposeAsync().ConfigureAwait(false);
+                }
+                BlazorWebView.Handler?.DisconnectHandler();
+            });
+    }
 }
