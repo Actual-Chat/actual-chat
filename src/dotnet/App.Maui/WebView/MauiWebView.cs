@@ -1,5 +1,6 @@
 // using WKWebView = global::WebKit.WKWebView;
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 
@@ -46,6 +47,17 @@ public sealed partial class MauiWebView
         lock (StaticLock)
             _current = this;
         Tracer.Point($"Current = #{Id}");
+    }
+
+    public static bool IsCurrent(object platformWebView, [NotNullWhen(true)] out MauiWebView? mauiWebView)
+    {
+        if (ReferenceEquals(Current?.PlatformWebView, platformWebView)) {
+            mauiWebView = Current;
+            return true;
+        }
+
+        mauiWebView = null;
+        return false;
     }
 
     public static void LogResume()

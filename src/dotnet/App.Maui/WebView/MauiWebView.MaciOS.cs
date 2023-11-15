@@ -105,7 +105,7 @@ public partial class MauiWebView
             WKMediaCaptureType type,
             Action<WKPermissionDecision> decisionHandler)
         {
-            if (Current?.IsOnLocalUri == false) {
+            if (!IsCurrent(webView, out var mauiWebView) || !mauiWebView.IsOnLocalUri) {
                 decisionHandler.Invoke(WKPermissionDecision.Deny);
                 return;
             }
