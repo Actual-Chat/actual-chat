@@ -46,7 +46,7 @@ public sealed class WebShareInfo : IDisposable, IWebShareInfoBackend
     }
 
     [JSInvokable]
-    public void OnInitialized(IWebShareInfoBackend.InitResult initResult)
+    public void OnInitialized(object sender, IWebShareInfoBackend.InitResult initResult)
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
         _canShareText = initResult.CanShareText;

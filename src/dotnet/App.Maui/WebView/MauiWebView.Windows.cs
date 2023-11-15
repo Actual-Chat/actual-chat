@@ -7,18 +7,25 @@ namespace ActualChat.App.Maui;
 
 public partial class MauiWebView
 {
-    public WebView2Control WindowsWebView { get; } = (WebView2Control)platformWebView;
+    public WebView2Control WindowsWebView { get; private set; } = null!;
 
-    public partial void OnHandlerConnected()
-        => WindowsWebView.CoreWebView2Initialized += static (sender, _) => {
+    // Private methods
+
+    public partial void SetPlatformWebView(object platformWebView)
+    {
+        if (ReferenceEquals(PlatformWebView, platformWebView))
+            return;
+
+        PlatformWebView = platformWebView;
+        WindowsWebView = (WebView2Control)platformWebView;
+        WindowsWebView.CoreWebView2Initialized += static (sender, _) => {
             var webView = sender.CoreWebView2;
             webView.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
         };
+    }
 
-    public partial void OnHandlerDisconnected() { }
-    public partial void OnInitializing(BlazorWebViewInitializingEventArgs eventArgs) { }
-    public partial void OnInitialized(BlazorWebViewInitializedEventArgs eventArgs) { }
-    public partial void OnLoaded(EventArgs eventArgs) { }
+    public partial void HardNavigateTo(string url)
+        => WindowsWebView.CoreWebView2.Navigate(url);
 
     public partial Task EvaluateJavaScript(string javaScript)
     {
@@ -27,7 +34,9 @@ public partial class MauiWebView
         return request.Task;
     }
 
-    // Private methods
+    private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs) { }
+    private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs) { }
+    private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
 
     private partial void SetupSessionCookie(Session session)
     {

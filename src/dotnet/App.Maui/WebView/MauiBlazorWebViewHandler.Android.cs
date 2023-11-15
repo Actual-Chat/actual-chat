@@ -7,6 +7,6 @@ public partial class MauiBlazorWebViewHandler
     protected override void ConnectHandler(WebView platformView)
     {
         base.ConnectHandler(platformView);
-        MauiWebView.Activate(platformView);
+        MauiWebView.Current?.SetPlatformWebView(platformView);
     }
 }

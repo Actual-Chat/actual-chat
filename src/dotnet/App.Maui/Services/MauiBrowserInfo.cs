@@ -33,7 +33,7 @@ public class MauiBrowserInfo : BrowserInfo
     }
 
     [JSInvokable]
-    public override void OnInitialized(IBrowserInfoBackend.InitResult initResult)
+    public override void OnInitialized(object sender, IBrowserInfoBackend.InitResult initResult)
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
 
