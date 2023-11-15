@@ -118,8 +118,10 @@ public sealed partial class MauiWebView
     private void OnUnloaded(object? sender, EventArgs eventArgs)
     {
         BlazorWebView.Handler?.DisconnectHandler();
-        return;
 
+        // The code below is an alternative to code above which must not block the main thread;
+        // let's see how it works w/o this workaround for now.
+#if false
         if (BlazorWebView.Handler is not BlazorWebViewHandler handler)
             return;
 
@@ -144,5 +146,6 @@ public sealed partial class MauiWebView
                 }
                 BlazorWebView.Handler?.DisconnectHandler();
             });
+#endif
     }
 }
