@@ -1,7 +1,9 @@
 using ActualChat.Chat;
+using ActualChat.Media;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Uploads;
 using Foundation;
 using Photos;
 using Stl.Fusion.UI;

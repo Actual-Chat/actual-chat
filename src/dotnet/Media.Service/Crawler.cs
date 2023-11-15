@@ -97,7 +97,9 @@ public class Crawler(IServiceProvider services) : IHasServices
             Height = processedFile.Size?.Height ?? 0,
         };
 
-        var content = new Content(media.ContentId, media.ContentType, processedFile.File.Open());
+        var stream = processedFile.File.Open();
+        await using var _ = stream.ConfigureAwait(false);
+        var content = new Content(media.ContentId, media.ContentType, stream);
         await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new MediaBackend_Change(
@@ -124,10 +126,9 @@ public class Crawler(IServiceProvider services) : IHasServices
         var ext = MediaTypeExt.GetFileExtension(contentType); // TODO: convert if icon is not supported
         if (ext.IsNullOrEmpty())
             return null;
-        return await UploadProcessors.Process(fileName,
-            contentType,
-            await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false),
-            cts.Token);
+
+        var stream = await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false);
+        return await UploadProcessors.Process(fileName, contentType, stream, cts.Token).ConfigureAwait(false);
     }
 }
 
