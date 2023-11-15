@@ -2,20 +2,24 @@ namespace ActualChat.UI.Blazor.Services;
 
 public partial class History
 {
+    public static readonly TimeSpan MaxNavigationDuration = TimeSpan.FromSeconds(1.5);
+    public static readonly TimeSpan DefaultWhenNavigationCompletedTimeout = TimeSpan.FromSeconds(5);
+
     public Task WhenNavigationCompleted(CancellationToken cancellationToken = default)
         => NavigationQueue.WhenAllEntriesCompleted(cancellationToken);
 
-    public async Task WhenNavigationCompletedWithDefaultTimeout()
+    public async Task WhenNavigationCompletedOrTimeout(TimeSpan timeout = default)
     {
-        var cts = new CancellationTokenSource(AwaitNavigationDuration);
+        if (timeout == default)
+            timeout = DefaultWhenNavigationCompletedTimeout;
+        var cts = new CancellationTokenSource(timeout);
+        var cancellationToken = cts.Token;
         try {
-            await WhenNavigationCompleted(cts.Token).ConfigureAwait(true);
+            await WhenNavigationCompleted(cancellationToken).ConfigureAwait(true);
         }
-        catch (Exception e) {
-            if (e is TimeoutException || e is OperationCanceledException)
-                Log.LogDebug(e, "WhenNavigationCompletedWithDefaultTimeout exceeded timeout");
-            else
-                throw;
+        catch (OperationCanceledException e) when (cancellationToken.IsCancellationRequested) {
+            // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
+            Log.LogDebug(e, $"{WhenNavigationCompletedOrTimeout} timed out");
         }
         finally {
             cts.CancelAndDisposeSilently();
@@ -25,7 +29,7 @@ public partial class History
     [JSInvokable]
     public async Task NavigateTo(string uri, bool mustReplace = false, bool force = false, bool addInFront = false)
     {
-        await WhenNavigationCompletedWithDefaultTimeout().ConfigureAwait(true);
+        await WhenNavigationCompletedOrTimeout().ConfigureAwait(true);
 
         var fixedUri = new LocalUrl(uri).Value;
         if (!OrdinalEquals(uri, fixedUri)) {
