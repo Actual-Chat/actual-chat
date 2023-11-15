@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net7.0-ios</TargetFramework>
+    <OutputType>Library</OutputType>
+    <ApplicationTitle>Actual Chat (Dev)</ApplicationTitle>
+    <ApplicationId>chat.actual.dev.app.share-extension</ApplicationId>
+    <TargetPlatformVersion>16.4</TargetPlatformVersion>
+    <SupportedOSPlatformVersion>16.4</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <IsAppExtension>True</IsAppExtension>
+    <IsWatchExtension>False</IsWatchExtension>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net7.0-ios|AnyCPU'">
+    <CreatePackage>false</CreatePackage>
+    <CodesignProvision>VS: chat.actual.dev.app.share-extension Dev</CodesignProvision>
+    <CodesignKey>iPhone Developer</CodesignKey>
+    <ProvisioningType>automatic</ProvisioningType>
+    <MtouchLink>SdkOnly</MtouchLink>
+    <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+</Project>
