@@ -12,13 +12,16 @@
 @if (NavbarUI.SelectedGroupId == NavbarGroupIds.Chats) {
     <ChatListNavbarWidget />
 }
+@if (NavbarUI.SelectedGroupId.StartsWith(NavbarGroupIds.PlacePrefix)) {
+    <PlaceChatListNavbarWidget PlaceId="@PlaceUI.ActivePlaceId.Value" />
+}
 @if (m.IsAdmin) {
-    <NavbarGroup Title="Administration" Class="navbar-pages" Id="admin">
+    <NavbarGroup Title="Administration" Class="navbar-pages" Id="@NavbarGroupIds.Administration">
         <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/user-invites">Invite Users</NavbarItem>
     </NavbarGroup>
 }
 @if (HostInfo.IsDevelopmentInstance) {
-    <NavbarGroup Title="Test pages" Class="navbar-pages" Id="testPages">
+    <NavbarGroup Title="Test pages" Class="navbar-pages" Id="@NavbarGroupIds.TestPages">
         <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>
         <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-player">Audio Player</NavbarItem>
         <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-recorder">Audio Recorder</NavbarItem>
@@ -53,6 +56,7 @@
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private PlaceUI PlaceUI { get; init; } = null!;
 
     private EventHandler _navbarUIOnSelectedGroupChanged = null!;
 

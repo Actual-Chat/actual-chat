@@ -1,11 +1,8 @@
-using System.Buffers;
-using Microsoft.Toolkit.HighPerformance.Buffers;
-
 namespace ActualChat.Collections;
 
 public static class ApiCollectionExt
 {
-    // ToApiList
+    // ToApiArray
 
     public static ApiArray<T> ToApiArray<T>(this T[] source, bool copy = false)
         => new(copy ? source.ToArray() : source);
@@ -26,6 +23,18 @@ public static class ApiCollectionExt
         finally {
             buffer.Release();
         }
+    }
+
+    // That's just a bit more efficient conversion than .Select().ToApiArray()
+    public static ApiArray<TResult> ToApiArray<TSource, TResult>(
+        this ICollection<TSource> source,
+        Func<TSource, TResult> selector)
+    {
+        var result = new TResult[source.Count];
+        var i = 0;
+        foreach (var item in source)
+            result[i++] = selector(item);
+        return new ApiArray<TResult>(result);
     }
 
     // ToApiList

@@ -50,6 +50,7 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
         services.AddScoped(c => new FileUploader(c.UIHub()));
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
+        services.AddScoped(c => new PlaceUI(c));
 
         // Chat activity
         services.AddScoped(c => new ChatActivity(c.ChatUIHub()));

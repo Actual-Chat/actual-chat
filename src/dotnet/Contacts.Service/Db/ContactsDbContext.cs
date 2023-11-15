@@ -10,6 +10,7 @@ public class ContactsDbContext : DbContextBase
     public DbSet<DbContact> Contacts { get; protected set; } = null!;
     public DbSet<DbExternalContact> ExternalContacts { get; protected set; } = null!;
     public DbSet<DbExternalContactLink> ExternalContactLinks { get; protected set; } = null!;
+    public DbSet<DbPlaceContact> PlaceContacts { get; protected set; } = null!;
 
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;

@@ -46,12 +46,29 @@ public class Contacts(IServiceProvider services) : IContacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIds(
+    public virtual Task<ApiArray<ContactId>> ListIds(
+        Session session,
+        CancellationToken cancellationToken)
+        => ListIds(session, PlaceId.None, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<PlaceId>> ListPlaceIds(
         Session session,
         CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var contactIds = await Backend.ListIds(account.Id, cancellationToken).ConfigureAwait(false);
+        var contactIds = await Backend.ListPlaceIds(account.Id, cancellationToken).ConfigureAwait(false);
+        return contactIds;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ContactId>> ListIds(
+        Session session,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var contactIds = await Backend.ListIds(account.Id, placeId, cancellationToken).ConfigureAwait(false);
         return contactIds;
     }
 

@@ -18,6 +18,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string OwnerId { get; set; } = "";
     public string? UserId { get; set; }
     public string? ChatId { get; set; }
+    public string? PlaceId { get; set; }
     public bool IsPinned { get; set; }
 
     public DateTime TouchedAt {
@@ -51,6 +52,7 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         OwnerId = model.OwnerId.Value.NullIfEmpty() ?? throw StandardError.Constraint("OwnerId cannot be empty.");
         ChatId = model.ChatId.Value.NullIfEmpty();
         UserId = model.UserId.Value.NullIfEmpty();
+        PlaceId = model.PlaceId.Value.NullIfEmpty();
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbContact>

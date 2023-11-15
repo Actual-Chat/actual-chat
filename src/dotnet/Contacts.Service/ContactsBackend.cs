@@ -1,9 +1,9 @@
+using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Contacts.Module;
 using ActualChat.Users;
-using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using Stl.Fusion.EntityFramework;
@@ -16,12 +16,14 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private const string RedisKeyPrefix = ".ContactGreetingLocks.";
     private ContactsSettings? _settings;
     private IAccountsBackend? _accountsBackend;
+    private IChatsBackend? _chatsBackend;
     private IExternalContactsBackend? _externalContactsBackend;
     private IDbEntityResolver<string, DbContact>? _dbContactResolver;
     private RedisDb<ContactsDbContext>? _redisDb;
 
     private ContactsSettings Settings => _settings ??= Services.GetRequiredService<ContactsSettings>();
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
+    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
 
     private IExternalContactsBackend ExternalContactsBackend => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
 
@@ -54,7 +56,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken)
     {
         if (ownerId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(ownerId));
@@ -63,23 +65,50 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idPrefix = ownerId.Value + ' ';
-        var contactIds = await dbContext.Contacts
+        var sPlaceId = placeId.Id.Value.NullIfEmpty();
+        var sContactIds = await dbContext.Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .Where(a => a.PlaceId == sPlaceId)
             .OrderByDescending(a => a.TouchedAt)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var announcementChatContactId = new ContactId(ownerId, Constants.Chat.AnnouncementsChatId);
-        if (!contactIds.Any(c => OrdinalEquals(c, announcementChatContactId.Value)))
-            contactIds.Add(announcementChatContactId);
+        if (placeId.IsNone) {
+            var announcementChatContactId = new ContactId(ownerId, Constants.Chat.AnnouncementsChatId);
+            if (!sContactIds.Any(c => OrdinalEquals(c, announcementChatContactId.Value)))
+                sContactIds.Add(announcementChatContactId);
+            return sContactIds.ToApiArray(c => new ContactId(c));
+        }
 
-        // That's just a bit more efficient conversion than .Select().ToApiArray()
-        var result = new ContactId[contactIds.Count];
-        for (var i = 0; i < contactIds.Count; i++)
-            result[i] = new ContactId(contactIds[i]);
+        var chatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
+        var contactIds = sContactIds.Select(c => new ContactId(c)).ToList();
+        var addedChatIds = contactIds.Select(c => c.ChatId).ToList();
+        var chatIdsToAdd = chatIds.Except(addedChatIds).ToList();
+        if (chatIdsToAdd.Count > 0) {
+            var contactsToAdd = chatIdsToAdd.Select(c => new ContactId(ownerId, c, AssumeValid.Option)).ToList();
+            contactIds.InsertRange(0, contactsToAdd);
+        }
+        return contactIds.ToApiArray();
+    }
 
-        return new ApiArray<ContactId>(result);
+    public virtual async Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken)
+    {
+        if (ownerId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(ownerId));
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = ownerId.Value + ' ';
+        var contactIds = await dbContext.PlaceContacts
+            .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .OrderBy(a => a.Id)
+            .Select(a => a.PlaceId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return contactIds.ToApiArray(c => new PlaceId(c, AssumeValid.Option));
     }
 
     // [CommandHandler]
@@ -89,6 +118,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         var (id, expectedVersion, change) = command;
         var ownerId = id.OwnerId;
+        var chatId = id.ChatId;
+        chatId.IsPlaceChat(out var placeChatId);
+        var placeId = placeChatId.PlaceId;
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
@@ -96,7 +128,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
                 if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
-                    _ = ListIds(ownerId, default); // Create, Delete or move into MinLoadLimit
+                    _ = ListIds(ownerId, placeId, default); // Create, Delete or move into MinLoadLimit
             }
             return default!;
         }
@@ -104,7 +136,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         id.Require();
         ownerId.Require();
         change.RequireValid();
-        var oldContactIds = await ListIds(ownerId, cancellationToken).ConfigureAwait(false);
+        var oldContactIds = await ListIds(ownerId, placeId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -165,6 +197,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         var id = command.Id;
         var ownerId = id.OwnerId;
+        var chatId = id.ChatId;
+        chatId.IsPlaceChat(out var placeChatId);
+        var placeId = placeChatId.PlaceId;
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invIndex = context.Operation().Items.GetOrDefault(long.MinValue);
@@ -173,12 +208,12 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 // Contacts are sorted by TouchedAt and we load contacts in 2 stages: the 1st is limited by MinLoadLimit,
                 // hence we need to invalidate ListIds for Update only in case it was not in MinLoadList before the change.
                 if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
-                    _ = ListIds(ownerId, default); // Create, Delete or move into MinLoadLimit
+                    _ = ListIds(ownerId, placeId, default); // Create, Delete or move into MinLoadLimit
             }
             return;
         }
 
-        var contactIds = await ListIds(ownerId, cancellationToken).ConfigureAwait(false);
+        var contactIds = await ListIds(ownerId, placeId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -272,6 +307,49 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
     }
 
+    // [CommandHandler]
+    public virtual async Task OnChangePlaceMembership(
+        ContactsBackend_ChangePlaceMembership command,
+        CancellationToken cancellationToken)
+    {
+        var (ownerId, placeId, hasLeft) = command;
+        var context = CommandContext.GetCurrent();
+
+        if (Computed.IsInvalidating()) {
+            var invOwnerId = context.Operation().Items.GetOrDefault<UserId>();
+            if (!invOwnerId.IsNone)
+                _ = ListPlaceIds(invOwnerId, default);
+            return;
+        }
+
+        ownerId.Require();
+        placeId.Require();
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var id = DbPlaceContact.FormatId(ownerId, placeId);
+
+        var dbPlaceContact = await dbContext.PlaceContacts.ForUpdate()
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbPlaceContact != null) {
+            if (hasLeft)
+                dbContext.Remove(dbPlaceContact);
+        }
+        else {
+            if (!hasLeft) {
+                var newDbPlaceContact = new DbPlaceContact(ownerId, placeId) {
+                    Version = VersionGenerator.NextVersion(),
+                };
+                dbContext.Add(newDbPlaceContact);
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation().Items.Set(ownerId);
+    }
+
     // Events
 
     [EventHandler]
@@ -291,6 +369,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return;
         if (chatId.Kind == ChatKind.Peer && author.HasLeft) // Users can't leave peer chats
             return;
+
+        if (chatId.IsPlaceChat(out var placeChatId)) {
+            var changePlaceMembership = new ContactsBackend_ChangePlaceMembership(userId, placeChatId.PlaceId, author.HasLeft);
+            await Commander.Call(changePlaceMembership, true, cancellationToken).ConfigureAwait(false);
+            if (placeChatId.IsRoot)
+                return;
+        }
 
         var contactId = new ContactId(userId, chatId, AssumeValid.Option);
         var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);

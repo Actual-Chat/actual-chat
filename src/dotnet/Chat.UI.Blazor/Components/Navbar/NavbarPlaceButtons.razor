@@ -1,0 +1,55 @@
+﻿@using ActualChat.Media;
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<NavbarPlaceButtons.Model>
+@{
+    var m = State.Value;
+    var places = m.Places;
+    if (places.Count == 0)
+        return;
+}
+
+@if (places.Count > 0) {
+    foreach (var place in places) {
+        <NavbarGroupSelectionButton
+            Title="@place.Title"
+            Id="@(NavbarGroupIds.PlacePrefix + place.Id)"
+            Tooltip="@place.Title">
+            <Pic
+                Title="@place.Title"
+                Picture="@place.Picture.ToPicture()"
+                Size="@SquareSize.Size8"
+                AvatarKind="@AvatarKind.Marble"
+                AvatarKey="@place.Id.Value"/>
+        </NavbarGroupSelectionButton>
+    }
+}
+
+@code {
+    [Inject] protected ChatHub ChatHub { get; init; } = null!;
+
+    private Session Session => ChatHub.Session;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(),
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var placeIds = await ChatHub.Contacts.ListPlaceIds(Session, cancellationToken);
+        var places = (await placeIds
+            .Select(id => ChatHub.Places.Get(Session, id, cancellationToken))
+            .Collect())
+            .SkipNullItems()
+            .OrderBy(c => c.CreatedAt)
+            .ToApiArray();
+
+        return new Model {
+            Places = places
+        };
+    }
+
+    public record Model {
+        public ApiArray<Place> Places { get; init; } = ApiArray.Empty<Place>();
+    }
+}
