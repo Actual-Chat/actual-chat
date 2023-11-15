@@ -21,7 +21,12 @@ public static class JSObjectReferenceExt
                 catch {
                     // Intended
                 }
-            await jsRef1.DisposeSilentlyAsync().SilentAwait(false);
+            try {
+                await jsRef1.DisposeAsync().SilentAwait(false);
+            }
+            catch {
+                // Intended
+            }
         }
     }
 }
