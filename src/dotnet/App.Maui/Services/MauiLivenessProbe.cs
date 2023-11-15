@@ -1,5 +1,6 @@
 ﻿using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
+using Stl.Diagnostics;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -15,10 +16,11 @@ public class MauiLivenessProbe : WorkerBase
     private static MauiLivenessProbe? _current;
     private static volatile bool _isVeryFirstCheck = true;
 
-    public static MauiLivenessProbe? Current => _current;
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(typeof(MauiLivenessProbe));
+    private static ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
-    private ILogger? _log;
-    private ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(GetType());
+    public static MauiLivenessProbe? Current => _current;
 
     public static void Check(TimeSpan delay)
         => _ = Task.Delay(delay).ContinueWith(_ => Check(), TaskScheduler.Default);
@@ -75,13 +77,13 @@ public class MauiLivenessProbe : WorkerBase
 
                 // No error
                 if (error == null) {
-                    Log.LogInformation("Liveness check #{Index}/{Count} succeeded", i, CheckCount);
+                    DebugLog?.LogDebug("Liveness check #{Index}/{Count} succeeded", i, CheckCount);
                     return;
                 }
 
                 // Scoped services changed
                 if (lastScopedServices != null && !ReferenceEquals(lastScopedServices, scopedServices)) {
-                    Log.LogInformation(
+                    DebugLog?.LogDebug(
                         "Liveness check #{Index}/{Count}: scoped services changed, restarting checks...",
                         i, CheckCount);
                     mustReload = false; // resets i to 0
@@ -92,7 +94,7 @@ public class MauiLivenessProbe : WorkerBase
                 if (isMainThreadBusy) {
                     mainThreadBusyCheckCount++;
                     if (mainThreadBusyCheckCount <= MainThreadBusyExtraCheckCount) {
-                        Log.LogWarning(error,
+                        DebugLog?.LogDebug(error,
                             "Liveness check #{Index}/{Count}: the main thread is busy #{BusyCount}",
                             i, CheckCount, mainThreadBusyCheckCount);
                         i--;
@@ -102,12 +104,12 @@ public class MauiLivenessProbe : WorkerBase
 
                 // JS disconnected error
                 if (error is JSDisconnectedException) {
-                    Log.LogWarning(
+                    DebugLog?.LogDebug(
                         "Liveness check #{Index}/{Count} failed (disconnected)",
                         i, CheckCount);
                     break;
                 }
-                Log.LogWarning(error,
+                DebugLog?.LogDebug(error,
                     "Liveness check #{Index}/{Count} failed (error)", i, CheckCount);
             }
         }
@@ -144,7 +146,7 @@ public class MauiLivenessProbe : WorkerBase
             var browserInit = scopedServices.GetRequiredService<BrowserInit>();
             await browserInit.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
             var isAlive = await jsRuntime
-                .InvokeAsync<bool>("window.ui.BrowserInit.isAlive")
+                .InvokeAsync<bool>("window.ui.BrowserInit.isAlive", CancellationToken.None)
                 .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
             return (scopedServices, isAlive ? null : JSRuntimeErrors.Disconnected(), false);
         }

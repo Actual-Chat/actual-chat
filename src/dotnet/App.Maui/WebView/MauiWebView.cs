@@ -117,16 +117,13 @@ public sealed partial class MauiWebView
 
     private void OnUnloaded(object? sender, EventArgs eventArgs)
     {
-        if (BlazorWebView.Window?.Handler == null)
-            // NOTE: OnUnloaded is invoked on disconnecting Handler from the Window during quiting App.
-            // Do nothing. Invoking DisconnectHandler on BlazorWebView.Handler will causes deadlock on Main thread.
-            // And App won't be closed.
-            return;
-        BlazorWebView.Handler?.DisconnectHandler();
-
-        // The code below is an alternative to code above which must not block the main thread;
-        // let's see how it works w/o this workaround for now.
+        // Technically the code here should be:
 #if false
+        BlazorWebView.Handler?.DisconnectHandler();
+        return;
+#endif
+        // But it hangs the app on Windows due to a deadlock described in a workaround below.
+
         if (BlazorWebView.Handler is not BlazorWebViewHandler handler)
             return;
 
@@ -146,11 +143,23 @@ public sealed partial class MauiWebView
                 var pageContext = webViewManager.GetCurrentPageContext();
                 webViewManager.ResetCurrentPageContext();
                 if (pageContext != null) {
-                    Log.LogInformation("Disposing PageContext");
-                    await pageContext.DisposeAsync().ConfigureAwait(false);
+                    try {
+                        Log.LogInformation("OnUnloaded: Disposing PageContext");
+                        await pageContext.DisposeAsync().ConfigureAwait(false);
+                    }
+                    catch (Exception e) {
+                        Log.LogError(e, "OnUnloaded: PageContext.DisposeAsync() failed");
+                    }
                 }
-                BlazorWebView.Handler?.DisconnectHandler();
+                if (BlazorWebView.Handler is { } viewHandler) {
+                    try {
+                        Log.LogInformation("OnUnloaded: Disconnecting BlazorWebView.Handler");
+                        viewHandler.DisconnectHandler();
+                    }
+                    catch (Exception e) {
+                        Log.LogError(e, "OnUnloaded: BlazorWebView.Handler.DisconnectHandler() failed");
+                    }
+                }
             });
-#endif
     }
 }

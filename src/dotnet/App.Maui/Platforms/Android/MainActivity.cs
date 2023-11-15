@@ -125,7 +125,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
     public override void OnTrimMemory(TrimMemory level)
     {
-        Log.LogInformation("OnTrimMemory. Level: {Level}", level);
+        Log.LogInformation("OnTrimMemory, Level: {Level}", level);
         DumpMemoryInfo();
         base.OnTrimMemory(level);
     }
@@ -191,7 +191,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
         if (Log.IsEnabled(LogLevel.Information)) {
             var dataAsText = data.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
-            Log.LogInformation("NotificationTap. Data: {Data}", dataAsText);
+            Log.LogInformation("NotificationTap, Data: {Data}", dataAsText);
         }
 
         var url = data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Link);
@@ -211,7 +211,7 @@ public partial class MainActivity : MauiAppCompatActivity
         Log.LogInformation("MemoryClass: {MemoryClass}", memoryClass);
         var memoryInfo = new ActivityManager.MemoryInfo();
         activityManager.GetMemoryInfo(memoryInfo);
-        Log.LogInformation("MemoryInfo. AvailMem={AvailMem}, TotalMem={TotalMem}, LowMemory={LowMemory}, Threshold={Threshold}",
+        Log.LogInformation("MemoryInfo: AvailMem={AvailMem}, TotalMem={TotalMem}, LowMemory={LowMemory}, Threshold={Threshold}",
             memoryInfo.AvailMem,
             memoryInfo.TotalMem,
             memoryInfo.LowMemory,
@@ -219,7 +219,7 @@ public partial class MainActivity : MauiAppCompatActivity
         var processInfo = new ActivityManager.RunningAppProcessInfo();
         ActivityManager.GetMyMemoryState(processInfo);
         Log.LogInformation(
-            "MyMemoryState. Pid={Pid}, LastTrimLevel={LastTrimLevel}, Lru={Lru}, Importance={Importance}, ImportanceReasonCode={ImportanceReasonCode}",
+            "MyMemoryState: Pid={Pid}, LastTrimLevel={LastTrimLevel}, Lru={Lru}, Importance={Importance}, ImportanceReasonCode={ImportanceReasonCode}",
             processInfo.Pid,
             processInfo.LastTrimLevel,
             processInfo.Lru,
