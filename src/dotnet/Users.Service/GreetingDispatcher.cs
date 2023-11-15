@@ -6,26 +6,19 @@ using Stl.Interception;
 
 namespace ActualChat.Users;
 
-public class GreetingDispatcher : WorkerBase, IHasServices
+public class GreetingDispatcher(IServiceProvider services) : WorkerBase, IHasServices
 {
     private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);
-    private readonly IMutableState<bool> _needsGreeting;
+    private readonly IMutableState<bool> _needsGreeting = Stl.Fusion.ServiceProviderExt.StateFactory(services).NewMutable<bool>();
     private const int SelectBatchSize = 100;
     private DbHub<UsersDbContext>? _dbHub;
     private ICommander? _commander;
     private ILogger? _log;
 
-    public IServiceProvider Services { get; }
-
+    public IServiceProvider Services { get; } = services;
     private DbHub<UsersDbContext> DbHub => _dbHub ??= Services.DbHub<UsersDbContext>();
     private ICommander Commander => _commander ??= Services.Commander();
     private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    public GreetingDispatcher(IServiceProvider services)
-    {
-        Services = services;
-        _needsGreeting = services.StateFactory().NewMutable<bool>();
-    }
 
     public void OnGreetingNeeded()
         => _needsGreeting.Value = true;
