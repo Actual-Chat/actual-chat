@@ -110,6 +110,7 @@ public sealed class AsyncMemoizer<T>
                 if (resultError != null) {
                     if (resultError is ChannelClosedException)
                         break;
+
                     ExceptionDispatchInfo.Capture(resultError).Throw();
                 }
             }

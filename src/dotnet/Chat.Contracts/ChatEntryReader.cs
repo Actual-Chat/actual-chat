@@ -114,7 +114,7 @@ public sealed class ChatEntryReader(
     {
         var idTile = IdTileLayer.GetTile(id);
         var cTile = await Computed
-            .Capture(() => Chats.GetTile(Session, ChatId, EntryKind, idTile.Range, cancellationToken))
+            .Capture(() => Chats.GetTile(Session, ChatId, EntryKind, idTile.Range, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
 
         cTile = await cTile.When(
@@ -284,10 +284,10 @@ public sealed class ChatEntryReader(
         => Chats.GetTile(Session, ChatId, EntryKind, idRange, cancellationToken);
 
     private ValueTask<Computed<Range<long>>> CaptureIdRange(CancellationToken cancellationToken)
-        => Computed.Capture(() => GetIdRange(cancellationToken));
+        => Computed.Capture(() => GetIdRange(cancellationToken), cancellationToken);
 
     private ValueTask<Computed<ChatTile>> CaptureTile(Range<long> idRange, CancellationToken cancellationToken)
-        => Computed.Capture(() => GetTile(idRange, cancellationToken));
+        => Computed.Capture(() => GetTile(idRange, cancellationToken), cancellationToken);
 
     private async Task<ChatEntry?> FindByMinBeginsAtPrecise(
         Moment beginsAt,

@@ -61,7 +61,7 @@ public partial class ChatUI
     private async Task NavigateToFixedSelectedChat(CancellationToken cancellationToken)
     {
         var cFixedSelectedChatId = await Computed
-            .Capture(() => GetFixedSelectedChatId(cancellationToken))
+            .Capture(() => GetFixedSelectedChatId(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         cFixedSelectedChatId = await cFixedSelectedChatId
             .When(x => !x.IsNone, cancellationToken)
@@ -83,9 +83,8 @@ public partial class ChatUI
     {
         var lastMustKeepAwake = (bool?)null;
         var cMustKeepAwake0 = await Computed
-            .Capture(() => MustKeepAwake(cancellationToken))
+            .Capture(() => MustKeepAwake(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-
         var changes = cMustKeepAwake0.Changes(FixedDelayer.Get(1), cancellationToken);
         await foreach (var cMustKeepAwake in changes.ConfigureAwait(false)) {
             var mustKeepAwake = cMustKeepAwake.Value;

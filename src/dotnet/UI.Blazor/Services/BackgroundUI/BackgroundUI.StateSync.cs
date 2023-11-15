@@ -14,11 +14,10 @@ public partial class BackgroundUI
     private async Task PushState(CancellationToken cancellationToken)
     {
         var cGetState = await Computed
-            .Capture(() => GetState(cancellationToken))
+            .Capture(() => GetState(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-
-        var stateChanges = cGetState.Changes(FixedDelayer.Instant, cancellationToken);
-        await foreach (var cState in stateChanges.ConfigureAwait(false)) {
+        var changes = cGetState.Changes(FixedDelayer.Instant, cancellationToken);
+        await foreach (var cState in changes.ConfigureAwait(false)) {
             var state = cState.Value;
             if (_state.Value == state)
                 continue;

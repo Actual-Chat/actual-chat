@@ -20,7 +20,7 @@ public partial class AccountUI
     {
         Log.LogInformation(nameof(MonitorAccountChange));
         var cOwnAccount0 = await Computed
-            .Capture(() => Accounts.GetOwn(Session, cancellationToken))
+            .Capture(() => Accounts.GetOwn(Session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var changes = cOwnAccount0.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cOwnAccount in changes.ConfigureAwait(false)) {

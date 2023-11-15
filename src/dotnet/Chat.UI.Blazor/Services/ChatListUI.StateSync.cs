@@ -28,7 +28,7 @@ public partial class ChatListUI
     private async Task InvalidateIsSelectedChatUnlisted(CancellationToken cancellationToken)
     {
         var cValueBase = await Computed
-            .Capture(() => IsSelectedChatUnlistedInternal(cancellationToken))
+            .Capture(() => IsSelectedChatUnlistedInternal(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var changes = cValueBase.Changes(cancellationToken);
         await foreach (var cValue in changes.ConfigureAwait(false)) {
@@ -43,7 +43,7 @@ public partial class ChatListUI
     private async Task PushItems(ChatListKind listKind, CancellationToken cancellationToken)
     {
         var cList = await Computed
-            .Capture(() => List(listKind, cancellationToken))
+            .Capture(() => List(listKind, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var changes = cList.Changes(cancellationToken);
         await foreach (var (list, error) in changes.ConfigureAwait(false)) {
@@ -95,7 +95,9 @@ public partial class ChatListUI
 
     private async Task ResetPushIfStuck(CancellationToken cancellationToken)
     {
-        var cItem0 = await Computed.Capture(() => GetItem(ChatListKind.All, 0)).ConfigureAwait(false);
+        var cItem0 = await Computed
+            .Capture(() => GetItem(ChatListKind.All, 0), cancellationToken)
+            .ConfigureAwait(false);
         var delaySeq = RetryDelaySeq.Exp(5, 120, 0, 2);
         while (true) {
             if (!cItem0.ValueOrDefault.IsNone) {
@@ -128,7 +130,9 @@ public partial class ChatListUI
         if (ChatHub.HostInfo.ClientKind.IsMobile())
             return; // skip tune notifications for mobile MAUI
 
-        var cChatInfoMap = await Computed.Capture(() => ListAllUnorderedRaw(cancellationToken)).ConfigureAwait(false);
+        var cChatInfoMap = await Computed
+            .Capture(() => ListAllUnorderedRaw(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
         var previous = await cChatInfoMap.Use(cancellationToken).ConfigureAwait(false);
         var lastPlayedAt = Clocks.SystemClock.Now; // Skip tune after loading
         await foreach (var change in cChatInfoMap.Changes(cancellationToken).ConfigureAwait(false))

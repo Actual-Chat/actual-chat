@@ -117,7 +117,7 @@ public class ServerKvas : IServerKvas
         try {
             await Clocks.Timeout(3).ApplyTo(
                 ct => Computed
-                    .Capture(() => Auth.GetUser(session, ct))
+                    .Capture(() => Auth.GetUser(session, ct), ct)
                     .When(u => u?.IsGuest() == false, ct),
                 cancellationToken
                 ).ConfigureAwait(false);

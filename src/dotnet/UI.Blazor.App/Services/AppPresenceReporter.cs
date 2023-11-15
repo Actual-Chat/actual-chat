@@ -36,7 +36,9 @@ public class AppPresenceReporter : WorkerBase, IComputeService
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var cIsActive = await Computed.Capture(() => IsActive(cancellationToken)).ConfigureAwait(false);
+        var cIsActive = await Computed
+            .Capture(() => IsActive(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
         var prevIsActive = false;
         await foreach (var change in cIsActive.Changes(cancellationToken).ConfigureAwait(false)) {
             var isActive = change.Value;

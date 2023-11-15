@@ -32,8 +32,12 @@ public static class TestAuthExt
         await commander.Call(command, cancellationToken).ConfigureAwait(false);
 
         // Wait till the authentication happens
-        var cAccount = await Computed.Capture(() => accounts.GetOwn(session, cancellationToken)).ConfigureAwait(false);
-        cAccount = await cAccount.When(x => !x.IsGuestOrNone, FixedDelayer.ZeroUnsafe, cancellationToken).ConfigureAwait(false);
+        var cAccount = await Computed
+            .Capture(() => accounts.GetOwn(session, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        cAccount = await cAccount
+            .When(x => !x.IsGuestOrNone, FixedDelayer.ZeroUnsafe, cancellationToken)
+            .ConfigureAwait(false);
         return cAccount.Value;
     }
 

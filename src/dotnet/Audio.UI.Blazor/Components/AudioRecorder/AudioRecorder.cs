@@ -108,10 +108,10 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         catch (Exception e) when (e is not AudioRecorderException) {
             if (e is OperationCanceledException)
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                DebugLog?.LogDebug(nameof(StartRecording) + " is cancelled");
+                DebugLog?.LogDebug($"{StartRecording} is cancelled");
             else
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                Log.LogError(e, nameof(StartRecording) + " failed");
+                Log.LogError(e,$"{nameof(StartRecording)} failed");
 
             await StopRecordingUnsafe().ConfigureAwait(false);
 
