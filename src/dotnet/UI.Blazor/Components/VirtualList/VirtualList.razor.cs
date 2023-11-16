@@ -11,9 +11,11 @@ public static class VirtualList
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
     where TItem : IVirtualListItem
 {
+    private ILogger? _log;
+
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
-    [Inject] private ILogger<VirtualList<TItem>> Log { get; init; } = null!;
+    private ILogger Log => _log ??= CircuitContext.Services.LogFor(GetType());
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -67,14 +69,11 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
 
     public override async ValueTask DisposeAsync()
     {
-        var jsRef = JSRef;
-        var blazorRef = BlazorRef;
-        JSRef = null!;
-        BlazorRef = null!;
-
         await base.DisposeAsync();
-        await jsRef.DisposeSilentlyAsync("dispose");
-        blazorRef.DisposeSilently();
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
     }
 
     protected override bool ShouldRender()

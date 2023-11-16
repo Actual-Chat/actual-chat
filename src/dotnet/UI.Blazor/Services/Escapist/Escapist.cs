@@ -1,11 +1,8 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class Escapist
+public sealed class Escapist(IJSRuntime js)
 {
-    private IJSRuntime JS { get; }
-
-    public Escapist(IJSRuntime js)
-        => JS = js;
+    private IJSRuntime JS { get; } = js;
 
     public ValueTask<IAsyncDisposable> Subscribe(Action action, CancellationToken cancellationToken = default)
         => EscapistSubscription.Create(JS, action, once: false, cancellationToken);

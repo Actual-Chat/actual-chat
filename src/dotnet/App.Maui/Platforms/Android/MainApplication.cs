@@ -24,7 +24,7 @@ public class MainApplication : MauiApplication, ILifecycleObserver
     {
         Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnAppBackgrounded");
         _ = DispatchToBlazor(
-            c => c.GetRequiredService<IBackgroundStateHandler>().SetBackgroundState(true),
+            c => c.GetRequiredService<IBackgroundStateHandler>().SetIsBackground(true),
             "IBackgroundStateHandler.SetBackgroundState(true)");
     }
 
@@ -33,7 +33,7 @@ public class MainApplication : MauiApplication, ILifecycleObserver
     {
         Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnAppForegrounded");
         _ = DispatchToBlazor(
-            c => c.GetRequiredService<IBackgroundStateHandler>().SetBackgroundState(false),
+            c => c.GetRequiredService<IBackgroundStateHandler>().SetIsBackground(false),
             "IBackgroundStateHandler.SetBackgroundState(false)");
     }
 

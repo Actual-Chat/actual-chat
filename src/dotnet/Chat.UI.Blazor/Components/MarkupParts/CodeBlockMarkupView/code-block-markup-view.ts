@@ -15,24 +15,9 @@ import c from 'highlight.js/lib/languages/c';
 import cpp from 'highlight.js/lib/languages/cpp';
 import csharp from 'highlight.js/lib/languages/csharp';
 import { Log } from 'logging';
-import 'highlight.js/styles/intellij-light.css'
+import { Theme, ThemeInfo } from 'theme';
 
 const { errorLog } = Log.get('CodeBlockMarkupView');
-hljs.registerLanguage('bash', bash);
-hljs.registerLanguage('javascript', javascript);
-hljs.registerLanguage('typescript', typescript);
-hljs.registerLanguage('json', json);
-hljs.registerLanguage('xml', xml);
-hljs.registerLanguage('yaml', yaml);
-hljs.registerLanguage('css', css);
-hljs.registerLanguage('python', python);
-hljs.registerLanguage('go', go);
-hljs.registerLanguage('rust', rust);
-hljs.registerLanguage('java', java);
-hljs.registerLanguage('kotlin', kotlin);
-hljs.registerLanguage('c', c);
-hljs.registerLanguage('cpp', cpp);
-hljs.registerLanguage('csharp', csharp);
 
 export function highlightCode(pre: HTMLPreElement, languageName: string, code: string) {
     try {
@@ -47,3 +32,36 @@ export function highlightCode(pre: HTMLPreElement, languageName: string, code: s
         errorLog?.log(`highlightCode: failed to highlight code`, e);
     }
 }
+
+function applyTheme(themeInfo: ThemeInfo){
+    if (themeInfo.currentTheme === 'light') {
+        // @ts-ignore
+        void import('highlight.js/styles/intellij-light.css');
+    } else {
+        // @ts-ignore
+        void import('highlight.js/styles/atom-one-dark.css');
+    }
+}
+
+function init() {
+    hljs.registerLanguage('bash', bash);
+    hljs.registerLanguage('javascript', javascript);
+    hljs.registerLanguage('typescript', typescript);
+    hljs.registerLanguage('json', json);
+    hljs.registerLanguage('xml', xml);
+    hljs.registerLanguage('yaml', yaml);
+    hljs.registerLanguage('css', css);
+    hljs.registerLanguage('python', python);
+    hljs.registerLanguage('go', go);
+    hljs.registerLanguage('rust', rust);
+    hljs.registerLanguage('java', java);
+    hljs.registerLanguage('kotlin', kotlin);
+    hljs.registerLanguage('c', c);
+    hljs.registerLanguage('cpp', cpp);
+    hljs.registerLanguage('csharp', csharp);
+
+    applyTheme(Theme.info);
+    Theme.changed.add(applyTheme);
+}
+
+init();

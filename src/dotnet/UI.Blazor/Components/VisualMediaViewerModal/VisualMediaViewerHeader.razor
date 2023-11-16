@@ -1,7 +1,14 @@
 @using ActualChat.Chat
+@using ActualChat.Hosting
+@using ActualChat.Media
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Uploads
 @using ActualChat.Users
+@using Microsoft.AspNetCore.StaticFiles
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var canSave = MediaTypeExt.IsSupportedVisualMedia(ContentType) && !MediaTypeExt.IsSvg(ContentType);
+}
 
 <div class="image-viewer-header">
     @if (ChatEntry != null && _author != null) {
@@ -22,9 +29,9 @@
                 <i class="icon-share"></i>
             </HeaderButton>
         }
-        @if (_isDownloadEnabled) {
-            if (_saver != null) {
-                <a href="#" download class="c-link" @onclick="() => _saver.Download(DownloadUrl)" @onclick:preventDefault>
+        @if (!DownloadUrl.IsNullOrEmpty()) {
+            if (_saver != null && canSave) {
+                <a href="#" download class="c-link" @onclick="@(_ => _saver.Download(DownloadUrl, ContentType))" @onclick:preventDefault>
                     <HeaderButton Class="inverted">
                         <i class="icon-download"></i>
                     </HeaderButton>
@@ -50,24 +57,23 @@
     private IVisualMediaViewerFileDownloader? _saver;
 
     [Inject] private Features Features { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public EventCallback CloseClick { set; get; }
     [Parameter] public string DownloadUrl { set; get; } = "";
+    [Parameter] public string ContentType { set; get; } = "";
 
     protected override async Task OnInitializedAsync() {
         _saver = Services.GetService<IVisualMediaViewerFileDownloader>();
         _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
-        _isDownloadEnabled = await Features.Get<Features_EnableDownloadVisualMediaUI, bool>(CancellationToken.None);
     }
 
     protected override async Task OnParametersSetAsync() {
-        if (ChatEntry != null) {
+        if (ChatEntry != null)
             _author = await Authors.Get(Session, ChatEntry.ChatId, ChatEntry.AuthorId, CancellationToken.None).ConfigureAwait(false);
-        }
     }
 }

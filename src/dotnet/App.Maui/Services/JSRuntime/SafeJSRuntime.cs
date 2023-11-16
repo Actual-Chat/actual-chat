@@ -22,41 +22,34 @@ namespace ActualChat.App.Maui.Services;
 //   in DisposeSilentlyAsync
 // - Manually throw JSRuntimeDisconnected from SafeJSRuntime, if it
 //   wraps a disconnected JS runtime.
-public sealed class SafeJSRuntime : IJSRuntime
+public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
 {
     internal const DynamicallyAccessedMemberTypes JsonSerialized =
         DynamicallyAccessedMemberTypes.PublicConstructors
         | DynamicallyAccessedMemberTypes.PublicFields
         | DynamicallyAccessedMemberTypes.PublicProperties;
 
-    private long _isDisconnected;
-    private long _hasAccessedOnce;
+    private volatile int _state; // 1 = ready, 2 = disconnected
 
-    private bool IsDisconnected =>
-        Interlocked.Read(ref _isDisconnected) == 1;
+    public bool IsDisconnected => _state == 2;
+    public bool IsReady => _state != 0;
 
-    internal bool IsReady
-        => Interlocked.Read(ref _hasAccessedOnce) == 1;
+    internal IJSRuntime WebViewJSRuntime { get; } = webViewJSRuntime;
 
-    internal IJSRuntime WebViewJSRuntime { get; }
+    public bool MarkReady()
+        => Interlocked.CompareExchange(ref _state, 1, 0) == 0;
 
-    public SafeJSRuntime(IJSRuntime webViewJSRuntime)
-        => WebViewJSRuntime = webViewJSRuntime;
-
-    internal void MarkReady()
-        => Interlocked.Exchange(ref _hasAccessedOnce, 1);
-
-    internal void MarkDisconnected()
-        => Interlocked.Exchange(ref _isDisconnected, 1);
+    public void MarkDisconnected()
+        => Interlocked.Exchange(ref _state, 2);
 
     public async ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(JsonSerialized)] TValue>(
         string identifier, object?[]? args)
     {
         try {
-            var result = await RequireConnected().InvokeAsync<TValue>(identifier, UnwrapArgs(args)).ConfigureAwait(false);
-            return Map(result);
+            var result = await RequireConnected().InvokeAsync<TValue>(identifier, ToUnsafe(args)).ConfigureAwait(false);
+            return ToSafe(result);
         }
-        catch (JSDisconnectedException) {
+        catch (OperationCanceledException) {
             throw;
         }
         catch (Exception e) {
@@ -70,10 +63,10 @@ public sealed class SafeJSRuntime : IJSRuntime
         string identifier, CancellationToken cancellationToken, object?[]? args)
     {
         try {
-            var result = await RequireConnected().InvokeAsync<TValue>(identifier, cancellationToken, UnwrapArgs(args)).ConfigureAwait(false);
-            return Map(result);
+            var result = await RequireConnected().InvokeAsync<TValue>(identifier, cancellationToken, ToUnsafe(args)).ConfigureAwait(false);
+            return ToSafe(result);
         }
-        catch (JSDisconnectedException) {
+        catch (OperationCanceledException) {
             throw;
         }
         catch (Exception e) {
@@ -83,41 +76,43 @@ public sealed class SafeJSRuntime : IJSRuntime
         }
     }
 
-    internal void EnsureConnected()
-        => _ = RequireConnected();
+    public IJSRuntime RequireConnected()
+        => IsDisconnected
+            ? throw JSRuntimeErrors.Disconnected()
+            : WebViewJSRuntime;
 
-    internal object?[]? UnwrapArgs(object?[]? args)
+    public object?[]? ToUnsafe(object?[]? args)
     {
         if (args == null || args.Length == 0)
             return args;
 
-        var needUnwrap = args.Any(static c => c is SafeJSObjectReference);
-        if (!needUnwrap)
+        var containsSafeJSObjectReferences = false;
+        var i = 0;
+        for (; i < args.Length; i++) {
+            var arg = args[i];
+            if (arg is SafeJSObjectReference) {
+                containsSafeJSObjectReferences = true;
+                break;
+            }
+        }
+        if (!containsSafeJSObjectReferences)
             return args;
 
         var newArgs = new object?[args.Length];
-        for (int i = 0; i < args.Length; i++)
-            newArgs[i] = UnwrapArg(args[i]);
+        for (i = 0; i < args.Length; i++)
+            newArgs[i] = ToUnsafe(args[i]);
         return newArgs;
     }
 
-    private object? UnwrapArg(object? o)
-    {
-        if (o is SafeJSObjectReference safeJSObjectReference)
-            return safeJSObjectReference.JSObjectReference;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public object? ToUnsafe(object? obj)
+        => obj is SafeJSObjectReference safeJSObjectReference
+            ? safeJSObjectReference.JSObjectReference
+            : obj;
 
-        return o;
-    }
-
-    private TValue Map<TValue>(TValue value)
-    {
-        if (value is IJSObjectReference jsObjectReference)
-            // Convert original JSObjectReference to SafeJSObjectReference to make
-            // calling IJSObjectReference.InvokeAsync respect SafeJSRuntime disconnected state.
-            return (TValue)(object)new SafeJSObjectReference(this, jsObjectReference);
-        return value;
-    }
-
-    private IJSRuntime RequireConnected()
-        => IsDisconnected ? throw JSRuntimeErrors.Disconnected() : WebViewJSRuntime;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public TValue ToSafe<TValue>(TValue value)
+        => value is IJSObjectReference jsObjectReference
+            ? (TValue)(object)new SafeJSObjectReference(this, jsObjectReference)
+            : value;
 }

@@ -149,8 +149,8 @@
                 var info = expectedUploadedFilesNumber == attachments.Length
                     ? attachments.Length.ToString()
                     : $"{attachments.Length} of {expectedUploadedFilesNumber}";
-                var isImage = attachments.All(c => c.IsImage());
-                var isVideo = attachments.All(c => c.IsVideo());
+                var isImage = attachments.All(c => c.IsSupportedImage());
+                var isVideo = attachments.All(c => c.IsSupportedVideo());
                 var fileText = isImage ? "image" : isVideo ? "video" : "file";
                 if (expectedUploadedFilesNumber > 1)
                     fileText += "s";

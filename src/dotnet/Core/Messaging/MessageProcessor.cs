@@ -1,6 +1,4 @@
-﻿using TimeoutException = System.TimeoutException;
-
-namespace ActualChat.Messaging;
+﻿namespace ActualChat.Messaging;
 
 public interface IMessageProcessor<TMessage> : IAsyncDisposable
     where TMessage : class

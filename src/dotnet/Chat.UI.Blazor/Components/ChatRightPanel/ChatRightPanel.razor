@@ -12,36 +12,38 @@
     IsOpen="@m.IsVisible"
     VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
     <div class="right-chat-panel">
-        <RightPanelHeader ChatContext="@ChatContext"/>
-        <div class="c-panel-content">
-            <RightPanelChatInfo ChatContext="@ChatContext"/>
-            <div class="c-panel-tabs">
-                @if (m.ShowMembers || m.EnableIncompleteUI) {
-                    <TabPanel
-                        @key="@Chat.Id.Value"
-                        TabsClass="left-panel-tabs wide-left-panel-tabs"
-                        BottomHill="true">
+        @if (m.RenderContent) {
+            <RightPanelHeader ChatContext="@ChatContext"/>
+            <div class="c-panel-content">
+                <RightPanelChatInfo ChatContext="@ChatContext"/>
+                <div class="c-panel-tabs">
+                    @if (m.ShowTabs) {
+                        <TabPanel
+                            @key="@Chat.Id.Value"
+                            TabsClass="left-panel-tabs wide-left-panel-tabs"
+                            BottomHill="true">
 
-                        @if (m.ShowMembers) {
-                            <Tab @key="@("members")" Id="members" Title="Members" Order="0">
-                                <AuthorList ChatContext="@ChatContext"/>
-                            </Tab>
-                        }
-                        @if (m.EnableIncompleteUI) {
-                            <Tab @key="@("media")" Id="media" Title="Media" Order="1">
-                                <ToBeDone/>
-                            </Tab>
-                            <Tab @key="@("files")" Id="files" Title="Files" Order="2">
-                                <ToBeDone/>
-                            </Tab>
-                            <Tab @key="@("links")" Id="links" Title="Links" Order="3">
-                                <ToBeDone/>
-                            </Tab>
-                        }
-                    </TabPanel>
-                }
+                            @if (m.ShowMembersTab) {
+                                <Tab @key="@("members")" Id="members" Title="Members" Order="0">
+                                    <AuthorList ChatContext="@ChatContext"/>
+                                </Tab>
+                            }
+                            @if (m.EnableIncompleteUI) {
+                                <Tab @key="@("media")" Id="media" Title="Media" Order="1">
+                                    <ToBeDone/>
+                                </Tab>
+                                <Tab @key="@("files")" Id="files" Title="Files" Order="2">
+                                    <ToBeDone/>
+                                </Tab>
+                                <Tab @key="@("links")" Id="links" Title="Links" Order="3">
+                                    <ToBeDone/>
+                                </Tab>
+                            }
+                        </TabPanel>
+                    }
+                </div>
             </div>
-        </div>
+        }
     </div>
 </SideNav>
 
@@ -64,13 +66,14 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
-        var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
-        var showMembers = rules.CanSeeMembers();
         var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
+        var showMemberTab = rules.CanSeeMembers();
         return new () {
             IsVisible = isVisible,
-            ShowMembers = showMembers,
+            RenderContent = true,
             EnableIncompleteUI = enableIncompleteUI,
+            ShowMembersTab = showMemberTab,
         };
     }
 
@@ -80,7 +83,9 @@
         public static readonly Model Loading = new();
 
         public bool IsVisible { get; init; }
-        public bool ShowMembers { get; init; }
+        public bool RenderContent { get; init; }
         public bool EnableIncompleteUI { get; init; }
+        public bool ShowTabs => ShowMembersTab || EnableIncompleteUI;
+        public bool ShowMembersTab { get; init; }
     }
 }

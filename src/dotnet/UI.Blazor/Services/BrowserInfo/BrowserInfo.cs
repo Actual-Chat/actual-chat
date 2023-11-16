@@ -1,30 +1,31 @@
 using ActualChat.Hosting;
-using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
 public class BrowserInfo : IBrowserInfoBackend, IDisposable
 {
-    private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.BrowserInfo.init";
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
     private readonly IMutableState<bool> _isVisible;
+    private readonly IMutableState<ThemeInfo> _themeInfo;
 
     protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
     protected readonly object Lock = new();
+    private HostInfo? _hostInfo;
+    private UICommander? _uiCommander;
+    private ILogger? _log;
 
     protected IServiceProvider Services { get; }
-    protected HostInfo HostInfo { get; }
-    protected IJSRuntime JS { get; }
-    protected UICommander UICommander { get; }
-    protected ILogger Log { get; }
+    protected HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    protected UICommander UICommander => _uiCommander ??= Services.GetRequiredService<UICommander>();
+    protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public DotNetObjectReference<IBrowserInfoBackend>? BackendRef { get; private set; }
-    public AppKind AppKind { get; }
+    public DotNetObjectReference<IBrowserInfoBackend> BlazorRef { get; private set; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ScreenSize> ScreenSize => _screenSize;
     public IState<bool> IsHoverable => _isHoverable;
     public IState<bool> IsVisible => _isVisible;
+    public IState<ThemeInfo> ThemeInfo => _themeInfo;
     public TimeSpan UtcOffset { get; protected set; }
     public bool IsMobile { get; protected set; }
     public bool IsAndroid { get; protected set; }
@@ -39,28 +40,18 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public BrowserInfo(IServiceProvider services)
     {
         Services = services;
-        Log = services.LogFor(GetType());
-
-        HostInfo = services.GetRequiredService<HostInfo>();
-        JS = services.JSRuntime();
-        UICommander = services.GetRequiredService<UICommander>();
-        AppKind = HostInfo.AppKind;
-
+        BlazorRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         var stateFactory = services.StateFactory();
         _screenSize = stateFactory.NewMutable<ScreenSize>();
         _isHoverable = stateFactory.NewMutable(false);
         _isVisible = stateFactory.NewMutable(true);
+        _themeInfo = stateFactory.NewMutable(Blazor.Services.ThemeInfo.Default);
     }
 
     public void Dispose()
-        => BackendRef.DisposeSilently();
-
-    public virtual ValueTask Initialize(bool skipJsInit = false)
     {
-        BackendRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
-        return skipJsInit
-            ? default
-            : JS.InvokeVoidAsync(JSInitMethod, BackendRef, AppKind.ToString());
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
     }
 
     [JSInvokable]
@@ -68,9 +59,8 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     {
         Log.LogDebug("OnInitialized: {InitResult}", initResult);
 
-        if (!Enum.TryParse<ScreenSize>(initResult.ScreenSizeText, true, out var screenSize))
-            screenSize = Blazor.Services.ScreenSize.Unknown;
-
+        UpdateThemeInfo(initResult.ThemeInfo);
+        var screenSize = TryParseScreenSize(initResult.ScreenSizeText) ?? Blazor.Services.ScreenSize.Unknown;
         Update(screenSize, initResult.IsHoverable, initResult.IsVisible);
         UtcOffset = TimeSpan.FromMinutes(initResult.UtcOffset);
         IsMobile = initResult.IsMobile;
@@ -96,7 +86,11 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public void OnIsVisibleChanged(bool isVisible)
         => Update(isVisible: isVisible);
 
-    // Protected methods
+    [JSInvokable]
+    public void OnThemeChanged(IBrowserInfoBackend.ThemeInfo themeInfo)
+        => UpdateThemeInfo(themeInfo);
+
+    // Protected & private methods
 
     protected void Update(ScreenSize? screenSize = null, bool? isHoverable = null, bool? isVisible = null)
     {
@@ -124,4 +118,17 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
         if (becameVisible)
             Services.GetRequiredService<ReconnectUI>().ReconnectWhenDisconnected(); // To reconnect on showing up
     }
+
+    protected void UpdateThemeInfo(IBrowserInfoBackend.ThemeInfo themeInfo)
+        => _themeInfo.Value = new(
+            TryParseTheme(themeInfo.Theme),
+            TryParseTheme(themeInfo.DefaultTheme) ?? Theme.Light,
+            TryParseTheme(themeInfo.CurrentTheme) ?? Theme.Light,
+            themeInfo.Colors);
+
+    protected static ScreenSize? TryParseScreenSize(string? screenSize)
+        => Enum.TryParse<ScreenSize>(screenSize ?? "", true, out var v) ? v : null;
+
+    protected static Theme? TryParseTheme(string? theme)
+        => Enum.TryParse<Theme>(theme ?? "", true, out var v) ? v : null;
 }

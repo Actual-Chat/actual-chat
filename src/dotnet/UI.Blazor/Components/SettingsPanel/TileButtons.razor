@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.Kvas
 @inherits ComputedStateComponent<bool>
 @{
     var m = State.Value;
@@ -36,9 +37,9 @@
 }
 
 @code{
+    [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAvatars Avatars { get; init; } = null!;
     [Inject] private AccountSettings AccountSettings { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
 
     [Parameter] public AvatarFull Avatar { get; set; } = AvatarFull.None;
     [Parameter] public EventCallback EditClick { get; set; }

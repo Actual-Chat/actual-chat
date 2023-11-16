@@ -264,7 +264,7 @@ export class VirtualList {
             const removedCount = mutations.reduce((prev, m) => prev + m.removedNodes.length, 0);
             const addedCount = mutations.reduce((prev, m) => prev + m.addedNodes.length, 0);
             const queryDuration = Math.max(0, startedAt - (this._lastQueryTime ?? startedAt));
-            debugLog.log(
+            debugLog?.log(
                 `onItemSetChange: query duration: `, queryDuration,
                 '; added: ', addedCount,
                 '; removed: ', removedCount,
@@ -1119,12 +1119,17 @@ export class VirtualList {
         if (commonRange.isEmpty)
             return true;
 
+        const isLoadingStart = Math.abs(commonRange.start - queryRange.start) > viewportSize;  // we are loading more than a viewport at the start edge
+        const isLoadingEnd = Math.abs(queryRange.end - commonRange.end) > viewportSize; // we are loading more than a viewport at the end edge
+        const isViewportCloseToStart =  !this._renderState.hasVeryFirstItem && Math.abs(viewport.start - itemRange.start) < viewportSize / 2; // viewport is close to the start edge and there are items above
+        const isViewportCloseToEnd =  !this._renderState.hasVeryLastItem && Math.abs(itemRange.end - viewport.end) < viewportSize / 2; // viewport is close to the end edge and there are items bellow
+        const isNearSkeletonAndLoadingSomeData = this._isNearSkeleton && (commonRange.start > queryRange.start || queryRange.end > commonRange.end); // the viewport is near skeletons and we are loading some more
         const mustExpand =
-            Math.abs(commonRange.start - queryRange.start) > viewportSize // we are loading more than a viewport at the start edge
-            || Math.abs(queryRange.end - commonRange.end) > viewportSize // we are loading more than a viewport at the end edge
-            || (!this._renderState.hasVeryFirstItem && Math.abs(viewport.start - itemRange.start) > viewportSize) // viewport is close to the start edge and there are items above
-            || (!this._renderState.hasVeryLastItem && Math.abs(itemRange.end - viewport.end) > viewportSize) // viewport is close to the end edge and there are items bellow
-            || this._isNearSkeleton && (commonRange.start > queryRange.start || queryRange.end > commonRange.end); // the viewport is near skeletons and we are loading some more
+            isLoadingStart && !this._renderState.hasVeryLastItem
+            || isLoadingEnd
+            || isViewportCloseToStart
+            || isViewportCloseToEnd
+            || isNearSkeletonAndLoadingSomeData && this._renderState.renderIndex > 1; // and not the very first render with data
         // NOTE(AY): The condition below checks just one side
         const mustContract = Math.abs(itemRange.end - commonRange.end) > viewportSize * 2;
         return mustExpand || mustContract;

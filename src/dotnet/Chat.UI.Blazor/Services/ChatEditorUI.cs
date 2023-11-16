@@ -1,4 +1,5 @@
 using ActualChat.Chat.UI.Blazor.Events;
+using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using Stl.Interception;
 
@@ -138,7 +139,9 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
 
     private async Task HideWhenRelatedEntryRemoved(CancellationToken cancellationToken)
     {
-        var cRelatedChatEntry = await Computed.Capture(() => GetRelatedChatEntry(cancellationToken)).ConfigureAwait(false);
+        var cRelatedChatEntry = await Computed
+            .Capture(() => GetRelatedChatEntry(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
         await foreach (var change in cRelatedChatEntry.Changes(cancellationToken).ConfigureAwait(false))
         {
             var (chatEntryLink, chatEntry) = change.Value;

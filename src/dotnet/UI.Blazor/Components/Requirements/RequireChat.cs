@@ -1,5 +1,4 @@
 using ActualChat.Chat;
-using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Components;
 

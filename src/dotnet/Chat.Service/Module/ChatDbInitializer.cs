@@ -15,12 +15,16 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         // This initializer runs after everything else
         var chatDbInitializer = DbInitializer.GetCurrent<ChatDbInitializer>();
         await chatDbInitializer.WaitForOtherInitializers(_ => true).ConfigureAwait(false);
+        var options = Services.GetService<InitializeDataOptions>() ?? new InitializeDataOptions();
 
-        await EnsureAnnouncementsChatExists(cancellationToken).ConfigureAwait(false);
-        await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
-        if (HostInfo.IsDevelopmentInstance)
+        if (options.AddAnnouncementsChat)
+            await EnsureAnnouncementsChatExists(cancellationToken).ConfigureAwait(false);
+        if (options.AddFeedbackTemplateChat)
+            await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
+        if (options.AddDefaultChat && HostInfo.IsDevelopmentInstance)
             await EnsureDefaultChatExists(cancellationToken).ConfigureAwait(false);
-        await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
+        if (options.AddNotesChat)
+            await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task RepairData(CancellationToken cancellationToken)
@@ -146,6 +150,22 @@ public class ChatDbInitializer : DbInitializer<ChatDbContext>
         catch (Exception e) {
             Log.LogCritical(e, "Failed to fix corrupted chat read positions");
             throw;
+        }
+    }
+
+    public class InitializeDataOptions
+    {
+        public bool AddAnnouncementsChat { get; set; } = true;
+        public bool AddFeedbackTemplateChat { get; set; } = true;
+        public bool AddDefaultChat { get; set; } = true;
+        public bool AddNotesChat { get; set; } = true;
+
+        public void DisableAll()
+        {
+            AddAnnouncementsChat = false;
+            AddFeedbackTemplateChat = false;
+            AddDefaultChat = false;
+            AddNotesChat = false;
         }
     }
 }

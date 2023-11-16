@@ -3,7 +3,7 @@
 
 <Button
     Class="btn-outline"
-    Click="@(_ => AccountUI.ClientAuth.SignOut())">Sign out</Button>
+    Click="@(_ => AccountUI.SignOut())">Sign out</Button>
 
 @code {
     [Inject] private AccountUI AccountUI { get; init; } = null!;

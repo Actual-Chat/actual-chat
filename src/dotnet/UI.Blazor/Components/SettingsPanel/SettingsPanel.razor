@@ -4,7 +4,6 @@
 @{
     var cls = _isRightSideVisible ? "hide-panel" : "hide-tabs";
     var attr = _isRightSideVisible ? "hide-panel" : "hide-tabs";
-    var link = Links.User(AccountUI.OwnAccount.Value.Id);
 
     RenderFragment RenderCommonButton(SettingsTab tab) {
         var isActive = tab == ActiveTab;
@@ -61,7 +60,7 @@
                     var tabCls = tab.Class;
                     var containerCls = tab.IsToggle ? "container-toggle" : "";
                     @if (tab.HasSeparatorBefore) {
-                        <div class="w-auto bg-04 h-px my-4 mx-4"></div>
+                        <Divider Class="m-4"/>
                     }
                     <div class="c-tab-item @containerCls @activeCls @tabCls">
                         @switch (tab.Id) {
@@ -106,8 +105,7 @@
     private SettingsTab? _activeTab;
 
     [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private ReloadUI ReloadUI { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 
@@ -168,7 +166,10 @@
 
     public void UnregisterTab(SettingsTab tab) {
         var tabIndex = _tabs.IndexOf(tab);
-        _tabs.Remove(tab);
+        if (tabIndex < 0)
+            return;
+
+        _tabs.RemoveAt(tabIndex);
         tabIndex = tabIndex.Clamp(0, _tabs.Count - 1);
         ActiveTab = tabIndex >= 0 ? _tabs[tabIndex] : null;
         StateHasChanged();
@@ -187,9 +188,9 @@
 
     private void SignOut() {
         Modal.Close();
-        AccountUI.ClientAuth.SignOut();
+        Services.GetRequiredService<AccountUI>().SignOut();
     }
 
     private void Quit()
-        => ReloadUI.Quit();
+        => Services.GetRequiredService<ReloadUI>().Quit();
 }

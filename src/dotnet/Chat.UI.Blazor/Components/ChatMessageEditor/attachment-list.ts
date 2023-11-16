@@ -1,6 +1,7 @@
 import { Tune, TuneUI } from '../../../UI.Blazor/Services/TuneUI/tune-ui';
 import { OperationCancelledError, PromiseSource } from 'promises';
 import { Log } from 'logging';
+import { isSupportedImage, isSupportedVideo } from "media-types";
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
 import { SessionTokens } from '../../../UI.Blazor/Services/Security/session-tokens';
@@ -58,10 +59,10 @@ export class AttachmentList {
                 .then(isAdded => {
                     if (isAdded) {
                         addedBlobs++;
-                        debugLog.log(`added a blob: ${url}`);
+                        debugLog?.log(`added a blob: ${url}`);
                     }
                 })
-                .catch(e => errorLog.log('failed to add a blob', e))
+                .catch(e => errorLog?.log('failed to add a blob', e))
         }
         this.changed();
         return addedBlobs;
@@ -80,7 +81,7 @@ export class AttachmentList {
             tempUrl: '',
             mediaId: '',
         };
-        if (!url && (blob.type.startsWith('image') || blob.type.startsWith('video')))
+        if (!url && (isSupportedImage(blob.type) || isSupportedVideo(blob.type)))
             attachment.url = attachment.tempUrl = URL.createObjectURL(blob);
         const isAdded = await this.invokeAttachmentAdded(attachment, blob, fileName);
         if (!isAdded) {

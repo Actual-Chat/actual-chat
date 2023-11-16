@@ -11,44 +11,49 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private readonly IMutableState<Moment?> _audioStoppedAt;
     private readonly IMutableState<NextBeepState?> _nextBeep;
     private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
+    private IChats? _chats;
+    private ChatActivity? _chatActivity;
+    private ActiveChatsUI? _activeChatsUI;
     private AudioSettings? _audioSettings;
     private AudioRecorder? _audioRecorder;
     private ChatPlayers? _chatPlayers;
-    private ChatActivity? _chatActivity;
-    private IChats? _chats;
-    private ActiveChatsUI? _activeChatsUI;
+    private ModalUI? _modalUI;
     private TuneUI? _tuneUI;
     private LanguageUI? _languageUI;
     private InteractiveUI? _interactiveUI;
     private DeviceAwakeUI? _deviceAwakeUI;
     private ChatEditorUI? _chatEditorUI;
     private UserActivityUI? _userActivityUI;
+    private Dispatcher? _dispatcher;
 
     private IServiceProvider Services { get; }
     private ILogger Log { get; }
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     private Session Session { get; }
+    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private ChatActivity ChatActivity => _chatActivity ??= Services.GetRequiredService<ChatActivity>();
+    private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
     private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
-    private ChatActivity ChatActivity => _chatActivity ??= Services.GetRequiredService<ChatActivity>();
-    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
+    private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
     private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
     private LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
     private InteractiveUI InteractiveUI => _interactiveUI ??= Services.GetRequiredService<InteractiveUI>();
     private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
     private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
     private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
+    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     private MomentClockSet Clocks { get; }
 
-    private Moment Now => Clocks.SystemClock.Now;
+    private Moment CpuNow => Clocks.CpuClock.Now;
+    private Moment ServerNow => Clocks.ServerClock.Now;
 
-    public IState<Moment?> StopRecordingAt => _stopRecordingAt;
-    public Task WhenEnabled => _whenEnabledSource.Task;
-    public IState<Moment?> AudioStoppedAt => _audioStoppedAt;
+    public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
+    public IState<Moment?> AudioStoppedAt => _audioStoppedAt; // CPU time
     public IState<NextBeepState?> NextBeep => _nextBeep;
+    public Task WhenEnabled => _whenEnabledSource.Task;
 
     public ChatAudioUI(IServiceProvider services)
     {
@@ -96,7 +101,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
         if (chatId.IsNone)
             return default;
 
-        var now = Now;
+        var now = CpuNow;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
             if (activeChats.TryGetValue(chatId, out var chat) && chat.IsListening != mustListen) {
                 chat = chat with {
@@ -137,7 +142,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
                 if (oldRecordingChat.ChatId == chatId)
                     return activeChats;
 
-                var now = Now;
+                var now = CpuNow;
                 if (chatId.IsNone) {
                     // End recording
                     if (!oldRecordingChat.IsNone) {

@@ -13,7 +13,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
     public static readonly long MinLoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
 
-    private readonly CancellationTokenSource _disposeTokenSource = new();
+    private readonly CancellationTokenSource _disposeTokenSource;
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private readonly Suspender _getDataSuspender = new();
 
@@ -39,12 +39,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private TimeZoneConverter TimeZoneConverter => ChatContext.TimeZoneConverter;
     private IStateFactory StateFactory => ChatContext.StateFactory;
     private Dispatcher Dispatcher => ChatContext.Dispatcher;
-    private CancellationToken DisposeToken => _disposeTokenSource.Token;
+    private CancellationToken DisposeToken { get; }
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     private IMutableState<NavigationAnchor?> NavigationAnchorState { get; set; } = null!;
-    private IMutableState<long> LastAuthorTextEntryLidState { get; set; } = null!;
+    private IMutableState<(AuthorId AuthorId, long EntryLid)> LastAuthorTextEntryLidState { get; set; } = null!;
     private SyncedStateLease<ReadPosition> ReadPositionState { get; set; } = null!;
     private ComputedStateLease<Range<long>> ChatIdRangeState { get; set; } = null!;
 
@@ -55,6 +55,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
+    public ChatView()
+    {
+        _disposeTokenSource = new ();
+        DisposeToken = _disposeTokenSource.Token;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
@@ -64,7 +70,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 (NavigationAnchor?)null,
                 StateCategories.Get(GetType(), nameof(NavigationAnchorState)));
             LastAuthorTextEntryLidState = StateFactory.NewMutable(
-                0L,
+                (AuthorId.None, 0L),
                 StateCategories.Get(GetType(), nameof(LastAuthorTextEntryLidState)));
             _itemVisibility = StateFactory.NewMutable(
                 ChatViewItemVisibility.Empty,
@@ -84,7 +90,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _syncLastAuthorEntryLidState = new AsyncChain(nameof(SyncLastAuthorEntryLidState),  SyncLastAuthorEntryLidState)
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
-                .RunIsolated(_disposeTokenSource.Token);
+                .RunIsolated(DisposeToken);
         }
         catch {
             _whenInitializedSource.TrySetCanceled();
@@ -104,12 +110,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         if (_disposeTokenSource.IsCancellationRequested)
             return;
 
-        _disposeTokenSource.Cancel();
+        _disposeTokenSource.CancelAndDisposeSilently();
         _whenInitializedSource.TrySetCanceled();
         RegionVisibility.IsVisible.Updated -= OnRegionVisibilityChanged;
         Nav.LocationChanged -= OnLocationChanged;
         _getDataSuspender.IsSuspended = false;
-        _isViewportAboveUnreadEntry?.Dispose();
+        _isViewportAboveUnreadEntry.DisposeSilently();
         ReadPositionState.DisposeSilently();
         ChatIdRangeState.DisposeSilently();
     }
@@ -197,13 +203,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chat = Chat;
         var chatId = chat.Id;
         activity?.SetTag("AC." + nameof(ChatId), chatId);
-        var chatIdRange = ChatIdRangeState.Value; // do not subscribe to Id range change
         var readEntryLid = ReadPositionState.Value.EntryLid;
         var isFirstRender = oldData.IsNone;
         var scrollAnchor = isFirstRender && readEntryLid != 0
             ? new NavigationAnchor(readEntryLid)
             : null;
-        var lastAuthorEntryLid = LastAuthorTextEntryLidState.Value;
+        var (authorId, lastAuthorEntryLid) = await LastAuthorTextEntryLidState.Use(cancellationToken);
         if (lastAuthorEntryLid > _lastReadEntryLid) {
             // Scroll to the latest Author's entry - e.g.m when the author submits a new one
             _lastReadEntryLid = lastAuthorEntryLid;
@@ -216,6 +221,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             scrollAnchor = navigationAnchor;
         }
         var mustScrollToEntry = scrollAnchor != null && !ItemVisibility.Value.IsFullyVisible(scrollAnchor.EntryLid);
+        var chatIdRange = oldData.IsNone || !oldData.HasVeryLastItem
+            ? ChatIdRangeState.Value
+            : await ChatIdRangeState.Use(cancellationToken).ConfigureAwait(false);
         var idRangeToLoad = GetIdRangeToLoad(query, oldData, scrollAnchor, chatIdRange);
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End >= chatIdRange.End;
@@ -418,10 +426,22 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var secondLayer = IdTileStack.Layers[1];
         var minTileSize = IdTileStack.MinTileSize;
         var range = (query.IsNone, oldData.Tiles.Count == 0) switch {
-            (true, true) => new Range<long>(secondLayer.GetTile(chatIdRange.End - MinLoadLimit).Start, chatIdRange.End + minTileSize),
-            (true, false) when Math.Abs(oldData.Tiles[^1].Items[^1].Entry.LocalId - chatIdRange.End) <= minTileSize // reduce range when new messages were added
-                => new Range<long>(secondLayer.GetTile(chatIdRange.End - Math.Min(chatIdRange.Size(), MinLoadLimit * 2)).Start, chatIdRange.End + minTileSize),
-            (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId, oldData.Tiles[^1].Items[^1].Entry.LocalId),
+            (true, true) => new Range<long>(secondLayer.GetTile(chatIdRange.End - MinLoadLimit).Start,
+                chatIdRange.End + minTileSize),
+            (true, false) when
+                Math.Abs(oldData.Tiles[^1].Items[^1].Entry.LocalId - chatIdRange.End) <= minTileSize // reduce range when new messages were added
+                => new Range<long>(secondLayer.GetTile(
+                            oldData.Tiles.SelectMany(t => t.Items)
+                                .Reverse()
+                                .Skip((int)MinLoadLimit * 2)
+                                .FirstOrDefault()
+                                ?.Entry.LocalId
+                            ?? oldData.Tiles[0].Items[0].Entry.LocalId
+                        )
+                        .Start,
+                    chatIdRange.End + minTileSize),
+            (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId,
+                oldData.Tiles[^1].Items[^1].Entry.LocalId),
             _ => query.KeyRange
                 .ToLongRange()
                 .Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),
@@ -530,11 +550,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var chatIdRange = ChatIdRangeState.Value;
         var entryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var authorId = author?.Id;
+        var authorId = author?.Id ?? AuthorId.None;
         var newEntries = entryReader.Observe(chatIdRange.End, cancellationToken);
         // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-        await foreach (var newOwnEntry in newEntries.Where(e => e.AuthorId == authorId && e is { IsStreaming: false, AudioEntryId: null }).ConfigureAwait(false))
-            LastAuthorTextEntryLidState.Value = newOwnEntry.LocalId;
+        var authorEntries = newEntries
+            .Where(e => e.AuthorId == authorId && e is { IsStreaming: false, AudioEntryId: null })
+            .ConfigureAwait(false);
+        await foreach (var newOwnEntry in authorEntries) {
+            LastAuthorTextEntryLidState.Value = (authorId, newOwnEntry.LocalId);
+            if (ReadPositionState.Value.EntryLid < newOwnEntry.LocalId)
+                ReadPositionState.Value = new ReadPosition(Chat.Id, newOwnEntry.LocalId);
+        }
     }
 
     // Nested types

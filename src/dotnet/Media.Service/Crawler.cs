@@ -2,22 +2,12 @@ using ActualChat.Media.Module;
 using ActualChat.Uploads;
 using OpenGraphNet;
 using OpenGraphNet.Metadata;
-using FileInfo = ActualChat.Uploads.FileInfo;
+using Stl.IO;
 
 namespace ActualChat.Media;
 
 public class Crawler(IServiceProvider services) : IHasServices
 {
-    private static readonly Dictionary<string, string> ImageExtensionByContentType =
-        new (StringComparer.OrdinalIgnoreCase) {
-            ["image/bmp"] = ".bmp",
-            ["image/jpeg"] = ".jpg",
-            ["image/vnd.microsoft.icon"] = ".ico",
-            ["image/png"] = ".png",
-            ["image/svg+xml"] = ".svg",
-            ["image/webp"] = ".webp",
-        };
-
     private IContentSaver? _contentSaver;
     private MediaSettings? _settings;
     private IMediaBackend? _mediaBackend;
@@ -26,10 +16,10 @@ public class Crawler(IServiceProvider services) : IHasServices
     private ILogger? _log;
 
     public IServiceProvider Services { get; } = services;
-    private MediaSettings Settings => _settings ??= services.GetRequiredService<MediaSettings>();
-    private IMediaBackend MediaBackend => _mediaBackend ??= services.GetRequiredService<IMediaBackend>();
+    private MediaSettings Settings => _settings ??= Services.GetRequiredService<MediaSettings>();
+    private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
     private HttpClient HttpClient { get; } = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(LinkPreviewsBackend));
-    private IReadOnlyCollection<IUploadProcessor> UploadProcessors => _uploadProcessors ??= services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
+    private IReadOnlyCollection<IUploadProcessor> UploadProcessors => _uploadProcessors ??= Services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
     private IContentSaver ContentSaver => _contentSaver ??= Services.GetRequiredService<IContentSaver>();
     private ICommander Commander => _commander ??= Services.Commander();
     private ILogger Log => _log ??= Services.LogFor(GetType());
@@ -85,28 +75,29 @@ public class Crawler(IServiceProvider services) : IHasServices
         if (imageUri is null)
             return MediaId.None;
 
-        var fileInfo = await DownloadImageToFile(imageUri, cancellationToken).ConfigureAwait(false);
-        if (fileInfo is null)
+        var processedFile = await DownloadImageToFile(imageUri, cancellationToken).ConfigureAwait(false);
+        if (processedFile is null)
             return MediaId.None;
 
-        var mediaId = new MediaId(imageUri.AbsoluteUri.GetSHA256HashCode(HashEncoding.AlphaNumeric),
-            fileInfo.Content.GetSHA256HashCode(HashEncoding.AlphaNumeric));
+        var mediaIdScope = imageUri.AbsoluteUri.GetSHA256HashCode(HashEncoding.AlphaNumeric);
+        var mediaLid = await processedFile.File.GetSHA256HashCode(HashEncoding.AlphaNumeric).ConfigureAwait(false);
+        var mediaId = new MediaId(mediaIdScope, mediaLid);
         var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         if (media is not null)
             return media.Id;
 
         // TODO: extract common part with ChatMediaController
-        var (processedFile, size) = await ProcessFile(fileInfo, cancellationToken).ConfigureAwait(false);
         media = new Media(mediaId) {
-            ContentId = $"media/{mediaId.LocalId}/{fileInfo.FileName}",
-            FileName = fileInfo.FileName,
-            Length = fileInfo.Length,
-            ContentType = fileInfo.ContentType,
-            Width = size?.Width ?? 0,
-            Height = size?.Height ?? 0,
+            ContentId = $"media/{mediaId.LocalId}/{processedFile.File.FileName}",
+            FileName = processedFile.File.FileName,
+            Length = processedFile.File.Length,
+            ContentType = processedFile.File.ContentType,
+            Width = processedFile.Size?.Width ?? 0,
+            Height = processedFile.Size?.Height ?? 0,
         };
 
-        using var stream = new MemoryStream(processedFile.Content);
+        var stream = await processedFile.File.Open().ConfigureAwait(false);
+        await using var _ = stream.ConfigureAwait(false);
         var content = new Content(media.ContentId, media.ContentType, stream);
         await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
 
@@ -120,31 +111,27 @@ public class Crawler(IServiceProvider services) : IHasServices
         return mediaId;
     }
 
-    private async Task<FileInfo?> DownloadImageToFile(Uri imageUri, CancellationToken cancellationToken)
+    private Task<ProcessedFile?> DownloadImageToFile(Uri imageUri, CancellationToken cancellationToken)
     {
-        var cts = cancellationToken.CreateLinkedTokenSource();
+        using var cts = cancellationToken.CreateLinkedTokenSource();
         cts.CancelAfter(Settings.CrawlerImageDownloadTimeout);
+        return Download(cts.Token);
 
-        var response = await HttpClient.GetAsync(imageUri, cts.Token).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-            return null;
+        async Task<ProcessedFile?> Download(CancellationToken cancellationToken1)
+        {
+            var response = await HttpClient.GetAsync(imageUri, cancellationToken1).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                return null;
 
-        var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-        if (!ImageExtensionByContentType.TryGetValue(contentType, out var ext))
-            return null;
+            FilePath fileName = new string(response.RequestMessage!.RequestUri!.Segments[^1].Where(Alphabet.AlphaNumeric.IsMatch).ToArray());
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+            var ext = MediaTypeExt.GetFileExtension(contentType); // TODO: convert if icon is not supported
+            if (ext.IsNullOrEmpty())
+                return null;
 
-        var imageBytes = await response.Content.ReadAsByteArrayAsync(cts.Token).ConfigureAwait(false);
-        var fileName = new string(imageUri.Segments[^1].Where(Alphabet.AlphaNumeric.IsMatch).ToArray());
-        fileName = Path.ChangeExtension(fileName, ext);
-        return new FileInfo(fileName, contentType, imageBytes.Length, imageBytes);
-    }
-
-    private Task<ProcessedFileInfo> ProcessFile(FileInfo file, CancellationToken cancellationToken)
-    {
-        var processor = UploadProcessors.FirstOrDefault(x => x.Supports(file));
-        return processor != null
-            ? processor.Process(file, cancellationToken)
-            : Task.FromResult(new ProcessedFileInfo(file, null));
+            var file = new UploadedStreamFile(fileName, contentType, response.Content.Headers.ContentLength ?? 0, () => response.Content.ReadAsStreamAsync(cancellationToken1));
+            return await UploadProcessors.Process(file, cancellationToken1).ConfigureAwait(false);
+        }
     }
 }
 

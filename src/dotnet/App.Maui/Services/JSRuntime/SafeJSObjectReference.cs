@@ -3,36 +3,38 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui.Services;
 
-public class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObjectReference jsObjectReference)
-    : IJSObjectReference
+public sealed class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObjectReference jsObjectReference)
+    : IJSObjectReference, IHasIsDisposed
 {
-    internal bool Disposed { get; set; }
+    private volatile int _isDisposed;
+
     internal IJSObjectReference JSObjectReference => jsObjectReference;
 
-    public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(SafeJSRuntime.JsonSerialized)] TValue>(string identifier, object?[]? args)
-    {
-        ThrowIfDisposed();
-        safeJSRuntime.EnsureConnected();
-        return jsObjectReference.InvokeAsync<TValue>(identifier, safeJSRuntime.UnwrapArgs(args));
-    }
-
-    public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(SafeJSRuntime.JsonSerialized)] TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
-    {
-        ThrowIfDisposed();
-        safeJSRuntime.EnsureConnected();
-        return jsObjectReference.InvokeAsync<TValue>(identifier, cancellationToken, safeJSRuntime.UnwrapArgs(args));
-    }
+    public bool IsDisposed => _isDisposed != 0;
 
     public ValueTask DisposeAsync()
+        => Interlocked.CompareExchange(ref _isDisposed, 1, 0) != 0 || safeJSRuntime.IsDisconnected
+            ? default
+            : jsObjectReference.DisposeSilentlyAsync();
+
+    public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(SafeJSRuntime.JsonSerialized)] TValue>(
+        string identifier, object?[]? args)
     {
-        if (!Disposed) {
-            Disposed = true;
-            safeJSRuntime.EnsureConnected();
-            return jsObjectReference.DisposeAsync();
-        }
-        return ValueTask.CompletedTask;
+        ThrowIfDisposed();
+        safeJSRuntime.RequireConnected();
+        return jsObjectReference.InvokeAsync<TValue>(identifier, safeJSRuntime.ToUnsafe(args));
     }
 
-    protected void ThrowIfDisposed()
-        => ObjectDisposedException.ThrowIf(Disposed, this);
+    public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(SafeJSRuntime.JsonSerialized)] TValue>(
+        string identifier, CancellationToken cancellationToken, object?[]? args)
+    {
+        ThrowIfDisposed();
+        safeJSRuntime.RequireConnected();
+        return jsObjectReference.InvokeAsync<TValue>(identifier, cancellationToken, safeJSRuntime.ToUnsafe(args));
+    }
+
+    // Protected methods
+
+    private void ThrowIfDisposed()
+        => ObjectDisposedException.ThrowIf(IsDisposed, this);
 }

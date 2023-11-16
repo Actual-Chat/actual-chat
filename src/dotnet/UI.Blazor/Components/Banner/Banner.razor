@@ -52,9 +52,8 @@
         _animator = new ShowHideAnimator(this, TimeSpan.FromMilliseconds(300));
     }
 
-    public void Dispose() {
-        _animator.DisposeSilently();
-    }
+    public void Dispose()
+        => _animator.DisposeSilently();
 
     private async Task OnClose() {
         if (Dismiss.HasDelegate)

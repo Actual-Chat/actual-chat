@@ -4,29 +4,23 @@ using ActualChat.Users;
 
 namespace ActualChat.App.Maui.Services;
 
-public sealed class MauiSession
+public sealed class MauiSession(IServiceProvider services)
 {
     private const string SessionStorageKey = "Fusion.SessionId";
     private const string SessionCreatedAtStorageKey = "Fusion.SessionId.CreatedAt";
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiSession)];
-    private static readonly ILogger Log = MauiDiagnostics.LoggerFactory.CreateLogger<MauiSession>();
+    private static ILogger? _log;
+    private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<MauiSession>();
 
-    private static readonly object _lock = new();
     private static volatile Task<Session?> _readSessionTask = null!;
     private IMobileSessions? _mobileSessions;
 
-    private IServiceProvider Services { get; }
-    private TrueSessionResolver TrueSessionResolver { get; }
+    private IServiceProvider Services { get; } = services;
+    private TrueSessionResolver TrueSessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
     private IMobileSessions MobileSessions => _mobileSessions ??= Services.GetRequiredService<IMobileSessions>();
 
     public static Task Start()
         => _readSessionTask = Task.Run(Read);
-
-    public MauiSession(IServiceProvider services)
-    {
-        Services = services;
-        TrueSessionResolver = services.GetRequiredService<TrueSessionResolver>();
-    }
 
     public Task Acquire()
     {
@@ -56,7 +50,7 @@ public sealed class MauiSession
             Log.LogWarning("Stored session is invalid - will reload");
             await Store(validSession).ConfigureAwait(false);
             TrueSessionResolver.Replace(validSession);
-            Services.GetRequiredService<ReloadUI>().Reload(true);
+            Services.GetRequiredService<ReloadUI>().Reload(true, true);
         });
     }
 

@@ -45,7 +45,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
     }
 
     protected override Task DisposeAsyncCore()
-        => Abort();
+        => Abort(); // Never throws
 
     public async Task WhenDonePlaying()
     {
@@ -92,7 +92,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
             await Playback.Abort().WhenCompleted.ConfigureAwait(false);
         }
         catch (Exception e) {
-            if (e is not OperationCanceledException)
+            if (e is not OperationCanceledException or ObjectDisposedException)
                 Log.LogError(e, "Failed to abort playback in chat #{ChatId}", ChatId);
         }
     }

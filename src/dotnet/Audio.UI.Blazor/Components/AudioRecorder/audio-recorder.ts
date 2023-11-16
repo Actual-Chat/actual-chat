@@ -1,14 +1,34 @@
 import DetectRTC from 'detectrtc';
 import { Log } from 'logging';
-import { PromiseSource } from 'promises';
 import { DeviceInfo } from 'device-info';
 import { OpusMediaRecorder, opusMediaRecorder } from './opus-media-recorder';
 import { BrowserInfo } from '../../../UI.Blazor/Services/BrowserInfo/browser-info';
-import { BrowserInit } from "../../../UI.Blazor/Services/BrowserInit/browser-init";
-import { EventHandler } from "event-handling";
+import { BrowserInit } from '../../../UI.Blazor/Services/BrowserInit/browser-init';
+import { EventHandler } from 'event-handling';
+import { AudioPlayer } from '../AudioPlayer/audio-player';
+import { audioContextSource } from '../../Services/audio-context-source';
+import { VoiceActivityChange } from './workers/audio-vad-contract';
 
 
 const { debugLog, warnLog, errorLog } = Log.get('AudioRecorder');
+
+export class AudioDiagnosticsState {
+    public isPlayerInitialized?: boolean = null;
+    public isRecorderInitialized?: boolean = null;
+    public hasMicrophonePermission?: boolean = null;
+    public isAudioContextSourceActive?: boolean = null;
+    public isAudioContextActive?: boolean = null;
+    public hasMicrophoneStream?: boolean = null;
+    public isVadActive?: boolean = null;
+    public lastVadEvent?: VoiceActivityChange = null;
+    public lastVadFrameProcessedAt?: number = null;
+    public isConnected?: boolean = null;
+    public lastFrameProcessedAt?: number = null;
+    public vadWorkletState?: 'running' | 'stopped' | 'inactive' = null;
+    public lastVadWorkletFrameProcessedAt?: number = null;
+    public encoderWorkletState?: 'running' | 'stopped' | 'inactive' = null;
+    public lastEncoderWorkletFrameProcessedAt?: number = null;
+}
 
 export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
@@ -32,7 +52,6 @@ export class AudioRecorder {
         debugLog?.log(`-> terminate()`);
         await opusMediaRecorder.stop();
         await opusMediaRecorder.terminate();
-
         debugLog?.log(`<- terminate()`);
     }
 
@@ -210,6 +229,25 @@ export class AudioRecorder {
     public conversationSignal(): Promise<void> {
         debugLog?.log(`conversationSignal()`);
         return opusMediaRecorder.conversationSignal();
+    }
+
+    /** Called from Blazor */
+    public async runDiagnostics(): Promise<AudioDiagnosticsState> {
+        const diagnosticsState = new AudioDiagnosticsState();
+        diagnosticsState.isPlayerInitialized = AudioPlayer.isInitialized;
+
+        const isMaui = BrowserInfo.appKind == 'MauiApp';
+        const hasMicrophone = DetectRTC.isAudioContextSupported
+            && DetectRTC.hasMicrophone
+            && DetectRTC.isGetUserMediaSupported
+            && DetectRTC.isWebsiteHasMicrophonePermissions;
+        if (!isMaui)
+            diagnosticsState.hasMicrophonePermission = hasMicrophone;
+
+        diagnosticsState.isAudioContextSourceActive = audioContextSource.isActive;
+        diagnosticsState.isAudioContextActive = audioContextSource.context && audioContextSource.context.state === 'running';
+        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        return await opusMediaRecorder.runDiagnostics(diagnosticsState);
     }
 
     private async onRecordingStateChange(isRecording: boolean, isConnected: boolean, isVoiceActive: boolean): Promise<void> {

@@ -10,19 +10,16 @@ public interface IKubeInfo
     ValueTask<Kube> RequireKube(CancellationToken cancellationToken = default);
 }
 
-public class KubeInfo : IKubeInfo, IAsyncDisposable
+public class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDisposable
 {
     public FilePath TokenPath { get; init; } = "/var/run/secrets/kubernetes.io/serviceaccount/token";
     public FilePath CACertPath { get; init; } = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
 
-    private IServiceProvider Services { get; }
+    private IServiceProvider Services { get; } = services;
 
     private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.CheckedPass);
     private volatile CachedKube? _cachedInfo;
     private volatile KubeToken? _token;
-
-    public KubeInfo(IServiceProvider services)
-        => Services = services;
 
     public async ValueTask DisposeAsync()
     {

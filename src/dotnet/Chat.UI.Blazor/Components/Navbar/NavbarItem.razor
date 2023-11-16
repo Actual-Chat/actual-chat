@@ -46,9 +46,8 @@
         History.LocationChanged += HistoryOnLocationChanged;
     }
 
-    public void Dispose() {
-        History.LocationChanged -= HistoryOnLocationChanged;
-    }
+    public void Dispose()
+        => History.LocationChanged -= HistoryOnLocationChanged;
 
     private void HistoryOnLocationChanged(object? sender, LocationChangedEventArgs e) {
         if (CalculateIsCurrent() != _isCurrent)

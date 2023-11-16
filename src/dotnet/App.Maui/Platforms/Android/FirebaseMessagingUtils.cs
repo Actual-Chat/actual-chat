@@ -7,20 +7,17 @@ using Android.Util;
 using Firebase.Messaging;
 using Java.Lang;
 using Java.Util.Concurrent;
-using TimeoutException = System.TimeoutException;
+using JavaTimeoutException = Java.Util.Concurrent.TimeoutException;
 
 namespace ActualChat.App.Maui;
 
-public class FirebaseMessagingUtils
+public class FirebaseMessagingUtils(Context context)
 {
     private const int ImageDownloadTimeoutSeconds = 5;
     private const string Tag = Firebase.Messaging.Constants.Tag;
     private const string ThreadNetworkIo = "Firebase-Messaging-Network-Io";
 
-    private readonly Context _context;
-
-    public FirebaseMessagingUtils(Context context)
-        => _context = context ?? throw new ArgumentNullException(nameof(context));
+    private readonly Context _context = context ?? throw new ArgumentNullException(nameof(context));
 
     public bool IsAppForeground()
     {
@@ -94,7 +91,7 @@ public class FirebaseMessagingUtils
             imageDownload.Close();
             Java.Lang.Thread.CurrentThread().Interrupt(); // Restore the interrupted status
         }
-        catch (TimeoutException) {
+        catch (JavaTimeoutException) {
             Log.Warn(Tag, "Failed to download image in time, showing notification without it");
             imageDownload.Close();
             /*

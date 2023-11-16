@@ -1,4 +1,4 @@
-import { debounceTime, fromEvent, Subject, takeUntil } from 'rxjs';
+import { fromEvent, Subject, takeUntil } from 'rxjs';
 
 import { Log } from 'logging';
 import { setTimeout } from 'timerQueue';
@@ -11,13 +11,13 @@ export class LandingVideoModal {
     private readonly controlWrapper: HTMLElement;
     private readonly video: HTMLVideoElement;
     private readonly plug: HTMLImageElement;
-    private readonly controlHeader: HTMLElement;
     private readonly controlFooter: HTMLElement;
     private readonly controlBody: HTMLElement;
     private readonly playBtn: HTMLElement;
     private readonly pauseBtn: HTMLElement;
     private readonly progressBar: HTMLProgressElement;
-    private readonly timeline: HTMLElement;
+    private readonly stateObserver: MutationObserver;
+    private isControlShowed: boolean;
 
     private isVideoPlayStarted = false;
 
@@ -31,15 +31,12 @@ export class LandingVideoModal {
         this.videoWrapper = landingVideoModal.querySelector('.video-wrapper');
         this.video = this.videoWrapper.querySelector('.c-video');
         this.controlWrapper = landingVideoModal.querySelector('.control-wrapper');
-        this.controlHeader = this.controlWrapper.querySelector('.c-header');
         this.controlFooter = this.controlWrapper.querySelector('.c-footer');
         this.controlBody = this.controlWrapper.querySelector('.c-body');
         this.playBtn = this.controlBody.querySelector('.play-btn');
         this.pauseBtn = this.controlBody.querySelector('.pause-btn');
         this.progressBar = this.controlFooter.querySelector('.c-progress-bar');
-        this.timeline = this.controlFooter.querySelector('.c-timeline');
 
-        this.showControl(true);
         const durationDiv = this.controlFooter.querySelector('.c-duration');
         durationDiv.innerHTML = this.formatTime(46);
         const currentTimeDiv = this.controlFooter.querySelector('.c-current');
@@ -73,13 +70,9 @@ export class LandingVideoModal {
                 .pipe(takeUntil(this.disposed$))
                 .subscribe((event: Event) => this.playOrPause(event));
 
-            fromEvent(this.videoWrapper, 'click')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.showControl(true));
-
             fromEvent(this.controlWrapper, 'click')
                 .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.showControl(false));
+                .subscribe(() => this.showControl(!this.isControlShowed));
 
             this.video.oncanplay = _ => {
                 this.video.muted = true;
@@ -89,8 +82,14 @@ export class LandingVideoModal {
                     this.plug.classList.remove('flex');
                     this.plug.hidden = true;
                     this.video.hidden = false;
+                    this.showControl(true);
                 });
             };
+
+            this.stateObserver = new MutationObserver(this.updateControl);
+            this.stateObserver.observe(this.controlWrapper, {
+                attributes: true,
+            });
         }
     }
 
@@ -119,10 +118,30 @@ export class LandingVideoModal {
     }
 
     private showControl(show: boolean) {
-        if (show)
-            this.controlWrapper.style.display = 'flex';
+        if (show) {
+            this.isControlShowed = true;
+            this.controlWrapper.classList.add('show-control');
+            this.controlWrapper.classList.remove('hide-control');
+        } else {
+            this.isControlShowed = false;
+            this.controlWrapper.classList.add('hide-control');
+            this.controlWrapper.classList.remove('show-control');
+        }
+    }
+
+    private updateControl = () => {
+        if (this.controlWrapper.classList.contains('show-control')) {
+            setTimeout(() => {
+                this.delayedHide();
+            }, 2000);
+        }
+    };
+
+    private delayedHide = () => {
+        if (this.controlBody.classList.contains('playing'))
+            this.showControl(false);
         else
-            this.controlWrapper.style.display = 'none';
+            return;
     }
 
     private onVideoState() {
@@ -136,15 +155,16 @@ export class LandingVideoModal {
 
     private playOrPause(e: Event) {
         e.stopPropagation();
-        if (this.video.paused)
-            this.video.play().then(() => {
-                setTimeout(() => {
+        if (!this.isControlShowed) {
+            this.showControl(true);
+        } else {
+            if (this.video.paused)
+                this.video.play().then(() => {
                     this.showControl(false);
-                }, 200);
-            });
-        else {
-            this.video.pause();
-            this.showControl(false);
+                });
+            else {
+                this.video.pause();
+            }
         }
     }
 
@@ -178,8 +198,8 @@ export class LandingVideoModal {
             this.plug.classList.remove('flex');
             this.plug.hidden = true;
             this.video.hidden = false;
-            debugLog.log('onTouchEnd: tutorial video playback started.');
+            debugLog?.log('onTouchEnd: tutorial video playback started.');
         });
-        debugLog.log('onTouchEnd: tutorial video play...');
+        debugLog?.log('onTouchEnd: tutorial video play...');
     }
 }

@@ -197,6 +197,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\timeout.ts = src\nodejs\src\timeout.ts
 		src\nodejs\src\timerQueue.ts = src\nodejs\src\timerQueue.ts
 		src\nodejs\src\versioning.ts = src\nodejs\src\versioning.ts
+		src\nodejs\src\media-types.ts = src\nodejs\src\media-types.ts
+		src\nodejs\src\font-sizes.ts = src\nodejs\src\font-sizes.ts
+		src\nodejs\src\theme.ts = src\nodejs\src\theme.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"
@@ -268,6 +271,10 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.UI.Blazor", "src\dotnet\Contacts.UI.Blazor\Contacts.UI.Blazor.csproj", "{A506D144-0826-4A03-A960-8457A959DD10}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.IntegrationTests", "tests\Contacts.IntegrationTests\Contacts.IntegrationTests.csproj", "{E1F1B1CD-AC26-4DBD-A3C6-736E37848631}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.UI.Blazor.IntegrationTests", "tests\Contacts.UI.Blazor.IntegrationTests\Contacts.UI.Blazor.IntegrationTests.csproj", "{214B5527-5EE4-4197-99D1-95DB7B12194E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.UnitTests", "tests\Contacts.UnitTests\Contacts.UnitTests.csproj", "{874E036D-E798-4E33-A73F-C63A6D4FB413}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -545,6 +552,14 @@ Global
 		{E1F1B1CD-AC26-4DBD-A3C6-736E37848631}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E1F1B1CD-AC26-4DBD-A3C6-736E37848631}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E1F1B1CD-AC26-4DBD-A3C6-736E37848631}.Release|Any CPU.Build.0 = Release|Any CPU
+		{214B5527-5EE4-4197-99D1-95DB7B12194E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{214B5527-5EE4-4197-99D1-95DB7B12194E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{214B5527-5EE4-4197-99D1-95DB7B12194E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{214B5527-5EE4-4197-99D1-95DB7B12194E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{874E036D-E798-4E33-A73F-C63A6D4FB413}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{874E036D-E798-4E33-A73F-C63A6D4FB413}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{874E036D-E798-4E33-A73F-C63A6D4FB413}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{874E036D-E798-4E33-A73F-C63A6D4FB413}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -635,6 +650,8 @@ Global
 		{532D6C2F-CFC3-4637-93D8-14463CCF5211} = {70EB21AB-4388-4C55-BA19-D1E1769B0886}
 		{A506D144-0826-4A03-A960-8457A959DD10} = {9B3B0EB4-0694-4955-B89F-581771BF3A07}
 		{E1F1B1CD-AC26-4DBD-A3C6-736E37848631} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{214B5527-5EE4-4197-99D1-95DB7B12194E} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{874E036D-E798-4E33-A73F-C63A6D4FB413} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}

@@ -3,14 +3,11 @@ using Microsoft.Playwright;
 
 namespace ActualChat.Testing.Host;
 
-public sealed class PlaywrightTester : WebClientTester
+public sealed class PlaywrightTester(AppHost appHost, Action<IServiceCollection>? configureClientServices = null)
+    : WebClientTester(appHost, configureClientServices)
 {
     private IPlaywright? _playwright;
     private IBrowser? _browser;
-
-    public PlaywrightTester(AppHost appHost, IServiceProvider? clientServices = null)
-        : base(appHost, clientServices)
-    { }
 
     public override async ValueTask DisposeAsync()
     {
@@ -57,7 +54,7 @@ public sealed class PlaywrightTester : WebClientTester
     {
         var context = await NewContext();
         var page = await context.NewPageAsync();
-        var response = await page.GotoAsync(UrlMapper.ToAbsolute(relativeUri).ToString());
+        var response = await page.GotoAsync(UrlMapper.ToAbsolute(relativeUri));
         return (page, response);
     }
 }

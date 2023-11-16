@@ -27,7 +27,7 @@ public class AppIconBadgeUpdater : WorkerBase
 
         var chatListUI = Services.GetRequiredService<ChatListUI>();
         var cChatsCount0 = await Computed
-            .Capture(() => chatListUI.UnreadChatCount.Use(cancellationToken))
+            .Capture(() => chatListUI.UnreadChatCount.Use(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var changes = cChatsCount0.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
         await foreach (var cChatsCount in changes.ConfigureAwait(false)) {

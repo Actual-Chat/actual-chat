@@ -65,7 +65,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<ChangeResult<ExternalContact>>> OnBulkChange(
+    public virtual async Task<ApiArray<Result<ExternalContact?>>> OnBulkChange(
         ExternalContactsBackend_BulkChange command,
         CancellationToken cancellationToken)
     {
@@ -76,74 +76,78 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             return default!;
         }
 
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var result = new List<ChangeResult<ExternalContact>>(command.Changes.Count);
+        var result = new List<Result<ExternalContact?>>(command.Changes.Count);
         foreach (var itemChange in command.Changes)
             try {
-                var externalContact = await ChangeItem(itemChange).ConfigureAwait(false);
-                result.Add(ChangeResult.From(externalContact));
+                var externalContact = await ChangeItem(itemChange, cancellationToken).ConfigureAwait(false);
+                result.Add(new Result<ExternalContact?>(externalContact, null));
             }
             catch (Exception e)
             {
                 Log.LogError(e, "Failed to change external contact #{ExternalContactId}", itemChange.Id);
-                result.Add(ChangeResult.Error<ExternalContact>(e));
+                result.Add(new Result<ExternalContact?>(null, e));
             }
         if (command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
             ContactLinkingJob.OnSyncNeeded();
         return result.ToApiArray();
+    }
 
-        async Task<ExternalContact?> ChangeItem(ExternalContactChange itemChange)
-        {
-            var (id, expectedVersion, change) = itemChange;
-            var ownerId = id.OwnerId;
+    private async Task<ExternalContact?> ChangeItem(
+        ExternalContactChange itemChange,
+        CancellationToken cancellationToken)
+    {
+        var (id, expectedVersion, change) = itemChange;
+        var ownerId = id.OwnerId;
 
-            id.Require();
-            ownerId.Require();
-            change.RequireValid();
+        id.Require();
+        ownerId.Require();
+        change.RequireValid();
 
-            var dbExternalContact = await dbContext.ExternalContacts.ForUpdate()
-                .Include(x => x.ExternalContactLinks)
-                .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
-                .ConfigureAwait(false);
-            var existing = dbExternalContact?.ToModel();
-            var now = Clocks.SystemClock.Now;
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
 
-            if (change.IsCreate(out var externalContact)) {
-                if (existing != null)
-                    return existing; // Already exists, so we don't recreate one
+        var dbExternalContact = await dbContext.ExternalContacts.ForUpdate()
+            .Include(x => x.ExternalContactLinks)
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+        var existing = dbExternalContact?.ToModel();
+        var now = Clocks.SystemClock.Now;
 
-                externalContact = externalContact with {
-                    Id = id,
-                    Version = VersionGenerator.NextVersion(),
-                    CreatedAt = now,
-                    ModifiedAt = now,
-                };
-                dbExternalContact = new DbExternalContact(externalContact);
-                dbContext.Add(dbExternalContact);
-            }
-            else if (change.IsUpdate(out externalContact)) {
-                dbExternalContact.RequireVersion(expectedVersion);
-                externalContact = externalContact with {
-                    Version = VersionGenerator.NextVersion(dbExternalContact.Version),
-                    ModifiedAt = now,
-                };
-                dbExternalContact.UpdateFrom(externalContact);
-            }
-            else { // Remove
-                if (expectedVersion != null)
-                    dbExternalContact.RequireVersion(expectedVersion);
-                if (dbExternalContact == null)
-                    return null;
+        if (change.IsCreate(out var externalContact)) {
+            if (existing != null)
+                return existing; // Already exists, so we don't recreate one
 
-                dbContext.Remove(dbExternalContact);
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false); // TODO(FC): bulk save
-            externalContact = dbExternalContact.ToModel();
-            return externalContact;
+            externalContact = externalContact with {
+                Id = id,
+                Version = VersionGenerator.NextVersion(),
+                CreatedAt = now,
+                ModifiedAt = now,
+            };
+            dbExternalContact = new DbExternalContact(externalContact);
+            dbContext.Add(dbExternalContact);
         }
+        else if (change.IsUpdate(out externalContact)) {
+            dbExternalContact.RequireVersion(expectedVersion);
+            externalContact = externalContact with {
+                Version = VersionGenerator.NextVersion(dbExternalContact.Version),
+                ModifiedAt = now,
+            };
+            dbExternalContact.UpdateFrom(externalContact);
+            dbContext.ExternalContacts.Update(dbExternalContact);
+        }
+        else {
+            // Remove
+            if (dbExternalContact == null)
+                return null;
+            if (expectedVersion != null)
+                dbExternalContact.RequireVersion(expectedVersion);
+
+            dbContext.Remove(dbExternalContact);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false); // TODO(FC): bulk save
+        externalContact = dbExternalContact.ToModel();
+        return externalContact;
     }
 
     // [CommandHandler]

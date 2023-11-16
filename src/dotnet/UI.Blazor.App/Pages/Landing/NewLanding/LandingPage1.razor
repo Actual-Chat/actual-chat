@@ -24,13 +24,14 @@
             <p class="c-description">
                 @if (!ScreenSize.IsNarrow()) {
                     <span>We fuse real-time audio, live transcription,</span>
-                    <span>and AI assistance to let you communicate </span>
-                    <span>with <strong>utmost efficiency</strong>.</span>
+                    <span>and AI assistance to let you communicate</span>
+                    <span>faster, respond in detail, and waste</span>
+                    <span>no time waiting.</span>
                 } else {
                     <span>
                         We fuse real-time audio, live transcription,
-                        and AI assistance to let you communicate
-                        with <strong>utmost efficiency</strong>.
+                        and AI assistance to let you communicate faster,
+                        respond in detail, and waste no time waiting.
                     </span>
                 }
             </p>
@@ -53,13 +54,13 @@
             @if (IsGuest) {
                 <button class="btn-download transparent md:hidden" @onclick="@ShowVideoClick">
                     <i class="icon-play-fill text-2xl"></i>
-                    <span>Watch video how it works</span>
+                    <span>Watch Actual Chat in action</span>
                 </button>
             }
         </div>
     </div>
     <div class="main-image">
-        <video controls hidden muted playsinline loop class="landing-video">
+        <video controls hidden muted autoplay="autoplay" playsinline loop class="landing-video">
             <source src="/dist/images/landing/landing-tutorial.mp4" type="video/mp4"/>
         </video>
         <img draggable="false"

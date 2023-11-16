@@ -21,7 +21,7 @@ internal class AndroidFileChooser
 
     private ILogger Log { get; }
 
-    public AndroidFileChooser(ILogger<AndroidFileChooser> log)
+    public AndroidFileChooser(ILogger log)
     {
         Log = log;
         AndroidActivityResultHandlers.Register(OnActivityResult);

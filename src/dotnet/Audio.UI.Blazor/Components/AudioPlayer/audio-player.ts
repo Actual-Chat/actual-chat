@@ -37,6 +37,10 @@ export class AudioPlayer implements Resettable {
     private decoderToFeederWorkletChannel: MessageChannel = null;
     private feederNode?: FeederAudioWorkletNode = null;
 
+    public static get isInitialized() {
+        return AudioPlayer.whenInitialized && AudioPlayer.whenInitialized.isCompleted();
+    }
+
     public onPlaybackStateChanged?: (playbackState: PlaybackState) => void;
 
     public static async init(): Promise<void> {
@@ -44,15 +48,16 @@ export class AudioPlayer implements Resettable {
         if (this.whenInitialized.isCompleted())
             return;
 
-        try {
+        if (!decoderWorkerInstance) {
             const decoderWorkerPath = Versioning.mapPath('/dist/opusDecoderWorker.js');
             decoderWorkerInstance = new Worker(decoderWorkerPath);
+        }
+        if (!decoderWorker)
             decoderWorker = rpcClient<OpusDecoderWorker>(`${logScope}.decoderWorker`, decoderWorkerInstance);
-            await decoderWorker.create(Versioning.artifactVersions, {type: 'rpc-timeout', timeoutMs: 20_000});
-        }
-        finally {
-            this.whenInitialized.resolve(undefined);
-        }
+
+        await decoderWorker.create(Versioning.artifactVersions, {type: 'rpc-timeout', timeoutMs: 20_000});
+
+        this.whenInitialized.resolve(undefined);
     }
 
     private static async ensureInitialized(): Promise<void> {

@@ -3,10 +3,11 @@ import { AudioPlayer } from '../Components/AudioPlayer/audio-player';
 import { opusMediaRecorder } from '../Components/AudioRecorder/opus-media-recorder';
 import {AudioRecorder} from "../Components/AudioRecorder/audio-recorder";
 import {audioContextSource} from "./audio-context-source";
+import {PromiseSource, ResolvedPromise} from "promises";
 
 const { infoLog, warnLog } = Log.get('AudioInfo');
 
-export type BackgroundState = 'Foreground' | 'BackgroundActive' | 'BackgroundIdle';
+export type BackgroundState = 'Foreground' | 'BackgroundIdle' | 'BackgroundActive';
 
 export class AudioInitializer {
     private static backendRef: DotNet.DotNetObject = null;
@@ -20,7 +21,7 @@ export class AudioInitializer {
         this.backendRef = backendRef1;
         infoLog?.log(`-> init`);
 
-        if (!this.isPlayerInitialized) {
+        const initPlayer = async () => {
             try {
                 await AudioPlayer.init();
                 this.isPlayerInitialized = true;
@@ -31,10 +32,12 @@ export class AudioInitializer {
             }
         }
 
-        if (!this.isRecorderInitialized) {
+        const initRecorder = async () => {
             try {
-                await AudioRecorder.init();
-                await opusMediaRecorder.init(baseUri, canUseNNVad);
+                await Promise.all([
+                    AudioRecorder.init(),
+                    opusMediaRecorder.init(baseUri, canUseNNVad),
+                ]);
                 this.isRecorderInitialized = true;
             }
             catch (e) {
@@ -43,21 +46,25 @@ export class AudioInitializer {
             }
         }
 
-        globalThis["audioInitializer"] = this;
+        const promises: Promise<void>[] = [
+            this.isPlayerInitialized ? ResolvedPromise.Void : initPlayer(),
+            this.isRecorderInitialized ? ResolvedPromise.Void : initRecorder(),
+        ];
+        await Promise.all(promises);
         infoLog?.log(`<- init`);
     }
 
     /** Called by Blazor */
-    public static async updateBackgroundState(backgroundState: BackgroundState): Promise<void> {
-        infoLog?.log(`-> updateBackgroundState`);
-        if (backgroundState === 'BackgroundActive' || backgroundState === 'Foreground') {
+    public static async setBackgroundState(backgroundState: BackgroundState): Promise<void> {
+        infoLog?.log(`setBackgroundState:`, backgroundState);
+        this.backgroundState = backgroundState;
+        if (backgroundState === 'Foreground' || backgroundState === 'BackgroundActive') {
             await audioContextSource.resumeAudio();
+            await opusMediaRecorder.reconnect();
         }
         else {
             await audioContextSource.suspendAudio();
+            await opusMediaRecorder.disconnect();
         }
-        this.backgroundState = backgroundState;
-        infoLog?.log(`<- updateBackgroundState`);
     }
 }
-

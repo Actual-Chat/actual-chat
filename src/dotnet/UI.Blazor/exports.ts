@@ -18,7 +18,6 @@ export * from './Services/ScreenSize/screen-size';
 export * from './Services/Security/session-tokens';
 export * from './Services/Settings/local-settings';
 export * from './Services/TuneUI/tune-ui'
-export * from './Services/ThemeUI/theme-ui'
 export * from './Services/InteractiveUI/interactive-ui';
 export * from './Services/UserActivityUI/user-activity-ui';
 
@@ -31,6 +30,7 @@ export * from './Components/Feedback/feedback';
 export * from './Components/VisualMediaViewerModal/visual-media-viewer';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/modal-host';
+export * from './Components/Overlays/loading-cat-svg.lit';
 export * from './Components/SideNav/side-nav';
 export * from './Components/TextBox/text-box';
 export * from './Components/TextInput/text-input';

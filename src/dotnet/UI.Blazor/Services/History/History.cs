@@ -10,13 +10,11 @@ public partial class History : IHasServices, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.History.init";
 
-    public static readonly TimeSpan MaxNavigationDuration = TimeSpan.FromSeconds(1.5);
-    public static readonly TimeSpan AwaitNavigationDuration = TimeSpan.FromSeconds(5);
     public const int MaxItemCount = 200;
 
     private Session? _session;
     private Dispatcher? _dispatcher;
-    private DotNetObjectReference<History>? _backendRef;
+    private DotNetObjectReference<History>? _blazorRef;
     private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
 
     private ILogger Log { get; }
@@ -81,14 +79,17 @@ public partial class History : IHasServices, IDisposable
     }
 
     public void Dispose()
-        => _backendRef.DisposeSilently();
+    {
+        _blazorRef.DisposeSilently();
+        _blazorRef = null;
+    }
 
     public Task Initialize(LocalUrl autoNavigationUrl)
     {
         Log.LogInformation("Initialize @ {AutoNavigationUrl}", autoNavigationUrl);
-        _backendRef = DotNetObjectReference.Create(this);
+        _blazorRef = DotNetObjectReference.Create(this);
         var sCurrentItemId = ItemIdFormatter.Format(_currentItem.Id);
-        _ = JS.InvokeVoidAsync(JSInitMethod, _backendRef, autoNavigationUrl.Value, sCurrentItemId);
+        _ = JS.InvokeVoidAsync(JSInitMethod, _blazorRef, autoNavigationUrl.Value, sCurrentItemId);
         return WhenReady;
     }
 

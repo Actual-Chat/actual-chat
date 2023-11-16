@@ -1,29 +1,25 @@
-@inherits ComputedStateComponent<Theme?>
+@inherits ComputedStateComponent<Theme>
 @{
-    var m = State.Value;
-    var isDark = m is Theme.Dark;
+    var isDark = State.Value == Theme.Dark;
 }
 
-<Toggle IsChecked="@isDark" IsCheckedChanged="OnThemeChanged"/>
+<Toggle IsChecked="@isDark" IsCheckedChanged="@(() => OnThemeChanged(!isDark))"/>
 
 @code {
     [Inject] ThemeUI ThemeUI { get; init; } = null!;
 
-    protected override ComputedState<Theme?>.Options GetStateOptions()
+    protected override ComputedState<Theme>.Options GetStateOptions()
         => new() {
-            InitialValue = ThemeUI.Theme,
+            InitialValue = ThemeUI.State.Value.CurrentTheme,
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<Theme?> ComputeState(CancellationToken cancellationToken) {
-        var themeSettings = await ThemeUI.Settings.Use(cancellationToken);
-        return themeSettings.Theme;
+    protected override async Task<Theme> ComputeState(CancellationToken cancellationToken) {
+        var themeInfo = await ThemeUI.State.Use(cancellationToken).ConfigureAwait(false);
+        return themeInfo.CurrentTheme;
     }
 
-    private void OnThemeChanged()
-        => ThemeUI.Theme = ThemeUI.Theme switch {
-            Theme.Light => Theme.Dark,
-            _ => Theme.Light,
-        };
+    private void OnThemeChanged(bool isDark)
+        => ThemeUI.SetTheme(isDark ? Theme.Dark : Theme.Light);
 }

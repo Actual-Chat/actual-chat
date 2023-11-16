@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using ActualChat.UI.Blazor.App;
 using ActualChat.App.Maui.Services;
 using ActualChat.Security;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Maui.LifecycleEvents;
@@ -15,6 +16,7 @@ using Microsoft.JSInterop;
 using Sentry;
 using Serilog;
 using Stl.CommandR.Rpc;
+using ILogger = Google.Apis.Logging.ILogger;
 
 namespace ActualChat.App.Maui;
 
@@ -48,8 +50,12 @@ public static partial class MauiProgram
             _ = MauiSession.Start();
 
             var appBuilder = MauiApp.CreateBuilder().UseMauiApp<App>();
+#if DEBUG
+            // NOTE: It's enabled in Debug mode only hence there is no performance penalties in Release mode.
+            EnableContainerValidation(appBuilder);
+#endif
             Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
-            AppServiceStarter.WarmupStaticServices(HostInfo);
+            AppNonScopedServiceStarter.WarmupStaticServices(HostInfo);
 #if true
             // Normal start
             ConfigureApp(appBuilder, false);
@@ -101,12 +107,12 @@ public static partial class MauiProgram
         // Core MAUI services
         services.AddMauiBlazorWebView();
         AddSafeJSRuntime(services);
+        services.AddScoped<Mutable<MauiWebView?>>();
 // #if DEBUG
         services.AddBlazorWebViewDeveloperTools();
 // #endif
 
-        services.AddSingleton(c => new MauiNavigationInterceptor(c));
-        services.AddTransient(c => new MainPage(c));
+        services.AddTransient(_ => new MainPage());
         builder.ConfigureMauiHandlers(handlers => {
             handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
         });
@@ -132,20 +138,18 @@ public static partial class MauiProgram
         services.Remove(jsRuntimeRegistration);
         services.Add(new ServiceDescriptor(
             typeof(SafeJSRuntime),
-            svp => new SafeJSRuntime((IJSRuntime)ActivatorUtilities.CreateInstance(svp, webViewJSRuntimeType)),
+            c => new SafeJSRuntime((IJSRuntime)ActivatorUtilities.CreateInstance(c, webViewJSRuntimeType)),
             jsRuntimeRegistration.Lifetime));
         services.Add(new ServiceDescriptor(
             typeof(IJSRuntime),
-            svp => {
-                var safeJSRuntime = svp.GetRequiredService<SafeJSRuntime>();
-                if (!safeJSRuntime.IsReady) {
-                    // In MAUI Hybrid Blazor IJSRuntime service is resolved first time from PageContext and casted to WebViewJSRuntime,
-                    // to being attached with WebView. So we need to return original WebViewJSRuntime instance.
-                    // After that we can return 'safe' IJSRuntime implementation.
+            c => {
+                var safeJSRuntime = c.GetRequiredService<SafeJSRuntime>();
+                if (!safeJSRuntime.IsReady && safeJSRuntime.MarkReady())
+                    // The very first IJSRuntime service resolved first time from PageContext is cast to WebViewJSRuntime
+                    // to being attached to WebView. So we need to return the original WebViewJSRuntime instance
+                    // specifically for this call, and after that we can return SafeJSRuntime.
                     // See https://github.com/dotnet/aspnetcore/blob/410efd482f494d1ab05ce25b932b5788699c2308/src/Components/WebView/WebView/src/PageContext.cs#L44
-                    safeJSRuntime.MarkReady();
                     return safeJSRuntime.WebViewJSRuntime;
-                }
                 // After that there is no more bindings with implementation type, so we can return protected JSRuntime.
                 return safeJSRuntime;
             },
@@ -170,8 +174,8 @@ public static partial class MauiProgram
             _ = mauiSession.Acquire();
             var trueSessionResolver = AppServices.GetRequiredService<TrueSessionResolver>();
             await trueSessionResolver.SessionTask.ConfigureAwait(false);
-            var appServiceStarter = AppServices.GetRequiredService<AppServiceStarter>();
-            _ = appServiceStarter.StartNonScopedServices();
+            var appRootServiceStarter = AppServices.GetRequiredService<AppNonScopedServiceStarter>();
+            _ = appRootServiceStarter.StartNonScopedServices();
         });
     }
 
@@ -271,6 +275,24 @@ public static partial class MauiProgram
         AddPlatformServicesToSkip(servicesToSkip);
         return serviceType => !servicesToSkip.Contains(serviceType);
     }
+
+#if DEBUG
+    private static void EnableContainerValidation(MauiAppBuilder appBuilder)
+    {
+        var services = appBuilder.Services;
+        // NOTE(DF): MAUI has issues with internal services scope that causes validation errors.
+        // Replace these registrations to pass validation. It should be safe for MAUI behavior.
+        // See https://github.com/dotnet/maui/blob/main/src/Core/src/Hosting/Dispatching/AppHostBuilderExtensions.cs
+        services.Replace(typeof(IDispatcher), static sd => sd.ChangeLifetime(ServiceLifetime.Singleton));
+        services.ReplaceAll(typeof(IMauiInitializeScopedService), static sd => sd.ChangeLifetime(ServiceLifetime.Transient));
+        // Enable validation on container
+        // NOTE: will be improved later, see https://github.com/dotnet/maui/issues/18519
+        appBuilder.ConfigureContainer(new DefaultServiceProviderFactory(new ServiceProviderOptions {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        }));
+    }
+#endif
 
     private static partial void AddPlatformServices(this IServiceCollection services);
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip);

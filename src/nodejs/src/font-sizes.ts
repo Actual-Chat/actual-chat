@@ -12,6 +12,8 @@ const AvailableSizes : { [title: string]: string } = {
     '20px': '20px',
     // '24px': '24px',
 }
+const Storage = globalThis?.localStorage;
+const IsEnabled = window != null && Storage != null;
 
 export class FontSizes {
     public static init(): void {
@@ -23,23 +25,23 @@ export class FontSizes {
         return AvailableSizes;
     }
 
-    public static get() : string {
-        const root = document?.querySelector(':root');
-        const rootStyle = window?.getComputedStyle(root);
-        if (!rootStyle)
-            return; // Nothing to do: there is no UI
+    public static get(): string {
+        if (!IsEnabled)
+            return null;
 
+        const root = document.querySelector(':root');
+        const rootStyle = window.getComputedStyle(root);
         const size = rootStyle.getPropertyValue('--font-size');
         return getValidOrDefault(size);
     }
 
-    public static set(size: string) : void {
-        const root = document?.querySelector(':root');
-        const rootStyle = window?.getComputedStyle(root);
-        if (!rootStyle)
-            return; // Nothing to do: there is no UI
+    public static set(size: string): void {
+        if (!IsEnabled)
+            return;
 
         size = getValidOrDefault(size);
+        const root = document.querySelector(':root');
+        const rootStyle = window.getComputedStyle(root);
         const rootFontSize = rootStyle.getPropertyValue('--font-size');
         if (rootFontSize != size) {
             (root as HTMLElement).style.setProperty('--font-size', size);
@@ -53,24 +55,17 @@ function getDefault() {
     return DeviceInfo.isIos ? '18px' : '16px';
 }
 
-function getValidOrDefault(size: string) : string {
+function getValidOrDefault(size: string): string {
     return AvailableSizes[size] ?? getDefault();
 }
 
-function load() : string | null {
-    const storage = globalThis?.localStorage;
-    if (!storage)
-        return null;
-
-    return storage.getItem(StorageKey);
+function load(): string | null {
+    return IsEnabled ? Storage.getItem(StorageKey) : null;
 }
 
-function save(size: string) : void {
-    const storage = globalThis?.localStorage;
-    if (!storage)
-        return null;
-
-    return storage.setItem(StorageKey, size);
+function save(size: string): void {
+    if (IsEnabled)
+        Storage.setItem(StorageKey, size);
 }
 
 FontSizes.init();

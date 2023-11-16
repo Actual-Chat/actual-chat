@@ -1,6 +1,6 @@
 import { customElement, property } from 'lit/decorators.js';
 import { createRef, Ref, ref } from 'lit/directives/ref.js';
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, nothing } from 'lit';
 
 @customElement('image-skeleton')
 class ImageSkeleton extends LitElement {
@@ -21,6 +21,7 @@ class ImageSkeleton extends LitElement {
       .image {
         width: 100%;
         height: 100%;
+        object-fit: cover;
         border-radius: inherit;
       }
 
@@ -45,7 +46,7 @@ class ImageSkeleton extends LitElement {
     //     if (changedProperties.has("src")) {
     //         if (Math.floor(Math.random() * 100) % 2 === 0) {
     //             const original = this.src;
-    //             this.src = "invalid.svg";
+    //             this.src = "https://some.host/invalid.svg";
     //             setTimeout(() => {
     //                 this.src = original;
     //             }, 3000)
@@ -54,11 +55,12 @@ class ImageSkeleton extends LitElement {
     // }
 
     render() {
+        const isSubDomain = this.isSubDomain(this.src);
         return html`
             <img
                 ${ref(this._imageRef)}
                 class="image"
-                crossorigin="anonymous"
+                crossorigin='${ isSubDomain ? nothing : 'anonymous' }'
                 draggable="false"
                 alt=""
                 .src="${this.src}"
@@ -72,10 +74,11 @@ class ImageSkeleton extends LitElement {
     async reloadImage(): Promise<void> {
         this.classList.add('loading');
 
+        const isSubDomain = this.isSubDomain(this.src);
         let attempt = 0;
         while (true) {
             attempt++;
-            const response = await fetch(this.src, { mode: 'cors' });
+            const response = await fetch(this.src, { mode: isSubDomain ? undefined : 'cors' });
             if (response.ok) {
                 const blob = await response.blob();
                 this._imageRef.value.src = URL.createObjectURL(blob);
@@ -92,6 +95,10 @@ class ImageSkeleton extends LitElement {
 
     async imageLoaded(): Promise<void> {
         this.classList.remove('loading');
+    }
+
+    isSubDomain(url: string): boolean {
+        return url.indexOf('actual.chat') > -1;
     }
 
     timeout(ms: number): Promise<void> {

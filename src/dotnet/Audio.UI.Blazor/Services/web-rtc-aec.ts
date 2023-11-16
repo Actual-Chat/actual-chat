@@ -18,7 +18,7 @@ const offerOptions = {
     offerToReceiveVideo: false
 };
 
-export let isWebRtcAecRequired = DeviceInfo.isAndroid && DeviceInfo.isChromium;
+export let isWebRtcAecRequired = false; //DeviceInfo.isAndroid && DeviceInfo.isChromium;
 
 /**
  * Routes audio through Chrome's audio mixer (via a loopback WebRTC connection),

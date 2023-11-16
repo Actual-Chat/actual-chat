@@ -61,8 +61,8 @@ public class CronetMessageHandler : HttpMessageHandler
 
     protected override void Dispose(bool disposing)
     {
-        base.Dispose(disposing);
-        _cronetEngine.Dispose();
+        if (disposing)
+            _cronetEngine.Dispose();
     }
 
     // Nested types

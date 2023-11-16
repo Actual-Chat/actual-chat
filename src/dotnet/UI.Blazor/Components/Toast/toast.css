@@ -51,14 +51,14 @@
     @apply overflow-hidden;
     @apply rounded-3.5xl;
     @apply drop-shadow-md shadow-shadow-main;
-    @apply bg-error-toast-body;
-    @apply text-error-toast-text;
+    @apply bg-banner-error;
+    @apply text-banner-error;
 }
 .error-toast * {
-    @apply bg-error-toast-body;
+    @apply bg-banner-error;
 }
 .error-toast i {
-    @apply text-danger;
+    @apply text-banner-error;
 }
 .error-toast > .c-icon {
     @apply my-1;

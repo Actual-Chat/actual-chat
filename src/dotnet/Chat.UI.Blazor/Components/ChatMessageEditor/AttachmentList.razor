@@ -1,4 +1,6 @@
 @using ActualChat.Chat.UI.Blazor.Module
+@using ActualChat.Media
+@using ActualChat.Uploads
 @implements IAttachmentListBackend
 @implements IAsyncDisposable
 @namespace ActualChat.Chat.UI.Blazor.Components
@@ -31,7 +33,7 @@
                     <div class="flex-y relative">
                         <div class="attachment-item">
                             <ButtonSquare Click="@(() => OnRemoveClick(attachment))" Class="remove-attachment-btn">
-                                <i class="icon-trash03 text-2xl font-thin text-06"></i>
+                                <i class="icon-trash03 text-2xl font-thin"></i>
                             </ButtonSquare>
                             @if (attachment.IsImage) {
                                 <img src="@attachment.Url" alt="Image attachment"/>
@@ -213,6 +215,9 @@
         private bool _isRolledBack;
         public ApiArray<MediaId> Attachments { get; }
 
+        public ValueTask DisposeAsync()
+            => !_isRolledBack ? _confirm.Invoke() : default;
+
         internal ResetIntent(ApiArray<MediaId> attachments, Action rollback, Func<ValueTask> confirm) {
             Attachments = attachments;
             _rollback = rollback;
@@ -223,16 +228,12 @@
             _rollback();
             _isRolledBack = true;
         }
-
-        public ValueTask DisposeAsync() {
-            return !_isRolledBack ? _confirm() : default;
-        }
     }
 
     private record Attachment(int Id, string Url, string FileName, string FileType, int Length, int Progress = 0, MediaId MediaId = default)
     {
-        public bool IsImage => FileType?.OrdinalIgnoreCaseStartsWith("image") ?? false;
-        public bool IsVideo => FileType?.OrdinalIgnoreCaseStartsWith("video") ?? false;
+        public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
+        public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);
         public bool Failed { get; init; }
         public bool Uploaded => Progress == 100 && !MediaId.IsNone;
     }

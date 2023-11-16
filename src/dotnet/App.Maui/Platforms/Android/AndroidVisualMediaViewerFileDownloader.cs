@@ -5,21 +5,19 @@ using Android.Content;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidVisualMediaViewerFileDownloader : IVisualMediaViewerFileDownloader
+public class AndroidVisualMediaViewerFileDownloader(IServiceProvider services)
+    : IVisualMediaViewerFileDownloader
 {
-    private readonly object _syncObject = new object();
-    private readonly List<long> _pendingDownloads = new List<long>();
+    private readonly object _lock = new();
+    private ToastUI? _toastUI;
+    private ILogger? _log;
+    private readonly List<long> _pendingDownloads = new ();
     private DownloadCompletedBroadcastReceiver? _downloadCompletedReceiver;
-    private ILogger<AndroidVisualMediaViewerFileDownloader> Log { get; }
-    private ToastUI ToastUI { get; }
 
-    public AndroidVisualMediaViewerFileDownloader(ILogger<AndroidVisualMediaViewerFileDownloader> log, ToastUI toastUI)
-    {
-        ToastUI = toastUI;
-        Log = log;
-    }
+    private ToastUI ToastUI => _toastUI ??= services.GetRequiredService<ToastUI>();
+    private ILogger Log => _log ??= services.LogFor(GetType());
 
-    public Task Download(string sUri)
+    public Task Download(string sUri, string contentType)
     {
         var uri = Android.Net.Uri.Parse(sUri);
         if (uri == null) {
@@ -37,7 +35,7 @@ public class AndroidVisualMediaViewerFileDownloader : IVisualMediaViewerFileDown
             var fileName = uri.PathSegments?.LastOrDefault() ?? "download";
             request.SetDestinationInExternalPublicDir(dir, Path.Combine("ActualChat", fileName));
             var dm = (DownloadManager)appContext.GetSystemService(Android.Content.Context.DownloadService)!;
-            lock (_syncObject) {
+            lock (_lock) {
                 var downloadRef = dm.Enqueue(request);
                 _pendingDownloads.Add(downloadRef);
             }
@@ -59,7 +57,7 @@ public class AndroidVisualMediaViewerFileDownloader : IVisualMediaViewerFileDown
 
     private void OnDownloadCompleted(long downloadRef)
     {
-        lock (_syncObject) {
+        lock (_lock) {
             var removed = _pendingDownloads.Remove(downloadRef);
             if (!removed)
                 downloadRef = -1;
@@ -72,7 +70,7 @@ public class AndroidVisualMediaViewerFileDownloader : IVisualMediaViewerFileDown
         if (uri == null)
             return;
         MainThread.BeginInvokeOnMainThread(() => {
-            ToastUI.Show("1 file downloaded", ToastDismissDelay.Short);
+            ToastUI.Show("1 file downloaded", "icon-checkmark-circle-2", ToastDismissDelay.Short);
         });
     }
 
@@ -84,7 +82,7 @@ public class AndroidVisualMediaViewerFileDownloader : IVisualMediaViewerFileDown
         public DownloadCompletedBroadcastReceiver() {}
 
         public DownloadCompletedBroadcastReceiver(Action<long> onDownloadCompleted)
-            => this._onDownloadCompleted = onDownloadCompleted;
+            => _onDownloadCompleted = onDownloadCompleted;
 
         public override void OnReceive(Context? context, Intent? intent)
         {

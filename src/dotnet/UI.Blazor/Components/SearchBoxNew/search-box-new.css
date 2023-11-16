@@ -1,5 +1,5 @@
 .search-box-new {
-    @apply border-bg-04 border-b border-t;
+    @apply border-separator border-b border-t;
 }
 .search-box-new label {
     @apply relative flex-x;

@@ -8,7 +8,8 @@ namespace ActualChat.Audio.UI.Blazor.Services;
 public sealed partial class AudioInitializer(IServiceProvider services) : WorkerBase, IAudioInfoBackend
 {
     private static readonly string JSInitMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.init";
-    private static readonly string JSUpdateBackgroundStateMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.updateBackgroundState";
+    private static readonly string JSUpdateBackgroundStateMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.setBackgroundState";
+    private static readonly TimeSpan InitializeTimeout = TimeSpan.FromSeconds(5);
 
     [GeneratedRegex(@"^(?<type>mac|iPhone|iPad)(?:(?<version>\d+),\d*)?$")]
     private static partial Regex IosDeviceRegexFactory();
@@ -33,22 +34,22 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
     protected override Task DisposeAsyncCore()
     {
-        _backendRef?.DisposeSilently();
+        _backendRef.DisposeSilently();
         return base.DisposeAsyncCore();
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         Log.LogInformation("AudioInitializer: started");
-        var retryDelays = RetryDelaySeq.Exp(0.5, 3);
-        var whenInitialized = AsyncChainExt.From(Initialize)
+        var retryDelays = RetryDelaySeq.Exp(0.1, 3);
+        var whenInitialized = AsyncChainExt.From(Initialize, $"{nameof(AudioInitializer)}.{nameof(Initialize)}")
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .Run(cancellationToken);
         await _whenInitializedSource.TrySetFromTaskAsync(whenInitialized, cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("AudioInitializer: initialized");
+        Log.LogInformation("AudioInitializer: initialized with status {Status}", whenInitialized.Status);
 
-        await AsyncChainExt.From(UpdateBackgroundState)
+        await AsyncChainExt.From(UpdateBackgroundState, $"{nameof(AudioInitializer)}.{nameof(UpdateBackgroundState)}")
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .Run(cancellationToken)
@@ -59,8 +60,8 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
     {
         var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
         await JS
-            .InvokeVoidAsync(JSInitMethod, cancellationToken, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
-            .ConfigureAwait(false);
+            .InvokeVoidAsync(JSInitMethod, CancellationToken.None, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
+            .AsTask().WaitAsync(InitializeTimeout, cancellationToken).ConfigureAwait(false);
     }
 
     // ReSharper disable once InconsistentNaming
@@ -79,24 +80,23 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
         // only recent versions of apple hw have decent performance to run NN with WASM SIMD for VAD
         return int.TryParse(match.Groups["version"].Value, CultureInfo.InvariantCulture, out var hwVersion)
-            && hwVersion >= 12;
+            && hwVersion >= 11;
     }
 
     private async Task UpdateBackgroundState(CancellationToken cancellationToken)
     {
-        var previousState = BackgroundState.Foreground;
-        var stateChanges = BackgroundUI.State.Changes(cancellationToken);
-        await foreach (var cState in stateChanges.ConfigureAwait(false)) {
+        var prevState = (BackgroundState?)null; // Assuming "unknown"
+        var changes = BackgroundUI.State.Changes(cancellationToken);
+        await foreach (var cState in changes.ConfigureAwait(false)) {
             var state = cState.Value;
-            if (state.IsActive() != previousState.IsActive()) {
-                Log.LogInformation("Activity state has changed: {OldState} -> {State}", previousState, state);
-                await JS.InvokeVoidAsync(JSUpdateBackgroundStateMethod, cancellationToken, state.ToString())
-                    .ConfigureAwait(false);
-            }
-            else
-                Log.LogInformation("Activity state change ignored: {OldState} -> {State}", previousState, state);
+            if (state == prevState)
+                continue;
 
-            previousState = state;
+            Log.LogInformation("Background state has changed: {OldState} -> {State}", prevState, state);
+            prevState = state;
+            await JS
+                .InvokeVoidAsync(JSUpdateBackgroundStateMethod, CancellationToken.None, state.ToString())
+                .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         }
     }
 }

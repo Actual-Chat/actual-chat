@@ -7,8 +7,8 @@ public sealed class AudioSettings
     public string Namespace { get; set; } = "default";
 
     public TimeSpan IdleRecordingCheckPeriod { get; set; } = TimeSpan.FromSeconds(1);
-    public TimeSpan IdleRecordingTimeout { get; set; } = TimeSpan.FromSeconds(60);
-    public TimeSpan IdleRecordingPreCountdownTimeout { get; set; } = TimeSpan.FromSeconds(45);
+    public TimeSpan IdleRecordingTimeout { get; set; } = TimeSpan.FromSeconds(30);
+    public TimeSpan IdleRecordingPreCountdownTimeout { get; set; } = TimeSpan.FromSeconds(20); // 10s to count
     public TimeSpan IdleListeningCheckPeriod { get; set; } = TimeSpan.FromSeconds(3); // Not critical to stop it at the exact time
     public TimeSpan IdleListeningTimeout { get; set; } = TimeSpan.FromSeconds(60);
     public TimeSpan IdleListeningPreCountdownTimeout

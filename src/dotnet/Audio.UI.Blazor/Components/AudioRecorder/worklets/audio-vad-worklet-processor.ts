@@ -6,6 +6,7 @@ import { rpcClientServer, rpcNoWait, RpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
 import { ObjectPool } from 'object-pool';
 import { Log } from 'logging';
+import {AudioDiagnosticsState} from "../audio-recorder";
 
 const { logScope, debugLog, warnLog } = Log.get('AudioVadWorkletProcessor');
 
@@ -20,6 +21,8 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
     private bufferPool: ObjectPool<ArrayBuffer>;
     private server: Disposable;
     private worker: AudioVadWorker & Disposable;
+    private frameCount: number = 0;
+    private lastFrameProcessedAt: number = 0;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -53,6 +56,10 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
 
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
         // debugLog?.log(`process:`, this.state);
+        if (this.frameCount++ > 100) {
+            this.frameCount = 0;
+            this.lastFrameProcessedAt = Date.now();
+        }
         timerQueue?.triggerExpired();
         const hasInput = inputs
             && inputs.length !== 0
@@ -97,6 +104,13 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
         }
 
         return true;
+    }
+
+    public async runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> {
+        diagnosticsState.vadWorkletState = this.state;
+        diagnosticsState.lastVadWorkletFrameProcessedAt = this.lastFrameProcessedAt;
+        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        return diagnosticsState;
     }
 }
 

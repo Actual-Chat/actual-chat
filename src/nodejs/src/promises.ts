@@ -1,6 +1,7 @@
 import { Log } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
 import { Disposable } from 'disposable';
+import {AudioDiagnosticsState} from "../../dotnet/Audio.UI.Blazor/Components/AudioRecorder/audio-recorder";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('promises');
 
@@ -160,6 +161,12 @@ export async function waitAsync<T>(promise: PromiseLike<T>, cancel?: Promise<Can
 export function delayAsync(delayMs: number): PromiseSourceWithTimeout<void> {
     const promise = new PromiseSourceWithTimeout<void>();
     promise.setTimeout(delayMs, () => promise.resolve(undefined))
+    return promise;
+}
+
+export function delayAsyncWith<T>(delayMs: number, value: T): PromiseSourceWithTimeout<T> {
+    const promise = new PromiseSourceWithTimeout<T>();
+    promise.setTimeout(delayMs, () => { promise.resolve(value) });
     return promise;
 }
 

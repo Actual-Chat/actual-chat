@@ -6,7 +6,15 @@ import { AudioVadWorklet } from './worklets/audio-vad-worklet-contract';
 import { Disposable } from 'disposable';
 import { rpcClient, rpcClientServer, RpcNoWait, rpcNoWait } from 'rpc';
 import { ProcessorOptions } from './worklets/opus-encoder-worklet-processor';
-import { catchErrors, debounce, PromiseSource, ResolvedPromise, retry } from 'promises';
+import {
+    catchErrors,
+    debounce,
+    delayAsync,
+    delayAsyncWith,
+    PromiseSource,
+    PromiseSourceWithTimeout,
+    retry
+} from 'promises';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';
 import { OpusEncoderWorklet } from './worklets/opus-encoder-worklet-contract';
 import { Versioning } from 'versioning';
@@ -14,7 +22,8 @@ import { Log } from 'logging';
 import { RecorderStateChanged, RecorderStateEventHandler } from "./opus-media-recorder-contracts";
 import * as signalR from "@microsoft/signalr";
 import { AudioInitializer } from "../../Services/audio-initializer";
-import {BrowserInit} from "../../../UI.Blazor/Services/BrowserInit/browser-init";
+import { BrowserInit } from "../../../UI.Blazor/Services/BrowserInit/browser-init";
+import { AudioDiagnosticsState } from "./audio-recorder";
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -195,22 +204,30 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         }
         debugLog?.log(`init(): call create on workers`);
         const audioHubUrl = new URL('/api/hub/audio', this.origin).toString();
-        await Promise.all([
-            this.encoderWorker.create(
-                Versioning.artifactVersions,
-                audioHubUrl,
-               { type: 'rpc-timeout', timeoutMs: 20_000 }),
-            this.vadWorker.create(
-                Versioning.artifactVersions,
-                canUseNNVad,
-                { type: 'rpc-timeout', timeoutMs: 20_000 }),
-        ]);
+
+        await this.encoderWorker.create(
+            Versioning.artifactVersions,
+            audioHubUrl,
+            { type: 'rpc-timeout', timeoutMs: 5_000 });
+
+        debugLog?.log(`init(): encoderWorker created`);
+
+        await this.vadWorker.create(
+            Versioning.artifactVersions,
+            canUseNNVad,
+            { type: 'rpc-timeout', timeoutMs: 5_000 });
+
+        debugLog?.log(`init(): vadWorker created`);
+
         this.whenInitialized.resolve(undefined);
         debugLog?.log(`<- init()`);
     }
 
     public async start(chatId: string, repliedChatEntryId: string, onStateChanged: RecorderStateChanged): Promise<void> {
         this.onStateChanged = onStateChanged;
+        // set current state
+        if (onStateChanged)
+            void onStateChanged(this.isRecording, this.isConnected, this.isVoiceActive);
         debugLog?.log('-> start(): #', chatId);
         if (!chatId)
             throw new Error('start: chatId is unspecified.');
@@ -427,8 +444,25 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         await this.encoderWorker?.reconnect(rpcNoWait);
     }
 
+    public async disconnect(): Promise<void> {
+        await this.encoderWorker?.disconnect(rpcNoWait);
+    }
+
     public async conversationSignal(): Promise<void> {
         await this.vadWorker?.conversationSignal(rpcNoWait);
+    }
+
+    public async runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> {
+        diagnosticsState.isRecorderInitialized = this.whenInitialized && this.whenInitialized.isCompleted();
+        diagnosticsState.hasMicrophoneStream = this.stream != null;
+        warnLog?.log('runDiagnostics: ', diagnosticsState);
+
+        const timeout = 500;
+        diagnosticsState = (await Promise.race([this.vadWorker?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
+        diagnosticsState = (await Promise.race([this.encoderWorker?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
+        diagnosticsState = (await Promise.race([this.vadWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
+        diagnosticsState = (await Promise.race([this.encoderWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
+        return diagnosticsState;
     }
 
     // recorder state event handlers

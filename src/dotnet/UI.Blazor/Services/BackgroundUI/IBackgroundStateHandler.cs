@@ -2,5 +2,5 @@
 
 public interface IBackgroundStateHandler
 {
-    void SetBackgroundState(bool isBackground);
+    void SetIsBackground(bool isBackground);
 }

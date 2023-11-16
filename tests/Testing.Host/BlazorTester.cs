@@ -31,9 +31,8 @@ public class BlazorTester : TestContext, IWebTester
 
     protected override void Dispose(bool disposing)
     {
-        if (!disposing)
-            return;
-        _serviceScope.Dispose();
+        if (disposing)
+            _serviceScope.DisposeSilently();
     }
 
     public ValueTask DisposeAsync()

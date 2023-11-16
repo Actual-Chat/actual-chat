@@ -22,11 +22,9 @@ public class EscapistSubscription : IAsyncDisposable
             _once = once,
         };
         subscription._blazorRef = DotNetObjectReference.Create(subscription);
-        subscription._jsRef = await js.InvokeAsync<IJSObjectReference>(
-            JSCreateMethod,
-            cancellationToken,
-            subscription._blazorRef
-            ).ConfigureAwait(false);
+        subscription._jsRef = await js
+            .InvokeAsync<IJSObjectReference>(JSCreateMethod, CancellationToken.None, subscription._blazorRef)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         return subscription;
     }
 
@@ -36,14 +34,9 @@ public class EscapistSubscription : IAsyncDisposable
         if (jsRef == null)
             return;
 
-        _blazorRef?.Dispose();
-        try {
-            await jsRef.InvokeVoidAsync("dispose", CancellationToken.None).ConfigureAwait(false);
-        }
-        catch {
-            // Intended
-        }
-        await jsRef.DisposeSilentlyAsync().ConfigureAwait(false);
+        await jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
+        _blazorRef.DisposeSilently();
+        _blazorRef = null;
     }
 
     [JSInvokable]

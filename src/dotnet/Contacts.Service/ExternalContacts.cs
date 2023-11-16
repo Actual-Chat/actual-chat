@@ -12,7 +12,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     public virtual async Task<ApiArray<ExternalContact>> List(Session session, Symbol deviceId, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (!account.IsActive())
+       if (!account.IsActive())
             return default;
 
         return await Backend.List(account.Id, deviceId, cancellationToken).ConfigureAwait(false);
@@ -47,7 +47,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
     }
 
     // [CommandHandler]
-    public virtual async Task<ApiArray<ChangeResult<ExternalContact>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<Result<ExternalContact?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default!; // It just spawns other commands, so nothing to do here
@@ -55,7 +55,7 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
         var (session, changes) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         if (!account.IsActive())
-            return Enumerable.Repeat(ChangeResult.From<ExternalContact>(null), changes.Count).ToApiArray();
+            return Enumerable.Repeat(new Result<ExternalContact?>(null, null), changes.Count).ToApiArray();
 
         foreach (var itemChange in changes) {
             var (id, _, change) = itemChange;

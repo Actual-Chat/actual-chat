@@ -5,6 +5,7 @@
 .landing.new .landing-video,
 .landing.new .landing-video-plug {
     @apply h-full;
+    @apply rounded-2xl;
     max-height: inherit;
 }
 .landing.new .page {
@@ -272,7 +273,7 @@ body.narrow .landing.new .landing-header .c-btn-group {
 .landing.new .landing-header .signin-button-group {
     @apply flex gap-3;
     @apply px-6;
-    @apply border border-bg-04;
+    @apply border border-separator;
     @apply bg-transparent;
     @apply text-06;
 }
@@ -975,7 +976,7 @@ body.narrow .landing.new .extra-content {
 }
 .docs-layout .layout-header {
     @apply px-4;
-    @apply border-b border-bg-04;
+    @apply border-b border-separator;
 }
 body.narrow .docs-layout .layout-header {
     @apply border-none;
@@ -998,7 +999,7 @@ body.narrow .side-nav-left:has(.docs-left-panel) {
     @apply h-full w-110;
     @apply pl-24 pr-4;
     @apply bg-03;
-    @apply border-r border-bg-04;
+    @apply border-r border-separator;
 }
 body.narrow .docs-left-panel {
     @apply hidden;
@@ -1162,6 +1163,14 @@ body.narrow .landing-video-modal .dialog-body {
     @apply absolute z-30 top-0 bottom-0 left-0 right-0;
     @apply flex-y;
 }
+.landing-video-modal .control-wrapper.hide-control {
+    @apply opacity-0;
+    @apply transition-all duration-300 ease-in-out;
+}
+.landing-video-modal .control-wrapper.show-control {
+    @apply opacity-100;
+    @apply transition-all duration-300 ease-in-out;
+}
 .landing-video-modal .c-header > .c-btn {
     @apply flex-none;
     @apply w-14 h-14;
@@ -1172,8 +1181,9 @@ body.narrow .landing-video-modal .dialog-body {
 body.narrow .landing-video-modal .c-header {
     @apply flex-x items-center;
     @apply h-14;
-    @apply text-06;
-    @apply bg-08 opacity-80;
+    @apply text-[var(--gray-90)];
+    @apply bg-[var(--gray-10)];
+    @apply opacity-90;
 }
 body.narrow .landing-video-modal .c-body {
     @apply flex-1 flex justify-center items-center;
@@ -1182,24 +1192,25 @@ body.narrow .landing-video-modal .c-footer {
     @apply flex-x items-center gap-x-2;
     @apply h-14;
     @apply px-2;
-    @apply text-06;
-    @apply bg-08 opacity-80;
+    @apply text-[var(--gray-90)];
+    @apply bg-[var(--gray-10)];
+    @apply opacity-90;
 }
 .landing-video-modal .play-btn,
 .landing-video-modal .pause-btn {
     @apply flex-none items-center justify-center;
     @apply w-20 h-20;
     @apply rounded-full;
-    @apply bg-08;
-    @apply opacity-50;
+    @apply bg-[var(--gray-10)];
+    @apply opacity-60;
     left: calc(50vw - 2.5rem);
     bottom: calc(50vh - 2.5rem);
 }
 .landing-video-modal .play-btn-icon {
     @apply absolute;
     @apply bg-transparent;
-    @apply text-3xl text-06;
-    @apply opacity-100;
+    @apply text-3xl;
+    @apply text-[var(--gray-90)];
 }
 .landing-video-modal .c-body .play-btn,
 .landing-video-modal .c-body.playing .pause-btn {
@@ -1214,16 +1225,16 @@ body.narrow .landing-video-modal .c-footer {
     @apply h-0.5 w-full;
 }
 .landing-video-modal progress[value]::-webkit-progress-bar {
-    @apply bg-06;
+    @apply bg-[var(--gray-60)];
     @apply rounded-sm;
 }
 
 .landing-video-modal progress[value]::-webkit-progress-value {
-    @apply bg-01;
+    @apply bg-[var(--gray-90)];
 }
 .landing-video-modal .c-timeline {
     @apply flex-none flex-x gap-x-1;
-    @apply text-06 text-xs font-thin;
+    @apply text-[var(--gray-90)] text-xs font-thin;
 }
 .landing-video-modal .c-current,
 .landing-video-modal .c-duration {

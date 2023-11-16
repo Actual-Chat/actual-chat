@@ -47,7 +47,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     {
         if (_isPlaying) {
             Log.LogInformation("StopTask playing");
-            _cts?.CancelAndDisposeSilently();
+            _cts.CancelAndDisposeSilently();
             _cts = null;
             _isPlaying = false;
             StateHasChanged();
@@ -152,7 +152,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     public async Task OnEnded(string? errorMessage)
     {
         Log.LogInformation("OnEnded: {ErrorMessage}", errorMessage);
-        _cts?.CancelAndDisposeSilently();
+        _cts.CancelAndDisposeSilently();
         if (_registration != default)
             await _registration.DisposeAsync();
     }
@@ -163,7 +163,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
             _registration.Dispose();
             _registration = default;
         }
-        _cts?.CancelAndDisposeSilently();
+        _cts.CancelAndDisposeSilently();
         GC.SuppressFinalize(this);
     }
 

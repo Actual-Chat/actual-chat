@@ -19,8 +19,9 @@ import { delayAsync, retry } from 'promises';
 import { WebRtcVoiceActivityDetector } from './audio-vad-webrtc';
 import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
 import { ExponentialMovingAverage } from "./streamed-moving-average";
+import { AudioDiagnosticsState } from "../audio-recorder";
 
-const { logScope, debugLog, errorLog } = Log.get('AudioVadWorker');
+const { logScope, debugLog, warnLog, errorLog } = Log.get('AudioVadWorker');
 
 const CHANNELS = 1;
 const IN_RATE = 48000;
@@ -45,6 +46,7 @@ let isNNVadInitialized = false;
 let audioPowerSampleCounter = 0;
 let audioPowerAverage = new ExponentialMovingAverage(10);
 let canUseNNVad = false;
+let lastVadEventProcessedAt = 0;
 
 const serverImpl: AudioVadWorker = {
     create: async (artifactVersions: Map<string, string>, canUseNNVad_: boolean, _timeout?: RpcTimeout): Promise<void> => {
@@ -107,6 +109,16 @@ const serverImpl: AudioVadWorker = {
         webrtcVoiceDetector?.conversationSignal();
     },
 
+    runDiagnostics: async (diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> => {
+        diagnosticsState.isVadActive = isActive;
+        const vad = nnVoiceDetector ?? webrtcVoiceDetector;
+        diagnosticsState.lastVadEvent = vad.lastActivityEvent;
+        diagnosticsState.lastVadFrameProcessedAt = lastVadEventProcessedAt;
+
+        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        return diagnosticsState;
+    },
+
     onFrame: async (buffer: ArrayBuffer, noWait?: RpcNoWait): Promise<void> => {
         if (!isActive)
             return;
@@ -115,7 +127,7 @@ const serverImpl: AudioVadWorker = {
             queue.push(buffer);
             await processQueue();
         }
-    },
+    }
 };
 const server = rpcClientServer<RecorderStateEventHandler>(`${logScope}.server`, worker, serverImpl);
 
@@ -150,6 +162,7 @@ async function processQueue(): Promise<void> {
                 const monoPcm = new Float32Array(buffer, 0, 1440);
                 vadEvent = await webrtcVoiceDetector.appendChunk(monoPcm);
             }
+            lastVadEventProcessedAt = Date.now();
 
             void vadWorklet.releaseBuffer(buffer, rpcNoWait);
             // debugLog?.log(`processQueue: vadEvent:`, vadEvent, ', hasNNVad:', hasNNVad);

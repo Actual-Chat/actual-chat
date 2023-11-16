@@ -1,3 +1,4 @@
+using ActualChat.Kvas;
 using Stl.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -13,15 +14,14 @@ public class ReloadUI
         Log = services.LogFor(GetType());
     }
 
-    public virtual void Reload(bool clearCaches = false)
+    public virtual void Reload(bool clearCaches = false, bool clearLocalSettings = false)
     {
-        Log.LogInformation("Reloading requested");
+        Log.LogInformation("Reload requested");
         var blazorCircuitContext = Services.GetRequiredService<AppBlazorCircuitContext>();
         _ = blazorCircuitContext.WhenReady.ContinueWith(_ => blazorCircuitContext.Dispatcher.InvokeAsync(async () => {
-            Log.LogWarning("Reloading...");
+            Log.LogInformation("Reloading...");
             try {
-                if (clearCaches)
-                    await ClearCaches().ConfigureAwait(true); // Nav needs ui context.
+                await Clear(clearCaches, clearLocalSettings).ConfigureAwait(true); // Nav requires UI context
                 var nav = Services.GetRequiredService<NavigationManager>();
                 nav.NavigateTo(Links.Home, true);
             }
@@ -31,19 +31,41 @@ public class ReloadUI
         }), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 
+    public Task Clear(bool clearCaches, bool clearLocalSettings)
+    {
+        if (!(clearCaches || clearLocalSettings))
+            return Task.CompletedTask;
+
+        var clearTasks = new List<Task>();
+        if (clearCaches)
+            clearTasks.Add(ClearCaches());
+        if (clearLocalSettings)
+            clearTasks.Add(ClearLocalSettings());
+        return Task.WhenAll(clearTasks);
+    }
+
     public virtual async Task ClearCaches()
     {
-        Log.LogWarning("Cleaning caches & local settings...");
+        Log.LogWarning("Cleaning caches...");
         try {
-            var localSettings = Services.GetRequiredService<LocalSettings>();
             var clientComputedCache = Services.GetService<IClientComputedCache>();
-            var clearLocalSettingsTask = localSettings.Clear();
             if (clientComputedCache != null)
                 await clientComputedCache.Clear(CancellationToken.None).ConfigureAwait(false);
-            await clearLocalSettingsTask.ConfigureAwait(false);
         }
         catch (Exception e) {
             Log.LogError(e, "ClearCaches failed");
+        }
+    }
+
+    public virtual async Task ClearLocalSettings()
+    {
+        Log.LogWarning("Cleaning local settings...");
+        try {
+            var localSettings = Services.GetRequiredService<LocalSettings>();
+            await localSettings.Clear().ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "ClearLocalSettings failed");
         }
     }
 

@@ -2,10 +2,6 @@ namespace ActualChat.Uploads;
 
 public interface IUploadProcessor
 {
-    bool Supports(FileInfo file);
-    Task<ProcessedFileInfo> Process(FileInfo file, CancellationToken cancellationToken);
+    bool Supports(string contentType);
+    Task<ProcessedFile> Process(UploadedFile file, CancellationToken cancellationToken);
 }
-
-public sealed record ProcessedFileInfo(FileInfo File, Size? Size);
-
-public sealed record FileInfo(string FileName, string ContentType, long Length, byte[] Content); // TODO: calc length from bytes?

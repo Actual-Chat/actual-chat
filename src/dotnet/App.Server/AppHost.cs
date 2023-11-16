@@ -7,7 +7,7 @@ namespace ActualChat.App.Server;
 
 public class AppHost : IDisposable
 {
-    private bool _disposed;
+    private volatile int _isDisposed;
 
     public string ServerUrls { get; set; } = "http://localhost:7080;https://localhost:7081";
     public Action<IConfigurationBuilder>? HostConfigurationBuilder { get; set; }
@@ -19,8 +19,17 @@ public class AppHost : IDisposable
 
     public void Dispose()
     {
+        if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) != 0)
+            return;
+
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+            Host.DisposeSilently();
     }
 
     public virtual Task Build(CancellationToken cancellationToken = default)
@@ -142,15 +151,6 @@ public class AppHost : IDisposable
         WebHostBuilderContext webHost,
         IServiceCollection services)
         => AppServicesBuilder?.Invoke(webHost, services);
-
-    protected virtual void Dispose(bool disposing)
-    {
-        if (_disposed)
-            return;
-        if (disposing)
-            Host?.Dispose();
-        _disposed = true;
-    }
 
     private Task InvokeDbInitializers(
         string name,

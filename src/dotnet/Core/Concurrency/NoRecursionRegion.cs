@@ -1,24 +1,17 @@
 namespace ActualChat.Concurrency;
 
-public sealed class NoRecursionRegion
+public sealed class NoRecursionRegion(string name, object @lock, ILogger log)
 {
     private Action? _exitAction;
-    private object Lock { get; }
-    private ILogger Log { get; }
+    private object Lock { get; } = @lock;
+    private ILogger Log { get; } = log;
 
-    public string Name { get; }
+    public string Name { get; } = name;
     public bool IsInside => _exitAction != null;
 
     public Action? ExitAction {
         get => _exitAction;
         set => _exitAction = value ?? throw new ArgumentNullException(nameof(value));
-    }
-
-    public NoRecursionRegion(string name, object @lock, ILogger log)
-    {
-        Name = name;
-        Lock = @lock;
-        Log = log;
     }
 
     public ClosedDisposable<NoRecursionRegion> Enter()

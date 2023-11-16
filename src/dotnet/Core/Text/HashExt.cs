@@ -27,6 +27,13 @@ public static class HashExt
         return hashBytes.EncodeHash(encoding);
     }
 
+    // ReSharper disable once InconsistentNaming
+    public static async Task<string> GetSHA256HashCode(this Stream inputStream, HashEncoding encoding = HashEncoding.Base16)
+    {
+        var hashBytes = await System.Security.Cryptography.SHA256.HashDataAsync(inputStream).ConfigureAwait(false);
+        return hashBytes.EncodeHash(encoding);
+    }
+
     public static string EncodeHash(this byte[] bytes, HashEncoding encoding)
         => encoding switch {
             HashEncoding.Base16 => Convert.ToBase64String(bytes),

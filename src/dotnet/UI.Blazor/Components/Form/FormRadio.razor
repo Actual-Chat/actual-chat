@@ -1,0 +1,12 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<label class="form-radio-hidden">
+    <InputRadio id="@Id" Name="@Name" Value="@Value"/>
+    <span class="radio"></span>
+</label>
+
+@code {
+    [Parameter] public string Id { get; set; } = "";
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public bool Value { get; set; }
+}

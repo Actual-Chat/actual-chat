@@ -5,15 +5,10 @@ namespace ActualChat.Testing.Host;
 
 public class TestAppHost : AppHost
 {
-    private bool _disposed;
-
     protected override void Dispose(bool disposing)
     {
-        if (!_disposed) {
-            if (disposing)
-                DisposeDbOperationCompletionNotifiers();
-            _disposed = true;
-        }
+        if (disposing)
+            DisposeDbOperationCompletionNotifiers();
         base.Dispose(disposing);
     }
 

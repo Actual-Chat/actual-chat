@@ -81,12 +81,11 @@
   <!-- Package references -->
 
   <ItemGroup>
+    <PackageReference Include="banditoth.MAUI.DeviceId" />
     <PackageReference Include="Microsoft.Maui.Controls" />
     <PackageReference Include="Microsoft.Maui.Controls.Compatibility" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
-    <PackageReference Remove="Microsoft.SourceLink.GitHub" />
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
-    <PackageReference Include="banditoth.MAUI.DeviceId" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
     <PackageReference Include="Sentry.Serilog" />
     <PackageReference Include="Sentry.Extensions.Logging" />
@@ -97,11 +96,13 @@
       An extra package to use SQLite on MAUI:
       https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/database-sqlite?view=net-maui-7.0#install-sqlitepclrawbundle_green -->
     <PackageReference Include="SQLitePCLRaw.bundle_green" />
+    <PackageReference Remove="Microsoft.SourceLink.GitHub" />
   </ItemGroup>
 
   <!-- Platform-specific package references -->
 
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />
@@ -118,6 +119,9 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+  <ItemGroup>
+    <TrimmerRootAssembly Include="ActualChat" />
   </ItemGroup>
 
   <!--
@@ -164,6 +168,7 @@
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
+    <AndroidUseInterpreter>true</AndroidUseInterpreter>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
@@ -175,9 +180,6 @@
     <TrimMode>partial</TrimMode>
     <!-- <DebuggerSupport>false</DebuggerSupport> -->
   </PropertyGroup>
-  <ItemGroup>
-    <TrimmerRootAssembly Include="ActualChat" RootMode="all"/>
-  </ItemGroup>
 
   <!--
   Android AOT settings & AOT profile
@@ -219,6 +221,18 @@
 
   <!-- iOS build properties -->
 
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-ios|AnyCPU'">
+    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+    <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
+    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>
+    <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
+    <ArchiveOnBuild>true</ArchiveOnBuild>
+    <MtouchLink>SdkOnly</MtouchLink>
+    <UseInterpreter>true</UseInterpreter>
+    <!--<MTouchInterpreter>-ActualChat,ActualChat.Chat.Contracts,ActualChat.Users.Contracts,ActualChat.Contacts.Contracts,Stl.Interception</MTouchInterpreter>-->
+    <CreatePackage>false</CreatePackage>
+  </PropertyGroup>
+
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
@@ -235,7 +249,7 @@
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0-ios|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net7.0-ios|AnyCPU'">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
     <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">App Store 2</CodesignProvision>

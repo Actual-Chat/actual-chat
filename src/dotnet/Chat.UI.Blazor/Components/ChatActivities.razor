@@ -14,7 +14,7 @@
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private ChatActivity ChatActivity { get; init; } = null!;
 
-    private IChatRecordingActivity? ChatRecordingActivity { get; set; }
+    private IChatStreamingActivity? ChatRecordingActivity { get; set; }
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public int MaxIconCount { get; set; } = 5;
@@ -27,7 +27,7 @@
     protected override async Task OnParametersSetAsync() {
         ChatRecordingActivity?.Dispose();
         ChatRecordingActivity = Chat.Id.IsNone ? null
-            : await ChatActivity.GetRecordingActivity(Chat.Id, CancellationToken.None);
+            : await ChatActivity.GetStreamingActivity(Chat.Id, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
 
@@ -41,7 +41,7 @@
         if (ChatRecordingActivity == null)
             return Model.None;
 
-        var authorIds = await ChatRecordingActivity.GetActiveAuthorIds(cancellationToken);
+        var authorIds = await ChatRecordingActivity.GetStreamingAuthorIds(cancellationToken);
         return new() {
             RecordingAuthorSids = authorIds.Select(id => id.Value).ToApiArray(),
         };

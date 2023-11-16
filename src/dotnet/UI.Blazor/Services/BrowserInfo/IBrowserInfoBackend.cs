@@ -3,8 +3,8 @@ namespace ActualChat.UI.Blazor.Services;
 public interface IBrowserInfoBackend
 {
     void OnScreenSizeChanged(string screenSizeText, bool isHoverable);
-
     void OnIsVisibleChanged(bool isVisible);
+    void OnThemeChanged(ThemeInfo themeInfo);
 
     // Nested types
 
@@ -12,6 +12,8 @@ public interface IBrowserInfoBackend
         string ScreenSizeText,
         bool IsVisible,
         bool IsHoverable,
+        ThemeInfo ThemeInfo,
+        string DefaultTheme,
         double UtcOffset,
         bool IsMobile,
         bool IsAndroid,
@@ -21,4 +23,10 @@ public interface IBrowserInfoBackend
         bool IsWebKit,
         bool IsTouchCapable,
         string WindowId);
+
+    public sealed record ThemeInfo(
+        string? Theme,
+        string DefaultTheme,
+        string CurrentTheme,
+        string Colors);
 }

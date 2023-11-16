@@ -17,15 +17,14 @@ public partial class BackgroundUI(IServiceProvider services) : WorkerBase,
             BackgroundState.Foreground,
             StateCategories.Get(typeof(BackgroundUI), nameof(State)));
 
-    private IBackgroundActivities? _backgroundActivityProvider;
-    private BrowserInfo? _browserInfo;
+    private IBackgroundActivities? _backgroundActivities;
 
+    private IBackgroundActivities BackgroundActivities
+        => _backgroundActivities ??= services.GetRequiredService<IBackgroundActivities>();
+    private BrowserInfo? BrowserInfo // Intended: null on mobile
+        => services.GetRequiredService<HostInfo>().ClientKind.IsMobile() ? null
+            : services.GetRequiredService<BrowserInfo>();
     private ILogger Log { get; } = services.LogFor(typeof(BackgroundUI));
-    private HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
-    private BrowserInfo BrowserInfo => _browserInfo ??= services.GetRequiredService<BrowserInfo>();
-
-    private IBackgroundActivities BackgroundActivities => _backgroundActivityProvider
-        ??= services.GetRequiredService<IBackgroundActivities>();
 
     public IState<BackgroundState> State => _state;
 
@@ -33,30 +32,27 @@ public partial class BackgroundUI(IServiceProvider services) : WorkerBase,
         => this.Start();
 
     [ComputeMethod]
-    protected virtual async Task<bool> GetIsBackground(CancellationToken cancellationToken)
+    protected virtual async Task<bool> IsBackground(CancellationToken cancellationToken)
     {
-        var isBackground = _isBackground != 0;
-        if (HostInfo.ClientKind.IsMobile()) {
-            Log.LogDebug("GetIsBackground(Mobile): {IsBackground}", isBackground);
-            return isBackground;
-        }
-
-        var isVisible = await BrowserInfo.IsVisible.Use(cancellationToken).ConfigureAwait(false);
-        isBackground = !isVisible;
-        Log.LogDebug("GetIsBackground(Browser): {IsBackground}", isBackground);
+        var isBackground = BrowserInfo != null
+            ? !await BrowserInfo.IsVisible.Use(cancellationToken).ConfigureAwait(false)
+            : _isBackground != 0;
+        Log.LogDebug("IsBackground: {IsBackground}", isBackground);
         return isBackground;
     }
 
-    void IBackgroundStateHandler.SetBackgroundState(bool isBackground)
+    void IBackgroundStateHandler.SetIsBackground(bool value)
     {
-        Log.LogDebug("SetBackgroundState: {IsBackground}", isBackground);
+        if (BrowserInfo != null)
+            return; // Ignored in browser
 
-        var newIsBackground = isBackground ? 1 : 0;
-        var oldIsBackground = Interlocked.Exchange(ref _isBackground, newIsBackground);
-        if (newIsBackground == oldIsBackground)
+        Log.LogDebug("SetIsBackground: {IsBackground}", value);
+        var newValue = value ? 1 : 0;
+        var oldValue = 1 - newValue;
+        if (Interlocked.CompareExchange(ref _isBackground, newValue, oldValue) != oldValue)
             return;
 
         using (Computed.Invalidate())
-            _ = GetIsBackground(default);
+            _ = IsBackground(default);
     }
 }

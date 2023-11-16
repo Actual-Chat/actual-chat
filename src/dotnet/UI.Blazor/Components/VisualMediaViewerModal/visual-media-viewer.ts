@@ -1,5 +1,5 @@
 import { preventDefaultForEvent } from 'event-handling';
-import { fromEvent, Subject, takeUntil, debounceTime } from 'rxjs';
+import { fromEvent, Subject, takeUntil } from 'rxjs';
 
 import { Log } from 'logging';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
@@ -53,7 +53,8 @@ export class VisualMediaViewer {
     private startImageLeft: number = 0;
     private headerBottom: number = 0;
     private footerTop: number = 0;
-    private isFooterAndHeaderShown: boolean = false;
+    private isHeaderAndFooterVisible: boolean = true;
+    private isHeaderAndFooterVisibilityForced: boolean = false;
     private points: PointerEvent[] = new Array<PointerEvent>();
     private minWidth: number = 100;
     private minHeight: number = 100;
@@ -77,25 +78,29 @@ export class VisualMediaViewer {
             .subscribe(() => this.onScreenSizeChange());
 
         this.media = imageViewer.querySelector('.active');
-        this.mediaArray = [...imageViewer.querySelectorAll<HTMLElement>(':scope img.c-main-image')];
+        if (this.media instanceof HTMLVideoElement)
+            void (this.media as HTMLVideoElement).play();
+        this.mediaArray = [...imageViewer.querySelectorAll<HTMLElement>(":scope .c-full-media")];
         for (const element of this.mediaArray) {
             const id = element.id;
             const cachedId = 'cached:' + id;
-            const imageElement = element as HTMLImageElement;
-            if (imageElement.complete && imageElement.naturalWidth !== 0) {
-                const cachedImageElement = document.getElementById(cachedId);
-                if (cachedImageElement)
-                    cachedImageElement.remove();
-            }
-            else {
-                element.classList.add('hidden');
-                element.addEventListener('load', (e) => {
-                    element.classList.remove('hidden');
-
+            if (element instanceof HTMLImageElement){
+                const imageElement = element as HTMLImageElement;
+                if (imageElement.complete && imageElement.naturalWidth !== 0) {
                     const cachedImageElement = document.getElementById(cachedId);
                     if (cachedImageElement)
                         cachedImageElement.remove();
-                });
+                }
+                else {
+                    element.classList.add('hidden');
+                    element.addEventListener('load', (e) => {
+                        element.classList.remove('hidden');
+
+                        const cachedImageElement = document.getElementById(cachedId);
+                        if (cachedImageElement)
+                            cachedImageElement.remove();
+                    });
+                }
             }
         }
 
@@ -105,8 +110,11 @@ export class VisualMediaViewer {
         this.footer = this.overlay.querySelector('.image-viewer-footer');
         this.footerTop = this.round(this.footer.getBoundingClientRect().top);
         setTimeout(() => {
-            this.toggleFooterHeaderVisibility()
-        }, 1000);
+            this.hideHeaderAndFooter();
+            fromEvent(this.overlay, 'mousemove')
+                .pipe(takeUntil(this.disposed$))
+                .subscribe((event: MouseEvent) => this.onMouseMove(event));
+        }, 3000);
         this.maxHeight = window.innerHeight * 3;
         this.maxWidth = window.innerWidth * 3;
 
@@ -249,6 +257,10 @@ export class VisualMediaViewer {
     }
 
     private hideHeaderAndFooter() {
+        if (!this.isHeaderAndFooterVisible)
+            return;
+
+        this.isHeaderAndFooterVisible = false;
         this.header.classList.remove('hide-to-show');
         this.header.classList.add('show-to-hide');
         this.footer.classList.remove('hide-to-show');
@@ -256,23 +268,22 @@ export class VisualMediaViewer {
     }
 
     private showHeaderAndFooter() {
+        if (this.isHeaderAndFooterVisible)
+            return;
+
+        this.isHeaderAndFooterVisible = true;
         this.header.classList.remove('show-to-hide');
         this.header.classList.add('hide-to-show');
         this.footer.classList.remove('show-to-hide');
         this.footer.classList.add('hide-to-show');
     }
 
-    private toggleFooterHeaderVisibility(hide: boolean = false) {
-        if (hide) {
+    private toggleFooterHeaderVisibility() {
+        this.isHeaderAndFooterVisibilityForced = true;
+        if (this.isHeaderAndFooterVisible) {
             this.hideHeaderAndFooter();
-            this.isFooterAndHeaderShown = false;
         } else {
-            this.isFooterAndHeaderShown = !this.isFooterAndHeaderShown;
-            if (this.isFooterAndHeaderShown) {
-                this.hideHeaderAndFooter();
-            } else {
-                this.showHeaderAndFooter();
-            }
+            this.showHeaderAndFooter();
         }
     }
 
@@ -381,6 +392,20 @@ export class VisualMediaViewer {
     }
 
     // Event handlers
+
+    private onMouseMove = (event: MouseEvent) => {
+        if (this.isHeaderAndFooterVisibilityForced === true)
+            return;
+
+        const { pageY } = event;
+        const cursorInHeaderArea = pageY <= this.header.offsetHeight;
+        const cursorInFooterArea = this.overlay.offsetHeight - pageY <= this.footer.offsetHeight;
+        if (cursorInHeaderArea || cursorInFooterArea) {
+            this.showHeaderAndFooter();
+        } else {
+            this.hideHeaderAndFooter();
+        }
+    };
 
     private onWheel = (event: WheelEvent) => {
         this.wheelAndKeyboardScale(event,event.deltaY < 0);
@@ -732,7 +757,7 @@ export class VisualMediaViewer {
         this.curState.imageRect = this.curState.viewerRect = this.media.getBoundingClientRect();
         this.centerImage();
         if (this.curState.imageRect.height > this.footerTop - this.headerBottom) {
-            this.toggleFooterHeaderVisibility(true);
+            this.hideHeaderAndFooter();
         }
     }
 
@@ -827,8 +852,8 @@ export class VisualMediaViewer {
         let newFooterMedia = event.currentTarget as HTMLElement;
         if (newFooterMedia == null || !newFooterMedia.classList.contains('gallery-item') || newFooterMedia.classList.contains('active'))
             return;
-        let newMediaId = newFooterMedia.getAttribute('id');
-        let newMedia = this.mediaArray.find(item => item.getAttribute('id') == newMediaId) as HTMLElement;
+        let newMediaId = newFooterMedia.id;
+        let newMedia = this.mediaArray.find(item => item.id == newMediaId) as HTMLElement;
         let footerMedia = this.footer.querySelector('.gallery-item.active') as HTMLElement;
         this.changeMedia(footerMedia, newFooterMedia, newMedia);
     }
@@ -846,11 +871,15 @@ export class VisualMediaViewer {
         footerMedia.classList.replace('active', 'inactive');
         newMedia.classList.replace('inactive', 'active');
         newFooterMedia.classList.replace('inactive', 'active');
+        if (this.media instanceof HTMLVideoElement)
+            (this.media as HTMLVideoElement).pause();
         this.media = newMedia;
-        let newMediaId = newMedia.getAttribute('id');
+        if (this.media instanceof HTMLVideoElement)
+            void (this.media as HTMLVideoElement).play();
+        let newMediaId = newMedia.id;
         this.getOriginWidthAndHeight();
         this.controlButtonsVisibilityToggle();
-        this.blazorRef.invokeMethodAsync('ChangeMedia', newMediaId);
+        void this.blazorRef.invokeMethodAsync('ChangeMedia', newMediaId);
     }
 
     private wheelAndKeyboardScale(event: Event, scaleUp: boolean) {

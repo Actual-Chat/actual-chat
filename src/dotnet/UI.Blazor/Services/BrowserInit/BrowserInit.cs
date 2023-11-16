@@ -8,29 +8,33 @@ public class BrowserInit(IServiceProvider services)
 
     public Task WhenInitialized => _whenInitializedSource.Task;
 
-    public async ValueTask Initialize(
+    public async Task Initialize(
+        AppKind appKind,
         string apiVersion,
         string baseUri,
         string sessionHash,
-        DotNetObjectReference<IBrowserInfoBackend> browserInfoBackendRef,
-        AppKind appKind)
+        DotNetObjectReference<IBrowserInfoBackend> browserInfoBlazorRef)
     {
+        if (WhenInitialized.IsCompleted)
+            return;
+
         try {
-            await services.JSRuntime()
+            var js = services.JSRuntime();
+            await js
                 .InvokeVoidAsync("window.App.browserInit",
+                    appKind.ToString(),
                     apiVersion,
                     baseUri,
                     sessionHash,
-                    browserInfoBackendRef,
-                    appKind.ToString())
+                    browserInfoBlazorRef)
                 .ConfigureAwait(false);
+            _whenInitializedSource.TrySetResult();
         }
         catch (Exception e) {
-            services.LogFor<BrowserInit>().LogError(e, "An error occurred during browserInit call");
+            var log = services.LogFor(GetType());
+            log.LogError(e, "An error occurred during browserInit call");
+            _whenInitializedSource.TrySetException(e);
             throw;
-        }
-        finally {
-            _whenInitializedSource.TrySetResult();
         }
     }
 }

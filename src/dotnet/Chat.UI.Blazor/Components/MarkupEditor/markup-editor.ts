@@ -654,7 +654,7 @@ abstract class ListHandler {
 }
 
 class MentionListHandler extends ListHandler {
-    static wrongPrefixRe = /[\p{L}\p{Nd}_@`]/u;
+    static wrongPrefixRe = /[\p{L}\p{Nd}_@\/`]/u;
 
     constructor(editor: MarkupEditor) {
         super(MentionListId, editor);

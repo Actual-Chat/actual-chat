@@ -1,30 +1,20 @@
 ﻿namespace ActualChat.DependencyInjection;
 
-public sealed class LazyServiceProvider :
-    IServiceScope,
-    IServiceProvider,
-    IServiceScopeFactory,
-    IAsyncDisposable
+public sealed class LazyServiceProvider(
+    Task<IServiceProvider> whenLazyServicesReady,
+    Func<Type, bool>? lazyServiceFilter,
+    Action<IServiceProvider>? onLazyServicesReady
+    ) : IServiceScope, IServiceProvider, IServiceScopeFactory, IAsyncDisposable
 {
     private readonly object _lock = new ();
     private volatile IServiceProvider? _lazyServices;
     private bool _isDisposed;
 
-    public Task<IServiceProvider> WhenLazyServicesReady;
-    public readonly Func<Type, bool>? LazyServiceFilter;
-    public readonly Action<IServiceProvider>? OnLazyServicesReady;
+    public Task<IServiceProvider> WhenLazyServicesReady = whenLazyServicesReady;
+    public readonly Func<Type, bool>? LazyServiceFilter = lazyServiceFilter;
+    public readonly Action<IServiceProvider>? OnLazyServicesReady = onLazyServicesReady;
 
     public IServiceProvider ServiceProvider => this;
-
-    public LazyServiceProvider(
-        Task<IServiceProvider> whenLazyServicesReady,
-        Func<Type, bool>? lazyServiceFilter,
-        Action<IServiceProvider>? onLazyServicesReady)
-    {
-        WhenLazyServicesReady = whenLazyServicesReady;
-        LazyServiceFilter = lazyServiceFilter;
-        OnLazyServicesReady = onLazyServicesReady;
-    }
 
     public void Dispose()
     {

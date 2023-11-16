@@ -7,13 +7,13 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.UserActivityUI.init";
 
     private readonly IMutableState<Moment> _activeUntil;
-    private readonly DotNetObjectReference<IUserActivityUIBackend> _blazorRef;
+    private DotNetObjectReference<IUserActivityUIBackend> _blazorRef;
 
     private IJSRuntime JS { get; }
     private IMomentClock Clock { get; }
     private Moment Now => Clock.Now;
 
-    public IState<Moment> ActiveUntil => _activeUntil;
+    public IState<Moment> ActiveUntil => _activeUntil; // CPU time
 
     public UserActivityUI(IServiceProvider services)
     {
@@ -29,7 +29,10 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
     }
 
     public void Dispose()
-        => _blazorRef.Dispose();
+    {
+        _blazorRef.DisposeSilently();
+        _blazorRef = null;
+    }
 
     [JSInvokable]
     public void OnInteraction(double willBeActiveForMs)

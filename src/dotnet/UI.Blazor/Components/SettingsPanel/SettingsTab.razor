@@ -38,11 +38,8 @@
         Panel.RegisterTab(this);
     }
 
-    public void Dispose() {
-        if (Panel == null)
-            throw StandardError.Constraint("<Tab> component must be nested into <TabPanel> component.");
-        Panel.UnregisterTab(this);
-    }
+    public void Dispose()
+        => Panel.UnregisterTab(this);
 
     private void OnChangeView()
         => Panel.OnTabArrowClick();

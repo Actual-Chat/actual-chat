@@ -32,6 +32,10 @@ public sealed partial record ExternalContactDiff : RecordDiff
     [DataMember, MemoryPackOrder(3)] public string? MiddleName { get; init; }
     [DataMember, MemoryPackOrder(4)] public string? NamePrefix { get; init; }
     [DataMember, MemoryPackOrder(5)] public string? NameSuffix { get; init; }
+    [Obsolete("2023.11: Replaced with PhoneHashes")]
     [DataMember, MemoryPackOrder(6)] public SetDiff<ApiSet<Phone>, Phone> Phones { get; init; }
+    [Obsolete("2023.11: Replaced with EmailHashes")]
     [DataMember, MemoryPackOrder(7)] public SetDiff<ApiSet<string>, string> Emails { get; init; }
+    [DataMember, MemoryPackOrder(8)] public SetDiff<ApiSet<string>, string> PhoneHashes { get; init; }
+    [DataMember, MemoryPackOrder(9)] public SetDiff<ApiSet<string>, string> EmailHashes { get; init; }
 }

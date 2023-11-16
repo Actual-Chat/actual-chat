@@ -40,8 +40,8 @@ public sealed class BubbleUI : IDisposable
         // Wait for sign-in
         await AccountUI.WhenLoaded.ConfigureAwait(false);
         await Clocks.Timeout(2)
-            .ApplyTo(ct => AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, ct), false)
-            .ConfigureAwait(false);
+            .ApplyTo(ct => AccountUI.OwnAccount.When(x => !x.IsGuestOrNone, ct))
+            .SilentAwait(false);
 
         // Wait when settings are read
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);

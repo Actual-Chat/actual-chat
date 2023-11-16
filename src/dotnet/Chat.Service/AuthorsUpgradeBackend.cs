@@ -1,5 +1,4 @@
 using ActualChat.Chat.Db;
-using ActualChat.Kvas;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -10,8 +9,6 @@ public class AuthorsUpgradeBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), IAuthorsUpgradeBackend
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private IServerKvas ServerKvas { get; } = services.GetRequiredService<IServerKvas>();
-    private IAuthorsBackend Backend { get; } = services.GetRequiredService<IAuthorsBackend>();
 
     public async Task<List<ChatId>> ListChatIds(UserId userId, CancellationToken cancellationToken)
     {

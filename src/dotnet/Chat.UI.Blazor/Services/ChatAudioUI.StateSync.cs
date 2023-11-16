@@ -1,4 +1,4 @@
-using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 
@@ -22,12 +22,13 @@ public partial class ChatAudioUI
             AsyncChainExt.From(ReconnectOnRpcReconnect),
             AsyncChainExt.From(UpdateNextBeepAt),
             AsyncChainExt.From(PlayBeep),
+            AsyncChainExt.From(RecordingTroubleshooter),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (
             from chain in baseChains
             select chain
-                .Log(Log)
+                .Log(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
             ).RunIsolated(cancellationToken);
     }
@@ -67,7 +68,7 @@ public partial class ChatAudioUI
                     _ = IsAudioOn();
             }
             if ((oldRecordingChat != default && newRecordingChat == default) || (newListeningChats.Count == 0 && oldListeningChats.Count > 0))
-                _audioStoppedAt.Value = Now;
+                _audioStoppedAt.Value = CpuNow;
 
             oldRecordingChat = newRecordingChat;
             oldListeningChats = newListeningChats;
@@ -99,7 +100,7 @@ public partial class ChatAudioUI
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         var cRecordingStateBase = await Computed
-            .Capture(() => GetRecordingState(cancellationToken))
+            .Capture(() => GetRecordingState(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
             var cRecordingState = await cRecordingStateBase
@@ -120,7 +121,7 @@ public partial class ChatAudioUI
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         var cRecordingState = await Computed
-            .Capture(() => GetRecordingState(cancellationToken))
+            .Capture(() => GetRecordingState(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
             cRecordingState = await cRecordingState
@@ -135,6 +136,8 @@ public partial class ChatAudioUI
 
     private async Task RecordChat(Computed<RecordingState> cRecordingState, CancellationToken cancellationToken)
     {
+        var serverClock = Clocks.ServerClock;
+        var cpuClock = Clocks.CpuClock;
         var (chatId, language) = cRecordingState.Value;
         if (!InteractiveUI.IsInteractive.Value) {
             var isConfirmed = false;
@@ -154,6 +157,7 @@ public partial class ChatAudioUI
 
         Task? whenIdle = null;
         var cts = cancellationToken.CreateLinkedTokenSource();
+        var ctsToken = cts.Token;
         try {
             var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
             var repliedChatEntryId = relatedChatEntry is { Kind: RelatedEntryKind.Reply }
@@ -164,7 +168,7 @@ public partial class ChatAudioUI
             await AudioRecorder.StartRecording(chatId, repliedChatEntryId, cancellationToken).ConfigureAwait(false);
             var whenStopped = ForegroundTask.Run(
                 async () => await cRecordingState
-                    .When(x => x.ChatId != chatId || x.Language != language, cts.Token)
+                    .When(x => x.ChatId != chatId || x.Language != language, ctsToken)
                     .ConfigureAwait(false),
                 cancellationToken);
             whenIdle = ForegroundTask.Run(async () => {
@@ -172,9 +176,10 @@ public partial class ChatAudioUI
                     AudioSettings.IdleRecordingTimeout,
                     AudioSettings.IdleRecordingPreCountdownTimeout,
                     AudioSettings.IdleRecordingCheckPeriod);
-                await foreach (var stopAt in WatchRecordingIdleBoundaries(chatId, options, cts.Token).ConfigureAwait(false))
-                    _stopRecordingAt.Value = stopAt;
-            }, cts.Token);
+                var streamingIdleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, ctsToken);
+                await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false))
+                    _stopRecordingAt.Value = serverStopAt.Convert(serverClock, cpuClock);
+            }, ctsToken);
             await Task.WhenAny(whenStopped, whenIdle).ConfigureAwait(false);
             // No need to await for the result of WhenAny: we're stopping anyway
         }
@@ -208,7 +213,7 @@ public partial class ChatAudioUI
 
         var playbackState = ChatPlayers.PlaybackState;
         var cExpectedPlaybackState = await Computed
-            .Capture(GetExpectedRealtimePlaybackState)
+            .Capture(GetExpectedRealtimePlaybackState, cancellationToken)
             .ConfigureAwait(false);
         var cActualPlaybackState = playbackState.Computed;
 
@@ -262,7 +267,9 @@ public partial class ChatAudioUI
             AudioSettings.IdleListeningTimeout,
             AudioSettings.IdleListeningPreCountdownTimeout,
             AudioSettings.IdleListeningCheckPeriod);
-        var cListeningChatIds = await Computed.Capture(GetListeningChatIds).ConfigureAwait(false);
+        var cListeningChatIds = await Computed
+            .Capture(GetListeningChatIds, cancellationToken)
+            .ConfigureAwait(false);
         var monitors = new Dictionary<ChatId, FuncWorker>();
         await foreach (var change in cListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
             var listeningChatIds = change.Value;
@@ -316,15 +323,16 @@ public partial class ChatAudioUI
         }
 
         async Task WhenRecordingChatIdBecomes(Func<ChatId, bool> predicate, CancellationToken ct) {
-            var cRecordingChatId = await Computed.Capture(GetRecordingChatId).ConfigureAwait(false);
-            await foreach (var (recordingChatId, _) in cRecordingChatId.Changes(ct).ConfigureAwait(false)) {
+            var cRecordingChatId = await Computed
+                .Capture(GetRecordingChatId, cancellationToken)
+                .ConfigureAwait(false);
+            await foreach (var (recordingChatId, _) in cRecordingChatId.Changes(ct).ConfigureAwait(false))
                 if (predicate.Invoke(recordingChatId))
                     return;
-            }
         }
 
         async Task WhenIdle(CancellationToken ct) {
-            var idleBoundaries = WatchRecordingIdleBoundaries(chatId, options, ct);
+            var idleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, ct);
             await foreach (var _ in idleBoundaries.ConfigureAwait(false)) { }
         }
     }
@@ -358,7 +366,9 @@ public partial class ChatAudioUI
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var cBeepState = await Computed.Capture(() => GetRecordingBeepState(cancellationToken)).ConfigureAwait(false);
+        var cBeepState = await Computed
+            .Capture(() => GetRecordingBeepState(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
         var prevActiveUntil = Moment.MinValue;
         await foreach (var change in cBeepState.Changes(cancellationToken).ConfigureAwait(false)) {
             var nextBeep = GetNextBeep(change.Value);
@@ -367,12 +377,11 @@ public partial class ChatAudioUI
                 continue;
 
             prevActiveUntil = change.Value.ActiveUntil;
-            change.Invalidate(nextBeep.At - Now);
+            change.Invalidate(nextBeep.At - CpuNow);
         }
         return;
 
-        NextBeepState? GetNextBeep(RecordingBeepState state)
-        {
+        NextBeepState? GetNextBeep(RecordingBeepState state) {
             var (isRecording, activeUntil, isCountingDown) = state;
             if (!isRecording)
                 return null;
@@ -385,15 +394,15 @@ public partial class ChatAudioUI
                 // UI interaction resets beep timer
                 return new (activeUntil + beepIn, true);
 
-            // hasn't beeped yet
+            // Didn't beep yet
             if (_nextBeep.Value is not {} prevBeep || prevBeep.At < activeUntil)
                 return new NextBeepState(activeUntil + beepIn, false);
 
-            // doesn't need recalculation
-            if (prevBeep.At > Now)
+            // Doesn't need recalculation
+            if (prevBeep.At > CpuNow)
                 return prevBeep;
 
-            // recalculate
+            // Recalculate
             return new (prevBeep.At + beepIn, false);
         }
     }
@@ -404,9 +413,9 @@ public partial class ChatAudioUI
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         while (!cancellationToken.IsCancellationRequested) {
-            var cNextBeep = await _nextBeep.When(x => x != null && x.At > Now, cancellationToken).ConfigureAwait(false);
+            var cNextBeep = await _nextBeep.When(x => x != null && x.At > CpuNow, cancellationToken).ConfigureAwait(false);
             var nextBeepAt = cNextBeep.Value!.At;
-            var nextBeepIn = nextBeepAt - Now;
+            var nextBeepIn = nextBeepAt - CpuNow;
             await Task.Delay(TimeSpanExt.Max(nextBeepIn, TimeSpan.FromMilliseconds(50)), cancellationToken).ConfigureAwait(false);
             if (await IsNotCancelled(nextBeepAt).ConfigureAwait(false))
                 await TuneUI.PlayAndWait(Tune.RemindOfRecording).ConfigureAwait(false);
@@ -416,6 +425,64 @@ public partial class ChatAudioUI
         {
             var nextBeep = await _nextBeep.Use(cancellationToken).ConfigureAwait(false);
             return nextBeep is { IsPreviousCancelled: false } || nextBeep?.At == previous;
+        }
+    }
+
+    private async Task RecordingTroubleshooter(CancellationToken cancellationToken)
+    {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        var lastState = (ChatId: ChatId.None, RequiresTroubleshooter: false);
+        var troubleshooterCts = (CancellationTokenSource?)null;
+        try {
+            var cRecordingTroubleshootState = await Computed
+                .Capture(() => GetRecordingTroubleshootState(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            // cRecordingStateBase.Changes(cancellationToken).Join(AudioRecorder.State.Changes(cancellationToken), )
+            var changes = cRecordingTroubleshootState.Changes(cancellationToken);
+            await foreach (var (state, _) in changes.ConfigureAwait(false)) {
+                if (state == lastState)
+                    continue; // Nothing changed - this may happen, we don't want to take any actions in this case
+
+                if (state.ChatId.IsNone) {
+                    // Recording is stopped
+                    StopTroubleshooter();
+                }
+                else if (state.ChatId != lastState.ChatId) {
+                    // Recording in new chat
+                    if (state.IsTroubleshootRequired)
+                        StartOrKeepTroubleshooter();
+                }
+                else if (!state.ChatId.IsNone) {
+                    // Recording in the same chat
+                    if (!state.IsTroubleshootRequired)
+                        StopTroubleshooter();
+                    else if (!lastState.RequiresTroubleshooter) // And it's required now
+                        StartOrKeepTroubleshooter();
+                }
+                lastState = state;
+            }
+        }
+        finally {
+            // Close the troubleshooter on exit no matter what
+            troubleshooterCts.CancelAndDisposeSilently();
+        }
+
+        void StartOrKeepTroubleshooter() {
+            if (troubleshooterCts != null)
+                return;
+
+            troubleshooterCts = new CancellationTokenSource();
+            _ = ShowRecordingTroubleshooter(TimeSpan.FromSeconds(7.5), troubleshooterCts.Token);
+        }
+
+        void StopTroubleshooter() {
+            if (troubleshooterCts == null)
+                return;
+
+            troubleshooterCts.CancelAndDisposeSilently();
+            troubleshooterCts = null;
         }
     }
 
@@ -430,6 +497,17 @@ public partial class ChatAudioUI
     }
 
     [ComputeMethod]
+    protected virtual async Task<(ChatId ChatId, bool IsTroubleshootRequired)> GetRecordingTroubleshootState(CancellationToken cancellationToken)
+    {
+        var chatId = await GetRecordingChatId().ConfigureAwait(false);
+        var state = await AudioRecorder.State.Use(cancellationToken);
+        var isTroubleshootRequired = !chatId.IsNone && state is { IsRecording: false, IsConnected: true };
+        // Good for debugging:
+        // = !chatId.IsNone && state is { IsVoiceActive: false };
+        return new ValueTuple<ChatId, bool>(chatId, isTroubleshootRequired);
+    }
+
+    [ComputeMethod]
     protected virtual async Task<RecordingBeepState> GetRecordingBeepState(CancellationToken cancellationToken)
     {
         var recordingChatId = await GetRecordingChatId().ConfigureAwait(false);
@@ -437,29 +515,30 @@ public partial class ChatAudioUI
             // if recording is not started, other properties make no sense
             return new (false, Moment.MinValue, false);
 
-        var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false);
-        var recordingStopsAt = await StopRecordingAt.Use(cancellationToken).ConfigureAwait(false);
+        var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false); // CPU time
+        var recordingStopsAt = await StopRecordingAt.Use(cancellationToken).ConfigureAwait(false); // CPU time
         var isRecording = !recordingChatId.IsNone;
         return new(isRecording, activeUntil, recordingStopsAt != null);
     }
 
-    private async IAsyncEnumerable<Moment?> WatchRecordingIdleBoundaries(
+    // !!! This method returns server time sequence!
+    private async IAsyncEnumerable<Moment?> ObserveStreamingIdleBoundaries(
         ChatId chatId,
         RecordingIdleOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
-        var lastTranscribedAt = Now;
+        var lastTranscribedAt = Clocks.ServerClock.Now;
         yield return null;
 
         // We just started, so it's ok to await for the countdown interval first
         await Task.Delay(options.PreCountdownTimeout, cancellationToken).ConfigureAwait(false);
 
-        using var recordingActivity = await ChatActivity.GetRecordingActivity(chatId, cancellationToken).ConfigureAwait(false);
+        using var streamingActivity = await ChatActivity.GetStreamingActivity(chatId, cancellationToken).ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
-            lastTranscribedAt = Moment.Max(lastTranscribedAt, recordingActivity.LastTranscribedAt.Value ?? Now);
+            lastTranscribedAt = Moment.Max(lastTranscribedAt, streamingActivity.LastTranscribedAt.Value ?? ServerNow);
             var idleAt = lastTranscribedAt + options.IdleTimeout;
-            var idleDelay = (idleAt - Now).Positive();
+            var idleDelay = (idleAt - ServerNow).Positive();
             if (idleDelay <= Epsilon) {
                 // We must stop right now
                 yield return null;
@@ -467,7 +546,7 @@ public partial class ChatAudioUI
             }
 
             var countdownAt = lastTranscribedAt + options.PreCountdownTimeout;
-            var countdownDelay = (countdownAt - Now).Positive();
+            var countdownDelay = (countdownAt - ServerNow).Positive();
             if (countdownDelay <= Epsilon) {
                 // Start the countdown
                 yield return idleAt;
@@ -483,6 +562,25 @@ public partial class ChatAudioUI
         }
     }
 
+    private async Task ShowRecordingTroubleshooter(TimeSpan delay, CancellationToken cancellationToken) {
+        await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+        await Dispatcher.InvokeAsync(async () => {
+            var model = new RecordingTroubleshooterModal.Model(null, true);
+            var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
+
+            Log.LogWarning("Recording issue. Capturing diagnostics state...");
+            var diagnostics = await AudioRecorder.RunDiagnostics(CancellationToken.None);
+            Log.LogWarning("Recording issue. Diagnostics State = {State}", diagnostics);
+
+            try {
+                await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                modalRef.Close();
+            }
+        }).ConfigureAwait(false);
+    }
+
     // Nested types
 
     [StructLayout(LayoutKind.Auto)]
@@ -492,9 +590,14 @@ public partial class ChatAudioUI
     }
 
     [StructLayout(LayoutKind.Auto)]
-    public readonly record struct RecordingBeepState(bool IsRecording, Moment ActiveUntil, bool IsCountingDown);
+    public readonly record struct RecordingBeepState(
+        bool IsRecording,
+        Moment ActiveUntil, // CPU time
+        bool IsCountingDown);
 
-    public record NextBeepState(Moment At, bool IsPreviousCancelled);
+    public record NextBeepState(
+        Moment At, // CPU time
+        bool IsPreviousCancelled);
 
     [StructLayout(LayoutKind.Auto)]
     public readonly record struct RecordingIdleOptions

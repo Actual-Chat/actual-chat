@@ -1,6 +1,5 @@
 using ActualChat.Hosting;
 using ActualChat.UI;
-using Microsoft.AspNetCore.Components;
 using Stl.Locking;
 
 namespace ActualChat.Permissions;
@@ -9,7 +8,7 @@ public abstract class PermissionHandler : WorkerBase
 {
     private readonly IMutableState<bool?> _cached;
     private HostInfo? _hostInfo;
-    private SystemSettingsUI? _permissionSettingsUI;
+    private SystemSettingsUI? _systemSettingsUI;
     private IDispatcherResolver? _dispatcherResolver;
     private IMomentClock? _clock;
     private ILogger? _log;
@@ -17,7 +16,7 @@ public abstract class PermissionHandler : WorkerBase
     protected IServiceProvider Services { get; }
     protected HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     protected SystemSettingsUI SystemSettingsUI
-        => _permissionSettingsUI ??= Services.GetRequiredService<SystemSettingsUI>();
+        => _systemSettingsUI ??= Services.GetRequiredService<SystemSettingsUI>();
     protected IDispatcherResolver DispatcherResolver
         => _dispatcherResolver ??= Services.GetRequiredService<IDispatcherResolver>();
     protected IMomentClock Clock => _clock ??= Services.Clocks().CpuClock;

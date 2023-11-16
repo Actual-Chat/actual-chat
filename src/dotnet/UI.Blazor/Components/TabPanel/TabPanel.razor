@@ -41,6 +41,7 @@
                 }
             </div>
         </div>
+        <Divider/>
         @ChildContent
         @if (TabContent != null) {
             @TabContent.Invoke(SelectedTabId)
@@ -92,13 +93,11 @@
         SelectedTabId = newSelectedTab?.Id;
     }
 
-    internal void RegisterTab(Tab tab) {
-        _tabs.Add(tab);
-    }
+    internal void RegisterTab(Tab tab)
+        => _tabs.Add(tab);
 
-    internal void UnregisterTab(Tab tab) {
-        _tabs.Remove(tab);
-    }
+    internal void UnregisterTab(Tab tab)
+        => _tabs.Remove(tab);
 
     internal void TabContentChanged()
         => StateHasChanged();

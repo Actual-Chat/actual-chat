@@ -36,9 +36,8 @@
         AccountUI.Changed += OnOwnAccountChanged;
     }
 
-    public void Dispose() {
-        AccountUI.Changed -= OnOwnAccountChanged;
-    }
+    public void Dispose()
+        => AccountUI.Changed -= OnOwnAccountChanged;
 
     protected override void OnAfterRender(bool firstRender) {
         if (firstRender)

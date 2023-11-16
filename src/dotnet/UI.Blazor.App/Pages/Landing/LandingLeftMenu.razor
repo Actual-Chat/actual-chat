@@ -44,8 +44,7 @@
             BlazorRef = DotNetObjectReference.Create(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(
                 $"{BlazorUIAppModule.ImportName}.LandingLeftMenu.create",
-                Ref, BlazorRef
-                );
+                Ref, BlazorRef);
         }
     }
 

@@ -16,7 +16,7 @@
 @* Keep height fixed *@
 <div class="link-preview @compactCls">
     @if (m.PreviewMedia != null) {
-        <img class="c-thumbnail" src="@imageUrl" alt="link preview thumbnail"/>
+        <image-skeleton class="c-thumbnail" src="@imageUrl" />
     } else {
         <div class="c-icon">
             <i class="icon-link-2"></i>
@@ -52,17 +52,18 @@
         var imageUrl = UrlMapper.ContentUrl(preview.ContentId);
         // TODO: use image metadata for better proportions selection
         var (width, height) = GetImageMaxSize();
-        return UrlMapper.ImagePreviewUrl(imageUrl, width, height, true);
+        return UrlMapper.ImagePreviewUrl(imageUrl, width, height);
     }
 
     private (int? Width, int Height) GetImageMaxSize() {
         switch (Mode) {
-            case LinkPreviewMode.Full:
-                var maxHeight = ScreenSize.IsNarrow() ? 160  : 136;
-                return (null, maxHeight);
             case LinkPreviewMode.Compact:
-                maxHeight = ScreenSize.IsNarrow() ? 80 : 120;
+                var maxHeight = ScreenSize.IsNarrow() ? 80 : 120;
                 return (maxHeight, maxHeight);
+            case LinkPreviewMode.Default:
+            case LinkPreviewMode.Full:
+                maxHeight = ScreenSize.IsNarrow() ? 160  : 136;
+                return (null, maxHeight);
             default:
                 return (0, 0);
         }

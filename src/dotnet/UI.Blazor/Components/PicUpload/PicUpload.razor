@@ -25,7 +25,7 @@
             id="@_inputId"
             UploadUrl="@UploadUrl"
             Uploaded="OnUploaded"
-            MaxSize="Constants.Attachments.FileSizeLimit"
+            MaxSize="Constants.Attachments.AvatarPictureFileSizeLimit"
             accept="image/*"
             hidden>
         </FileUpload>
@@ -84,10 +84,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender)
-            _jsRef = await JS.InvokeAsync<IJSObjectReference>(
-                JSCreateMethod,
-                _dropZoneRef,
-                _inputId);
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _dropZoneRef, _inputId);
     }
 
     private async Task OnUploaded(MediaContent mediaContent)

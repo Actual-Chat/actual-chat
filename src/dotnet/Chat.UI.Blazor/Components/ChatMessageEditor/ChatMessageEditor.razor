@@ -121,13 +121,13 @@
         JSRef = null!;
         BlazorRef.DisposeSilently();
         BlazorRef = null!;
-        ReadPositionState?.DisposeSilently();
+        ReadPositionState.DisposeSilently();
         ReadPositionState = null!;
     }
 
     protected override async Task OnParametersSetAsync() {
         var chatId = Chat.Id;
-        var oldChatId = ChatMarkupHub?.ChatId ?? default;
+        var oldChatId = ChatMarkupHub?.ChatId ?? default; // ChatMarkupHub == null on the very first call
         if (oldChatId == chatId)
             return;
 

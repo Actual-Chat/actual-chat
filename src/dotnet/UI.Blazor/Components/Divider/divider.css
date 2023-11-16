@@ -1,0 +1,3 @@
+.divider {
+    @apply border-b border-separator;
+}

@@ -1,9 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Notification.UI.Blazor
-@using ActualChat.Notification.UI.Blazor.Module
 @using ActualChat.Hosting
 @using ActualChat.Kvas
-@using ActualChat.Notification
 @inherits ComputedStateComponent<NotificationsPermissionBanner.Model>
 @{
     var m = State.Value;
@@ -20,7 +18,7 @@
             IsVisible="@isVisible"
             Severity="BannerSeverity.Info"
             ShowDismissButton="true"
-            Dismiss="OnDismiss">
+            Dismiss="@OnDismiss">
             <Icon>
                 <i class="icon-bell text-2xl"></i>
             </Icon>

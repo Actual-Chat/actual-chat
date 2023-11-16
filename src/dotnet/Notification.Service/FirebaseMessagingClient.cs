@@ -3,24 +3,16 @@ using FirebaseAdmin.Messaging;
 
 namespace ActualChat.Notification;
 
-public class FirebaseMessagingClient
+public class FirebaseMessagingClient(
+    UrlMapper urlMapper,
+    FirebaseMessaging firebaseMessaging,
+    ICommander commander,
+    ILogger<FirebaseMessagingClient> log)
 {
-    private UrlMapper UrlMapper { get; }
-    private FirebaseMessaging FirebaseMessaging { get; }
-    private ICommander Commander { get; }
-    private ILogger Log { get; }
-
-    public FirebaseMessagingClient(
-        UrlMapper urlMapper,
-        FirebaseMessaging firebaseMessaging,
-        ICommander commander,
-        ILogger<FirebaseMessagingClient> log)
-    {
-        UrlMapper = urlMapper;
-        FirebaseMessaging = firebaseMessaging;
-        Commander = commander;
-        Log = log;
-    }
+    private UrlMapper UrlMapper { get; } = urlMapper;
+    private FirebaseMessaging FirebaseMessaging { get; } = firebaseMessaging;
+    private ICommander Commander { get; } = commander;
+    private ILogger Log { get; } = log;
 
     public async Task SendMessage(Notification entry, IReadOnlyCollection<Symbol> deviceIds, CancellationToken cancellationToken)
     {

@@ -5,37 +5,30 @@ namespace ActualChat.MediaPlayback;
 
 public record struct PlayerStateChangedEventArgs(PlayerState PreviousState, PlayerState State);
 
-public abstract class TrackPlayer : ProcessorBase
+public abstract class TrackPlayer(IMediaSource source, ILogger log) : ProcessorBase
 {
     private readonly TaskCompletionSource _whenCompletedSource = TaskCompletionSourceExt.New();
     private volatile Task? _whenPlaying;
     private volatile PlayerState _state = new();
     private readonly object _stateUpdateLock = new();
-    private readonly Channel<IPlayerCommand> _commandsQueue;
+    private readonly Channel<IPlayerCommand> _commandsQueue = Channel.CreateBounded<IPlayerCommand>(
+        new BoundedChannelOptions(Constants.Queues.TrackPlayerCommandQueueSize) {
+            FullMode = BoundedChannelFullMode.DropOldest,
+            SingleReader = true,
+            SingleWriter = false,
+            AllowSynchronousContinuations = false,
+        });
 
-    protected IMediaSource Source { get; }
+    protected IMediaSource Source { get; } = source;
     protected CancellationTokenSource? PlayTokenSource;
     protected CancellationToken PlayToken;
     protected TimeSpan StopTimeout { get; init; } = TimeSpan.FromSeconds(3);
-    protected ILogger Log { get; }
+    protected ILogger Log { get; } = log;
 
     public PlayerState State => _state;
     public Task? WhenPlaying => _whenPlaying;
     public Task WhenCompleted => _whenCompletedSource.Task;
     public event Action<PlayerStateChangedEventArgs>? StateChanged;
-
-    protected TrackPlayer(IMediaSource source, ILogger log)
-    {
-        Log = log;
-        Source = source;
-        _commandsQueue = Channel.CreateBounded<IPlayerCommand>(
-            new BoundedChannelOptions(Constants.Queues.TrackPlayerCommandQueueSize) {
-                FullMode = BoundedChannelFullMode.DropOldest,
-                SingleReader = true,
-                SingleWriter = false,
-                AllowSynchronousContinuations = false
-            });
-    }
 
     protected override Task DisposeAsyncCore()
         => Stop();
@@ -60,18 +53,18 @@ public abstract class TrackPlayer : ProcessorBase
             var playStartingTask = OnPlayStarting(PlayToken);
             _whenPlaying = Task
                 .Run(async () => {
-                    await playStartingTask.ConfigureAwait(false);
-                    await PlayInternal(PlayToken).ConfigureAwait(false);
-                }, CancellationToken.None)
-                .ContinueWith(async _ => {
-                    PlayTokenSource.CancelAndDisposeSilently();
                     try {
-                        await OnPlayEnded().ConfigureAwait(false);
+                        await playStartingTask.ConfigureAwait(false);
+                        await PlayInternal(PlayToken).SilentAwait(false);
                     }
                     catch {
                         // Intended
                     }
-                }, TaskScheduler.Default);
+                    finally {
+                        PlayTokenSource.CancelAndDisposeSilently();
+                        await OnPlayEnded().SilentAwait(false);
+                    }
+                }, CancellationToken.None);
 #pragma warning disable MA0100
             return _whenPlaying;
 #pragma warning restore MA0100
@@ -84,12 +77,12 @@ public abstract class TrackPlayer : ProcessorBase
     /// <returns>A running task which is completed when you can run <see cref="Play(CancellationToken)"/> again</returns>
     public Task Stop()
     {
-        PlayTokenSource?.CancelAndDisposeSilently();
+        PlayTokenSource.CancelAndDisposeSilently();
         return WhenPlaying ?? Task.CompletedTask;
     }
 
     protected virtual Task OnPlayStarting(CancellationToken cancellationToken) => Task.CompletedTask;
-    protected virtual Task OnPlayEnded() => Task.CompletedTask;
+    protected virtual Task OnPlayEnded() => Task.CompletedTask; // Should never fail!
 
     protected virtual async Task PlayInternal(CancellationToken cancellationToken)
     {

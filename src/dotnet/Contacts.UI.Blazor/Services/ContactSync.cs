@@ -21,7 +21,7 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
     {
         var retryDelays = RetryDelaySeq.Exp(3, 600);
         return AsyncChainExt.From(TrySync)
-            .Log(Log)
+            .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .RunIsolated(cancellationToken);
     }
@@ -58,12 +58,12 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
 
         var toAdd = deviceContacts.Where(x => !existingMap.ContainsKey(x.Id)).ToList();
         var toRemove = existingContacts.ExceptBy(deviceContacts.Select(x => x.Id), x => x.Id).ToList();
-        var toUpdate = deviceContacts.Select(x => {
-                if (!existingMap.TryGetValue(x.Id, out var externalContact))
+        var toUpdate = deviceContacts.Select(deviceContact => {
+                if (!existingMap.TryGetValue(deviceContact.Id, out var existing))
                     return null;
 
-                var diff = DiffEngine.Diff<ExternalContact, ExternalContactDiff>(x, externalContact);
-                return diff == ExternalContactDiff.Empty ? null : DiffEngine.Patch(externalContact, diff);
+                var diff = DiffEngine.Diff<ExternalContact, ExternalContactDiff>(existing, deviceContact);
+                return diff != ExternalContactDiff.Empty ? DiffEngine.Patch(existing, diff) : null;
             })
             .SkipNullItems()
             .ToList();
@@ -75,8 +75,7 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
 
         foreach (var bulk in changes.Chunk(BatchSize)) {
             cancellationToken.ThrowIfCancellationRequested();
-            try
-            {
+            try {
                 var changeResults = await Commander
                     .Call(new ExternalContacts_BulkChange(Session, bulk.ToApiArray()), cancellationToken)
                     .ConfigureAwait(false);
@@ -90,8 +89,7 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 Log.LogWarning(e, "Failed to sync {Count} contacts", bulk.Length);
             }
         }
@@ -100,7 +98,9 @@ public class ContactSync(IServiceProvider services) : WorkerBase, IComputeServic
         IEnumerable<ExternalContactChange> ToChanges(
             IEnumerable<ExternalContact> externalContacts,
             Func<ExternalContact, Change<ExternalContact>> toChange)
-            => externalContacts.Select(x => new ExternalContactChange(x.Id, x.Version, toChange(x)));
+        {
+            return externalContacts.Select(x => new ExternalContactChange(x.Id, x.Version, toChange(x)));
+        }
     }
 
     private Task<Computed<AccountFull>> WhenAuthenticated(CancellationToken cancellationToken)

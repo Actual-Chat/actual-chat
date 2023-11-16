@@ -6,30 +6,37 @@
     var m = State.Value;
     if (ReferenceEquals(m, Model.NotRecording))
         return;
+
     var recordingElsewhereCls = m.RecordingChat != null ? "recording-elsewhere" : "";
 }
 
 <div class="recording-sub-header @recordingElsewhereCls">
     <div class="c-round-container">
-        <div class="c-round"></div>
-    </div>
-
-    <div class="c-line-1">
         @if (m.RecordingChat != null) {
-            <div class="c-text">
-                Recording in
-            </div>
-            <a class="c-text highlight" href="@m.RecordingChatUrl">@(m.RecordingChat.Title)</a>
-            <div class="c-text">chat!</div>
+            <div class="c-round"></div>
+        } else {
+            <i class="icon-alert-triangle text-banner-warning"></i>
         }
     </div>
 
-    @if (m.StopRecordingAt != null) {
-        <div class="c-line-2">
-            <div class="c-text">Stop in </div>
-            <Countdown EndsAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
-        </div>
-    }
+    <div class="c-container">
+        @if (m.RecordingChat != null) {
+            <div class="c-line-1">
+                <div class="c-text">
+                    Recording in
+                </div>
+                <a class="c-text highlight" href="@m.RecordingChatUrl">@m.RecordingChat.Title</a>
+                <div class="c-text">chat!</div>
+            </div>
+        }
+
+        @if (m.StopRecordingAt != null) {
+            <div class="c-line-2 flex-none pr-4">
+                <div class="c-text">Recording will stop in </div>
+                <Countdown EndsAt="@m.StopRecordingAt.Value" Class="c-text highlight"/>
+            </div>
+        }
+    </div>
 
     <Button
         Class="btn-transparent recording-in-chat on"

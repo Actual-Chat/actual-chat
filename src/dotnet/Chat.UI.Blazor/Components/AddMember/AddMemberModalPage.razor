@@ -49,7 +49,7 @@
     private string Filter { get; set; } = "";
     private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
-    private CancellationTokenSource DisposeTokenSource { get; } = new ();
+    private CancellationTokenSource DisposeTokenSource { get; } = new();
     private CancellationToken DisposeToken => DisposeTokenSource.Token;
 
     private bool CanInvite {
@@ -89,7 +89,7 @@
     }
 
     public void Dispose()
-        => DisposeTokenSource.Cancel();
+        => DisposeTokenSource.CancelAndDisposeSilently();
 
     private void OnFilter(string filter) {
         Filter = filter;

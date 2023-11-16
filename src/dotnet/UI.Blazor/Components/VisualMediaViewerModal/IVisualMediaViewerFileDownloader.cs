@@ -2,5 +2,5 @@
 
 public interface IVisualMediaViewerFileDownloader
 {
-    Task Download(string uri);
+    Task Download(string uri, string contentType);
 }

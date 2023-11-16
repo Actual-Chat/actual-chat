@@ -87,9 +87,8 @@
         });
     }
 
-    public void Dispose() {
-        _closingTimer?.Dispose();
-    }
+    public void Dispose()
+        => _closingTimer.DisposeSilently();
 
     private async Task Close() {
         if (_isClosing)

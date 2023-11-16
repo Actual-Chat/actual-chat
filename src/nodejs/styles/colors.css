@@ -13,6 +13,29 @@
     --gray-10: #282828;
     --gray-05: #1C1C1C;
 
+    --gray-10-20: #28282833;
+    --gray-80-20: #D3D3D333;
+
+    --ash-99: #F5F5FC;
+    --ash-95: #DFDFF2;
+    --ash-90: #CFCFE5;
+    --ash-80: #B6B6CC;
+    --ash-70: #9B9BB2;
+    --ash-60: #858599;
+    --ash-50: #6D6D80;
+    --ash-40: #575766;
+    --ash-30: #42424D;
+    --ash-26: #3D3D47;
+    --ash-22: #303038;
+    --ash-20: #2C2C33;
+    --ash-18: #28282E;
+    --ash-14: #1E1E24;
+    --ash-10: #16161A;
+
+    --ash-99-04: #F5F5FC0A;
+    --ash-99-05: #F5F5FC0D;
+    --ash-99-08: #F5F5FC14;
+
     --blue-99: #E5F2FF;
     --blue-95: #C9E3FF;
     --blue-90: #A4CFFF;
@@ -25,9 +48,37 @@
     --blue-20: #023F83;
     --blue-10: #00264F;
 
+    --blue-50-50: #007AFF80;
+    --blue-50-40: #007AFF66;
+    --blue-50-30: #007AFF4D;
     --blue-50-20: #007AFF33;
     --blue-50-10: #007AFF1A;
+    --blue-50-05: #007AFF0D;
     --blue-80-20: #7CBBFF33;
+
+    --frost-99: #ECFCFF;
+    --frost-95: #DEF9FF;
+    --frost-90: #BCF3FF;
+    --frost-80: #96ECFF;
+    --frost-70: #64E3FF;
+    --frost-60: #39DBFF;
+    --frost-50: #00D1FF;
+    --frost-40: #00A9CE;
+    --frost-30: #0087A5;
+    --frost-20: #005568;
+    --frost-10: #003B48;
+
+    --emerald-99: #F4FFFC;
+    --emerald-95: #DEFFF5;
+    --emerald-90: #C0FFEC;
+    --emerald-80: #9EFFE2;
+    --emerald-70: #6CFFD3;
+    --emerald-60: #3AFFC4;
+    --emerald-50: #00FFB2;
+    --emerald-40: #00D193;
+    --emerald-30: #00A171;
+    --emerald-20: #005C41;
+    --emerald-10: #003525;
 
     --magenta-99: #FFF5F9;
     --magenta-95: #FFDFEB;
@@ -55,6 +106,18 @@
     --red-20: #700101;
     --red-10: #3D0000;
 
+    --orange-99: #FFF6F1;
+    --orange-95: #FFE8DB;
+    --orange-90: #FFD6BF;
+    --orange-80: #FFBA93;
+    --orange-70: #FF965B;
+    --orange-60: #FF7C32;
+    --orange-50: #FF5C00;
+    --orange-40: #D14B00;
+    --orange-30: #B74200;
+    --orange-20: #973600;
+    --orange-10: #3D1600;
+
     --indigo-90: #D2C7FF;
     --indigo-80: #AA95FF;
     --indigo-70: #7957FF;
@@ -64,6 +127,18 @@
     --indigo-30: #2000A0;
     --indigo-20: #160070;
     --indigo-10: #0C003D;
+
+    --purple-99: #FDEFFF;
+    --purple-95: #FBE2FF;
+    --purple-90: #F6BFFF;
+    --purple-80: #F199FF;
+    --purple-70: #EB6DFF;
+    --purple-60: #E43EFF;
+    --purple-50: #DB00FF;
+    --purple-40: #AE00CA;
+    --purple-30: #86009C;
+    --purple-20: #5F006F;
+    --purple-10: #370040;
 
     --violet-99: #F8EFFF;
     --violet-95: #F3E4FF;
@@ -75,6 +150,7 @@
     --violet-40: #7701D3;
     --violet-30: #5D00A7;
     --violet-20: #33005A;
+    --violet-15: #2A004B;
     --violet-10: #1B0030;
 
     --violet-60-20: #A635FF33;
@@ -117,10 +193,12 @@
     --white: #FFFFFF;
     --black: #000000;
     --black-10: #0000001A;
+    --black-05: #0000000D;
     --black-50: #00000080;
+    --white-30: #FFFFFF4D;
     --white-10: #FFFFFF1A;
     --white-05: #FFFFFF0D;
-    --white-30: #FFFFFF4D;
+    --white-04: #FFFFFF0A;
 }
 
 :root, .theme-light {
@@ -153,8 +231,8 @@
     --text-banner-success: var(--green-40);
     --background-banner-info: var(--blue-99);
     --text-banner-info: var(--blue-50);
-    --background-banner-warning: var(--sienna-90);
-    --text-banner-warning: var(--sienna-50);
+    --background-banner-warning: var(--orange-95);
+    --text-banner-warning: var(--orange-50);
     --background-banner-error: var(--red-99);
     --text-banner-error: var(--magenta-60);
 
@@ -162,8 +240,10 @@
     --toast-body: var(--gray-20);
     --toast-text: var(--gray-95);
     --toast-action: var(--blue-60);
-    --error-toast-body: var(--magenta-90);
-    --error-toast-text: var(--gray-20);
+
+    /* Modals */
+    --modal-background: var(--white);
+    --modal-border: var(--gray-90);
 
     /* Buttons */
     --disabled: #E7E7E7;
@@ -181,15 +261,18 @@
     --danger-title: var(--text-06);
     --danger-outline-hover: var(--magenta-50-10);
     --square: var(--gray-95);
-    --square-active: var(--gray-95);
-    --square-hover: var(--blue-50-10);
-    --square-focus: var(--blue-50-10);
-    --square-title: var(--gray-05);
+    --square-active: var(--white);
+    --square-hover: var(--white-04);
+    --square-focus: var(--white-04);
+    --square-title: var(--gray-40);
     --round: var(--gray-95);
     --round-active: var(--blue-95);
     --round-hover: var(--blue-50-10);
     --round-focus: var(--blue-95);
-    --round-title: var(--gray-05);
+    --round-title: var(--gray-40);
+    --radio: var(--white);
+    --radio-border: var(--gray-50);
+    --radio-shadow: var(--gray-10-20);
 
     /* Hover */
     --more-colored: var(--white);
@@ -211,7 +294,7 @@
     --recorder-on-top: var(--magenta-60);
     --recorder-on-bottom: var(--violet-60);
     --recorder-on-middle: var(--magenta-50);
-    --audio-panel-button: rgba(0,0,0,0);
+    --audio-panel-button: var(--white);
     --audio-panel-button-text: var(--gray-40);
 
     /* Download Banner */
@@ -220,11 +303,12 @@
 
     /* Utils */
     --transparent: rgba(0, 0, 0, 0);
+    --input: var(--black-05);
     --online: var(--green-30);
     --away: var(--warning);
     --selected: var(--blue-50-20);
     --hover: var(--blue-50-10);
-    --separator: var(--text-01);
+    --separator: var(--gray-90);
     --placeholder: var(--text-04);
     --counter: var(--background-05);
     --rating: var(--warning);
@@ -233,8 +317,9 @@
     --new-separator: var(--magenta-50-10);
     --code: var(--magenta-40);
     --avatar: var(--gray-30);
+    --toggle: var(--gray-50);
+    --toggle-circle: var(--white);
     --toggle-on: var(--primary);
-    --toggle-hover: var(--blue-40);
     --message-hover: var(--blue-50-10);
     --mention-other: var(--blue-95);
     --mention-other-text: var(--primary);
@@ -256,30 +341,37 @@
     --place: var(--indigo-80);
     --menuitem-hover: var(--blue-50-10);
     --menuitem-hover-warning: var(--magenta-50-10);
-    --bubble: var(--indigo-70);
+    --bubble: var(--indigo-60);
     --bubble-text: var(--white);
     --bubble-btn-hover: var(--black-10);
-    --reaction-own: var(--blue-50-20);
+    --reaction: var(--blue-50-20);
+    --reaction-own: var(--blue-50-30);
     --viewer-header: var(--black-50);
     --left-side-logo: var(--black);
     --link-preview-icon: var(--blue-70);
+
+    /* Specific colors */
+    --cat-color-01: var(--gray-70);
+    --cat-color-02: var(--gray-40);
+    --cat-color-03: var(--gray-30);
+    --cat-color-04: var(--white);
 }
 .theme-dark {
     /* Background */
-    --background-01: var(--gray-20);
-    --background-02: var(--gray-15);
-    --background-03: var(--gray-10);
-    --background-04: var(--gray-05);
+    --background-01: var(--ash-18);
+    --background-02: var(--ash-22);
+    --background-03: var(--ash-22);
+    --background-04: var(--ash-18);
     --background-05: var(--gray-30);
     --background-06: var(--gray-20);
     --background-07: var(--gray-80);
     --background-08: var(--white);
 
     /* Text and icons */
-    --text-01: var(--gray-95);
-    --text-02: var(--gray-95);
-    --text-03: var(--gray-60);
-    --text-04: var(--gray-40);
+    --text-01: var(--ash-99);
+    --text-02: var(--ash-99);
+    --text-03: var(--ash-70);
+    --text-04: var(--ash-50);
     --text-05: var(--gray-20);
     --text-06: var(--black);
 
@@ -290,54 +382,52 @@
     --warning: var(--sienna-40);
 
     /* Banners */
-    --background-banner-success: var(--green-20);
-    --text-banner-success: var(--green-80);
+    --background-banner-success: var(--emerald-20);
+    --text-banner-success: var(--emerald-80);
     --background-banner-info: var(--blue-20);
     --text-banner-info: var(--blue-60);
-    --background-banner-warning: var(--sienna-20);
-    --text-banner-warning: var(--sienna-80);
-    --background-banner-error: var(--gray-90);
-    --text-banner-error: var(--magenta-20);
+    --background-banner-warning: var(--orange-20);
+    --text-banner-warning: var(--orange-90);
+    --background-banner-error: var(--magenta-20);
+    --text-banner-error: var(--magenta-80);
 
     /* Toasts */
-    --toast-body: var(--gray-80);
-    --toast-text: var(--gray-05);
-    --toast-action: var(--blue-50);
-    --error-toast-body: var(--magenta-90);
-    --error-toast-text: var(--gray-20);
+    --toast-body: var(--ash-30);
+    --toast-text: var(--ash-99);
+    --toast-action: var(--blue-80);
+
+    /* Modals */
+    --modal-background: var(--ash-22);
+    --modal-border: var(--ash-26);
 
     /* Buttons */
     --disabled: #E7E7E7;
-
     --primary-hover: var(--blue-60);
-    --primary-title: var(--text-06);
-
+    --primary-title: var(--white);
     --secondary: var(--blue-99);
     --secondary-hover: var(--blue-95);
     --secondary-title: var(--primary);
-
-    --cancel: var(--background-03);
-    --cancel-hover: var(--background-04);
+    --cancel: var(--ash-30);
+    --cancel-hover: var(--ash-40);
     --cancel-title: var(--background-06);
-
     --outline: var(--background-01);
     --outline-hover: var(--blue-50-10);
-
     --danger-hover: var(--magenta-60);
     --danger-title: var(--text-06);
     --danger-outline-hover: var(--magenta-50-10);
-
-    --square: var(--gray-10);
-    --square-active: var(--gray-10);
-    --square-hover: var(--white-05);
-    --square-focus: var(--white-05);
-    --square-title: var(--gray-95);
-
-    --round: var(--gray-10);
-    --round-active: var(--blue-20);
-    --round-hover: var(--white-05);
-    --round-focus: var(--blue-20);
-    --round-title: var(--gray-95);
+    --square: var(--ash-26);
+    --square-active: var(--ash-99-08);
+    --square-hover: var(--ash-99-04);
+    --square-focus: var(--ash-99-04);
+    --square-title: var(--ash-90);
+    --round: var(--ash-70);
+    --round-active: var(--ash-70);
+    --round-hover: var(--ash-99-04);
+    --round-focus: var(--ash-99-04);
+    --round-title: var(--ash-90);
+    --radio: var(--ash-18);
+    --radio-border: var(--white-30);
+    --radio-shadow: var(--white-05);
 
     /* Hover */
     --more-colored: var(--white);
@@ -346,7 +436,7 @@
     --danger-colored: var(--danger);
 
     /* Post Audio Panel */
-    --post-panel: var(--gray-10);
+    --post-panel: var(--ash-14);
     --post-panel-wide: var(--gray-30);
     --post-panel-text: var(--gray-80);
     --playback-on: var(--blue-10);
@@ -359,8 +449,8 @@
     --recorder-on-top: var(--magenta-60);
     --recorder-on-bottom: var(--violet-60);
     --recorder-on-middle: var(--magenta-50);
-    --audio-panel-button: var(--gray-20);
-    --audio-panel-button-text: var(--gray-60);
+    --audio-panel-button: var(--ash-26);
+    --audio-panel-button-text: var(--ash-70);
 
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
@@ -368,10 +458,11 @@
 
     /* Utils */
     --online: var(--success);
+    --input: var(--ash-99-05);
     --away: var(--warning);
     --selected: var(--white-10);
     --hover: var(--white-05);
-    --separator: var(--gray-90);
+    --separator: var(--ash-26);
     --placeholder: var(--gray-15);
     --counter: var(--background-05);
     --rating: var(--sienna-40);
@@ -379,36 +470,44 @@
     --shadow-main: var(--background-05);
     --new-separator: var(--magenta-50-10);
     --code: var(--magenta-60);
-    --avatar: var(--gray-70);
+    --avatar: var(--ash-70);
+    --toggle: var(--ash-18);
+    --toggle-circle: var(--ash-40);
     --toggle-on: var(--blue-60);
-    --toggle-hover: var(--blue-50);
-    --message-hover: var(--white-05);
+    --message-hover: var(--ash-99-08);
     --mention-message: #FFF7ED;
     --mention-message-hover: #FFF7E5;
-    --mention-other: var(--blue-80-20);
-    --mention-other-text: var(--blue-60);
+    --mention-other: var(--blue-50-20);
+    --mention-other-text: var(--blue-80);
     --mention-own: var(--violet-60-20);
-    --mention-own-text: var(--violet-70);
-    --mention-list-item-selected: var(--white-05);
+    --mention-own-text: var(--violet-80);
+    --mention-list-item-selected: var(--ash-99-04);
     --replied-message: var(--white-05);
     --replied-message-hover: var(--white-10);
     --replied-message-border: var(--blue-60);
     --context-menu: var(--white-05);
     --context-border: var(--gray-05);
-    --selection: #CCBBDD;
+    --selection: var(--ash-99-08);
     --dot: #E2E7EC;
     --dot-selected: #4B5E71;
     --skeleton: var(--gray-05);
     --skeleton-border: var(--gray-10);
-    --scrollbar: var(--gray-30);
+    --scrollbar: var(--ash-40);
     --quote: var(--gray-10);
     --place: var(--indigo-80);
     --menuitem-hover: var(--white-05);
     --menuitem-hover-warning: var(--magenta-50-10);
-    --bubble: var(--indigo-70);
+    --bubble: var(--indigo-60);
     --bubble-text: var(--white);
     --bubble-btn-hover: var(--white-10);
+    --reaction: var(--white-05);
     --reaction-own: var(--white-10);
     --viewer-header: var(--white-10);
     --left-side-logo: var(--white);
+
+    /* Specific colors */
+    --cat-color-01: var(--ash-80);
+    --cat-color-02: var(--ash-50);
+    --cat-color-03: var(--ash-30);
+    --cat-color-04: var(--white);
 }

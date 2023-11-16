@@ -15,7 +15,7 @@
 
     protected AuthorId AuthorId { get; private set; }
     protected ChatId ChatId => AuthorId.ChatId;
-    protected IChatRecordingActivity? ChatRecordingActivity { get; set; }
+    protected IChatStreamingActivity? ChatRecordingActivity { get; set; }
 
     [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
     [Parameter] public bool ShowRecording { get; set; }
@@ -42,7 +42,7 @@
 
     protected override async Task OnParametersSetAsync() {
         if (ShowRecording && !ChatId.IsNone)
-            ChatRecordingActivity = await ChatActivity.GetRecordingActivity(ChatId, CancellationToken.None);
+            ChatRecordingActivity = await ChatActivity.GetStreamingActivity(ChatId, CancellationToken.None);
         await base.OnParametersSetAsync();
     }
 
@@ -60,8 +60,8 @@
 
         var presence = await Authors.GetPresence(Session, AuthorId.ChatId, AuthorId, cancellationToken);
         if (ShowRecording && ChatRecordingActivity != null) {
-            var isRecording = await ChatRecordingActivity.IsAuthorActive(AuthorId, cancellationToken);
-            if (isRecording)
+            var isStreaming = await ChatRecordingActivity.IsAuthorStreaming(AuthorId, cancellationToken);
+            if (isStreaming)
                 presence = Presence.Recording;
         }
         return presence;

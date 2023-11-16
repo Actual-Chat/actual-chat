@@ -7,6 +7,7 @@ import { rpcClientServer, RpcNoWait, rpcNoWait, rpcServer } from 'rpc';
 import { timerQueue } from 'timerQueue';
 import { Log } from 'logging';
 import { RecorderStateEventHandler } from "../opus-media-recorder-contracts";
+import {AudioDiagnosticsState} from "../audio-recorder";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorkletProcessor');
 
@@ -26,6 +27,8 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
     private server: RecorderStateEventHandler & Disposable;
     private worker: OpusEncoderWorker & Disposable;
     private samplesSinceLastReporting = 0;
+    private frameCount: number = 0;
+    private lastFrameProcessedAt: number = 0;
 
     constructor(options: AudioWorkletNodeOptions) {
         super(options);
@@ -58,6 +61,11 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
 
     // called for each 128 samples ~ 2.5ms
     public process(inputs: Float32Array[][], outputs: Float32Array[][]): boolean {
+        if (this.frameCount++ > 100) {
+            this.frameCount = 0;
+            this.lastFrameProcessedAt = Date.now();
+        }
+
         timerQueue?.triggerExpired();
         try {
             const hasInput = inputs
@@ -111,6 +119,13 @@ export class OpusEncoderWorkletProcessor extends AudioWorkletProcessor implement
         }
 
         return true;
+    }
+
+    public async runDiagnostics(diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> {
+        diagnosticsState.encoderWorkletState = this.state;
+        diagnosticsState.lastEncoderWorkletFrameProcessedAt = this.lastFrameProcessedAt;
+        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        return diagnosticsState;
     }
 }
 

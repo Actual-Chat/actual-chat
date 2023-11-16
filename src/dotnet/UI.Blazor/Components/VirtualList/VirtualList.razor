@@ -78,7 +78,8 @@
         class="c-virtual-container">
         @foreach (var tile in tiles) {
             var isLastTile = Data.HasVeryLastItem && ReferenceEquals(tile, tiles[^1]);
-            <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" IsLastTile="@isLastTile"/>
+            var isLastTileVisible = isLastTile && LastReportedItemVisibility.IsEndAnchorVisible;
+            <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" IsLastTileVisible="@isLastTileVisible"/>
         }
     </ul>
 

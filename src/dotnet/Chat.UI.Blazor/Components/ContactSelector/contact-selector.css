@@ -10,7 +10,7 @@
     @apply flex-x items-center;
     @apply gap-x-1 py-1 px-4;
     @apply rounded-md;
-    @apply hover:bg-secondary;
+    @apply hover:bg-hover;
 }
 .contact-selector-list-item,
 .contact-selector-list-item * {

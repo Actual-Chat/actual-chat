@@ -86,18 +86,19 @@ body.narrow .modal-frame.modal-xs .c-text {
 }
 
 .modal-chrome {
-    @apply rounded-lg md:shadow-2xl;
-    @apply bg-01 text-03;
-    @apply overflow-hidden;
     @apply z-10;
+    @apply overflow-hidden;
+    @apply bg-modal text-03;
+    @apply rounded-lg border-modal border;
+    @apply md:shadow-modal-wide;
 }
 .modal-frame {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;
+    @apply max-h-screen h-full w-full md:h-auto md:w-modal;
     @apply pb-4;
-    @apply h-full w-full md:h-auto md:w-modal;
     @apply rounded-lg;
     @apply font-medium;
-    @apply max-h-screen;
+    @apply md:shadow-modal-wide;
 }
 
 .modal-frame:not(:has(.modal-header)):not(:has(.modal-header-interactive)) .dialog-body {
@@ -134,7 +135,7 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 .modal-header-interactive {
     @apply ordinary-header;
-    @apply bg-02 border-bg-04 border-b;
+    @apply bg-02 border-separator border-b;
 }
 
 .modal-header-interactive .btn .btn-content {
@@ -166,18 +167,24 @@ body.narrow .dialog-buttons {
     @apply -flex-y gap-y-2;
 }
 .dialog-buttons .btn {
-    @apply flex-1 max-w-none;
+    @apply flex-1;
+    @apply max-w-none;
 }
 
 .dialog-body .validation-errors {
-    @apply rounded-md mb-2;
+    @apply mb-2;
+    @apply rounded-md;
 }
 .dialog-body .validation-errors .validation-message {
-    @apply flex justify-center rounded-md p-2 bg-danger text-06 font-normal text-base;
+    @apply flex justify-center;
+    @apply p-2;
+    @apply rounded-md;
+    @apply bg-danger text-06 font-normal text-base;
 }
 
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled) {
-    @apply border rounded-md outline-none p-1 px-2;
+    @apply p-1 px-2;
+    @apply border outline-none;
 }
 .dialog-body input:not([type='checkbox']):not(.dialog-unstyled).invalid {
     @apply border-danger;

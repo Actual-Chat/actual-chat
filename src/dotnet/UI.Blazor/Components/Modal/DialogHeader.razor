@@ -67,9 +67,10 @@
         => _ = Modal.StepBack();
 
     public void Dispose() {
-        if (_settings != null) {
-            _settings.CanSubmitChanged -= OnCanSubmitChanged;
-            _settings = null;
-        }
+        if (_settings == null)
+            return;
+
+        _settings.CanSubmitChanged -= OnCanSubmitChanged;
+        _settings = null;
     }
 }

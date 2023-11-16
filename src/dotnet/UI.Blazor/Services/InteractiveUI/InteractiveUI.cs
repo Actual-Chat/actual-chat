@@ -7,11 +7,11 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.InteractiveUI.init";
 
-    private readonly DotNetObjectReference<IInteractiveUIBackend>? _backendRef;
+    private readonly object _lock = new();
     private readonly IMutableState<bool> _isInteractive;
     private readonly IMutableState<ActiveDemandModel?> _activeDemand;
+    private DotNetObjectReference<IInteractiveUIBackend>? _blazorRef;
     private Dispatcher? _dispatcher;
-    private readonly object _lock = new();
 
     // Services
     private IServiceProvider Services { get; }
@@ -34,15 +34,18 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
 
         ModalUI = services.GetRequiredService<ModalUI>();
         JS = services.JSRuntime();
-        _backendRef = DotNetObjectReference.Create<IInteractiveUIBackend>(this);
+        _blazorRef = DotNetObjectReference.Create<IInteractiveUIBackend>(this);
 
         _isInteractive = services.StateFactory().NewMutable(false);
         _activeDemand = services.StateFactory().NewMutable((ActiveDemandModel?)null);
-        WhenReady = JS.InvokeVoidAsync(JSInitMethod, _backendRef).AsTask();
+        WhenReady = JS.InvokeVoidAsync(JSInitMethod, _blazorRef).AsTask();
     }
 
     public void Dispose()
-        => _backendRef.DisposeSilently();
+    {
+        _blazorRef.DisposeSilently();
+        _blazorRef = null;
+    }
 
     [JSInvokable]
     public Task IsInteractiveChanged(bool value)

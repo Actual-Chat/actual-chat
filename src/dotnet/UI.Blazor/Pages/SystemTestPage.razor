@@ -34,7 +34,7 @@
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] private ComputedGraphPruner ComputedGraphPruner { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private ReloadUI ReloadUI { get; init; } = null!;
+    [Inject] private IServiceProvider Services { get; init; } = null!;
 
     private Task OnInvalidateEverythingLocallyClick() {
         ComputedRegistry.Instance.InvalidateEverything();
@@ -63,8 +63,6 @@
         }
     }
 
-    private Task OnReloadUIClick() {
-        ReloadUI.Reload();
-        return Task.CompletedTask;
-    }
+    private void OnReloadUIClick()
+        => Services.GetRequiredService<ReloadUI>().Reload();
 }

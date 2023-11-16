@@ -74,9 +74,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
 
     [JSInvokable]
     public void OnRecordingStopped()
-    {
-        StateHasChanged();
-    }
+        => StateHasChanged();
 
     public void Dispose()
     {

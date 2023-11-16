@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
@@ -18,6 +19,7 @@ public static partial class MauiProgram
         services.AddSingleton<Java.Util.Concurrent.IExecutorService>(_ =>
             Java.Util.Concurrent.Executors.NewWorkStealingPool()!);
 
+        services.AddSingleton<IHistoryExitHandler>(_ => new AndroidHistoryExitHandler());
         services.AddSingleton<AndroidContentDownloader>();
         services.AddAlias<IIncomingShareFileDownloader, AndroidContentDownloader>();
         services.AddScoped<IVisualMediaViewerFileDownloader, AndroidVisualMediaViewerFileDownloader>();
@@ -29,7 +31,7 @@ public static partial class MauiProgram
         services.AddScoped<INotificationsPermission>(c => new AndroidNotificationsPermission(c));
         services.AddScoped<IRecordingPermissionRequester>(_ => new AndroidRecordingPermissionRequester());
         services.AddScoped(c => new NativeGoogleAuth(c));
-        services.AddSingleton<Action<Theme>>(_ => AndroidApplyThemeHandler.Instance.OnApplyTheme);
+        services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)
@@ -40,62 +42,62 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddAndroid(android => {
-            var livenessProbeAdapter = new AndroidWebViewLivenessProbeAdapter();
+            AndroidLifecycleLogger.Activate(android);
             var incomingShare = new IncomingShareHandler();
             android.OnPostCreate(incomingShare.OnPostCreate);
             android.OnNewIntent(incomingShare.OnNewIntent);
-            android.OnResume(livenessProbeAdapter.OnResume);
-            android.OnPause(livenessProbeAdapter.OnPause);
+            android.OnResume(_ => MauiWebView.LogResume());
+            android.OnPause(_ => MauiLivenessProbe.CancelCheck());
             android.OnActivityResult(OnActivityResult);
             android.OnBackPressed(activity => {
                 _ = HandleBackPressed(activity);
-                return true;
+                return true; // We handle it in HandleBackPressed
             });
         });
 
     private static void OnActivityResult(Activity activity, int requestCode, Result resultCode, Intent? data)
         => AndroidActivityResultHandlers.Invoke(activity, requestCode, resultCode, data);
 
-    private static async Task HandleBackPressed(Android.App.Activity activity)
+    private static async Task HandleBackPressed(Activity activity)
     {
-        var handler = ScopedServices.GetService<BackButtonHandler>();
-        if (handler != null) {
-            var eventArgs = new BackPressedEventArgs(MoveToBack);
-            handler.OnBackPressed(eventArgs);
-            if (eventArgs.Handled)
-                return;
-        }
-        var webView = MainPage.Current!.PlatformWebView;
-        var goBack = webView != null && await TryGoBack(webView).ConfigureAwait(false);
-        if (goBack)
-            return;
-        MoveToBack();
-
-        void MoveToBack()
-            // Move app to background as Home button acts.
-            // It prevents scenario when app is running, but activity is destroyed.
-            => activity.MoveTaskToBack(true);
+        // This method either moves the current activity to background (back),
+        // or makes AndroidWebView to navigate back.
+        var webView = MauiWebView.Current?.AndroidWebView;
+        if (webView == null || !await TryGoBack(webView).ConfigureAwait(false))
+            activity.MoveTaskToBack(true);
     }
 
     private static async Task<bool> TryGoBack(Android.Webkit.WebView webView)
     {
-        var canGoBack = webView.CanGoBack();
-        if (canGoBack) {
+        if (!TryGetScopedServices(out var scopedServices))
+            return false;
+
+        // We use History as our primary info source here, coz the actual browser history
+        // may have a few extra items in the beginning of the list
+        var history = scopedServices.GetRequiredService<History>();
+        var backStepCount = history.CurrentItem.BackStepCount;
+        Tracer.Point($"TryGoBack, back step count = {backStepCount}");
+        if (backStepCount == 0)
+            return false;
+
+        if (webView.CanGoBack()) {
             webView.GoBack();
             return true;
         }
+
         // Sometimes Chromium reports that it can't go back while there are 2 items in the history.
         // It seems that this bug exists for a while, not fixed yet and there is not plans to do it.
         // https://bugs.chromium.org/p/chromium/issues/detail?id=1098388
         // https://github.com/flutter/flutter/issues/59185
-        // But we can use web api to navigate back.
+        // We use history API to navigate back in this case.
         var list = webView.CopyBackForwardList();
-        var canGoBack2 = list is { Size: > 1, CurrentIndex: > 0 };
-        if (!canGoBack2 || !TryGetScopedServices(out var scopedServices))
-            return false;
+        if (list is { Size: > 1, CurrentIndex: > 0 }) {
+            var js = scopedServices.JSRuntime();
+            await js.InvokeVoidAsync("history.back").ConfigureAwait(false);
+            return true;
+        }
 
-        var js = scopedServices.JSRuntime();
-        await js.InvokeVoidAsync("history.back").ConfigureAwait(false);
-        return true;
+        // We tried everything & there is nothing we can do
+        return false;
     }
 }

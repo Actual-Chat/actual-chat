@@ -79,9 +79,9 @@ public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission
                 | UNAuthorizationOptions.Sound;
             var (result, error) = await NotificationCenter.RequestAuthorizationAsync(options).ConfigureAwait(true);
             if (result)
-                Log.LogInformation("RequestNotificationPermission: granted");
+                Log.LogInformation("NotificationCenter.RequestAuthorizationAsync: granted");
             else
-                Log.LogWarning("RequestNotificationPermission: denied, {Error}", error);
+                Log.LogWarning("NotificationCenter.RequestAuthorizationAsync: denied, {Error}", error);
 
             isGranted = await IsGranted(cancellationToken).ConfigureAwait(true);
             NotificationUI.SetIsGranted(isGranted);

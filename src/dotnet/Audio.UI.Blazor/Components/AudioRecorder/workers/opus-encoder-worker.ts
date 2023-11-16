@@ -22,8 +22,9 @@ import {OpusEncoderWorklet} from '../worklets/opus-encoder-worklet-contract';
 import {VoiceActivityChange} from './audio-vad-contract';
 import {RecorderStateEventHandler} from "../opus-media-recorder-contracts";
 import {Log} from 'logging';
+import {AudioDiagnosticsState} from "../audio-recorder";
 
-const { logScope, debugLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
+const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
 /// #if MEM_LEAK_DETECTION
 debugLog?.log(`MEM_LEAK_DETECTION == true`);
@@ -57,22 +58,25 @@ let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
 let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
+let lastFrameProcessedAt = 0;
 
 const serverImpl: OpusEncoderWorker = {
     create: async (artifactVersions: Map<string, string>, audioHubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
-        if (codecModule)
+        if (codecModule) {
+            if (hubConnection.state !== HubConnectionState.Connected)
+                await serverImpl.reconnect();
+
             return;
+        }
 
         debugLog?.log(`-> create`);
         Versioning.init(artifactVersions);
 
         // Connect to SignalR Hub
-        debugLog?.log(`create: hub connecting...`);
         hubConnection = new signalR.HubConnectionBuilder()
             .withUrl(audioHubUrl, {
                 skipNegotiation: true,
                 transport: signalR.HttpTransportType.WebSockets,
-                // headers: { [SessionTokens.headerName]: lastSessionToken },
             })
             // We use fixed number of attempts here, because the reconnection is anyway
             // triggered after SSB / Stl.Rpc reconnect. See:
@@ -84,18 +88,9 @@ const serverImpl: OpusEncoderWorker = {
             .withHubProtocol(new MessagePackHubProtocol())
             .configureLogging(signalR.LogLevel.Information)
             .build();
-        await hubConnection.start();
-
         hubConnection.onreconnected(() => onReconnect());
         hubConnection.onreconnecting(() => void server.onConnectionStateChanged(hubConnection.state === HubConnectionState.Connected, rpcNoWait));
-        void onReconnect();
-
-        // Ensure audio transport is up and running
-        debugLog?.log(`create: -> hub.ping()`);
-        const pong = await hubConnection.invoke('Ping');
-        debugLog?.log(`create: <- hub.ping():`, pong);
-        if (pong !== 'Pong')
-            warnLog?.log(`create: unexpected Ping call result`, pong);
+        debugLog?.log(`create: hub created`);
 
         // Get fade-in window
         kbdWindow = KaiserBesselDerivedWindow(CHUNK_SIZE*FADE_CHUNKS, 2.55);
@@ -104,12 +99,18 @@ const serverImpl: OpusEncoderWorker = {
 
         // Loading codec
         codecModule = await retry(3, () => codec(getEmscriptenLoaderOptions()));
+        debugLog?.log(`create: codec loaded`);
 
         // Warming up codec
         encoder = new codecModule.Encoder();
-        for (let i=0; i < 2; i++)
+        for (let i= 0; i < 2; i++)
             encoder.encode(pinkNoiseChunk.buffer);
         encoder.reset();
+
+        // Connecting to the server
+        debugLog?.log(`create: hub connecting...`);
+        await hubConnection.start();
+        void onReconnect();
 
         debugLog?.log(`<- create`);
         state = 'created';
@@ -126,6 +127,8 @@ const serverImpl: OpusEncoderWorker = {
         lastInitArguments = { chatId, repliedChatEntryId };
         debugLog?.log(`start`);
 
+        if (hubConnection.state !== HubConnectionState.Connected)
+            await serverImpl.reconnect();
         state = 'encoding';
         if (vadState === 'voice')
             await startRecording();
@@ -148,6 +151,7 @@ const serverImpl: OpusEncoderWorker = {
     },
 
     reconnect: async (_noWait?: RpcNoWait): Promise<void> => {
+        infoLog?.log(`reconnect: `, hubConnection.state);
         if (hubConnection.state === HubConnectionState.Connected)
             return;
 
@@ -170,6 +174,18 @@ const serverImpl: OpusEncoderWorker = {
             await hubConnection.start();
         }
         void onReconnect();
+    },
+
+    disconnect: async (_noWait?: RpcNoWait): Promise<void> => {
+        infoLog?.log(`disconnect: `, hubConnection.state);
+        await hubConnection.stop();
+    },
+
+    runDiagnostics: async (diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> => {
+        diagnosticsState.isConnected = hubConnection.state === HubConnectionState.Connected;
+        diagnosticsState.lastVadFrameProcessedAt = lastFrameProcessedAt;
+        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        return diagnosticsState;
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
@@ -322,6 +338,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             encodedChunk.set(typedViewEncodedChunk);
             result.push(encodedChunk);
 
+            lastFrameProcessedAt = Date.now();
             void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
 
             chunkTimeOffset += 20;

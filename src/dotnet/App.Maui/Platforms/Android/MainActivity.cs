@@ -20,9 +20,13 @@ namespace ActualChat.App.Maui;
     MainLauncher = true,
     // When user tap on a notification which was created by FCM when app was in background mode,
     // It causes creating a new instance of MainActivity. Apparently this happens because Intent has NewTask flag.
-    // Creating a new instance of MainActivity causes creating a new instance of MauiBlazorApp even without disposing an existing one.
-    // Setting LaunchMode to SingleTask prevents this behavior. Existing instance of MainActivity is used and Intent is passed to OnNewIntent method.
+    // Creating a new instance of MainActivity causes creating a new instance of MauiBlazorApp
+    // even without disposing an existing one.
+    // Setting LaunchMode to SingleTask or SingleInstance prevents this behavior.
+    // Existing instance of MainActivity is used and Intent is passed to OnNewIntent method.
     // MauiBlazorApp instance is kept.
+    // See:
+    // - https://stackoverflow.com/questions/25773928/setting-launchmode-singletask-vs-setting-activity-launchmode-singletop
     LaunchMode = LaunchMode.SingleTask,
     ConfigurationChanges =
         ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |
@@ -74,7 +78,7 @@ public partial class MainActivity : MauiAppCompatActivity
         base.OnCreate(savedInstanceState);
         _tracer.Point("OnCreate, base.OnCreate completed");
 
-        AndroidApplyThemeHandler.Instance.TryRestoreLastTheme();
+        MauiThemeHandler.Instance.TryRestoreLastTheme();
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061
@@ -107,36 +111,23 @@ public partial class MainActivity : MauiAppCompatActivity
     }
 #endif
 
-    protected override void OnStart()
-    {
-        _tracer.Point(nameof(OnStart));
-        base.OnStart();
-    }
-
-    protected override void OnResume()
-    {
-        _tracer.Point(nameof(OnResume));
-        base.OnResume();
-    }
-
-    protected override void OnStop()
-    {
-        _tracer.Point(nameof(OnStop));
-        base.OnStop();
-    }
-
     protected override void OnDestroy()
     {
-        _tracer.Point(nameof(OnDestroy));
         base.OnDestroy();
         Interlocked.CompareExchange(ref _current, null, this);
     }
 
     protected override void OnNewIntent(Intent? intent)
     {
-        _tracer.Point(nameof(OnNewIntent));
         base.OnNewIntent(intent);
         TryHandleNotificationTap(intent);
+    }
+
+    public override void OnTrimMemory(TrimMemory level)
+    {
+        Log.LogInformation("OnTrimMemory, Level: {Level}", level);
+        DumpMemoryInfo();
+        base.OnTrimMemory(level);
     }
 
     public Task RequestPermission(string permission, CancellationToken cancellationToken = default)
@@ -200,7 +191,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
         if (Log.IsEnabled(LogLevel.Information)) {
             var dataAsText = data.Select(c => $"'{c.Key}':'{c.Value}'").ToCommaPhrase();
-            Log.LogInformation("NotificationTap. Data: {Data}", dataAsText);
+            Log.LogInformation("NotificationTap, Data: {Data}", dataAsText);
         }
 
         var url = data.GetValueOrDefault(Constants.Notification.MessageDataKeys.Link);
@@ -211,6 +202,29 @@ public partial class MainActivity : MauiAppCompatActivity
         autoNavigationTasks.Add(DispatchToBlazor(
             c => c.GetRequiredService<NotificationUI>().HandleNotificationNavigation(url),
             $"NotificationUI.HandleNotificationNavigation(\"{url}\")"));
+    }
+
+    private void DumpMemoryInfo()
+    {
+        var activityManager = (ActivityManager)GetSystemService(ActivityService)!;
+        var memoryClass = activityManager.MemoryClass;
+        Log.LogInformation("MemoryClass: {MemoryClass}", memoryClass);
+        var memoryInfo = new ActivityManager.MemoryInfo();
+        activityManager.GetMemoryInfo(memoryInfo);
+        Log.LogInformation("MemoryInfo: AvailMem={AvailMem}, TotalMem={TotalMem}, LowMemory={LowMemory}, Threshold={Threshold}",
+            memoryInfo.AvailMem,
+            memoryInfo.TotalMem,
+            memoryInfo.LowMemory,
+            memoryInfo.Threshold);
+        var processInfo = new ActivityManager.RunningAppProcessInfo();
+        ActivityManager.GetMyMemoryState(processInfo);
+        Log.LogInformation(
+            "MyMemoryState: Pid={Pid}, LastTrimLevel={LastTrimLevel}, Lru={Lru}, Importance={Importance}, ImportanceReasonCode={ImportanceReasonCode}",
+            processInfo.Pid,
+            processInfo.LastTrimLevel,
+            processInfo.Lru,
+            processInfo.Importance,
+            processInfo.ImportanceReasonCode);
     }
 
     public class SplashScreenExitAnimationListener : GenericAnimatorListener, ISplashScreenOnExitAnimationListener
@@ -233,7 +247,7 @@ public partial class MainActivity : MauiAppCompatActivity
     {
         private static bool _splashRemoved; // Iron pants to prevent splash screen displayed after app is taken back from background.
         private readonly AView _contentView;
-        private readonly Task _whenSplashRemoved = LoadingUI.WhenViewCreated.WithDelay(TimeSpan.FromMilliseconds(50));
+        private readonly Task _whenSplashRemoved = LoadingUI.WhenViewCreated; // .WithDelay(TimeSpan.FromMilliseconds(50));
 
         public SplashScreenDelayer(AView contentView)
             => _contentView = contentView;

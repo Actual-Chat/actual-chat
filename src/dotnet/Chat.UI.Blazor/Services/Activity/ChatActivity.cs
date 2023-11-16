@@ -4,7 +4,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public class ChatActivity
 {
-    private readonly SharedResourcePool<ChatId, ChatRecordingActivity> _activityPool;
+    private readonly SharedResourcePool<ChatId, ChatStreamingActivity> _activityPool;
 
     internal IServiceProvider Services { get; }
     internal ILogger Log { get; }
@@ -22,23 +22,23 @@ public class ChatActivity
         Chats = services.GetRequiredService<IChats>();
         StateFactory = services.StateFactory();
         Clocks = services.Clocks();
-        _activityPool = new SharedResourcePool<ChatId, ChatRecordingActivity>(NewChatRecordingActivity);
+        _activityPool = new SharedResourcePool<ChatId, ChatStreamingActivity>(NewChatStreamingActivity);
     }
 
-    public async Task<IChatRecordingActivity> GetRecordingActivity(ChatId chatId, CancellationToken cancellationToken)
+    public async Task<IChatStreamingActivity> GetStreamingActivity(ChatId chatId, CancellationToken cancellationToken)
     {
         var lease = await _activityPool.Rent(chatId, cancellationToken).ConfigureAwait(false); // Ok here
-        return new ChatRecordingActivityReplica(lease);
+        return new ChatStreamingActivityReplica(lease);
     }
 
-    private Task<ChatRecordingActivity> NewChatRecordingActivity(ChatId chatId, CancellationToken cancellationToken)
+    private Task<ChatStreamingActivity> NewChatStreamingActivity(ChatId chatId, CancellationToken cancellationToken)
     {
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
-        var chatRecordingActivity = Services.GetRequiredService<ChatRecordingActivity>();
-        chatRecordingActivity.ChatId = chatId;
-        chatRecordingActivity.Start();
-        return Task.FromResult(chatRecordingActivity);
+        var chatStreamingActivity = Services.GetRequiredService<ChatStreamingActivity>();
+        chatStreamingActivity.ChatId = chatId;
+        chatStreamingActivity.Start();
+        return Task.FromResult(chatStreamingActivity);
     }
 }

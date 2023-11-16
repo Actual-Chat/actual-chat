@@ -8,7 +8,7 @@
 /* ChatAudioPanel, Mobile view */
 .narrow .chat-audio-panel {
     @apply self-stretch items-center;
-    @apply gap-x-6;
+    @apply gap-x-8;
     @apply py-2 mb-0.5;
     @apply rounded-b-4xl;
     background: linear-gradient(to top, var(--background-01) 40%, transparent);
@@ -29,7 +29,8 @@
 /* Buttons */
 .chat-audio-panel .btn.btn-round .btn-content {
     @apply rounded-full;
-    @apply bg-post-panel md:bg-post-panel-wide;
+    @apply bg-post-panel md:bg-input;
+    @apply text-audio-panel-button-text;
 }
 .chat-audio-panel .record-off-btn.btn .btn-content,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover .btn-content {
@@ -51,6 +52,11 @@ body.hoverable .chat-audio-panel .record-on-btn.btn:hover .btn-content {
 .narrow .chat-audio-panel .playback-wrapper,
 .narrow .chat-audio-panel .recorder-wrapper {
     @apply drop-shadow-lg;
+}
+.chat-audio-panel .language-button .btn.btn-round,
+.chat-audio-panel .playback-wrapper .btn.btn-round,
+.chat-audio-panel .recorder-wrapper .btn.btn-round {
+    @apply bg-transparent;
 }
 .chat-audio-panel .recorder-wrapper {
     @apply border-none;
@@ -76,7 +82,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 }
 .playback-wrapper.listen-off-to-on,
 .playback-wrapper.listen-on {
-    @apply outline outline-1 outline-playback-outline outline-offset-0;
+    @apply outline outline-1 outline-primary outline-offset-0;
     @apply bg-round-focus;
 }
 
@@ -136,6 +142,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .chat-audio-panel .playback-wrapper .btn.btn-round .btn-content,
 .narrow .chat-audio-panel .transcription-options-btn.btn.btn-round .btn-content {
     @apply bg-audio-panel-button;
+    @apply text-audio-panel-button-text;
 }
 .narrow .chat-audio-panel .playback-wrapper .btn.btn-round.on .btn-content {
     @apply bg-playback-on;
@@ -435,7 +442,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
     @apply text-02;
 }
 .transcription-options-modal .language-btn-group > .c-languages > button.active {
-    @apply bg-01;
+    @apply bg-cancel;
     @apply text-primary;
 }
 

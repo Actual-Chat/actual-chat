@@ -92,40 +92,34 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         }
 
         MarkStarting(chatId);
-        var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(StartRecordingTimeout);
         try {
             var isStarted = await _jsRef
-                .InvokeAsync<bool>("startRecording", cts.Token, chatId, repliedChatEntryId, sessionToken)
-                .ConfigureAwait(false);
+                .InvokeAsync<bool>("startRecording", CancellationToken.None, chatId, repliedChatEntryId, sessionToken)
+                .AsTask().WaitAsync(StartRecordingTimeout, cancellationToken).ConfigureAwait(false);
             if (!isStarted) {
                 MicrophonePermission.ForgetCached();
                 Log.LogWarning(nameof(StartRecording) + ": chat #{ChatId} - can't access the microphone", chatId);
                 // Cancel recording
                 MarkStopped();
                 throw new AudioRecorderException(
-                    "Can't access the microphone - please check if microphone access permission is granted.");
+                    "Can't access the microphone - please check if the microphone access permission is granted.");
             }
         }
         catch (Exception e) when (e is not AudioRecorderException) {
-            if (e is not OperationCanceledException)
+            if (e is OperationCanceledException)
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                DebugLog?.LogDebug(nameof(StartRecording) + " is cancelled");
+                DebugLog?.LogDebug($"{StartRecording} is cancelled");
             else
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                Log.LogError(e, nameof(StartRecording) + " failed");
+                Log.LogError(e,$"{nameof(StartRecording)} failed");
 
             await StopRecordingUnsafe().ConfigureAwait(false);
 
-            if (e is OperationCanceledException) {
-                if (cts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-                    throw new AudioRecorderException("Failed to start recording in time.", e);
+            if (e is OperationCanceledException)
                 throw;
-            }
-            throw new AudioRecorderException("Failed to start recording.", e);
-        }
-        finally {
-            cts.CancelAndDisposeSilently();
+            if (e is TimeoutException)
+                throw new AudioRecorderException("Failed to start the recording in time.", e);
+            throw new AudioRecorderException("Failed to start the recording.", e);
         }
     }
 
@@ -136,11 +130,25 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         return await StopRecordingUnsafe().ConfigureAwait(false);
     }
 
-    public ValueTask Reconnect(CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("reconnect", cancellationToken);
+    public async ValueTask Reconnect(CancellationToken cancellationToken)
+    {
+        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("reconnect", CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
 
-    public ValueTask ConversationSignal(CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("conversationSignal", cancellationToken);
+    public async ValueTask ConversationSignal(CancellationToken cancellationToken)
+    {
+        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+        await _jsRef.InvokeVoidAsync("conversationSignal", CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<AudioDiagnosticsState> RunDiagnostics(CancellationToken cancellationToken)
+    {
+        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await _jsRef.InvokeAsync<AudioDiagnosticsState>("runDiagnostics", cancellationToken).ConfigureAwait(false);
+    }
 
     // JS backend callback handlers
     [JSInvokable]
@@ -154,11 +162,18 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             isVoiceActive = false;
         }
 
-        _state.Value = state with {
+        var newState = state with {
             IsRecording = isRecording,
             IsConnected = isConnected,
             IsVoiceActive = isVoiceActive,
         };
+
+        if (state != newState)
+            _state.Value = state with {
+                IsRecording = isRecording,
+                IsConnected = isConnected,
+                IsVoiceActive = isVoiceActive,
+            };
         _recordingActivity
             ?.AddSentrySimulatedEvent(new ActivityEvent("Recording state changed",
                 tags: new ActivityTagsCollection {
@@ -178,20 +193,17 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             return true; // Nothing to do
 
         // This method should reliably stop the recording, so we don't use normal cancellation here
-        var cts = new CancellationTokenSource(StopRecordingTimeout);
         try {
-            await _jsRef.InvokeVoidAsync("stopRecording", cts.Token).ConfigureAwait(false);
+            await _jsRef.InvokeVoidAsync("stopRecording", CancellationToken.None)
+                .AsTask().WaitAsync(StopRecordingTimeout).ConfigureAwait(false);
         }
         catch (JSDisconnectedException) { } // Circuit is disposed or disposing
         catch (ObjectDisposedException) { } // Circuit is disposed or disposing
         catch (Exception e) {
-            var reason = cts.IsCancellationRequested ? "timed out" : "failed";
+            var reason = e is TimeoutException ? "timed out" : "failed";
             // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
             Log.LogError(e, $"{nameof(StopRecordingUnsafe)}: chat #{{ChatId}} - {reason}, recorder state is in doubt", chatId);
             return false;
-        }
-        finally {
-            cts.CancelAndDisposeSilently();
         }
         MarkStopped();
         return true;
@@ -200,7 +212,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     internal async Task<bool?> CheckPermission(CancellationToken cancellationToken = default)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        var state = await _jsRef.InvokeAsync<string>("checkPermission", cancellationToken).ConfigureAwait(false);
+        var state = await _jsRef.InvokeAsync<string>("checkPermission", CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         return state switch {
             "prompt" => null,
             "denied" => false,
@@ -212,7 +225,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     internal async Task<bool> RequestPermission(CancellationToken cancellationToken = default)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return await _jsRef.InvokeAsync<bool>("requestPermission", cancellationToken).ConfigureAwait(false);
+        return await _jsRef.InvokeAsync<bool>("requestPermission", CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // MarkXxx
@@ -235,8 +249,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsConnected), isConnected },
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
-
-        DebugLog?.LogDebug("Chat #{ChatId}: recording is starting", chatId);
+        DebugLog?.LogDebug("Chat #{ChatId}: recording is starting, {State}", chatId, _state.Value);
     }
 
     private void MarkStopped()
@@ -256,6 +269,39 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
         _recordingActivity?.Dispose();
-        DebugLog?.LogDebug("Recording is stopped");
+        DebugLog?.LogDebug("Recording is stopped, {State}", _state.Value);
+    }
+
+    public class AudioDiagnosticsState
+    {
+        public bool? IsPlayerInitialized { get; init; }
+        public bool? IsRecorderInitialized { get; init; }
+        public bool? HasMicrophonePermission { get; init; }
+        public bool? IsAudioContextSourceActive { get; init; }
+        public bool? IsAudioContextActive { get; init; }
+        public bool? HasMicrophoneStream { get; init; }
+        public bool? IsVadActive { get; init; }
+        public VadEvent? LastVadEvent { get; init; }
+        public long? LastVadFrameProcessedAt { get; init; }
+        public bool? IsConnected { get; init; }
+        public long? LastFrameProcessedAt { get; init; }
+        public string? VadWorkletState { get; init; }
+        public long? LastVadWorkletFrameProcessedAt { get; init; }
+        public string? EncoderWorkletState { get; init; }
+        public long? LastEncoderWorkletFrameProcessedAt { get; init; }
+
+        public override string ToString()
+            => $"{nameof(AudioDiagnosticsState)} {{ {nameof(IsPlayerInitialized)}: {IsPlayerInitialized}, {nameof(IsRecorderInitialized)}: {IsRecorderInitialized}, {nameof(HasMicrophonePermission)}: {HasMicrophonePermission}, {nameof(IsAudioContextSourceActive)}: {IsAudioContextSourceActive}, {nameof(IsAudioContextActive)}: {IsAudioContextActive}, {nameof(HasMicrophoneStream)}: {HasMicrophoneStream}, {nameof(IsVadActive)}: {IsVadActive}, {nameof(LastVadEvent)}: {LastVadEvent}, {nameof(LastVadFrameProcessedAt)}: {LastVadFrameProcessedAt}, {nameof(IsConnected)}: {IsConnected}, {nameof(LastFrameProcessedAt)}: {LastFrameProcessedAt}, {nameof(VadWorkletState)}: {VadWorkletState}, {nameof(LastVadWorkletFrameProcessedAt)}: {LastVadWorkletFrameProcessedAt}, {nameof(EncoderWorkletState)}: {EncoderWorkletState}, {nameof(LastEncoderWorkletFrameProcessedAt)}: {LastEncoderWorkletFrameProcessedAt} }}";
+    }
+
+    public class VadEvent
+    {
+        public string? Kind { get; init; }
+        public double Offset { get; init; }
+        public double Duration { get; init; }
+        public double SpeechProb { get; init; }
+
+        public override string ToString()
+            => $"{nameof(VadEvent)} {{ {nameof(Kind)}: {Kind}, {nameof(Offset)}: {Offset}, {nameof(Duration)}: {Duration}, {nameof(SpeechProb)}: {SpeechProb} }}";
     }
 }
