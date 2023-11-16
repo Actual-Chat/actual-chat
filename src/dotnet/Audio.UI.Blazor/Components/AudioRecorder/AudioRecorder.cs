@@ -102,7 +102,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                 // Cancel recording
                 MarkStopped();
                 throw new AudioRecorderException(
-                    "Can't access the microphone - please check if microphone access permission is granted.");
+                    "Can't access the microphone - please check if the microphone access permission is granted.");
             }
         }
         catch (Exception e) when (e is not AudioRecorderException) {
@@ -119,7 +119,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                 throw;
             if (e is TimeoutException)
                 throw new AudioRecorderException("Failed to start the recording in time.", e);
-            throw new AudioRecorderException("Failed to start recording.", e);
+            throw new AudioRecorderException("Failed to start the recording.", e);
         }
     }
 
