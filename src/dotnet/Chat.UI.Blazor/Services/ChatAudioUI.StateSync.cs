@@ -430,11 +430,12 @@ public partial class ChatAudioUI
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var lastState = AudioRecorderState.Idle;
+        var lastState = (ChatId: ChatId.None, RequiresTroubleshooter: false);
         var troubleshooterCts = (CancellationTokenSource?)null;
         try {
             var changes = AudioRecorder.State.Changes(cancellationToken);
-            await foreach (var (state, _) in changes.ConfigureAwait(false)) {
+            await foreach (var (value, _) in changes.ConfigureAwait(false)) {
+                var state = (value.ChatId, RequiresTroubleshooter: value.RequiresRecordingTroubleshooter());
                 if (state == lastState)
                     continue; // Nothing changed - this may happen, we don't want to take any actions in this case
 
@@ -444,14 +445,14 @@ public partial class ChatAudioUI
                 }
                 else if (state.ChatId != lastState.ChatId) {
                     // Recording in new chat
-                    if (state.RequiresRecordingTroubleshooter())
+                    if (state.RequiresTroubleshooter)
                         StartOrKeepTroubleshooter();
                 }
                 else if (!state.ChatId.IsNone) {
                     // Recording in the same chat
-                    if (!state.RequiresRecordingTroubleshooter())
+                    if (!state.RequiresTroubleshooter)
                         StopTroubleshooter();
-                    else if (!lastState.RequiresRecordingTroubleshooter()) // And it's required now
+                    else if (!lastState.RequiresTroubleshooter) // And it's required now
                         StartOrKeepTroubleshooter();
                 }
                 lastState = state;
