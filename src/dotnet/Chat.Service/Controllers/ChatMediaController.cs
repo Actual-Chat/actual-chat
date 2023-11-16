@@ -45,7 +45,11 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
         if (formFile.Length > Constants.Attachments.FileSizeLimit)
             return BadRequest("File is too big.");
 
-        using var processedFile = await UploadProcessors.Process(formFile.FileName, formFile.ContentType, formFile.OpenReadStream(), cancellationToken).ConfigureAwait(false);
+        var uploadedFile = new UploadedStreamFile(formFile.FileName,
+            formFile.ContentType,
+            formFile.Length,
+            () => Task.FromResult(formFile.OpenReadStream()));
+        using var processedFile = await UploadProcessors.Process(uploadedFile, cancellationToken).ConfigureAwait(false);
         var mediaId = new MediaId(chatId, Generate.Option);
         var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
         var media = new Media.Media(mediaId) {
@@ -56,7 +60,7 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             Width = processedFile.Size?.Width ?? 0,
             Height = processedFile.Size?.Height ?? 0,
         };
-        var stream = processedFile.File.Open();
+        var stream = await processedFile.File.Open().ConfigureAwait(false);
         await using (stream.ConfigureAwait(false)) {
             var content = new Content(media.ContentId, processedFile.File.ContentType, stream);
             await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);

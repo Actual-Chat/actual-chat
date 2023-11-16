@@ -2,12 +2,12 @@ using Stl.IO;
 
 namespace ActualChat.Uploads;
 
-public sealed record UploadedTempFile(string FileName, string ContentType, FilePath TempFilePath) : UploadedFile(FileName, ContentType)
+public sealed record UploadedTempFile(FilePath FileName, string ContentType, FilePath TempFilePath) : UploadedFile(FileName, ContentType)
 {
-    public override long Length => new FileInfo(TempFilePath).Length;
+    public override long Length { get; init; } = new FileInfo(TempFilePath).Length;
 
-    public override Stream Open()
-        => File.OpenRead(TempFilePath);
+    public override Task<Stream> Open()
+        => Task.FromResult<Stream>(File.OpenRead(TempFilePath));
 
     public void Delete()
         => File.Delete(TempFilePath);

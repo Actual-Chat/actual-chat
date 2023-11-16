@@ -17,7 +17,7 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
     {
         var (needConversion, size) = await GetVideoInfo(file, cancellationToken).ConfigureAwait(false);
         if (size == null)
-            file = file with { ContentType = MediaTypeNames.Application.Octet };
+            file = file with { ContentType = MediaTypeNames.Application.Octet }; // further we think that it's not a video
         if (!needConversion)
             return new ProcessedFile(file, size);
 
@@ -25,7 +25,7 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
             var tempDir = FilePath.GetApplicationTempDirectory();
             var convertedFileName = Guid.NewGuid().ToString("N") + "_" + Path.ChangeExtension(file.FileName, ".mp4");
             var convertedFilePath = tempDir | convertedFileName;
-            var stream = file.Open();
+            var stream = await file.Open().ConfigureAwait(false);
             await using var _ = stream.ConfigureAwait(false);
             await FFMpegArguments.FromPipeInput(new StreamPipeSource(stream))
                 .OutputToFile(convertedFilePath,
@@ -54,7 +54,7 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
     private async Task<(bool NeedConversion, Size? Size)> GetVideoInfo(UploadedFile file, CancellationToken cancellationToken)
     {
         try {
-            var stream = file.Open();
+            var stream = await file.Open().ConfigureAwait(false);
             await using var _ = stream.ConfigureAwait(false);
             var media = await FFProbe.AnalyseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
             var video = media.PrimaryVideoStream;

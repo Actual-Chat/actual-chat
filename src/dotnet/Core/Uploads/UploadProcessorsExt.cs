@@ -4,16 +4,14 @@ namespace ActualChat.Uploads;
 
 public static class UploadProcessorsExt
 {
-    public static async Task<ProcessedFile> Process(this IEnumerable<IUploadProcessor> processors, FilePath fileName, string contentType, Stream stream, CancellationToken cancellationToken)
+    public static async Task<ProcessedFile> Process(this IEnumerable<IUploadProcessor> processors, UploadedFile file, CancellationToken cancellationToken)
     {
-        var processor = processors.FirstOrDefault(x => x.Supports(contentType));
-        if (processor is null) {
+        var processor = processors.FirstOrDefault(x => x.Supports(file.ContentType));
+        if (processor is null)
             // no need to dump file to file system
-            var memoryFile = await ToMemoryFile(fileName, contentType, stream, cancellationToken).ConfigureAwait(false);
-            return new ProcessedFile(memoryFile, null);
-        }
+            return new ProcessedFile(file, null);
 
-        var tempFile = await DumpToTempFile(fileName, contentType, stream, cancellationToken).ConfigureAwait(false);
+        var tempFile = await DumpToTempFile(file, cancellationToken).ConfigureAwait(false);
         var processedFile = await processor.Process(tempFile, cancellationToken).ConfigureAwait(false);
         if (tempFile != processedFile.File)
             tempFile.Delete();
@@ -21,23 +19,16 @@ public static class UploadProcessorsExt
         return processedFile;
     }
 
-    private static async Task<UploadedTempFile> DumpToTempFile(FilePath fileName, string contentType, Stream stream, CancellationToken cancellationToken)
+    private static async Task<UploadedTempFile> DumpToTempFile(UploadedFile file, CancellationToken cancellationToken)
     {
-        var tempFileName = fileName.FileNameWithoutExtension + "_" + Guid.NewGuid() + fileName.Extension;
+        var tempFileName = Guid.NewGuid() + "_" + file.FileName;
         var tempFilePath = FilePath.GetApplicationTempDirectory() & tempFileName;
         var target = File.OpenWrite(tempFilePath);
-        await using var _ = target.ConfigureAwait(false);
-        await stream.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
+        await using var _1 = target.ConfigureAwait(false);
+        var source = await file.Open().ConfigureAwait(false);
+        await using var _2 = source.ConfigureAwait(false);
+        await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
         target.Position = 0;
-        return new UploadedTempFile(fileName, contentType, tempFilePath);
-    }
-
-    private static async Task<UploadedMemoryFile> ToMemoryFile(FilePath fileName, string contentType, Stream stream, CancellationToken cancellationToken)
-    {
-        var target = new MemoryStream();
-        await using var _ = target.ConfigureAwait(false);
-        await stream.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
-        target.Position = 0;
-        return new UploadedMemoryFile(fileName, contentType, target.ToArray());
+        return new UploadedTempFile(file.FileName, file.ContentType, tempFilePath);
     }
 }
