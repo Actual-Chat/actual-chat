@@ -3,6 +3,8 @@ using Stl.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Diagnostics;
 
+#pragma warning disable CA2000 // Dispose objects before losing scope
+
 // Requires <TrimmerRootAssembly Include="System.Private.CoreLib" />
 public class TaskEventListener : WorkerBase
 {

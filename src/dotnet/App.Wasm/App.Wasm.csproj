@@ -25,7 +25,7 @@ Use:
   </PropertyGroup>
 
   <ItemGroup>
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" TrimMode="EntryPoint" />
   </ItemGroup>
 
   <ItemGroup>
