@@ -5,28 +5,28 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
-    <AspNetCoreVersion>8.0.0-rc.2.23480.2</AspNetCoreVersion>
+    <AspNetCoreVersion>8.0.0</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>8.0.0-rc.2.23480.1</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreVersion>8.0.0</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>8.0.0-rc.2</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>8.0.0-rc.2</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
-    <MicrosoftExtensionsVersion>8.0.0-rc.2.23479.6</MicrosoftExtensionsVersion>
-    <MicrosoftExtensionsBaseVersion>8.0.0-rc.2.23479.6</MicrosoftExtensionsBaseVersion>
+    <MicrosoftExtensionsVersion>8.0.0</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsBaseVersion>8.0.0</MicrosoftExtensionsBaseVersion>
     <NpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</NpgsqlVersion>
-    <RedisVersion>2.6.122</RedisVersion>
+    <RedisVersion>2.7.4</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>6.5.43</StlFusionVersion>
+    <StlFusionVersion>6.6.5</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.6.0</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.5.1-beta.1</OpenTelemetryAspNetCoreVersion>
     <OpenTelemetryNpgsqlVersion>8.0.0-rc.2</OpenTelemetryNpgsqlVersion>
     <SentryVersion>3.40.1</SentryVersion>
-    <MemoryPackVersion>1.9.16</MemoryPackVersion>
+    <MemoryPackVersion>1.10.0</MemoryPackVersion>
     <MessagePackVersion>2.4.59</MessagePackVersion>
   </PropertyGroup>
   <ItemGroup Label="Nupkg Versions">
-    <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="7.0.4" />
+    <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="8.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="7.1.0" />
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
@@ -35,9 +35,9 @@
     <PackageVersion Include="Google.Api.Gax" Version="4.4.0" />
     <PackageVersion Include="Google.Api.Gax.Rest" Version="4.4.0" />
     <PackageVersion Include="Google.Api.Gax.Grpc" Version="4.4.0" />
-    <PackageVersion Include="Google.Apis" Version="1.61.0" />
+    <PackageVersion Include="Google.Apis" Version="1.64.0" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.61.0" />
-    <PackageVersion Include="Google.Cloud.Storage.V1" Version="4.6.0" />
+    <PackageVersion Include="Google.Cloud.Storage.V1" Version="4.7.0" />
     <!-- We use Grpc.Core from otlp exporter -->
     <PackageVersion Include="Grpc.Core" Version="2.46.6" />
     <PackageVersion Include="Google.Cloud.Speech.V2" Version="1.0.0-beta03" />
@@ -68,10 +68,10 @@
     <PackageVersion Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
     <PackageVersion Include="sqlite-net-pcl" Version="1.8.116" />
-    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.5" />
-    <PackageVersion Include="Twilio" Version="6.7.0" />
-    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="6.32.0" />
-    <PackageVersion Include="libphonenumber-csharp" Version="8.13.22" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_green" Version="2.1.6" />
+    <PackageVersion Include="Twilio" Version="6.15.0" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.0.3" />
+    <PackageVersion Include="libphonenumber-csharp" Version="8.13.24" />
   </ItemGroup>
   <!--
     MAUI is not compatible with centralized packages management https://github.com/dotnet/sdk/issues/27840
@@ -115,7 +115,7 @@
     <PackageVersion Include="RestEase" Version="1.6.4" />
     <PackageVersion Include="Pidgin" Version="3.2.2" />
     <PackageVersion Include="Pipelines.Sockets.Unofficial" Version="2.2.8" />
-    <PackageVersion Include="Polly" Version="8.1.0" />
+    <PackageVersion Include="Polly" Version="8.2.0" />
     <PackageVersion Include="Sentry" Version="$(SentryVersion)" />
     <PackageVersion Include="Sentry.Extensions.Logging" Version="$(SentryVersion)" />
     <PackageVersion Include="Sentry.Serilog" Version="$(SentryVersion) " />
@@ -125,7 +125,7 @@
     <PackageVersion Include="Serilog.Extensions.Logging" Version="3.1.0" />
     <PackageVersion Include="Serilog.Sinks.Xamarin" Version="1.0.0" />
     <PackageVersion Include="Serilog.Sinks.Debug" Version="2.0.0" />
-    <PackageVersion Include="SixLabors.ImageSharp" Version="3.0.1" />
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.0.2" />
     <PackageVersion Include="StackExchange.Redis" Version="$(RedisVersion)" />
     <PackageVersion Include="Stl" Version="$(StlFusionVersion)" />
     <PackageVersion Include="Stl.CommandR" Version="$(StlFusionVersion)" />
@@ -155,11 +155,11 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageVersion Include="banditoth.MAUI.DeviceId" Version="1.0.0" />
     <!-- MAUI - Android -->
-    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.9.0.2" />
-    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.4.0.1" />
-    <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="117.0.1" />
-    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.1.1.1" />
-    <PackageVersion Include="Xamarin.Google.Dagger" Version="2.41.0.2" />
+    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.12.0.2" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.7.0.1" />
+    <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.0.1.7" />
+    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.2.1.1" />
+    <PackageVersion Include="Xamarin.Google.Dagger" Version="2.47.0.1" />
     <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
     <!-- MAUI - iOS -->
     <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="2.0.3" />
@@ -185,16 +185,16 @@
     <PackageVersion Include="System.Management" Version="7.0.0-rc.2.22472.3" />
     <PackageVersion Include="Crayon" Version="2.0.69" />
     <!-- Build / test time only -->
-    <PackageVersion Include="bunit" Version="1.22.19" />
+    <PackageVersion Include="bunit" Version="1.25.3" />
     <PackageVersion Include="FluentAssertions" Version="6.12.0" />
     <PackageVersion Include="GitHubActionsTestLogger" Version="2.3.3" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.7.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" PrivateAssets="all" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers;" />
-    <PackageVersion Include="Microsoft.Playwright" Version="1.34.0" />
-    <PackageVersion Include="Moq" Version="4.18.4" />
+    <PackageVersion Include="Microsoft.Playwright" Version="1.39.0" />
+    <PackageVersion Include="Moq" Version="4.20.69" />
     <PackageVersion Include="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.6.133" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="xunit" Version="2.6.1" />
@@ -203,10 +203,10 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.3" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Analyzers -->
     <PackageVersion Include="Moq.Analyzers" Version="0.0.9" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.7.30" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.105" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Roslynator.Analyzers" Version="4.6.1" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="xunit.analyzers" Version="1.4.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="17.8.14" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="2.0.110" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Roslynator.Analyzers" Version="4.6.2" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="xunit.analyzers" Version="1.5.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->
     <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.4" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="Stl.Generators" Version="$(StlFusionVersion)" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
