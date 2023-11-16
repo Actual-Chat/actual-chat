@@ -33,7 +33,7 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
         var outPath = FilePath.GetApplicationTempDirectory() & (Guid.NewGuid().ToString("N") + "_" + file.FileName);
         var outStream = File.OpenWrite(outPath);
         await using (var _ = outStream.ConfigureAwait(false)) {
-            var inputStream = file.Open();
+            var inputStream = await file.Open().ConfigureAwait(false);
             await using var __ = inputStream.ConfigureAwait(false);
             using (Image image = await Image.LoadAsync(inputStream, cancellationToken).ConfigureAwait(false)) {
                 image.Mutate(img => {
@@ -55,7 +55,7 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
     private async Task<ImageInfo?> GetImageInfo(UploadedFile file)
     {
         try {
-            var inputStream = file.Open();
+            var inputStream = await file.Open().ConfigureAwait(false);
             await using var __ = inputStream.ConfigureAwait(false);
             return await Image.IdentifyAsync(inputStream).ConfigureAwait(false);
         }

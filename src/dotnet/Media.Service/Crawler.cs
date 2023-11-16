@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Media.Module;
 using ActualChat.Uploads;
 using OpenGraphNet;
@@ -97,7 +96,7 @@ public class Crawler(IServiceProvider services) : IHasServices
             Height = processedFile.Size?.Height ?? 0,
         };
 
-        var stream = processedFile.File.Open();
+        var stream = await processedFile.File.Open().ConfigureAwait(false);
         await using var _ = stream.ConfigureAwait(false);
         var content = new Content(media.ContentId, media.ContentType, stream);
         await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
@@ -112,23 +111,27 @@ public class Crawler(IServiceProvider services) : IHasServices
         return mediaId;
     }
 
-    private async Task<ProcessedFile?> DownloadImageToFile(Uri imageUri, CancellationToken cancellationToken)
+    private Task<ProcessedFile?> DownloadImageToFile(Uri imageUri, CancellationToken cancellationToken)
     {
-        var cts = cancellationToken.CreateLinkedTokenSource();
+        using var cts = cancellationToken.CreateLinkedTokenSource();
         cts.CancelAfter(Settings.CrawlerImageDownloadTimeout);
+        return Download(cts.Token);
 
-        var response = await HttpClient.GetAsync(imageUri, cts.Token).ConfigureAwait(false);
-        if (!response.IsSuccessStatusCode)
-            return null;
+        async Task<ProcessedFile?> Download(CancellationToken cancellationToken1)
+        {
+            var response = await HttpClient.GetAsync(imageUri, cancellationToken1).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                return null;
 
-        FilePath fileName = new string(response.RequestMessage!.RequestUri!.Segments[^1].Where(Alphabet.AlphaNumeric.IsMatch).ToArray());
-        var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-        var ext = MediaTypeExt.GetFileExtension(contentType); // TODO: convert if icon is not supported
-        if (ext.IsNullOrEmpty())
-            return null;
+            FilePath fileName = new string(response.RequestMessage!.RequestUri!.Segments[^1].Where(Alphabet.AlphaNumeric.IsMatch).ToArray());
+            var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
+            var ext = MediaTypeExt.GetFileExtension(contentType); // TODO: convert if icon is not supported
+            if (ext.IsNullOrEmpty())
+                return null;
 
-        var stream = await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false);
-        return await UploadProcessors.Process(fileName, contentType, stream, cts.Token).ConfigureAwait(false);
+            var file = new UploadedStreamFile(fileName, contentType, response.Content.Headers.ContentLength ?? 0, () => response.Content.ReadAsStreamAsync(cancellationToken1));
+            return await UploadProcessors.Process(file, cancellationToken1).ConfigureAwait(false);
+        }
     }
 }
 
