@@ -1,5 +1,7 @@
 namespace ActualChat.Transcription;
 
+#pragma warning disable SYSLIB0051 // Type or member is obsolete
+
 public class TranscriptionException : Exception
 {
     public string? Code { get; init; }

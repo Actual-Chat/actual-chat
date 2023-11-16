@@ -71,7 +71,6 @@
 @code {
     private static readonly string JSInitMethod = $"{ChatBlazorUIModule.ImportName}.RecorderToggle.init";
     private OnOffAnimator _animator = null!;
-    private CancellationTokenSource? _connectionTroubleshooterCts;
 
     [Inject] private ChatHub ChatHub { get; init; } = null!;
     private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;

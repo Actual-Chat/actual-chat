@@ -16,7 +16,9 @@ public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICl
     public ApiMap(IEqualityComparer<TKey>? comparer) : base(comparer) { }
     public ApiMap(int capacity) : base(capacity) { }
     public ApiMap(int capacity, IEqualityComparer<TKey>? comparer) : base(capacity, comparer) { }
+#pragma warning disable SYSLIB0051 // Type or member is obsolete
     private ApiMap(SerializationInfo info, StreamingContext context) : base(info, context) { }
+#pragma warning restore SYSLIB0051
 
     object ICloneable.Clone() => Clone();
     public ApiMap<TKey, TValue> Clone() => new(this, Comparer);

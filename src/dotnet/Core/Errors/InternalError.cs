@@ -1,5 +1,7 @@
 namespace ActualChat;
 
+#pragma warning disable SYSLIB0051 // Type or member is obsolete
+
 [Serializable]
 public class InternalError : Exception
 {

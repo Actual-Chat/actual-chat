@@ -1,5 +1,7 @@
 namespace ActualChat.Messaging;
 
+#pragma warning disable SYSLIB0051 // Type or member is obsolete
+
 [Serializable]
 public class MessageProcessingException : Exception
 {
