@@ -144,6 +144,12 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<AudioDiagnosticsState> RunDiagnostics(CancellationToken cancellationToken)
+    {
+        await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
+        return await _jsRef.InvokeAsync<AudioDiagnosticsState>("runDiagnostics", cancellationToken).ConfigureAwait(false);
+    }
+
     // JS backend callback handlers
     [JSInvokable]
     public void OnRecordingStateChange(bool isRecording, bool isConnected, bool isVoiceActive)
@@ -257,5 +263,38 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                 }));
         _recordingActivity?.Dispose();
         DebugLog?.LogDebug("Recording is stopped");
+    }
+
+    public class AudioDiagnosticsState
+    {
+        public bool? IsPlayerInitialized { get; init; }
+        public bool? IsRecorderInitialized { get; init; }
+        public bool? HasMicrophonePermission { get; init; }
+        public bool? IsAudioContextSourceActive { get; init; }
+        public bool? IsAudioContextActive { get; init; }
+        public bool? HasMicrophoneStream { get; init; }
+        public bool? IsVadActive { get; init; }
+        public VadEvent? LastVadEvent { get; init; }
+        public int? LastVadFrameProcessedAt { get; init; }
+        public bool? IsConnected { get; init; }
+        public int? LastFrameProcessedAt { get; init; }
+        public string? VadWorkletState { get; init; }
+        public int? LastVadWorkletFrameProcessedAt { get; init; }
+        public string? EncoderWorkletState { get; init; }
+        public int? LastEncoderWorkletFrameProcessedAt { get; init; }
+
+        public override string ToString()
+            => $"{nameof(AudioDiagnosticsState)} {{ {nameof(IsPlayerInitialized)}: {IsPlayerInitialized}, {nameof(IsRecorderInitialized)}: {IsRecorderInitialized}, {nameof(HasMicrophonePermission)}: {HasMicrophonePermission}, {nameof(IsAudioContextSourceActive)}: {IsAudioContextSourceActive}, {nameof(IsAudioContextActive)}: {IsAudioContextActive}, {nameof(HasMicrophoneStream)}: {HasMicrophoneStream}, {nameof(IsVadActive)}: {IsVadActive}, {nameof(LastVadEvent)}: {LastVadEvent}, {nameof(LastVadFrameProcessedAt)}: {LastVadFrameProcessedAt}, {nameof(IsConnected)}: {IsConnected}, {nameof(LastFrameProcessedAt)}: {LastFrameProcessedAt}, {nameof(VadWorkletState)}: {VadWorkletState}, {nameof(LastVadWorkletFrameProcessedAt)}: {LastVadWorkletFrameProcessedAt}, {nameof(EncoderWorkletState)}: {EncoderWorkletState}, {nameof(LastEncoderWorkletFrameProcessedAt)}: {LastEncoderWorkletFrameProcessedAt} }}";
+    }
+
+    public class VadEvent
+    {
+        public string? Kind { get; init; }
+        public double Offset { get; init; }
+        public double Duration { get; init; }
+        public double SpeechProb { get; init; }
+
+        public override string ToString()
+            => $"{nameof(VadEvent)} {{ {nameof(Kind)}: {Kind}, {nameof(Offset)}: {Offset}, {nameof(Duration)}: {Duration}, {nameof(SpeechProb)}: {SpeechProb} }}";
     }
 }

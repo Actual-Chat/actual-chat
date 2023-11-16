@@ -22,6 +22,7 @@ import {OpusEncoderWorklet} from '../worklets/opus-encoder-worklet-contract';
 import {VoiceActivityChange} from './audio-vad-contract';
 import {RecorderStateEventHandler} from "../opus-media-recorder-contracts";
 import {Log} from 'logging';
+import {AudioDiagnosticsState} from "../audio-recorder";
 
 const { logScope, debugLog, infoLog, warnLog, errorLog } = Log.get('OpusEncoderWorker');
 
@@ -57,6 +58,7 @@ let kbdWindow: Float32Array | null = null;
 let pinkNoiseChunk: Float32Array | null = null;
 let silenceChunk: Float32Array | null = null;
 let chunkTimeOffset: number = 0;
+let lastFrameProcessedAt = 0;
 
 const serverImpl: OpusEncoderWorker = {
     create: async (artifactVersions: Map<string, string>, audioHubUrl: string, _timeout?: RpcTimeout): Promise<void> => {
@@ -177,6 +179,13 @@ const serverImpl: OpusEncoderWorker = {
     disconnect: async (_noWait?: RpcNoWait): Promise<void> => {
         infoLog?.log(`disconnect: `, hubConnection.state);
         await hubConnection.stop();
+    },
+
+    runDiagnostics: async (diagnosticsState: AudioDiagnosticsState): Promise<AudioDiagnosticsState> => {
+        diagnosticsState.isConnected = hubConnection.state === HubConnectionState.Connected;
+        diagnosticsState.lastVadFrameProcessedAt = lastFrameProcessedAt;
+        warnLog?.log('runDiagnostics: ', diagnosticsState);
+        return diagnosticsState;
     },
 
     onEncoderWorkletSamples: async (buffer: ArrayBuffer, _noWait?: RpcNoWait): Promise<void> => {
@@ -329,6 +338,7 @@ function processQueue(fade: 'in' | 'out' | 'none' = 'none'): void {
             encodedChunk.set(typedViewEncodedChunk);
             result.push(encodedChunk);
 
+            lastFrameProcessedAt = Date.now();
             void encoderWorklet.releaseBuffer(buffer, rpcNoWait);
 
             chunkTimeOffset += 20;
