@@ -552,6 +552,11 @@ public partial class ChatAudioUI
         await Dispatcher.InvokeAsync(async () => {
             var model = new RecordingTroubleshooterModal.Model(null, true);
             var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
+
+            Log.LogWarning("Recording issue. Capturing diagnostics state...");
+            var diagnostics = await AudioRecorder.RunDiagnostics(cancellationToken);
+            Log.LogWarning("Recording issue. Diagnostics State = {State}", diagnostics);
+
             try {
                 await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);
             }
