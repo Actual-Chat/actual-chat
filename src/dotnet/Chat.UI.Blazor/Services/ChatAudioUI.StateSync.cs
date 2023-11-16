@@ -68,7 +68,7 @@ public partial class ChatAudioUI
                     _ = IsAudioOn();
             }
             if ((oldRecordingChat != default && newRecordingChat == default) || (newListeningChats.Count == 0 && oldListeningChats.Count > 0))
-                _audioStoppedAt.Value = Now;
+                _audioStoppedAt.Value = CpuNow;
 
             oldRecordingChat = newRecordingChat;
             oldListeningChats = newListeningChats;
@@ -136,6 +136,8 @@ public partial class ChatAudioUI
 
     private async Task RecordChat(Computed<RecordingState> cRecordingState, CancellationToken cancellationToken)
     {
+        var serverClock = Clocks.ServerClock;
+        var cpuClock = Clocks.CpuClock;
         var (chatId, language) = cRecordingState.Value;
         if (!InteractiveUI.IsInteractive.Value) {
             var isConfirmed = false;
@@ -173,8 +175,9 @@ public partial class ChatAudioUI
                     AudioSettings.IdleRecordingTimeout,
                     AudioSettings.IdleRecordingPreCountdownTimeout,
                     AudioSettings.IdleRecordingCheckPeriod);
-                await foreach (var stopAt in ObserveStreamingIdleBoundaries(chatId, options, cts.Token).ConfigureAwait(false))
-                    _stopRecordingAt.Value = stopAt;
+                var streamingIdleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, cts.Token);
+                await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false))
+                    _stopRecordingAt.Value = serverStopAt.Convert(serverClock, cpuClock);
             }, cts.Token);
             await Task.WhenAny(whenStopped, whenIdle).ConfigureAwait(false);
             // No need to await for the result of WhenAny: we're stopping anyway
@@ -373,12 +376,11 @@ public partial class ChatAudioUI
                 continue;
 
             prevActiveUntil = change.Value.ActiveUntil;
-            change.Invalidate(nextBeep.At - Now);
+            change.Invalidate(nextBeep.At - CpuNow);
         }
         return;
 
-        NextBeepState? GetNextBeep(RecordingBeepState state)
-        {
+        NextBeepState? GetNextBeep(RecordingBeepState state) {
             var (isRecording, activeUntil, isCountingDown) = state;
             if (!isRecording)
                 return null;
@@ -391,15 +393,15 @@ public partial class ChatAudioUI
                 // UI interaction resets beep timer
                 return new (activeUntil + beepIn, true);
 
-            // hasn't beeped yet
+            // Didn't beep yet
             if (_nextBeep.Value is not {} prevBeep || prevBeep.At < activeUntil)
                 return new NextBeepState(activeUntil + beepIn, false);
 
-            // doesn't need recalculation
-            if (prevBeep.At > Now)
+            // Doesn't need recalculation
+            if (prevBeep.At > CpuNow)
                 return prevBeep;
 
-            // recalculate
+            // Recalculate
             return new (prevBeep.At + beepIn, false);
         }
     }
@@ -410,9 +412,9 @@ public partial class ChatAudioUI
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         while (!cancellationToken.IsCancellationRequested) {
-            var cNextBeep = await _nextBeep.When(x => x != null && x.At > Now, cancellationToken).ConfigureAwait(false);
+            var cNextBeep = await _nextBeep.When(x => x != null && x.At > CpuNow, cancellationToken).ConfigureAwait(false);
             var nextBeepAt = cNextBeep.Value!.At;
-            var nextBeepIn = nextBeepAt - Now;
+            var nextBeepIn = nextBeepAt - CpuNow;
             await Task.Delay(TimeSpanExt.Max(nextBeepIn, TimeSpan.FromMilliseconds(50)), cancellationToken).ConfigureAwait(false);
             if (await IsNotCancelled(nextBeepAt).ConfigureAwait(false))
                 await TuneUI.PlayAndWait(Tune.RemindOfRecording).ConfigureAwait(false);
@@ -498,19 +500,20 @@ public partial class ChatAudioUI
             // if recording is not started, other properties make no sense
             return new (false, Moment.MinValue, false);
 
-        var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false);
-        var recordingStopsAt = await StopRecordingAt.Use(cancellationToken).ConfigureAwait(false);
+        var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false); // CPU time
+        var recordingStopsAt = await StopRecordingAt.Use(cancellationToken).ConfigureAwait(false); // CPU time
         var isRecording = !recordingChatId.IsNone;
         return new(isRecording, activeUntil, recordingStopsAt != null);
     }
 
+    // !!! This method returns server time sequence!
     private async IAsyncEnumerable<Moment?> ObserveStreamingIdleBoundaries(
         ChatId chatId,
         RecordingIdleOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await Task.Yield();
-        var lastTranscribedAt = Now;
+        var lastTranscribedAt = Clocks.ServerClock.Now;
         yield return null;
 
         // We just started, so it's ok to await for the countdown interval first
@@ -518,9 +521,9 @@ public partial class ChatAudioUI
 
         using var streamingActivity = await ChatActivity.GetStreamingActivity(chatId, cancellationToken).ConfigureAwait(false);
         while (!cancellationToken.IsCancellationRequested) {
-            lastTranscribedAt = Moment.Max(lastTranscribedAt, streamingActivity.LastTranscribedAt.Value ?? Now);
+            lastTranscribedAt = Moment.Max(lastTranscribedAt, streamingActivity.LastTranscribedAt.Value ?? ServerNow);
             var idleAt = lastTranscribedAt + options.IdleTimeout;
-            var idleDelay = (idleAt - Now).Positive();
+            var idleDelay = (idleAt - ServerNow).Positive();
             if (idleDelay <= Epsilon) {
                 // We must stop right now
                 yield return null;
@@ -528,7 +531,7 @@ public partial class ChatAudioUI
             }
 
             var countdownAt = lastTranscribedAt + options.PreCountdownTimeout;
-            var countdownDelay = (countdownAt - Now).Positive();
+            var countdownDelay = (countdownAt - ServerNow).Positive();
             if (countdownDelay <= Epsilon) {
                 // Start the countdown
                 yield return idleAt;
@@ -567,9 +570,14 @@ public partial class ChatAudioUI
     }
 
     [StructLayout(LayoutKind.Auto)]
-    public readonly record struct RecordingBeepState(bool IsRecording, Moment ActiveUntil, bool IsCountingDown);
+    public readonly record struct RecordingBeepState(
+        bool IsRecording,
+        Moment ActiveUntil, // CPU time
+        bool IsCountingDown);
 
-    public record NextBeepState(Moment At, bool IsPreviousCancelled);
+    public record NextBeepState(
+        Moment At, // CPU time
+        bool IsPreviousCancelled);
 
     [StructLayout(LayoutKind.Auto)]
     public readonly record struct RecordingIdleOptions
