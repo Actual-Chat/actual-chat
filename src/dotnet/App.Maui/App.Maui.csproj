@@ -88,7 +88,6 @@
     <PackageReference Include="Microsoft.Maui.Controls" />
     <PackageReference Include="Microsoft.Maui.Controls.Compatibility" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
-    <!-- End of extra packages for .NET 8 -->
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" VersionOverride="$(MicrosoftExtensionsVersion)" />
     <PackageReference Include="Sentry.Serilog" />
@@ -106,6 +105,8 @@
 
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
     <PackageReference Include="Xamarin.AndroidX.Core" />
+    <PackageReference Include="Xamarin.AndroidX.Collection" />
+    <PackageReference Include="Xamarin.AndroidX.Collection.Ktx" />
     <PackageReference Include="Xamarin.Firebase.Messaging" />
     <PackageReference Include="Xamarin.GooglePlayServices.Auth" />
     <PackageReference Include="Xamarin.GooglePlayServices.CroNet" />

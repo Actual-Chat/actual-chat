@@ -156,11 +156,13 @@
     <PackageVersion Include="banditoth.MAUI.DeviceId" Version="1.0.0" />
     <!-- MAUI - Android -->
     <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.12.0.2" />
+    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.2.1.1" />
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.7.0.1" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.0.1.7" />
-    <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.2.1.1" />
     <PackageVersion Include="Xamarin.Google.Dagger" Version="2.47.0.1" />
     <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.3.0.1" />
+    <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.3.0.1" />
     <!-- MAUI - iOS -->
     <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="2.0.3" />
     <PackageVersion Include="Xamarin.Build.Download" Version="0.11.4" />
