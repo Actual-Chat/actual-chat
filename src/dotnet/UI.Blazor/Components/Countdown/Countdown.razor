@@ -10,9 +10,12 @@
 <span class="@Class">@m</span>
 
 @code {
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    private IMomentClock? _clock;
 
-    [Parameter, EditorRequired] public Moment EndsAt { get; set; }
+    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    private IMomentClock Clock => _clock ??= Clocks.CpuClock;
+
+    [Parameter, EditorRequired] public Moment EndsAt { get; set; } // CPU time!
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Format { get; set; } = "{0:mm\\:ss}";
     [Parameter] public double UpdatePeriod { get; set; } = 1;
@@ -24,7 +27,7 @@
         };
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken) {
-        var remaining = (EndsAt - Clocks.CpuClock.Now).Positive();
+        var remaining = (EndsAt - Clock.Now).Positive();
         var result = ZString.Format(Format, remaining);
         if (remaining > TimeSpan.Zero)
             Computed.GetCurrent()?.Invalidate(TimeSpan.FromSeconds(UpdatePeriod), true);

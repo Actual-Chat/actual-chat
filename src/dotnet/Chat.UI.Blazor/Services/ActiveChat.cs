@@ -8,8 +8,8 @@ public readonly partial record struct ActiveChat(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] bool IsListening = false,
     [property: DataMember, MemoryPackOrder(2)] bool IsRecording = false,
-    [property: DataMember, MemoryPackOrder(3)] Moment Recency = default,
-    [property: DataMember, MemoryPackOrder(4)] Moment ListeningRecency = default
+    [property: DataMember, MemoryPackOrder(3)] Moment Recency = default, // CPU time
+    [property: DataMember, MemoryPackOrder(4)] Moment ListeningRecency = default // CPU time
     ) : ICanBeNone<ActiveChat>
 {
     public static ActiveChat None { get; } = default;

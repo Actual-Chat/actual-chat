@@ -47,10 +47,11 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     private MomentClockSet Clocks { get; }
 
-    private Moment Now => Clocks.SystemClock.Now;
+    private Moment CpuNow => Clocks.CpuClock.Now;
+    private Moment ServerNow => Clocks.ServerClock.Now;
 
-    public IState<Moment?> StopRecordingAt => _stopRecordingAt;
-    public IState<Moment?> AudioStoppedAt => _audioStoppedAt;
+    public IState<Moment?> StopRecordingAt => _stopRecordingAt; // CPU time
+    public IState<Moment?> AudioStoppedAt => _audioStoppedAt; // CPU time
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
 
@@ -100,7 +101,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
         if (chatId.IsNone)
             return default;
 
-        var now = Now;
+        var now = CpuNow;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
             if (activeChats.TryGetValue(chatId, out var chat) && chat.IsListening != mustListen) {
                 chat = chat with {
@@ -141,7 +142,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
                 if (oldRecordingChat.ChatId == chatId)
                     return activeChats;
 
-                var now = Now;
+                var now = CpuNow;
                 if (chatId.IsNone) {
                     // End recording
                     if (!oldRecordingChat.IsNone) {

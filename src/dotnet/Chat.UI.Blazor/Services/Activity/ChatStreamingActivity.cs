@@ -6,7 +6,7 @@ public interface IChatStreamingActivity : IDisposable
 {
     ChatActivity Owner { get; }
     ChatId ChatId { get; }
-    IState<Moment?> LastTranscribedAt { get; }
+    IState<Moment?> LastTranscribedAt { get; } // Server time
 
     [ComputeMethod]
     Task<ImmutableList<ChatEntry>> GetStreamingEntries(CancellationToken cancellationToken);

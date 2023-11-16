@@ -13,7 +13,7 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
     private IMomentClock Clock { get; }
     private Moment Now => Clock.Now;
 
-    public IState<Moment> ActiveUntil => _activeUntil;
+    public IState<Moment> ActiveUntil => _activeUntil; // CPU time
 
     public UserActivityUI(IServiceProvider services)
     {
