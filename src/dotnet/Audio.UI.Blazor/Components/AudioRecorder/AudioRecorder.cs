@@ -118,7 +118,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             if (e is OperationCanceledException)
                 throw;
             if (e is TimeoutException)
-                throw new AudioRecorderException("Failed to start recording in time.", e);
+                throw new AudioRecorderException("Failed to start the recording in time.", e);
             throw new AudioRecorderException("Failed to start recording.", e);
         }
     }
@@ -236,7 +236,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsConnected), isConnected },
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
-
         DebugLog?.LogDebug("Chat #{ChatId}: recording is starting", chatId);
     }
 

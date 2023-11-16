@@ -1,3 +1,4 @@
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Invite;
@@ -26,7 +27,9 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     private SelectionUI? _selectionUI;
     private ChatEditorUI? _chatEditorUI;
     private ChatListUI? _chatListUI;
+    private ChatAudioUI? _chatAudioUI;
     private ChatPlayers? _chatPlayers;
+    private AudioRecorder? _audioRecorder;
     private ClipboardUI? _clipboardUI;
     private PanelsUI? _panelsUI;
     private ShareUI? _shareUI;
@@ -69,7 +72,9 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public SelectionUI SelectionUI => _selectionUI ??= Services.GetRequiredService<SelectionUI>();
     public ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
     public ChatListUI ChatListUI => _chatListUI ??= Services.GetRequiredService<ChatListUI>();
+    public ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
     public ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
+    public AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     public ClipboardUI ClipboardUI => _clipboardUI ??= Services.GetRequiredService<ClipboardUI>();
     public PanelsUI PanelsUI => _panelsUI ??= Services.GetRequiredService<PanelsUI>();
     public ShareUI ShareUI => _shareUI ??= Services.GetRequiredService<ShareUI>();
@@ -95,10 +100,13 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public BlazorCircuitContext CircuitContext => _circuitContext ??= Services.GetRequiredService<BlazorCircuitContext>();
     public HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     public IJSRuntime JS => _js ??= Services.JSRuntime();
+
+    // Some handy helpers
     private IComputedState<bool>? _showLinkPreview;
     public IState<bool> ShowLinkPreview => _showLinkPreview ??=
         StateFactory.NewComputed<bool>((_, ct) => Features.Get<Features_EnableLinkPreview, bool>(ct).AsTask());
 
+    // IServiceProvider
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public object? GetService(Type serviceType)
         => Services.GetService(serviceType);

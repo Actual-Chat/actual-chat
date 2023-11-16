@@ -32,7 +32,6 @@ export class AudioRecorder {
         debugLog?.log(`-> terminate()`);
         await opusMediaRecorder.stop();
         await opusMediaRecorder.terminate();
-
         debugLog?.log(`<- terminate()`);
     }
 

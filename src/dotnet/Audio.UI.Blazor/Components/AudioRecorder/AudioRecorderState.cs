@@ -8,4 +8,9 @@ public readonly record struct AudioRecorderState(
     bool IsVoiceActive = false)
 {
     public static readonly AudioRecorderState Idle = default;
+
+    public bool RequiresRecordingTroubleshooter()
+        => !ChatId.IsNone && !IsRecording && IsConnected;
+        // Good for debugging:
+        // => !ChatId.IsNone && !IsVoiceActive;
 }

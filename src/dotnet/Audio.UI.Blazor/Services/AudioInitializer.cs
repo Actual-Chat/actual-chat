@@ -41,7 +41,7 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         Log.LogInformation("AudioInitializer: started");
-        var retryDelays = RetryDelaySeq.Exp(0.5, 3);
+        var retryDelays = RetryDelaySeq.Exp(0.1, 3);
         var whenInitialized = AsyncChainExt.From(Initialize, $"{nameof(AudioInitializer)}.{nameof(Initialize)}")
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
@@ -58,7 +58,6 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
     private async Task Initialize(CancellationToken cancellationToken)
     {
-        Log.LogInformation("AudioInitializer: Initialize() is being called...");
         var backendRef = _backendRef ??= DotNetObjectReference.Create<IAudioInfoBackend>(this);
         await JS
             .InvokeVoidAsync(JSInitMethod, CancellationToken.None, backendRef, UrlMapper.BaseUrl, CanUseNNVad())

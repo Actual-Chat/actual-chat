@@ -5,51 +5,38 @@
 @inherits ComputedStateComponent<RecorderToggle.Model>
 @{
     var m = State.Value;
-    _animator.State = m.IsRecording;
+    _animator.State = m.IsRecordingHere;
     var animatorClass = "record-" + _animator.Class;
-    var isRecordingInTheChat = m.IsRecording;
-    var applyingChangesClass = m.IsApplyingChanges || (isRecordingInTheChat && !m.IsConnected) ? "applying-changes" : "";
-    var isMicrophoneCaptured = m.IsMicrophoneCaptured;
-    var isConnected = m.IsConnected;
-    var (forceDisplay, tooltip, left) = (isRecordingInTheChat, isMicrophoneCaptured, isConnected) switch {
+    var transitioningClass = m.IsTransitioning || m is { IsRecordingHere: true, IsConnected: false } ? "applying-changes" : "";
+    var (showStatus, statusText, statusStyle) = (m.IsRecordingHere, m.IsMicrophoneCaptured, m.IsConnected) switch {
         (false, _, _) => (false, "", ""),
-        (_, false, _) => (true, "Starting recording...", "4.6rem"),
-        (_, _, false) => (true, "Reconnecting...", "4rem"),
-        _ => (false, "Recording...", "3.5rem"),
+        (_, false, _) => (true, "Starting recording...", "left:4.6rem"),
+        (_, _, false) => (true, "Reconnecting...", "left:4rem"),
+        _ => (false, "Recording...", "left:3.5rem"), // (true, true, true) => ...
     };
-    var tooltipPosition = forceDisplay ? FloatingPosition.None : FloatingPosition.Top;
-    var dynamicTooltip = forceDisplay ? null : tooltip;
-    if (forceDisplay && m.StartRecordingAt.HasValue) {
-        if (!_isTroubleshootGuideTriggered) {
-            _isTroubleshootGuideTriggered = true;
-            var cancellationToken = _cancelTroubleshootGuide?.Token ?? CancellationToken.None;
-            _ = ForegroundTask.Run(async () => {
-                await Task.Delay(5000, cancellationToken);
-                await DisplayTroubleshootGuide();
-            }, cancellationToken);
-        }
-    }
+    var tooltipText = showStatus ? "" : statusText;
+    var tooltipPosition = showStatus ? FloatingPosition.None : FloatingPosition.Top;
 }
 
 @if (m.HasMicrophonePermission != false) {
-    @if (forceDisplay) {
+    @if (showStatus) {
         <div class="narrow-recorder-tooltip">
-            <div class="c-tooltip-text">@tooltip</div>
-            <div class="c-tooltip-arrow" style="left:@left"></div>
+            <div class="c-tooltip-text">@statusText</div>
+            <div class="c-tooltip-arrow" style="@statusStyle"></div>
         </div>
     }
-    <div class="recorder-wrapper @animatorClass @applyingChangesClass">
-        @if (forceDisplay) {
+    <div class="recorder-wrapper @animatorClass @transitioningClass">
+        @if (showStatus) {
             <div class="c-tooltip">
-                <div class="c-tooltip-text">@tooltip</div>
-                <div class="c-tooltip-arrow" style="left:@left"></div>
+                <div class="c-tooltip-text">@statusText</div>
+                <div class="c-tooltip-arrow" style="@statusStyle"></div>
             </div>
         }
         <ButtonRound
             Class="record-off-btn"
             Click="@OnClick"
             MustKeepAwake="true"
-            Tooltip="@dynamicTooltip"
+            Tooltip="@tooltipText"
             TooltipPosition="@tooltipPosition"
             @onmouseup="@OnPointerUp"
             @ontouchend="@OnPointerUp"
@@ -61,7 +48,7 @@
         <ButtonRound
             Class="record-on-btn"
             Click="@OnClick"
-            Tooltip="@dynamicTooltip"
+            Tooltip="@tooltipText"
             TooltipPosition="@tooltipPosition"
             @onmouseup="@OnPointerUp"
             @ontouchend="@OnPointerUp"
@@ -84,19 +71,15 @@
 @code {
     private static readonly string JSInitMethod = $"{ChatBlazorUIModule.ImportName}.RecorderToggle.init";
     private OnOffAnimator _animator = null!;
-    private bool _isTroubleshootGuideTriggered;
-    private CancellationTokenSource? _cancelTroubleshootGuide;
+    private CancellationTokenSource? _connectionTroubleshooterCts;
 
-    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private ILogger<RecorderToggle> Log { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
+    private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
+    private IJSRuntime JS => ChatHub.JS;
 
-    private bool IsChatChanging => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
-    private bool IsRecording => !IsChatChanging && State.Value.IsRecording;
-    private bool IsForcePush { get; set; } = false;
+    private bool IsForcePushed { get; set; } = false;
+    private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
 
@@ -127,49 +110,36 @@
             Category = GetStateCategory(),
         };
 
-    [SuppressMessage("ReSharper", "InvertIf")]
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var currentState = State.LastNonErrorValue;
-        var recordingChatId = await ChatAudioUI.GetRecordingChatId();
-        var recorderState = await AudioRecorder.State.Use(cancellationToken);
-        var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken);
-        var isRecording = recordingChatId == Chat.Id;
-        var isApplyingChanges = recorderState.ChatId == Chat.Id && recorderState.IsRecording != isRecording;
-        var startRecordingAt = currentState.StartRecordingAt;
-        if (isApplyingChanges || !recorderState.IsConnected) {
-            startRecordingAt ??= Clocks.CoarseSystemClock.Now;
-            var cts = _cancelTroubleshootGuide;
-            if (cts == null || cts.IsCancellationRequested)
-                _cancelTroubleshootGuide = new();
-        } else {
-            Log.LogDebug("Cancelling troubleshoot guide");
-            startRecordingAt = null;
-            _cancelTroubleshootGuide.CancelAndDisposeSilently();
-            _cancelTroubleshootGuide = null;
-            _isTroubleshootGuideTriggered = false;
-        }
-        return new(
+        var chatId = Chat.Id; // Capture to locals to make sure we can use .ConfigureAwait(false) below
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
+        var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken).ConfigureAwait(false);
+        var isRecordingHere = recordingChatId == chatId;
+        var isTransitioning =
+            recorderState.ChatId == chatId // The recorder records in this chat
+            && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
+        return new Model(
             Chat,
-            isRecording,
-            isApplyingChanges,
+            isRecordingHere,
             recorderState.IsRecording,
             recorderState.IsConnected,
             recorderState.IsVoiceActive,
             hasMicrophonePermission,
-            startRecordingAt);
+            isTransitioning);
     }
 
     private async Task OnClick() {
-        if (IsChatChanging)
-            return; // Loading
+        var m = State.Value;
+        if (Chat.Id != m.Chat.Id)
+            return; // Loading or updating
 
-        if (IsRecording) {
+        if (m.IsRecordingHere) {
+            // Stop recording
             _ = ChatAudioUI.SetRecordingChatId(default);
-            _cancelTroubleshootGuide?.CancelAndDisposeSilently();
-            _cancelTroubleshootGuide = null;
-            _isTroubleshootGuideTriggered = false;
         }
         else {
+            // Start recording
             if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
                 return;
 
@@ -178,55 +148,34 @@
     }
 
     private async Task OnContextMenu() {
-        if (IsForcePush)
+        if (IsForcePushed)
             return;
         if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
             return;
 
-        IsForcePush = true;
+        IsForcePushed = true;
         _ = ChatAudioUI.SetRecordingChatId(Chat.Id, true);
     }
 
     private void OnPointerUp() {
-        if (!IsForcePush)
+        if (!IsForcePushed)
             return;
 
-        IsForcePush = false;
+        IsForcePushed = false;
         _ = ChatAudioUI.SetRecordingChatId(default);
-    }
-
-    private async Task DisplayTroubleshootGuide() {
-        var token = _cancelTroubleshootGuide?.Token ?? CancellationToken.None;
-        await InvokeAsync(async () => {
-            var state = State.LastNonErrorValue;
-            if (!state.StartRecordingAt.HasValue || token.IsCancellationRequested) {
-                _isTroubleshootGuideTriggered = false;
-                return;
-            }
-
-            var model = new RecordingTroubleshooterModal.Model(IsUnknown:true);
-            var modalRef = await ModalUI.Show(model, token);
-            try {
-                await modalRef.WhenClosed.WaitAsync(token);
-            }
-            finally {
-                _isTroubleshootGuideTriggered = false;
-            }
-        }).ConfigureAwait(false);
     }
 
     // Nested types
 
     public sealed record Model(
         Chat Chat,
-        bool IsRecording = false,
-        bool IsApplyingChanges = false,
+        bool IsRecordingHere = false,
         bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
         bool IsVoiceActive = false,
         bool? HasMicrophonePermission = null,
-        Moment? StartRecordingAt = null
+        bool IsTransitioning = false
     ) {
-        public static readonly Model Loading = new(SpecialChat.Loading, false, true);
+        public static readonly Model Loading = new(SpecialChat.Loading, default, false, true);
     }
 }

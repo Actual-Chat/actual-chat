@@ -1,4 +1,4 @@
-using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 
@@ -22,6 +22,7 @@ public partial class ChatAudioUI
             AsyncChainExt.From(ReconnectOnRpcReconnect),
             AsyncChainExt.From(UpdateNextBeepAt),
             AsyncChainExt.From(PlayBeep),
+            AsyncChainExt.From(RecordingTroubleshooter),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (
@@ -424,6 +425,60 @@ public partial class ChatAudioUI
         }
     }
 
+    private async Task RecordingTroubleshooter(CancellationToken cancellationToken)
+    {
+        // Don't start till the moment ChatAudioUI gets enabled
+        await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        var lastState = AudioRecorderState.Idle;
+        var troubleshooterCts = (CancellationTokenSource?)null;
+        try {
+            var changes = AudioRecorder.State.Changes(cancellationToken);
+            await foreach (var (state, _) in changes.ConfigureAwait(false)) {
+                if (state == lastState)
+                    continue; // Nothing changed - this may happen, we don't want to take any actions in this case
+
+                if (state.ChatId.IsNone) {
+                    // Recording is stopped
+                    StopTroubleshooter();
+                }
+                else if (state.ChatId != lastState.ChatId) {
+                    // Recording in new chat
+                    if (state.RequiresRecordingTroubleshooter())
+                        StartOrKeepTroubleshooter();
+                }
+                else if (!state.ChatId.IsNone) {
+                    // Recording in the same chat
+                    if (!state.RequiresRecordingTroubleshooter())
+                        StopTroubleshooter();
+                    else if (!lastState.RequiresRecordingTroubleshooter()) // And it's required now
+                        StartOrKeepTroubleshooter();
+                }
+                lastState = state;
+            }
+        }
+        finally {
+            // Close the troubleshooter on exit no matter what
+            troubleshooterCts.CancelAndDisposeSilently();
+        }
+
+        void StartOrKeepTroubleshooter() {
+            if (troubleshooterCts != null)
+                return;
+
+            troubleshooterCts = new CancellationTokenSource();
+            _ = ShowRecordingTroubleshooter(TimeSpan.FromSeconds(7.5), troubleshooterCts.Token);
+        }
+
+        void StopTroubleshooter() {
+            if (troubleshooterCts == null)
+                return;
+
+            troubleshooterCts.CancelAndDisposeSilently();
+            troubleshooterCts = null;
+        }
+    }
+
     // Helpers
 
     [ComputeMethod]
@@ -486,6 +541,20 @@ public partial class ChatAudioUI
                 await Task.Delay(countdownDelay, cancellationToken).ConfigureAwait(false);
             }
         }
+    }
+
+    private async Task ShowRecordingTroubleshooter(TimeSpan delay, CancellationToken cancellationToken) {
+        await Clocks.CpuClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+        await Dispatcher.InvokeAsync(async () => {
+            var model = new RecordingTroubleshooterModal.Model(null, true);
+            var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
+            try {
+                await modalRef.WhenClosed.WaitAsync(cancellationToken).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                modalRef.Close();
+            }
+        }).ConfigureAwait(false);
     }
 
     // Nested types
