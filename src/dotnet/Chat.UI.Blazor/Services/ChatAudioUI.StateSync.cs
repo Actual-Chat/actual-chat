@@ -157,6 +157,7 @@ public partial class ChatAudioUI
 
         Task? whenIdle = null;
         var cts = cancellationToken.CreateLinkedTokenSource();
+        var ctsToken = cts.Token;
         try {
             var relatedChatEntry = await ChatEditorUI.RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
             var repliedChatEntryId = relatedChatEntry is { Kind: RelatedEntryKind.Reply }
@@ -167,7 +168,7 @@ public partial class ChatAudioUI
             await AudioRecorder.StartRecording(chatId, repliedChatEntryId, cancellationToken).ConfigureAwait(false);
             var whenStopped = ForegroundTask.Run(
                 async () => await cRecordingState
-                    .When(x => x.ChatId != chatId || x.Language != language, cts.Token)
+                    .When(x => x.ChatId != chatId || x.Language != language, ctsToken)
                     .ConfigureAwait(false),
                 cancellationToken);
             whenIdle = ForegroundTask.Run(async () => {
@@ -175,10 +176,10 @@ public partial class ChatAudioUI
                     AudioSettings.IdleRecordingTimeout,
                     AudioSettings.IdleRecordingPreCountdownTimeout,
                     AudioSettings.IdleRecordingCheckPeriod);
-                var streamingIdleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, cts.Token);
+                var streamingIdleBoundaries = ObserveStreamingIdleBoundaries(chatId, options, ctsToken);
                 await foreach (var serverStopAt in streamingIdleBoundaries.ConfigureAwait(false))
                     _stopRecordingAt.Value = serverStopAt.Convert(serverClock, cpuClock);
-            }, cts.Token);
+            }, ctsToken);
             await Task.WhenAny(whenStopped, whenIdle).ConfigureAwait(false);
             // No need to await for the result of WhenAny: we're stopping anyway
         }
@@ -435,9 +436,12 @@ public partial class ChatAudioUI
         var lastState = (ChatId: ChatId.None, RequiresTroubleshooter: false);
         var troubleshooterCts = (CancellationTokenSource?)null;
         try {
-            var changes = AudioRecorder.State.Changes(cancellationToken);
-            await foreach (var (value, _) in changes.ConfigureAwait(false)) {
-                var state = (value.ChatId, RequiresTroubleshooter: value.RequiresRecordingTroubleshooter());
+            var cRecordingTroubleshootState = await Computed
+                .Capture(() => GetRecordingTroubleshootState(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            // cRecordingStateBase.Changes(cancellationToken).Join(AudioRecorder.State.Changes(cancellationToken), )
+            var changes = cRecordingTroubleshootState.Changes(cancellationToken);
+            await foreach (var (state, _) in changes.ConfigureAwait(false)) {
                 if (state == lastState)
                     continue; // Nothing changed - this may happen, we don't want to take any actions in this case
 
@@ -447,12 +451,12 @@ public partial class ChatAudioUI
                 }
                 else if (state.ChatId != lastState.ChatId) {
                     // Recording in new chat
-                    if (state.RequiresTroubleshooter)
+                    if (state.IsTroubleshootRequired)
                         StartOrKeepTroubleshooter();
                 }
                 else if (!state.ChatId.IsNone) {
                     // Recording in the same chat
-                    if (!state.RequiresTroubleshooter)
+                    if (!state.IsTroubleshootRequired)
                         StopTroubleshooter();
                     else if (!lastState.RequiresTroubleshooter) // And it's required now
                         StartOrKeepTroubleshooter();
@@ -490,6 +494,17 @@ public partial class ChatAudioUI
         var chatId = await GetRecordingChatId().ConfigureAwait(false);
         var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
         return new(chatId, chatId.IsNone ? Language.None : language);
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<(ChatId ChatId, bool IsTroubleshootRequired)> GetRecordingTroubleshootState(CancellationToken cancellationToken)
+    {
+        var chatId = await GetRecordingChatId().ConfigureAwait(false);
+        var state = await AudioRecorder.State.Use(cancellationToken);
+        var isTroubleshootRequired = !chatId.IsNone && state is { IsRecording: false, IsConnected: true };
+        // Good for debugging:
+        // = !chatId.IsNone && state is { IsVoiceActive: false };
+        return new ValueTuple<ChatId, bool>(chatId, isTroubleshootRequired);
     }
 
     [ComputeMethod]
@@ -554,7 +569,7 @@ public partial class ChatAudioUI
             var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
 
             Log.LogWarning("Recording issue. Capturing diagnostics state...");
-            var diagnostics = await AudioRecorder.RunDiagnostics(cancellationToken);
+            var diagnostics = await AudioRecorder.RunDiagnostics(CancellationToken.None);
             Log.LogWarning("Recording issue. Diagnostics State = {State}", diagnostics);
 
             try {

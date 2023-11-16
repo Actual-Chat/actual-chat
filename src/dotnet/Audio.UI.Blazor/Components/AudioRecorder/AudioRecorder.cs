@@ -162,11 +162,18 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             isVoiceActive = false;
         }
 
-        _state.Value = state with {
+        var newState = state with {
             IsRecording = isRecording,
             IsConnected = isConnected,
             IsVoiceActive = isVoiceActive,
         };
+
+        if (state != newState)
+            _state.Value = state with {
+                IsRecording = isRecording,
+                IsConnected = isConnected,
+                IsVoiceActive = isVoiceActive,
+            };
         _recordingActivity
             ?.AddSentrySimulatedEvent(new ActivityEvent("Recording state changed",
                 tags: new ActivityTagsCollection {
@@ -242,7 +249,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsConnected), isConnected },
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
-        DebugLog?.LogDebug("Chat #{ChatId}: recording is starting", chatId);
+        DebugLog?.LogDebug("Chat #{ChatId}: recording is starting, {State}", chatId, _state.Value);
     }
 
     private void MarkStopped()
@@ -262,7 +269,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
                     { "AC." + nameof(AudioRecorderState.IsVoiceActive), isVoiceActive },
                 }));
         _recordingActivity?.Dispose();
-        DebugLog?.LogDebug("Recording is stopped");
+        DebugLog?.LogDebug("Recording is stopped, {State}", _state.Value);
     }
 
     public class AudioDiagnosticsState
@@ -275,13 +282,13 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         public bool? HasMicrophoneStream { get; init; }
         public bool? IsVadActive { get; init; }
         public VadEvent? LastVadEvent { get; init; }
-        public int? LastVadFrameProcessedAt { get; init; }
+        public long? LastVadFrameProcessedAt { get; init; }
         public bool? IsConnected { get; init; }
-        public int? LastFrameProcessedAt { get; init; }
+        public long? LastFrameProcessedAt { get; init; }
         public string? VadWorkletState { get; init; }
-        public int? LastVadWorkletFrameProcessedAt { get; init; }
+        public long? LastVadWorkletFrameProcessedAt { get; init; }
         public string? EncoderWorkletState { get; init; }
-        public int? LastEncoderWorkletFrameProcessedAt { get; init; }
+        public long? LastEncoderWorkletFrameProcessedAt { get; init; }
 
         public override string ToString()
             => $"{nameof(AudioDiagnosticsState)} {{ {nameof(IsPlayerInitialized)}: {IsPlayerInitialized}, {nameof(IsRecorderInitialized)}: {IsRecorderInitialized}, {nameof(HasMicrophonePermission)}: {HasMicrophonePermission}, {nameof(IsAudioContextSourceActive)}: {IsAudioContextSourceActive}, {nameof(IsAudioContextActive)}: {IsAudioContextActive}, {nameof(HasMicrophoneStream)}: {HasMicrophoneStream}, {nameof(IsVadActive)}: {IsVadActive}, {nameof(LastVadEvent)}: {LastVadEvent}, {nameof(LastVadFrameProcessedAt)}: {LastVadFrameProcessedAt}, {nameof(IsConnected)}: {IsConnected}, {nameof(LastFrameProcessedAt)}: {LastFrameProcessedAt}, {nameof(VadWorkletState)}: {VadWorkletState}, {nameof(LastVadWorkletFrameProcessedAt)}: {LastVadWorkletFrameProcessedAt}, {nameof(EncoderWorkletState)}: {EncoderWorkletState}, {nameof(LastEncoderWorkletFrameProcessedAt)}: {LastEncoderWorkletFrameProcessedAt} }}";
