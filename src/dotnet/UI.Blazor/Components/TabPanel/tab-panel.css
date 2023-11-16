@@ -102,7 +102,7 @@ body.hoverable .side-nav .tab-panel-tabs .tab-btn.on:hover .btn-content {
 .side-nav.side-nav-right .tab-panel-tabs .btn-group {
     @apply justify-between;
     @apply min-h-14;
-    @apply px-2;
+    @apply px-4;
     @apply overflow-x-hidden;
 }
 

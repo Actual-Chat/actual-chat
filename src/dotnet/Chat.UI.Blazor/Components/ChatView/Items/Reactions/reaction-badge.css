@@ -3,7 +3,7 @@
     @apply h-6 md:h-5;
     @apply px-2.5 md:px-2;
     @apply rounded-xl md:rounded-xl;
-    @apply bg-04 text-primary text-base md:text-sm;
+    @apply bg-reaction text-primary text-base md:text-sm;
     @apply cursor-pointer;
 }
 .reaction-badge.icons {

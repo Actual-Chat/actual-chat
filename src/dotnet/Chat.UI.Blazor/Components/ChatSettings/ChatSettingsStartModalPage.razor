@@ -48,7 +48,7 @@
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
             <TileItem>
                 <Icon>
-                    <InputRadio id="@_form.IsPublicTrueFormId" Value="@true"/>
+                    <FormRadio id="@_form.IsPublicTrueFormId" Value="@true" />
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
@@ -59,7 +59,7 @@
             </TileItem>
             <TileItem>
                 <Icon>
-                    <InputRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
+                    <FormRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>

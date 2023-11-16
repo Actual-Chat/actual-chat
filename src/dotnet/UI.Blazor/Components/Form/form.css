@@ -186,3 +186,53 @@
 .form option:checked {
     @apply text-primary bg-none;
 }
+
+/* Radio buttons */
+.form .form-radio-hidden {
+    @apply relative;
+    @apply justify-start;
+}
+.form .form-radio-hidden input {
+    @apply absolute;
+    @apply block;
+    @apply h-0 w-0;
+    @apply opacity-0;
+}
+.form .form-radio-hidden .radio {
+    @apply relative;
+    @apply inline-block;
+    @apply appearance-none;
+    @apply h-5 w-5;
+    @apply rounded-full border border-radio-border;
+    @apply box-border;
+    @apply bg-radio;
+    @apply outline-none;
+    @apply cursor-pointer;
+    @apply transition-all duration-500;
+    box-shadow: 0 0 4px 0 var(--radio-shadow);
+}
+.form-radio-hidden:hover .radio {
+    @apply bg-radio;
+    box-shadow: inset 1px 2px 3px 0 var(--radio-shadow);
+}
+.form-radio-hidden:hover input:checked + .radio {
+    box-shadow: none;
+}
+
+.form-radio-hidden input:checked + .radio {
+    @apply bg-radio;
+    @apply border-primary;
+    @apply cursor-default;
+}
+
+.form-radio-hidden:hover .radio::before, .form-radio-hidden input:checked + .radio::before {
+    @apply content-empty;
+    @apply absolute top-1/2 left-1/2;
+    @apply w-2.5 h-2.5;
+    @apply rounded-full;
+    @apply bg-hover;
+    @apply -translate-x-1/2 -translate-y-1/2;
+}
+.form-radio-hidden input:checked + .radio::before{
+    @apply bg-primary;
+}

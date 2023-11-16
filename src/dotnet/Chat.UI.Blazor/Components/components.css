@@ -109,6 +109,10 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply py-0 md:py-1.5 px-2;
     @apply bg-01;
 }
+.chat-footer .c-text {
+    @apply inline-flex;
+    @apply text-01;
+}
 .chat-footer.readonly {
     @apply text-lg;
 }

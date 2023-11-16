@@ -90,15 +90,15 @@ body.narrow .modal-frame.modal-xs .c-text {
     @apply overflow-hidden;
     @apply bg-modal text-03;
     @apply rounded-lg border-modal border;
-    @apply md:shadow-2xl;
+    @apply md:shadow-modal-wide;
 }
 .modal-frame {
     @apply flex-y items-stretch gap-y-2 overflow-hidden;
+    @apply max-h-screen h-full w-full md:h-auto md:w-modal;
     @apply pb-4;
-    @apply h-full w-full md:h-auto md:w-modal;
     @apply rounded-lg;
     @apply font-medium;
-    @apply max-h-screen;
+    @apply md:shadow-modal-wide;
 }
 
 .modal-frame:not(:has(.modal-header)):not(:has(.modal-header-interactive)) .dialog-body {

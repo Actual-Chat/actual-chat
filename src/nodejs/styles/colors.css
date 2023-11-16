@@ -29,6 +29,7 @@
     --ash-22: #303038;
     --ash-20: #2C2C33;
     --ash-18: #28282E;
+    --ash-14: #1E1E24;
     --ash-10: #16161A;
 
     --ash-99-04: #F5F5FC0A;
@@ -269,6 +270,9 @@
     --round-hover: var(--blue-50-10);
     --round-focus: var(--blue-95);
     --round-title: var(--gray-40);
+    --radio: var(--white);
+    --radio-border: var(--gray-50);
+    --radio-shadow: var(--gray-10-20);
 
     /* Hover */
     --more-colored: var(--white);
@@ -340,7 +344,8 @@
     --bubble: var(--indigo-60);
     --bubble-text: var(--white);
     --bubble-btn-hover: var(--black-10);
-    --reaction-own: var(--blue-50-20);
+    --reaction: var(--blue-50-20);
+    --reaction-own: var(--blue-50-30);
     --viewer-header: var(--black-50);
     --left-side-logo: var(--black);
     --link-preview-icon: var(--blue-70);
@@ -398,7 +403,7 @@
     /* Buttons */
     --disabled: #E7E7E7;
     --primary-hover: var(--blue-60);
-    --primary-title: var(--text-06);
+    --primary-title: var(--white);
     --secondary: var(--blue-99);
     --secondary-hover: var(--blue-95);
     --secondary-title: var(--primary);
@@ -420,6 +425,9 @@
     --round-hover: var(--ash-99-04);
     --round-focus: var(--ash-99-04);
     --round-title: var(--ash-90);
+    --radio: var(--ash-18);
+    --radio-border: var(--white-30);
+    --radio-shadow: var(--white-05);
 
     /* Hover */
     --more-colored: var(--white);
@@ -428,7 +436,7 @@
     --danger-colored: var(--danger);
 
     /* Post Audio Panel */
-    --post-panel: var(--gray-10);
+    --post-panel: var(--ash-14);
     --post-panel-wide: var(--gray-30);
     --post-panel-text: var(--gray-80);
     --playback-on: var(--blue-10);
@@ -463,7 +471,7 @@
     --new-separator: var(--magenta-50-10);
     --code: var(--magenta-60);
     --avatar: var(--ash-70);
-    --toggle: var(--ash-50);
+    --toggle: var(--ash-18);
     --toggle-circle: var(--ash-40);
     --toggle-on: var(--blue-60);
     --message-hover: var(--ash-99-08);
@@ -492,6 +500,7 @@
     --bubble: var(--indigo-60);
     --bubble-text: var(--white);
     --bubble-btn-hover: var(--white-10);
+    --reaction: var(--white-05);
     --reaction-own: var(--white-10);
     --viewer-header: var(--white-10);
     --left-side-logo: var(--white);

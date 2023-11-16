@@ -30,6 +30,7 @@
 .chat-audio-panel .btn.btn-round .btn-content {
     @apply rounded-full;
     @apply bg-post-panel md:bg-input;
+    @apply text-audio-panel-button-text;
 }
 .chat-audio-panel .record-off-btn.btn .btn-content,
 body.hoverable .chat-audio-panel .record-off-btn.btn:hover .btn-content {
