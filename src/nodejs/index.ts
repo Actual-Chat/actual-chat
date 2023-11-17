@@ -4,6 +4,10 @@ import './fonts/tt-commons-pro.css';
 import './node_modules/fork-awesome/css/fork-awesome.min.css';
 import './styles/index.css';
 
+// Libraries
+import { register } from 'swiper/element/bundle';
+register();
+
 // Logging init
 import 'logging-init';
 // FontSize & Theme init
