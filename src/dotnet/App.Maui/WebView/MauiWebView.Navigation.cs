@@ -14,7 +14,7 @@ public partial class MauiWebView
     public static readonly Uri BaseLocalUri = new($"https://{MauiSettings.LocalHost}/");
     public Uri LastUri { get; private set; }= BaseLocalUri;
     public Uri LastLocalUri { get; private set; } = BaseLocalUri;
-    public bool IsOnLocalUri => LastUri != LastLocalUri;
+    public bool IsOnLocalUri => LastUri == LastLocalUri;
 
     public async Task NavigateTo(string uri, bool hardReload = false)
     {
