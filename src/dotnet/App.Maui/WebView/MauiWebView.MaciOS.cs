@@ -106,6 +106,14 @@ public partial class MauiWebView
             WKMediaCaptureType type,
             Action<WKPermissionDecision> decisionHandler)
         {
+#if false
+            // Disabled for now: needs testing + the condition here is always supposed to be true now
+            if (!IsCurrent(webView, out var mauiWebView) || !mauiWebView.IsOnLocalUri) {
+                decisionHandler.Invoke(WKPermissionDecision.Deny);
+                return;
+            }
+#endif
+
             if (IsMediaCaptureGranted(origin, type)) {
                 decisionHandler.Invoke(WKPermissionDecision.Grant);
                 return;
