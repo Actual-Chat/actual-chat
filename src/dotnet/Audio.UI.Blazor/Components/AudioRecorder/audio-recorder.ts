@@ -63,6 +63,8 @@ export class AudioRecorder {
     public constructor(blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
         this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.reconnect());
+        opusMediaRecorder.subscribeToStateChanges((isRecording, isConnected, isVoiceActive) =>
+            this.onRecordingStateChange(isRecording, isConnected, isVoiceActive));
         void AudioRecorder.init();
     }
 
@@ -180,11 +182,7 @@ export class AudioRecorder {
 
             this.state = 'starting';
 
-            await opusMediaRecorder.start(
-                chatId,
-                repliedChatEntryId,
-                (isRecording, isConnected, isVoiceActive) =>
-                    this.onRecordingStateChange(isRecording, isConnected, isVoiceActive));
+            await opusMediaRecorder.start(chatId, repliedChatEntryId);
             if (this.state !== 'starting')
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error('Recording has been stopped.')

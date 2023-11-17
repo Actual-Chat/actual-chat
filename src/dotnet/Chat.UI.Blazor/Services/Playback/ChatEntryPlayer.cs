@@ -9,7 +9,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public sealed class ChatEntryPlayer : ProcessorBase
 {
     private IServiceProvider Services { get; }
-    private AudioRecorder AudioRecorder { get; }
+    private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
+    private ChatHub ChatHub { get; }
     private MomentClockSet Clocks { get; }
     private UrlMapper UrlMapper { get; }
     private ILogger Log { get; }
@@ -41,7 +42,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         UrlMapper = services.GetRequiredService<UrlMapper>();
         AudioDownloader = services.GetRequiredService<AudioDownloader>();
         AudioStreamer = services.GetRequiredService<IAudioStreamer>();
-        AudioRecorder = services.GetRequiredService<AudioRecorder>();
+        ChatHub = services.GetRequiredService<ChatHub>();
     }
 
     protected override Task DisposeAsyncCore()

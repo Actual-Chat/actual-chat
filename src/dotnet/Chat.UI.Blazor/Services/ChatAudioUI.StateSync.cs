@@ -445,6 +445,7 @@ public partial class ChatAudioUI
                 if (state == lastState)
                     continue; // Nothing changed - this may happen, we don't want to take any actions in this case
 
+                DebugLog?.LogDebug($"{nameof(RecordingTroubleshooter)}: {{State}}", state);
                 if (state.ChatId.IsNone) {
                     // Recording is stopped
                     StopTroubleshooter();
