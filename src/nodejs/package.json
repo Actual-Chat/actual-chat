@@ -64,6 +64,7 @@
     "rxjs": "^7.8.0",
     "selector-observer": "^2.1.6",
     "swiftclick": "^2.1.1",
+    "swiper": "^11.0.4",
     "tslib": "^2.4.1",
     "uuid": "^9.0.0",
     "wasm-audio-resampler": "^2.0.0",
