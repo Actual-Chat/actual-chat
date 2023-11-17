@@ -54,6 +54,7 @@ public partial class MauiWebView
 
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
     {
+        SetPlatformWebView(eventArgs.WebView);
         if (DeviceInfo.Version >= new Version("16.4"))
             WKWebView.Inspectable = true;
     }
@@ -105,11 +106,6 @@ public partial class MauiWebView
             WKMediaCaptureType type,
             Action<WKPermissionDecision> decisionHandler)
         {
-            if (!IsCurrent(webView, out var mauiWebView) || !mauiWebView.IsOnLocalUri) {
-                decisionHandler.Invoke(WKPermissionDecision.Deny);
-                return;
-            }
-
             if (IsMediaCaptureGranted(origin, type)) {
                 decisionHandler.Invoke(WKPermissionDecision.Grant);
                 return;
