@@ -13,8 +13,8 @@ public sealed class ChatEntryPlayer : ProcessorBase
     private IAudioStreamer AudioStreamer => ChatHub.AudioStreamer;
     private AudioDownloader AudioDownloader => ChatHub.AudioDownloader;
     private AudioInitializer AudioInitializer => ChatHub.AudioInitializer;
-    private MomentClockSet Clocks => ChatHub.Clocks;
-    private UrlMapper UrlMapper => ChatHub.UrlMapper;
+    private MomentClockSet Clocks => ChatHub.Clocks();
+    private UrlMapper UrlMapper => ChatHub.UrlMapper();
     private ILogger Log { get; }
 
     private HashSet<Task> EntryPlaybackTasks { get; } = new();

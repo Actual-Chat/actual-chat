@@ -14,7 +14,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return;
 
         Operation = $"historical playback in \"{chat.Title}\"";
-        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
+        var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
@@ -88,7 +88,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     {
         if (shift <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(shift));
-        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
+        var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
@@ -128,7 +128,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     {
         if (shift <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(shift));
-        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
+        var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var fullIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader

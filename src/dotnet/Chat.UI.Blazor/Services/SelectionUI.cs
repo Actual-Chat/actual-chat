@@ -7,40 +7,34 @@ public class SelectionUI
 {
     private readonly IMutableState<ImmutableHashSet<ChatEntryId>> _selection;
     private readonly IMutableState<bool> _hasSelection;
+    private ILogger? _log;
 
-    private IChats? _chats ;
-    private ModalUI? _modalUI;
-    private ToastUI? _toastUI;
-    private ClipboardUI? _clipboardUI;
-    private UICommander? _uiCommander;
-    private History? _history;
-    private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
-
-    private IServiceProvider Services { get; }
-    private Session Session { get; }
-    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
-    private ToastUI ToastUI => _toastUI ??= Services.GetRequiredService<ToastUI>();
-    private ClipboardUI ClipboardUI => _clipboardUI ??= Services.GetRequiredService<ClipboardUI>();
-    private UICommander UICommander => _uiCommander ??= Services.UICommander();
-    private History History => _history ??= Services.GetRequiredService<History>();
-    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
-        => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
+    private ChatHub ChatHub { get; }
+    private Session Session => ChatHub.Session;
+    private IChats Chats => ChatHub.Chats;
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => ChatHub.ChatMarkupHubFactory;
+    private ModalUI ModalUI => ChatHub.ModalUI;
+    private ToastUI ToastUI => ChatHub.ToastUI;
+    private ClipboardUI ClipboardUI => ChatHub.ClipboardUI;
+    private UICommander UICommander => ChatHub.UICommander();
+    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public IState<bool> HasSelection => _hasSelection;
     public IState<ImmutableHashSet<ChatEntryId>> Selection => _selection;
 
-    public SelectionUI(IServiceProvider services)
+    public SelectionUI(ChatHub chatHub)
     {
-        Services = services;
-        Session = services.Session();
-        var stateFactory = services.StateFactory();
+        ChatHub = chatHub;
+
+        var stateFactory = chatHub.StateFactory();
+        var type = GetType();
         _selection = stateFactory.NewMutable(
             ImmutableHashSet<ChatEntryId>.Empty,
-            StateCategories.Get(GetType(), nameof(Selection)));
+            StateCategories.Get(type, nameof(Selection)));
         _hasSelection = stateFactory.NewMutable(
             false,
-            StateCategories.Get(GetType(), nameof(HasSelection)));
+            StateCategories.Get(type, nameof(HasSelection)));
         _selection.Updated += (state, _) => _hasSelection.Value = state.Value.Count != 0;
     }
 

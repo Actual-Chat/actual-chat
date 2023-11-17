@@ -48,7 +48,7 @@
     private Session Session => ChatContext.Session;
     private Chat Chat => ChatContext.Chat;
     private ModalUI ModalUI => ChatContext.ModalUI;
-    private UICommander UICommander => ChatContext.UICommander;
+    private UICommander UICommander => ChatContext.UICommander();
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatPage.FooterModel Model { get; set; } = null!;

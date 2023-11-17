@@ -63,10 +63,10 @@
     private IChats Chats => ChatContext.Chats;
     private IInvites Invites => ChatContext.Invites;
     private IAccounts Accounts => ChatContext.Accounts;
-    private AccountSettings AccountSettings => ChatContext.AccountSettings;
+    private AccountSettings AccountSettings => ChatContext.AccountSettings();
     private ShareUI ShareUI => ChatContext.ShareUI;
     private ModalUI ModalUI => ChatContext.ModalUI;
-    private UICommander UICommander => ChatContext.UICommander;
+    private UICommander UICommander => ChatContext.UICommander();
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

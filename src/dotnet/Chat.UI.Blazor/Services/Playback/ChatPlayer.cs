@@ -27,7 +27,7 @@ public abstract class ChatPlayer : ProcessorBase
     protected IChats Chats => ChatHub.Chats;
     protected IAuthors Authors => ChatHub.Authors;
     protected InteractiveUI InteractiveUI => ChatHub.InteractiveUI;
-    protected MomentClockSet Clocks => ChatHub.Clocks;
+    protected MomentClockSet Clocks => ChatHub.Clocks();
     protected HostInfo HostInfo => ChatHub.HostInfo;
 
     protected IState<TimeSpan> SleepDuration { get; }

@@ -16,14 +16,14 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     private IAudioOutputController AudioOutputController => ChatHub.AudioOutputController;
     private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
     private TuneUI TuneUI => ChatHub.TuneUI;
-    private MomentClockSet Clocks => ChatHub.Clocks;
+    private MomentClockSet Clocks => ChatHub.Clocks();
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
     public ChatPlayers(ChatHub chatHub)
     {
         ChatHub = chatHub;
-        _playbackState = ChatHub.StateFactory.NewMutable(
+        _playbackState = ChatHub.StateFactory().NewMutable(
             (PlaybackState?)null,
             StateCategories.Get(GetType(), nameof(PlaybackState)));
     }

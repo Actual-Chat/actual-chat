@@ -45,12 +45,13 @@
     // Protected methods
 
     protected override void OnInitialized() {
+        var type = GetType();
         _allChats = StateFactory.NewMutable(
             (IReadOnlyDictionary<ChatId, ChatInfo>)ImmutableDictionary<ChatId, ChatInfo>.Empty,
-            StateCategories.Get(GetType(), nameof(AllChats)));
+            StateCategories.Get(type, nameof(AllChats)));
         _selectedChatIds = StateFactory.NewMutable(
             ImmutableHashSet<ChatId>.Empty,
-            StateCategories.Get(GetType(), nameof(SelectedChatIds)));
+            StateCategories.Get(type, nameof(SelectedChatIds)));
         _selectedChatIds.Updated += OnSelectedChatIdsUpdated;
         base.OnInitialized();
     }

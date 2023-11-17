@@ -26,7 +26,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         // We always override startAt here
         DebugLog?.LogDebug("Play: {ChatId}, {StartedAt}", ChatId, minPlayAt);
 
-        var audioEntryReader = Chats.NewEntryReader(Session, ChatId, ChatEntryKind.Audio);
+        var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader

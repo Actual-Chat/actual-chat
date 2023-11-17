@@ -3,25 +3,26 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public sealed class AuthorUI(IServiceProvider services)
+public sealed class AuthorUI(ChatHub chatHub)
 {
-    private ChatHub? _chatHub;
+    private ILogger? _log;
 
-    private IServiceProvider Services { get; } = services;
-    private ChatHub ChatHub => _chatHub ??= Services.GetRequiredService<ChatHub>();
+    private ChatHub ChatHub { get; } = chatHub;
     private Session Session => ChatHub.Session;
     private IAccounts Accounts => ChatHub.Accounts;
     private IAuthors Authors => ChatHub.Authors;
     private ModalUI ModalUI => ChatHub.ModalUI;
     private History History => ChatHub.History;
-    private UICommander UICommander => ChatHub.UICommander;
+    private UICommander UICommander => ChatHub.UICommander();
+    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public async Task Show(AuthorId authorId, CancellationToken cancellationToken = default)
     {
         if (authorId.IsNone)
             return; // Likely the caller haven't read authorId yet, so we can't do much here
 
-        await ModalUI.Show(new AuthorModal.Model(authorId)).ConfigureAwait(false);
+        await ModalUI.Show(new AuthorModal.Model(authorId), CancellationToken.None).ConfigureAwait(false);
     }
 
     public async Task<bool> CanStartPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
@@ -73,7 +74,7 @@ public sealed class AuthorUI(IServiceProvider services)
 
         var createCommand = new Chats_Change(Session, default, null, new() {
             Create = new ChatDiff {
-                Title = $"Anonymous chat ({ChatHub.Clocks.SystemClock.Now.ToString("d")})",
+                Title = $"Anonymous chat ({ChatHub.Clocks().SystemClock.Now.ToString("d")})",
                 Kind = ChatKind.Group,
                 IsPublic = false,
                 AllowAnonymousAuthors = true,

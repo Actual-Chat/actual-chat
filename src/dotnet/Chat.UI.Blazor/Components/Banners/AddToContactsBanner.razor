@@ -20,7 +20,7 @@
     private Session Session => ChatContext.Session;
     private Chat Chat => ChatContext.Chat;
     private IContacts Contacts => ChatContext.Contacts;
-    private UICommander UICommander => ChatContext.UICommander;
+    private UICommander UICommander => ChatContext.UICommander();
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 

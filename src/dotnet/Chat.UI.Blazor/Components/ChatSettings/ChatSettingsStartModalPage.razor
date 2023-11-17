@@ -263,12 +263,12 @@
         }
         var allAuthorIds = await ChatHub.Authors.ListAuthorIds(Session, ChatId, cancellationToken);
         var invites = await ChatHub.Invites.ListChatInvites(Session, ChatId, cancellationToken);
-        var threshold = ChatHub.Clocks.SystemClock.Now - TimeSpan.FromDays(3);
+        var threshold = ChatHub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
         invites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToApiArray();
-        var link = Links.Chat(ChatId).ToDisplayUrl(ChatHub.UrlMapper);
+        var link = Links.Chat(ChatId).ToDisplayUrl(ChatHub.UrlMapper());
         var allowEditIsTemplate = await ChatHub.Features.Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
         return new() {
             Chat = chat,
@@ -290,7 +290,7 @@
     private async Task OnNewInviteClick() {
         // TODO: make it configurable
         var invite = Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(ChatId));
-        invite = await ChatHub.UICommander.Run(new Invites_Generate(Session, invite));
+        invite = await ChatHub.UICommander().Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
     }
 
@@ -339,7 +339,7 @@
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
-        await ChatHub.UICommander.Run(command);
+        await ChatHub.UICommander().Run(command);
     }
 
     public sealed class FormModel {

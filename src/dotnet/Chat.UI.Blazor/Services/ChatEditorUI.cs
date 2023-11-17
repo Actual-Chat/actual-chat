@@ -9,33 +9,29 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly object _lock = new();
     private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
-    private IAuthors? _authors;
-    private IChats? _chats;
-    private LocalSettings? _localSettings;
-    private TuneUI? _tuneUI;
-    private UICommander? _uiCommander;
-    private UIEventHub? _uiEventHub;
+    private ILogger? _log;
 
-    private IServiceProvider Services { get; }
-    private Session Session { get; }
-
-    private IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
-    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private LocalSettings LocalSettings => _localSettings ??= Services.GetRequiredService<LocalSettings>();
-    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
-    private UICommander UICommander => _uiCommander ??= Services.UICommander();
-    private UIEventHub UIEventHub => _uiEventHub ??= Services.UIEventHub();
+    private ChatHub ChatHub { get; }
+    private Session Session => ChatHub.Session;
+    private IChats Chats => ChatHub.Chats;
+    private IAuthors Authors => ChatHub.Authors;
+    private TuneUI TuneUI => ChatHub.TuneUI;
+    private IStateFactory StateFactory => ChatHub.StateFactory();
+    private LocalSettings LocalSettings => ChatHub.LocalSettings();
+    private UICommander UICommander => ChatHub.UICommander();
+    private UIEventHub UIEventHub => ChatHub.UIEventHub();
+    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
 
-    public ChatEditorUI(IServiceProvider services)
+    public ChatEditorUI(ChatHub chatHub)
     {
-        Services = services;
-        Session = services.Session();
+        ChatHub = chatHub;
 
         var type = GetType();
-        _relatedChatEntry = services.StateFactory().NewMutable(
+        _relatedChatEntry = StateFactory.NewMutable(
             (RelatedChatEntry?)null,
             StateCategories.Get(type, nameof(RelatedChatEntry)));
     }
@@ -108,7 +104,7 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
             .GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None)
             .ConfigureAwait(false);
         var idTileLayer = ChatEntryReader.IdTileStack.Layers[1]; // 5*4 = scan by 20 entries
-        var chatEntryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text, idTileLayer);
+        var chatEntryReader = ChatHub.NewEntryReader(chatId, ChatEntryKind.Text, idTileLayer);
         var lastEditableEntry = await chatEntryReader.GetLast(
                 chatIdRange,
                 x => x.AuthorId == author.Id && x is { HasMediaEntry: false, IsStreaming: false },

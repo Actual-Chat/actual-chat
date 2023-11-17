@@ -47,6 +47,11 @@ public sealed record ChatContext(
         return lastContext with { Chat = chat };
     }
 
+    // Some handy helpers
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ChatEntryReader NewEntryReader(ChatEntryKind entryKind, TileLayer<long>? idTileLayer = null)
+        => new (Chats, Session, Chat.Id, entryKind, idTileLayer);
+
     // This record relies on referential equality
     public bool Equals(ChatContext? other)
         => ReferenceEquals(this, other);

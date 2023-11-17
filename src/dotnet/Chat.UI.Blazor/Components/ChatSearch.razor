@@ -22,7 +22,7 @@
     private Session Session => ChatHub.Session;
     private IChats Chats => ChatHub.Chats;
     private ChatUI ChatUI => ChatHub.ChatUI;
-    private UIEventHub UIEventHub => ChatHub.UIEventHub;
+    private UIEventHub UIEventHub => ChatHub.UIEventHub();
     private Features Features => ChatHub.Features;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;

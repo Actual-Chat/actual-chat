@@ -34,8 +34,8 @@
     private Session Session => ChatHub.Session;
     private IChats Chats => ChatHub.Chats;
     private ChatEditorUI ChatEditorUI => ChatHub.ChatEditorUI;
-    private UICommander UICommander => ChatHub.UICommander;
-    private UIEventHub UIEventHub => ChatHub.UIEventHub;
+    private UICommander UICommander => ChatHub.UICommander();
+    private UIEventHub UIEventHub => ChatHub.UIEventHub();
 
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }

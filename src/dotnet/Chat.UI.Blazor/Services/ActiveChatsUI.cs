@@ -1,5 +1,4 @@
 using ActualChat.Kvas;
-using ActualChat.UI.Blazor.Services;
 using Stl.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -11,34 +10,26 @@ public class ActiveChatsUI
 
     private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.CheckedPass);
     private readonly IStoredState<ApiArray<ActiveChat>> _activeChats;
-    private IChats? _chats;
+    private ILogger? _log;
 
-    private IServiceProvider Services { get; }
-    private ILogger Log { get; }
+    private ChatHub ChatHub { get; }
+    private Session Session => ChatHub.Session;
+    private IChats Chats => ChatHub.Chats;
+    private IStateFactory StateFactory => ChatHub.StateFactory();
+    private LocalSettings LocalSettings => ChatHub.LocalSettings();
+    private UICommander UICommander => ChatHub.UICommander();
+    private MomentClockSet Clocks => ChatHub.Clocks();
+    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
-    private Session Session { get; }
-    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private LocalSettings LocalSettings { get; }
-    private IStateFactory StateFactory { get; }
-    private UICommander UICommander { get; }
-    private MomentClockSet Clocks { get; }
     private Moment Now => Clocks.SystemClock.Now;
 
     public IMutableState<ApiArray<ActiveChat>> ActiveChats => _activeChats;
     public Task WhenLoaded => _activeChats.WhenRead;
 
-    public ActiveChatsUI(IServiceProvider services)
+    public ActiveChatsUI(ChatHub chatHub)
     {
-        Services = services;
-        Log = services.LogFor(GetType());
-
-        Session = services.Session();
-        LocalSettings = services.LocalSettings();
-        StateFactory = services.StateFactory();
-        UICommander = services.UICommander();
-        Clocks = services.Clocks();
-
+        ChatHub = chatHub;
         _activeChats = StateFactory.NewKvasStored<ApiArray<ActiveChat>>(
             new (LocalSettings, nameof(ActiveChats)) {
                 Corrector = FixStoredActiveChats,

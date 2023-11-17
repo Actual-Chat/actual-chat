@@ -25,7 +25,7 @@
     private Chat Chat => ChatContext.Chat;
     private IRoles Roles => ChatContext.Roles;
     private IAuthors Authors => ChatContext.Authors;
-    private AccountSettings AccountSettings => ChatContext.AccountSettings;
+    private AccountSettings AccountSettings => ChatContext.AccountSettings();
     private ChatListUI ChatListUI => ChatContext.ChatListUI;
     private ModalUI ModalUI => ChatContext.ModalUI;
     private ILogger Log => _log ??= Services.LogFor(GetType());

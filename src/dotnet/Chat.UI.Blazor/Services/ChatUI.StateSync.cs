@@ -68,8 +68,7 @@ public partial class ChatUI
             .ConfigureAwait(false);
 
         var link = Links.Chat(cFixedSelectedChatId.Value);
-        var autoNavigationUI = Services.GetRequiredService<AutoNavigationUI>();
-        _ = autoNavigationUI.NavigateTo(link, AutoNavigationReason.FixedChatId);
+        _ = AutoNavigationUI.NavigateTo(link, AutoNavigationReason.FixedChatId);
     }
 
     [ComputeMethod]

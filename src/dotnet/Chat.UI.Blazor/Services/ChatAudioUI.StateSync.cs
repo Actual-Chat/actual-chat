@@ -349,7 +349,7 @@ public partial class ChatAudioUI
 
     private async Task ReconnectOnRpcReconnect(CancellationToken cancellationToken)
     {
-        var rpcDependentReconnectDelayer = Services.GetService<RpcDependentReconnectDelayer>();
+        var rpcDependentReconnectDelayer = ChatHub.GetService<RpcDependentReconnectDelayer>();
         if (rpcDependentReconnectDelayer == null)
             return;
 
@@ -596,7 +596,7 @@ public partial class ChatAudioUI
         Moment ActiveUntil, // CPU time
         bool IsCountingDown);
 
-    public record NextBeepState(
+    public sealed record NextBeepState(
         Moment At, // CPU time
         bool IsPreviousCancelled);
 

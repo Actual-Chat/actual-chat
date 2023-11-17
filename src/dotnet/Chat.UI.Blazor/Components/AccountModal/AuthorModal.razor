@@ -109,7 +109,7 @@
 
         async Task SetAvatar(AvatarFull avatar) {
             var command = new Authors_SetAvatar(ChatHub.Session, ChatId, avatar.Id);
-            await ChatHub.UICommander.Run(command);
+            await ChatHub.UICommander().Run(command);
             revealed = true;
         }
     }
@@ -127,12 +127,12 @@
 
     private async Task OnAvatarSelected(AvatarFull avatar) {
         var command = new Authors_SetAvatar(ChatHub.Session, AuthorId.ChatId, avatar.Id);
-        await ChatHub.UICommander.Run(command);
+        await ChatHub.UICommander().Run(command);
     }
 
     private void OnSettingsClick() {
         Modal.Close();
-        _ = ChatHub.UIEventHub.Publish(new ShowSettingsEvent());
+        _ = ChatHub.UIEventHub().Publish(new ShowSettingsEvent());
     }
 
     private void OnEditAvatarClicked(Author author) {

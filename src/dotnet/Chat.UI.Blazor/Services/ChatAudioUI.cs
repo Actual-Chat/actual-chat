@@ -11,41 +11,28 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private readonly IMutableState<Moment?> _audioStoppedAt;
     private readonly IMutableState<NextBeepState?> _nextBeep;
     private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
-    private IChats? _chats;
-    private ChatActivity? _chatActivity;
-    private ActiveChatsUI? _activeChatsUI;
-    private AudioSettings? _audioSettings;
-    private AudioRecorder? _audioRecorder;
-    private ChatPlayers? _chatPlayers;
-    private ModalUI? _modalUI;
-    private TuneUI? _tuneUI;
-    private LanguageUI? _languageUI;
-    private InteractiveUI? _interactiveUI;
-    private DeviceAwakeUI? _deviceAwakeUI;
-    private ChatEditorUI? _chatEditorUI;
-    private UserActivityUI? _userActivityUI;
-    private Dispatcher? _dispatcher;
+    private ILogger? _log;
 
-    private IServiceProvider Services { get; }
-    private ILogger Log { get; }
+    private ChatHub ChatHub { get; }
+    private Session Session => ChatHub.Session;
+    private IChats Chats => ChatHub.Chats;
+    private ChatActivity ChatActivity => ChatHub.ChatActivity;
+    private ActiveChatsUI ActiveChatsUI => ChatHub.ActiveChatsUI;
+    private AudioSettings AudioSettings => ChatHub.AudioSettings;
+    private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
+    private ChatPlayers ChatPlayers => ChatHub.ChatPlayers;
+    private ChatEditorUI ChatEditorUI => ChatHub.ChatEditorUI;
+    private LanguageUI LanguageUI => ChatHub.LanguageUI;
+    private ModalUI ModalUI => ChatHub.ModalUI;
+    private UserActivityUI UserActivityUI => ChatHub.UserActivityUI;
+    private InteractiveUI InteractiveUI => ChatHub.InteractiveUI;
+    private DeviceAwakeUI DeviceAwakeUI => ChatHub.DeviceAwakeUI;
+    private TuneUI TuneUI => ChatHub.TuneUI;
+    private IStateFactory StateFactory => ChatHub.StateFactory();
+    private Dispatcher Dispatcher => ChatHub.Dispatcher;
+    private MomentClockSet Clocks => ChatHub.Clocks();
+    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
-
-    private Session Session { get; }
-    private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
-    private ChatActivity ChatActivity => _chatActivity ??= Services.GetRequiredService<ChatActivity>();
-    private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
-    private AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
-    private AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
-    private ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
-    private ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
-    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
-    private LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
-    private InteractiveUI InteractiveUI => _interactiveUI ??= Services.GetRequiredService<InteractiveUI>();
-    private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
-    private ChatEditorUI ChatEditorUI => _chatEditorUI ??= Services.GetRequiredService<ChatEditorUI>();
-    private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
-    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
-    private MomentClockSet Clocks { get; }
 
     private Moment CpuNow => Clocks.CpuClock.Now;
     private Moment ServerNow => Clocks.ServerClock.Now;
@@ -55,19 +42,16 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
 
-    public ChatAudioUI(IServiceProvider services)
+    public ChatAudioUI(ChatHub chatHub)
     {
-        Services = services;
-        Log = services.LogFor(GetType());
-
-        Session = services.Session();
-        Clocks = services.Clocks();
+        ChatHub = chatHub;
 
         // Read entry states from other windows / devices are delayed by 1s
-        var stateFactory = services.StateFactory();
-        _stopRecordingAt = stateFactory.NewMutable<Moment?>();
-        _audioStoppedAt = stateFactory.NewMutable<Moment?>();
-        _nextBeep = stateFactory.NewMutable<NextBeepState?>();
+        var type = GetType();
+        var stateFactory = StateFactory;
+        _stopRecordingAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(StopRecordingAt)));
+        _audioStoppedAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(AudioStoppedAt)));
+        _nextBeep = stateFactory.NewMutable((NextBeepState?)null, StateCategories.Get(type, nameof(NextBeep)));
     }
 
     void INotifyInitialized.Initialized()
