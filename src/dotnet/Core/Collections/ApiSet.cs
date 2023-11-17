@@ -15,7 +15,9 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
     public ApiSet(IEqualityComparer<T>? comparer) : base(comparer) { }
     public ApiSet(int capacity) : base(capacity) { }
     public ApiSet(int capacity, IEqualityComparer<T>? comparer) : base(capacity, comparer) { }
+#pragma warning disable SYSLIB0051 // Type or member is obsolete
     private ApiSet(SerializationInfo info, StreamingContext context) : base(info, context) { }
+#pragma warning restore SYSLIB0051
 
     object ICloneable.Clone() => Clone();
     public ApiSet<T> Clone() => new(this);
