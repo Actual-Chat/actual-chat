@@ -54,9 +54,10 @@ public partial class MauiWebView
 
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
     {
-        SetPlatformWebView(eventArgs.WebView);
+        var webView = eventArgs.WebView;
+        SetPlatformWebView(webView);
         if (DeviceInfo.Version >= new Version("16.4"))
-            WKWebView.Inspectable = true;
+            webView.Inspectable = true;
     }
 
     private partial void OnLoaded(object? sender, EventArgs eventArgs)
