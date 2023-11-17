@@ -45,6 +45,7 @@
 @import './Components/Tooltip/tooltip.css';
 @import './Components/TotpInput/totp-input.css';
 @import './Components/VirtualList/virtual-list.css';
+@import './Components/VisualMediaViewerModal/media-download-button.css';
 @import './Components/VisualMediaViewerModal/visual-media-viewer-modal.css';
 
 @import './Services/ScreenSize/screen-size.css';

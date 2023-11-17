@@ -37,9 +37,6 @@
 .image-viewer-header .c-control-panel {
     @apply flex-x gap-x-3 md:gap-x-4;
 }
-.image-viewer-header > .c-control-panel > .c-link {
-    @apply flex justify-center;
-}
 .image-viewer-header .btn-h.mobile {
     @apply flex md:hidden;
 }

@@ -41,6 +41,12 @@ public class IosVisualMediaViewerFileDownloader(IServiceProvider services) : IVi
         }
     }
 
+    public bool IsInProgress(string downloadUrl)
+        => throw new NotImplementedException();
+
+    public Task Cancel(string downloadUrl)
+        => throw new NotImplementedException();
+
     private Task Save(string tempFilePath, PHAssetResourceType type)
     {
         var tcs = new TaskCompletionSource();

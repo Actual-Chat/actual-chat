@@ -1,0 +1,51 @@
+﻿@using ActualChat.Chat
+@using ActualChat.Uploads
+@namespace ActualChat.UI.Blazor.Components
+@{
+    @if (DownloadUrl.IsNullOrEmpty() || ContentType.IsNullOrEmpty())
+        return;
+
+    var canSave = MediaTypeExt.IsSupportedVisualMedia(ContentType) && !MediaTypeExt.IsSvg(ContentType);
+}
+
+@if (canSave) { // TODO: uncomment
+@* @if (Saver != null && canSave) { *@
+    @if (_isInProgress) {
+        <a href="#" class="c-link" @onclick="@(_ => Saver.Cancel(DownloadUrl))" @onclick:preventDefault>
+            <HeaderButton Class="inverted">
+                <i class="icon-close"></i>
+            </HeaderButton>
+            <img src="/dist/images/circle-75.svg" class="animate-spin" alt=""/>
+        </a>
+    } else {
+        <a href="#" download class="c-link" @onclick="@(_ => Saver.Download(DownloadUrl, ContentType))" @onclick:preventDefault>
+            <HeaderButton Class="inverted">
+                <i class="icon-download"></i>
+            </HeaderButton>
+        </a>
+    }
+} else {
+    <a href="@DownloadUrl" target="_blank" download class="c-link">
+        <HeaderButton Class="inverted">
+            <i class="icon-download"></i>
+        </HeaderButton>
+    </a>
+}
+
+@code {
+    private bool _isInProgress;
+
+    [Inject] private IServiceProvider Services { get; init; }
+    private IVisualMediaViewerFileDownloader? Saver { get; set; }
+
+    [Parameter, EditorRequired] public string DownloadUrl { set; get; } = "";
+    [Parameter, EditorRequired] public string ContentType { set; get; } = "";
+
+    protected override void OnInitialized() {
+        Saver = Services.GetService<IVisualMediaViewerFileDownloader>();
+    }
+
+    protected override void OnParametersSet() {
+        _isInProgress = Saver?.IsInProgress(DownloadUrl) ?? true; // TODO: false
+    }
+}

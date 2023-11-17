@@ -47,6 +47,12 @@ public class AndroidVisualMediaViewerFileDownloader(IServiceProvider services)
         }
     }
 
+    public bool IsInProgress(string downloadUrl)
+        => throw new NotImplementedException();
+
+    public Task Cancel(string downloadUrl)
+        => throw new NotImplementedException();
+
     private void EnsureDownloadCompletedReceiverRegistered()
     {
         if (_downloadCompletedReceiver != null)

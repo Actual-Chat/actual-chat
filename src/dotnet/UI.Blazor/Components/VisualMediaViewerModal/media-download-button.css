@@ -1,0 +1,3 @@
+.image-viewer-header > .c-control-panel > .c-link {
+    @apply flex justify-center;
+}

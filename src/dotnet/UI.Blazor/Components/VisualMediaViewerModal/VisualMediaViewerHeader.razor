@@ -6,9 +6,6 @@
 @using ActualChat.Users
 @using Microsoft.AspNetCore.StaticFiles
 @namespace ActualChat.UI.Blazor.Components
-@{
-    var canSave = MediaTypeExt.IsSupportedVisualMedia(ContentType) && !MediaTypeExt.IsSvg(ContentType);
-}
 
 <div class="image-viewer-header">
     @if (ChatEntry != null && _author != null) {
@@ -29,21 +26,7 @@
                 <i class="icon-share"></i>
             </HeaderButton>
         }
-        @if (!DownloadUrl.IsNullOrEmpty()) {
-            if (_saver != null && canSave) {
-                <a href="#" download class="c-link" @onclick="@(_ => _saver.Download(DownloadUrl, ContentType))" @onclick:preventDefault>
-                    <HeaderButton Class="inverted">
-                        <i class="icon-download"></i>
-                    </HeaderButton>
-                </a>
-            } else {
-                <a href="@DownloadUrl" target="_blank" download class="c-link">
-                    <HeaderButton Class="inverted">
-                        <i class="icon-download"></i>
-                    </HeaderButton>
-                </a>
-            }
-        }
+        <MediaDownloadButton DownloadUrl="@DownloadUrl" ContentType="@ContentType"/>
         <HeaderButton Class="inverted desktop" Click="CloseClick">
             <i class="icon-close"></i>
         </HeaderButton>
@@ -53,14 +36,10 @@
 @code {
     private Author? _author;
     private bool _enableIncompleteUI;
-    private bool _isDownloadEnabled;
-    private IVisualMediaViewerFileDownloader? _saver;
 
     [Inject] private Features Features { get; init; } = null!;
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public EventCallback CloseClick { set; get; }
@@ -68,7 +47,6 @@
     [Parameter] public string ContentType { set; get; } = "";
 
     protected override async Task OnInitializedAsync() {
-        _saver = Services.GetService<IVisualMediaViewerFileDownloader>();
         _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
     }
 
