@@ -242,7 +242,7 @@
             initialValue = new Model {
                 OwnAuthorId = ownAuthorId,
                 RepliedEntry = repliedEntry,
-                ShowLinkPreview = Message.ShowLinkPreview && ChatContext.ShowLinkPreview.Value,
+                ShowLinkPreview = Message.ShowLinkPreview,
             };
         return new() {
             InitialValue = initialValue,
@@ -269,8 +269,6 @@
         var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken);
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken);
         var selectedChatEntries = await ChatContext.SelectionUI.Selection.Use(cancellationToken);
-        var showLinkPreview = Message.ShowLinkPreview
-            && await ChatContext.ShowLinkPreview.Use(cancellationToken); // TODO: read UI settings
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,
@@ -280,7 +278,7 @@
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
             ForwardedAuthor = forwardedAuthor,
-            ShowLinkPreview = showLinkPreview,
+            ShowLinkPreview = Message.ShowLinkPreview,
             ForwardedPeerAuthor = forwardedPeerAuthor,
         };
         return result.Equals(_rendered) ? _rendered! : result;

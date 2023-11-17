@@ -119,10 +119,8 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public IJSRuntime JS => _js ??= Services.JSRuntime();
 
     // Some handy helpers
-    private IComputedState<bool>? _showLinkPreview;
-
-    public IState<bool> ShowLinkPreview => _showLinkPreview ??=
-        StateFactory.NewComputed<bool>((_, ct) => Features.Get<Features_EnableLinkPreview, bool>(ct).AsTask());
+    public ChatEntryReader NewEntryReader(ChatId chatId, ChatEntryKind entryKind, TileLayer<long>? idTileLayer = null)
+        => new(Chats, Session, chatId, entryKind, idTileLayer);
 
     // IServiceProvider
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
