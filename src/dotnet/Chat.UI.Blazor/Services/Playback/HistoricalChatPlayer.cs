@@ -2,9 +2,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class HistoricalChatPlayer : ChatPlayer
 {
-
-    public HistoricalChatPlayer(Session session, ChatId chatId, IServiceProvider services)
-        : base(session, chatId, services)
+    public HistoricalChatPlayer(ChatHub chatHub, ChatId chatId)
+        : base(chatHub, chatId)
         => PlayerKind = ChatPlayerKind.Historical;
 
     protected override async Task Play(

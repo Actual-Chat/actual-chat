@@ -4,10 +4,10 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 {
     private ChatAudioUI ChatAudioUI { get; }
 
-    public RealtimeChatPlayer(Session session, ChatId chatId, IServiceProvider services)
-        : base(session, chatId, services)
+    public RealtimeChatPlayer(ChatHub chatHub, ChatId chatId)
+        : base(chatHub, chatId)
     {
-        ChatAudioUI = services.GetRequiredService<ChatAudioUI>();
+        ChatAudioUI = ChatHub.ChatAudioUI;
         PlayerKind = ChatPlayerKind.Realtime;
     }
 

@@ -1,8 +1,11 @@
+using ActualChat.Audio;
 using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Contacts;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kvas;
+using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
@@ -30,6 +33,13 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     private ChatAudioUI? _chatAudioUI;
     private ChatPlayers? _chatPlayers;
     private AudioRecorder? _audioRecorder;
+    private IAudioStreamer? _audioStreamer;
+    private AudioDownloader? _audioDownloader;
+    private AudioInitializer? _audioInitializer;
+    private IAudioOutputController? _audioOutputController;
+    private IPlaybackFactory? _playbackFactory;
+    private DeviceAwakeUI? _deviceAwakeUI;
+    private InteractiveUI? _interactiveUI;
     private ClipboardUI? _clipboardUI;
     private PanelsUI? _panelsUI;
     private ShareUI? _shareUI;
@@ -75,6 +85,13 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
     public ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     public AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
+    public IAudioStreamer AudioStreamer => _audioStreamer ??= Services.GetRequiredService<IAudioStreamer>();
+    public AudioDownloader AudioDownloader => _audioDownloader ??= Services.GetRequiredService<AudioDownloader>();
+    public AudioInitializer AudioInitializer => _audioInitializer ??= Services.GetRequiredService<AudioInitializer>();
+    public IAudioOutputController AudioOutputController => _audioOutputController ??= Services.GetRequiredService<IAudioOutputController>();
+    public IPlaybackFactory PlaybackFactory => _playbackFactory ??= Services.GetRequiredService<IPlaybackFactory>();
+    public DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
+    public InteractiveUI InteractiveUI => _interactiveUI ??= Services.GetRequiredService<InteractiveUI>();
     public ClipboardUI ClipboardUI => _clipboardUI ??= Services.GetRequiredService<ClipboardUI>();
     public PanelsUI PanelsUI => _panelsUI ??= Services.GetRequiredService<PanelsUI>();
     public ShareUI ShareUI => _shareUI ??= Services.GetRequiredService<ShareUI>();
@@ -103,6 +120,7 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
 
     // Some handy helpers
     private IComputedState<bool>? _showLinkPreview;
+
     public IState<bool> ShowLinkPreview => _showLinkPreview ??=
         StateFactory.NewComputed<bool>((_, ct) => Features.Get<Features_EnableLinkPreview, bool>(ct).AsTask());
 
