@@ -38,7 +38,7 @@
     private bool _canUseWebShare;
 
     [Inject] private ChatHub ChatHub { get; init; } = null!;
-    private UrlMapper UrlMapper => ChatHub.UrlMapper;
+    private UrlMapper UrlMapper => ChatHub.UrlMapper();
     private IMauiShare? MauiShare { get; set; }
 
     [Parameter] public string Class { get; set; } = "";

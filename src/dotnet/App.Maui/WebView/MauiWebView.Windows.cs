@@ -35,7 +35,12 @@ public partial class MauiWebView
     }
 
     private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs) { }
-    private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs) { }
+    private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
+    {
+        var webView = eventArgs.WebView;
+        SetPlatformWebView(webView);
+    }
+
     private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
 
     private partial void SetupSessionCookie(Session session)

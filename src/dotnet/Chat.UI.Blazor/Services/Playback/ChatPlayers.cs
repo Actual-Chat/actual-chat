@@ -11,25 +11,19 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
 
     private readonly IMutableState<PlaybackState?> _playbackState;
-    private ChatAudioUI? _audioUI;
 
-    private IServiceProvider Services { get; }
-    private IAudioOutputController AudioOutputController { get;}
-    private ChatAudioUI ChatAudioUI => _audioUI ??= Services.GetRequiredService<ChatAudioUI>();
-    private TuneUI TuneUI { get; }
-    private MomentClockSet Clocks { get; }
+    private ChatHub ChatHub { get; }
+    private IAudioOutputController AudioOutputController => ChatHub.AudioOutputController;
+    private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
+    private TuneUI TuneUI => ChatHub.TuneUI;
+    private MomentClockSet Clocks => ChatHub.Clocks();
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
-    public ChatPlayers(IServiceProvider services)
+    public ChatPlayers(ChatHub chatHub)
     {
-        Services = services;
-        AudioOutputController = services.GetRequiredService<IAudioOutputController>();
-        Clocks = services.Clocks();
-        TuneUI = services.GetRequiredService<TuneUI>();
-
-        var stateFactory = services.StateFactory();
-        _playbackState = stateFactory.NewMutable(
+        ChatHub = chatHub;
+        _playbackState = ChatHub.StateFactory().NewMutable(
             (PlaybackState?)null,
             StateCategories.Get(GetType(), nameof(PlaybackState)));
     }
@@ -173,8 +167,8 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
             if (player != null)
                 return player;
             newPlayer = playerKind switch {
-                ChatPlayerKind.Realtime => Services.Activate<RealtimeChatPlayer>(chatId),
-                ChatPlayerKind.Historical => Services.Activate<HistoricalChatPlayer>(chatId),
+                ChatPlayerKind.Realtime => new RealtimeChatPlayer(ChatHub, chatId),
+                ChatPlayerKind.Historical => new HistoricalChatPlayer(ChatHub, chatId),
                 _ => throw new ArgumentOutOfRangeException(nameof(playerKind), playerKind, null),
             };
             _players = _players.Add((chatId, playerKind), newPlayer);

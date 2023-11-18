@@ -2,6 +2,7 @@ namespace ActualChat.Chat;
 
 public static class ChatsExt
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ChatEntryReader NewEntryReader(
         this IChats chats,
         Session session,

@@ -3,6 +3,7 @@ namespace ActualChat.Media;
 public interface IMediaLinkPreviews : IComputeService
 {
     [ComputeMethod]
+    [Obsolete("2023.11: It's always true now.")]
     Task<bool> IsEnabled();
     [ComputeMethod]
     Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken);

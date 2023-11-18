@@ -32,8 +32,8 @@
     private Chat Chat => ChatContext.Chat;
     private IChats Chats => ChatContext.Chats;
     private ChatUI ChatUI => ChatContext.ChatUI;
-    private UIEventHub UIEventHub => ChatContext.UIEventHub;
-    private Moment Now => ChatContext.Clocks.CpuClock.Now;
+    private UIEventHub UIEventHub => ChatContext.UIEventHub();
+    private Moment Now => ChatContext.Clocks().CpuClock.Now;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;

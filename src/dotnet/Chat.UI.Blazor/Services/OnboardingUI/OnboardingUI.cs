@@ -10,36 +10,40 @@ public class OnboardingUI : IDisposable, IOnboardingUI
     private readonly IStoredState<LocalOnboardingSettings> _localSettings;
     private CancellationTokenSource? _lastTryShowCts;
     private ModalRef? _lastModalRef;
+    private ILogger? _log;
 
-    private IServiceProvider Services { get; }
-    private AccountUI AccountUI { get; }
-    private LoadingUI LoadingUI { get; }
-    private MomentClockSet Clocks { get; }
+    private ChatHub ChatHub { get; }
+    private IServiceProvider Services => ChatHub.Services;
+    private AccountUI AccountUI => ChatHub.AccountUI;
+    private ModalUI ModalUI => ChatHub.ModalUI;
+    private LoadingUI LoadingUI => ChatHub.LoadingUI;
+    private MomentClockSet Clocks => ChatHub.Clocks();
+    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
+
     private Moment Now => Clocks.SystemClock.Now;
 
     public IState<UserOnboardingSettings> UserSettings => _userSettings;
     public IState<LocalOnboardingSettings> LocalSettings => _localSettings;
 
-    public OnboardingUI(IServiceProvider services)
+    public OnboardingUI(ChatHub chatHub)
     {
-        Services = services;
-        AccountUI = services.GetRequiredService<AccountUI>();
-        LoadingUI = services.GetRequiredService<LoadingUI>();
-        Clocks = services.Clocks();
+        ChatHub = chatHub;
 
-        var stateFactory = services.StateFactory();
-        var accountSettings = services.GetRequiredService<AccountSettings>();
+        var stateFactory = ChatHub.StateFactory();
+        var accountSettings = ChatHub.AccountSettings();
+        var localSettings = ChatHub.LocalSettings();
+        var type = GetType();
         _userSettings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
             new (accountSettings, UserOnboardingSettings.KvasKey) {
                 InitialValue = new UserOnboardingSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
-                Category = StateCategories.Get(GetType(), nameof(UserSettings)),
+                Category = StateCategories.Get(type, nameof(UserSettings)),
             });
-        var localSettings = services.GetRequiredService<LocalSettings>();
         _localSettings = stateFactory.NewKvasStored<LocalOnboardingSettings>(
             new (localSettings, LocalOnboardingSettings.KvasKey) {
                 InitialValue = new LocalOnboardingSettings(),
-                Category = StateCategories.Get(GetType(), nameof(LocalSettings)),
+                Category = StateCategories.Get(type, nameof(LocalSettings)),
             });
     }
 
@@ -72,8 +76,7 @@ public class OnboardingUI : IDisposable, IOnboardingUI
         if (!shouldBeShown)
             return false;
 
-        var modalUI = Services.GetRequiredService<ModalUI>();
-        _lastModalRef = await modalUI.Show(new OnboardingModal.Model(), CancellationToken.None).ConfigureAwait(false);
+        _lastModalRef = await ModalUI.Show(new OnboardingModal.Model(), CancellationToken.None).ConfigureAwait(false);
         return true;
     }
 

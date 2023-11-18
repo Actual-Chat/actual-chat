@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
@@ -62,6 +63,8 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
         await JS
             .InvokeVoidAsync(JSInitMethod, CancellationToken.None, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
             .AsTask().WaitAsync(InitializeTimeout, cancellationToken).ConfigureAwait(false);
+        var audioRecorder = services.GetRequiredService<AudioRecorder>();
+        await audioRecorder.WhenInitialized.ConfigureAwait(false);
     }
 
     // ReSharper disable once InconsistentNaming

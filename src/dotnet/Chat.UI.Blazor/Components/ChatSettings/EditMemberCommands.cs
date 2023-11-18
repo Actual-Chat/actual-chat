@@ -24,7 +24,7 @@ public static class EditMemberCommands
 
     public static async Task OnRemoveFromGroupClick(ChatHub chatHub, Author author)
     {
-        var result = await chatHub.UICommander.Run(new Authors_Exclude(chatHub.Session, author.Id));
+        var result = await chatHub.UICommander().Run(new Authors_Exclude(chatHub.Session, author.Id));
         if (result.HasError)
             return;
         var authorName = author.Avatar.Name;
@@ -32,7 +32,7 @@ public static class EditMemberCommands
 
         void Undo() {
             var undoCommand = new Authors_Restore(chatHub.Session, author.Id);
-            _ = chatHub.UICommander.Run(undoCommand);
+            _ = chatHub.UICommander().Run(undoCommand);
         }
     }
 
@@ -49,7 +49,7 @@ public static class EditMemberCommands
 
     private static async Task OnPromoteToOwnerConfirmed(ChatHub chatHub, AuthorId authorId, string authorName)
     {
-        var result = await chatHub.UICommander.Run(new Authors_PromoteToOwner(chatHub.Session, authorId));
+        var result = await chatHub.UICommander().Run(new Authors_PromoteToOwner(chatHub.Session, authorId));
         if (result.HasError)
             return;
 

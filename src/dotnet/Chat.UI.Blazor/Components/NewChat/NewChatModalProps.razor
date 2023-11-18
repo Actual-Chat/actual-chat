@@ -146,7 +146,7 @@
                     AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
                 },
             });
-            var (chat, createChatError) = await ChatHub.UICommander.Run(command, CancellationToken.None);
+            var (chat, createChatError) = await ChatHub.UICommander().Run(command, CancellationToken.None);
             if (createChatError != null)
                 return;
 

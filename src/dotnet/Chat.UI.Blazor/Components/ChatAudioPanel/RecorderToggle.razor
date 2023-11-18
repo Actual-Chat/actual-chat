@@ -116,7 +116,7 @@
         var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken).ConfigureAwait(false);
         var isRecordingHere = recordingChatId == chatId;
         var isTransitioning =
-            recorderState.ChatId == chatId // The recorder records in this chat
+            recordingChatId == chatId // The recorder records in this chat
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
         return new Model(
             Chat,

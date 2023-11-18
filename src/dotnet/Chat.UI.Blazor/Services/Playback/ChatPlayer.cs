@@ -22,40 +22,32 @@ public abstract class ChatPlayer : ProcessorBase
     protected ILogger? DebugLog => DebugMode ? Log : null;
     protected bool DebugMode => Constants.DebugMode.AudioPlayback;
 
-    protected IServiceProvider Services { get; }
-    protected HostInfo HostInfo { get; }
-    protected MomentClockSet Clocks { get; }
+    protected ChatHub ChatHub { get; }
+    protected Session Session => ChatHub.Session;
+    protected IChats Chats => ChatHub.Chats;
+    protected IAuthors Authors => ChatHub.Authors;
+    protected InteractiveUI InteractiveUI => ChatHub.InteractiveUI;
+    protected MomentClockSet Clocks => ChatHub.Clocks();
+    protected HostInfo HostInfo => ChatHub.HostInfo;
+
     protected IState<TimeSpan> SleepDuration { get; }
     protected IState<TimeSpan> PauseDuration { get; }
     protected TimeSpan SleepAndPauseDuration => SleepDuration.Value + Playback.TotalPauseDuration.Value;
 
-    protected IAuthors Authors { get; }
-    protected IChats Chats { get; }
-    protected InteractiveUI InteractiveUI { get; }
-
-    public Session Session { get; }
     public ChatId ChatId { get; }
     public ChatPlayerKind PlayerKind { get; protected init; }
     public Playback Playback { get; }
     public string Operation { get; protected set; } = "";
     public Task? WhenPlaying => _whenPlaying;
 
-    protected ChatPlayer(Session session, ChatId chatId, IServiceProvider services)
+    protected ChatPlayer(ChatHub chatHub, ChatId chatId)
     {
-        Services = services;
-        Log = services.LogFor(GetType());
-        HostInfo = services.GetRequiredService<HostInfo>();
-        Clocks = services.Clocks();
-
+        ChatHub = chatHub;
         ChatId = chatId;
-        Session = session;
+        Log = ChatHub.LogFor(GetType());
 
-        Playback = services.GetRequiredService<IPlaybackFactory>().Create();
-        Authors = services.GetRequiredService<IAuthors>();
-        Chats = services.GetRequiredService<IChats>();
-        InteractiveUI = services.GetRequiredService<InteractiveUI>();
-
-        SleepDuration = services.GetRequiredService<DeviceAwakeUI>().TotalSleepDuration;
+        Playback = ChatHub.PlaybackFactory.Create();
+        SleepDuration = ChatHub.DeviceAwakeUI.TotalSleepDuration;
         PauseDuration = Playback.TotalPauseDuration;
     }
 
@@ -92,7 +84,7 @@ public abstract class ChatPlayer : ProcessorBase
         }
 
         _ = BackgroundTask.Run(async () => {
-            var chatEntryPlayer = new ChatEntryPlayer(Session, ChatId, Playback, Services, playToken);
+            var chatEntryPlayer = new ChatEntryPlayer(ChatHub, ChatId, Playback, playToken);
             try {
                 await Play(chatEntryPlayer, startAt, playToken).ConfigureAwait(false);
                 await chatEntryPlayer.WhenDonePlaying().WaitAsync(playToken).ConfigureAwait(false);

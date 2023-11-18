@@ -49,13 +49,14 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
         var initialOwnAccount = ownAccount ?? AccountFull.Loading;
 
         var stateFactory = services.StateFactory();
+        var type = GetType();
         _ownAccount = stateFactory.NewMutable<AccountFull>(new () {
             InitialValue = initialOwnAccount,
-            Category = StateCategories.Get(GetType(), nameof(OwnAccount)),
+            Category = StateCategories.Get(type, nameof(OwnAccount)),
         });
         _lastChangedAt = stateFactory.NewMutable<Moment>(new () {
             InitialValue = StartedAt,
-            Category = StateCategories.Get(GetType(), nameof(OwnAccount)),
+            Category = StateCategories.Get(type, nameof(OwnAccount)),
         });
         if (!ReferenceEquals(initialOwnAccount, AccountFull.Loading))
             _whenLoadedSource.TrySetResult();

@@ -137,8 +137,8 @@
     private SelectionUI SelectionUI => ChatHub.SelectionUI;
     private ChatEditorUI ChatEditorUI => ChatHub.ChatEditorUI;
     private ClipboardUI ClipboardUI => ChatHub.ClipboardUI;
-    private UICommander UICommander => ChatHub.UICommander;
-    private UrlMapper UrlMapper => ChatHub.UrlMapper;
+    private UICommander UICommander => ChatHub.UICommander();
+    private UrlMapper UrlMapper => ChatHub.UrlMapper();
     private History History => ChatHub.History;
 
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;

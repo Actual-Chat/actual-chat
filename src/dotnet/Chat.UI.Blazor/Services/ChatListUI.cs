@@ -5,7 +5,7 @@ using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INotifyInitialized
+public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialized
 {
     public static readonly int ActiveItemCountWhenLoading = 0;
     public static readonly int AllItemCountWhenLoading = 14;
@@ -18,51 +18,35 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
     private readonly IStoredState<ChatListSettings> _settings;
     private readonly IMutableState<int> _loadLimit;
 
-    private ChatUI? _chatUI;
-    private ActiveChatsUI? _activeChatsUI;
     private bool _isFirstLoad = true;
     private IComputedState<Trimmed<int>>? _unreadChatCount;
+    private ILogger? _log;
 
-    private IAuthors? _authors;
-    private IContacts? _contacts;
-    private SearchUI? _searchUI;
-    private LoadingUI? _loadingUI;
-    private TuneUI? _tuneUI;
-
-    private Session Session { get; }
-    private IContacts Contacts => _contacts ??= Services.GetRequiredService<IContacts>();
-    private ChatUI ChatUI => _chatUI ??= Services.GetRequiredService<ChatUI>();
-    private IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
-    private ActiveChatsUI ActiveChatsUI => _activeChatsUI ??= Services.GetRequiredService<ActiveChatsUI>();
-
-    private SearchUI SearchUI => _searchUI ??= Services.GetRequiredService<SearchUI>();
-    private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
-    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
-    private AccountSettings AccountSettings { get; }
-    private MomentClockSet Clocks { get; }
-    private IStateFactory StateFactory { get; }
     private ChatHub ChatHub { get; }
-
-    private ILogger Log { get; }
+    private Session Session => ChatHub.Session;
+    private IContacts Contacts => ChatHub.Contacts;
+    private IAuthors Authors => ChatHub.Authors;
+    private ActiveChatsUI ActiveChatsUI => ChatHub.ActiveChatsUI;
+    private ChatUI ChatUI => ChatHub.ChatUI;
+    private SearchUI SearchUI => ChatHub.SearchUI;
+    private TuneUI TuneUI => ChatHub.TuneUI;
+    private LoadingUI LoadingUI => ChatHub.LoadingUI;
+    private IStateFactory StateFactory => ChatHub.StateFactory();
+    private AccountSettings AccountSettings => ChatHub.AccountSettings();
+    private UICommander UICommander => ChatHub.UICommander();
+    private MomentClockSet Clocks => ChatHub.Clocks();
+    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
-    public IServiceProvider Services { get; }
     public IMutableState<ChatListSettings> Settings => _settings;
     public IState<Trimmed<int>> UnreadChatCount => _unreadChatCount!;
     public Task WhenLoaded => _settings.WhenRead;
 
     private Moment Now => Clocks.SystemClock.Now;
 
-    public ChatListUI(IServiceProvider services)
+    public ChatListUI(ChatHub chatHub)
     {
-        Services = services;
-        Log = services.LogFor(GetType());
-
-        Session = services.Session();
-        AccountSettings = services.AccountSettings();
-        StateFactory = services.StateFactory();
-        Clocks = services.Clocks();
-        ChatHub = services.GetRequiredService<ChatHub>();
+        ChatHub = chatHub;
 
         var type = GetType();
         // var isClient = HostInfo.AppKind.IsClient();
@@ -262,7 +246,7 @@ public partial class ChatListUI : WorkerBase, IHasServices, IComputeService, INo
             return;
 
         _loadLimit.Value = int.MaxValue;
-        _ = Services.UICommander().RunNothing(); // No UI update delays in near term
+        _ = UICommander.RunNothing(); // No UI update delays in near term
         using (Computed.Invalidate())
             _ = ListAllUnorderedRaw(default);
     }

@@ -349,7 +349,7 @@ public partial class ChatAudioUI
 
     private async Task ReconnectOnRpcReconnect(CancellationToken cancellationToken)
     {
-        var rpcDependentReconnectDelayer = Services.GetService<RpcDependentReconnectDelayer>();
+        var rpcDependentReconnectDelayer = ChatHub.GetService<RpcDependentReconnectDelayer>();
         if (rpcDependentReconnectDelayer == null)
             return;
 
@@ -445,6 +445,7 @@ public partial class ChatAudioUI
                 if (state == lastState)
                     continue; // Nothing changed - this may happen, we don't want to take any actions in this case
 
+                DebugLog?.LogDebug($"{nameof(RecordingTroubleshooter)}: {{State}}", state);
                 if (state.ChatId.IsNone) {
                     // Recording is stopped
                     StopTroubleshooter();
@@ -595,7 +596,7 @@ public partial class ChatAudioUI
         Moment ActiveUntil, // CPU time
         bool IsCountingDown);
 
-    public record NextBeepState(
+    public sealed record NextBeepState(
         Moment At, // CPU time
         bool IsPreviousCancelled);
 

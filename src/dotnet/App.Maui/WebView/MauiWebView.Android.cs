@@ -41,11 +41,13 @@ public partial class MauiWebView
 
     // Private methods
 
-    private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs) { }
+    private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs)
+    { }
 
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs)
     {
-        var webView = AndroidWebView;
+        var webView = eventArgs.WebView;
+        SetPlatformWebView(webView);
         if (webView.Context?.GetActivity() is not ComponentActivity activity)
             throw StandardError.Constraint(
                 $"The permission-managing WebChromeClient requires that the current activity is a '{nameof(ComponentActivity)}'.");

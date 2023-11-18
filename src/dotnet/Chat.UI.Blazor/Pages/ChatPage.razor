@@ -67,7 +67,7 @@
     protected AccountUI AccountUI => ChatHub.AccountUI;
     protected PanelsUI PanelsUI => ChatHub.PanelsUI;
     protected BrowserInfo BrowserInfo => ChatHub.BrowserInfo;
-    protected UICommander UICommander => ChatHub.UICommander;
+    protected UICommander UICommander => ChatHub.UICommander();
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
     [Parameter] public string? ChatSid { get; set; }

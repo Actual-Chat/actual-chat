@@ -60,7 +60,7 @@
     private IAuthors Authors => ChatContext.Authors;
     private ChatUI ChatUI => ChatContext.ChatUI;
     private ShareUI ShareUI => ChatContext.ShareUI;
-    private UrlMapper UrlMapper => ChatContext.UrlMapper;
+    private UrlMapper UrlMapper => ChatContext.UrlMapper();
     private History History => ChatContext.History;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;

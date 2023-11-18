@@ -8,40 +8,31 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatEntryPlayer : ProcessorBase
 {
-    private IServiceProvider Services { get; }
-    private AudioRecorder AudioRecorder { get; }
-    private MomentClockSet Clocks { get; }
-    private UrlMapper UrlMapper { get; }
+    private ChatHub ChatHub { get; }
+    private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
+    private IAudioStreamer AudioStreamer => ChatHub.AudioStreamer;
+    private AudioDownloader AudioDownloader => ChatHub.AudioDownloader;
+    private AudioInitializer AudioInitializer => ChatHub.AudioInitializer;
+    private MomentClockSet Clocks => ChatHub.Clocks();
+    private UrlMapper UrlMapper => ChatHub.UrlMapper();
     private ILogger Log { get; }
-
-    private AudioDownloader AudioDownloader { get; }
-    private IAudioStreamer AudioStreamer { get; }
 
     private HashSet<Task> EntryPlaybackTasks { get; } = new();
 
-    public Session Session { get; }
     public ChatId ChatId { get; }
     public Playback Playback { get; }
 
     public ChatEntryPlayer(
-        Session session,
+        ChatHub chatHub,
         ChatId chatId,
         Playback playback,
-        IServiceProvider services,
         CancellationToken cancellationToken)
         : base(cancellationToken.CreateLinkedTokenSource())
     {
-        Session = session;
+        ChatHub = chatHub;
         ChatId = chatId;
         Playback = playback;
-        Services = services;
-
-        Log = services.LogFor(GetType());
-        Clocks = services.Clocks();
-        UrlMapper = services.GetRequiredService<UrlMapper>();
-        AudioDownloader = services.GetRequiredService<AudioDownloader>();
-        AudioStreamer = services.GetRequiredService<IAudioStreamer>();
-        AudioRecorder = services.GetRequiredService<AudioRecorder>();
+        Log = ChatHub.LogFor(GetType());
     }
 
     protected override Task DisposeAsyncCore()
@@ -106,8 +97,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         CancellationToken cancellationToken)
     {
         try {
-            var audioInitializer = Services.GetRequiredService<AudioInitializer>();
-            await audioInitializer.WhenInitialized.ConfigureAwait(false);
+            await AudioInitializer.WhenInitialized.ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
             if (audioEntry.Kind != ChatEntryKind.Audio)

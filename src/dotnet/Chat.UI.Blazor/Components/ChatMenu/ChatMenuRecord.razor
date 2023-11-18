@@ -10,7 +10,7 @@
         Class="@cls"
         Icon="icon-stop-fill"
         Text="Stop talking"
-        Click="@(_ => ChatAudioUI.SetRecordingChatId(default))">
+        Click="@(async _ => await ChatAudioUI.SetRecordingChatId(default))">
     </MenuEntry>
 } else {
     <MenuEntry
@@ -22,8 +22,9 @@
 }
 
 @code {
-    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private AudioRecorder AudioRecorder { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
+    private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 

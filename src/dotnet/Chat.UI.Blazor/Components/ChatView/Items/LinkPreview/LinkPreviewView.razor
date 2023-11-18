@@ -56,14 +56,15 @@
     }
 
     private (int? Width, int Height) GetImageMaxSize() {
+        const int sizeMultiplier = 2; // reduced images look blurry
         switch (Mode) {
             case LinkPreviewMode.Compact:
                 var maxHeight = ScreenSize.IsNarrow() ? 80 : 120;
-                return (maxHeight, maxHeight);
+                return (maxHeight * sizeMultiplier, maxHeight * sizeMultiplier);
             case LinkPreviewMode.Default:
             case LinkPreviewMode.Full:
                 maxHeight = ScreenSize.IsNarrow() ? 160  : 136;
-                return (null, maxHeight);
+                return (null, maxHeight * sizeMultiplier);
             default:
                 return (0, 0);
         }

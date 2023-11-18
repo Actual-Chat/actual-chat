@@ -147,7 +147,8 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public async Task<AudioDiagnosticsState> RunDiagnostics(CancellationToken cancellationToken)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        return await _jsRef.InvokeAsync<AudioDiagnosticsState>("runDiagnostics", cancellationToken).ConfigureAwait(false);
+        return await _jsRef.InvokeAsync<AudioDiagnosticsState>("runDiagnostics", CancellationToken.None)
+            .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     // JS backend callback handlers

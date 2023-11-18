@@ -24,7 +24,7 @@
 @code {
     [Inject] private ChatHub ChatHub { get; init; } = null!;
     private Session Session => ChatHub.Session;
-    private UICommander UICommander => ChatHub.UICommander;
+    private UICommander UICommander => ChatHub.UICommander();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public Reaction? OwnReaction { get; set; }

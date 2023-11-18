@@ -37,7 +37,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private NavigationManager Nav => ChatContext.Nav;
     private History History => ChatContext.History;
     private TimeZoneConverter TimeZoneConverter => ChatContext.TimeZoneConverter;
-    private IStateFactory StateFactory => ChatContext.StateFactory;
+    private IStateFactory StateFactory => ChatContext.StateFactory();
     private Dispatcher Dispatcher => ChatContext.Dispatcher;
     private CancellationToken DisposeToken { get; }
     private ILogger Log => _log ??= Services.LogFor(GetType());
@@ -66,20 +66,21 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
         try {
+            var type = GetType();
             NavigationAnchorState = StateFactory.NewMutable(
                 (NavigationAnchor?)null,
-                StateCategories.Get(GetType(), nameof(NavigationAnchorState)));
+                StateCategories.Get(type, nameof(NavigationAnchorState)));
             LastAuthorTextEntryLidState = StateFactory.NewMutable(
                 (AuthorId.None, 0L),
-                StateCategories.Get(GetType(), nameof(LastAuthorTextEntryLidState)));
+                StateCategories.Get(type, nameof(LastAuthorTextEntryLidState)));
             _itemVisibility = StateFactory.NewMutable(
                 ChatViewItemVisibility.Empty,
-                StateCategories.Get(GetType(), nameof(ItemVisibility)));
+                StateCategories.Get(type, nameof(ItemVisibility)));
             _isViewportAboveUnreadEntry = StateFactory.NewComputed(
                 new ComputedState<bool>.Options {
                     UpdateDelayer = FixedDelayer.Instant,
                     InitialValue = false,
-                    Category = StateCategories.Get(GetType(), nameof(IsViewportAboveUnreadEntry)),
+                    Category = StateCategories.Get(type, nameof(IsViewportAboveUnreadEntry)),
                 },
                 ComputeIsViewportAboveUnreadEntry);
             ReadPositionState = await ChatUI.LeaseReadPositionState(Chat.Id, DisposeToken);
@@ -548,7 +549,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         var chatId = Chat.Id;
         var chatIdRange = ChatIdRangeState.Value;
-        var entryReader = Chats.NewEntryReader(Session, chatId, ChatEntryKind.Text);
+        var entryReader = ChatContext.NewEntryReader(ChatEntryKind.Text);
         var author = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         var authorId = author?.Id ?? AuthorId.None;
         var newEntries = entryReader.Observe(chatIdRange.End, cancellationToken);
