@@ -14,6 +14,7 @@ public sealed class AuthorUI(ChatHub chatHub)
     private ModalUI ModalUI => ChatHub.ModalUI;
     private History History => ChatHub.History;
     private UICommander UICommander => ChatHub.UICommander();
+    private MomentClockSet Clocks => ChatHub.Clocks();
     private ILogger Log => _log ??= ChatHub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
@@ -72,9 +73,11 @@ public sealed class AuthorUI(ChatHub chatHub)
         if (userId.IsNone)
             return;
 
+        var now = Clocks.SystemClock.Now;
+        var sDate = now.ToDateTime().ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
         var createCommand = new Chats_Change(Session, default, null, new() {
             Create = new ChatDiff {
-                Title = $"Anonymous chat ({ChatHub.Clocks().SystemClock.Now.ToString("d", Cultures.US) })",
+                Title = $"Anonymous chat ({sDate })",
                 Kind = ChatKind.Group,
                 IsPublic = false,
                 AllowAnonymousAuthors = true,
