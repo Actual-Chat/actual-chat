@@ -63,7 +63,7 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
         await JS
             .InvokeVoidAsync(JSInitMethod, CancellationToken.None, backendRef, UrlMapper.BaseUrl, CanUseNNVad())
             .AsTask().WaitAsync(InitializeTimeout, cancellationToken).ConfigureAwait(false);
-        var audioRecorder = services.GetRequiredService<AudioRecorder>();
+        var audioRecorder = Services.GetRequiredService<AudioRecorder>();
         await audioRecorder.WhenInitialized.ConfigureAwait(false);
     }
 

@@ -14,7 +14,7 @@ public partial class BackgroundUI
     private async Task PushState(CancellationToken cancellationToken)
     {
         var cGetState = await Computed
-            .Capture(() => GetState(cancellationToken), cancellationToken)
+            .Capture(() => ComputeState(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var changes = cGetState.Changes(FixedDelayer.Instant, cancellationToken);
         await foreach (var cState in changes.ConfigureAwait(false)) {
@@ -28,7 +28,7 @@ public partial class BackgroundUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<BackgroundState> GetState(CancellationToken cancellationToken)
+    protected virtual async Task<BackgroundState> ComputeState(CancellationToken cancellationToken)
     {
         var isBackground = await IsBackground(cancellationToken).ConfigureAwait(false);
         if (!isBackground)

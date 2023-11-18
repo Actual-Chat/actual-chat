@@ -51,9 +51,7 @@ public class ComputedStateLease<T, TKey, TState, TResource>(
     public Task UpdateCycleTask => State.UpdateCycleTask;
     public CancellationToken DisposeToken => State.DisposeToken;
 
- #pragma warning disable CA1816
     public virtual void Dispose()
- #pragma warning restore CA1816
         => Lease.Dispose();
 
     public void Deconstruct(out T value, out Exception? error)

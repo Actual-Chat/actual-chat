@@ -125,7 +125,7 @@ public class MauiLivenessProbe : WorkerBase
         return Task.CompletedTask;
     }
 
-    private async Task<(IServiceProvider? ScopedServices, Exception? Error, bool IsMainThreadBusy)> Check(
+    private static async Task<(IServiceProvider? ScopedServices, Exception? Error, bool IsMainThreadBusy)> Check(
         IServiceProvider? lastScopedServices,
         CancellationToken cancellationToken)
     {

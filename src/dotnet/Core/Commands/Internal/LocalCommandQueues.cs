@@ -1,7 +1,5 @@
 namespace ActualChat.Commands.Internal;
 
-#pragma warning disable CA1724 // The type name Options conflicts in whole or in part with the namespace ...
-
 public sealed class LocalCommandQueues : ICommandQueues
 {
     public sealed record Options

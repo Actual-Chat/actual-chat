@@ -395,10 +395,16 @@ dotnet_diagnostic.MA0046.severity = none # Use EventHandler<T> to declare events
 dotnet_diagnostic.MA0069.severity = none # Duplicate of CA2211
 dotnet_diagnostic.MA0015.severity = suggestion # shows annoying warning for new ArgumentOutOfRangeException(nameof(arg.somProp))
 
-[**/Components/**/*.cs]
-MA0004.report = DetectContext
-dotnet_diagnostic.MA0004.severity = none
-
 [{*.razor,*razor.cs}]
 MA0004.report = DetectContext
 dotnet_diagnostic.MA0004.severity = none
+# Consider calling ConfigureAwait on the awaited task
+CA2007.report = DetectContext
+dotnet_diagnostic.CA2007.severity = none
+
+[**/Components/**/*.cs]
+MA0004.report = DetectContext
+dotnet_diagnostic.MA0004.severity = none
+# Consider calling ConfigureAwait on the awaited task
+CA2007.report = DetectContext
+dotnet_diagnostic.CA2007.severity = none

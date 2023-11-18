@@ -39,7 +39,9 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public IMutableState<ChatListSettings> Settings => _settings;
+#pragma warning disable CA1721 // Confusing w/ GetUnreadChatCount
     public IState<Trimmed<int>> UnreadChatCount => _unreadChatCount!;
+#pragma warning restore CA1721
     public Task WhenLoaded => _settings.WhenRead;
 
     private Moment Now => Clocks.SystemClock.Now;
@@ -68,7 +70,7 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(UnreadChatCount)),
             },
-            ComputeUnreadChatsCount);
+            ComputeUnreadChatCount);
         this.Start();
     }
 
@@ -78,7 +80,9 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
         return base.DisposeAsyncCore();
     }
 
+#pragma warning disable CA1822 // Can be static
     public int GetCountWhenLoading(ChatListKind listKind)
+#pragma warning restore CA1822
         => listKind switch {
             ChatListKind.All => AllItemCountWhenLoading,
             ChatListKind.Active => ActiveItemCountWhenLoading,
@@ -251,7 +255,7 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
             _ = ListAllUnorderedRaw(default);
     }
 
-    private async Task<Trimmed<int>> ComputeUnreadChatsCount(
+    private async Task<Trimmed<int>> ComputeUnreadChatCount(
         IComputedState<Trimmed<int>> state,
         CancellationToken cancellationToken)
     {

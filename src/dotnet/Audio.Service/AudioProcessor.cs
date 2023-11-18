@@ -7,8 +7,6 @@ using ActualChat.Users;
 
 namespace ActualChat.Audio;
 
-#pragma warning disable CA1724 // The type name Options conflicts in whole or in part with the namespace ...
-
 public sealed partial class AudioProcessor : IAudioProcessor
 {
     public record Options

@@ -3,7 +3,7 @@
 public sealed record VirtualListTile<TItem>(string Key, IReadOnlyList<TItem> Items)
     where TItem : IVirtualListItem
 {
-    public static VirtualListTile<TItem> Empty = new("tile:empty", Array.Empty<TItem>());
+    public static readonly VirtualListTile<TItem> Empty = new("tile:empty", Array.Empty<TItem>());
 
     /// <summary>
     /// Inclusive range []

@@ -6,6 +6,8 @@ using Java.Interop;
 
 namespace ActualChat.App.Maui;
 
+#pragma warning disable // Can be static
+
 [Application]
 public class MainApplication : MauiApplication, ILifecycleObserver
 {

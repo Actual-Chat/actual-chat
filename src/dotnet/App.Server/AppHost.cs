@@ -64,7 +64,7 @@ public class AppHost : IDisposable
             .SkipNullItems()
             .Where(x => x.Namespace?.OrdinalIgnoreCaseStartsWith("Microsoft") != true)
             .ToList();
-        if (transientDisposables.Any()) {
+        if (transientDisposables.Count != 0) {
             var transientDisposablesString = string.Join("", transientDisposables.Select(x => $"{Environment.NewLine}- {x}"));
             throw new Exception($"Disposable transient services are not allowed: {transientDisposablesString}");
         }

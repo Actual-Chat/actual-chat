@@ -81,7 +81,7 @@ public class VirtualListTestService : IComputeService
 
     // Protected methods
 
-    protected Range<int> GetKeyRange(int seed)
+    protected static Range<int> GetKeyRange(int seed)
     {
         seed = Math.Abs(seed);
         return new Range<int>(-seed / 2, 50 + seed);

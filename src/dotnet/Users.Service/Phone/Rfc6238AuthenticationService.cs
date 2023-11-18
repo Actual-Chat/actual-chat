@@ -64,7 +64,9 @@ public class Rfc6238AuthenticationService
             modifierCombinedBytes = ApplyModifier(timestepAsBytes, modifierBytes);
         }
         Span<byte> hash = stackalloc byte[HMACSHA1.HashSizeInBytes];
+#pragma warning disable CA5350
         res = HMACSHA1.TryHashData(key, modifierCombinedBytes, hash, out var written);
+#pragma warning restore CA5350
         Debug.Assert(res);
         Debug.Assert(written == hash.Length);
 

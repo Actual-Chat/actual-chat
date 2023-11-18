@@ -4,9 +4,7 @@ namespace ActualChat.Audio;
 
 public abstract class StreamServerBase<TItem> : IDisposable
 {
-#pragma warning disable CA2213
     private readonly CancellationTokenSource _disposeTokenSource = new();
-#pragma warning restore CA2213
     private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, TaskCompletionSource<AsyncMemoizer<TItem>>>> _streams = new ();
 
     protected int StreamBufferSize { get; init; } = 64;
@@ -36,9 +34,7 @@ public abstract class StreamServerBase<TItem> : IDisposable
     public bool IsStreamExists(Symbol streamId)
         => _streams.TryGetValue(streamId, out _);
 
-#pragma warning disable CA1816
     public virtual void Dispose()
-#pragma warning restore CA1816
         => _disposeTokenSource.CancelAndDisposeSilently();
 
     protected async Task<IAsyncEnumerable<TItem>> Read(Symbol streamId, CancellationToken cancellationToken)

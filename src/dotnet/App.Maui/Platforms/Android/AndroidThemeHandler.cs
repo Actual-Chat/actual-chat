@@ -4,7 +4,7 @@ namespace ActualChat.App.Maui;
 
 public class AndroidThemeHandler : MauiThemeHandler
 {
-    private Android.Views.Window? Window => (Platform.CurrentActivity as MainActivity)?.Window;
+    private static Android.Views.Window? Window => (Platform.CurrentActivity as MainActivity)?.Window;
 
     protected override bool ApplyColors(string topBarColor, string bottomBarColor)
     {

@@ -1,7 +1,5 @@
 ﻿namespace ActualChat.Chat;
 
-#pragma warning disable CA1724 // The type name Markup conflicts in whole or in part with the namespace ...
-
 public abstract record Markup
 {
     public static Markup Empty => PlainTextMarkup.Empty;

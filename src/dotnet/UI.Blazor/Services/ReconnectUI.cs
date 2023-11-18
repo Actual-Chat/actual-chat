@@ -24,7 +24,7 @@ public class ReconnectUI(IServiceProvider services)
     public RpcPeerState? State
         => IsClient ? RpcPeerStateMonitor.State.Value : ConnectedState;
 
-    public ValueTask<RpcPeerState?> GetState(CancellationToken cancellationToken = default)
+    public ValueTask<RpcPeerState?> UseState(CancellationToken cancellationToken = default)
         => IsClient
             ? RpcPeerStateMonitor.State.Use(cancellationToken)
             : ValueTask.FromResult<RpcPeerState?>(ConnectedState);

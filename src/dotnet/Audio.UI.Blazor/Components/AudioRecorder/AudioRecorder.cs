@@ -21,7 +21,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode => Constants.DebugMode.AudioRecording;
+    private static bool DebugMode => Constants.DebugMode.AudioRecording;
     private DotNetObjectReference<IAudioRecorderBackend>? _blazorRef;
 
     private HostInfo HostInfo { get; }

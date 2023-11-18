@@ -3,7 +3,7 @@ using Uri = Android.Net.Uri;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidContentDownloader(IServiceProvider services) : IIncomingShareFileDownloader
+public sealed class AndroidContentDownloader(IServiceProvider services) : IIncomingShareFileDownloader
 {
     private const string Prefix = "/in/content/";
     private const string ContentSchemePrefix = "content://";
@@ -11,7 +11,9 @@ public class AndroidContentDownloader(IServiceProvider services) : IIncomingShar
     private ILogger? _log;
     private ILogger Log => _log ??= services.LogFor(GetType());
 
+#pragma warning disable CA1822 // Can be static
     public bool CanHandlePath(string? relativeUrl)
+#pragma warning restore CA1822
         => relativeUrl.OrdinalStartsWith(Prefix);
 
     public static bool TryCreateAppHostRelativeUrl(string url, out string relativeUrl)
@@ -19,7 +21,7 @@ public class AndroidContentDownloader(IServiceProvider services) : IIncomingShar
         relativeUrl = "";
         if (!url.OrdinalStartsWith(ContentSchemePrefix))
             return false;
-        relativeUrl = Prefix + url.Substring(ContentSchemePrefix.Length);
+        relativeUrl = Prefix + url[ContentSchemePrefix.Length..];
         return true;
     }
 
@@ -46,7 +48,7 @@ public class AndroidContentDownloader(IServiceProvider services) : IIncomingShar
         if (!url.OrdinalStartsWith(Prefix))
             throw new ArgumentOutOfRangeException(nameof(url), "Invalid url");
 
-        var url2 = ContentSchemePrefix + url.Substring(Prefix.Length);
+        var url2 = ContentSchemePrefix + url[Prefix.Length..];
         try {
             var uri = Uri.Parse(url2);
             if (uri == null) {

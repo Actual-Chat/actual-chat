@@ -147,17 +147,20 @@ internal class AndroidFileChooser
         }
     }
 
-    private async Task<Uri[]?> LoadCapturedFileAsync(FileResult? fileResult)
+    private static async Task<Uri[]?> LoadCapturedFileAsync(FileResult? fileResult)
     {
         if (fileResult == null)
             return null;
 
         // save the file into local storage
         var newFile = Path.Combine(FileSystem.CacheDirectory, fileResult.FileName);
-        using (var stream = await fileResult.OpenReadAsync().ConfigureAwait(false))
-        using (var newStream = System.IO.File.OpenWrite(newFile))
-            await stream.CopyToAsync(newStream).ConfigureAwait(true);
+        var stream = await fileResult.OpenReadAsync().ConfigureAwait(false);
+        await using var _1 = stream.ConfigureAwait(false);
+        var newStream = System.IO.File.OpenWrite(newFile);
+        await using var _2 = newStream.ConfigureAwait(false);
+
+        await stream.CopyToAsync(newStream).ConfigureAwait(false);
         var uri = Uri.FromFile(new File(newFile));
-        return new Uri[] { uri! };
+        return new[] { uri! };
     }
 }

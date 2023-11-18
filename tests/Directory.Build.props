@@ -19,23 +19,26 @@
     <XunitStartupFullName>$(BaseName).Testing.DefaultStartup</XunitStartupFullName>
 
     <!-- Suppressed warnings (please sort alphabetically!) -->
+    <!-- CS8604: Possible null reference argument -->
     <!-- CA1034: Do not nest type -->
     <!-- CA1822:	Member can be marked as static -->
-    <!-- CS8604: Possible null reference argument -->
+    <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
+    <!-- CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array -->
+    <!-- CA2016: Forward the CancellationToken parameter to methods that take one -->
+    <NoWarn>$(NoWarn);1701;1702;CS8604</NoWarn>
+    <NoWarn>$(NoWarn);CA1034;CA1822;CA2007;CA1861;CA2016;CA1859</NoWarn>
     <!-- IL2070: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
     <!-- IL2075: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
+    <NoWarn>$(NoWarn);IL2070;IL2075</NoWarn>
     <!-- MA0002: Use an overload that has a IEqualityComparer<string> or IComparer<string> parameter -->
     <!-- MA0004: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed' -->
     <!-- MA0006: Use string.Equals instead of Equals operator -->
     <!-- MA0011: Use an overload of 'Parse' that has a 'System.IFormatProvider' parameter -->
     <!-- MA0074: Use an overload of 'Replace' that has a StringComparison parameter -->
+    <NoWarn>$(NoWarn);MA0002;MA0004;MA0006;MA0011;MA0074</NoWarn>
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
     <!-- VSTHRD002: .Wait() deadlock -->
-    <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
-    <!-- CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array -->
-    <!-- CA2016: Forward the CancellationToken parameter to methods that take one -->
-    <!-- CA1859 : Change return type of method 'CreateServices' from 'System.IServiceProvider' to 'Microsoft.Extensions.DependencyInjection.ServiceProvider' for improved performance -->
-    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;MA0002;MA0004;MA0006;MA0011;MA0074;RCS1090;VSTHRD002;CA2007;CA1861;CA2016;CA1859</NoWarn>
+    <NoWarn>$(NoWarn);RCS1090;VSTHRD002</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

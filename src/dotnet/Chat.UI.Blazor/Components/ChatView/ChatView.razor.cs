@@ -385,7 +385,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
     // Private methods
 
-    private Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
+    private static Tile<long>[] GetIdTilesToLoad(Range<long> idRangeToLoad, Range<long> chatIdRange)
     {
         var firstLayer = IdTileStack.FirstLayer;
         var secondLayer = IdTileStack.Layers[1];
@@ -418,7 +418,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
     }
 
-    private Range<long> GetIdRangeToLoad(
+    private static Range<long> GetIdRangeToLoad(
         VirtualListDataQuery query,
         VirtualListData<ChatMessage> oldData,
         NavigationAnchor? scrollAnchor,

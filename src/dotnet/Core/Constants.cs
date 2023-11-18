@@ -2,8 +2,6 @@ using ActualChat.Hosting;
 
 namespace ActualChat;
 
-#pragma warning disable CA1724 // The type name X conflicts in whole or in part with the namespace ...
-
 public static partial class Constants
 {
     public static class Api

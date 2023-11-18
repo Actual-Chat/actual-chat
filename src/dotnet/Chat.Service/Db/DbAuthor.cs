@@ -22,9 +22,7 @@ public class DbAuthor : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? AvatarId { get; set; }
     public bool HasLeft { get; set; }
 
-#pragma warning disable CA1002
     public List<DbAuthorRole> Roles { get; } = new();
-#pragma warning restore CA1002
 
     public DbAuthor() { }
     public DbAuthor(AuthorFull model) => UpdateFrom(model);

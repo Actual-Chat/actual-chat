@@ -18,8 +18,10 @@ public class ChatMarkupHub(IServiceProvider services, ChatId chatId) : IChatMark
     public IMarkupParser Parser
         => _parser ??= Services.GetRequiredService<IMarkupParser>();
 
+#pragma warning disable CA1822 // Can be static
     public IMarkupTrimmer Trimmer
         => _trimmer ??= new MarkupTrimmer();
+#pragma warning restore CA1822
 
     public IMentionNamer MentionNamer
         => _mentionNamer ??= new MentionNamer(MentionResolver);

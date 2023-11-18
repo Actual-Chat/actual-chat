@@ -112,7 +112,7 @@ public class SelectionUI
         var modalModel = new ForwardMessageModal.Model(chatId);
         await (await ModalUI.Show(modalModel).ConfigureAwait(true)).WhenClosed.ConfigureAwait(true);
         var selectedChatIds = modalModel.SelectedChatIds;
-        if (!selectedChatIds.Any())
+        if (selectedChatIds.Count == 0)
             return;
 
         var cmd = new Chats_ForwardTextEntries(

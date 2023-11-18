@@ -105,7 +105,7 @@
                 await SelectChat(ChatSid);
 
                 // Subscribe to chat changes
-                chat = await Chats.Get(Session, newChat.Id, cancellationToken);
+                chat = await Chats.Get(Session, newChat.Id, cancellationToken).Require();
                 var footerModel = await GetFooterModel(chat, account, cancellationToken);
                 var chatContext = ChatContext.New(Services, Session, chat, account, lastContext);
                 return new Model(chatContext, footerModel);

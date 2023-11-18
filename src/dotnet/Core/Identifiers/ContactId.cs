@@ -97,7 +97,7 @@ public readonly partial struct ContactId : ISymbolIdentifier<ContactId>
         if (s.IsNullOrEmpty())
             return true; // None
 
-        var userIdLength = s.IndexOf(' ', StringComparison.Ordinal);
+        var userIdLength = s.OrdinalIndexOf(' ');
         if (userIdLength <= 0)
             return false;
 

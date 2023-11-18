@@ -11,6 +11,7 @@ public class PhoneAuthOptions : RemoteAuthenticationOptions
     public string LoginUrl { get; set; } = "/login/phone";
 }
 
+#pragma warning disable CS0618 // Type or member is obsolete (ISystemClock)
 public class PhoneAuthHandler(
         IOptionsMonitor<PhoneAuthOptions> options,
         ILoggerFactory logger,
@@ -19,6 +20,7 @@ public class PhoneAuthHandler(
         IAuth auth,
         UrlMapper urlMapper)
     : RemoteAuthenticationHandler<PhoneAuthOptions>(options, logger, encoder, clock)
+#pragma warning restore CS0618 // Type or member is obsolete
 {
     private IAuth Auth { get; } = auth;
     private UrlMapper UrlMapper { get; } = urlMapper;

@@ -136,7 +136,7 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
     private async Task HideWhenRelatedEntryRemoved(CancellationToken cancellationToken)
     {
         var cRelatedChatEntry = await Computed
-            .Capture(() => GetRelatedChatEntry(cancellationToken), cancellationToken)
+            .Capture(() => ComputeRelatedChatEntry(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         await foreach (var change in cRelatedChatEntry.Changes(cancellationToken).ConfigureAwait(false))
         {
@@ -147,7 +147,7 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
     }
 
     [ComputeMethod]
-    protected virtual async Task<(RelatedChatEntry?, ChatEntry?)> GetRelatedChatEntry(CancellationToken cancellationToken)
+    protected virtual async Task<(RelatedChatEntry?, ChatEntry?)> ComputeRelatedChatEntry(CancellationToken cancellationToken)
     {
         var entryLink = await RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
         if (entryLink == null)

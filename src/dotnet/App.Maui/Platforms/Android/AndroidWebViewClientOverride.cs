@@ -16,6 +16,13 @@ public class AndroidWebViewClientOverride(
     private WebViewClient Original { get; } = original;
     private AndroidContentDownloader ContentDownloader { get; } = contentDownloader;
 
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing); // Just to suppress warning
+        if (disposing)
+            Original.Dispose();
+    }
+
     public override bool OnRenderProcessGone(WebView? view, RenderProcessGoneDetail? detail)
     {
         var didCrash = detail?.DidCrash() == true;
@@ -81,11 +88,5 @@ public class AndroidWebViewClientOverride(
         Log.LogDebug(
             "DoUpdateVisitedHistory: Url: '{Url}', IsReload: '{IsReload}', CanGoBack: '{CanGoBack}'",
             url, isReload, canGoBack);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-            Original.Dispose();
     }
 }

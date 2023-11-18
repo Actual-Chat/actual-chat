@@ -62,8 +62,10 @@ public sealed class DebugUI : IDisposable
         Log.LogInformation("StartTaskMonitor: done");
     }
 
+#pragma warning disable CA1822 // Can be static
     [JSInvokable]
     public string GetThreadPoolSettings()
+#pragma warning restore CA1822
     {
         ThreadPool.GetMinThreads(out var minThreads, out var minIOThreads);
         ThreadPool.GetMaxThreads(out var maxThreads, out var maxIOThreads);

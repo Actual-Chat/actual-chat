@@ -4,7 +4,6 @@ using Stl.Versioning;
 namespace ActualChat.Notification;
 
 #pragma warning disable MA0049 // Allows ActualChat.Notification.Notification
-#pragma warning disable CA1724 // The type name Notification conflicts in whole or in part with the namespace ...
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record Notification(

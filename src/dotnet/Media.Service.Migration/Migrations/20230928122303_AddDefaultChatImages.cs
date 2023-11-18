@@ -42,7 +42,7 @@ namespace ActualChat.Media.Migrations
             await AddMedia("system-icons:family", Resource.FamilySvg).ConfigureAwait(false);
             await AddMedia("system-icons:coworkers", Resource.CoworkersSvg).ConfigureAwait(false);
             await AddMedia("system-icons:friends", Resource.FriendsSvg).ConfigureAwait(false);
-            await AddMedia("system-icons:alumni", Resource.AlimniSvg).ConfigureAwait(false);
+            await AddMedia("system-icons:alumni", Resource.AlumniSvg).ConfigureAwait(false);
             await AddMedia("system-icons:notes", Resource.NotesSvg).ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync().ConfigureAwait(false);

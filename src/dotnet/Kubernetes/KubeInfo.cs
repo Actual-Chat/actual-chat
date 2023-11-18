@@ -23,11 +23,9 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
 
     public async ValueTask DisposeAsync()
     {
-#pragma warning disable CA1508
         if (_token == null) return;
         using var _ = await _asyncLock.Lock().ConfigureAwait(false);
         if (_token == null) return;
-#pragma warning restore CA1508
 
         await _token.DisposeAsync().ConfigureAwait(false);
         _token = null;
@@ -36,11 +34,9 @@ public sealed class KubeInfo(IServiceProvider services) : IKubeInfo, IAsyncDispo
     public async ValueTask<Kube?> GetKube(CancellationToken cancellationToken = default)
     {
         // Double check locking
-#pragma warning disable CA1508
         if (_cachedInfo != null) return _cachedInfo.Value;
         using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
         if (_cachedInfo != null) return _cachedInfo.Value;
-#pragma warning restore CA1508
 
         var host = KubeEnvironmentVars.KubernetesServiceHost;
         var port = KubeEnvironmentVars.KubernetesServicePort;

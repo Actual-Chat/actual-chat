@@ -25,10 +25,9 @@ public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase
             return Model.None;
 
         var account = await Accounts.Get(Session, UserId, cancellationToken);
-        if (account == null)
-            return Model.None;
-
-        return new(account);
+        return account == null
+            ? Model.None
+            : new(account);
     }
 
     public record struct Model(Account Account) {

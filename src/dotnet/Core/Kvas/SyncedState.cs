@@ -2,8 +2,6 @@ using ActualChat.Pooling;
 
 namespace ActualChat.Kvas;
 
-#pragma warning disable CA1724 // The type name Options conflicts in whole or in part with the namespace ...
-
 public interface ISyncedState : IMutableState, IDisposable
 {
     CancellationToken DisposeToken { get; }
@@ -31,9 +29,7 @@ public static class SyncedState
 
 public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
 {
-#pragma warning disable CA2213
     private readonly CancellationTokenSource _disposeTokenSource;
-#pragma warning restore CA2213
     private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
     private Option<T> _writingValue;
     private Option<T> _writtenValue;

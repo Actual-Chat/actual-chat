@@ -50,8 +50,8 @@ public partial class ChatAudioUI
             var removed = oldListeningChats.Except(newListeningChats);
             var changed = added.Concat(removed).ToList();
 
-            var oldAudioOn = oldRecordingChat != default || oldListeningChats.Any();
-            var newAudioOn = newRecordingChat != default || newListeningChats.Any();
+            var oldAudioOn = oldRecordingChat != default || oldListeningChats.Count != 0;
+            var newAudioOn = newRecordingChat != default || newListeningChats.Count != 0;
 
             using (Computed.Invalidate()) {
                 if (newRecordingChat != oldRecordingChat) {
@@ -501,7 +501,7 @@ public partial class ChatAudioUI
     protected virtual async Task<(ChatId ChatId, bool IsTroubleshootRequired)> GetRecordingTroubleshootState(CancellationToken cancellationToken)
     {
         var chatId = await GetRecordingChatId().ConfigureAwait(false);
-        var state = await AudioRecorder.State.Use(cancellationToken);
+        var state = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
         var isTroubleshootRequired = !chatId.IsNone && state is { IsRecording: false, IsConnected: true };
         // Good for debugging:
         // = !chatId.IsNone && state is { IsVoiceActive: false };
@@ -570,7 +570,7 @@ public partial class ChatAudioUI
             var modalRef = await ModalUI.Show(model, cancellationToken).ConfigureAwait(true);
 
             Log.LogWarning("Recording issue. Capturing diagnostics state...");
-            var diagnostics = await AudioRecorder.RunDiagnostics(CancellationToken.None);
+            var diagnostics = await AudioRecorder.RunDiagnostics(CancellationToken.None).ConfigureAwait(true);
             Log.LogWarning("Recording issue. Diagnostics State = {State}", diagnostics);
 
             try {
@@ -612,10 +612,8 @@ public partial class ChatAudioUI
             TimeSpan preCountdownTimeout,
             TimeSpan checkPeriod)
         {
-            if (idleTimeout <= TimeSpan.Zero)
-                throw new ArgumentOutOfRangeException(nameof(idleTimeout));
-            if (checkPeriod <= TimeSpan.Zero)
-                throw new ArgumentOutOfRangeException(nameof(checkPeriod));
+            ArgumentOutOfRangeException.ThrowIfLessThan(idleTimeout, TimeSpan.Zero, nameof(idleTimeout));
+            ArgumentOutOfRangeException.ThrowIfLessThan(checkPeriod, TimeSpan.Zero, nameof(checkPeriod));
             if (preCountdownTimeout > idleTimeout)
                 throw new ArgumentOutOfRangeException(
                     nameof(preCountdownTimeout), preCountdownTimeout,

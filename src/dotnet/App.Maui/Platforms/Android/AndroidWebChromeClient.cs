@@ -100,7 +100,9 @@ internal class AndroidWebChromeClient : WebChromeClient
         });
     }
 
-    private void RequestAllResources(Memory<string> requestedResources, Action<List<string>> callback)
+    // Private methods
+
+    private static void RequestAllResources(Memory<string> requestedResources, Action<List<string>> callback)
     {
         if (requestedResources.Length == 0) {
             // No resources to request - invoke the callback with an empty list.
@@ -119,57 +121,6 @@ internal class AndroidWebChromeClient : WebChromeClient
                 callback(grantedResources);
             });
         });
-    }
-
-    private void RequestAllPermissions(Memory<string> requiredPermissions, Action<bool> callback)
-    {
-        if (requiredPermissions.Length == 0) {
-            // No permissions left to request - success!
-            callback(true);
-            return;
-        }
-
-        RequestPermission(requiredPermissions.Span[0], isGranted => {
-            if (isGranted) {
-                // Recurse with the remaining permissions.
-                RequestAllPermissions(requiredPermissions[1..], callback);
-            }
-            else {
-                // The first required permission was not granted. Fail now and don't attempt to grant
-                // the remaining permissions.
-                callback(false);
-            }
-        });
-    }
-
-    private void RequestPermission(string permission, Action<bool> callback)
-    {
-        // This method implements the workflow described here:
-        // https://developer.android.com/training/permissions/requesting#workflow_for_requesting_permissions
-
-        if (ContextCompat.CheckSelfPermission(_activity, permission) == Permission.Granted) {
-            callback.Invoke(true);
-        }
-        else if (_activity.ShouldShowRequestPermissionRationale(permission) && _rationalesByPermission.TryGetValue(permission, out var rationale)) {
-            new AlertDialog.Builder(_activity)
-                .SetTitle("Enable app permissions")!
-                .SetMessage(rationale)!
-                .SetNegativeButton("No thanks", (_, _) => callback(false))!
-                .SetPositiveButton("Continue", (_, _) => LaunchPermissionRequestActivity(permission, callback))!
-                .Show();
-        }
-        else {
-            LaunchPermissionRequestActivity(permission, callback);
-        }
-    }
-
-    private void LaunchPermissionRequestActivity(string permission, Action<bool> callback)
-    {
-        if (_pendingPermissionRequestCallback is not null)
-            throw StandardError.Constraint("Cannot perform multiple permission requests simultaneously.");
-
-        _pendingPermissionRequestCallback = callback;
-        _requestPermissionLauncher.Launch(permission);
     }
 
     public override bool OnShowFileChooser(WebView? webView, IValueCallback? filePathCallback, FileChooserParams? fileChooserParams)
@@ -219,6 +170,59 @@ internal class AndroidWebChromeClient : WebChromeClient
     public override void OnShowCustomView(View? view, ICustomViewCallback? callback)
         => _client.OnShowCustomView(view, callback);
     #endregion
+
+    // Private methods
+
+    private static void RequestAllPermissions(Memory<string> requiredPermissions, Action<bool> callback)
+    {
+        if (requiredPermissions.Length == 0) {
+            // No permissions left to request - success!
+            callback(true);
+            return;
+        }
+
+        RequestPermission(requiredPermissions.Span[0], isGranted => {
+            if (isGranted) {
+                // Recurse with the remaining permissions.
+                RequestAllPermissions(requiredPermissions[1..], callback);
+            }
+            else {
+                // The first required permission was not granted. Fail now and don't attempt to grant
+                // the remaining permissions.
+                callback(false);
+            }
+        });
+    }
+
+    private static void RequestPermission(string permission, Action<bool> callback)
+    {
+        // This method implements the workflow described here:
+        // https://developer.android.com/training/permissions/requesting#workflow_for_requesting_permissions
+
+        if (ContextCompat.CheckSelfPermission(_activity, permission) == Permission.Granted) {
+            callback.Invoke(true);
+        }
+        else if (_activity.ShouldShowRequestPermissionRationale(permission) && _rationalesByPermission.TryGetValue(permission, out var rationale)) {
+            new AlertDialog.Builder(_activity)
+                .SetTitle("Enable app permissions")!
+                .SetMessage(rationale)!
+                .SetNegativeButton("No thanks", (_, _) => callback.Invoke(false))!
+                .SetPositiveButton("Continue", (_, _) => LaunchPermissionRequestActivity(permission, callback))!
+                .Show();
+        }
+        else {
+            LaunchPermissionRequestActivity(permission, callback);
+        }
+    }
+
+    private static void LaunchPermissionRequestActivity(string permission, Action<bool> callback)
+    {
+        if (_pendingPermissionRequestCallback is not null)
+            throw StandardError.Constraint("Cannot perform multiple permission requests simultaneously.");
+
+        _pendingPermissionRequestCallback = callback;
+        _requestPermissionLauncher.Launch(permission);
+    }
 
     // Nested types
 

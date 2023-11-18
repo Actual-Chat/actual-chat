@@ -202,10 +202,8 @@ public class AudioStreamProxy : IAudioStreamServer
             await Task.WhenAll(writeTasks).ConfigureAwait(false);
     }
 
-#pragma warning disable CA1816
     public void Dispose()
     { }
-#pragma warning restore CA1816
 
     private async Task WriteToReplica(
         Symbol streamId,

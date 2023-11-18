@@ -26,7 +26,7 @@ public class ToastUI
     private void ShowInternal(string info, string icon, Action? action, string actionText, ToastDismissDelay autoDismissDelay)
         => _items.Add(new ToastModel(info, icon, action, actionText, GetDelay(autoDismissDelay)));
 
-    private double? GetDelay(ToastDismissDelay autoDismissDelay)
+    private static double? GetDelay(ToastDismissDelay autoDismissDelay)
         => autoDismissDelay switch {
             ToastDismissDelay.Short => 3,
             _ => 5

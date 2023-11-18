@@ -97,7 +97,7 @@ public partial class MauiWebView
         return false;
     }
 
-    private bool IsAllowedHostUri(Uri uri)
+    private static bool IsAllowedHostUri(Uri uri)
     {
         if (MauiSettings.WebAuth.UseSystemBrowser)
             return false;
@@ -114,12 +114,12 @@ public partial class MauiWebView
         return false;
     }
 
-    private string HostToAbsoluteLocalUri(Uri hostUri)
+    private static string HostToAbsoluteLocalUri(Uri hostUri)
     {
         var relativeUri = MauiSettings.BaseUri.MakeRelativeUri(hostUri);
         return RelativeToAbsoluteLocalUri(relativeUri.ToString());
     }
 
-    private string RelativeToAbsoluteLocalUri(string relativeUri)
+    private static string RelativeToAbsoluteLocalUri(string relativeUri)
         => new Uri(BaseLocalUri, relativeUri).ToString();
 }

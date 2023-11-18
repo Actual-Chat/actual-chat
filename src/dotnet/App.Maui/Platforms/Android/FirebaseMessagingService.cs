@@ -10,7 +10,9 @@ using AtomicInteger = Java.Util.Concurrent.Atomic.AtomicInteger;
 namespace ActualChat.App.Maui;
 
 [Service(Exported = true)]
+#pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments
 [IntentFilter(new[] { "com.google.firebase.MESSAGING_EVENT" })]
+#pragma warning restore CA1861
 public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingService
 {
     private const int ImageCacheSize = 5;
@@ -92,6 +94,8 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         ShowNotification(title, text, imageUrl, message.Data);
     }
 
+    // Private methods
+
     private void ShowNotification(
         string title,
         string text,
@@ -137,7 +141,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         notificationManager.Notify(tag, 0, notification);
     }
 
-    private Bitmap? GetImage(string imageUrl)
+    private static Bitmap? GetImage(string imageUrl)
         => imageUrl.IsNullOrEmpty()
             ? null
             : _imagesCache.GetOrCreate(imageUrl, DownloadImage);

@@ -86,8 +86,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
 
     private async Task<Moment?> GetRewindMomentInFuture(Moment playingAt, TimeSpan shift, CancellationToken cancellationToken)
     {
-        if (shift <= TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(shift));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(shift, TimeSpan.Zero, nameof(shift));
+
         var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
@@ -126,8 +126,8 @@ public sealed class HistoricalChatPlayer : ChatPlayer
 
     private async Task<Moment?> GetRewindMomentInPast(Moment playingAt, TimeSpan shift, CancellationToken cancellationToken)
     {
-        if (shift <= TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(shift));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(shift, TimeSpan.Zero, nameof(shift));
+
         var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var fullIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);

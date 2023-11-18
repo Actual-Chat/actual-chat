@@ -30,7 +30,9 @@ namespace ActualChat.Users.Migrations
             return; // Obsolete: applied to all of our DBs
 
             var dbInitializer = DbInitializer.GetCurrent<UsersDbInitializer>();
-            var chatDbInitializer = await DbInitializer.GetOther<ChatDbInitializer>().CompleteEarlierMigrations(this);
+            var chatDbInitializer = await DbInitializer.GetOther<ChatDbInitializer>()
+                .CompleteEarlierMigrations(this)
+                .ConfigureAwait(false);
             var log = dbInitializer.Services.LogFor(GetType());
 
             var clocks = dbInitializer.Services.Clocks();
@@ -41,14 +43,17 @@ namespace ActualChat.Users.Migrations
             var dbAvatars = await dbContext.Avatars
                 .Where(a => (a.UserId ?? "").Contains(":"))
                 .OrderBy(c => c.Id)
-                .ToListAsync();
+                .ToListAsync()
+                .ConfigureAwait(false);
             log.LogInformation("Upgrading {Count} avatars", dbAvatars.Count);
             foreach (var dbAvatar in dbAvatars) {
                 var id = dbAvatar.Id;
                 var authorId = new AuthorId(dbAvatar.UserId, ParseOrNone.Option);
                 var userId = "";
                 if (!authorId.IsNone) {
-                    var dbAuthor = await chatDbContext.Authors.SingleOrDefaultAsync(a => a.Id == authorId);
+                    var dbAuthor = await chatDbContext.Authors
+                        .SingleOrDefaultAsync(a => a.Id == authorId)
+                        .ConfigureAwait(false);
                     userId = dbAuthor?.UserId;
                 }
 
@@ -62,7 +67,7 @@ namespace ActualChat.Users.Migrations
                 continue;
             }
             log.LogInformation("- Saving changes");
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync().ConfigureAwait(false);
             log.LogInformation("Upgrading avatars: done");
         }
 

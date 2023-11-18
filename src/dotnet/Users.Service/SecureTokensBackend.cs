@@ -38,7 +38,7 @@ public class SecureTokensBackend(IServiceProvider services) : ISecureTokensBacke
 
         try {
             var augmentedValue = DataProtector.Unprotect(token[SecureToken.Prefix.Length..], out var expiresAt);
-            var delimiterIndex = augmentedValue.IndexOf(' ');
+            var delimiterIndex = augmentedValue.OrdinalIndexOf(' ');
             if (delimiterIndex < 0 || Clock.UtcNow > expiresAt)
                 return null;
 

@@ -54,7 +54,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var userAvatarSettings = await kvas.GetUserAvatarSettings(cancellationToken).ConfigureAwait(false);
         var avatarId = userAvatarSettings.DefaultAvatarId;
         if (avatarId.IsEmpty) // Default avatar isn't selected - let's pick the first one
-            avatarId = userAvatarSettings.AvatarIds.FirstOrDefault();
+            avatarId = userAvatarSettings.AvatarIds.GetOrDefault(0);
 
         var avatar = avatarId.IsEmpty
             ? GetDefaultAvatar(account)

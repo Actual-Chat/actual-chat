@@ -24,7 +24,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
     protected HashSet<(Symbol, Symbol)> ForceFlushFor { get; }
     protected RpcHub Hub { get; }
     protected RpcArgumentSerializer ArgumentSerializer { get; }
-    protected bool DebugMode => Constants.DebugMode.ClientComputedCache;
+    protected static bool DebugMode => Constants.DebugMode.ClientComputedCache;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
     public Task WhenInitialized { get; protected set; } = Task.CompletedTask;

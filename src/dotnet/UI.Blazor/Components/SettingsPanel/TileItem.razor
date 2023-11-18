@@ -40,8 +40,7 @@
 
     protected override void OnParametersSet() {
         _resolvedAdditionalAttributes = BlazorAttributesBuilder
-            .Create(AdditionalAttributes)
-            .AddOnClick(this, Click)
-            .GetResult();
+            .New(AdditionalAttributes)
+            .AddOnClick(this, Click).Result;
     }
 }

@@ -118,7 +118,7 @@ public sealed class NavigationQueue
 
     // Nested types
 
-    public class Entry
+    public class Entry(NavigationQueue queue, string title, Func<long?> action)
     {
         private static readonly string TypeName = $"{nameof(NavigationQueue)}.{nameof(Entry)}";
 
@@ -126,18 +126,11 @@ public sealed class NavigationQueue
         private CancellationTokenSource? _timeoutSource;
         private CancellationToken _timeoutToken;
 
-        public NavigationQueue Queue { get; }
-        public string Title { get; }
-        public Func<long?> Action { get; }
+        public NavigationQueue Queue { get; } = queue;
+        public string Title { get; } = title;
+        public Func<long?> Action { get; } = action;
         public long? ExpectedId { get; private set; }
         public Task WhenCompleted => _whenCompletedSource.Task;
-
-        public Entry(NavigationQueue queue, string title, Func<long?> action)
-        {
-            Queue = queue;
-            Title = title;
-            Action = action;
-        }
 
         public override string ToString()
         {

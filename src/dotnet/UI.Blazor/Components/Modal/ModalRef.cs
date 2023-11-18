@@ -74,7 +74,7 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
             await CloseStep(_modalStepRef, true).ConfigureAwait(true);
     }
 
-    private async Task CloseStep(ModalStepRefImpl modalStepRef, bool isModalClosing)
+    private static async Task CloseStep(ModalStepRefImpl modalStepRef, bool isModalClosing)
     {
         modalStepRef.IsModalClosing ??= isModalClosing;
         modalStepRef.RawStepRef.Close();
@@ -85,7 +85,7 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
     {
         await modalStepRef.RawStepRef.WhenClosed.ConfigureAwait(false);
         await Host.HistoryStepper.Dispatcher.InvokeAsync(() => {
-            this._modalStepRef = modalStepRef.ParentStepRef;
+            _modalStepRef = modalStepRef.ParentStepRef;
             modalStepRef.MarkClosed(modalStepRef.IsModalClosing.GetValueOrDefault(false));
         });
     }

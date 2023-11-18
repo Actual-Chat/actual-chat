@@ -32,17 +32,7 @@ public partial class MauiWebView
     }
 
     public partial Task EvaluateJavaScript(string javaScript)
-    {
-        var tcs = new TaskCompletionSource<NSObject>();
-        WKWebView.EvaluateJavaScript(javaScript, (result, error) => {
-            var e = error.ToException();
-            if (e != null)
-                tcs.TrySetException(e);
-            else
-                tcs.TrySetResult(result);
-        });
-        return tcs.Task;
-    }
+        => WKWebView.EvaluateJavaScriptAsync(javaScript);
 
     // Private methods
 
@@ -123,29 +113,22 @@ public partial class MauiWebView
             }
 
             _ = DispatchToBlazor(
-                c => {
+                async c => {
                     var permissionHandler = c.GetRequiredService<MicrophonePermissionHandler>();
-                    var resultValueTask = permissionHandler.CheckOrRequest();
-                    if (resultValueTask.IsCompleted) {
-                        var result = resultValueTask.Result
-                            ? WKPermissionDecision.Grant
-                            : WKPermissionDecision.Prompt;
-                        decisionHandler.Invoke(result);
+                    var result = WKPermissionDecision.Prompt;
+                    try {
+                        if (await permissionHandler.CheckOrRequest().ConfigureAwait(true))
+                            result = WKPermissionDecision.Grant;
                     }
-                    else
-                        _ = resultValueTask
-                            .AsTask()
-                            .ContinueWith(t => {
-                                var result = t is { IsCompletedSuccessfully: true, Result: true }
-                                    ? WKPermissionDecision.Grant
-                                    : WKPermissionDecision.Prompt;
-                                decisionHandler.Invoke(result);
-                            }, TaskScheduler.Default);
+                    catch {
+                        // Intended
+                    }
+                    decisionHandler.Invoke(result);
                 },
                 "RequestMediaCapturePermission");
         }
 
-        private bool IsMediaCaptureGranted(
+        private static bool IsMediaCaptureGranted(
             WKSecurityOrigin origin,
             WKMediaCaptureType type)
         {

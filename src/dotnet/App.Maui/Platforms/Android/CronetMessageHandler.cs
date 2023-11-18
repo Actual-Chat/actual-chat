@@ -7,7 +7,7 @@ using Xamarin.Chromium.CroNet;
 
 namespace ActualChat.App.Maui;
 
-public class CronetMessageHandler : HttpMessageHandler
+public class CronetMessageHandler(IExecutorService executor) : HttpMessageHandler
 {
     private static readonly CronetEngine.Builder CronetEngineBuilder = new CronetEngine.Builder(MauiApplication.Current)
         .EnableBrotli(true)
@@ -20,14 +20,15 @@ public class CronetMessageHandler : HttpMessageHandler
         .AddQuicHint("media.actual.chat", 443, 443)
         .AddQuicHint("cdn.actual.chat", 443, 443);
 
-    private readonly CronetEngine _cronetEngine;
+    private readonly CronetEngine _cronetEngine = CronetEngineBuilder.Build();
 
-    private IExecutorService Executor { get; }
+    private IExecutorService Executor { get; } = executor;
 
-    public CronetMessageHandler(IExecutorService executor)
+    protected override void Dispose(bool disposing)
     {
-        Executor = executor;
-        _cronetEngine = CronetEngineBuilder.Build();
+        base.Dispose(disposing); // Just to suppress warning
+        if (disposing)
+            _cronetEngine.Dispose();
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -57,12 +58,6 @@ public class CronetMessageHandler : HttpMessageHandler
         requestBuilder.Build().Start();
 
         return await callback.ResultTask.WaitAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-            _cronetEngine.Dispose();
     }
 
     // Nested types

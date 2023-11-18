@@ -52,7 +52,7 @@
     protected override async Task<RpcPeerState?> ComputeState(CancellationToken cancellationToken)
     {
         try {
-            return await ReconnectUI.GetState(cancellationToken);
+            return await ReconnectUI.UseState(cancellationToken);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             return null;

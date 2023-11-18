@@ -108,6 +108,7 @@ public class AppNonScopedServiceStarter
 
     private static void WarmupByteSerializer()
     {
+#pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments
         var chatId = Constants.Chat.AnnouncementsChatId;
         var userId = Constants.User.Walle.UserId;
         var authorId = new AuthorId(chatId, 1L, AssumeValid.Option);
@@ -125,6 +126,7 @@ public class AppNonScopedServiceStarter
             using var buffer = s.Write(instance);
             s.Read<T>(buffer.WrittenMemory);
         }
+#pragma warning restore CA1861
     }
 
     private static void WarmupNewtonsoftJsonSerializer()

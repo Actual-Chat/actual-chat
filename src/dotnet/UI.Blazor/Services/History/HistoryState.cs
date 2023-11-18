@@ -2,8 +2,6 @@ namespace ActualChat.UI.Blazor.Services;
 
 public abstract record HistoryState
 {
-    private static readonly ConcurrentDictionary<Type, string> NameCache = new();
-
     public virtual string Name => GetType().GetName();
     public virtual int BackStepCount => 0; // How many times you can "Back" from this state
     public virtual bool IsUriDependent => false;

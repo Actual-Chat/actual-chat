@@ -77,10 +77,6 @@
     <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PRODUCTION</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-
   <!-- Project references -->
 
   <ItemGroup>
@@ -265,10 +261,6 @@
   </PropertyGroup>
 
   <!-- Resources -->
-
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
 
   <ItemGroup>
     <!-- App Icon -->

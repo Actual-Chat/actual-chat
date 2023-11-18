@@ -116,7 +116,7 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
 
     // Exchanges the authorization code for a authorization token from the remote provider.
     // Implementation is a copy from Microsoft.AspNetCore.Authentication.OAuth.OAuthHandler with small modifications.
-    private async Task<OAuthTokenResponse> ExchangeCode(string code, OAuthOptions options, CancellationToken requestAborted)
+    private static async Task<OAuthTokenResponse> ExchangeCode(string code, OAuthOptions options, CancellationToken requestAborted)
     {
         var requestParameters = new Dictionary<string, string>(StringComparer.Ordinal) {
             { "client_id", options.ClientId },

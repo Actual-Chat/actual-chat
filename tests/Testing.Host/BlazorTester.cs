@@ -29,7 +29,9 @@ public class BlazorTester : TestContext, IWebTester
         Services.AddTransient(_ => ScopedAppServices.StateFactory());
     }
 
+#pragma warning disable CA2215 // Ensure method calls base.Dispose(bool)
     protected override void Dispose(bool disposing)
+#pragma warning restore CA2215
     {
         if (disposing)
             _serviceScope.DisposeSilently();

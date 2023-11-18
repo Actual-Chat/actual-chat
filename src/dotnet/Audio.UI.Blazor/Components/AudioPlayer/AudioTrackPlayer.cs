@@ -9,8 +9,8 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
 {
     private static readonly string JSCreateMethod = $"{AudioBlazorUIModule.ImportName}.AudioPlayer.create";
 
+    private static bool DebugMode => Constants.DebugMode.AudioPlayback;
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode => Constants.DebugMode.AudioPlayback;
 
     private readonly string _id;
     private Dispatcher? _dispatcher;

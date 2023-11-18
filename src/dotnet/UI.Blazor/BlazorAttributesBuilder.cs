@@ -2,17 +2,15 @@
 
 public struct BlazorAttributesBuilder
 {
-    private IReadOnlyDictionary<string, object>? _attributes;
+    public IReadOnlyDictionary<string, object>? Result { get; private set; }
 
-    private BlazorAttributesBuilder(IReadOnlyDictionary<string, object>? attributes)
-        => _attributes = attributes;
-
-    public static BlazorAttributesBuilder Create(IReadOnlyDictionary<string, object>? additionalAttributes = null)
+    public static BlazorAttributesBuilder New(IReadOnlyDictionary<string, object>? additionalAttributes = null)
         => new (additionalAttributes);
 
-    public IReadOnlyDictionary<string, object>? GetResult()
-        => _attributes;
+    private BlazorAttributesBuilder(IReadOnlyDictionary<string, object>? attributes)
+        => Result = attributes;
 
+#pragma warning disable CA1030 // Consider making 'AddOnClick' an event
     public BlazorAttributesBuilder AddOnClick(object receiver, EventCallback click)
     {
         if (click.HasDelegate)
@@ -26,13 +24,14 @@ public struct BlazorAttributesBuilder
             AddAttribute("onclick", EventCallback.Factory.Create(receiver, click));
         return this;
     }
+#pragma warning restore CA1030 // Consider making 'AddOnClick' an event
 
     private void AddAttribute(string attributeName, object attributeValue)
     {
-        var temp = _attributes as ImmutableDictionary<string, object>
-            ?? (_attributes != null
-            ? ImmutableDictionary.CreateRange(_attributes)
+        var temp = Result as ImmutableDictionary<string, object>
+            ?? (Result != null
+            ? ImmutableDictionary.CreateRange(Result)
             : ImmutableDictionary<string, object>.Empty);
-        _attributes = temp.Add(attributeName, attributeValue);
+        Result = temp.Add(attributeName, attributeValue);
     }
 }

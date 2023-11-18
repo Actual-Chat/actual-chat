@@ -8,6 +8,8 @@ using Result = Android.App.Result;
 
 namespace ActualChat.App.Maui;
 
+#pragma warning disable // Can be static
+
 public sealed class NativeGoogleAuth
 {
     private const int GoogleSignInRequestCode = 800;

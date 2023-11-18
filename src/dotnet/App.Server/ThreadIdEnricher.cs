@@ -7,5 +7,5 @@ public class ThreadIdEnricher : ILogEventEnricher
 {
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
         => logEvent.AddPropertyIfAbsent(propertyFactory.CreateProperty(
-            "ThreadID", Thread.CurrentThread.ManagedThreadId.ToString("D4", CultureInfo.InvariantCulture)));
+            "ThreadID", Environment.CurrentManagedThreadId.ToString("D4", CultureInfo.InvariantCulture)));
 }

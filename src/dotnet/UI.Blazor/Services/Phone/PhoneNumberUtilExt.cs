@@ -23,7 +23,7 @@ public static class PhoneNumberUtilExt
 
     public static Phone CreatePhone(this PhoneNumber phoneNumber)
         => new Phone(
-            phoneNumber.CountryCode.ToString(CultureInfo.InvariantCulture),
-            phoneNumber.NationalNumber.ToString(),
+            phoneNumber.CountryCode.Format(),
+            phoneNumber.NationalNumber.Format(),
             AssumeValid.Option);
 }

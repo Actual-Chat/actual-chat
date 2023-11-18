@@ -65,13 +65,13 @@ public sealed partial class UrlMapper
 
     public static string GetWebSocketUrl(string url)
     {
-        if (url.StartsWith("ws://", StringComparison.Ordinal)
-            || url.StartsWith("wss://", StringComparison.Ordinal))
+        if (url.OrdinalStartsWith("ws://")
+            || url.OrdinalStartsWith("wss://"))
             return url;
 
-        if (url.StartsWith("http://", StringComparison.Ordinal))
+        if (url.OrdinalStartsWith("http://"))
             return "ws://" + url[7..];
-        if (url.StartsWith("https://", StringComparison.Ordinal))
+        if (url.OrdinalStartsWith("https://"))
             return "wss://" + url[8..];
 
         // No prefix at all
@@ -100,7 +100,7 @@ public sealed partial class UrlMapper
     /// <returns>A relative URI path.</returns>
     public string ToBaseRelativePath(string uri)
     {
-        if (uri.StartsWith(BaseUri!.OriginalString, StringComparison.Ordinal))
+        if (uri.OrdinalStartsWith(BaseUri!.OriginalString))
         {
             // The absolute URI must be of the form "{baseUri}something" (where
             // baseUri ends with a slash), and from that we return "something"
@@ -109,7 +109,7 @@ public sealed partial class UrlMapper
 
         var pathEndIndex = uri.IndexOfAny(UriPathEndChar);
         var uriPathOnly = pathEndIndex < 0 ? uri : uri.Substring(0, pathEndIndex);
-        if ($"{uriPathOnly}/".Equals(BaseUri.OriginalString, StringComparison.Ordinal))
+        if (OrdinalEquals($"{uriPathOnly}/", BaseUri.OriginalString))
         {
             // Special case: for the base URI "/something/", if you're at
             // "/something" then treat it as if you were at "/something/" (i.e.,

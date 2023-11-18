@@ -135,7 +135,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
 
         if (withPresence) {
             // Recursive call to get a part of state that prob. changes less frequently
-            var state = await GetState(chatId, false).ConfigureAwait(false);
+            var state = await GetState(chatId, false, cancellationToken).ConfigureAwait(false);
             if (state == null)
                 return null;
 
@@ -311,7 +311,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     }
 
     // Not compute method!
-    private Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)
+    private static Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)
     {
         var unreadCount = 0;
         if (readEntryLid > 0 && !chatNews.IsNone) {

@@ -19,22 +19,16 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
     protected override async ValueTask Vibrate(Tune tune)
     {
         await Task.Yield();
-
-        try
-        {
+        try {
             if (HapticEngine.IsMutedForHaptics)
                 return;
 
+            await HapticEngine.StartAsync().ConfigureAwait(true);
             var player = GetPlayer(tune);
-
-            HapticEngine.Start(out var error);
-            error.ThrowIfError();
-
-            player.Start(0, out error);
+            player.Start(0, out var error);
             error.ThrowIfError();
         }
-        catch (Exception e)
-        {
+        catch (Exception e) {
             Log.LogError(e, "Failed to vibrate '{Tune}'", tune);
         }
     }
@@ -42,8 +36,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
     private CHHapticEngine CreateHapticEngine()
     {
         lock (_lock)
-            try
-            {
+            try {
                 var engine = new CHHapticEngine(out var error);
                 error.ThrowIfError();
 
@@ -51,8 +44,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
                 error.ThrowIfError();
                 return engine;
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 Log.LogError(e, "Failed to create haptic engine");
                 throw;
             }
@@ -60,8 +52,7 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
 
     private ICHHapticPatternPlayer GetPlayer(Tune tune)
     {
-        lock (_lock)
-        {
+        lock (_lock) {
             if (_players.TryGetValue(tune, out var player))
                 return player;
 
@@ -75,13 +66,12 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
         }
     }
 
-    private CHHapticPattern BuildPattern(int[] vibration)
+    private static CHHapticPattern BuildPattern(int[] vibration)
     {
         var curve = BuildIntensityCurve(vibration);
         var hapticEvent = BuildHapticEvent(vibration);
         var pattern = new CHHapticPattern(new[] { hapticEvent }, new[] { curve, }, out var error);
         error.ThrowIfError();
-
         return pattern;
     }
 

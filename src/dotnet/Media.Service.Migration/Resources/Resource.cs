@@ -2,11 +2,11 @@ namespace ActualChat.Media.Resources;
 
 public class Resource(string name)
 {
-    public static Resource AlimniSvg = new ("alumni.svg");
-    public static Resource CoworkersSvg = new ("coworkers.svg");
-    public static Resource FamilySvg = new ("family.svg");
-    public static Resource NotesSvg = new ("notes.svg");
-    public static Resource FriendsSvg = new ("friends.svg");
+    public static readonly Resource AlumniSvg = new ("alumni.svg");
+    public static readonly Resource CoworkersSvg = new ("coworkers.svg");
+    public static readonly Resource FamilySvg = new ("family.svg");
+    public static readonly Resource NotesSvg = new ("notes.svg");
+    public static readonly Resource FriendsSvg = new ("friends.svg");
 
     public string Name { get; } = name;
 

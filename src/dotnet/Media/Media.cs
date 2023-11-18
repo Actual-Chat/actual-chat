@@ -4,7 +4,6 @@ using Stl.Fusion.Blazor;
 namespace ActualChat.Media;
 
 #pragma warning disable MA0049 // Allows ActualChat.Media.Media
-#pragma warning disable CA1724 // The type name Media conflicts in whole or in part with the namespace ...
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

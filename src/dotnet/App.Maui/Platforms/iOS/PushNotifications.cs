@@ -23,7 +23,7 @@ public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission
     private UrlMapper UrlMapper => History.UrlMapper;
     private NavigationManager Nav => _nav ??= Services.GetRequiredService<NavigationManager>();
     private NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
-    private UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
+    private static UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public PushNotifications(IServiceProvider services)

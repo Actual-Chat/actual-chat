@@ -19,7 +19,6 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
 
     public override Markup Simplify()
     {
-#pragma warning disable CA1508 // It clearly doesn't get that lastPlainText != null here
         if (Items.Length == 1)
             return Items[0].Simplify();
 
@@ -58,7 +57,6 @@ public sealed record MarkupSeq(ImmutableArray<Markup> Items) : Markup
             1 => items[0],
             _ => new MarkupSeq(items),
         };
-#pragma warning restore CA1508
     }
 
     protected override bool PrintMembers(StringBuilder builder)

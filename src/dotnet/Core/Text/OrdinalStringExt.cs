@@ -85,6 +85,9 @@ public static class OrdinalStringExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int OrdinalIndexOf(this string? x, string prefix, int startIndex)
         => x?.IndexOf(prefix, startIndex, StringComparison.Ordinal) ?? -1;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int OrdinalIndexOf(this string? x, char prefix)
+        => x?.IndexOf(prefix, StringComparison.Ordinal) ?? -1;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int OrdinalIgnoreCaseIndexOf(this string? x, string prefix)
@@ -92,6 +95,9 @@ public static class OrdinalStringExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int OrdinalIgnoreCaseIndexOf(this string? x, string prefix, int startIndex)
         => x?.IndexOf(prefix, startIndex, StringComparison.OrdinalIgnoreCase) ?? -1;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static int OrdinalIgnoreCaseIndexOf(this string? x, char prefix)
+        => x?.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) ?? -1;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static int OrdinalLastIndexOf(this string? x, string prefix)

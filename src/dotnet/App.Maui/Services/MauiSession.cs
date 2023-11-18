@@ -4,6 +4,8 @@ using ActualChat.Users;
 
 namespace ActualChat.App.Maui.Services;
 
+#pragma warning disable CA1823 // Unused members - 'SessionCreatedAtStorageKey', etc.
+
 public sealed class MauiSession(IServiceProvider services)
 {
     private const string SessionStorageKey = "Fusion.SessionId";

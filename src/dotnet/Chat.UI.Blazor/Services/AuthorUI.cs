@@ -74,7 +74,7 @@ public sealed class AuthorUI(ChatHub chatHub)
 
         var createCommand = new Chats_Change(Session, default, null, new() {
             Create = new ChatDiff {
-                Title = $"Anonymous chat ({ChatHub.Clocks().SystemClock.Now.ToString("d")})",
+                Title = $"Anonymous chat ({ChatHub.Clocks().SystemClock.Now.ToString("d", Cultures.US) })",
                 Kind = ChatKind.Group,
                 IsPublic = false,
                 AllowAnonymousAuthors = true,

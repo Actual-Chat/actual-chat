@@ -59,7 +59,9 @@ internal class UserPresenceTracker : IAsyncDisposable
         _onPresenceChanged.Invoke(userId);
     }
 
-    private Presence ToPresence(CheckIn? lastCheckIn, Moment now)
+    // Private methods
+
+    private static Presence ToPresence(CheckIn? lastCheckIn, Moment now)
     {
         if (lastCheckIn == null)
             return Presence.Offline;

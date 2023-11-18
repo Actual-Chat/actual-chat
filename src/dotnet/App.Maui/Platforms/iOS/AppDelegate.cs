@@ -33,7 +33,9 @@ public class AppDelegate : UIApplicationDelegate
         base.DidEnterBackground(application);
     }
 
-    private void CheckForAppLink(NSUserActivity userActivity)
+    // Private methods
+
+    private static void CheckForAppLink(NSUserActivity userActivity)
     {
         var url = "";
         switch (userActivity.ActivityType) {

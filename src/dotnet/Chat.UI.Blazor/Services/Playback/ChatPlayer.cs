@@ -20,7 +20,7 @@ public abstract class ChatPlayer : ProcessorBase
 
     protected ILogger Log { get; }
     protected ILogger? DebugLog => DebugMode ? Log : null;
-    protected bool DebugMode => Constants.DebugMode.AudioPlayback;
+    protected static bool DebugMode => Constants.DebugMode.AudioPlayback;
 
     protected ChatHub ChatHub { get; }
     protected Session Session => ChatHub.Session;
