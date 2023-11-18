@@ -22,7 +22,7 @@ public sealed class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObject
     {
         ThrowIfDisposed();
         safeJSRuntime.RequireConnected();
-        return jsObjectReference.InvokeAsync<TValue>(identifier, safeJSRuntime.ToUnsafe(args));
+        return jsObjectReference.InvokeAsync<TValue>(identifier, SafeJSRuntime.ToUnsafe(args));
     }
 
     public ValueTask<TValue> InvokeAsync<[DynamicallyAccessedMembers(SafeJSRuntime.JsonSerialized)] TValue>(
@@ -30,7 +30,7 @@ public sealed class SafeJSObjectReference(SafeJSRuntime safeJSRuntime, IJSObject
     {
         ThrowIfDisposed();
         safeJSRuntime.RequireConnected();
-        return jsObjectReference.InvokeAsync<TValue>(identifier, cancellationToken, safeJSRuntime.ToUnsafe(args));
+        return jsObjectReference.InvokeAsync<TValue>(identifier, cancellationToken, SafeJSRuntime.ToUnsafe(args));
     }
 
     // Protected methods
