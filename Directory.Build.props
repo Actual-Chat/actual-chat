@@ -95,20 +95,24 @@
     <AnalysisLevel>preview</AnalysisLevel>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <WarningLevel>4</WarningLevel>
-    <!-- Suppressed warnings (please sort alphabetically!) -->
-    <!-- CA2254: The logging message template should not vary between calls ... -->
+    <!-- NuGet & libraries / frameworks -->
+    <!-- NU5048: The 'PackageIconUrl'/'iconUrl' element is deprecated -->
+    <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
+    <NoWarn>$(NoWarn);NU5048;NU5105</NoWarn>
+    <!-- C# -->
+    <!-- CA1062: Validate arguments of public methods -->
     <!-- CS1591: Missing XML comment for publicly visible type or member -->
+    <!-- CA2254: The logging message template should not vary between calls ... -->
     <!-- CS8669: The annotation for nullable reference types should only be used in code within a '#nullable' annotations context. Auto-generated code requires an explicit '#nullable' directive in source. -->
+    <NoWarn>$(NoWarn);CA1062;CS1591;CA2254;CS8669</NoWarn>
     <!-- MA0009: Regular expressions should not be vulnerable to Denial of Service attacks -->
     <!-- MA0018: Do not declare static members on generic types -->
     <!-- MA0048: File name must match type name -->
-    <!-- NU5048: The 'PackageIconUrl' 'iconUrl' element is deprecated -->
-    <!-- NU5105: The package version uses SemVer 2.0.0 or components of SemVer 1.0.0 that are not supported on legacy clients -->
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
     <!-- VSTHRD003: Avoid awaiting or returning a Task representing work that was not start ed within your context as that can lead to deadlocks. -->
     <!-- VSTHRD103: StateHasChanged synchronously blocks. Await NotifyStateHasChanged instead. -->
     <!-- VSTHRD110: Observe the awaitable result of this method call by awaiting it, assigning to a variable, or passing it to another method. -->
-    <NoWarn>$(NoWarn);CA1062;CA2254;CS1591;CS8669;MA0009;MA0018;MA0048;NU5048;NU5105;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110</NoWarn>
+    <NoWarn>$(NoWarn);MA0009;MA0018;MA0048;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110</NoWarn>
     <!-- New .NET 8 warnings -->
     <!-- CA1001: Type C owns disposable field(s) F but is not disposable -->
     <!-- CA1002: Change 'List<T>' in P to use 'Collection<T>', 'ReadOnlyCollection<T>' or 'KeyedCollection<K,V>' -->
