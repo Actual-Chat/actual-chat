@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using ActualChat.App.Server;
 using ActualChat.Performance;
@@ -365,11 +366,11 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
             throw new AggregateException("Failed to create external contacts", errors);
     }
 
-    private Task Update(ExternalContact externalContact)
+    private Task<ApiArray<Result<ExternalContact?>>> Update(ExternalContact externalContact)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
             ApiArray.New(new ExternalContactChange(externalContact.Id, null, Change.Update(externalContact)))));
 
-    private Task Remove(ExternalContact externalContact)
+    private Task<ApiArray<Result<ExternalContact?>>> Remove(ExternalContact externalContact)
         => _commander.Call(new ExternalContacts_BulkChange(_tester.Session,
             ApiArray.New(new ExternalContactChange(externalContact.Id, null, Change.Remove<ExternalContact>()))));
 
@@ -423,7 +424,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
     private static User BuildUser(int i)
         => new User("", BuildUserName(i))
-            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, i.ToString("00000")))
+            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, i.ToString("00000", CultureInfo.InvariantCulture)))
             .WithPhone(BuildPhone(i))
             .WithClaim(ClaimTypes.Email, BuildEmail(i));
 

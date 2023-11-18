@@ -13,7 +13,7 @@ public class DedicatedEventHandler(ScheduledCommandTestService testService) : IC
         if (Computed.IsInvalidating())
             return;
 
-        var testClock = new TestClock();
+        using var testClock = new TestClock();
         await testClock.Delay(100, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         TestService.ProcessedEvents.Enqueue(event2);

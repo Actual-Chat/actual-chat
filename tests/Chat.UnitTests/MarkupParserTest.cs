@@ -194,7 +194,7 @@ code
 {
   Test();
 }
-".Replace("\n", "\r\n"));
+".Replace("\n", "\r\n", StringComparison.OrdinalIgnoreCase));
 
         m = Parse<CodeBlockMarkup>(@"```cs
 
@@ -209,7 +209,7 @@ public class CodeWithIndent
 {
 }
 
-".Replace("\n", "\r\n"));
+".Replace("\n", "\r\n", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

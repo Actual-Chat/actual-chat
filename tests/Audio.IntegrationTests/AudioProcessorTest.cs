@@ -37,7 +37,7 @@ public class AudioProcessorTest : AppHostTestBase
         var readSize = await ReadAudio(audioRecord.Id, audioStreamer, default, cts.Token)
             .WaitAsync(TimeSpan.FromSeconds(1), cts.Token);
         readSize.Should().Be(0);
-        cts.Cancel();
+        await cts.CancelAsync();
     }
 
     [Fact]
@@ -146,7 +146,7 @@ public class AudioProcessorTest : AppHostTestBase
             lastIdTile.Range,
             true,
             CancellationToken.None);
-        var lastEntry = lastTile.Entries.Last();
+        var lastEntry = lastTile.Entries[^1];
         lastEntry.IsRemoved.Should().BeFalse();
         lastEntry.Content.Should().Be("И");
     }
@@ -212,7 +212,7 @@ public class AudioProcessorTest : AppHostTestBase
             lastIdTile.Range,
             true,
             CancellationToken.None);
-        var lastEntry = lastTile.Entries.Last();
+        var lastEntry = lastTile.Entries[^1];
         lastEntry.IsRemoved.Should().BeFalse();
         lastEntry.Content.Should().NotBeEmpty();
     }

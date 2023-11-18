@@ -31,7 +31,7 @@ public class BackgroundActivitiesTest: TestBase
     [Fact]
     public async Task BackgroundUIStateSyncTest()
     {
-        var testClock = new TestClock();
+        using var testClock = new TestClock();
         var backgroundUI = Services.GetRequiredService<BackgroundUI>();
         backgroundUI.State.Value.Should().Be(BackgroundState.Foreground);
 
@@ -53,7 +53,7 @@ public class BackgroundActivitiesTest: TestBase
     [Fact]
     public async Task BackgroundUIMassUpdateTest()
     {
-        var testClock = new TestClock();
+        using var testClock = new TestClock();
         var random = Random.Shared;
         var log = Services.LogFor<BackgroundActivitiesTest>();
         var backgroundUI = Services.GetRequiredService<BackgroundUI>();
@@ -63,7 +63,8 @@ public class BackgroundActivitiesTest: TestBase
         var activityHandler = (BackgroundActivitiesStub)Services.GetRequiredService<IBackgroundActivities>();
 
         backgroundUI.Start();
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
+        // ReSharper disable AccessToDisposedClosure
 
         _ = BackgroundTask.Run(async () => {
             for (int i = 0; i < 10; i++) {
@@ -92,12 +93,16 @@ public class BackgroundActivitiesTest: TestBase
             stateChangeCount++;
         }
 
+        // ReSharper restore AccessToDisposedClosure
+
         stateChangeCount.Should().BeGreaterThan(2);
     }
 }
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Local
+#pragma warning disable CA1852
 internal class BackgroundActivitiesStub(IServiceProvider services) : IBackgroundActivities
+#pragma warning restore CA1852
 {
     private readonly IMutableState<bool> _isActiveInBackground = services.StateFactory().NewMutable<bool>();
 

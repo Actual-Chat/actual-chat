@@ -80,7 +80,7 @@ public class ActualOpusStreamConverterTests
             Log.LogInformation("{I}", i++);
             await outputStream.WriteAsync(x);
         }
-        outputStream.Flush();
+        await outputStream.FlushAsync();
     }
 
     private static FilePath GetAudioFilePath(FilePath fileName)

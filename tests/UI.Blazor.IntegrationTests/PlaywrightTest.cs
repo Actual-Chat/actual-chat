@@ -41,7 +41,7 @@ public class PlaywrightTest : AppHostTestBase
         var lastMessage = await GetLastMessage(messages);
         lastMessage.Should().NotBe("Test-123");
 
-        await input!.TypeAsync("Test-123");
+        await input!.FillAsync("Test-123");
         await button!.ClickAsync();
 
         var count = messages.Count;

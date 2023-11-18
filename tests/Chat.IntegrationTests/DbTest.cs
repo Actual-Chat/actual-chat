@@ -167,7 +167,7 @@ public class DbTest: AppHostTestBase
         if (content.Length < 200)
             content += suffix;
         else
-            content = content.Replace(suffix, "");
+            content = content.Replace(suffix, "", StringComparison.OrdinalIgnoreCase);
         dbEntry.Content = content;
         dbEntry.Version = dbHub.VersionGenerator.NextVersion(dbEntry.Version);
 

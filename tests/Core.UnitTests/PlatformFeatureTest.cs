@@ -29,9 +29,10 @@ public class PlatformFeatureTest: TestBase
     [Fact]
     public async Task HealthEventListenerTest()
     {
-        var clock = new TestClock();
+        using var clock = new TestClock();
         var clockZero = clock.Now;
-        var listener = new HealthEventListener(Services, 1);
+        using var listener = new HealthEventListener(Services, 1);
+        // ReSharper disable AccessToDisposedClosure
         _ = BackgroundTask.Run(async () => {
             var process = Process.GetCurrentProcess();
             var processorCount = Environment.ProcessorCount;
@@ -68,7 +69,7 @@ public class PlatformFeatureTest: TestBase
                 return Task.CompletedTask;
             });
         }
-
+        // ReSharper restore AccessToDisposedClosure
         await clock.Delay(5000);
         Out.WriteLine("CPU Count: "+ Environment.ProcessorCount);
     }

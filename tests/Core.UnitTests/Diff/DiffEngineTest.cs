@@ -41,7 +41,7 @@ public class DiffEngineTest
         diff.Should().BeEquivalentTo(new DataDiff { Id = "2", Name = "John" });
     }
 
-    private record Data(Symbol Id, string Name);
+    private sealed record Data(Symbol Id, string Name);
 
     private sealed record DataDiff : RecordDiff
     {

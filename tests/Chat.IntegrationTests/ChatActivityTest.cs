@@ -53,7 +53,7 @@ public class ChatActivityTest : AppHostTestBase
             await cIsAuthorActive.When(x => !x, ct).WaitAsync(TimeSpan.FromSeconds(0.5), ct);
         }
         finally {
-            cts.Cancel();
+            await cts.CancelAsync();
         }
     }
 
@@ -62,7 +62,7 @@ public class ChatActivityTest : AppHostTestBase
         IAuthors authors,
         CancellationToken cancellationToken)
     {
-        var testClock = new TestClock();
+        using var testClock = new TestClock();
         await testClock.Delay(2000, cancellationToken);
         var author = await authors.EnsureJoined(session, TestChatId, CancellationToken.None).ConfigureAwait(false);
         var clock = MomentClockSet.Default.SystemClock;

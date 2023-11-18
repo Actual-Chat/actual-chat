@@ -33,10 +33,12 @@ public class BlazorTester : TestContext, IWebTester
     {
         if (disposing)
             _serviceScope.DisposeSilently();
+        // base.Dispose(disposing);
     }
 
     public ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         Dispose(true);
         return default;
     }

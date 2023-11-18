@@ -1,4 +1,6 @@
+using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Google.Cloud.Speech.V2;
 using Google.Protobuf.WellKnownTypes;
 
@@ -6,6 +8,11 @@ namespace ActualChat.Transcription.UnitTests;
 
 public static class GoogleTranscriptReader
 {
+    private static readonly JsonSerializerOptions _serializerOptions = new() {
+        AllowTrailingCommas = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
     [UnconditionalSuppressMessage("Trimming",
         "IL2026:Members annotated with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code",
         Justification = "<Pending>")]
@@ -14,10 +21,7 @@ public static class GoogleTranscriptReader
         await using var fileStream = File.OpenRead(fileName);
         var responses = await JsonSerializer.DeserializeAsync<Response[]>(
                 fileStream,
-                new JsonSerializerOptions {
-                    AllowTrailingCommas = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                })
+                _serializerOptions)
             .ConfigureAwait(false);
 
         foreach (var response in responses!) {
@@ -58,20 +62,21 @@ public static class GoogleTranscriptReader
             return null;
 
         var (sec, ms, _) = duration.TrimEnd('s').Split('.');
-        return new Duration { Seconds = long.Parse(sec), Nanos = int.Parse(ms ?? "0") * 1_000_000 };
+        return new Duration { Seconds = long.Parse(sec, CultureInfo.InvariantCulture), Nanos = int.Parse(ms ?? "0", CultureInfo.InvariantCulture) * 1_000_000 };
     }
 }
 
 
+#pragma warning disable CA2227
 public class Response
 {
-    public List<Result> Results { get; set; } = null!;
+    public ReadOnlyCollection<Result> Results { get; set; } = null!;
     public string? TotalBilledTime { get; set; }
 }
 
 public class Result
 {
-    public List<Alternative> Alternatives { get; set; } = null!;
+    public ReadOnlyCollection<Alternative> Alternatives { get; set; } = null!;
     public float Stability { get; set; }
     public bool IsFinal { get; set; }
     public string ResultEndOffset { get; set; } = null!;
@@ -81,7 +86,7 @@ public class Alternative
 {
     public string Transcript { get; set; } = null!;
     public float Confidence { get; set; }
-    public List<WordN>? Words { get; set; }
+    public ReadOnlyCollection<WordN>? Words { get; set; }
 }
 
 public class WordN
@@ -91,3 +96,4 @@ public class WordN
     public string Word { get; set; } = null!;
     public string SpeakerLabel { get; set; } = null!;
 }
+#pragma warning restore CA2227

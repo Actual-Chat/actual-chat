@@ -32,7 +32,10 @@
     <!-- RCS1090: Call 'ConfigureAwait(false)' -->
     <!-- VSTHRD002: .Wait() deadlock -->
     <!-- CA2007: Consider calling ConfigureAwait on the awaited task -->
-    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;MA0002;MA0004;MA0006;MA0011;MA0074;RCS1090;VSTHRD002;CA2007</NoWarn>
+    <!-- CA1861: Prefer 'static readonly' fields over constant array arguments if the called method is called repeatedly and is not mutating the passed array -->
+    <!-- CA2016: Forward the CancellationToken parameter to methods that take one -->
+    <!-- CA1859 : Change return type of method 'CreateServices' from 'System.IServiceProvider' to 'Microsoft.Extensions.DependencyInjection.ServiceProvider' for improved performance -->
+    <NoWarn>$(NoWarn);1701;1702;CA1034;CA1822;CS8604;IL2070;IL2075;MA0002;MA0004;MA0006;MA0011;MA0074;RCS1090;VSTHRD002;CA2007;CA1861;CA2016;CA1859</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

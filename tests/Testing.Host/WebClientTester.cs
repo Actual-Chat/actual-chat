@@ -51,10 +51,14 @@ public class WebClientTester : IWebClientTester
     }
 
     public virtual void Dispose()
-        => DisposeAsync().AsTask().Wait();
+    {
+        GC.SuppressFinalize(this);
+        DisposeAsync().AsTask().Wait();
+    }
 
     public virtual async ValueTask DisposeAsync()
     {
+        GC.SuppressFinalize(this);
         if (!_clientServicesLazy.IsValueCreated)
             return;
 

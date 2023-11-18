@@ -20,7 +20,7 @@ public static class TestAuthExt
         User user,
         CancellationToken cancellationToken = default)
     {
-        if (!user.Identities.Any())
+        if (user.Identities.IsEmpty)
             user = user.WithIdentity(new UserIdentity("test", Ulid.NewUlid().ToString()!));
         var userIdentity = user.Identities.Keys.First();
 

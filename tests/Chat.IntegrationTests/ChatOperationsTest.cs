@@ -247,7 +247,7 @@ public class ChatOperationsTest : AppHostTestBase
     [Theory]
     [InlineData(null)]
     [InlineData("Bob")]
-    public async Task ShouldNotAllowJoinOrLeaveAnnouncementsChat(string userName)
+    public async Task ShouldNotAllowJoinOrLeaveAnnouncementsChat(string? userName)
     {
         // arrange
         using var appHost = await NewAppHost();

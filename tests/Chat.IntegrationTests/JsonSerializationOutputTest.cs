@@ -21,7 +21,7 @@ public class JsonSerializationOutputTest : TestBase
     {
         var s = SystemJsonSerializer.Default;
         Out.WriteLine($"{typeof(T).GetName()}:");
-        Out.WriteLine("\"" + s.Write(instance).Replace("\"", "\\\"") + "\"");
+        Out.WriteLine("\"" + s.Write(instance).Replace("\"", "\\\"", StringComparison.OrdinalIgnoreCase) + "\"");
         Out.WriteLine("");
     }
 }

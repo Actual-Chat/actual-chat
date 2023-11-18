@@ -17,15 +17,17 @@ public class CompositeServiceProviderTest
             .BuildServiceProvider();
 
         var lazyServicesTsc = TaskCompletionSourceExt.New<IServiceProvider>();
-        var lazyServices = new CompositeServiceProvider(
+        await using var lazyServices = new CompositeServiceProvider(
             nonLazyServices,
             lazyServicesTsc.Task,
             t => t != typeof(LazyScopedFiltered),
             nonLazyServices);
 
         var whenTested = Task.Run(async () => {
+            // ReSharper disable AccessToDisposedClosure
             await Test(lazyServices.CreateScope().ServiceProvider, lazyServices);
             await Test(lazyServices);
+            // ReSharper restore AccessToDisposedClosure
         });
 
         var lazyServicesSource = new ServiceCollection()
@@ -87,7 +89,10 @@ public class CompositeServiceProviderTest
         public bool IsDisposed { get; private set; }
 
         public void Dispose()
-            => IsDisposed = true;
+        {
+            GC.SuppressFinalize(this);
+            IsDisposed = true;
+        }
     }
 
     public record From();

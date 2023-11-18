@@ -82,14 +82,14 @@ public class AsyncEnumerableExtTest : TestBase
     [Fact]
     public async Task MergeCancellationTest()
     {
-        var clock = new TestClock();
+        using var clock = new TestClock();
         using var cts = new CancellationTokenSource();
         var left = Left(cts.Token);
         var right = Right(cts.Token);
         var result = left.Merge(right);
         await foreach (var n in result.TrimOnCancellation()) {
             if (n == 10)
-                cts.Cancel();
+                await cts.CancelAsync();
         }
 
         async IAsyncEnumerable<int> Left([EnumeratorCancellation] CancellationToken cancellationToken)
@@ -139,7 +139,7 @@ public class AsyncEnumerableExtTest : TestBase
     [SuppressMessage("ReSharper", "PossibleMultipleEnumeration")]
     public async Task RandomizedMergeTest()
     {
-        var testClock = new TestClock();
+        using var testClock = new TestClock();
         using var cts = new CancellationTokenSource();
         var random = new Random();
         var otherSourceLength = random.Next(4, 7);

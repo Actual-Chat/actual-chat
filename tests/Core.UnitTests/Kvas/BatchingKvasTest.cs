@@ -72,7 +72,7 @@ public class BatchingKvasTest : TestBase
         var kvas = services.GetRequiredService<BatchingKvas>();
 
         var moment = CpuClock.Now;
-        var buffer = new ArrayPoolBufferWriter<byte>();
+        using var buffer = new ArrayPoolBufferWriter<byte>();
         SystemJsonSerializer.Default.Write(buffer, moment);
         await kvas.Set("a", buffer.WrittenMemory.ToArray());
         (await kvas.Get<Moment>("a")).Should().Be(moment);

@@ -263,12 +263,13 @@ public class ChatEntryReaderTest : AppHostTestBase
         chat.Should().NotBeNull();
         chat?.Title.Should().Be("The Actual One");
 
-        var idRange = chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
+        var idRangeTask = chats.GetIdRange(session, TestChatId, ChatEntryKind.Text, CancellationToken.None);
         var reader = chats.NewEntryReader(session, TestChatId, ChatEntryKind.Text);
 
         { // Test 1
             using var cts = new CancellationTokenSource(2000);
-            var resultTask = reader.Observe(idRange.Result.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
+            var idRange = await idRangeTask;
+            var resultTask = reader.Observe(idRange.End - 1, cts.Token).TrimOnCancellation().ToListAsync();
             _ = BackgroundTask.Run(() => CreateChatEntries(
                     chats, session, TestChatId,
                     (int)Constants.Chat.ReaderIdTileStack.MinTileSize));

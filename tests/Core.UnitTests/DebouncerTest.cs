@@ -11,7 +11,7 @@ public class DebouncerTest
     public async Task DebounceTest()
     {
         var results = new List<int>();
-        var clock = new TestClock();
+        using var clock = new TestClock();
         var debouncer = new Debouncer<int>(clock, TimeSpan.FromMilliseconds(1000), i => {
             lock (results) {
                 results.Add(i);
@@ -68,7 +68,7 @@ public class DebouncerTest
     public async Task ThrottleTest()
     {
         var results = new List<int>();
-        var clock = new TestClock();
+        using var clock = new TestClock();
         var debouncer = new Debouncer<int>(clock, TimeSpan.FromMilliseconds(1000), i => {
             lock (results) {
                 results.Add(i);

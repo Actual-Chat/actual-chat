@@ -113,12 +113,12 @@ public class AudioSourceTest
 
     // Private methods
 
-    private Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName, bool isWebMStream = true)
+    private async Task WriteToFile(AudioSource source, TimeSpan skipTo, FilePath fileName, bool isWebMStream = true)
     {
-        var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
+        await using var stream = new FileStream(GetAudioFilePath(fileName), FileMode.OpenOrCreate, FileAccess.ReadWrite);
         var converter = isWebMStream
             ? new WebMStreamConverter(MomentClockSet.Default, Log)
             : (IAudioStreamConverter)new ActualOpusStreamConverter(MomentClockSet.Default, Log);
-        return stream.WriteByteStream(converter.ToByteStream(source, CancellationToken.None),true);
+        await stream.WriteByteStream(converter.ToByteStream(source, CancellationToken.None),true);
     }
 }

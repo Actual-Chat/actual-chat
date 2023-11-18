@@ -10,7 +10,7 @@ public static class Awaiter
             throw new ArgumentNullException(nameof(func));
 
         var delay = Debugger.IsAttached ? TimeSpan.FromHours(1) : TimeSpan.FromSeconds(10);
-        var cts = new CancellationTokenSource(delay);
+        using var cts = new CancellationTokenSource(delay);
 
         while (true)
         {

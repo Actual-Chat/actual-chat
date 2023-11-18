@@ -11,7 +11,7 @@ public class SharedResourcePoolTest : TestBase
     public async Task BasicTest()
     {
         var cancellationToken = CancellationToken.None;
-        var testClock = new TestClock();
+        using var testClock = new TestClock();
         var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
             ResourceDisposeDelay = TimeSpan.Zero,
         };
@@ -36,7 +36,7 @@ public class SharedResourcePoolTest : TestBase
     public async Task DisposeDelayTest()
     {
         var cancellationToken = CancellationToken.None;
-        var testClock = new TestClock();
+        using var testClock = new TestClock();
         var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
             ResourceDisposeDelay = TimeSpan.FromSeconds(0.5),
         };
@@ -62,7 +62,7 @@ public class SharedResourcePoolTest : TestBase
     public async Task DisposeDelayCancellationTest()
     {
         var cancellationToken = CancellationToken.None;
-        var testClock = new TestClock();
+        using var testClock = new TestClock();
         var pool = new SharedResourcePool<int, Resource>(ResourceFactory) {
             ResourceDisposeDelay = TimeSpan.FromSeconds(0.2),
         };
@@ -106,7 +106,7 @@ public class SharedResourcePoolTest : TestBase
             return new Resource();
         }
 
-        var cancellationTokenSource = new CancellationTokenSource(200);
+        using var cancellationTokenSource = new CancellationTokenSource(200);
         var cancellationToken = cancellationTokenSource.Token;
         var pool = new SharedResourcePool<int, Resource>(ResourceFactory1) {
             ResourceDisposeDelay = TimeSpan.Zero,
