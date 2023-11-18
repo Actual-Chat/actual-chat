@@ -7,11 +7,11 @@ public sealed record TypeMap<TScope>(IReadOnlyDictionary<Type, Type> Map)
 
     // Conversion
 
-    public TypeMapper<TScope> ToMapper()
+    public TypeMapper<TScope> ToTypeMapper()
         => new(this);
 
     public static implicit operator TypeMapper<TScope>(TypeMap<TScope> typeMap)
-        => typeMap.ToMapper();
+        => typeMap.ToTypeMapper();
 
     // Private methods
 

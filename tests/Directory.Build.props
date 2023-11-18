@@ -3,7 +3,9 @@
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
 
   <PropertyGroup>
-    <OutputPath>$(RepoRoot)artifacts\tests\$(MSBuildProjectName)</OutputPath>
+    <!-- Output -->
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <ArtifactsPath>$(RepoRoot)artifacts\tests</ArtifactsPath>
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     <!-- Copy all references to output folder (important for coverage tools) -->
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>

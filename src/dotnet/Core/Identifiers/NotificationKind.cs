@@ -2,7 +2,8 @@ namespace ActualChat;
 
 public enum NotificationKind
 {
-    Message = 1,
+    None = 0,
+    Message,
     Reply,
     Invitation,
     Mention,

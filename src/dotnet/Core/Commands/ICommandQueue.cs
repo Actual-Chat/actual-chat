@@ -1,5 +1,7 @@
 namespace ActualChat.Commands;
 
+#pragma warning disable CA1711
+
 public interface ICommandQueue
 {
     ICommandQueues Queues { get; }

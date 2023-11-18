@@ -4,12 +4,18 @@
     <TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.22000.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
-    <OutputPath>$(RepoRoot)artifacts\app\</OutputPath>
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
+    <Configurations>Release;Debug</Configurations>
+
+    <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
     <MauiVersion>8.0.3</MauiVersion>
     <SingleProject>true</SingleProject>
+    <IsPublishable>true</IsPublishable>
+    <UseMauiNuGets>false</UseMauiNuGets>
+    <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
+
     <!--
     <ImplicitUsings>enable</ImplicitUsings>
     -->
@@ -30,19 +36,21 @@
     <!-- Required for C# Hot Reload -->
     <UseInterpreter Condition="'$(Configuration)' == 'Debug'">True</UseInterpreter>
 
-    <TargetPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">16.4</TargetPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">16.4</SupportedOSPlatformVersion>
+    <!-- Original defaults for MAUI project: -->
+    <!--
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">14.2</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">28.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
+    -->
+
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">26.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">16.4</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">14.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
-
-    <AppendTargetFrameworkToOutputPath>true</AppendTargetFrameworkToOutputPath>
-    <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
-    <IsPublishable>true</IsPublishable>
-    <Configurations>Release;Debug</Configurations>
-    <UseMauiNuGets>false</UseMauiNuGets>
-    <SkipValidateMauiImplicitPackageReferences>true</SkipValidateMauiImplicitPackageReferences>
   </PropertyGroup>
 
   <!-- Here we can alter either app is build to connect to dev or prod environment -->
@@ -185,6 +193,10 @@
     <!-- <DebuggerSupport>false</DebuggerSupport> -->
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProguardConfiguration Include="proguard.cfg" />
+  </ItemGroup>
+
   <!--
   Android AOT settings & AOT profile
   -->
@@ -265,17 +277,18 @@
     <!-- Splash Screen -->
     <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" Color="#0036A3" />
 
-    <!-- Images -->
-    <MauiImage Include="Resources\Images\*" />
+    <!-- Images: none -->
+    <MauiImage Remove="Resources\Images\**" />
+    <MauiXaml Remove="Resources\Images\**" />
+    <EmbeddedResource Remove="Resources\Images\**" />
 
     <!-- Custom Fonts -->
     <MauiFont Include="Resources\Fonts\*" />
-    <MauiImage Remove="Resources\Images\**" />
   </ItemGroup>
 
   <!-- Platform-specific files to compile -->
 
-  <!-- Android -->
+  <!-- NOT Andoid -->
   <ItemGroup Condition="$(TargetFramework.Contains('-android')) != true">
     <Compile Remove="**\**\*.Android.cs" />
     <None Include="**\**\*.Android.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
@@ -285,24 +298,38 @@
     <Compile Remove="Resources\Images\**" />
     <None Remove="Resources\Images\**" />
   </ItemGroup>
+  <!-- Android -->
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
+    <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-android'))">
+    <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
+  </ItemGroup>
 
-  <!-- Both iOS and Mac Catalyst -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
+  <!-- NOT iOS and NOT Mac Catalyst -->
+  <ItemGroup Condition="$(TargetFramework.StartsWith('net8.0-ios')) != true AND $(TargetFramework.StartsWith('net8.0-maccatalyst')) != true">
     <Compile Remove="**\**\*.MaciOS.cs" />
     <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\MaciOS\**\*.cs" />
     <None Include="**\MaciOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
 
-  <!-- iOS -->
+  <!-- NOT iOS -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\**\*.iOS.cs" />
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\iOS\**\*.cs" />
     <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
+  <!-- iOS -->
+  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
+    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-ios'))">
+    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
+  </ItemGroup>
 
-  <!-- Mac Catalyst -->
+  <!-- NOT MacCatalyst -->
   <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst')) != true">
     <Compile Remove="**\**\*.MacCatalyst.cs" />
     <None Include="**\**\*.MacCatalyst.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
@@ -310,12 +337,16 @@
     <None Include="**\MacCatalyst\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
 
-  <!-- Windows -->
+  <!-- NOT Windows -->
   <ItemGroup Condition="$(TargetFramework.Contains('-windows')) != true">
     <Compile Remove="**\*.Windows.cs" />
     <None Include="**\*.Windows.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Windows\**\*.cs" />
     <None Include="**\Windows\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+  <!-- Windows -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-windows')) != true">
+    <Content Include="Platforms\Windows\Assets\**\*.*" />
   </ItemGroup>
 
   <ItemGroup>
@@ -336,36 +367,6 @@
     <Content Remove="Resources\Images\**" />
     <Content Remove="wwwroot\dist\images\webonly\**" />
     <None Remove="wwwroot\dist\images\webonly\**" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
-    <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.dev" Link="Platforms\Android\Resources\google-services.json" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-android'))">
-    <GoogleServicesJson Include="Platforms\Android\Resources\google-services.json.prod" Link="Platforms\Android\Resources\google-services.json" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-ios'))">
-    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.dev" Link="GoogleService-Info.plist" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(IsDevMaui)' != 'true' AND $(TargetFramework.Contains('-ios'))">
-    <BundleResource Include="Platforms\iOS\GoogleService-Info.plist.prod" Link="GoogleService-Info.plist" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProguardConfiguration Include="proguard.cfg" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Remove="Resources\Images\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <MauiXaml Remove="Resources\Images\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Platforms\Windows\Assets\**\*.*" />
   </ItemGroup>
 
   <Target Name="UpdateBundleHash" AfterTargets="Build">

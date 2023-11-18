@@ -2,6 +2,8 @@ using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 
+#pragma warning disable CA1815
+
 public readonly struct HashRing<T>
     where T : notnull
 {

@@ -2,7 +2,9 @@ namespace ActualChat.Hosting;
 
 public interface IDbInitializer : IHasServices
 {
+#pragma warning disable CA2227
     Dictionary<IDbInitializer, Task> RunningTasks { get; set; }
+#pragma warning restore CA2227
     bool ShouldRepairData { get; }
     bool ShouldVerifyData { get; }
 

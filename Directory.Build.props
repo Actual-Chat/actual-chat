@@ -43,13 +43,11 @@
     <NoPackageAnalysis>true</NoPackageAnalysis>
 
     <!-- Output -->
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <BaseIntermediateOutputPath>$(RepoRoot)artifacts\obj\$(MSBuildProjectName)</BaseIntermediateOutputPath>
-    <OutputPath>$(RepoRoot)artifacts\bin\</OutputPath>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <ArtifactsPath>$(RepoRoot)artifacts</ArtifactsPath>
+    <PackageOutputPath>$(RepoRoot)artifacts\nupkg</PackageOutputPath>
 
     <!-- NuGet -->
-    <PackageOutputPath>$(RepoRoot)artifacts\nupkg</PackageOutputPath>
     <IsPackable>false</IsPackable>
     <IsPublishable>false</IsPublishable>
     <!-- Include the PDB and xmldoc in the built .nupkg -->
@@ -79,7 +77,20 @@
     <!-- VSTHRD003: Avoid awaiting or returning a Task representing work that was not start ed within your context as that can lead to deadlocks. -->
     <!-- VSTHRD103: StateHasChanged synchronously blocks. Await NotifyStateHasChanged instead. -->
     <!-- VSTHRD110: Observe the awaitable result of this method call by awaiting it, assigning to a variable, or passing it to another method. -->
-    <NoWarn>$(NoWarn);CA2254;CS1591;CS8669;MA0009;MA0018;MA0048;NU5048;NU5105;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110</NoWarn>
+    <NoWarn>$(NoWarn);CA1062;CA2254;CS1591;CS8669;MA0009;MA0018;MA0048;NU5048;NU5105;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110</NoWarn>
+    <!-- New .NET 8 warnings -->
+    <!-- CA1003: Change the event X to replace the type 'System.Action<T, T>?' with a generic EventHandler -->
+    <!-- CA1034: Do not nest type X. Alternatively, change its accessibility so that it is not externally visible. -->
+    <!-- CA1040: Avoid empty interfaces -->
+    <!-- CA1043: Use Integral Or String Argument For Indexers -->
+    <!-- CA1051: Do not declare visible instance fields -->
+    <!-- CA1056: Change the type of property 'HostInfo.BaseUrl' from 'string' to 'System.Uri' -->
+    <!-- CA1063: Provide an overridable implementation of Dispose(bool) on 'CompositeServiceProvider' or mark the type as sealed. -->
+    <!-- CA1065: X returns an exception of type Exception -->
+    <!-- CA1308: Replace the call to 'ToLowerInvariant' with 'ToUpperInvariant' -->
+    <!-- CA1707: Remove the underscores from type name -->
+    <!-- CA1819: Properties should not return arrays -->
+    <NoWarn>$(NoWarn);CA1003;CA1034;CA1040;CA1043;CA1051;CA1056;CA1063;CA1065;CA1308;CA1707;CA1819</NoWarn>
 
     <!-- SourceLink props: https://github.com/dotnet/sourcelink/issues/159 -->
     <EnableSourceLink>false</EnableSourceLink>

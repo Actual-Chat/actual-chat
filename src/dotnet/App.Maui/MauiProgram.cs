@@ -14,9 +14,13 @@ using banditoth.MAUI.DeviceId;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.JSInterop;
 using Sentry;
+using Sentry.Maui.Internal;
 using Serilog;
 using Stl.CommandR.Rpc;
 using ILogger = Google.Apis.Logging.ILogger;
+#if IOS
+using Foundation;
+#endif
 
 namespace ActualChat.App.Maui;
 
@@ -35,6 +39,9 @@ public static partial class MauiProgram
         RpcOutboundCommandCallMiddleware.DefaultTimeout = TimeSpan.FromSeconds(20);
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
+#if IOS
+        NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
+#endif
         if (OSInfo.IsAndroid || OSInfo.IsWindows)
             _ = Task.Run(() => new SentryOptions()); // JIT compile SentryOptions in advance
         OtelDiagnostics.SetupConditionalPropagator();
@@ -113,10 +120,6 @@ public static partial class MauiProgram
 // #endif
 
         services.AddTransient(_ => new MainPage());
-        builder.ConfigureMauiHandlers(handlers => {
-            handlers.AddHandler<IBlazorWebView, MauiBlazorWebViewHandler>();
-        });
-
         if (!isEarlyApp)
             ConfigureAppServices(services, null);
 

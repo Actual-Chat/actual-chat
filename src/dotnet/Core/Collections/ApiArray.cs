@@ -23,7 +23,7 @@ public readonly partial struct ApiArray<T>(T[] items)
     : IReadOnlyList<T>, ICloneable<ApiArray<T>>, IEquatable<ApiArray<T>>
 {
     private static readonly T[] EmptyItems = Array.Empty<T>();
-    public static readonly ApiArray<T> Empty = default;
+    public static readonly ApiArray<T> Empty = default!;
 
     private readonly T[]? _items = items is { Length: 0 } ? null : items;
 
