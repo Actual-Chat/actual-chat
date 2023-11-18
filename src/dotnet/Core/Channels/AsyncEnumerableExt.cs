@@ -2,6 +2,8 @@ using ActualChat.Channels.Internal;
 
 namespace ActualChat.Channels;
 
+#pragma warning disable CA1849 // Task.Result synchronously blocks
+
 public static class AsyncEnumerableExt
 {
     public static IAsyncEnumerable<T> AsEnumerableOnce<T>(this IAsyncEnumerator<T> enumerator, bool suppressDispose)
@@ -246,8 +248,7 @@ public static class AsyncEnumerableExt
         int count,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        if (count <= 0)
-            throw new ArgumentOutOfRangeException(nameof(count));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
         var buffer = new List<TSource>(count);
         await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
@@ -493,9 +494,7 @@ public static class AsyncEnumerableExt
         int count,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        if (count <= 0)
-            throw new ArgumentOutOfRangeException(nameof(count));
-
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
         var buffer = new Queue<TSource>(count);
         await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
             buffer.Enqueue(item);
@@ -531,7 +530,7 @@ public static class AsyncEnumerableExt
 
             if (moveNextTask.IsCompleted) {
 #pragma warning disable MA0004
-                var hasNext = await moveNextTask;
+                var hasNext = await moveNextTask.ConfigureAwait(false);
 #pragma warning restore MA0004
                 if (hasNext) {
                     buffer.Add(enumerator.Current);
@@ -546,7 +545,7 @@ public static class AsyncEnumerableExt
 
             if (delayTask.IsCompleted) {
 #pragma warning disable MA0004
-                await delayTask; // Will throw an exception on cancellation
+                await delayTask.ConfigureAwait(false); // Will throw an exception on cancellation
 #pragma warning restore MA0004
                 if (buffer.Count > 0) {
                     yield return buffer;

@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 namespace ActualChat.Chat.Controllers;
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
-internal class DisableFormValueModelBindingAttribute : Attribute, IResourceFilter
+internal sealed class DisableFormValueModelBindingAttribute : Attribute, IResourceFilter
 {
     public void OnResourceExecuting(ResourceExecutingContext context)
     {
@@ -15,6 +15,5 @@ internal class DisableFormValueModelBindingAttribute : Attribute, IResourceFilte
     }
 
     public void OnResourceExecuted(ResourceExecutedContext context)
-    {
-    }
+    { }
 }

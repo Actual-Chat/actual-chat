@@ -3,6 +3,8 @@ using Stl.Rpc;
 
 namespace ActualChat.Security;
 
+#pragma warning disable CA1721 // Session is confusing w/ GetSession
+
 public sealed class TrueSessionResolver(IServiceProvider services) : ISessionResolver
 {
     private readonly object _lock = new();

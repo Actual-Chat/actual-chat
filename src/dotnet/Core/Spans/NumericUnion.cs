@@ -1,5 +1,7 @@
 namespace ActualChat.Spans;
 
+#pragma warning disable CA1720
+
 [StructLayout(LayoutKind.Explicit)]
 public struct NumericUnion
 {

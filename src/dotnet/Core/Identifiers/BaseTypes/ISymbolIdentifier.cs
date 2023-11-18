@@ -5,6 +5,8 @@ public interface ISymbolIdentifier : IHasId<Symbol>, ICanBeNone
     string Value { get; }
 }
 
+#pragma warning disable CA1000
+
 public interface ISymbolIdentifier<TSelf> : ISymbolIdentifier, IEquatable<TSelf>, ICanBeNone<TSelf>
     where TSelf : ISymbolIdentifier<TSelf>
 {

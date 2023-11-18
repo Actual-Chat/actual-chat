@@ -1,5 +1,7 @@
 namespace ActualChat;
 
+#pragma warning disable CA2000
+
 public sealed class FuncWorker : WorkerBase
 {
     private Func<CancellationToken, Task> TaskFactory { get; }

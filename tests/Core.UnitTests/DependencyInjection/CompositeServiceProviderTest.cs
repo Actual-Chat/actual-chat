@@ -12,7 +12,7 @@ public class CompositeServiceProviderTest
         var lazy = new FromLazy();
         var nonLazyServices = new ServiceCollection()
             .AddScoped(_ => nonLazy)
-            .AddSingleton<Single>()
+            .AddSingleton<Singleton>()
             .AddScoped<Scoped>()
             .BuildServiceProvider();
 
@@ -31,9 +31,9 @@ public class CompositeServiceProviderTest
         var lazyServicesSource = new ServiceCollection()
             .AddScoped(_ => (From)lazy)
             .AddScoped<NonLazyServiceAccessor>()
-            .AddSingleton(c => c.GetRequiredService<NonLazyServiceAccessor>().GetRequiredService<Single>())
+            .AddSingleton(c => c.GetRequiredService<NonLazyServiceAccessor>().GetRequiredService<Singleton>())
             .AddScoped(c => c.GetRequiredService<NonLazyServiceAccessor>().GetRequiredService<Scoped>())
-            .AddSingleton<LazySingle>()
+            .AddSingleton<LazySingleton>()
             .AddScoped<LazyScoped>()
             .AddScoped<LazyScopedFiltered>()
             .BuildServiceProvider();
@@ -42,12 +42,12 @@ public class CompositeServiceProviderTest
 
         async Task Test(IServiceProvider services, IServiceProvider? root = null)
         {
-            var single = services.GetRequiredService<Single>();
+            var single = services.GetRequiredService<Singleton>();
             single.From.Should().Be(nonLazy);
             var scoped = services.GetRequiredService<Scoped>();
             scoped.From.Should().Be(nonLazy);
 
-            var lazySingle = services.GetRequiredService<LazySingle>();
+            var lazySingle = services.GetRequiredService<LazySingleton>();
             lazySingle.From.Should().Be(lazy);
             var lazyScoped = services.GetRequiredService<LazyScoped>();
             lazyScoped.From.Should().Be(lazy);
@@ -55,13 +55,13 @@ public class CompositeServiceProviderTest
             services.GetService<LazyScopedFiltered>().Should().BeNull();
 
             if (root != null) {
-                var rootSingle = root.GetRequiredService<Single>();
+                var rootSingle = root.GetRequiredService<Singleton>();
                 var rootScoped = root.GetRequiredService<Scoped>();
 
                 single.Should().BeSameAs(rootSingle);
-                lazySingle.Should().BeSameAs(root.GetRequiredService<LazySingle>());
-                lazySingle.Single.Should().BeSameAs(rootSingle);
-                lazyScoped.Single.Should().BeSameAs(rootSingle);
+                lazySingle.Should().BeSameAs(root.GetRequiredService<LazySingleton>());
+                lazySingle.Singleton.Should().BeSameAs(rootSingle);
+                lazyScoped.Singleton.Should().BeSameAs(rootSingle);
                 lazyScoped.Scoped.Should().NotBeSameAs(rootScoped);
 
                 await services.SafelyDisposeAsync();
@@ -92,9 +92,9 @@ public class CompositeServiceProviderTest
 
     public record From();
     public record FromLazy() : From;
-    public record Single(From From) : Base;
+    public record Singleton(From From) : Base;
     public record Scoped(From From) : Base;
-    public record LazySingle(From From, Single Single) : Base;
-    public record LazyScoped(From From, Single Single, Scoped Scoped) : Base;
+    public record LazySingleton(From From, Singleton Singleton) : Base;
+    public record LazyScoped(From From, Singleton Singleton, Scoped Scoped) : Base;
     public record LazyScopedFiltered(From From) : Base;
 }

@@ -10,10 +10,12 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
-public class NotificationsBackend(IServiceProvider services) : DbServiceBase<NotificationDbContext>(services),
-    INotificationsBackend
+#pragma warning disable CA1001 // Has disposable _recentChatsWithNotifications
+public class NotificationsBackend(IServiceProvider services)
+    : DbServiceBase<NotificationDbContext>(services), INotificationsBackend
+#pragma warning restore CA1001
 {
-    private readonly IMemoryCache _recentChatsWithNotifications = new MemoryCache(new MemoryCacheOptions {
+    private readonly MemoryCache _recentChatsWithNotifications = new(new MemoryCacheOptions {
         CompactionPercentage = 0.1,
         SizeLimit = 10_000,
         ExpirationScanFrequency = TimeSpan.FromSeconds(5),
@@ -170,7 +172,7 @@ public class NotificationsBackend(IServiceProvider services) : DbServiceBase<Not
     }
 
     // [CommandHandler]
-    public virtual async Task OnRemoveDevices(NotificationsBackend_RemoveDevices removeDevicesCommand, CancellationToken cancellationToken)
+    public virtual async Task OnRemoveDevices(NotificationsBackend_RemoveDevices command, CancellationToken cancellationToken)
     {
         var context = CommandContext.GetCurrent();
 
@@ -186,7 +188,7 @@ public class NotificationsBackend(IServiceProvider services) : DbServiceBase<Not
         var dbContext = CreateDbContext(readWrite: true);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        foreach (var deviceId in removeDevicesCommand.DeviceIds) {
+        foreach (var deviceId in command.DeviceIds) {
             var dbDevice = await dbContext.Devices
                 .Get(deviceId, cancellationToken)
                 .ConfigureAwait(false);
@@ -356,14 +358,14 @@ public class NotificationsBackend(IServiceProvider services) : DbServiceBase<Not
              ChatKind.Peer => author.Avatar.Media?.ContentId.IsNullOrEmpty() == false
                  ? UrlMapper.ContentUrl(author.Avatar.Media.ContentId)
                  : "/favicon.ico",
-             _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null),
+             _ => throw new ArgumentOutOfRangeException($"{nameof(chat)}.{nameof(chat.Kind)}", chat.Kind, null),
          };
 
-    private string GetTitle(Chat.Chat chat, AuthorFull author)
+    private static string GetTitle(Chat.Chat chat, AuthorFull author)
         => chat.Kind switch {
             ChatKind.Group => $"{author.Avatar.Name} @ {chat.Title}",
             ChatKind.Peer => $"{author.Avatar.Name}",
-            _ => throw new ArgumentOutOfRangeException(nameof(chat.Kind), chat.Kind, null)
+            _ => throw new ArgumentOutOfRangeException($"{nameof(chat)}.{nameof(chat.Kind)}", chat.Kind, null),
         };
 
     private async ValueTask<(string Content, HashSet<MentionId> MentionIds)> GetText(ChatEntry entry, MarkupConsumer consumer, CancellationToken cancellationToken)
@@ -374,7 +376,7 @@ public class NotificationsBackend(IServiceProvider services) : DbServiceBase<Not
         return (markup.ToReadableText(consumer), mentionIds);
     }
 
-    private TimeSpan? GetThrottleInterval(Notification notification)
+    private static TimeSpan? GetThrottleInterval(Notification notification)
     {
         if (notification.Kind == NotificationKind.Message)
             return Constants.Notification.ThrottleIntervals.Message;

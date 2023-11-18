@@ -18,7 +18,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
             ImmutableHashSet<(Symbol, Symbol)>.Empty.Add((nameof(IAccounts), nameof(IAccounts.GetOwn)));
     }
 
-    protected static TextOrBytes? Miss = default;
+    protected static readonly TextOrBytes? Miss = default;
 
     protected new Options Settings { get; }
     protected HashSet<(Symbol, Symbol)> ForceFlushFor { get; }

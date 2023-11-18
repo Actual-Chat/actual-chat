@@ -186,6 +186,8 @@ public readonly struct VInt : IEquatable<VInt>
         return length;
     }
 
+    // Equality
+
     public override int GetHashCode()
     {
         unchecked {
@@ -193,14 +195,14 @@ public readonly struct VInt : IEquatable<VInt>
         }
     }
 
-    public bool Equals(VInt other) => other.EncodedValue == EncodedValue && other._length == _length;
-
+    public bool Equals(VInt other)
+        => other.EncodedValue == EncodedValue && other._length == _length;
     public override bool Equals(object? obj)
-    {
-        if (ReferenceEquals(null, obj)) return false;
+        => obj is VInt i && Equals(i);
+    public static bool operator ==(VInt left, VInt right) => left.Equals(right);
+    public static bool operator !=(VInt left, VInt right) => !left.Equals(right);
 
-        return obj is VInt i && Equals(i);
-    }
+    // ToString
 
     public override string ToString() => $"VInt({EncodedValue:X})";
 }

@@ -12,7 +12,9 @@ public static class ListExt
     public static T GetRandom<T>(this IReadOnlyList<T> list, Random random)
         => list[random.Next(list.Count)];
 
+#pragma warning disable CA1002
     public static List<T> AddMany<T>(this List<T> list, T item, int count)
+#pragma warning restore CA1002
     {
         for (var i = 0; i < count; i++)
             list.Add(item);

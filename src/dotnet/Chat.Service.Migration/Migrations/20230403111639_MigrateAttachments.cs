@@ -46,7 +46,7 @@ namespace ActualChat.Chat.Migrations
                     .ToListAsync()
                     .ConfigureAwait(false);
 
-                if (!dbAttachments.Any())
+                if (dbAttachments.Count == 0)
                     break;
 
                 log.LogInformation("Upgrading {Count} attachments", dbAttachments.Count);

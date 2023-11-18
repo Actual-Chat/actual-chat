@@ -24,7 +24,10 @@ public sealed partial record UserAvatarSettings
             return this;
 
         var avatars = AvatarIds.RemoveAll(x => x == avatarId);
-        var defaultAvatarId = DefaultAvatarId != avatarId ? DefaultAvatarId : avatars.FirstOrDefault();
-        return this with { AvatarIds = avatars, DefaultAvatarId = defaultAvatarId };
+        var defaultAvatarId = DefaultAvatarId != avatarId ? DefaultAvatarId : avatars.GetOrDefault(0);
+        return new UserAvatarSettings {
+            AvatarIds = avatars,
+            DefaultAvatarId = defaultAvatarId
+        };
     }
 }

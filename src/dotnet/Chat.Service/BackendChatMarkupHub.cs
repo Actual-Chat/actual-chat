@@ -16,8 +16,10 @@ public class BackendChatMarkupHub : IBackendChatMarkupHub
     public IMarkupParser Parser
         => _parser ??= Services.GetRequiredService<IMarkupParser>();
 
+#pragma warning disable CA1822
     public IMarkupTrimmer Trimmer
         => _trimmer ??= new MarkupTrimmer();
+#pragma warning restore CA1822
 
     public IMentionNamer MentionNamer
         => _mentionNamer ??= new MentionNamer(MentionResolver);

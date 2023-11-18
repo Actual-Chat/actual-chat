@@ -57,7 +57,9 @@ public ref struct WebMReader
 
     public WebMReader WithNewSource(ReadOnlySpan<byte> span) => new (GetState(), span);
 
+#pragma warning disable CA1024
     public State GetState()
+#pragma warning restore CA1024
         => new (
             _resume,
             _spanReader.Position,

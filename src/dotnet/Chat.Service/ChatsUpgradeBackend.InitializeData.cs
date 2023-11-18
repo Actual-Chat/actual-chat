@@ -335,7 +335,7 @@ public partial class ChatsUpgradeBackend
         {
             var audioDataDir = new FilePath(typeof(ChatDbInitializer).Assembly.Location).DirectoryPath & "data";
             var filePath = audioDataDir & fileName;
-            var byteStream = filePath.ReadByteStream(1024, cancellationToken).Memoize();
+            var byteStream = filePath.ReadByteStream(1024, cancellationToken).Memoize(CancellationToken.None);
             await audioBlobs
                 .UploadByteStream(blobId, byteStream.Replay(cancellationToken), cancellationToken)
                 .ConfigureAwait(false);

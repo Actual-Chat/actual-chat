@@ -2,6 +2,8 @@ using ActualChat.Pooling;
 
 namespace ActualChat.Kvas;
 
+#pragma warning disable CA1724 // The type name Options conflicts in whole or in part with the namespace ...
+
 public interface IStoredState<T> : IMutableState<T>
 {
     Task WhenRead { get; }

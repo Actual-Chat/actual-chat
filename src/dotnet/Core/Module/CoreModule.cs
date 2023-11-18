@@ -25,7 +25,9 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         // This type initializer sets all super-early defaults
 
         // Session.Factory & Validator
+#pragma warning disable CA2000
         Session.Factory = DefaultSessionFactory.New(new RandomStringGenerator(20, Alphabet.AlphaNumericDash.Symbols));
+#pragma warning restore CA2000
         Session.Validator = session => session.Id.Value.Length >= 20;
 
 #if false

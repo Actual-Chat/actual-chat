@@ -6,6 +6,7 @@ namespace ActualChat.Web.Services;
 
 public class AppRpcServerConnectionFactory
 {
+#pragma warning disable CA1822 // Can be static
     public Task<RpcConnection> Invoke(
         RpcServerPeer peer, Channel<RpcMessage> channel, ImmutableOptionSet options,
         CancellationToken cancellationToken)
@@ -18,6 +19,7 @@ public class AppRpcServerConnectionFactory
             ? AppRpcConnectionTask(channel, options, session)
             : RpcConnectionTask(channel, options);
     }
+#pragma warning restore CA1822
 
     protected static Task<RpcConnection> AppRpcConnectionTask(
         Channel<RpcMessage> channel, ImmutableOptionSet options, Session session)

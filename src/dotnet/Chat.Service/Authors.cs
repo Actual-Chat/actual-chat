@@ -263,7 +263,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             var author = await Backend.GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
             if (author != null) {
                 if (author.HasLeft)
-                    await RestoreAuthorMembership(cancellationToken, author).ConfigureAwait(false);
+                    await RestoreAuthorMembership(author, cancellationToken).ConfigureAwait(false);
             }
             else {
                 if (joinAnonymously == true && !chat.AllowAnonymousAuthors)
@@ -322,7 +322,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (author == null || !author.HasLeft)
             return;
 
-        await RestoreAuthorMembership(cancellationToken, author).ConfigureAwait(false);
+        await RestoreAuthorMembership(author, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -392,7 +392,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task RestoreAuthorMembership(CancellationToken cancellationToken, Author author)
+    private async Task RestoreAuthorMembership(Author author, CancellationToken cancellationToken)
     {
         var upsertCommand = new AuthorsBackend_Upsert(
             author.ChatId,

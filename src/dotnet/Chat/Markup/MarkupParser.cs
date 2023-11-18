@@ -32,6 +32,8 @@ public partial class MarkupParser : IMarkupParser
 
     // Character classes
 
+    #pragma warning disable CA1823: Unused field ...
+
     private static readonly Parser<char, char> WhitespaceChar =
         Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c)).Labelled("whitespace");
     private static readonly Parser<char, char> EndOfLineChar =
@@ -194,7 +196,7 @@ public partial class MarkupParser : IMarkupParser
                 try {
                     var minIndent = int.MaxValue;
                     foreach (var line in lines) {
-                        var properLine = line.Replace("\t", "    "); // Replace tabs w/ spaces
+                        var properLine = line.OrdinalReplace("\t", "    "); // Replace tabs w/ spaces
                         var indentLength = properLine.GetIndentLength();
                         if (indentLength == properLine.Length)
                             properLine = ""; // Empty line

@@ -6,6 +6,9 @@ using Stl.Internal;
 
 namespace ActualChat.App.Maui;
 
+#pragma warning disable CA1052
+#pragma warning disable CA1849 // 'Task<TResult>.Result' synchronously blocks. Use await instead.
+
 public class AppServicesAccessor
 {
     private static readonly TimeSpan WhenRenderedTimeout = TimeSpan.FromSeconds(3);

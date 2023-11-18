@@ -113,7 +113,9 @@ public abstract class PermissionHandler : WorkerBase
             if (cCached.Value != true)
                 continue;
 
+#pragma warning disable CA2000
             expirationCts = cancellationToken.CreateLinkedTokenSource();
+#pragma warning restore CA2000
             var expirationToken = expirationCts.Token;
             var cExpected = cCached;
             if (ExpirationPeriod is { } expirationPeriod)

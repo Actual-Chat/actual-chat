@@ -220,7 +220,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 .Distinct()
                 .Select(i => i.Value)
                 .ToList();
-            if (removedAuthorIds.Any()) {
+            if (removedAuthorIds.Count != 0) {
  #pragma warning disable MA0002
                 var dbAuthorRoles = await dbContext.AuthorRoles
                     .Where(ar => ar.DbRoleId == roleId && removedAuthorIds.Contains(ar.DbAuthorId))

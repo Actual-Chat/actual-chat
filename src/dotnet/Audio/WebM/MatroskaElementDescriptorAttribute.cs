@@ -1,15 +1,8 @@
 ﻿namespace ActualChat.Audio.WebM;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Class)]
-public class MatroskaElementDescriptorAttribute : Attribute
+public sealed class MatroskaElementDescriptorAttribute(ulong identifier, Type? elementType = null) : Attribute
 {
-    public ulong Identifier { get; }
-
-    public Type? ElementType { get; }
-
-    public MatroskaElementDescriptorAttribute(ulong identifier, Type? type = null)
-    {
-        Identifier = identifier;
-        ElementType = type;
-    }
+    public ulong Identifier { get; } = identifier;
+    public Type? ElementType { get; } = elementType;
 }

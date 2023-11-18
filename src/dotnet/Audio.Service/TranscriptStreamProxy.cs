@@ -198,8 +198,10 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
         }
     }
 
+#pragma warning disable CA1816
     public void Dispose()
     { }
+#pragma warning restore CA1816
 
     private async Task<ITranscriptStreamServer> GetTranscriptStreamClient(
         Kube kube, string address, int port, CancellationToken cancellationToken)

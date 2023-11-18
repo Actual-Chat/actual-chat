@@ -11,22 +11,17 @@ public class PhoneAuthOptions : RemoteAuthenticationOptions
     public string LoginUrl { get; set; } = "/login/phone";
 }
 
-public class PhoneAuthHandler : RemoteAuthenticationHandler<PhoneAuthOptions>
-{
-    private IAuth Auth { get; }
-    private UrlMapper UrlMapper { get; }
-
-    public PhoneAuthHandler(
+public class PhoneAuthHandler(
         IOptionsMonitor<PhoneAuthOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
         ISystemClock clock,
         IAuth auth,
-        UrlMapper urlMapper) : base(options, logger, encoder, clock)
-    {
-        Auth = auth;
-        UrlMapper = urlMapper;
-    }
+        UrlMapper urlMapper)
+    : RemoteAuthenticationHandler<PhoneAuthOptions>(options, logger, encoder, clock)
+{
+    private IAuth Auth { get; } = auth;
+    private UrlMapper UrlMapper { get; } = urlMapper;
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {

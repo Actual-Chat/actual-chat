@@ -6,6 +6,7 @@ namespace ActualChat.Kubernetes;
 
 public class KubeServices : IKubeInfo
 {
+    private static readonly JsonSerializerOptions WebJsonSerializeOptions = new(JsonSerializerDefaults.Web);
     private readonly SharedResourcePool<KubeService, EndpointDiscoveryWorker> _discoveryWorkerPool;
 
     private IServiceProvider Services { get; }
@@ -124,11 +125,11 @@ public class KubeServices : IKubeInfo
 
             var endpointsMap = new Dictionary<string, (EndpointSlice Slice, ApiArray<KubeEndpoint> Endpoints)>(StringComparer.Ordinal);
 
-            var httpClient = Kube.CreateHttpClient(Services.HttpClientFactory());
+            using var httpClient = Kube.CreateHttpClient(Services.HttpClientFactory());
             var httpClientDisposable = new SafeDisposable(httpClient, 10, Log) { MustWait = false };
             await using var _ = httpClientDisposable.ConfigureAwait(false);
 
-            var request = new HttpRequestMessage(HttpMethod.Get,
+            using var request = new HttpRequestMessage(HttpMethod.Get,
                 $"apis/discovery.k8s.io/v1/namespaces/{KubeService.Namespace}/endpointslices" +
                     $"?watch=true&labelSelector=kubernetes.io/service-name%3D{KubeService.Name}");
             var response = await httpClient
@@ -140,17 +141,18 @@ public class KubeServices : IKubeInfo
             response.EnsureSuccessStatusCode();
 
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken).WaitAsync(cancellationToken).ConfigureAwait(false);
-            var streamReader = new StreamReader(stream);
+            using var streamReader = new StreamReader(stream);
             while (!streamReader.EndOfStream) {
+#pragma warning disable CA2016
+                // ReSharper disable once MethodSupportsCancellation
                 var changeString = await streamReader.ReadLineAsync().WaitAsync(cancellationToken).ConfigureAwait(false);
+#pragma warning restore CA2016
                 if (changeString == null) {
                     Log.LogWarning("UpdateState: got null while querying Kubernetes API result (endpoint slice changes)");
                     continue;
                 }
                 #pragma warning disable IL2026
-                var change = JsonSerializer.Deserialize<Api.Change<EndpointSlice>>(
-                    changeString,
-                    new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                var change = JsonSerializer.Deserialize<Api.Change<EndpointSlice>>(changeString, WebJsonSerializeOptions);
                 if (change == null) {
                     Log.LogWarning("UpdateState: unable to deserialize Kubernetes API result: {Change}", changeString);
                     continue;

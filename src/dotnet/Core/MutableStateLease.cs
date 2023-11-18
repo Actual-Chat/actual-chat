@@ -49,7 +49,9 @@ public class MutableStateLease<T, TKey, TState, TResource>(
     IComputed IState.Computed => ((IState)State).Computed;
     public Computed<T> Computed => State.Computed;
 
+#pragma warning disable CA1816
     public virtual void Dispose()
+#pragma warning restore CA1816
         => Lease.Dispose();
 
     public void Deconstruct(out T value, out Exception? error)

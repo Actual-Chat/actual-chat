@@ -49,8 +49,7 @@ public class LruCache<TKey, TValue> : ILruCache<TKey, TValue>
 
     public LruCache(int capacity, IEqualityComparer<TKey>? comparer = null)
     {
-        if (capacity < 1)
-            throw new ArgumentOutOfRangeException(nameof(capacity));
+        ArgumentOutOfRangeException.ThrowIfLessThan(capacity, 1);
         Capacity = capacity;
         _dictionary = new Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>>(capacity, comparer);
         _list = new LinkedList<KeyValuePair<TKey, TValue>>();

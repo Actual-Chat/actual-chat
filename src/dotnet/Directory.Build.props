@@ -3,6 +3,11 @@
 
   <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../../'))" />
 
+  <PropertyGroup Condition="$(MSBuildProjectName.Contains('Migration'))">
+    <!-- CA1861: Prefer 'static readonly' fields over constant array arguments ... -->
+    <NoWarn>$(NoWarn);CA1861</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup Condition="$(MSBuildProjectName.Contains('Blazor'))">
     <None Include="$(RepoRoot)src\nodejs\tsconfig.json" />
   </ItemGroup>

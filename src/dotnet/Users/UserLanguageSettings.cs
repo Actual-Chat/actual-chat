@@ -13,7 +13,9 @@ public sealed partial record UserLanguageSettings : IHasOrigin
     [DataMember, MemoryPackOrder(3)] public Language? Tertiary { get; init; }
     [DataMember, MemoryPackOrder(2)] public string Origin { get; init; } = "";
 
+#pragma warning disable CA1002
     public List<Language> ToList()
+#pragma warning restore CA1002
     {
         var result = new List<Language>();
         if (!Primary.IsNone)

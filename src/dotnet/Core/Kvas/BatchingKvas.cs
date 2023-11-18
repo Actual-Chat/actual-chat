@@ -3,6 +3,8 @@ using Microsoft.JSInterop;
 
 namespace ActualChat.Kvas;
 
+#pragma warning disable CA1724 // The type name Options conflicts in whole or in part with the namespace name 'Microsoft.Extensions.Options'.
+
 public class BatchingKvas : SafeAsyncDisposableBase, IKvas
 {
     public record Options

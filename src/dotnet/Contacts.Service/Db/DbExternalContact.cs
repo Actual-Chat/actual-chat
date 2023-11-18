@@ -30,7 +30,9 @@ public class DbExternalContact : IHasId<string>, IHasVersion<long>, IRequirement
         set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
     }
 
+#pragma warning disable CA1002
     public List<DbExternalContactLink> ExternalContactLinks { get; } = new();
+#pragma warning restore CA1002
 
     public DbExternalContact() { }
     public DbExternalContact(ExternalContact externalContact) => UpdateFrom(externalContact);

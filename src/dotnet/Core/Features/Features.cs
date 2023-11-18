@@ -1,5 +1,7 @@
 namespace ActualChat;
 
+#pragma warning disable CA1724 // The type name Features conflicts in whole or in part with the namespace ...
+
 public class Features(IServiceProvider services) : IFeatures
 {
     private IClientFeatures? _clientFeatures;

@@ -13,7 +13,7 @@ public sealed partial record UserBubbleSettings : IHasOrigin
 
     public UserBubbleSettings WithReadBubbles(params string[] bubbleRefs)
     {
-        if (!bubbleRefs.Any())
+        if (bubbleRefs.Length == 0)
             return this;
 
         var readBubbles = bubbleRefs.Aggregate(

@@ -8,6 +8,7 @@ public class TuneUI : ITuneUIBackend, IDisposable
     private static readonly string JSPlayMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.play";
     private static readonly string JSPlayAndWaitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.playAndWait";
 
+#pragma warning disable CA1861 // Prefer 'static readonly' fields over constant array arguments ...
     protected static readonly Dictionary<Tune, TuneInfo> Tunes = new () {
         // General actions
         [Tune.CancelReply] = new (new[] { 20 }/*, "cancel-reply"*/),
@@ -36,6 +37,7 @@ public class TuneUI : ITuneUIBackend, IDisposable
         [Tune.ChangeLanguage] = new (new[] { 20, 20 }/*, "change-language"*/),
         [Tune.ShowMenu] = new (new[] { 20 }/*, "show-menu"*/),
     };
+#pragma warning restore CA1861
 
     private DotNetObjectReference<ITuneUIBackend> _blazorRef = null!;
     private ILogger? _log;

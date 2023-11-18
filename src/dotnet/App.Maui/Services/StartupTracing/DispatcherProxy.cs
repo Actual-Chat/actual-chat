@@ -13,7 +13,7 @@ internal class DispatcherProxy : IDispatcher
         _operationLogger = CreateOperationLogger(logAllOperations);
     }
 
-    private IDispatcherOperationLogger CreateOperationLogger(bool logEverything)
+    private static IDispatcherOperationLogger CreateOperationLogger(bool logEverything)
         => logEverything
             ? new DispatcherEveryOperationLogger()
             : new DispatcherLongOperationLogger();

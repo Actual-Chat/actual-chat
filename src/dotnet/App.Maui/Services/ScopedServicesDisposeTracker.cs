@@ -1,6 +1,6 @@
 namespace ActualChat.App.Maui.Services;
 
-public class ScopedServicesDisposeTracker(IServiceProvider services) : IDisposable
+public sealed class ScopedServicesDisposeTracker(IServiceProvider services) : IDisposable
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<ScopedServicesDisposeTracker>();

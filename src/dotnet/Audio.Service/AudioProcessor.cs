@@ -7,6 +7,8 @@ using ActualChat.Users;
 
 namespace ActualChat.Audio;
 
+#pragma warning disable CA1724 // The type name Options conflicts in whole or in part with the namespace ...
+
 public sealed partial class AudioProcessor : IAudioProcessor
 {
     public record Options
@@ -23,7 +25,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
     private ILogger Log { get; }
     private ILogger OpenAudioSegmentLog { get; }
     private ILogger AudioSourceLog { get; }
-    private bool DebugMode => Constants.DebugMode.AudioProcessor;
+    private static bool DebugMode => Constants.DebugMode.AudioProcessor;
     private ILogger? DebugLog => DebugMode ? Log : null;
 
     private Options Settings { get; }
@@ -190,7 +192,7 @@ public sealed partial class AudioProcessor : IAudioProcessor
             .Transcribe(audioSegment.StreamId, audioSegment.Audio, transcriptionOptions, cancellationToken)
             .Throttle(Settings.TranscriptDebouncePeriod, Clocks.CpuClock, cancellationToken)
             .TrimOnCancellation(cancellationToken)
-            .Memoize();
+            .Memoize(CancellationToken.None);
         cancellationToken = CancellationToken.None; // We already accounted for it in TrimOnCancellation
 
         var transcriptStreamId = audioSegment.StreamId;

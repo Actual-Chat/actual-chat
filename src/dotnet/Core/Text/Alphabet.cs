@@ -2,6 +2,8 @@ using Stl.Generators;
 
 namespace ActualChat;
 
+#pragma warning disable CA1001 // Type 'Alphabet' owns disposable field(s) 'Generator16', 'Generator8' but is not disposable
+
 [StructLayout(LayoutKind.Auto)]
 public sealed class Alphabet
 {

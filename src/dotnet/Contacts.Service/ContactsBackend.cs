@@ -34,8 +34,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     {
         if (ownerId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(ownerId));
-        if (contactId.OwnerId != ownerId)
-            throw new ArgumentOutOfRangeException(nameof(contactId));
+        ArgumentOutOfRangeException.ThrowIfNotEqual(ownerId, contactId.OwnerId);
 
         var dbContact = await DbContactResolver.Get(contactId, cancellationToken).ConfigureAwait(false);
         var contact = dbContact?.ToModel()

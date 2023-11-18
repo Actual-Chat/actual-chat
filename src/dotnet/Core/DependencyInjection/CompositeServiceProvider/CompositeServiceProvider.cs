@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.DependencyInjection;
 
-public class CompositeServiceProvider :
+public sealed class CompositeServiceProvider :
     IServiceScope,
     IServiceProvider,
     IServiceScopeFactory,
@@ -65,14 +65,16 @@ public class CompositeServiceProvider :
 
     public IServiceScope CreateScope()
     {
+ #pragma warning disable CA2000
         var nonLazyServices = _nonLazyServices.CreateScope().ServiceProvider;
+ #pragma warning restore CA2000
         var whenLazyServicesReady = _lazyServices.CreateScopedProvider();
         return new CompositeServiceProvider(nonLazyServices, whenLazyServicesReady, _lazyServices.LazyServiceFilter);
     }
 
     // Private methods
 
-    protected virtual void OnLazyServicesReady(IServiceProvider lazyServices)
+    private void OnLazyServicesReady(IServiceProvider lazyServices)
     {
         var nonLazyServiceAccessor = lazyServices.GetService<NonLazyServiceAccessor>();
         if (nonLazyServiceAccessor != null)

@@ -47,7 +47,9 @@ public class AudioStreamServer : StreamServerBase<byte[]>, IAudioStreamServer
         public override Task Write(Symbol streamId, IAsyncEnumerable<byte[]> stream, CancellationToken cancellationToken)
             => instance.Write(streamId, stream, cancellationToken);
 
+#pragma warning disable CA2215
         public override void Dispose()
         { }
+#pragma warning restore CA2215
     }
 }

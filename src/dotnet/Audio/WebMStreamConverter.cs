@@ -202,7 +202,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
         }
     }
 
-    private void AppendData(ref ArrayBuffer<byte> buffer, ref WebMReader.State state, byte[] data)
+    private static void AppendData(ref ArrayBuffer<byte> buffer, ref WebMReader.State state, byte[] data)
     {
         var remainder = buffer.Span.Slice(state.Position, state.Remaining);
         var newLength = remainder.Length + data.Length;
@@ -212,7 +212,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
         data.CopyTo(buffer.Span[remainder.Length..]);
     }
 
-    private WebMReader.State FillFrameBuffer(
+    private static WebMReader.State FillFrameBuffer(
         WebMReader webMReader,
         TaskCompletionSource<AudioFormat> formatTaskSource,
         List<byte[]> formatBlocks,
@@ -279,7 +279,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
     }
 
     // ReSharper disable once UnusedParameter.Local
-    private AudioFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader)
+    private static AudioFormat CreateMediaFormat(EBML ebml, Segment segment, ReadOnlySpan<byte> rawHeader)
     {
         var trackEntry =
             segment.Tracks?.TrackEntries.Single(t => t.TrackType == TrackType.Audio)

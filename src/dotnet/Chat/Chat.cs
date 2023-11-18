@@ -3,6 +3,7 @@ using Stl.Fusion.Blazor;
 using Stl.Versioning;
 
 #pragma warning disable MA0049 // Allows ActualChat.Chat.Chat
+#pragma warning disable CA1724 // The type name Chat conflicts in whole or in part with the namespace ...
 
 namespace ActualChat.Chat;
 

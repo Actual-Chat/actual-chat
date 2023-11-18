@@ -1,5 +1,7 @@
 namespace ActualChat.Kvas;
 
+#pragma warning disable CA1724 // The type name Options conflicts in whole or in part with the namespace ...
+
 public class LocalSettings : BatchingKvas
 {
     public new record Options : BatchingKvas.Options

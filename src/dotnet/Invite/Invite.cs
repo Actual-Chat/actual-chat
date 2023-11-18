@@ -1,8 +1,10 @@
 using MemoryPack;
 using Stl.Versioning;
 
-#pragma warning disable MA0049 // Allows ActualChat.Invite.Invite
 namespace ActualChat.Invite;
+
+#pragma warning disable MA0049 // Allows ActualChat.Invite.Invite
+#pragma warning disable CA1724 // The type name Invite conflicts in whole or in part with the namespace ...
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record Invite(

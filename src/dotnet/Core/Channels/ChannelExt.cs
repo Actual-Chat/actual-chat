@@ -52,8 +52,10 @@ public static class ChannelExt
     {
         try {
             while (await channel.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+#pragma warning disable CA1849
             while (channel.TryRead(out var value)) {
                 return value;
+#pragma warning restore CA1849
             }
             return GetChannelClosedResult<T>();
         }

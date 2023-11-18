@@ -80,17 +80,31 @@
     <NoWarn>$(NoWarn);CA1062;CA2254;CS1591;CS8669;MA0009;MA0018;MA0048;NU5048;NU5105;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110</NoWarn>
     <!-- New .NET 8 warnings -->
     <!-- CA1003: Change the event X to replace the type 'System.Action<T, T>?' with a generic EventHandler -->
+    <!-- CA1031: Modify 'ApplyMauiOSData' to catch a more specific allowed exception type, or rethrow the exception -->
+    <!-- CA1033: Make C sealed (a breaking change if this class has previously shipped), implement the method non-explicitly, or implement a new method that exposes the functionality of M and is visible to derived classes -->
     <!-- CA1034: Do not nest type X. Alternatively, change its accessibility so that it is not externally visible. -->
     <!-- CA1040: Avoid empty interfaces -->
     <!-- CA1043: Use Integral Or String Argument For Indexers -->
     <!-- CA1051: Do not declare visible instance fields -->
+    <!-- CA1054: Change the type of parameter 'url' of method M from 'string' to 'System.Uri' -->
+    <!-- CA1055: Change the return type of method 'M' from 'string' to 'System.Uri' -->
     <!-- CA1056: Change the type of property 'HostInfo.BaseUrl' from 'string' to 'System.Uri' -->
     <!-- CA1063: Provide an overridable implementation of Dispose(bool) on 'CompositeServiceProvider' or mark the type as sealed. -->
     <!-- CA1065: X returns an exception of type Exception -->
     <!-- CA1308: Replace the call to 'ToLowerInvariant' with 'ToUpperInvariant' -->
+    <!-- CA1510: Use 'ArgumentNullException.ThrowIfNull' instead of explicitly throwing a new exception instance -->
     <!-- CA1707: Remove the underscores from type name -->
+    <!-- CA1711: Rename type name MacNotificationsPermission so that it does not end in 'Permission' -->
+    <!-- CA1725: In member M, change parameter name P to P1 in order to match the identifier as it has been declared in ... -->
+    <!-- CA1802: Field 'CheckCount' is declared as 'readonly' but is initialized with a constant value. -->
+    <!-- CA1805: Member 'F' is explicitly initialized to its default value -->
+    <!-- CA1810: Initialize all static fields in C when those fields are declared and remove the explicit static constructor -->
+    <!-- CA1815: Struct C should override Equals -->
     <!-- CA1819: Properties should not return arrays -->
-    <NoWarn>$(NoWarn);CA1003;CA1034;CA1040;CA1043;CA1051;CA1056;CA1063;CA1065;CA1308;CA1707;CA1819</NoWarn>
+    <!-- CA1848: For improved performance, use the LoggerMessage delegates instead of calling ... -->
+    <!-- CA2225: Provide a method named 'M' as an alternate for operator op_Implicit -->
+    <NoWarn>$(NoWarn);CA1003;CA1031;CA1033;CA1034;CA1040;CA1043;CA1051;CA1054;CA1055;CA1056;CA1063;CA1065</NoWarn>
+    <NoWarn>$(NoWarn);CA1308;CA1510;CA1707;CA1711;CA1725;CA1802;CA1805;CA1810;CA1815;CA1819;CA1848;CA2225</NoWarn>
 
     <!-- SourceLink props: https://github.com/dotnet/sourcelink/issues/159 -->
     <EnableSourceLink>false</EnableSourceLink>

@@ -12,7 +12,7 @@ public sealed class Playback : ProcessorBase
     private readonly ILogger<Playback> _log;
     private readonly ITrackPlayerFactory _trackPlayerFactory;
     private readonly ISleepDurationProvider _sleepDurationProvider;
-    private readonly IMessageProcessor<IPlaybackCommand> _messageProcessor;
+    private readonly MessageProcessor<IPlaybackCommand> _messageProcessor;
     private readonly ConcurrentDictionary<PlayTrackCommand, (TrackPlayer Player, Task PlayTask)> _trackPlayers = new();
     private readonly object _stateUpdateLock = new();
     private (CpuTimestamp CpuTimestamp, TimeSpan TotalSleepDuration) _pausedAt = default;

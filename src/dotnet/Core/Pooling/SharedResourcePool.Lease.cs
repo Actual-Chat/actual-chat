@@ -10,7 +10,9 @@ public partial class SharedResourcePool<TKey, TResource>
     {
         private readonly Task<TResource> _resourceTask;
         private Task? _endRentTask;
+#pragma warning disable CA2213
         private CancellationTokenSource? _endRentDelayTokenSource;
+#pragma warning restore CA2213
         private int _renterCount;
         private object Lock => _resourceTask;
 

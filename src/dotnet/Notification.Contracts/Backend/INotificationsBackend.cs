@@ -19,9 +19,9 @@ public interface INotificationsBackend : IComputeService
     [CommandHandler]
     Task OnNotify(NotificationsBackend_Notify command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnUpsert(NotificationsBackend_Upsert notification, CancellationToken cancellationToken);
+    Task OnUpsert(NotificationsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnRemoveDevices(NotificationsBackend_RemoveDevices removeDevicesCommand, CancellationToken cancellationToken);
+    Task OnRemoveDevices(NotificationsBackend_RemoveDevices command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveAccount(NotificationsBackend_RemoveAccount command, CancellationToken cancellationToken);
 

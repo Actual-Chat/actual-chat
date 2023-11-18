@@ -2,7 +2,7 @@ using ActualChat.Pooling;
 
 namespace ActualChat.Audio;
 
-public class AudioStreamClientLease : IAudioStreamClient
+public sealed class AudioStreamClientLease : IAudioStreamClient
 {
     private SharedResourcePool<AudioHubBackendClientFactory.ClientKey, AudioHubBackendClient>.Lease Lease { get; }
 

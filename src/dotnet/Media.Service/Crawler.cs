@@ -27,7 +27,9 @@ public class Crawler(IServiceProvider services) : IHasServices
     public async Task<CrawledLink> Crawl(string url, CancellationToken cancellationToken)
     {
         try {
+#pragma warning disable CA2000
             var response = await HttpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, url), cancellationToken)
+#pragma warning restore CA2000
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
                 return CrawledLink.None;
@@ -51,10 +53,12 @@ public class Crawler(IServiceProvider services) : IHasServices
 
     private async Task<CrawledLink> CrawlWebSite(string url, CancellationToken cancellationToken)
     {
+#pragma warning disable CA2234
         var graph = await OpenGraph.ParseUrlAsync(url,
                 timeout: (int)Settings.CrawlerGraphParsingTimeout.TotalMilliseconds,
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
+#pragma warning restore CA2234
         // TODO: image size limit
         var mediaId = await GrabImage(graph.Image, cancellationToken).ConfigureAwait(false);
         var description = graph.Metadata["og:description"].Value();

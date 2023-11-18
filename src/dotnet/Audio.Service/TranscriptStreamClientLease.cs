@@ -3,7 +3,7 @@ using ActualChat.Transcription;
 
 namespace ActualChat.Audio;
 
-public class TranscriptStreamClientLease : ITranscriptStreamClient
+public sealed class TranscriptStreamClientLease : ITranscriptStreamClient
 {
     private SharedResourcePool<AudioHubBackendClientFactory.ClientKey, AudioHubBackendClient>.Lease Lease { get; }
 

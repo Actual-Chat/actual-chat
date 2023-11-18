@@ -11,13 +11,17 @@ public class SafeDisposable(object disposable, TimeSpan timeout, ILogger? log = 
         : this(disposable, TimeSpan.FromSeconds(timeoutSeconds), log) { }
 
     public void Dispose()
-        => _ = DisposeAsync();
+    {
+        GC.SuppressFinalize(this);
+        _ = DisposeAsync();
+    }
 
     public async ValueTask DisposeAsync()
     {
         if (Interlocked.CompareExchange(ref _isDisposed, 1, 0) != 0)
             return;
 
+        GC.SuppressFinalize(this);
         var disposeTask = BackgroundTask.Run(async () => {
             if (disposable is IAsyncDisposable ad)
                 await ad.DisposeAsync().ConfigureAwait(false);

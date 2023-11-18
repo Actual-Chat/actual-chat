@@ -13,7 +13,7 @@ public static class BlobPath
 
     public static string GetScope(string blobId)
     {
-        var scopeDelimiterIndex = blobId.IndexOf(ScopeDelimiter);
+        var scopeDelimiterIndex = blobId.IndexOf(ScopeDelimiter, StringComparison.Ordinal);
         return scopeDelimiterIndex <= 0 ? "" : blobId[..scopeDelimiterIndex];
     }
 }

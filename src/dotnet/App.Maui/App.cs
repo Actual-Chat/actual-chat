@@ -59,7 +59,7 @@ public class App : Application
         base.Quit();
     }
 
-    private void FlushSentryData()
+    private static void FlushSentryData()
     {
         using (MauiDiagnostics.Tracer.Region()) {
             MauiDiagnostics.TracerProvider?.DisposeSilently();

@@ -395,25 +395,25 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         return author with { Avatar = account?.Avatar ?? GetDefaultAvatar(author) };
     }
 
-    private AvatarFull GetDefaultAvatar(AuthorFull author)
+    private static AvatarFull GetDefaultAvatar(AuthorFull author)
         => new(author.UserId) {
             Name = RandomNameGenerator.Default.Generate(author.Id),
             Bio = "",
             AvatarKey = DefaultUserPicture.GetAvatarKey(author.Id),
         };
 
-    private AuthorFull[] GetDefaultPeerChatAuthors(PeerChatId chatId)
+    private static AuthorFull[] GetDefaultPeerChatAuthors(PeerChatId chatId)
         => new[] {
             GetDefaultPeerChatAuthor(chatId, chatId.UserId1)!,
             GetDefaultPeerChatAuthor(chatId, chatId.UserId2)!,
         };
 
-    private AuthorFull? GetDefaultPeerChatAuthor(PeerChatId chatId, AuthorId authorId, UserId userId)
+    private static AuthorFull? GetDefaultPeerChatAuthor(PeerChatId chatId, AuthorId authorId, UserId userId)
         => authorId.IsNone
             ? GetDefaultPeerChatAuthor(chatId, userId)
             : GetDefaultPeerChatAuthor(chatId, authorId);
 
-    private AuthorFull? GetDefaultPeerChatAuthor(PeerChatId chatId, AuthorId authorId)
+    private static AuthorFull? GetDefaultPeerChatAuthor(PeerChatId chatId, AuthorId authorId)
     {
         if (authorId.ChatId.Id != chatId.Id)
             return null;
@@ -424,7 +424,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         return null;
     }
 
-    private AuthorFull? GetDefaultPeerChatAuthor(PeerChatId chatId, UserId userId)
+    private static AuthorFull? GetDefaultPeerChatAuthor(PeerChatId chatId, UserId userId)
     {
         var localId = chatId.IndexOf(userId) + 1;
         if (localId < 1)

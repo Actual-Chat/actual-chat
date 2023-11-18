@@ -81,7 +81,7 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
             ? throw JSRuntimeErrors.Disconnected()
             : WebViewJSRuntime;
 
-    public object?[]? ToUnsafe(object?[]? args)
+    public static object?[]? ToUnsafe(object?[]? args)
     {
         if (args == null || args.Length == 0)
             return args;
@@ -105,7 +105,7 @@ public sealed class SafeJSRuntime(IJSRuntime webViewJSRuntime) : IJSRuntime
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public object? ToUnsafe(object? obj)
+    public static object? ToUnsafe(object? obj)
         => obj is SafeJSObjectReference safeJSObjectReference
             ? safeJSObjectReference.JSObjectReference
             : obj;

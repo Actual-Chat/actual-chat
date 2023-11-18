@@ -71,7 +71,9 @@ public sealed class LazyServiceProvider(
         // It's important to call GetLazyServices here,
         // otherwise OnLazyServicesReady won't be invoked,
         // and root service provider won't be augmented
+#pragma warning disable CA2000
         return GetLazyServices(null).CreateScope().ServiceProvider;
+#pragma warning restore CA2000
     }
 
     // Private methods
@@ -84,8 +86,7 @@ public sealed class LazyServiceProvider(
             return _lazyServices;
 
         lock (_lock) {
-            if (_isDisposed)
-                throw new ObjectDisposedException(nameof(IServiceProvider));
+            ObjectDisposedException.ThrowIf(_isDisposed, typeof(IServiceProvider));
             if (_lazyServices != null)
                 return _lazyServices;
 

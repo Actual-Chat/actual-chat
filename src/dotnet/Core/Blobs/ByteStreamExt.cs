@@ -23,11 +23,11 @@ public static class ByteStreamExt
 
         // WASM doesn't support PipeReader API directly from the HttpClient
         // NOTE(AY): Don't dispose anything but HttpClient! They hang on cancellation & block everything.
-        var httpClient = httpClientFactory.CreateClient();
+        using var httpClient = httpClientFactory.CreateClient();
         var httpClientDisposable = new SafeDisposable(httpClient, 10, log) { MustWait = false };
         await using var _ = httpClientDisposable.ConfigureAwait(false);
 
-        var request = new HttpRequestMessage(HttpMethod.Get, blobUri);
+        using var request = new HttpRequestMessage(HttpMethod.Get, blobUri);
         if (OSInfo.IsWebAssembly) {
             request.SetBrowserResponseStreamingEnabled(true);
             request.SetBrowserRequestMode(BrowserRequestMode.Cors);
@@ -105,13 +105,16 @@ public static class ByteStreamExt
         CancellationToken cancellationToken = default)
         => sourceFilePath.ReadByteStream(DefaultBufferSize, cancellationToken);
 
-    public static IAsyncEnumerable<byte[]> ReadByteStream(
+    public static async IAsyncEnumerable<byte[]> ReadByteStream(
         this FilePath sourceFilePath,
         int bufferSize,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var inputStream = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read);
-        return inputStream.ReadByteStream(true, bufferSize, cancellationToken);
+        await using var _ = inputStream.ConfigureAwait(false);
+        var bytes = inputStream.ReadByteStream(true, bufferSize, cancellationToken);
+        await foreach (var packet in bytes.ConfigureAwait(false))
+            yield return packet;
     }
 
     public static IAsyncEnumerable<byte[]> ReadByteStream(

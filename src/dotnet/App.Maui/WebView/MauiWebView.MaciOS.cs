@@ -24,9 +24,11 @@ public partial class MauiWebView
 
     public partial void HardNavigateTo(string url)
     {
+#pragma warning disable CA2000 // Call System.IDisposable.Dispose on object created by NSXxx
         var nsUrl = new NSUrl(url, false);
         var nsUrlRequest = new NSUrlRequest(nsUrl, NSUrlRequestCachePolicy.ReloadRevalidatingCacheData, 30);
         WKWebView.LoadRequest(nsUrlRequest);
+#pragma warning restore CA2000
     }
 
     public partial Task EvaluateJavaScript(string javaScript)

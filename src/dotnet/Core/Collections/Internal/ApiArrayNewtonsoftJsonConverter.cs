@@ -10,8 +10,8 @@ public class ApiArrayNewtonsoftJsonConverter : JsonConverter
 {
     private static readonly ConcurrentDictionary<Type, JsonConverter?> ConverterCache = new();
 
-    public override bool CanConvert(Type typeToConvert)
-        => GetConverter(typeToConvert) != null;
+    public override bool CanConvert(Type objectType)
+        => GetConverter(objectType) != null;
 
     public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
         => GetConverter(objectType)!.ReadJson(reader, objectType, existingValue, serializer);
@@ -19,7 +19,7 @@ public class ApiArrayNewtonsoftJsonConverter : JsonConverter
     public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         => GetConverter(value!.GetType())!.WriteJson(writer, value, serializer);
 
-    private JsonConverter? GetConverter(Type type)
+    private static JsonConverter? GetConverter(Type type)
         => ConverterCache.GetOrAdd(type, static t => {
             var canConvert = t.IsGenericType && t.GetGenericTypeDefinition() == typeof(ApiArray<>);
             if (!canConvert)

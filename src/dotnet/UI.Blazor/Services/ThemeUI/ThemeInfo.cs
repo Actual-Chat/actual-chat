@@ -6,5 +6,5 @@ public sealed record ThemeInfo(
     Theme CurrentTheme = Theme.Light,
     string Colors = "")
 {
-    public static ThemeInfo Default = new();
+    public static readonly ThemeInfo Default = new();
 }

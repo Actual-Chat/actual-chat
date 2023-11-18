@@ -3,6 +3,8 @@ using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 
+#pragma warning disable CA1721 // HashCode is confusing w/ GetHashCode
+
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public readonly partial record struct HashedString(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] int HashCode,

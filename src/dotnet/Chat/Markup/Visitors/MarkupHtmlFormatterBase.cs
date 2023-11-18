@@ -108,13 +108,17 @@ public abstract partial record MarkupHtmlFormatterBase : MarkupFormatterBase
         AddHtml(html, ref state);
     }
 
+#pragma warning disable CA1822
     protected void AddHtml(string html, ref Utf16ValueStringBuilder state)
+#pragma warning restore CA1822
         => state.Append(html);
 
     protected void AddAttribute(string name, string value, ref Utf16ValueStringBuilder state)
         => AddAttribute(name, value, true, ref state);
 
+#pragma warning disable CA1822
     protected void AddAttribute(string name, string value, bool mustEncode, ref Utf16ValueStringBuilder state)
+#pragma warning restore CA1822
     {
         state.Append(" ");
         state.Append(name);

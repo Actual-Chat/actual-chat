@@ -16,15 +16,15 @@ public class HealthEventListener(IServiceProvider services, int interval = 10) :
     public IState<double> CpuMean5 => _cpuMean5;
     public IState<double> CpuMean20 => _cpuMean20;
 
-    protected override void OnEventSourceCreated(EventSource source)
+    protected override void OnEventSourceCreated(EventSource eventSource)
     {
-        if (!source.Name.Equals("System.Runtime"))
+        if (!OrdinalEquals(eventSource.Name, "System.Runtime"))
             return;
 
         var refreshInterval = new Dictionary<string, string>(StringComparer.Ordinal) {
             { "EventCounterIntervalSec", interval.ToString(CultureInfo.InvariantCulture) }
         };
-        EnableEvents(source, EventLevel.Verbose, EventKeywords.All, refreshInterval!);
+        EnableEvents(eventSource, EventLevel.Verbose, EventKeywords.All, refreshInterval!);
     }
 
     protected override void OnEventWritten(EventWrittenEventArgs eventData)

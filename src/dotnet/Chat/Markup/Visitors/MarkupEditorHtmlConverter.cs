@@ -40,7 +40,7 @@ public record MarkupEditorHtmlConverter : MarkupHtmlFormatterBase
 
     // Private methods
 
-    private void AddHiddenText(string text, ref Utf16ValueStringBuilder state)
+    private static void AddHiddenText(string text, ref Utf16ValueStringBuilder state)
     {
         state.Append("<span class=\"editor-hidden\">");
         state.Append(text.HtmlEncode());

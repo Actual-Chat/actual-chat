@@ -70,11 +70,13 @@ public abstract class DbInitializer<TDbContext>(IServiceProvider services)
 
         if (DbInfo.DbKind == DbKind.PostgreSql) {
             var databaseName = dbName;
+#pragma warning disable EF1002
             await dbContext.Database
                 .ExecuteSqlRawAsync(
                     $"ALTER DATABASE \"{databaseName}\" SET DEFAULT_TRANSACTION_ISOLATION TO 'repeatable read';",
                     cancellationToken)
                 .ConfigureAwait(false);
+#pragma warning restore EF1002
         }
     }
 

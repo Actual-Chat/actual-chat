@@ -15,10 +15,14 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
 
-    private static readonly Task<ILookup<TextEntryId, TextEntryAttachment>> EmptyAttachmentsTask =
-        Task.FromResult(Array.Empty<TextEntryAttachment>().ToLookup(ta => ta.EntryId));
-    private static readonly Task<IReadOnlyDictionary<Symbol, Media.LinkPreview>> EmptyLinkPreviewsTask =
-        Task.FromResult((IReadOnlyDictionary<Symbol, Media.LinkPreview>)new Dictionary<Symbol, Media.LinkPreview>().AsReadOnly());
+    private static readonly ILookup<TextEntryId, TextEntryAttachment> EmptyAttachments
+        = Array.Empty<TextEntryAttachment>().ToLookup(ta => ta.EntryId);
+    private static readonly Task<ILookup<TextEntryId, TextEntryAttachment>> EmptyAttachmentsTask
+        = Task.FromResult(EmptyAttachments);
+    private static readonly IReadOnlyDictionary<Symbol, Media.LinkPreview> EmptyLinkPreviews
+        = new Dictionary<Symbol, Media.LinkPreview>().AsReadOnly();
+    private static readonly Task<IReadOnlyDictionary<Symbol, Media.LinkPreview>> EmptyLinkPreviewsTask
+        = Task.FromResult(EmptyLinkPreviews);
 
     // all backend services should be requested lazily to avoid circular references!
     private IAccountsBackend? _accountsBackend;
@@ -271,8 +275,8 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             : EmptyLinkPreviewsTask;
         await Task.WhenAll(allAttachmentsTask, allLinkPreviewsTask).ConfigureAwait(false);
 
-        var allAttachments = allAttachmentsTask.Result;
-        var allLinkPreviews = allLinkPreviewsTask.Result;
+        var allAttachments = await allAttachmentsTask.ConfigureAwait(false);
+        var allLinkPreviews = await allLinkPreviewsTask.ConfigureAwait(false);
         var entries = dbEntries.Select(e => {
             var entryId = TextEntryId.Parse(e.Id);
             var entryAttachments = allAttachments[entryId];
@@ -284,7 +288,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         async Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments(ChatDbContext dbContext1, ICollection<string> entryIdsWithAttachments1)
         {
             if (entryIdsWithAttachments1.Count == 0)
-                return EmptyAttachmentsTask.Result;
+                return EmptyAttachments;
 
             var attachmentPrefixes = entryIdsWithAttachments1
                 .Select(id => $"{id}:%")
@@ -322,7 +326,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         async Task<IReadOnlyDictionary<Symbol, Media.LinkPreview>> GetLinkPreviews(ICollection<Symbol> linkPreviewIds1)
         {
             if (linkPreviewIds1.Count == 0)
-                return EmptyLinkPreviewsTask.Result;
+                return EmptyLinkPreviews;
 
             return (await linkPreviewIds1
                     .Select(id => LinkPreviewsBackend.Get(id, cancellationToken))

@@ -31,7 +31,7 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
     public void Dispose()
     {
         _blazorRef.DisposeSilently();
-        _blazorRef = null;
+        _blazorRef = null!;
     }
 
     [JSInvokable]

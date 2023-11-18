@@ -18,6 +18,8 @@ using Tracer = ActualChat.Performance.Tracer;
 
 namespace ActualChat.App.Maui;
 
+#pragma warning disable CA1823: Unused field 'LogFolder', etc.
+
 public static class MauiDiagnostics
 {
     private const string LogFolder = "Logs";

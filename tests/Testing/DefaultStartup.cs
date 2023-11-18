@@ -24,7 +24,9 @@ public class DefaultStartup
 
     public void Configure(ILoggerFactory loggerFactory, ITestOutputHelperAccessor accessor)
  #pragma warning disable CS0618
+ #pragma warning disable CA2000 // Call Dispose
         => loggerFactory.AddProvider(new XunitTestOutputLoggerProvider(accessor, (s, level) => true));
+ #pragma warning restore CA2000
  #pragma warning restore CS0618
 
     public virtual void ConfigureServices(IServiceCollection services, HostBuilderContext ctx)

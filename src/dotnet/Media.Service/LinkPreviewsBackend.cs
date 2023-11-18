@@ -19,8 +19,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
     private IMediaBackend? _mediaBackend;
     private IChatsBackend? _chatsBackend;
     private Crawler? _crawler;
-    private IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>();
-    private IMediaBackend MediaBackend => _mediaBackend ??= services.GetRequiredService<IMediaBackend>();
+    private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
 
     private MediaSettings Settings { get; } = services.GetRequiredService<MediaSettings>();
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();

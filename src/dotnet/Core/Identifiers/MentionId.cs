@@ -57,7 +57,7 @@ public readonly partial struct MentionId : ISymbolIdentifier<MentionId>
         Id = principalId.Kind switch {
             PrincipalKind.Author => $"a:{principalId}",
             PrincipalKind.User => $"u:{principalId}",
-            _ => throw new ArgumentOutOfRangeException(nameof(principalId.Kind), principalId.Kind, null),
+            _ => throw new ArgumentOutOfRangeException($"{nameof(principalId)}.{nameof(principalId.Kind)}", principalId.Kind, null),
         };
         PrincipalId = principalId;
     }

@@ -68,7 +68,9 @@ public class LazyWriter<T> : WorkerBase
                         await FlushInternal().ConfigureAwait(false);
                     else if (upcomingFlushCts == null) {
                         // Start the task pushing FlushCommand into the queue after FlushDelay
+#pragma warning disable CA2000
                         upcomingFlushCts = new CancellationTokenSource();
+#pragma warning restore CA2000
                         _ = Task.Delay(FlushDelay, upcomingFlushCts.Token).ContinueWith(t => {
                             if (!t.IsCanceled)
                                 _commands.Writer.TryWrite(new FlushCommand());

@@ -55,7 +55,7 @@ public readonly partial struct ApiArray<T>(T[] items)
         get => new(Items[range]);
     }
 
-    public ApiArray(List<T> source)
+    public ApiArray(IReadOnlyCollection<T> source)
         : this(source.Count == 0 ? EmptyItems : source.ToArray())
     { }
 
@@ -232,8 +232,7 @@ public readonly partial struct ApiArray<T>(T[] items)
 
     public ApiArray<T> Trim(int maxCount)
     {
-        if (maxCount < 0)
-            throw new ArgumentOutOfRangeException(nameof(maxCount));
+        ArgumentOutOfRangeException.ThrowIfNegative(maxCount);
         if (maxCount == 0)
             return Empty;
 

@@ -98,8 +98,10 @@ public abstract class TrackPlayer(IMediaSource source, ILogger log) : ProcessorB
                     await playTask.ConfigureAwait(false);
                     isPlayCommandProcessed = true;
                 }
+#pragma warning disable CA1849
                 while (_commandsQueue.Reader.TryRead(out var command))
                     await ProcessCommand(command, cancellationToken).ConfigureAwait(false);
+#pragma warning restore CA1849
                 await ProcessMediaFrame(frame, cancellationToken).ConfigureAwait(false);
             }
 

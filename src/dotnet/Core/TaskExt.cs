@@ -346,7 +346,7 @@ public static class TaskExt
 
             public bool IsCompleted => _parent.IsCompleted();
             public int GetResult() => _parent.GetResult();
-            public void OnCompleted(Action action) => _parent.OnCompleted(action);
+            public void OnCompleted(Action continuation) => _parent.OnCompleted(continuation);
         }
     }
 }

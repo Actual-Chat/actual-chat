@@ -93,7 +93,7 @@ public class AudioHub(IServiceProvider services) : Hub
             .ConfigureAwait(false);
     }
 
-    public Task<string> Ping()
+    public static Task<string> Ping()
         => Task.FromResult("Pong");
 
     private Session? GetSessionFromToken(string sessionToken)

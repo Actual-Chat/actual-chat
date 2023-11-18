@@ -5,8 +5,10 @@ namespace Sentry.Maui.Internal;
 
 internal class SentryMauiOptionsSetup : ConfigureFromConfigurationOptions<SentryMauiOptions>
 {
+    #pragma warning disable IL2026
     public SentryMauiOptionsSetup(IConfiguration config) : base(config)
     { }
+    #pragma warning restore IL2026
 
     public override void Configure(SentryMauiOptions options)
     {

@@ -29,7 +29,7 @@ public partial class GoogleTranscriber : ITranscriber
 
     private ILogger Log { get; }
     private ILogger? DebugLog => DebugMode ? Log : null;
-    private bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
+    private static bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
 
     private IServiceProvider Services { get; }
     private CoreSettings CoreSettings { get; }
@@ -145,7 +145,9 @@ public partial class GoogleTranscriber : ITranscriber
 
         var state = new GoogleTranscribeState(audioSource, recognizeStream, output);
         // We want to stop both tasks here on any failure, so...
+#pragma warning disable CA2000
         var cts = cancellationToken.CreateLinkedTokenSource();
+#pragma warning restore CA2000
         try {
             var pushAudioTask = PushAudio(state, cts.Token);
             var pullResponsesTask = PullResponses(state, cts.Token);
@@ -252,7 +254,7 @@ public partial class GoogleTranscriber : ITranscriber
         return state.Unstable;
     }
 
-    private void ProcessResult(GoogleTranscribeState state, StreamingRecognitionResult result, bool appendToUnstable)
+    private static void ProcessResult(GoogleTranscribeState state, StreamingRecognitionResult result, bool appendToUnstable)
     {
         var isFinal = result.IsFinal;
         var suffix = result.Alternatives.FirstOrDefault()?.Transcript ?? "";
@@ -296,7 +298,7 @@ public partial class GoogleTranscriber : ITranscriber
     }
 
     // This method is unused for now, since we rely on our own time offset computation logic
-    private bool TryParseFinal(
+    private static bool TryParseFinal(
         GoogleTranscribeState state,
         StreamingRecognitionResult result,
         out string text,
@@ -395,7 +397,7 @@ public partial class GoogleTranscriber : ITranscriber
         Log.LogWarning("Creating new recognizer: #{RecognizerId} -> {Result}", recognizerId, result);
     }
 
-    private RecognizerOptions GetRecognizerOptions(Language language)
+    private static RecognizerOptions GetRecognizerOptions(Language language)
     {
         // Defined based on https://cloud.google.com/speech-to-text/v2/docs/speech-to-text-supported-languages
         bool supportAutomaticPunctuation =
@@ -440,13 +442,13 @@ public partial class GoogleTranscriber : ITranscriber
         return suffix;
     }
 
-    private float? TryGetOriginalAudioTime(Duration? time)
+    private static float? TryGetOriginalAudioTime(Duration? time)
         => time is { } vTime ? GetOriginalAudioTime(vTime) : null;
-    private float? TryGetOriginalAudioTime(float? time)
+    private static float? TryGetOriginalAudioTime(float? time)
         => time is { } vTime ? GetOriginalAudioTime(vTime) : null;
-    private float GetOriginalAudioTime(Duration time)
+    private static float GetOriginalAudioTime(Duration time)
         => GetOriginalAudioTime((float)time.ToTimeSpan().TotalSeconds);
-    private float GetOriginalAudioTime(float time)
+    private static float GetOriginalAudioTime(float time)
         => (float)Math.Round(Math.Max(0, time - SilentPrefixDuration.TotalSeconds), 2);
 
     private AudioSource AddSilentPrefixAndSuffix(AudioSource audioSource, CancellationToken cancellationToken)

@@ -33,7 +33,7 @@ namespace ActualChat.Contacts.Migrations
 
             using var dbContext = dbInitializer.CreateDbContext(true);
 
-            var dbContacts = await dbContext.Contacts.OrderBy(c => c.Id).ToListAsync();
+            var dbContacts = await dbContext.Contacts.OrderBy(c => c.Id).ToListAsync().ConfigureAwait(false);
             log.LogInformation("Upgrading {Count} contacts", dbContacts.Count);
             var changeCount = 0;
             foreach (var contact in dbContacts) {
@@ -71,7 +71,7 @@ namespace ActualChat.Contacts.Migrations
                 // log.LogInformation("- '{Id}': skipped", id);
             }
             log.LogInformation("- Saving changes");
-            await dbContext.SaveChangesAsync();
+            await dbContext.SaveChangesAsync().ConfigureAwait(false);
             log.LogInformation("Upgrading contacts: {ChangeCount} / {Count} upgraded", changeCount, dbContacts.Count);
         }
 

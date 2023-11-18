@@ -7,9 +7,10 @@ public static class HashExt
     // ReSharper disable once InconsistentNaming
     public static string GetSHA1HashCode(this string input, HashEncoding encoding = HashEncoding.Base16)
     {
-        using var sha1 = System.Security.Cryptography.SHA1.Create();
         var inputBytes = Encoding.UTF8.GetBytes(input);
-        var hashBytes = sha1.ComputeHash(inputBytes);
+ #pragma warning disable CA5350
+        var hashBytes = System.Security.Cryptography.SHA1.HashData(inputBytes);
+ #pragma warning restore CA5350
         return hashBytes.EncodeHash(encoding);
     }
 

@@ -7,7 +7,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
     private static readonly byte[]
         OpusStreamFormat = { 0x41, 0x5F, 0x4F, 0x50, 0x55, 0x53, 0x5F, 0x53, 0x03 }; // A_OPUS_S + version = 3
 
-    protected bool DebugMode => Constants.DebugMode.AudioSource;
+    protected static bool DebugMode => Constants.DebugMode.AudioSource;
     protected ILogger? DebugLog => DebugMode ? Log : null;
 
     public static readonly AudioFormat DefaultFormat = new () {
@@ -38,17 +38,15 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
 
     public AudioSource SkipTo(TimeSpan skipTo, CancellationToken cancellationToken)
     {
-        if (skipTo < TimeSpan.Zero)
-            throw new ArgumentOutOfRangeException(nameof(skipTo));
+        ArgumentOutOfRangeException.ThrowIfLessThan(skipTo, TimeSpan.Zero);
 
-        if (skipTo == TimeSpan.Zero)
-            return this;
-
-        return new AudioSource(CreatedAt,
-            Format,
-            GetFrames(cancellationToken),
-            skipTo,
-            Log,
-            cancellationToken);
+        return skipTo == TimeSpan.Zero
+            ? this
+            : new AudioSource(CreatedAt,
+                Format,
+                GetFrames(cancellationToken),
+                skipTo,
+                Log,
+                cancellationToken);
     }
 }

@@ -24,7 +24,9 @@ public class TranscriptStreamServer : StreamServerBase<TranscriptDiff>, ITranscr
         public override Task Write(Symbol streamId, IAsyncEnumerable<TranscriptDiff> stream, CancellationToken cancellationToken)
             => instance.Write(streamId, stream, cancellationToken);
 
+ #pragma warning disable CA2215
         public override void Dispose()
         { }
+ #pragma warning restore CA2215
     }
 }
