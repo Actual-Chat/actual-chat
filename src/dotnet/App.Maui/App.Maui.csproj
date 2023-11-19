@@ -182,7 +182,9 @@
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <EnableLLVM>false</EnableLLVM>
     <AndroidDexTool>d8</AndroidDexTool>
+    <!-- Doesn't work with .NET 8!
     <AndroidLinkTool>r8</AndroidLinkTool>
+    -->
     <!-- Trimming -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
