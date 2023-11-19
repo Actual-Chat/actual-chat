@@ -17,7 +17,11 @@
     <UseDefaultStartup>true</UseDefaultStartup>
     <XunitStartupAssembly>$(BaseName).Testing</XunitStartupAssembly>
     <XunitStartupFullName>$(BaseName).Testing.DefaultStartup</XunitStartupFullName>
+  </PropertyGroup>
 
+  <!-- Test analyzers & warnings -->
+  <PropertyGroup>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer> <!-- Ok for tests -->
     <!-- Suppressed warnings (please sort alphabetically!) -->
     <!-- CS8604: Possible null reference argument -->
     <!-- CA1034: Do not nest type -->
@@ -27,9 +31,6 @@
     <!-- CA2016: Forward the CancellationToken parameter to methods that take one -->
     <NoWarn>$(NoWarn);1701;1702;CS8604</NoWarn>
     <NoWarn>$(NoWarn);CA1034;CA1822;CA2007;CA1861;CA2016;CA1859</NoWarn>
-    <!-- IL2070: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
-    <!-- IL2075: 'this' argument does not satisfy 'DynamicallyAccessedMemberTypes.PublicMethods' ... -->
-    <NoWarn>$(NoWarn);IL2070;IL2075</NoWarn>
     <!-- MA0002: Use an overload that has a IEqualityComparer<string> or IComparer<string> parameter -->
     <!-- MA0004: Use Task.ConfigureAwait(false) as the current SynchronizationContext is not needed' -->
     <!-- MA0006: Use string.Equals instead of Equals operator -->

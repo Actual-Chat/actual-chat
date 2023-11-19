@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -16,7 +17,8 @@ public static class MigrationExt
         return attribute.Id;
     }
 
-    public static Task<DbInitializer<TDbContext>> CompleteEarlierMigrations<TDbContext>(
+    public static Task<DbInitializer<TDbContext>> CompleteEarlierMigrations<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>(
         this DbInitializer<TDbContext> dbInitializer,
         Migration migration,
         CancellationToken cancellationToken = default)
@@ -26,7 +28,8 @@ public static class MigrationExt
         return dbInitializer.CompleteEarlierMigrations(migration.GetId(), log, cancellationToken);
     }
 
-    public static Task<DbInitializer<TDbContext>> CompleteEarlierMigrations<TDbContext>(
+    public static Task<DbInitializer<TDbContext>> CompleteEarlierMigrations<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>(
         this DbInitializer<TDbContext> dbInitializer,
         Migration migration,
         ILogger log,
@@ -34,7 +37,8 @@ public static class MigrationExt
         where TDbContext : DbContext
         => dbInitializer.CompleteEarlierMigrations(migration.GetId(), log, cancellationToken);
 
-    public static async Task<DbInitializer<TDbContext>> CompleteEarlierMigrations<TDbContext>(
+    public static async Task<DbInitializer<TDbContext>> CompleteEarlierMigrations<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>(
         this DbInitializer<TDbContext> dbInitializer,
         string migrationId,
         ILogger log,

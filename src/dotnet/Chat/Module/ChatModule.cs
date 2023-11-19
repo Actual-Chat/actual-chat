@@ -3,6 +3,8 @@ using ActualChat.Hosting;
 
 namespace ActualChat.Chat.Module;
 
+#pragma warning disable IL2026 // Fine for modules
+
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ChatModule : HostModule
 {

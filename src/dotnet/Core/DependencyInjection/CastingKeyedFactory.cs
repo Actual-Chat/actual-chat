@@ -1,6 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.DependencyInjection;
 
-public sealed class CastingKeyedFactory<TService, TKey, TFromService> : KeyedFactory<TService, TKey>
+public sealed class CastingKeyedFactory<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TFromService>
+    : KeyedFactory<TService, TKey>
     where TService : class
     where TFromService : class
 {

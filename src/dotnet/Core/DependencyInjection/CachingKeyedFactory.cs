@@ -1,6 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.DependencyInjection;
 
-public class CachingKeyedFactory<TService, TKey> : KeyedFactory<TService, TKey>
+public class CachingKeyedFactory<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey>
+    : KeyedFactory<TService, TKey>
     where TService : class
     where TKey : notnull
 {
@@ -43,7 +48,11 @@ public class CachingKeyedFactory<TService, TKey> : KeyedFactory<TService, TKey>
         };
 }
 
-public class CachingKeyedFactory<TService, TKey, TImplementation> : CachingKeyedFactory<TService, TKey>
+public class CachingKeyedFactory<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>
+    : CachingKeyedFactory<TService, TKey>
     where TService : class
     where TKey : notnull
     where TImplementation : class, TService

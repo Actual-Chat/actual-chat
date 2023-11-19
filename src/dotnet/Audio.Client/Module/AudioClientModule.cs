@@ -4,6 +4,8 @@ using ActualChat.Transcription;
 
 namespace ActualChat.Audio.Module;
 
+#pragma warning disable IL2026 // Fine for modules
+
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class AudioClientModule : HostModule
 {

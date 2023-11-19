@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.DependencyInjection;
 
 public class TypeMapper<TScope>
@@ -16,19 +18,23 @@ public class TypeMapper<TScope>
     public TypeMapper(IReadOnlyDictionary<Type, Type> map)
         => _map = map;
 
-    public Type Get(Type source)
+    public Type Get(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type source)
         => TryGet(source)
             ?? throw StandardError.NotFound<Type>(
                 $"No matching {typeof(TScope).GetName()} is found for type '{source.GetName()}'.");
 
-    public Type? TryGet(Type source)
+    public Type? TryGet(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type source)
     {
         if (source == null)
             throw new ArgumentNullException(nameof(source));
 
         return _cache.GetOrAdd(source, static (key, self) => {
             var source1 = key;
+#pragma warning disable IL2067
             var baseTypes = source1.GetAllBaseTypes(true, true);
+#pragma warning restore IL2067
             foreach (var cType in baseTypes) {
                 var match = self._map.GetValueOrDefault(cType);
                 if (match != null) {

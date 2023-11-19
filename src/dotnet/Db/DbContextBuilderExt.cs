@@ -9,7 +9,7 @@ namespace ActualChat.Db;
 public static class DbContextBuilderExt
 {
     public static DbContextBuilder<TDbContext> AddShardLocalIdGenerator<
-        TDbContext,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity>
     (
         this DbContextBuilder<TDbContext> dbContext,
@@ -23,7 +23,7 @@ public static class DbContextBuilderExt
             dbSetSelector, shardKeyFilter, localIdSelector, maxLocalIdCacheFactory);
 
     public static DbContextBuilder<TDbContext> AddShardLocalIdGenerator<
-        TDbContext,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TEntity,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TShardKey>
     (

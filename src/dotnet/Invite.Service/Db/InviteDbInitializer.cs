@@ -2,8 +2,4 @@
 
 namespace ActualChat.Invite.Db;
 
-public class InviteDbInitializer : DbInitializer<InviteDbContext>
-{
-    public InviteDbInitializer(IServiceProvider services) : base(services)
-    { }
-}
+public class InviteDbInitializer(IServiceProvider services) : DbInitializer<InviteDbContext>(services);

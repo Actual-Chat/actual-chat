@@ -15,6 +15,8 @@ using Stl.Fusion.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Module;
 
+#pragma warning disable IL2026 // Fine for modules
+
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 {

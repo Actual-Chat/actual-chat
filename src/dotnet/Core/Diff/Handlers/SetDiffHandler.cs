@@ -21,6 +21,7 @@ public class SetDiffHandler<TSet, TItem> : DiffHandlerBase<TSet, SetDiff<TSet, T
         return new SetDiff<TSet, TItem>(added, removed);
     }
 
+#pragma warning disable IL2077
     public override TSet Patch(TSet source, SetDiff<TSet, TItem> diff)
     {
         var removedItems = diff.RemovedItems.ToHashSet();
@@ -39,4 +40,5 @@ public class SetDiffHandler<TSet, TItem> : DiffHandlerBase<TSet, SetDiff<TSet, T
             return (TSet)(object)ImmutableHashSet.Create(target);
         return (TSet)_setType.CreateInstance(target);
     }
+#pragma warning restore IL2077
 }

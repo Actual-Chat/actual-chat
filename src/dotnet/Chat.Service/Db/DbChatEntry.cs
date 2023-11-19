@@ -106,13 +106,11 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
             LinkPreviewId = LinkPreviewId,
             LinkPreviewMode = LinkPreviewMode ?? Media.LinkPreviewMode.Default,
             LinkPreview = linkPreview,
-#pragma warning disable IL2026
             TimeMap = Kind == ChatEntryKind.Text
                 ? TimeMap != null
                     ? JsonSerializer.Deserialize<LinearMap>(TimeMap)
                     : default
                 : default,
-#pragma warning restore IL2026
         };
     }
 
@@ -149,11 +147,9 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsSystemEntry = model.SystemEntry != null;
         LinkPreviewId = model.LinkPreviewId;
         LinkPreviewMode = model.LinkPreviewMode;
-#pragma warning disable IL2026
         TimeMap = !model.TimeMap.IsEmpty
             ? JsonSerializer.Serialize(model.TimeMap)
             : null;
-#pragma warning restore IL2026
     }
 
     internal class EntityConfiguration : IEntityTypeConfiguration<DbChatEntry>

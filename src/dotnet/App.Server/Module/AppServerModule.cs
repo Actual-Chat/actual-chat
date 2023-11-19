@@ -40,7 +40,6 @@ using Stl.Rpc.Server;
 
 namespace ActualChat.App.Server.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
 {
     public static readonly string AppVersion =
@@ -255,7 +254,6 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
 
         // Controllers, etc.
         services.AddRouting();
-#pragma warning disable IL2026
         var mvc = services.AddMvc(options => {
             options.ModelBinderProviders.Add(new ModelBinderProvider());
             options.ModelMetadataDetailsProviders.Add(new ValidationMetadataProvider());
@@ -275,7 +273,6 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
         }).AddHubOptions(o => {
             o.MaximumParallelInvocationsPerClient = 4;
         });
-#pragma warning restore IL2026
 
         // OpenTelemetry
         services.AddSingleton<OtelMetrics>();

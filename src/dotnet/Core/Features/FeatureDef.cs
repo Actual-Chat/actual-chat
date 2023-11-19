@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat;
 
 public interface IFeatureDef
@@ -6,7 +8,9 @@ public interface IFeatureDef
     Task<object?> ComputeUntyped(IServiceProvider services, CancellationToken cancellationToken);
 }
 
-public interface IFeatureDef<T> : IFeatureDef
+public interface IFeatureDef<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    : IFeatureDef
 {
     Task<T> Compute(IServiceProvider services, CancellationToken cancellationToken);
 }
@@ -14,12 +18,9 @@ public interface IFeatureDef<T> : IFeatureDef
 public interface IClientFeatureDef : IFeatureDef { }
 public interface IServerFeatureDef : IFeatureDef { }
 
-public abstract class FeatureDef : IFeatureDef
+public abstract class FeatureDef(Type resultType) : IFeatureDef
 {
-    public Type ResultType { get; }
-
-    protected FeatureDef(Type resultType)
-        => ResultType = resultType;
+    public Type ResultType { get; } = resultType;
 
     Task<object?> IFeatureDef.ComputeUntyped(IServiceProvider services, CancellationToken cancellationToken)
         => EvaluateUntyped(services, cancellationToken);
@@ -29,7 +30,9 @@ public abstract class FeatureDef : IFeatureDef
         CancellationToken cancellationToken);
 }
 
-public abstract class FeatureDef<T> : FeatureDef, IFeatureDef<T>
+public abstract class FeatureDef<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    : FeatureDef, IFeatureDef<T>
 {
     protected FeatureDef() : base(typeof(T)) { }
 

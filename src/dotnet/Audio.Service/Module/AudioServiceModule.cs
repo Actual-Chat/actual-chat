@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Builder;
 
 namespace ActualChat.Audio.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class AudioServiceModule : HostModule<AudioSettings>, IWebModule
 {
     public AudioServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
@@ -33,12 +32,10 @@ public sealed class AudioServiceModule : HostModule<AudioSettings>, IWebModule
         redisModule.AddRedisDb<AudioContext>(services, Settings.Redis);
 
         // SignalR hub & related services
-#pragma warning disable IL2026
         var signalR = services.AddSignalR(options => {
             options.StreamBufferCapacity = 20;
             options.EnableDetailedErrors = false;
         });
-#pragma warning restore IL2026
         signalR.AddJsonProtocol();
         signalR.AddMessagePackProtocol();
 

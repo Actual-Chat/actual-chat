@@ -1,8 +1,41 @@
 <Project ToolsVersion="latest" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Condition="Exists('$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props')" Project="$(MSBuildThisFileDirectory)Nerdbank.GitVersioning.props"/>
 
+  <!-- Handy helper properties -->
   <PropertyGroup>
-    <TargetFramework Condition="!$(MSBuildProjectName.Contains('.Maui'))">net8.0</TargetFramework>
+    <ProjectKind>Other</ProjectKind>
+    <IsServerSideProject>false</IsServerSideProject>
+    <IsMauiProject>false</IsMauiProject>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">Contracts</ProjectKind>
+    <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Service'))">Service</ProjectKind>
+    <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Migration'))">Migration</ProjectKind>
+    <ProjectKind Condition="$(MSBuildProjectName.Contains('UI.Blazor'))">Blazor</ProjectKind>
+    <ProjectKind Condition="$(MSBuildProjectName.Contains('Testing'))">Testing</ProjectKind>
+    <ProjectKind Condition="$(MSBuildProjectName.Contains('Tests'))">Tests</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'Core'">Core</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'Db'">Db</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'Redis'">Redis</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'Kubernetes'">Kubernetes</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'Web'">Web</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Server'">App.Server</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Wasm'">App.Wasm</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.Maui'">App.Maui</ProjectKind>
+    <IsServerSideProject Condition="'$(ProjectKind)' == 'App.Server'">true</IsServerSideProject>
+    <IsServerSideProject Condition="'$(ProjectKind)' == 'Db'">true</IsServerSideProject>
+    <IsServerSideProject Condition="'$(ProjectKind)' == 'Redis'">true</IsServerSideProject>
+    <IsServerSideProject Condition="'$(ProjectKind)' == 'Kubernetes'">true</IsServerSideProject>
+    <IsServerSideProject Condition="'$(ProjectKind)' == 'Web'">true</IsServerSideProject>
+    <IsServerSideProject Condition="'$(ProjectKind)' == 'Service'">true</IsServerSideProject>
+    <IsServerSideProject Condition="'$(ProjectKind)' == 'Migration'">true</IsServerSideProject>
+    <IsServerSideProject Condition="'$(ProjectKind)' == 'Testing'">true</IsServerSideProject>
+    <IsServerSideProject Condition="'$(ProjectKind)' == 'Tests'">true</IsServerSideProject>
+    <IsMauiProject Condition="'$(ProjectKind)' == 'App.Maui'">true</IsMauiProject>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework Condition="!$(IsMauiProject)">net8.0</TargetFramework>
     <RepoRoot>$([MSBuild]::EnsureTrailingSlash('$(MSBuildThisFileDirectory)'))</RepoRoot>
     <SolutionDir Condition="$(SolutionDir) == ''">$(RepoRoot)</SolutionDir>
     <ImplicitUsings>enable</ImplicitUsings>

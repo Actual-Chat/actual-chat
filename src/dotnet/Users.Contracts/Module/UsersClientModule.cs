@@ -6,6 +6,8 @@ using Stl.RestEase;
 
 namespace ActualChat.Users.Module;
 
+#pragma warning disable IL2026 // Fine for modules
+
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class UsersClientModule : HostModule
 {

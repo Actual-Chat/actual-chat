@@ -1,10 +1,7 @@
 using System.Linq.Expressions;
-using System.Reflection;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace ActualChat.Web.Internal;
-
-#pragma warning disable IL2075
 
 public class SymbolIdentifierModelBinder : IModelBinder
 {

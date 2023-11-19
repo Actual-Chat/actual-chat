@@ -1,9 +1,6 @@
 namespace ActualChat;
 
-public interface IClientFeatures : IFeatures
-{ }
+public interface IClientFeatures : IFeatures;
 
-public class ClientFeatures : FeaturesBase, IClientFeatures
-{
-    public ClientFeatures(IServiceProvider services) : base(ClientFeatureDefRegistry.Instance, services) { }
-}
+public class ClientFeatures(IServiceProvider services)
+    : FeaturesBase(ClientFeatureDefRegistry.Instance, services), IClientFeatures;

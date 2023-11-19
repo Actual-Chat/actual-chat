@@ -72,7 +72,6 @@ public sealed class DbModule : HostModule<DbSettings>
         */
 
         services.AddSingleton(dbInfo);
-#pragma warning disable IL2091
         services.AddPooledDbContextFactory<TDbContext>(db => {
             switch (dbKind) {
             case DbKind.InMemory:
@@ -98,7 +97,6 @@ public sealed class DbModule : HostModule<DbSettings>
                 db.EnableSensitiveDataLogging();
             db.AddInterceptors(new DbConnectionConfigurator(dbKind));
         }, 32);
-#pragma warning restore IL2091
 
         services.AddDbContextServices<TDbContext>(db => {
             services.AddSingleton(new CompletionProducer.Options {

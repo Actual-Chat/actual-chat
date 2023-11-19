@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -5,7 +6,9 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Db;
 
-public abstract class DbInitializer<TDbContext>(IServiceProvider services)
+public abstract class DbInitializer<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>
+    (IServiceProvider services)
     : DbServiceBase<TDbContext>(services), IDbInitializer
     where TDbContext : DbContext
 {

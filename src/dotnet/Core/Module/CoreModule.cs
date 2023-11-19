@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
-using ActualChat.Permissions;
 using ActualChat.Rpc;
 using ActualChat.Security;
 using ActualChat.UI;
@@ -16,6 +15,8 @@ using Stl.Mathematics.Internal;
 using Stl.Rpc;
 
 namespace ActualChat.Module;
+
+#pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed partial class CoreModule : HostModule<CoreSettings>
@@ -113,7 +114,9 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // Features
         services.AddScoped(c => new Features(c));
+#pragma warning disable IL2111
         fusion.AddService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
+#pragma warning restore IL2111
 
         // UI
         services.AddScoped(_ => new SystemSettingsUI());
@@ -139,7 +142,9 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
             services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
 
         var fusion = services.AddFusion();
+#pragma warning disable IL2111
         fusion.AddService<IServerFeatures, ServerFeatures>();
+#pragma warning restore IL2111
     }
 
     private void InjectClientServices(IServiceCollection services)
@@ -150,8 +155,10 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         services.AddSingleton(c => new RpcDependentReconnectDelayer(c));
 
         // Features
+#pragma warning disable IL2111
         fusion.AddClient<IServerFeaturesClient>();
         fusion.Rpc.Service<IServerFeaturesClient>().HasName(nameof(IServerFeatures));
         fusion.AddService<IServerFeatures, ServerFeaturesClient>();
+#pragma warning restore IL2111
     }
 }

@@ -3,6 +3,8 @@ using ActualChat.Hosting;
 
 namespace ActualChat.Contacts.Module;
 
+#pragma warning disable IL2026 // Fine for modules
+
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ContactsClientModule : HostModule
 {

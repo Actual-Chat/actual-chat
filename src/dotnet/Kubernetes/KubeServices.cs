@@ -151,7 +151,6 @@ public class KubeServices : IKubeInfo
                     Log.LogWarning("UpdateState: got null while querying Kubernetes API result (endpoint slice changes)");
                     continue;
                 }
-                #pragma warning disable IL2026
                 var change = JsonSerializer.Deserialize<Api.Change<EndpointSlice>>(changeString, WebJsonSerializeOptions);
                 if (change == null) {
                     Log.LogWarning("UpdateState: unable to deserialize Kubernetes API result: {Change}", changeString);

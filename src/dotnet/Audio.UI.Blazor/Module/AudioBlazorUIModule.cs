@@ -7,6 +7,8 @@ using ActualChat.Permissions;
 
 namespace ActualChat.Audio.UI.Blazor.Module;
 
+#pragma warning disable IL2026 // Fine for modules
+
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public class AudioBlazorUIModule : HostModule, IBlazorUIModule
 {

@@ -1,10 +1,13 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Commands.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Stl.CommandR.Internal;
 
 namespace ActualChat.Commands;
 
 public static class ServiceCollectionExt
 {
+    [RequiresUnreferencedCode(UnreferencedCode.Commander)]
     public static IServiceCollection AddLocalCommandQueues(
         this IServiceCollection services,
         Func<IServiceProvider, LocalCommandQueues.Options>? optionsBuilder = null)
@@ -18,6 +21,7 @@ public static class ServiceCollectionExt
         return services;
     }
 
+    [RequiresUnreferencedCode(UnreferencedCode.Commander)]
     public static IServiceCollection AddCommandQueueScheduler(
         this IServiceCollection services,
         Action<CommandQueueScheduler.Options>? optionsBuilder = null)

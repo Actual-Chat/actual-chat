@@ -5,11 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.Module;
 
-public class ChatDbInitializer : DbInitializer<ChatDbContext>
+public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDbContext>(services)
 {
-    public ChatDbInitializer(IServiceProvider services) : base(services)
-    { }
-
     public override async Task InitializeData(CancellationToken cancellationToken)
     {
         // This initializer runs after everything else

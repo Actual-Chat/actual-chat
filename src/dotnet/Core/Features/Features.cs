@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat;
 
 public class Features(IServiceProvider services) : IFeatures
@@ -11,7 +13,9 @@ public class Features(IServiceProvider services) : IFeatures
     public IServerFeatures ServerFeatures
         => _serverFeatures ??= Services.GetRequiredService<IServerFeatures>();
 
-    public Task<object?> Get(Type featureType, CancellationToken cancellationToken)
+    public Task<object?> Get(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type featureType,
+        CancellationToken cancellationToken)
         => typeof(IClientFeatureDef).IsAssignableFrom(featureType)
             ? ClientFeatures.Get(featureType, cancellationToken)
             : ServerFeatures.Get(featureType, cancellationToken);

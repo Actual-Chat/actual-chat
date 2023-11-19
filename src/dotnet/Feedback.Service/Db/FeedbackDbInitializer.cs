@@ -2,8 +2,4 @@
 
 namespace ActualChat.Feedback.Db;
 
-public class FeedbackDbInitializer : DbInitializer<FeedbackDbContext>
-{
-    public FeedbackDbInitializer(IServiceProvider services) : base(services)
-    { }
-}
+public class FeedbackDbInitializer(IServiceProvider services) : DbInitializer<FeedbackDbContext>(services);

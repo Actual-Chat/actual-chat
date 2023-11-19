@@ -59,7 +59,7 @@ public class DiffEngine(
 
     // Protected methods
 
-#pragma warning disable IL2070
+#pragma warning disable IL2067, IL2070, IL2072
     protected virtual IDiffHandler CreateHandler(Type sourceType, Type diffType)
     {
         var tHandler = DiffHandlerResolver.TryGet(diffType);
@@ -68,7 +68,7 @@ public class DiffEngine(
         if (tHandler == null && diffType.IsAssignableTo(typeof(RecordDiff)))
             tHandler = typeof(RecordDiffHandler<,>).MakeGenericType(sourceType, diffType);
         tHandler ??= typeof(MissingDiffHandler<,>).MakeGenericType(sourceType, diffType);
-        return (IDiffHandler) Services.Activate(tHandler);
+        return (IDiffHandler)Services.Activate(tHandler);
     }
-#pragma warning restore IL2070
+#pragma warning restore IL2067, IL2070, IL2072
 }

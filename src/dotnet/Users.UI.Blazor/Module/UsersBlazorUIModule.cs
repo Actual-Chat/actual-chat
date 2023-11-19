@@ -4,6 +4,8 @@ using ActualChat.Users.UI.Blazor.Components;
 
 namespace ActualChat.Users.UI.Blazor.Module;
 
+#pragma warning disable IL2026 // Fine for modules
+
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public partial class UsersBlazorUIModule : HostModule, IBlazorUIModule
 {

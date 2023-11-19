@@ -1,10 +1,14 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Diagnostics.CodeAnalysis;
+using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework.Operations;
 using Stl.Multitenancy;
 
 namespace ActualChat.Db;
 
-public class DbOperationLog<TDbContext>(IServiceProvider services) : DbOperationLog<TDbContext, DbOperation>(services)
+public class DbOperationLog<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TDbContext>
+    (IServiceProvider services)
+    : DbOperationLog<TDbContext, DbOperation>(services)
     where TDbContext : DbContext
 {
     public override async Task<int> Trim(Tenant tenant, DateTime minCommitTime, int maxCount, CancellationToken cancellationToken)
@@ -28,4 +32,3 @@ public class DbOperationLog<TDbContext>(IServiceProvider services) : DbOperation
         return operationsCount;
     }
 }
-

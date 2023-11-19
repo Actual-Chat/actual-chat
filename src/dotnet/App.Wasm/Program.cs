@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
+using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 // ReSharper disable once RedundantUsingDirective
@@ -14,9 +15,12 @@ using OpenTelemetry.Trace;
 using Sentry;
 using Stl.CommandR.Interception;
 using Stl.Fusion.Client.Interception;
+using Stl.Fusion.Client.Internal;
 using Stl.Fusion.Interception;
+using Stl.Interception;
 using Stl.Interception.Interceptors;
 using Stl.Interception.Internal;
+using Stl.Rpc;
 using Stl.Rpc.Infrastructure;
 using Tracer = ActualChat.Performance.Tracer;
 
@@ -29,11 +33,46 @@ public static class Program
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InterfaceProxy))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeViewInterceptor))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandServiceInterceptor))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputeServiceInterceptor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypedFactoryInterceptor))]
+    // Stl.Rpc
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcClientInterceptor))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcRoutingInterceptor))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcInboundContext))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcInboundContextFactory))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcOutboundContext))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcInboundCall<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcOutboundCall<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Result<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ResultBox<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,,,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,,,,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,,,,,>))]
+    // CommandR
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandContext<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MethodCommandHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InterfaceCommandHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandServiceInterceptor))]
+    // Fusion
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputeMethodFunction<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcInboundComputeCall<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcOutboundComputeCall<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputeServiceInterceptor))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ClientComputeServiceInterceptor))]
+    // Diffs
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CloneDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NullableDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
     public static async Task Main(string[] args)
     {
 #if DEBUG

@@ -11,7 +11,6 @@ using Stl.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Chat.Module;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class ChatServiceModule : HostModule<ChatSettings>
 {
     public ChatServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
@@ -96,7 +95,6 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
         // Links
         fusion.AddService<ILinkPreviews, LinkPreviews>();
 #pragma warning restore CS0618 // Type or member is obsolete
-
 
         // ContentSaver
         services.AddResponseCaching();

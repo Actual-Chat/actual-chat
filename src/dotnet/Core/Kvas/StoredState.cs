@@ -1,13 +1,18 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Pooling;
 
 namespace ActualChat.Kvas;
 
-public interface IStoredState<T> : IMutableState<T>
+public interface IStoredState<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    : IMutableState<T>
 {
     Task WhenRead { get; }
 }
 
-public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
+public sealed class StoredState<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    : MutableState<T>, IStoredState<T>
 {
     private readonly TaskCompletionSource _whenReadSource = TaskCompletionSourceExt.New();
 
@@ -116,7 +121,9 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
     }
 }
 
-public class StoredStateLease<T> : MutableStateLease<T, IStoredState<T>>, IStoredState<T>
+public class StoredStateLease<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    : MutableStateLease<T, IStoredState<T>>, IStoredState<T>
 {
     public Task WhenRead => State.WhenRead;
 

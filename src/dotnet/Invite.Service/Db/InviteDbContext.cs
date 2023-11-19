@@ -15,8 +15,6 @@ public class InviteDbContext : DbContextBase
 
     public InviteDbContext(DbContextOptions<InviteDbContext> options) : base(options) { }
 
-#pragma warning disable IL2026
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(InviteDbContext).Assembly).UseSnakeCaseNaming();
-#pragma warning restore IL2026
 }

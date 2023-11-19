@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Pooling;
 
 namespace ActualChat.Kvas;
@@ -13,7 +14,9 @@ public interface ISyncedState : IMutableState, IDisposable
     Task WhenWritten(CancellationToken cancellationToken = default);
 }
 
-public interface ISyncedState<T> : IMutableState<T>, ISyncedState
+public interface ISyncedState<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    : IMutableState<T>, ISyncedState
 {
     new IComputedState<T> ReadState { get; }
 }
@@ -27,7 +30,9 @@ public static class SyncedState
         => OriginPrefix + Interlocked.Increment(ref _lastId).Format();
 }
 
-public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
+public sealed class SyncedState<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    : MutableState<T>, ISyncedState<T>
 {
     private readonly CancellationTokenSource _disposeTokenSource;
     private readonly TaskCompletionSource _whenFirstTimeReadSource = TaskCompletionSourceExt.New();
@@ -281,7 +286,9 @@ public sealed class SyncedState<T> : MutableState<T>, ISyncedState<T>
     }
 }
 
-public class SyncedStateLease<T> : MutableStateLease<T, ISyncedState<T>>, ISyncedState<T>
+public class SyncedStateLease<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>
+    : MutableStateLease<T, ISyncedState<T>>, ISyncedState<T>
     where T: IHasOrigin
 {
     public CancellationToken DisposeToken => State.DisposeToken;

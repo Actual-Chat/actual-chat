@@ -49,9 +49,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
             logging.ClearProviders();
             logging.ConfigureServerFilters(Env.EnvironmentName);
             logging.AddConsole();
-#pragma warning disable IL2026
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
-#pragma warning restore IL2026
             if (AppLogging.IsDevLogRequested && appKind.IsServer() && !isTested) { // This excludes TestServer
                 var serilog = new LoggerConfiguration()
                     .MinimumLevel.Is(LogEventLevel.Verbose)

@@ -5,11 +5,8 @@ using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Users.Module;
 
-public class UsersDbInitializer : DbInitializer<UsersDbContext>
+public class UsersDbInitializer(IServiceProvider services) : DbInitializer<UsersDbContext>(services)
 {
-    public UsersDbInitializer(IServiceProvider services) : base(services)
-    { }
-
     public override async Task InitializeData(CancellationToken cancellationToken)
     {
         await EnsureAdminExists(cancellationToken).ConfigureAwait(false);

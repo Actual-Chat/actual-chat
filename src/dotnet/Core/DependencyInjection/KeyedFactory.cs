@@ -1,6 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.DependencyInjection;
 
-public class KeyedFactory<TService, TKey>(
+public class KeyedFactory<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey>(
     IServiceProvider services,
     Func<IServiceProvider, TKey, TService>? factory = null
     ) : IHasServices
@@ -12,7 +16,8 @@ public class KeyedFactory<TService, TKey>(
 
     public KeyedFactory<TService, TKey> ToGeneric()
         => this;
-    public KeyedFactory<TToService, TKey> ToGeneric<TToService>()
+    public KeyedFactory<TToService, TKey> ToGeneric<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TToService>()
         where TToService : class
         => new CastingKeyedFactory<TToService,TKey,TService>(this);
 
@@ -22,7 +27,10 @@ public class KeyedFactory<TService, TKey>(
         => (TService)typeof(TService).CreateInstance(services, key);
 }
 
-public sealed class KeyedFactory<TService, TKey, TImplementation>(
+public sealed class KeyedFactory<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey,
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>(
     IServiceProvider services,
     Func<IServiceProvider, TKey, TImplementation>? factory
     ) : KeyedFactory<TService, TKey>(services, factory ?? DefaultFactory)
