@@ -120,13 +120,15 @@ public class AppNonScopedServiceStarter
         Warmup(new UserBubbleSettings() { ReadBubbles = new ApiArray<string>(new [] {"test"})});
         Warmup(new ChatListSettings());
         Warmup(new ApiArray<ActiveChat>(new[] { new ActiveChat(chatId)}));
+#pragma warning restore CA1861
 
         static void Warmup<T>(T instance) {
+#pragma warning disable IL2026
             var s = ByteSerializer.Default;
             using var buffer = s.Write(instance);
             s.Read<T>(buffer.WrittenMemory);
+#pragma warning restore IL2026
         }
-#pragma warning restore CA1861
     }
 
     private static void WarmupNewtonsoftJsonSerializer()
@@ -160,9 +162,11 @@ public class AppNonScopedServiceStarter
         });
 
         static void Warmup<T>(T instance) {
+#pragma warning disable IL2026
             var s = SystemJsonSerializer.Default;
             var json = s.Write(instance);
             s.Read<T>(json);
+#pragma warning restore IL2026
         }
     }
 }

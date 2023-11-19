@@ -1,7 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Kvas;
 using ActualChat.Users;
 using Stl.Fusion.Client.Caching;
 using Stl.Fusion.Interception;
+using Stl.Internal;
 using Stl.Rpc;
 using Stl.Rpc.Caching;
 
@@ -38,6 +40,7 @@ public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCach
         ForceFlushFor = new HashSet<(Symbol, Symbol)>(Settings.ForceFlushFor); // Read-only copy
     }
 
+    [RequiresUnreferencedCode(UnreferencedCode.Serialization)]
     public async ValueTask<(T Value, TextOrBytes Data)?> Get<T>(ComputeMethodInput input, RpcCacheKey key, CancellationToken cancellationToken)
     {
         var serviceDef = Hub.ServiceRegistry.Get(key.Service);
