@@ -96,9 +96,9 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     {
         var isUpdated = false;
         var becameVisible = false;
- #pragma warning disable MA0064
+#pragma warning disable MA0064
         lock (Lock) {
- #pragma warning restore MA0064
+#pragma warning restore MA0064
             if (screenSize is { } vScreenSize && _screenSize.Value != vScreenSize) {
                 _screenSize.Value = vScreenSize;
                 isUpdated = true;

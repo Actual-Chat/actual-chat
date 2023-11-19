@@ -18,9 +18,9 @@ public class BannerUI(IServiceProvider serviceProvider)
         where TBannerModel : notnull
     {
         var componentType = ViewResolver.Get(bannerModel.GetType());
- #pragma warning disable IL2072
+#pragma warning disable IL2072
         var banner = Create(bannerModel, componentType);
- #pragma warning restore IL2072
+#pragma warning restore IL2072
 
         lock (_lock)
             _banners.Value = _banners.Value.Add(banner);

@@ -9,6 +9,7 @@ public class KvasSerializer : ByteSerializerBase
     private static readonly byte[] ByteFormatHeader = { ByteFormatMarker };
 
     public static IByteSerializer Default { get; set; } = new KvasSerializer();
+#pragma warning disable IL2026
     public static readonly byte[] SerializedTrue = Default.Write(true).WrittenMemory.ToArray();
 
     public IByteSerializer ByteSerializer { get; init; } = MemoryPackByteSerializer.Default;

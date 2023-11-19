@@ -56,7 +56,7 @@ public class Form : EditForm
         // If _editContext changes, tear down and recreate all descendants.
         // This is so we can safely use the IsFixed optimization on CascadingValue,
         // optimizing for the common case where _editContext never changes.
- #pragma warning disable MA0123
+#pragma warning disable MA0123
         builder.OpenRegion(editContext.GetHashCode());
 
         var i = 0;
@@ -72,6 +72,6 @@ public class Form : EditForm
         builder.CloseElement();
 
         builder.CloseRegion();
- #pragma warning restore MA0123
+#pragma warning restore MA0123
     }
 }

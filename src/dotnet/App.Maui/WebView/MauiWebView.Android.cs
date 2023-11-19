@@ -59,9 +59,9 @@ public partial class MauiWebView
         settings.MixedContentMode = MixedContentHandling.AlwaysAllow;
         settings.CacheMode = CacheModes.Default;
         // settings.OffscreenPreRaster = true;
- #pragma warning disable CS0618
+#pragma warning disable CS0618
         settings.EnableSmoothTransition();
- #pragma warning restore CS0618
+#pragma warning restore CS0618
 
         // settings.SetGeolocationEnabled(true);
         // settings.SetGeolocationDatabasePath(webView.Context?.FilesDir?.Path);

@@ -12,9 +12,9 @@ public sealed class BoolOption : IEquatable<BoolOption>
         }
         set {
             var v = value is { } b ? b ? 1 : -1 : 0;
- #pragma warning disable CS0420
+#pragma warning disable CS0420
             Interlocked.Exchange(ref _value, v);
- #pragma warning restore CS0420
+#pragma warning restore CS0420
         }
     }
 

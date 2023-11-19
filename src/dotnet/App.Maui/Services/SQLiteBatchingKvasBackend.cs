@@ -110,9 +110,9 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
     }
 
     private void ReleaseConnection(SQLiteConnection connection)
- #pragma warning disable VSTHRD002
+#pragma warning disable VSTHRD002
         => _whenConnectionPoolReady.Result!.Return(connection);
- #pragma warning restore VSTHRD002
+#pragma warning restore VSTHRD002
 
     // Nested types
 

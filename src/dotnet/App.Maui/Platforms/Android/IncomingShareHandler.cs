@@ -38,9 +38,9 @@ public class IncomingShareHandler
             else if (hasExtraStream) {
                 var stream = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
                     ? intent.GetParcelableExtra(Intent.ExtraStream, Class.FromType(typeof(Uri)))
- #pragma warning disable CA1422
+#pragma warning disable CA1422
                     : intent.GetParcelableExtra(Intent.ExtraStream);
- #pragma warning restore CA1422
+#pragma warning restore CA1422
                 if (stream is Uri uri)
                     _ = HandleFilesSend(mimeType, new[] { uri });
                 else
@@ -53,9 +53,9 @@ public class IncomingShareHandler
             if (hasExtraStream) {
                 var streams = Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu
                     ? intent.GetParcelableArrayListExtra(Intent.ExtraStream, Class.FromType(typeof(Uri)))
- #pragma warning disable CA1422
+#pragma warning disable CA1422
                     : intent.GetParcelableArrayListExtra(Intent.ExtraStream);
- #pragma warning restore CA1422
+#pragma warning restore CA1422
                 if (streams == null)
                     Log.LogWarning("No file streams provided");
                 else {

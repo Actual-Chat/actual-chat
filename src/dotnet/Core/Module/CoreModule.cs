@@ -75,9 +75,9 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // ObjectPoolProvider & PooledValueTaskSourceFactory
         services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
- #pragma warning disable CS0618
+#pragma warning disable CS0618
             ? new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
- #pragma warning restore CS0618
+#pragma warning restore CS0618
             : new DefaultObjectPoolProvider());
 
         // Fusion

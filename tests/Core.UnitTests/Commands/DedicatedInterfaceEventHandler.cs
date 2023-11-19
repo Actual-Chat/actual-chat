@@ -12,10 +12,10 @@ public class DedicatedInterfaceEventHandler : ICommandHandler<TestEvent2>
         // if (Computed.IsInvalidating())
         return Task.CompletedTask;
 
- #pragma warning disable CS0162
+#pragma warning disable CS0162
         return Task.CompletedTask;
         TestService.ProcessedEvents.Enqueue(eventCommand);
         return Task.CompletedTask;
- #pragma warning restore CS0162
+#pragma warning restore CS0162
     }
 }

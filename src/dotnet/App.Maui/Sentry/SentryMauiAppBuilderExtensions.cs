@@ -48,10 +48,10 @@ public static class SentryMauiAppBuilderExtensions
     {
         var services = builder.Services;
         try {
- #pragma warning disable IL2026
+#pragma warning disable IL2026
             services.Configure<SentryMauiOptions>(options =>
                 builder.Configuration.GetSection("Sentry").Bind(options));
- #pragma warning restore IL2026
+#pragma warning restore IL2026
 
             if (configureOptions != null)
                 services.Configure(configureOptions);

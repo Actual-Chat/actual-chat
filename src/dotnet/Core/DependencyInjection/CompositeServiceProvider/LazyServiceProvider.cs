@@ -95,10 +95,10 @@ public sealed class LazyServiceProvider(
                     nameof(LazyServiceProvider) + ": becoming non-lazy to resolve {RequestedType}",
                     requestedType);
 
- #pragma warning disable VSTHRD002
+#pragma warning disable VSTHRD002
             // Block here on purpose until we get the result
             var lazyServices = WhenLazyServicesReady.Result;
- #pragma warning restore VSTHRD002
+#pragma warning restore VSTHRD002
             OnLazyServicesReady?.Invoke(lazyServices);
             return _lazyServices = lazyServices;
         }

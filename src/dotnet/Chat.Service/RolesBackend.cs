@@ -221,7 +221,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 .Select(i => i.Value)
                 .ToList();
             if (removedAuthorIds.Count != 0) {
- #pragma warning disable MA0002
+#pragma warning disable MA0002
                 var dbAuthorRoles = await dbContext.AuthorRoles
                     .Where(ar => ar.DbRoleId == roleId && removedAuthorIds.Contains(ar.DbAuthorId))
                     .ToListAsync(cancellationToken)
@@ -236,7 +236,7 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                         throw StandardError.Constraint("There must be at least one user in Owners role.");
                 }
                 dbContext.RemoveRange(dbAuthorRoles);
- #pragma warning restore MA0002
+#pragma warning restore MA0002
             }
         }
 

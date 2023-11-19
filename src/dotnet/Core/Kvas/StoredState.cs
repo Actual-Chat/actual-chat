@@ -20,11 +20,11 @@ public sealed class StoredState<T> : MutableState<T>, IStoredState<T>
         : base(options, services, false)
     {
         Settings = options;
- #pragma warning disable MA0056
+#pragma warning disable MA0056
         // ReSharper disable once VirtualMemberCallInConstructor
         if (initialize)
             Initialize(options);
- #pragma warning restore MA0056
+#pragma warning restore MA0056
     }
 
     protected override StateBoundComputed<T> CreateComputed()

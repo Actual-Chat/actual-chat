@@ -48,8 +48,7 @@ public sealed partial record AccountFull(
 
     // Deserialization handlers
 
-    #pragma warning disable CS0618
-
+#pragma warning disable CS0618
     private static readonly Action<AccountFull, Phone> _phoneSetter = typeof(AccountFull)
         .GetProperty(nameof(Phone))!
         .GetSetter<AccountFull, Phone>();
@@ -70,6 +69,5 @@ public sealed partial record AccountFull(
         var phone = new Phone(legacyPhone, ParseOrNone.Option);
         _phoneSetter.Invoke(this, phone);
     }
-
-    #pragma warning restore CS0618
+#pragma warning restore CS0618
 }

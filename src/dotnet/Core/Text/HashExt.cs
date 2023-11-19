@@ -8,9 +8,9 @@ public static class HashExt
     public static string GetSHA1HashCode(this string input, HashEncoding encoding = HashEncoding.Base16)
     {
         var inputBytes = Encoding.UTF8.GetBytes(input);
- #pragma warning disable CA5350
+#pragma warning disable CA5350
         var hashBytes = System.Security.Cryptography.SHA1.HashData(inputBytes);
- #pragma warning restore CA5350
+#pragma warning restore CA5350
         return hashBytes.EncodeHash(encoding);
     }
 

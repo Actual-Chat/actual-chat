@@ -92,10 +92,10 @@ public sealed class ChatServiceModule : HostModule<ChatSettings>
         fusion.AddService<IReactions, Reactions>();
         fusion.AddService<IReactionsBackend, ReactionsBackend>();
 
- #pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
         // Links
         fusion.AddService<ILinkPreviews, LinkPreviews>();
- #pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
 
 
         // ContentSaver

@@ -65,9 +65,9 @@ public sealed class CompositeServiceProvider :
 
     public IServiceScope CreateScope()
     {
- #pragma warning disable CA2000
+#pragma warning disable CA2000
         var nonLazyServices = _nonLazyServices.CreateScope().ServiceProvider;
- #pragma warning restore CA2000
+#pragma warning restore CA2000
         var whenLazyServicesReady = _lazyServices.CreateScopedProvider();
         return new CompositeServiceProvider(nonLazyServices, whenLazyServicesReady, _lazyServices.LazyServiceFilter);
     }

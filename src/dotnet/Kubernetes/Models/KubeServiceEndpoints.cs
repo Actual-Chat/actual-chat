@@ -46,7 +46,7 @@ public record KubeServiceEndpoints(
         foreach (var port in Ports.Skip(1))
             builder.Append(", ").Append(port);
         builder.Append(']');
- #pragma warning restore MA0011
+#pragma warning restore MA0011
         return true;
     }
 

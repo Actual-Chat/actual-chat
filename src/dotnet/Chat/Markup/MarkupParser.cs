@@ -7,6 +7,8 @@ using static ActualChat.Chat.ParserExt;
 
 namespace ActualChat.Chat;
 
+#pragma warning disable CA1823 // Unused field ...
+
 public partial class MarkupParser : IMarkupParser
 {
     public bool UseUnparsedTextMarkup { get; init; }
@@ -32,7 +34,6 @@ public partial class MarkupParser : IMarkupParser
 
     // Character classes
 
-    #pragma warning disable CA1823 // Unused field ...
 
     private static readonly Parser<char, char> WhitespaceChar =
         Token(c => c is not ('\r' or '\n' or '\u2028') && char.IsWhiteSpace(c)).Labelled("whitespace");
