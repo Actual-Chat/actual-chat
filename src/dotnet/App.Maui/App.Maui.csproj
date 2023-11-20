@@ -84,13 +84,11 @@
   </PropertyGroup>
 
   <!-- Project references -->
-
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
   </ItemGroup>
 
   <!-- Package references -->
-
   <ItemGroup>
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
     <PackageReference Include="banditoth.MAUI.DeviceId" />
@@ -112,7 +110,6 @@
   </ItemGroup>
 
   <!-- Platform-specific package references -->
-
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
     <PackageReference Include="Xamarin.AndroidX.Core" />
     <PackageReference Include="Xamarin.AndroidX.Collection" />
@@ -150,7 +147,6 @@
   -->
 
   <!-- Common iOS and Android build properties -->
-
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))">
     <!-- Trimmer settings -->
     <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
@@ -162,6 +158,7 @@
 
   <!-- Android build properties -->
 
+  <!-- Android: Signing & framework trimming -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
     <AndroidKeyStore>True</AndroidKeyStore>
     <AndroidSigningKeyStore>myapp.keystore</AndroidSigningKeyStore>
@@ -169,41 +166,37 @@
     <AndroidSigningKeyPass>password</AndroidSigningKeyPass>
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
-    <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
-    <AndroidUseInterpreter>true</AndroidUseInterpreter>
+    <!-- Android uses managed HTTP Handler, otherwise LLVM doesn't work -->
     <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType>
     <!-- This instructs trimmer to remove managed HTTP handler - don't use it with HttpClientHandler  -->
     <!--
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
     -->
   </PropertyGroup>
-
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <AndroidDexTool>d8</AndroidDexTool>
-    <!-- Doesn't work with .NET 8!
-    <AndroidLinkTool>r8</AndroidLinkTool>
-    -->
-    <!-- Trimming -->
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
-    <!-- <DebuggerSupport>false</DebuggerSupport> -->
-  </PropertyGroup>
-
   <ItemGroup>
     <ProguardConfiguration Include="proguard.cfg" />
   </ItemGroup>
 
-  <!--
-  Android AOT & perf-related settings
-  -->
+  <!-- Android: Debug configuration -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
+    <AndroidUseInterpreter>true</AndroidUseInterpreter>
+  </PropertyGroup>
+
+  <!-- Android: Release configuration -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+    <!-- Trimming & AOT -->
+    <AndroidDexTool>d8</AndroidDexTool>
+    <!-- <AndroidLinkTool>r8</AndroidLinkTool> --> <!-- Doesn't work with .NET 8! -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
     <RunAOTCompilation>true</RunAOTCompilation>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
     <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
+    <!-- <DebuggerSupport>false</DebuggerSupport> --> <!-- When false, it also removes symbols -->
+    
+    <!-- Runtime -->
     <AndroidUseInterpreter>false</AndroidUseInterpreter>
     <!-- Doesn't seem to give any speedup:
     <AndroidGenerateJniMarshalMethods>True</AndroidGenerateJniMarshalMethods>
@@ -215,6 +208,7 @@
     <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
   </PropertyGroup>
 
+  <!-- Android: Profile-guided AOT profiles -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <!--
     These two profiles are different, we can include none, any of them, or both.
@@ -231,8 +225,7 @@
     <AndroidMibcProfile Include="android.mibc" />
   </ItemGroup>
 
-  <!-- Android AOT profiling -->
-
+  <!-- Android: AOT profiling mode -->
   <PropertyGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <UseInterpreter>False</UseInterpreter>
     <AndroidUseInterpreter>false</AndroidUseInterpreter>
@@ -247,6 +240,7 @@
 
   <!-- iOS build properties -->
 
+  <!-- iOS: Common properties -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
@@ -256,6 +250,7 @@
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
+  <!-- iOS: Debug configuration -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net8.0-ios|AnyCPU'">
     <CreatePackage>false</CreatePackage>
     <CodesignProvision>VS: chat.actual.dev.app Development</CodesignProvision>
@@ -264,6 +259,7 @@
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
+  <!-- iOS: Release configuration -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0-ios|AnyCPU'">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
     <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">App Store Dev</CodesignProvision>
