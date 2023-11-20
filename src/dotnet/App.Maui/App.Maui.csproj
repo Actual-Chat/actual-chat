@@ -228,9 +228,7 @@
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-exc.aotprofile" />
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-inc.aotprofile" />
     -->
-    <!--
     <AndroidMibcProfile Include="android.mibc" />
-    -->
   </ItemGroup>
 
   <!-- Android AOT profiling -->
