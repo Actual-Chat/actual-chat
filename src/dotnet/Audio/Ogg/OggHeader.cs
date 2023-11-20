@@ -3,11 +3,11 @@
 [StructLayout(LayoutKind.Sequential)]
 public struct OggHeader
 {
-    public const uint CapturePattern = 0x53_67_67_4F;
+    public const uint CapturePattern = 0x4F_67_67_53;
     public byte StreamStructureVersion;
     public OggHeaderTypeFlag HeaderType;
     public ulong GranulePosition;
-    public int StreamSerialNumber;
+    public uint StreamSerialNumber;
     public int PageSequenceNumber;
     public uint PageChecksum;
     public byte PageSegmentCount;
@@ -18,7 +18,7 @@ public struct OggHeader
         + sizeof(byte)
         + sizeof(OggHeaderTypeFlag)
         + sizeof(ulong)
-        + sizeof(int)
+        + sizeof(uint)
         + sizeof(int)
         + sizeof(uint)
         + sizeof(byte)

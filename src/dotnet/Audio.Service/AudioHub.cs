@@ -79,6 +79,7 @@ public class AudioHub(IServiceProvider services) : Hub
             .Select((packet, i) => new AudioFrame {
                 Data = packet,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
+                Duration = TimeSpan.FromMilliseconds(20),
             });
 
         var trimDuration = Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5);

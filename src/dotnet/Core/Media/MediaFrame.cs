@@ -12,7 +12,7 @@ public abstract partial class MediaFrame
     [DataMember(Order = 1), MemoryPackOrder(1)]
     public abstract TimeSpan Offset { get; init; }
     [DataMember(Order = 2), MemoryPackOrder(2)]
-    public abstract TimeSpan Duration { get; }
+    public abstract TimeSpan Duration { get; init; }
     [DataMember(Order = 3), MemoryPackOrder(3)]
     public abstract bool IsKeyFrame { get; }
 }

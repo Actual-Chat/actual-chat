@@ -4,8 +4,14 @@ using ActualChat.Spans;
 
 namespace ActualChat.Audio;
 
-public class OggOpusStreamConverter : IAudioStreamConverter
+public class OggOpusStreamConverter(OggOpusStreamConverter.Options? options = null) : IAudioStreamConverter
 {
+    public record Options
+    {
+        public uint StreamSerialNumber { get; init; } = 0;
+        public TimeSpan PageDuration { get; init; } = TimeSpan.FromMilliseconds(200);
+    }
+
     public Task<AudioSource> FromByteStream(IAsyncEnumerable<byte[]> byteStream, CancellationToken cancellationToken = default)
         => throw new NotSupportedException();
 
@@ -13,12 +19,15 @@ public class OggOpusStreamConverter : IAudioStreamConverter
         AudioSource source,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        using var bufferLease = MemoryPool<byte>.Shared.Rent(4 * 1024);
+        using var bufferLease = MemoryPool<byte>.Shared.Rent(8 * 1024);
         var buffer = bufferLease.Memory;
-        var position = 0;
-        var state = new OggOpusWriter.State();
+        var state = new OggOpusWriter.State {
+            SerialNumber = options?.StreamSerialNumber == 0
+                ? (uint)Random.Shared.Next()
+                : options?.StreamSerialNumber ?? (uint)Random.Shared.Next(),
+        };
 
-        position = WriteHead(new OggOpusWriter(state, buffer.Span),
+        var position = WriteHead(new OggOpusWriter(state, buffer.Span),
             new OpusHead {
                 Version = 1,
                 OutputChannelCount = 1,
@@ -27,11 +36,14 @@ public class OggOpusStreamConverter : IAudioStreamConverter
                 OutputGain = 0,
                 ChannelMapping = 0,
             });
-        position = WriteTags(new OggOpusWriter(state, buffer.Span[position..]),
-            new OpusTags());
-        // chunks 100ms = 20ms * 5
-        await foreach (var audioFrames in source.GetFrames(cancellationToken).Chunk(5, cancellationToken)) {
-            position = WriteFrame(new OggOpusWriter(state, buffer.Span[position..]), audioFrames);
+        position += WriteTags(new OggOpusWriter(state, buffer.Span[position..]), new OpusTags());
+        var pageDuration = options?.PageDuration.TotalMilliseconds ?? 1000;
+        var frameChunks = source
+            .GetFrames(cancellationToken)
+            .WithHasNext(cancellationToken)
+            .ChunkWhile(list => list.Sum(t => t.Duration.Milliseconds) <= pageDuration, cancellationToken);
+        await foreach (var (audioFrames, hasNext) in frameChunks) {
+            position += WriteFrame(new OggOpusWriter(state, buffer.Span[position..]), audioFrames, hasNext);
             yield return (buffer.Span[..position].ToArray(), audioFrames[^1]);
 
             position = 0;
@@ -42,7 +54,7 @@ public class OggOpusStreamConverter : IAudioStreamConverter
         int WriteHead(OggOpusWriter writer, OpusHead opusHead)
         {
             if (!writer.Write(opusHead))
-                throw new InvalidOperationException("Error writing WebM stream. Buffer is too small.");
+                throw new InvalidOperationException("Error writing Ogg stream. Buffer is too small.");
 
             return writer.Position;
         }
@@ -50,15 +62,15 @@ public class OggOpusStreamConverter : IAudioStreamConverter
         int WriteTags(OggOpusWriter writer, OpusTags opusTags)
         {
             if (!writer.Write(opusTags))
-                throw new InvalidOperationException("Error writing WebM stream. Buffer is too small.");
+                throw new InvalidOperationException("Error writing Ogg stream. Buffer is too small.");
 
             return writer.Position;
         }
 
-        int WriteFrame(OggOpusWriter writer, IReadOnlyCollection<AudioFrame> audioFrames)
+        int WriteFrame(OggOpusWriter writer, IReadOnlyCollection<AudioFrame> audioFrames, bool hasNext)
         {
-            if (!writer.Write(audioFrames))
-                throw new InvalidOperationException("Error writing WebM stream. Buffer is too small.");
+            if (!writer.Write(audioFrames, hasNext))
+                throw new InvalidOperationException("Error writing Ogg stream. Buffer is too small.");
 
             return writer.Position;
         }

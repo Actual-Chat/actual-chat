@@ -33,6 +33,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
         var state = new WebMReader.State();
         var frameBuffer = new List<AudioFrame>();
         var readBuffer = ArrayBuffer<byte>.Lease(false, 32 * 1024);
+        var blockOffset = TimeSpan.Zero;
 
         // We're doing this fairly complex processing via tasks & channels only
         // because "async IAsyncEnumerable<..>" methods can't contain
@@ -55,6 +56,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
                         formatSource,
                         formatBlocks,
                         frameBuffer,
+                        ref blockOffset,
                         ref ebml,
                         ref segment,
                         ref clusterOffsetMs);
@@ -217,6 +219,7 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
         TaskCompletionSource<AudioFormat> formatTaskSource,
         List<byte[]> formatBlocks,
         List<AudioFrame> frames,
+        ref TimeSpan blockOffset,
         ref EBML? ebml,
         ref Segment? segment,
         ref int clusterOffsetMs)
@@ -262,10 +265,17 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
                 if (block is SimpleBlock { IsKeyFrame: true } simpleBlock) {
                     var frameOffset = TimeSpan.FromTicks( // To avoid floating-point errors
                         TimeSpan.TicksPerMillisecond * (clusterOffsetMs + block.TimeCode));
+                    var duration = frameOffset - blockOffset;
+                    if (duration == TimeSpan.Zero)
+                        duration = simpleBlock.Data!.Length < 100
+                            ? TimeSpan.FromMilliseconds(20)
+                            : TimeSpan.FromMilliseconds(60);
                     var mediaFrame = new AudioFrame {
-                            Offset = frameOffset,
                             Data = simpleBlock.Data!,
+                            Offset = frameOffset,
+                            Duration = duration,
                         };
+                    blockOffset = frameOffset;
                     frames.Add(mediaFrame);
                 }
                 break;

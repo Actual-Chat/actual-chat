@@ -145,24 +145,30 @@ public ref struct SpanWriter
         return UpdatePosition(numSize, position);
     }
 
-    public int Write(long num, int? position = null)
+    public int Write(long num, int? position = null, bool isLittleEndian = false)
     {
         const int numSize = sizeof(long);
         var start = position ?? Position;
         var end = start + numSize;
         var span = Span[start..end];
-        BinaryPrimitives.WriteInt64BigEndian(span, num);
+        if (isLittleEndian)
+            BinaryPrimitives.WriteInt64LittleEndian(span, num);
+        else
+            BinaryPrimitives.WriteInt64BigEndian(span, num);
 
         return UpdatePosition(numSize, position);
     }
 
-    public int Write(ulong num, int? position = null)
+    public int Write(ulong num, int? position = null, bool isLittleEndian = false)
     {
         const int numSize = sizeof(ulong);
         var start = position ?? Position;
         var end = start + numSize;
         var span = Span[start..end];
-        BinaryPrimitives.WriteUInt64BigEndian(span, num);
+        if (isLittleEndian)
+            BinaryPrimitives.WriteUInt64LittleEndian(span, num);
+        else
+            BinaryPrimitives.WriteUInt64BigEndian(span, num);
 
         return UpdatePosition(numSize, position);
     }

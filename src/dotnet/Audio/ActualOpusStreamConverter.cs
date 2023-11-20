@@ -82,6 +82,7 @@ public class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAu
                                 frames1.Add(new AudioFrame {
                                     Data = packet,
                                     Offset = TimeSpan.FromMilliseconds(offsetMs),
+                                    Duration = TimeSpan.FromMilliseconds(20),
                                 });
                         }
                     }

@@ -51,8 +51,9 @@ public static class AudioSourceExt
         await foreach (var frame in second.ConfigureAwait(false)) {
             var offset = frame.Offset + nextOffset;
             yield return new AudioFrame {
-                Offset = offset,
                 Data = frame.Data,
+                Offset = offset,
+                Duration = frame.Duration,
             };
         }
     }
@@ -73,8 +74,9 @@ public static class AudioSourceExt
                 yield break;
 
             yield return new AudioFrame {
-                Offset = offset,
                 Data = frame.Data,
+                Offset = offset,
+                Duration = frame.Duration,
             };
         }
     }
