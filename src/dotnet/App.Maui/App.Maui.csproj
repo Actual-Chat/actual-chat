@@ -196,6 +196,7 @@
     
     <!-- Runtime -->
     <AndroidUseInterpreter>false</AndroidUseInterpreter>
+    <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
     <!-- Doesn't seem to give any speedup:
     <AndroidGenerateJniMarshalMethods>True</AndroidGenerateJniMarshalMethods>
     -->
@@ -203,7 +204,6 @@
     <!-- When AndroidEnablePreloadAssemblies == true, it lazy loads non-AOT code -->
     <!-- false: -100ms or so to startup time -->
     <AndroidAotEnableLazyLoad>false</AndroidAotEnableLazyLoad>
-    <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
   </PropertyGroup>
 
   <!-- Android: Profile-guided AOT profiles -->
