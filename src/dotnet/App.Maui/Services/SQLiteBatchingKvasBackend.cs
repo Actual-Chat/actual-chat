@@ -1,10 +1,7 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using ActualChat.Kvas;
 using SQLite;
-using Stl.Concurrency;
 using Stl.IO;
-using Stl.Pooling;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -20,8 +17,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         // Assume each connection is never used concurrently
         SQLiteOpenFlags.NoMutex;
 
-    private readonly Task<ConcurrentPool<SQLiteConnection>?> _whenConnectionPoolReady;
-    private readonly FilePath _dbPath;
+    private readonly SimpleConcurrentPool<SQLiteConnection>? _connectionPool;
     private ILogger? _log;
 
     private IServiceProvider Services { get; }
@@ -29,55 +25,59 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
     public SQLiteBatchingKvasBackend(FilePath dbPath, string version, IServiceProvider services)
     {
-        _dbPath = dbPath;
         Services = services;
-        _whenConnectionPoolReady = Task.Run(() => Initialize(dbPath, version));
+        _connectionPool = Initialize(dbPath, version);
     }
 
-    public async ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
+    public ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
         var result = new byte[]?[keys.Length];
-        using var lease = await AcquireConnection().ConfigureAwait(false);
-        if (!lease.IsValid(out var connection))
-            return result;
+        if (_connectionPool == null)
+            return ValueTask.FromResult(result);
 
+        using var lease = _connectionPool.Rent();
         for (var i = 0; i < keys.Length; i++) {
-            var dbItem = connection.Find<DbItem?>(keys[i]);
+            var dbItem = lease.Resource.Find<DbItem?>(keys[i]);
             result[i] = dbItem?.Value;
         }
-        return result;
+        return ValueTask.FromResult(result);
     }
 
-    public async Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
+    public Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
     {
-        using var lease = await AcquireConnection().ConfigureAwait(false);
-        if (!lease.IsValid(out var connection))
-            return;
+        if (_connectionPool == null)
+            return Task.CompletedTask;
 
+        using var lease = _connectionPool.Rent();
         foreach (var (key, value) in updates) {
             if (value == null)
-                connection.Delete<DbItem>(key);
+                lease.Resource.Delete<DbItem>(key);
             else
-                connection.InsertOrReplace(new DbItem { Key = key, Value = value });
+                lease.Resource.InsertOrReplace(new DbItem { Key = key, Value = value });
         }
+        return Task.CompletedTask;
     }
 
-    public async Task Clear(CancellationToken cancellationToken = default)
+    public Task Clear(CancellationToken cancellationToken = default)
     {
-        using var lease = await AcquireConnection().ConfigureAwait(false);
-        if (!lease.IsValid(out var connection))
-            return;
+        if (_connectionPool == null)
+            return Task.CompletedTask;
 
-        connection.DeleteAll<DbItem>();
+        using var lease = _connectionPool.Rent();
+        lease.Resource.DeleteAll<DbItem>();
+        return Task.CompletedTask;
     }
 
     // Private methods
 
-    private ConcurrentPool<SQLiteConnection>? Initialize(FilePath dbPath, string version)
+    private SimpleConcurrentPool<SQLiteConnection>? Initialize(FilePath dbPath, string version)
     {
         try {
             var connectionCount = HardwareInfo.ProcessorCount + 2;
-            var connections = new ConcurrentPool<SQLiteConnection>(() => new(_dbPath, OpenFlags), connectionCount, 1);
+            var connections = new SimpleConcurrentPool<SQLiteConnection>(
+                () => new(dbPath, OpenFlags),
+                static c => !c.IsInTransaction,
+                connectionCount);
             using var lease = connections.Rent();
             var connection = lease.Resource;
             connection.EnableWriteAheadLogging();
@@ -98,13 +98,6 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         }
     }
 
-    private async ValueTask<SQLiteConnectionLease> AcquireConnection()
-    {
-        var connections = await _whenConnectionPoolReady.ConfigureAwait(false);
-        return connections == null ? default
-            : new SQLiteConnectionLease(connections.Rent()!);
-    }
-
     // Nested types
 
     [Table("items")]
@@ -112,21 +105,5 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
     {
         [PrimaryKey] public string Key { get; set; } = "";
         public byte[] Value { get; set; } = null!;
-    }
-
-    // ReSharper disable once InconsistentNaming
-    private readonly struct SQLiteConnectionLease(ResourceLease<SQLiteConnection?> lease) : IDisposable
-    {
-        public bool IsValid([NotNullWhen(true)] out SQLiteConnection? connection)
-        {
-            connection = lease.Resource;
-            return connection != null;
-        }
-
-        public void Dispose()
-        {
-            if (lease.Resource is { IsInTransaction: false })
-                lease.Dispose();
-        }
     }
 }
