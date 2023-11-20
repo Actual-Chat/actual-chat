@@ -43,7 +43,7 @@ COPY build/ build/
 COPY run-build.cmd .
 
 RUN apt update \
-    && apt install -y --no-install-recommends python3 python3-pip \
+    && apt install -y --no-install-recommends python3 python3-pip libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 RUN ./run-build.cmd restore \
     && dotnet workload install wasm-tools
