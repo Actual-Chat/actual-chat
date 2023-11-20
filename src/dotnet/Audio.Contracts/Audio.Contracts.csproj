@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Audio\Audio.csproj" />
-    <ProjectReference Include="..\Redis\Redis.csproj" />
     <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
   </ItemGroup>
 

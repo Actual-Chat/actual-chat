@@ -4,8 +4,4 @@
     <ProjectReference Include="..\Audio\Audio.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MemoryPack" />
-  </ItemGroup>
-
 </Project>
