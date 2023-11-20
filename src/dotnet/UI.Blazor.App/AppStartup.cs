@@ -42,42 +42,6 @@ public static class AppStartup
 {
     // Libraries
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PriorityQueue<,>))] // MemoryPack uses it
-    // Stl.Interception
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InterfaceProxy))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypeViewInterceptor))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TypedFactoryInterceptor))]
-    // Stl.Rpc
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcClientInterceptor))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcRoutingInterceptor))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcInboundContext))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcInboundContextFactory))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcOutboundContext))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcInboundCall<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcOutboundCall<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Result<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ResultBox<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,,,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,,,,>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ArgumentList<,,,,,,,,,>))]
-    // CommandR
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandContext<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MethodCommandHandler<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InterfaceCommandHandler<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CommandServiceInterceptor))]
-    // Fusion
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputeMethodFunction<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcInboundComputeCall<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RpcOutboundComputeCall<>))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputeServiceInterceptor))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ClientComputeServiceInterceptor))]
     // Diffs
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CloneDiffHandler<>))]
@@ -85,6 +49,8 @@ public static class AppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
+    // Stl.Interception, Stl.Rpc, Stl.CommandR, Stl.Fusion dependencies are referenced
+    // by [DynamicDependency] on FusionBuilder from v6.7.2.
     public static void ConfigureServices(
         IServiceCollection services,
         AppKind appKind,
