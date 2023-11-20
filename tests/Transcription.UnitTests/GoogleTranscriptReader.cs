@@ -19,7 +19,7 @@ public static class GoogleTranscriptReader
     public static async IAsyncEnumerable<StreamingRecognizeResponse> ReadFromFile(string fileName)
     {
         await using var fileStream = File.OpenRead(fileName);
-        var responses = await JsonSerializer.DeserializeAsync<Response[]>(
+        var responses = await JsonSerializer.DeserializeAsync<IReadOnlyList<Response>>(
                 fileStream,
                 _serializerOptions)
             .ConfigureAwait(false);
@@ -68,28 +68,28 @@ public static class GoogleTranscriptReader
 
 
 #pragma warning disable CA2227
-public class Response
+public sealed class Response
 {
-    public ReadOnlyCollection<Result> Results { get; set; } = null!;
+    public IReadOnlyList<Result> Results { get; set; } = null!;
     public string? TotalBilledTime { get; set; }
 }
 
-public class Result
+public sealed class Result
 {
-    public ReadOnlyCollection<Alternative> Alternatives { get; set; } = null!;
+    public IReadOnlyList<Alternative> Alternatives { get; set; } = null!;
     public float Stability { get; set; }
     public bool IsFinal { get; set; }
     public string ResultEndOffset { get; set; } = null!;
 }
 
-public class Alternative
+public sealed class Alternative
 {
     public string Transcript { get; set; } = null!;
     public float Confidence { get; set; }
-    public ReadOnlyCollection<WordN>? Words { get; set; }
+    public IReadOnlyList<WordN>? Words { get; set; }
 }
 
-public class WordN
+public sealed class WordN
 {
     public string StartOffset { get; set; } = null!;
     public string EndOffset { get; set; } = null!;
