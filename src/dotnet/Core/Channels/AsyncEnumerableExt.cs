@@ -265,6 +265,70 @@ public static class AsyncEnumerableExt
             yield return buffer;
     }
 
+    public static async IAsyncEnumerable<List<TSource>> ChunkWhile<TSource>(
+        this IAsyncEnumerable<TSource> source,
+        Func<List<TSource>, bool> predicate,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        if (predicate == null)
+            throw new ArgumentNullException(nameof(predicate));
+
+        var buffer = new List<TSource>();
+        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            buffer.Add(item);
+            if (predicate(buffer))
+                continue;
+
+            yield return buffer;
+
+            buffer = new List<TSource>();
+        }
+
+        if (buffer.Count > 0)
+            yield return buffer;
+    }
+
+    public static async IAsyncEnumerable<ItemWithHasNext<List<TSource>>> ChunkWhile<TSource>(
+        this IAsyncEnumerable<ItemWithHasNext<TSource>> source,
+        Func<List<TSource>, bool> predicate,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        if (predicate == null)
+            throw new ArgumentNullException(nameof(predicate));
+
+        var buffer = new List<TSource>();
+        var hasNext = true;
+        await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            buffer.Add(item.Item);
+            hasNext &= item.HasNext;
+            if (predicate(buffer))
+                continue;
+
+            yield return new ItemWithHasNext<List<TSource>>(buffer, hasNext);
+
+            buffer = [];
+        }
+
+        if (buffer.Count > 0)
+            yield return new ItemWithHasNext<List<TSource>>(buffer, false);
+    }
+
+    public static async IAsyncEnumerable<ItemWithHasNext<TSource>> WithHasNext<TSource>(
+        this IAsyncEnumerable<TSource> source,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        await using var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        var hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+        if (!hasNext)
+            yield break;
+
+        do {
+            var item = enumerator.Current;
+            hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
+            yield return new ItemWithHasNext<TSource>(item, hasNext);
+        } while (hasNext);
+    }
+
     // Originally copied from there https://github.com/dotnet/reactive/blob/9f2a8090cea4bf931d4ac3ad071f4df147f4df50/Ix.NET/Source/System.Interactive.Async/System/Linq/Operators/Merge.cs#L20
     // fixed bugs and refactored later
 
@@ -518,6 +582,7 @@ public static class AsyncEnumerableExt
     {
         bufferDuration = bufferDuration.Positive();
         var buffer = new List<TSource>();
+        // ReSharper disable once NotDisposedResource
         var enumerator = source.GetAsyncEnumerator(cancellationToken);
         await using var _ = enumerator.ConfigureAwait(false);
         var moveNextTask = enumerator.MoveNextAsync();

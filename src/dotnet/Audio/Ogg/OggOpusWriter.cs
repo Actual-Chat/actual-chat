@@ -5,7 +5,7 @@ namespace ActualChat.Audio.Ogg;
 [StructLayout(LayoutKind.Sequential)]
 public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
 {
-    private const ulong SamplesPerFrame = 960;
+    private const ulong SamplesPerMillisecond = 48;
     private SpanWriter _spanWriter = new (span);
 
     public ReadOnlySpan<byte> Written => _spanWriter.Span[.._spanWriter.Position];
@@ -13,7 +13,6 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
 
     public bool Write(OpusHead opusHead)
     {
-        state.SerialNumber = Random.Shared.Next();
         var header = new OggHeader {
             HeaderType = OggHeaderTypeFlag.BeginOfStream,
             GranulePosition = 0,
@@ -29,11 +28,11 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
         _spanWriter.Write(OggHeader.CapturePattern);
         _spanWriter.Write(header.StreamStructureVersion);
         _spanWriter.Write((byte)header.HeaderType);
-        _spanWriter.Write(header.GranulePosition);
+        _spanWriter.Write(header.GranulePosition, isLittleEndian: true);
         _spanWriter.Write(header.StreamSerialNumber);
-        _spanWriter.Write(header.PageSequenceNumber);
+        _spanWriter.Write(header.PageSequenceNumber, isLittleEndian: true);
         var checksumPosition = Position;
-        _spanWriter.Write(header.PageChecksum);
+        _spanWriter.Write(header.PageChecksum, isLittleEndian: true);
         _spanWriter.Write(header.PageSegmentCount);
         _spanWriter.Write(header.SegmentTable);
 
@@ -46,7 +45,7 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
         _spanWriter.Write(opusHead.ChannelMapping);
 
         var crc = OggCRC32.Get(0, _spanWriter.Span[..Position]);
-        _spanWriter.Write(crc, checksumPosition);
+        _spanWriter.Write(crc, checksumPosition, isLittleEndian: true);
         return true;
     }
 
@@ -54,7 +53,7 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
     public bool Write(OpusTags opusTags)
     {
         var header = new OggHeader {
-            HeaderType = OggHeaderTypeFlag.Continued,
+            HeaderType = 0,
             GranulePosition = 0,
             StreamSerialNumber = state.SerialNumber,
             PageSequenceNumber = state.PageCount++,
@@ -67,30 +66,32 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
         _spanWriter.Write(OggHeader.CapturePattern);
         _spanWriter.Write(header.StreamStructureVersion);
         _spanWriter.Write((byte)header.HeaderType);
-        _spanWriter.Write(header.GranulePosition);
+        _spanWriter.Write(header.GranulePosition, isLittleEndian: true);
         _spanWriter.Write(header.StreamSerialNumber);
-        _spanWriter.Write(header.PageSequenceNumber);
+        _spanWriter.Write(header.PageSequenceNumber, isLittleEndian: true);
         var checksumPosition = Position;
-        _spanWriter.Write(header.PageChecksum);
+        _spanWriter.Write(header.PageChecksum, isLittleEndian: true);
         _spanWriter.Write(header.PageSegmentCount);
         _spanWriter.Write(header.SegmentTable);
 
         _spanWriter.Write(OpusTags.Signature);
         _spanWriter.Write(OpusTags.VendorStringLength, isLittleEndian: true);
         _spanWriter.Write(OpusTags.VendorString);
+        _spanWriter.Write(OpusTags.UserCommentListLength, isLittleEndian: true);
 
         var crc = OggCRC32.Get(0, _spanWriter.Span[..Position]);
-        _spanWriter.Write(crc, checksumPosition);
+        _spanWriter.Write(crc, checksumPosition, isLittleEndian: true);
         return true;
     }
 
-    public bool Write(IReadOnlyCollection<AudioFrame> audioFrames)
+    public bool Write(IReadOnlyCollection<AudioFrame> audioFrames, bool hasNext)
     {
-        var granulePosition = state.GranulePosition + ((uint)audioFrames.Count * SamplesPerFrame);
+        // var granulePosition = state.GranulePosition + ((uint)audioFrames.Count * SamplesPerFrame);
+        var granulePosition = state.GranulePosition + ((ulong)audioFrames.Sum(f => f.Duration.Ticks) * SamplesPerMillisecond / 10_000ul);
         state.GranulePosition = granulePosition;
         var segmentTable = BuildSegmentTable(audioFrames);
         var header = new OggHeader {
-            HeaderType = 0,
+            HeaderType = hasNext ? 0 : OggHeaderTypeFlag.EndOfStream,
             GranulePosition = granulePosition ,
             StreamSerialNumber = state.SerialNumber,
             PageSequenceNumber = state.PageCount++,
@@ -103,11 +104,11 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
         _spanWriter.Write(OggHeader.CapturePattern);
         _spanWriter.Write(header.StreamStructureVersion);
         _spanWriter.Write((byte)header.HeaderType);
-        _spanWriter.Write(header.GranulePosition);
+        _spanWriter.Write(header.GranulePosition, isLittleEndian: true);
         _spanWriter.Write(header.StreamSerialNumber);
-        _spanWriter.Write(header.PageSequenceNumber);
+        _spanWriter.Write(header.PageSequenceNumber, isLittleEndian: true);
         var checksumPosition = Position;
-        _spanWriter.Write(header.PageChecksum);
+        _spanWriter.Write(header.PageChecksum, isLittleEndian: true);
         _spanWriter.Write(header.PageSegmentCount);
         _spanWriter.Write(header.SegmentTable);
 
@@ -116,7 +117,7 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
             _spanWriter.Write(audioFrame.Data);
 
         var crc = OggCRC32.Get(0, _spanWriter.Span[..Position]);
-        _spanWriter.Write(crc, checksumPosition);
+        _spanWriter.Write(crc, checksumPosition, isLittleEndian: true);
         return true;
 
         static byte[] BuildSegmentTable(IReadOnlyCollection<AudioFrame> audioFrames)
@@ -138,6 +139,6 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
     {
         public int PageCount { get; set; }
         public ulong GranulePosition { get; set; }
-        public int SerialNumber { get; set; }
+        public uint SerialNumber { get; set; }
     }
 }

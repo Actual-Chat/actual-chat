@@ -33,6 +33,7 @@ public class AudioStreamer : IAudioStreamer
             .Select((data, i) => new AudioFrame {
                 Data = data,
                 Offset = TimeSpan.FromMilliseconds(i * 20), // we support only 20-ms packets
+                Duration = TimeSpan.FromMilliseconds(20),
             });
 
         var headerData = await headerDataTask.ConfigureAwait(false);

@@ -31,6 +31,7 @@ public class AudioSource : MediaSource<AudioFormat, AudioFrame>
                 .Select(af => new AudioFrame {
                     Data = af.Data,
                     Offset = af.Offset - skipTo,
+                    Duration = af.Duration,
                 }),
             log,
             cancellationToken)
