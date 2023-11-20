@@ -8,7 +8,7 @@
         <InputRadioGroup
             Name="theme"
             DisplayName="Theme"
-            @bind-Value="_formModel.CurrentTheme">
+            @bind-Value="_formModel.Theme">
 
             <TileItem>
                 <Icon>
@@ -55,9 +55,9 @@
 
     protected override void OnInitialized() {
         _formModel = new (ComponentIdGenerator) {
-            CurrentTheme = GetThemeKey(ThemeUI.State.Value.Theme),
+            Theme = GetThemeKey(ThemeUI.State.Value.Theme),
         };
-        _formModel.CurrentThemeChanged += OnCurrentThemeChanged;
+        _formModel.ThemeChanged += OnCurrentThemeChanged;
     }
 
     private void OnCurrentThemeChanged(string? theme)
@@ -70,23 +70,24 @@
         => !themeKey.IsNullOrEmpty() && Enum.TryParse<Theme>(themeKey, true, out var v) ? v : null;
 
     public sealed class FormModel {
-        private string? _currentTheme1;
-        public string? CurrentTheme {
-            get => _currentTheme1;
-            set {
-                if (_currentTheme1 == value)
-                    return;
-                _currentTheme1 = value;
-                CurrentThemeChanged?.Invoke(value);
-            }
-        }
+        private string? _theme;
 
         private string FormId { get; }
         public string LightThemeFormId { get; }
         public string DarkThemeFormId { get; }
         public string SystemThemeFormId { get; }
 
-        public event Action<string?>? CurrentThemeChanged;
+        public string? Theme {
+            get => _theme;
+            set {
+                if (_theme == value)
+                    return;
+                _theme = value;
+                ThemeChanged?.Invoke(value);
+            }
+        }
+
+        public event Action<string?>? ThemeChanged;
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("theme-form");
