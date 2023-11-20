@@ -3,7 +3,6 @@ using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Options;
 
 namespace ActualChat.Module;
@@ -24,12 +23,6 @@ public sealed class CoreServerModule : HostModule<CoreServerSettings>
         var appKind = HostInfo.AppKind;
         if (appKind.IsClient())
             throw StandardError.Internal("This module can be used on server side only.");
-
-        services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
-#pragma warning disable CS0618
-            ? new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
-#pragma warning restore CS0618
-            : new DefaultObjectPoolProvider());
 
         services.AddSingleton<IContentSaver>(
             c => new ContentSaver(c.GetRequiredService<IBlobStorageProvider>()));

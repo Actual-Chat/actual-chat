@@ -1,8 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using ActualChat.Kvas;
-using Microsoft.Extensions.ObjectPool;
 using SQLite;
+using Stl.Concurrency;
 using Stl.IO;
+using Stl.Pooling;
 
 namespace ActualChat.App.Maui.Services;
 
@@ -10,8 +12,16 @@ namespace ActualChat.App.Maui.Services;
 public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 {
     public const string VersionKey = "(version)";
+    private const SQLiteOpenFlags OpenFlags =
+        // Open the database in read/write mode
+        SQLiteOpenFlags.ReadWrite |
+        // Create the database if it doesn't exist
+        SQLiteOpenFlags.Create |
+        // Assume each connection is never used concurrently
+        SQLiteOpenFlags.NoMutex;
 
-    private readonly Task<ObjectPool<SQLiteConnection>?> _whenConnectionPoolReady;
+    private readonly Task<ConcurrentPool<SQLiteConnection>?> _whenConnectionPoolReady;
+    private readonly FilePath _dbPath;
     private ILogger? _log;
 
     private IServiceProvider Services { get; }
@@ -19,6 +29,7 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
 
     public SQLiteBatchingKvasBackend(FilePath dbPath, string version, IServiceProvider services)
     {
+        _dbPath = dbPath;
         Services = services;
         _whenConnectionPoolReady = Task.Run(() => Initialize(dbPath, version));
     }
@@ -26,64 +37,49 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
     public async ValueTask<byte[]?[]> GetMany(string[] keys, CancellationToken cancellationToken = default)
     {
         var result = new byte[]?[keys.Length];
-        var connection = await AcquireConnection().ConfigureAwait(false);
-        if (connection == null)
+        using var lease = await AcquireConnection().ConfigureAwait(false);
+        if (!lease.IsValid(out var connection))
             return result;
 
-        try {
-            for (var i = 0; i < keys.Length; i++) {
-                var dbItem = connection.Find<DbItem?>(keys[i]);
-                result[i] = dbItem?.Value;
-            }
-            return result;
+        for (var i = 0; i < keys.Length; i++) {
+            var dbItem = connection.Find<DbItem?>(keys[i]);
+            result[i] = dbItem?.Value;
         }
-        finally {
-            ReleaseConnection(connection);
-        }
+        return result;
     }
 
     public async Task SetMany(List<(string Key, byte[]? Value)> updates, CancellationToken cancellationToken = default)
     {
-        var connection = await AcquireConnection().ConfigureAwait(false);
-        if (connection == null)
+        using var lease = await AcquireConnection().ConfigureAwait(false);
+        if (!lease.IsValid(out var connection))
             return;
 
-        try {
-            foreach (var (key, value) in updates) {
-                if (value == null)
-                    connection.Delete<DbItem>(key);
-                else
-                    connection.InsertOrReplace(new DbItem { Key = key, Value = value });
-            }
-        }
-        finally {
-            ReleaseConnection(connection);
+        foreach (var (key, value) in updates) {
+            if (value == null)
+                connection.Delete<DbItem>(key);
+            else
+                connection.InsertOrReplace(new DbItem { Key = key, Value = value });
         }
     }
 
     public async Task Clear(CancellationToken cancellationToken = default)
     {
-        var connection = await AcquireConnection().ConfigureAwait(false);
-        if (connection == null)
+        using var lease = await AcquireConnection().ConfigureAwait(false);
+        if (!lease.IsValid(out var connection))
             return;
 
-        try {
-            connection.DeleteAll<DbItem>();
-        }
-        finally {
-            ReleaseConnection(connection);
-        }
+        connection.DeleteAll<DbItem>();
     }
 
     // Private methods
 
-    private ObjectPool<SQLiteConnection>? Initialize(FilePath dbPath, string version)
+    private ConcurrentPool<SQLiteConnection>? Initialize(FilePath dbPath, string version)
     {
         try {
-            var connectionsPolicy = new SQLiteConnectionPoolPolicy(dbPath);
             var connectionCount = HardwareInfo.ProcessorCount + 2;
-            var connections = new DefaultObjectPool<SQLiteConnection>(connectionsPolicy, connectionCount);
-            var connection = connections.Get();
+            var connections = new ConcurrentPool<SQLiteConnection>(() => new(_dbPath, OpenFlags), connectionCount, 1);
+            using var lease = connections.Rent();
+            var connection = lease.Resource;
             connection.EnableWriteAheadLogging();
             var versionBytes = Encoding.UTF8.GetEncoder().Convert(version);
             if (connection.CreateTable<DbItem>() == CreateTableResult.Migrated) {
@@ -94,7 +90,6 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
                 }
             }
             connection.InsertOrReplace(new DbItem { Key = VersionKey, Value = versionBytes });
-            connections.Return(connection);
             return connections;
         }
         catch (Exception e) {
@@ -103,16 +98,12 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
         }
     }
 
-    private async ValueTask<SQLiteConnection?> AcquireConnection()
+    private async ValueTask<SQLiteConnectionLease> AcquireConnection()
     {
         var connections = await _whenConnectionPoolReady.ConfigureAwait(false);
-        return connections?.Get();
+        return connections == null ? default
+            : new SQLiteConnectionLease(connections.Rent()!);
     }
-
-    private void ReleaseConnection(SQLiteConnection connection)
-#pragma warning disable VSTHRD002
-        => _whenConnectionPoolReady.Result!.Return(connection);
-#pragma warning restore VSTHRD002
 
     // Nested types
 
@@ -124,33 +115,18 @@ public sealed class SQLiteBatchingKvasBackend : IBatchingKvasBackend
     }
 
     // ReSharper disable once InconsistentNaming
-    private sealed class SQLiteConnectionPoolPolicy : IPooledObjectPolicy<SQLiteConnection>
+    private readonly struct SQLiteConnectionLease(ResourceLease<SQLiteConnection?> lease) : IDisposable
     {
-        private FilePath DbPath { get; }
-        private SQLiteOpenFlags OpenFlags { get; }
-
-        public SQLiteConnectionPoolPolicy(FilePath dbPath)
+        public bool IsValid([NotNullWhen(true)] out SQLiteConnection? connection)
         {
-            DbPath = dbPath;
-            OpenFlags =
-                // Open the database in read/write mode
-                SQLiteOpenFlags.ReadWrite |
-                // Create the database if it doesn't exist
-                SQLiteOpenFlags.Create |
-                // Assume each connection is never used concurrently
-                SQLiteOpenFlags.NoMutex;
+            connection = lease.Resource;
+            return connection != null;
         }
 
-        public SQLiteConnection Create()
-            => new (DbPath, OpenFlags);
-
-        public bool Return(SQLiteConnection obj)
+        public void Dispose()
         {
-            if (!obj.IsInTransaction)
-                return true;
-
-            obj.DisposeSilently();
-            return false;
+            if (lease.Resource is { IsInTransaction: false })
+                lease.Dispose();
         }
     }
 }
