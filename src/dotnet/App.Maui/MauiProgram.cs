@@ -17,7 +17,6 @@ using Sentry;
 using Sentry.Maui.Internal;
 using Serilog;
 using Stl.CommandR.Rpc;
-using ILogger = Google.Apis.Logging.ILogger;
 #if IOS
 using Foundation;
 #endif

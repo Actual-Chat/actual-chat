@@ -123,49 +123,67 @@
   <!-- Extra trimming roots -->
   <ItemGroup>
     <!-- ActualChat - common -->
-    <TrimmerRootAssembly Include="ActualChat.Core" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.SignalR.Client" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="visible" />
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="visible"/>
+    <TrimmerRootAssembly Include="ActualChat.Core" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.SignalR.Client" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="EntryPoint" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="EntryPoint"/>
 
     <!-- ActualChat - specific projects -->
-    <TrimmerRootAssembly Include="ActualChat.Audio" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Audio.Client" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Audio.Contracts" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Audio.UI.Blazor" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Chat" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Chat.Contracts" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Chat.UI.Blazor" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Contacts" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Contacts.Contracts" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Feedback.Contracts" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Invite" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Invite.Contracts" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.MediaPlayback" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Notification" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Notification.Contracts" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Notification.UI.Blazor" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Transcription.Contracts" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Users" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Users.Contracts" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.Users.UI.Blazor" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="visible"/>
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="visible"/>
+    <TrimmerRootAssembly Include="ActualChat.Audio" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Audio.Client" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Audio.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Audio.UI.Blazor" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Chat" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Chat.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Chat.UI.Blazor" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Contacts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Contacts.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Feedback.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Invite" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Invite.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Media" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Media.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.MediaPlayback" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Notification" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Notification.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Notification.UI.Blazor" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Transcription.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Users" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Users.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.Users.UI.Blazor" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="EntryPoint"/>
 
     <!-- Stl -->
-    <TrimmerRootAssembly Include="Stl" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Stl.Interception" RootMode="visible" />
-    <TrimmerRootAssembly Include="Stl.Rpc" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Stl.CommandR" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Stl.Fusion" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Stl.Fusion.Blazor" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Stl" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Stl.Interception" RootMode="EntryPoint" />
+    <TrimmerRootAssembly Include="Stl.Rpc" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Stl.RestEase" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Stl.CommandR" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Stl.Fusion" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Stl.Fusion.Ext.Contracts" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Stl.Fusion.Blazor" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Stl.Fusion.Blazor.Authentication" RootMode="EntryPoint"/>
 
     <!-- Additional assemblies -->
-    <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" RootMode="visible"/>
-    <TrimmerRootAssembly Include="System.Text.Json" RootMode="visible"/>
+    <TrimmerRootAssembly Include="MemoryPack.Core" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="System.Text.Json" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Sentry" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" RootMode="EntryPoint"/>
     <!-- System.Private.CoreLib is needed only if you want to enable TaskEventListener -->
     <!--
     <TrimmerRootAssembly Include="System.Private.CoreLib" />
+    -->
+
+    <!-- Partial trim mode works w/o these: -->
+    <!--
+    <TrimmerRootAssembly Include="Microsoft.Maui" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Microsoft.Maui.Controls" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Microsoft.Maui.Controls.Compatibility" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView.Maui" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Newtonsoft.Json" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="Pidgin" RootMode="EntryPoint"/>
+    <TrimmerRootAssembly Include="RestEase" RootMode="EntryPoint"/>
     -->
   </ItemGroup>
 

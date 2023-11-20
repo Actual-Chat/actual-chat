@@ -68,6 +68,7 @@
   <PropertyGroup Condition="'$(IsDevMaui)' != 'true'">
   </PropertyGroup>
 
+  <!-- Environment -->
   <PropertyGroup>
     <FixedEnvironment Condition="'$(FixedEnvironment)' == ''" />
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
@@ -75,6 +76,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(FixedEnvironment)' == 'Production'">
     <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PRODUCTION</DefineConstants>
+  </PropertyGroup>
+
+  <!-- Profiling -->
+  <PropertyGroup Condition="'$(IsProfilingEnabled)' == ''">
+    <IsProfilingEnabled>false</IsProfilingEnabled>
   </PropertyGroup>
 
   <!-- Project references -->
@@ -152,8 +158,6 @@
     <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
     <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
     <EventSourceSupport>false</EventSourceSupport>
-    <!-- This instructs trimmer to remove managed HTTP handler -->
-    <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
   <!-- Android build properties -->
@@ -165,22 +169,19 @@
     <AndroidSigningKeyPass>password</AndroidSigningKeyPass>
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
-    <!-- Performance-related -->
-    <!-- Doesn't seem to impact the startup time w/ AOT -->
-    <AndroidUseInterpreter>false</AndroidUseInterpreter>
-    <!-- true: -50-100ms + makes the the startup time more stable -->
-    <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
-    <!-- true: -150ms -->
-    <AndroidEnablePreloadAssemblies>true</AndroidEnablePreloadAssemblies>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
     <AndroidUseInterpreter>true</AndroidUseInterpreter>
+    <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType>
+    <!-- This instructs trimmer to remove managed HTTP handler - don't use it with HttpClientHandler  -->
+    <!--
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
+    -->
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
-    <EnableLLVM>false</EnableLLVM>
     <AndroidDexTool>d8</AndroidDexTool>
     <!-- Doesn't work with .NET 8!
     <AndroidLinkTool>r8</AndroidLinkTool>
@@ -196,41 +197,55 @@
   </ItemGroup>
 
   <!--
-  Android AOT settings & AOT profile
+  Android AOT & perf-related settings
   -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <RunAOTCompilation>true</RunAOTCompilation>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
+    <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
+    <AndroidUseInterpreter>false</AndroidUseInterpreter>
+    <!-- Doesn't seem to give any speedup:
+    <AndroidGenerateJniMarshalMethods>True</AndroidGenerateJniMarshalMethods>
+    -->
+    <AndroidEnablePreloadAssemblies>true</AndroidEnablePreloadAssemblies>
+    <!-- When AndroidEnablePreloadAssemblies == true, it lazy loads non-AOT code -->
     <!-- false: -100ms or so to startup time -->
     <AndroidAotEnableLazyLoad>false</AndroidAotEnableLazyLoad>
+    <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
   </PropertyGroup>
 
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <!--
     These two profiles are different, we can include none, any of them, or both.
-    Using both seems to be the most efficient option.
+    Using both seems to be the most efficient option in .NET 7.
     -->
-    <MauiUseDefaultAotProfile>true</MauiUseDefaultAotProfile>
-    <AndroidUseDefaultAotProfile>true</AndroidUseDefaultAotProfile>
+    <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
+    <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>
   </PropertyGroup>
-
   <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <!-- Somehow this just makes things worse
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-exc.aotprofile" />
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-inc.aotprofile" />
     -->
+    <!--
+    <AndroidMibcProfile Include="android.mibc" />
+    -->
   </ItemGroup>
 
-  <!-- Uncomment to profile Android app -->
+  <!-- Android AOT profiling -->
 
-  <!--
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+  <PropertyGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <UseInterpreter>False</UseInterpreter>
+    <AndroidUseInterpreter>false</AndroidUseInterpreter>
     <AndroidEnableProfiler>true</AndroidEnableProfiler>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>
+    <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
   </PropertyGroup>
-  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+  <ItemGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <AndroidEnvironment Include="diagnostics-env.txt" />
   </ItemGroup>
-  -->
 
   <!-- iOS build properties -->
 
@@ -240,6 +255,7 @@
     <CodesignEntitlements>Platforms\iOS\Entitlements.plist</CodesignEntitlements>
     <!-- Performance-related -->
     <EnableSGenConc>False</EnableSGenConc>
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net8.0-ios|AnyCPU'">
@@ -291,6 +307,8 @@
     <None Remove="GoogleService-Info.plist" />
     <Compile Remove="Resources\Images\**" />
     <None Remove="Resources\Images\**" />
+    <None Remove="android.nettrace" />
+    <None Remove="android.etlx" />
   </ItemGroup>
   <!-- Android -->
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">

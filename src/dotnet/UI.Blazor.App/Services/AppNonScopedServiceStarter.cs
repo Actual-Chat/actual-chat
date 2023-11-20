@@ -2,7 +2,6 @@ using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Chat;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Contacts;
-using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Services;
@@ -98,12 +97,6 @@ public class AppNonScopedServiceStarter
             tasks.Add(hostedService.StartAsync(default));
         }
         await Task.WhenAll(tasks).ConfigureAwait(false);
-    }
-
-    private static void WarmupFusion()
-    {
-
-
     }
 
     private static void WarmupByteSerializer()
