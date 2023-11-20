@@ -10,16 +10,15 @@ using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
-public class GoogleTranscriberTest : TestBase
+public class GoogleTranscriberTest(
+    IConfiguration configuration,
+    ITestOutputHelper @out,
+    ILogger<GoogleTranscriber> log)
+    : TestBase(@out)
 {
-    private ILogger<GoogleTranscriber> Log { get; }
-    private CoreSettings CoreSettings { get; }
-
-    public GoogleTranscriberTest(IConfiguration configuration, ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
-    {
-        Log = log;
-        CoreSettings = configuration.GetSettings<CoreSettings>();
-    }
+    private ILogger<GoogleTranscriber> Log { get; } = log;
+    private CoreServerSettings CoreServerSettings { get; }
+        = configuration.GetSettings<CoreServerSettings>(nameof(CoreSettings));
 
     [Theory(Skip = "Manual")]
     [InlineData("file.webm", false)]
@@ -109,7 +108,7 @@ public class GoogleTranscriberTest : TestBase
 
     private IServiceProvider CreateServices()
         => new ServiceCollection()
-            .AddSingleton(CoreSettings)
+            .AddSingleton(CoreServerSettings)
             .AddSingleton(MomentClockSet.Default)
             .AddLogging(logging => {
                 logging.ClearProviders();
