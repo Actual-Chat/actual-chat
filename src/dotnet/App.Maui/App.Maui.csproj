@@ -193,10 +193,10 @@
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
     <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
     <!-- <DebuggerSupport>false</DebuggerSupport> --> <!-- When false, it also removes symbols -->
-    
+
     <!-- Runtime -->
     <AndroidUseInterpreter>false</AndroidUseInterpreter>
-    <AndroidEnableSGenConcurrent>true</AndroidEnableSGenConcurrent>
+    <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
     <!-- Doesn't seem to give any speedup:
     <AndroidGenerateJniMarshalMethods>True</AndroidGenerateJniMarshalMethods>
     -->
