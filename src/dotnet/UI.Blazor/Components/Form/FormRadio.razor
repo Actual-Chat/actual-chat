@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@typeparam TValue;
 
 <label class="form-radio-hidden">
     <InputRadio id="@Id" Name="@Name" Value="@Value"/>
@@ -8,5 +9,5 @@
 @code {
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
-    [Parameter] public bool Value { get; set; }
+    [Parameter] public TValue? Value { get; set; }
 }

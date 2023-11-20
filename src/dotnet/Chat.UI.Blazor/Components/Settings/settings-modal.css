@@ -1,18 +1,19 @@
 ﻿.settings-tab .app-settings .tile-item {
     @apply h-auto;
 }
-
 .settings-tab .app-settings .tile-item-body {
     @apply max-h-none;
 }
-
 .settings-tab .app-settings .auto-start .disable-reason {
     @apply text-danger;
 }
-
 .settings-tab .app-settings .auto-start .disable-reason.active {
     @apply underline;
     @apply cursor-pointer;
+}
+
+.settings-tab .theme-tile .tile-item:hover {
+    @apply bg-transparent;
 }
 
 .phone-verification-status {

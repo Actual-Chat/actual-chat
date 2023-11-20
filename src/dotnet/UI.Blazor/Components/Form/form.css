@@ -191,6 +191,7 @@
 .form .form-radio-hidden {
     @apply relative;
     @apply justify-start;
+    @apply h-5 w-5;
 }
 .form .form-radio-hidden input {
     @apply absolute;
