@@ -95,7 +95,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     protected override ComputedState<VirtualListData<TItem>>.Options GetStateOptions()
         => new () {
             InitialValue = VirtualListData<TItem>.None,
-            UpdateDelayer = FixedDelayer.Instant,
+            UpdateDelayer = new FixedDelayer(TimeSpan.FromMilliseconds(100)),
             Category = GetStateCategory(),
         };
 
