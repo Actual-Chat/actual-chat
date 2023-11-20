@@ -13,6 +13,7 @@
     <Body>
         @if (_page == Page.Props) {
             <NewChatModalProps
+                PlaceSid="@ModalModel.PlaceId.Value"
                 ButtonsSlotName="@_buttonsSlotName"
                 ChatCreated="OnChatCreated"
                 Cancelled="Close" />
@@ -75,6 +76,6 @@
 
     // Nested types
 
-    public sealed record Model;
+    public sealed record Model(PlaceId PlaceId);
     private enum Page { Props, Members }
 }
