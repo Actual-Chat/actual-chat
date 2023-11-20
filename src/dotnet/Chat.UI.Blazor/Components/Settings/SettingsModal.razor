@@ -58,14 +58,6 @@
             </SettingsTab>
         }
 
-        @if (showThemeToggle) {
-            <SettingsTab @key="90" Title="Dark Theme" TitleComment="βeta" Id="darkTheme" IconTitle="night-mode" IsToggle="true" Class="theme-toggle">
-                <TitleContent>
-                    <ThemeToggle/>
-                </TitleContent>
-            </SettingsTab>
-        }
-
         @if (showLogout) {
             <SettingsTab @key="100" Title="Log out" Id="signOut" IconTitle="log-out" HasSeparatorBefore="true">
             </SettingsTab>

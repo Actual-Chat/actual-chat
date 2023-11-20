@@ -1,5 +1,6 @@
 @using ActualChat.Chat.UI.Blazor.Module
 
+<TileTopic Topic="Font"/>
 <Tile>
     <div class="ui-settings">
         <Form Model="@_formModel">
@@ -28,10 +29,15 @@
                         }
                     </InputSelect>
                 </FormSection>
-
             </FormBlock>
         </Form>
+
     </div>
+</Tile>
+
+<TileTopic Topic="Theme"/>
+<Tile Class="theme-tile">
+    <ThemeSettings/>
 </Tile>
 
 @code {

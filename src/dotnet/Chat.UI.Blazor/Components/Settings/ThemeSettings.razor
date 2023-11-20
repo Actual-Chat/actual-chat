@@ -1,0 +1,98 @@
+@using ActualChat.Chat.UI.Blazor.Module
+
+<Form Model="@_formModel">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+
+    <FormBlock>
+        <InputRadioGroup
+            Name="theme"
+            DisplayName="Theme"
+            @bind-Value="_formModel.CurrentTheme">
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
+                        Id="@_formModel.LightThemeFormId"
+                        Value="@GetThemeKey(Theme.Light)"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.LightThemeFormId" Text="Light"></Label>
+                </Content>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
+                        Id="@_formModel.DarkThemeFormId"
+                        Value="@GetThemeKey(Theme.Dark)"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.DarkThemeFormId" Text="Dark"></Label>
+                </Content>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
+                        Id="@_formModel.SystemThemeFormId"
+                        Value="@GetThemeKey(null)"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.SystemThemeFormId" Text="System"></Label>
+                </Content>
+            </TileItem>
+
+        </InputRadioGroup>
+    </FormBlock>
+</Form>
+
+@code {
+    private FormModel _formModel = null!;
+
+    [Inject] ThemeUI ThemeUI { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        _formModel = new (ComponentIdGenerator) {
+            CurrentTheme = GetThemeKey(ThemeUI.State.Value.Theme),
+        };
+        _formModel.CurrentThemeChanged += OnCurrentThemeChanged;
+    }
+
+    private void OnCurrentThemeChanged(string? theme)
+        => ThemeUI.SetTheme(GetTheme(theme));
+
+    private string GetThemeKey(Theme? theme)
+        => theme?.ToString() ?? "";
+
+    private Theme? GetTheme(string? themeKey)
+        => !themeKey.IsNullOrEmpty() && Enum.TryParse<Theme>(themeKey, true, out var v) ? v : null;
+
+    public sealed class FormModel {
+        private string? _currentTheme1;
+        public string? CurrentTheme {
+            get => _currentTheme1;
+            set {
+                if (_currentTheme1 == value)
+                    return;
+                _currentTheme1 = value;
+                CurrentThemeChanged?.Invoke(value);
+            }
+        }
+
+        private string FormId { get; }
+        public string LightThemeFormId { get; }
+        public string DarkThemeFormId { get; }
+        public string SystemThemeFormId { get; }
+
+        public event Action<string?>? CurrentThemeChanged;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("theme-form");
+            LightThemeFormId = $"{FormId}-user-light-theme";
+            DarkThemeFormId = $"{FormId}-user-dark-theme";
+            SystemThemeFormId = $"{FormId}-user-system-theme";
+        }
+    }
+}
