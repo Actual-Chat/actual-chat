@@ -288,6 +288,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.UI.Blazor", "src\d
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.IntegrationTests", "tests\Contacts.IntegrationTests\Contacts.IntegrationTests.csproj", "{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Server", "src\dotnet\Core.Server\Core.Server.csproj", "{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -560,6 +562,10 @@ Global
 		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -653,6 +659,7 @@ Global
 		{4C3BF424-4983-404C-A62B-F2D286EBCB4E} = {16126688-A04E-44A8-9EA3-A6A45A1D2CE8}
 		{7C92432E-7ED8-436B-974B-7F077C7E4A86} = {9B3B0EB4-0694-4955-B89F-581771BF3A07}
 		{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3} = {5A5DF627-8CFA-455E-8E1A-58531EBFD2C3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
