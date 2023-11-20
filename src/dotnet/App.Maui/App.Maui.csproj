@@ -166,12 +166,10 @@
     <AndroidSigningKeyPass>password</AndroidSigningKeyPass>
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
-    <!-- Android uses managed HTTP Handler, otherwise LLVM doesn't work -->
-    <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType>
+    <!-- Using managed HTTP Handler doesn't fix LLVM, so... -->
+    <!-- <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType> -->
     <!-- This instructs trimmer to remove managed HTTP handler - don't use it with HttpClientHandler  -->
-    <!--
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
-    -->
   </PropertyGroup>
   <ItemGroup>
     <ProguardConfiguration Include="proguard.cfg" />
