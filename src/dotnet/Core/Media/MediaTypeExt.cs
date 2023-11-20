@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Uploads;
+﻿namespace ActualChat.Media;
 
 public static class MediaTypeExt
 {

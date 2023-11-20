@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using ActualChat.Media;
 using FFMpegCore;
 using FFMpegCore.Enums;
 using FFMpegCore.Pipes;

@@ -1,13 +1,11 @@
+using ActualChat.IO;
 using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
 
-public class ActualOpusStreamConverterTests
+public class ActualOpusStreamConverterTests(ILogger log)
 {
-    private ILogger Log { get; }
-
-    public ActualOpusStreamConverterTests(ILogger log)
-        => Log = log;
+    private ILogger Log { get; } = log;
 
     [Fact]
     public async Task ReadAndWrittenStreamIsTheSame()

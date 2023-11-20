@@ -1,10 +1,13 @@
 using System.Buffers;
+using ActualChat.IO.Internal;
 
-namespace ActualChat.Blobs;
+namespace ActualChat.IO;
 
 public static class ReadOnlySequenceExt
 {
-    public static ReadOnlySequence<T> Append<T>(this ReadOnlySequence<T> source, ReadOnlyMemory<T> chunk)
+    public static ReadOnlySequence<T> Append<T>(
+        this ReadOnlySequence<T> source,
+        ReadOnlyMemory<T> chunk)
     {
         if (chunk.IsEmpty)
             return source;

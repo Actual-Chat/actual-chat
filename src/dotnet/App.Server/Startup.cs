@@ -105,6 +105,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
             .WithModules(
                 // Core modules
                 new CoreModule(moduleServices),
+                new CoreServerModule(moduleServices),
                 new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
                 new DbModule(moduleServices),

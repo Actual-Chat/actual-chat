@@ -1,6 +1,5 @@
 using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Contacts;
-using ActualChat.IO;
 using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;

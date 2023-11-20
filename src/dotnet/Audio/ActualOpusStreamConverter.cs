@@ -3,18 +3,12 @@ using System.Buffers.Binary;
 
 namespace ActualChat.Audio;
 
-public class ActualOpusStreamConverter : IAudioStreamConverter
+public class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log) : IAudioStreamConverter
 {
-    private MomentClockSet Clocks { get; }
-    private ILogger Log { get; }
+    private MomentClockSet Clocks { get; } = clocks;
+    private ILogger Log { get; } = log;
 
     public int FramesPerChunk { get; init; } = 3;
-
-    public ActualOpusStreamConverter(MomentClockSet clocks, ILogger log)
-    {
-        Clocks = clocks;
-        Log = log;
-    }
 
     public async Task<AudioSource> FromByteStream(
         IAsyncEnumerable<byte[]> byteStream,

@@ -1,13 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using ActualChat.Rpc;
 using ActualChat.Security;
 using ActualChat.UI;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.ObjectPool;
-using Microsoft.Extensions.Options;
 using Stl.Fusion.Extensions;
 using Stl.Fusion.Internal;
 using Stl.Generators;
@@ -16,10 +11,11 @@ using Stl.Rpc;
 
 namespace ActualChat.Module;
 
-#pragma warning disable IL2026 // Fine for modules
+#pragma warning disable IL2026, IL2111 // Fine for modules
+#pragma warning disable CA1822 // Method can be static
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed partial class CoreModule : HostModule<CoreSettings>
+public sealed class CoreModule : HostModule<CoreSettings>
 {
     static CoreModule()
     {
@@ -74,13 +70,6 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         // DiffEngine
         services.AddSingleton(c => new DiffEngine(c));
 
-        // ObjectPoolProvider & PooledValueTaskSourceFactory
-        services.AddSingleton<ObjectPoolProvider>(_ => HostInfo.IsDevelopmentInstance
-#pragma warning disable CS0618
-            ? new LeakTrackingObjectPoolProvider(new DefaultObjectPoolProvider())
-#pragma warning restore CS0618
-            : new DefaultObjectPoolProvider());
-
         // Fusion
         var fusion = services.AddFusion();
         if (isServer) {
@@ -114,9 +103,7 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
         // Features
         services.AddScoped(c => new Features(c));
-#pragma warning disable IL2111
         fusion.AddService<IClientFeatures, ClientFeatures>(ServiceLifetime.Scoped);
-#pragma warning restore IL2111
 
         // UI
         services.AddScoped(_ => new SystemSettingsUI());
@@ -129,22 +116,8 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
 
     private void InjectServerServices(IServiceCollection services)
     {
-        services.AddSingleton<IContentSaver>(c => new ContentSaver(c.GetRequiredService<IBlobStorageProvider>()));
-
-        var storageBucket = Settings.GoogleStorageBucket;
-        if (storageBucket.IsNullOrEmpty()) {
-            services.AddSingleton<IContentTypeProvider>(c
-                => c.GetRequiredService<IOptions<StaticFileOptions>>().Value.ContentTypeProvider);
-            services.AddSingleton<LocalFolderBlobStorage.Options>();
-            services.AddSingleton<IBlobStorageProvider>(c => new LocalFolderBlobStorageProvider(c));
-        }
-        else
-            services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
-
         var fusion = services.AddFusion();
-#pragma warning disable IL2111
         fusion.AddService<IServerFeatures, ServerFeatures>();
-#pragma warning restore IL2111
     }
 
     private void InjectClientServices(IServiceCollection services)
@@ -155,10 +128,8 @@ public sealed partial class CoreModule : HostModule<CoreSettings>
         services.AddSingleton(c => new RpcDependentReconnectDelayer(c));
 
         // Features
-#pragma warning disable IL2111
         fusion.AddClient<IServerFeaturesClient>();
         fusion.Rpc.Service<IServerFeaturesClient>().HasName(nameof(IServerFeatures));
         fusion.AddService<IServerFeatures, ServerFeaturesClient>();
-#pragma warning restore IL2111
     }
 }

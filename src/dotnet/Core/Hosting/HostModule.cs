@@ -27,9 +27,12 @@ public abstract class HostModule<TSettings> : HostModule
 {
     private TSettings? _settings;
 
-    public TSettings Settings => _settings ??= Cfg.GetSettings<TSettings>();
+    public TSettings Settings => _settings ??= ReadSettings();
 
     protected HostModule(IServiceProvider moduleServices) : base(moduleServices) { }
+
+    protected virtual TSettings ReadSettings()
+        => Cfg.GetSettings<TSettings>();
 
     protected internal override void InjectServices(IServiceCollection services)
         => services.AddSingleton(Settings);

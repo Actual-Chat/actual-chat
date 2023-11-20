@@ -1,7 +1,24 @@
+using System.Net.Mime;
+
 namespace ActualChat.Blobs;
 
 public static class BlobStorageExt
 {
+    public static async Task<long> UploadByteStream(
+        this IBlobStorage target,
+        string blobId,
+        IAsyncEnumerable<byte[]> byteStream,
+        CancellationToken cancellationToken)
+    {
+        var stream = MemoryStreamManager.Default.GetStream();
+        await using var _ = stream.ConfigureAwait(false);
+
+        var bytesWritten = await stream.WriteByteStream(byteStream, false, cancellationToken).ConfigureAwait(false);
+        stream.Position = 0;
+        await target.Write(blobId, stream, MediaTypeNames.Application.Octet, cancellationToken).ConfigureAwait(false);
+        return bytesWritten;
+    }
+
     public static async Task<bool> CopyIfExists(this IBlobStorage storage,
         string oldPath,
         string newPath,

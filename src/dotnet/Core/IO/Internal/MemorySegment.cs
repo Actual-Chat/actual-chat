@@ -1,6 +1,6 @@
 using System.Buffers;
 
-namespace ActualChat.Blobs;
+namespace ActualChat.IO.Internal;
 
 public sealed class MemorySegment<T> : ReadOnlySequenceSegment<T>
 {
@@ -9,8 +9,7 @@ public sealed class MemorySegment<T> : ReadOnlySequenceSegment<T>
 
     public MemorySegment<T> Append(ReadOnlyMemory<T> memory)
     {
-        var segment = new MemorySegment<T>(memory)
-        {
+        var segment = new MemorySegment<T>(memory) {
             RunningIndex = RunningIndex + Memory.Length,
         };
         Next = segment;

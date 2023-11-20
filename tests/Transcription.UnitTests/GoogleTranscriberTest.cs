@@ -14,7 +14,7 @@ public class GoogleTranscriberTest : TestBase
     {
         Log = log;
         Services = new ServiceCollection()
-            .AddSingleton(new CoreSettings() { GoogleProjectId = "n/a" })
+            .AddSingleton(new CoreServerSettings() { GoogleProjectId = "n/a" })
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton<GoogleTranscriber>()
             .ConfigureLogging(Out)

@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Hosting;
+using ActualChat.IO;
 using ActualChat.Module;
 using ActualChat.Transcription.Google;
 using Microsoft.Extensions.Configuration;

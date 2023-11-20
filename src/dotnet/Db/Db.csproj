@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Core\Core.csproj" />
     <ProjectReference Include="..\Redis\Redis.csproj" />
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
   </ItemGroup>

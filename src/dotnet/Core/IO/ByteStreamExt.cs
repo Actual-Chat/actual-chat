@@ -1,15 +1,12 @@
 using System.Buffers;
-using System.Net.Mime;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
-using Microsoft.IO;
 using Stl.IO;
 
-namespace ActualChat.Blobs;
+namespace ActualChat.IO;
 
 public static class ByteStreamExt
 {
     private const int DefaultBufferSize = 1024;
-    private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
 
     // Download
 
@@ -45,23 +42,6 @@ public static class ByteStreamExt
             yield return blobPart;
 
         log.LogInformation("Downloaded: {Uri}", blobUri.ToString());
-    }
-
-    // Upload
-
-    public static async Task<long> UploadByteStream(
-        this IBlobStorage target,
-        string blobId,
-        IAsyncEnumerable<byte[]> byteStream,
-        CancellationToken cancellationToken)
-    {
-        var stream = MemoryStreamManager.GetStream();
-        await using var _ = stream.ConfigureAwait(false);
-
-        var bytesWritten = await stream.WriteByteStream(byteStream, false, cancellationToken).ConfigureAwait(false);
-        stream.Position = 0;
-        await target.Write(blobId, stream, MediaTypeNames.Application.Octet, cancellationToken).ConfigureAwait(false);
-        return bytesWritten;
     }
 
     // Read

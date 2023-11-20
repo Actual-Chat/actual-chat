@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
     <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
   </ItemGroup>
 

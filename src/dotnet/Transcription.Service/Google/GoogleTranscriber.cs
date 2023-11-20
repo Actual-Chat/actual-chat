@@ -32,7 +32,7 @@ public partial class GoogleTranscriber : ITranscriber
     private static bool DebugMode => Constants.DebugMode.TranscriberGoogle || Constants.DebugMode.TranscriberAny;
 
     private IServiceProvider Services { get; }
-    private CoreSettings CoreSettings { get; }
+    private CoreServerSettings CoreServerSettings { get; }
     private MomentClockSet Clocks { get; }
     private WebMStreamConverter WebMStreamConverter { get; }
 
@@ -49,7 +49,7 @@ public partial class GoogleTranscriber : ITranscriber
         Clocks = services.Clocks();
 
         Services = services;
-        CoreSettings = services.GetRequiredService<CoreSettings>();
+        CoreServerSettings = services.GetRequiredService<CoreServerSettings>();
         WebMStreamConverter = new WebMStreamConverter(Clocks, services.LogFor<WebMStreamConverter>());
         WhenInitialized = Initialize();
     }
@@ -77,12 +77,12 @@ public partial class GoogleTranscriber : ITranscriber
         var speechClientTask = speechClientBuilder.BuildAsync();
         var loadSilenceAudioTask = LoadSilenceAudio();
 
-        if (!CoreSettings.GoogleProjectId.IsNullOrEmpty())
-            GoogleProjectId = CoreSettings.GoogleProjectId;
+        if (!CoreServerSettings.GoogleProjectId.IsNullOrEmpty())
+            GoogleProjectId = CoreServerSettings.GoogleProjectId;
         else {
             var platform = await Platform.InstanceAsync().ConfigureAwait(false);
             GoogleProjectId = platform?.ProjectId ?? throw StandardError.NotSupported<GoogleTranscriber>(
-                $"Requires GKE or explicit settings of {nameof(CoreSettings)}.{nameof(CoreSettings.GoogleProjectId)}");
+                $"Requires GKE or explicit settings of {nameof(CoreServerSettings)}.{nameof(CoreServerSettings.GoogleProjectId)}");
         }
 
         if (!OrdinalEquals(GoogleProjectId, "n/a"))

@@ -22,9 +22,6 @@
     <InternalsVisibleTo Include="$(RootNamespace).UnitTests" />
     <InternalsVisibleTo Include="$(RootNamespace).IntegrationTests" />
   </ItemGroup>
-  <ItemGroup Condition="'$(ProjectKind)' == 'Core'">
-    <InternalsVisibleTo Include="$(RootNamespace).Audio" />
-  </ItemGroup>
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests" />
@@ -39,13 +36,14 @@
     <!-- Global usings -->
     <Using Include="ActualChat" />
     <Using Include="ActualChat.StaticImports" Static="true" />
-    <Using Include="ActualChat.Blobs" />
+    <Using Include="ActualChat.Blobs" Condition="$(IsServerSideProject)"/>
     <Using Include="ActualChat.Channels" />
     <Using Include="ActualChat.Collections" />
     <Using Include="ActualChat.DependencyInjection" />
     <Using Include="ActualChat.Diagnostics" />
     <Using Include="ActualChat.Diagnostics.AppDiagnostics" Static="true" />
     <Using Include="ActualChat.Diff" />
+    <Using Include="ActualChat.IO" />
     <Using Include="ActualChat.Mathematics" />
     <Using Include="ActualChat.OrdinalStringExt" Static="true" />
     <Using Include="ActualChat.Performance" />
