@@ -52,7 +52,7 @@
 
     private async void OnChatCreated(Chat chat) {
         _chat = chat;
-        var peopleContacts = await ChatListUI.ListAllUnordered(ChatListFilter.People);
+        var peopleContacts = await ChatListUI.ListPeopleContacts();
         if (peopleContacts.Count == 0) {
             // If there is no people to add, close the dialog.
             Close();

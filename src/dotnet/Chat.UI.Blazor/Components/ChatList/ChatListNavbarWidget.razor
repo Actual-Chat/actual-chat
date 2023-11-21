@@ -15,53 +15,72 @@
                 <span>@title</span>
             </TitleContent>
             <TitleExtras>
-                <ChatListTabUnreadCount ChatListFilter="filter" />
+               @if (_placeId.IsNone) {
+                   <ChatListTabUnreadCount ChatListFilter="filter" PlaceSid="@PlaceId.None"/>
+               }
             </TitleExtras>
         </Tab>;
     }
 }
 
-<NavbarGroup Title="Chats" Class="navbar-chats" Id="@NavbarGroupIds.Chats">
-    <ChildContent>
-        <div class="c-container">
-            <div class="c-all-chats">
-                <TabPanel
-                    @ref="@_tabPanel"
-                    BottomHill="true"
-                    TabsClass="left-panel-tabs"
-                    SelectedTabIdChanged="@OnSelectedTabIdChanged">
-                    <AdditionalButton>
-                        <ChatListSortButton/>
-                    </AdditionalButton>
-                    <ChildContent>
-                        @for (var i = 0; i < ChatListFilter.All.Count; i++) {
-                            var filter = ChatListFilter.All[i];
-                            @RenderTab(filter, i)
-                        }
-                    </ChildContent>
-                    <TabContent>
-                        <ChatList Kind="ChatListKind.All"/>
-                    </TabContent>
-                </TabPanel>
-            </div>
-            <div class="c-active-chats">
-                <ChatList Kind="ChatListKind.Active"/>
-            </div>
-        </div>
-    </ChildContent>
-</NavbarGroup>
+<div class="c-container">
+    <div class="c-all-chats">
+        <TabPanel
+            @ref="@_tabPanel"
+            BottomHill="true"
+            TabsClass="left-panel-tabs"
+            SelectedTabIdChanged="@OnSelectedTabIdChanged">
+            <AdditionalButton>
+                @if (_placeId.IsNone) {
+                    <ChatListSortButton/>
+                }
+            </AdditionalButton>
+            <ChildContent>
+                @if (_placeId.IsNone) {
+                    @for (var i = 0; i < ChatListFilter.All.Count; i++) {
+                        var filter = ChatListFilter.All[i];
+                        @RenderTab(filter, i)
+                    }
+                } else {
+                    @RenderTab(ChatListFilter.None, 0);
+                }
+            </ChildContent>
+            <TabContent>
+                <ChatList Kind="ChatListKind.All" PlaceSid="@_placeId" />
+            </TabContent>
+        </TabPanel>
+    </div>
+    <div class="c-active-chats">
+        <ChatList Kind="ChatListKind.Active" PlaceSid="@PlaceId.None" />
+    </div>
+</div>
 
 @code {
-    TabPanel _tabPanel = null!;
+    private TabPanel _tabPanel = null!;
+    private PlaceId _placeId;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string PlaceSid { get; set; } = "";
+
+    protected override void OnInitialized() {
+        _placeId = PlaceId.Parse(PlaceSid);
+        base.OnInitialized();
+    }
 
     protected override async Task OnInitializedAsync() {
         await ChatListUI.WhenLoaded;
     }
 
-    protected override void OnAfterRender(bool firstRender)
-        => _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
+    protected override void OnParametersSet() {
+        _placeId = PlaceId.Parse(PlaceSid);
+        base.OnParametersSet();
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if (_placeId.IsNone)
+            _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
+    }
 
     private void OnSelectedTabIdChanged(string? tabId) {
         var filterId = tabId ?? "";

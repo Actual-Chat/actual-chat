@@ -14,12 +14,17 @@
             Title="@place.Title"
             Id="@place.Id.GetNavbarGroupId()"
             Tooltip="@place.Title">
-            <Pic
-                Title="@place.Title"
-                Picture="@place.Picture.ToPicture()"
-                Size="@SquareSize.Size8"
-                AvatarKind="@AvatarKind.Marble"
-                AvatarKey="@place.Id.Value"/>
+            <ChildContent>
+                <Pic
+                    Title="@place.Title"
+                    Picture="@place.Picture.ToPicture()"
+                    Size="@SquareSize.Size8"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@place.Id.Value"/>
+            </ChildContent>
+            <BadgeContent>
+                <ChatsNavbarButtonBadge PlaceSid="@place.Id"/>
+            </BadgeContent>
         </NavbarGroupSelectionButton>
     }
 }

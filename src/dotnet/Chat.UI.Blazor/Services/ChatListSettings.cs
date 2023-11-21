@@ -8,6 +8,8 @@ public sealed partial record ChatListSettings(
     [property: DataMember, MemoryPackOrder(1)] Symbol FilterId = default
 )
 {
+    public static readonly ChatListSettings None = new ();
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatListFilter Filter => ChatListFilter.Parse(FilterId);
 }
