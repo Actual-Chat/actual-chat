@@ -69,10 +69,10 @@ public class Places(IServiceProvider services) : IPlaces
             Kind = ChatKind.Place,
             MediaId = placeDiff.MediaId,
 
-            AllowGuestAuthors = false,
-            AllowAnonymousAuthors = false,
+            AllowGuestAuthors = null,
+            AllowAnonymousAuthors = null,
             IsTemplate = null,
-            TemplateId = null,
-            TemplatedForUserId = null,
+            TemplateId = Option<ChatId?>.None,
+            TemplatedForUserId = Option<UserId?>.None,
         };
 }
