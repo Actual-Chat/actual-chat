@@ -14,16 +14,15 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
     public Task WhenReady => _hostAcceptor.WhenAccepted();
     public ModalHost Host => _hostAcceptor.Value;
 
-    public Task<ModalRef> Show<TModel>(
-        TModel model,
-        CancellationToken cancellationToken = default)
+    public Task<ModalRef> Show<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TModel>
+        (TModel model, CancellationToken cancellationToken = default)
         where TModel : class
         => Show(model, ModalOptions.Default, cancellationToken);
 
-    public Task<ModalRef> Show<TModel>(
-        TModel model,
-        ModalOptions options,
-        CancellationToken cancellationToken = default)
+    public Task<ModalRef> Show<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TModel>
+        (TModel model, ModalOptions options, CancellationToken cancellationToken = default)
         where TModel : class
     {
         var componentType = GetComponentType(model);
@@ -32,7 +31,8 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
 
     // Private methods
 
-    private async ValueTask<ModalRef> Show<TModel>(
+    private async ValueTask<ModalRef> Show<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TModel>(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type componentType,
         TModel model,
         ModalOptions options,
@@ -54,7 +54,9 @@ public sealed class ModalUI(IServiceProvider services) : IHasServices, IHasAccep
 
 #pragma warning disable IL2073
     [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    private Type GetComponentType<TModel>(TModel model)
+    private Type GetComponentType<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TModel>
+        (TModel model)
         where TModel : class
         => ViewResolver.Get(model.GetType());
 #pragma warning restore IL2073

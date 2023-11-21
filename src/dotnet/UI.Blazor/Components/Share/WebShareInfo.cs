@@ -1,4 +1,5 @@
-﻿using ActualChat.UI.Blazor.Module;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Components;
@@ -16,6 +17,7 @@ public sealed class WebShareInfo : IDisposable, IWebShareInfoBackend
     private IJSRuntime JS { get; }
     private ILogger Log { get; }
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebShareInfo))]
     public WebShareInfo(IServiceProvider services)
     {
         Log = services.LogFor(GetType());

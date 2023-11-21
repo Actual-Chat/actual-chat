@@ -1,6 +1,7 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.App.Module
 @using ActualChat.Hosting
+@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 @{
     var cls = _isMenuOpen ? "open" : "closed";
@@ -23,6 +24,9 @@
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter] public bool ShowHome { get; set; }
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LandingLeftMenu))]
+    public LandingLeftMenu() { }
 
     public async Task Open() {
         // Component root div class list is updated with 'open' class

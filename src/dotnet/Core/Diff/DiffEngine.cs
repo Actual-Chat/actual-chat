@@ -20,7 +20,7 @@ public class DiffEngine(
     public TypeMapper<IDiffHandler> DiffHandlerResolver { get; }
         = diffHandlerFinder
         ?? services.GetService<TypeMapper<IDiffHandler>>()
-        ?? new TypeMap<IDiffHandler>(DefaultTypeMapBuilder);
+        ?? new TypeMapper<IDiffHandler>(DefaultTypeMapBuilder);
 
     static DiffEngine()
         => _defaultLazy = new Lazy<DiffEngine>(() => {
@@ -51,11 +51,11 @@ public class DiffEngine(
     public T Patch<T, TDiff>(T source, TDiff diff)
         => GetHandler<T, TDiff>().Patch(source, diff);
 
-    public static void DefaultTypeMapBuilder(Dictionary<Type, Type> map)
-        => map
-            .AddGeneric(typeof(Nullable<>), typeof(NullableDiffHandler<>))
-            .AddGeneric(typeof(Option<>), typeof(OptionDiffHandler<>))
-            .AddGeneric(typeof(SetDiff<,>), typeof(SetDiffHandler<,>));
+    public static void DefaultTypeMapBuilder(TypeMap<IDiffHandler> typeMap)
+        => typeMap
+            .Add(typeof(Nullable<>), typeof(NullableDiffHandler<>))
+            .Add(typeof(Option<>), typeof(OptionDiffHandler<>))
+            .Add(typeof(SetDiff<,>), typeof(SetDiffHandler<,>));
 
     // Protected methods
 

@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
+@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 @implements IHasServices
 @{
@@ -45,6 +46,9 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MenuHost))]
+    public MenuHost() { }
 
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");

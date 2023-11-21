@@ -16,7 +16,7 @@ Use:
     -->
 
     <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
+    <TrimMode>full</TrimMode>
     <IsTrimmable>true</IsTrimmable>
     <!--<RunAOTCompilation>true</RunAOTCompilation>-->
     <InvariantGlobalization>true</InvariantGlobalization>

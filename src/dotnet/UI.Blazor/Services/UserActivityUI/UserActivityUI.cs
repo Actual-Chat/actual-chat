@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -15,6 +16,7 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
 
     public IState<Moment> ActiveUntil => _activeUntil; // CPU time
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserActivityUI))]
     public UserActivityUI(IServiceProvider services)
     {
         JS = services.JSRuntime();

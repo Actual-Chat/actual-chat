@@ -1,9 +1,14 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.DependencyInjection;
 
-public sealed record TypeMap<TScope>(IReadOnlyDictionary<Type, Type> Map)
+public sealed class TypeMap<TScope>
 {
-    public TypeMap() : this(ImmutableDictionary<Type, Type>.Empty) { }
-    public TypeMap(Action<Dictionary<Type, Type>>? builder) : this(UseBuilder(builder)) { }
+    public Dictionary<Type, Type> Map { get; }
+
+    public TypeMap() : this(new()) { }
+    internal TypeMap(Dictionary<Type, Type> map)
+        => Map = map;
 
     // Conversion
 
@@ -13,15 +18,16 @@ public sealed record TypeMap<TScope>(IReadOnlyDictionary<Type, Type> Map)
     public static implicit operator TypeMapper<TScope>(TypeMap<TScope> typeMap)
         => typeMap.ToTypeMapper();
 
-    // Private methods
+    public TypeMap<TScope> Add<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TKey,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TValue>()
+        => Add(typeof(TKey), typeof(TValue));
 
-    private static IReadOnlyDictionary<Type, Type> UseBuilder(Action<Dictionary<Type, Type>>? builder)
+    public TypeMap<TScope> Add(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type key,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type value)
     {
-        if (builder == null)
-            return ImmutableDictionary<Type, Type>.Empty;
-
-        var map = new Dictionary<Type, Type>();
-        builder.Invoke(map);
-        return map;
+        Map.Add(key, value);
+        return this;
     }
 }

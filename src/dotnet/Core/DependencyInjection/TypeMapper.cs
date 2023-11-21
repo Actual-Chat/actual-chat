@@ -1,31 +1,32 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ActualChat.DependencyInjection;
 
-public class TypeMapper<TScope>
+public sealed class TypeMapper<TScope>
 {
-    private readonly IReadOnlyDictionary<Type, Type> _map;
+    private readonly Dictionary<Type, Type> _map;
     private readonly ConcurrentDictionary<Type, Type?> _cache = new();
 
+    public TypeMapper(TypeMap<TScope> typeMap)
+        => _map = typeMap.Map;
+
+    public TypeMapper(Action<TypeMap<TScope>> typeMapBuilder)
+    {
+        var typeMap = new TypeMap<TScope>();
+        typeMapBuilder.Invoke(typeMap);
+        _map = typeMap.Map;
+    }
+
     public TypeMapper(IServiceProvider services)
-        => _map = services.GetServices<TypeMap<TScope>>()
+        : this(new TypeMap<TScope>(services.GetServices<TypeMap<TScope>>()
             .SelectMany(r => r.Map)
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
+            .ToDictionary(kv => kv.Key, kv => kv.Value)))
+    { }
 
-    public TypeMapper(TypeMap<TScope> map)
-        => _map = map.Map;
-
-    public TypeMapper(IReadOnlyDictionary<Type, Type> map)
-        => _map = map;
-
-    public Type Get(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type source)
+    public Type Get(Type source)
         => TryGet(source)
             ?? throw StandardError.NotFound<Type>(
                 $"No matching {typeof(TScope).GetName()} is found for type '{source.GetName()}'.");
 
-    public Type? TryGet(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type source)
+    public Type? TryGet(Type source)
     {
         if (source == null)
             throw new ArgumentNullException(nameof(source));

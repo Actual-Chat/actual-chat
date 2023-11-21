@@ -67,8 +67,8 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
 
     [JSInvokable]
     public void OnStartRecording()
-    {
-    }
+    { }
+
     [JSInvokable]
     public Task OnAudioData(byte[] _) => Task.CompletedTask;
 

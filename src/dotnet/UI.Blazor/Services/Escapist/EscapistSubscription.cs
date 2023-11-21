@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -27,6 +28,9 @@ public class EscapistSubscription : IAsyncDisposable
             .AsTask().WaitAsync(cancellationToken).ConfigureAwait(false);
         return subscription;
     }
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EscapistSubscription))]
+    public EscapistSubscription() { }
 
     public async ValueTask DisposeAsync()
     {

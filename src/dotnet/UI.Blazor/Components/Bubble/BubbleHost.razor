@@ -4,6 +4,7 @@
 @using ActualChat.Users
 @using Stl.Generators
 @using ActualChat.Kvas
+@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 
 <div class="ac-bubble-host">
@@ -30,6 +31,9 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private BubbleUI BubbleUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]
+    public BubbleHost() { }
 
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");

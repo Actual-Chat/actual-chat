@@ -2,6 +2,7 @@
 @implements IMarkupEditorBackend
 @implements IAsyncDisposable
 @using ActualChat.Chat.UI.Blazor.Module
+@using System.Diagnostics.CodeAnalysis
 
 <div @ref="Ref" id="@Id" class="@Class markup-editor">
     <div class="editor-content"
@@ -40,6 +41,7 @@
     public IJSObjectReference JSRef { get; private set; } = null!;
     public Task WhenReady => _whenReadySource.Task;
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupEditor))]
     public MarkupEditor()
         => _onMentionSelected = mention => _ = InsertMention(mention);
 

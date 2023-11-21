@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hardware;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
@@ -17,6 +18,7 @@ public class DeviceAwakeUI : ISleepDurationProvider, IDeviceAwakeUIBackend, IDis
 
     public IState<TimeSpan> TotalSleepDuration => _totalSleepDuration;
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DeviceAwakeUI))]
     public DeviceAwakeUI(IServiceProvider services)
     {
         Log = services.LogFor(GetType());

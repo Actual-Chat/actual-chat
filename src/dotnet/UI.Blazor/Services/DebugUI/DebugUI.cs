@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Module;
@@ -18,6 +19,7 @@ public sealed class DebugUI : IDisposable
 
     public Task WhenReady { get; }
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DebugUI))]
     public DebugUI(IServiceProvider services)
     {
         Services = services;

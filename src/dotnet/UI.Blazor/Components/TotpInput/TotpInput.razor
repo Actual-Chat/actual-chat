@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
 @using System.Net.Mime
+@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 
 <div @ref="_ref" class="totp-input">
@@ -44,6 +45,9 @@
     [Parameter] public bool IsVerifying { get; set; }
     [Parameter] public string ErrorText { get; set; } = "Invalid code. Please correct it or request a new one.";
     [Parameter] public EventCallback<int> Completed { get; set; }
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TotpInput))]
+    public TotpInput() { }
 
     public ValueTask DisposeAsync() {
         var jsRef = _jsRef;

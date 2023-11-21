@@ -65,6 +65,7 @@
 
     private async ValueTask OnFontSizeChanged(string fontSize) {
         await JS.InvokeAsync<string>(JSFontSizeSetMethod, fontSize);
+        _fontSize = await JS.InvokeAsync<string>(JSFontSizeGetMethod);
         StateHasChanged();
     }
 

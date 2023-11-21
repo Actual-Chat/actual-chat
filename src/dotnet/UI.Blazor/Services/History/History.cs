@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Concurrency;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
@@ -51,6 +52,7 @@ public partial class History : IHasServices, IDisposable
     public LocalUrl LocalUrl => new(_uri, ParseOrNone.Option);
     public event EventHandler<LocationChangedEventArgs>? LocationChanged;
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(History))]
     public History(IServiceProvider services)
     {
         Services = services;

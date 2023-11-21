@@ -19,10 +19,10 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
     private AudioSource? _audioSource;
     private string _audioBlobStreamUri = "";
 
-    [Inject] private ILogger<AudioPlayerTestPage> Log { get; init; } = null!;
     [Inject] private IServiceProvider Services { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ITrackPlayerFactory TrackPlayerFactory { get; init; } = null!;
+    [Inject] private ILogger<AudioPlayerTestPage> Log { get; init; } = null!;
 
     protected long ObjectCreationDelay;
     protected long StartPlayingDelay;

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -48,6 +49,8 @@ public class TuneUI : ITuneUIBackend, IDisposable
     private IJSRuntime JS { get; }
     private ILogger Log => _log ??= Services.LogFor<TuneUI>();
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneUI))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TuneInfo))]
     public TuneUI(IServiceProvider services)
     {
         Services = services;

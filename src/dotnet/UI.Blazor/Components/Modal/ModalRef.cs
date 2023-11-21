@@ -42,10 +42,10 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
     public ModalStepRef StepIn(string name)
     {
         var stepRef = Host.HistoryStepper.StepIn(name);
-        var modalStepRef = new ModalStepRefImpl(stepRef, this._modalStepRef);
-        this._modalStepRef = modalStepRef;
+        var modalStepRef = new ModalStepRefImpl(stepRef, _modalStepRef);
+        _modalStepRef = modalStepRef;
         _ = WaitWhenStepClosed(modalStepRef);
-        return this._modalStepRef;
+        return _modalStepRef;
     }
 
     public bool StepBack()

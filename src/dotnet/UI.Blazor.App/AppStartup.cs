@@ -3,10 +3,15 @@ using System.Net;
 using System.Net.WebSockets;
 using ActualChat.Audio.Module;
 using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Audio.UI.Blazor.Pages;
 using ActualChat.Chat.Module;
+using ActualChat.Chat.UI.Blazor.Components;
 using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Chat.UI.Blazor.Pages;
+using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
+using ActualChat.Contacts.UI.Blazor.Services.StlInterceptionProxies;
 using ActualChat.Diff.Handlers;
 using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
@@ -18,9 +23,19 @@ using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Security;
 using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.App.Pages;
+using ActualChat.UI.Blazor.App.Pages.Landing.Docs;
+using ActualChat.UI.Blazor.App.Pages.Test;
+using ActualChat.UI.Blazor.Components.Requirements;
 using ActualChat.UI.Blazor.Module;
+using ActualChat.UI.Blazor.Pages;
+using ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
+using ActualChat.UI.Blazor.Pages.DiveInModalTestPage;
+using ActualChat.UI.Blazor.Pages.ErrorBarrierTestPage;
+using ActualChat.UI.Blazor.Pages.RenderSlotTestPage;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
+using ActualChat.Users.UI.Blazor.Pages;
 using Cysharp.Text;
 using Stl.Interception.Interceptors;
 using Stl.RestEase;
@@ -33,8 +48,11 @@ namespace ActualChat.UI.Blazor.App;
 
 public static class AppStartup
 {
+    // Stl.Interception, Stl.Rpc, Stl.CommandR, Stl.Fusion dependencies are referenced
+    // by [DynamicDependency] on FusionBuilder from v6.7.2.
     // Libraries
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PriorityQueue<,>))] // MemoryPack uses it
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Range<>))] // JS dependency
     // Diffs
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MissingDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(CloneDiffHandler<>))]
@@ -42,8 +60,47 @@ public static class AppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
-    // Stl.Interception, Stl.Rpc, Stl.CommandR, Stl.Fusion dependencies are referenced
-    // by [DynamicDependency] on FusionBuilder from v6.7.2.
+    // Proxies
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContactSyncProxy))]
+    // Pages
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HomePage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UnavailablePage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmbeddedChatPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatInvitePage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserInvitePage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsCookiesPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsFaqPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsPrivacyPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DocsTermsPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AdminUserInvitesPage))]
+    // Test pages
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioPlayerTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioRecorderTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RenderSlotTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UIColorsTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ErrorBarrierTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ErrorToastTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(InfoToastTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DiveInModalTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ReconnectOverlayTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(LoadingOverlayTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MicPermissionTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SkeletonsTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RequirementsTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FeaturesTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ComputeStateTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MarkupEditorTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AuthTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BlazorTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(JSTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(EmbeddedTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TotpTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiTestPage))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SystemTestPage))]
     public static void ConfigureServices(
         IServiceCollection services,
         AppKind appKind,

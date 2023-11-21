@@ -11,6 +11,7 @@
 @using ActualChat.MediaPlayback
 @using ActualChat.Search
 @using Stl.Locking
+@using System.Diagnostics.CodeAnalysis
 @{
     var editorCls = "";
     if (ScreenSize.IsNarrow())
@@ -112,6 +113,9 @@
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ChatMessageEditor))]
+    public ChatMessageEditor() { }
 
     public async ValueTask DisposeAsync() {
         if (AttachmentsStorage != null)

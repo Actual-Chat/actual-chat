@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 
 namespace ActualChat.UI.Blazor.Services;
@@ -37,6 +38,7 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public string WindowId { get; protected set; } = "";
     public Task WhenReady => WhenReadySource.Task;
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BrowserInfo))]
     public BrowserInfo(IServiceProvider services)
     {
         Services = services;

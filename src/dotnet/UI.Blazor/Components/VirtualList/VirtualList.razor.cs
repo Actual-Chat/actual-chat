@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Module;
 
@@ -43,6 +44,11 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     // This event is intentionally Action vs EventCallback, coz normally it shouldn't
     // trigger StateHasChanged on parent component.
     [Parameter] public Action<VirtualListItemVisibility>? ItemVisibilityChanged { get; set; }
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualList<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListData<>))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VirtualListDataQuery))]
+    public VirtualList() { }
 
     [JSInvokable]
     public Task RequestData(VirtualListDataQuery query)

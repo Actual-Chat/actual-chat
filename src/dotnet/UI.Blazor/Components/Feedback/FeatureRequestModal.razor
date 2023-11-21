@@ -1,5 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Module
+@using System.Diagnostics.CodeAnalysis
 @implements IFeatureBackend
 @implements IAsyncDisposable
 @implements IModalView<FeatureRequestModal.Model>
@@ -59,6 +60,9 @@
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FeatureRequestModal))]
+    public FeatureRequestModal() { }
 
     public async ValueTask DisposeAsync()
     {

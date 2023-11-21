@@ -2,6 +2,7 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Hosting
 @using ActualChat.Security
+@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 
 <input @ref="InputRef" type="file" @attributes="InputAttributes"/>
@@ -24,6 +25,9 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> InputAttributes { get; set; } = new();
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(FileUpload))]
+    public FileUpload() { }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender)

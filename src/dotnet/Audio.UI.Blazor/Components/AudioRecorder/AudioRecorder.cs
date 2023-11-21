@@ -1,4 +1,5 @@
-﻿using ActualChat.Audio.UI.Blazor.Module;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Permissions;
@@ -33,6 +34,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public IState<AudioRecorderState> State => _state;
     public Task WhenInitialized { get; }
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioRecorder))]
     public AudioRecorder(IServiceProvider services)
     {
         Services = services;

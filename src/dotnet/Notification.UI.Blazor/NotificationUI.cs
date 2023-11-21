@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services;
@@ -37,6 +38,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     public IState<bool?> PermissionState => _permissionState;
     public Task WhenReady { get; }
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotificationUI))]
     public NotificationUI(IServiceProvider services)
     {
         Services = services;

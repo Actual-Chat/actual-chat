@@ -1,5 +1,6 @@
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Components.SideNav
+@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 
 <div @ref="ElementRef" class="@_class" data-side-nav="@_attribute">
@@ -22,6 +23,9 @@
     private ElementReference ElementRef { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
     private DotNetObjectReference<SideNav> BlazorRef { get; set; } = null!;
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SideNav))]
+    public SideNav() { }
 
     protected override void OnParametersSet() {
         _class = "side-nav";

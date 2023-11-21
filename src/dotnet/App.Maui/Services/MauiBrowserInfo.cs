@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
@@ -6,6 +7,7 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiBrowserInfo : BrowserInfo
 {
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiBrowserInfo))]
     public MauiBrowserInfo(IServiceProvider services)
         : base(services)
     {

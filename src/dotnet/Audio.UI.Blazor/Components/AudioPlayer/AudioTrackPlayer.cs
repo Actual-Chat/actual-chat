@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Media;
 using ActualChat.MediaPlayback;
@@ -22,6 +23,7 @@ public sealed class AudioTrackPlayer : TrackPlayer, IAudioPlayerBackend
     private IJSRuntime JS { get; }
     private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AudioTrackPlayer))]
     public AudioTrackPlayer(
         string id,
         IMediaSource source,

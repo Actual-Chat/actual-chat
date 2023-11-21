@@ -1,6 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.UI.Blazor.Module
+@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 
 <input
@@ -31,6 +32,9 @@
     [Parameter] public string TabIndex { get; set; } = "";
     [Parameter] public EventCallback<string> TextChanged { get; set; }
     [Parameter] public EventCallback<KeyboardEventArgs> KeyUp { get; set; }
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(TextInput))]
+    public TextInput() { }
 
     protected override bool ShouldRender() {
         if (!NeedsRender)

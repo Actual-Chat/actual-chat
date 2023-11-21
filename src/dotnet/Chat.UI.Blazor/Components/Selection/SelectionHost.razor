@@ -1,5 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
+@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 
 @code {
@@ -12,6 +13,9 @@
     [Inject] private SelectionUI SelectionUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Selected { get; set; } = ChatEntryId.None;
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SelectionHost))]
+    public SelectionHost() { }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {

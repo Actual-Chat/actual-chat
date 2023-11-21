@@ -1,5 +1,6 @@
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.Media
+@using System.Diagnostics.CodeAnalysis
 @implements IAttachmentListBackend
 @implements IAsyncDisposable
 @namespace ActualChat.Chat.UI.Blazor.Components
@@ -81,6 +82,9 @@
     public IJSObjectReference JSRef { get; private set; } = null!;
     public Task WhenReady => _whenReadySource.Task;
     public bool IsUploading => _attachments.Any(x => !x.Uploaded);
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AttachmentList))]
+    public AttachmentList() { }
 
     public async ValueTask DisposeAsync() {
         _whenReadySource.TrySetCanceled();

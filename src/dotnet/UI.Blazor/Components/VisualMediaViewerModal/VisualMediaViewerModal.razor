@@ -1,5 +1,6 @@
 @using ActualChat.Chat
 @using ActualChat.UI.Blazor.Module
+@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 @implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
@@ -108,6 +109,9 @@
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
+
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VisualMediaViewerModal))]
+    public VisualMediaViewerModal() { }
 
     public async ValueTask DisposeAsync()
     {
