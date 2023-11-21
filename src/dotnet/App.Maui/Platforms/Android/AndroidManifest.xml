@@ -27,10 +27,10 @@
   <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
   <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
   <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-  <!-- Unnecessary in .NET 8:
+  <!-- Unnecessary in .NET 8, but let's have it for now:
   - https://learn.microsoft.com/en-us/dotnet/maui/migration/android-projects?view=net-maui-8.0
+  -->
 	<uses-sdk android:minSdkVersion="28" android:targetSdkVersion="34" />
-	-->
   <queries>
     <intent>
       <action android:name="android.media.action.IMAGE_CAPTURE" />
