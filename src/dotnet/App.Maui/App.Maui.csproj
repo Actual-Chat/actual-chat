@@ -189,7 +189,7 @@
     <AndroidDexTool>d8</AndroidDexTool>
     <!-- <AndroidLinkTool>r8</AndroidLinkTool> --> <!-- Doesn't work with .NET 8! -->
     <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>full</TrimMode>
+    <TrimMode>partial</TrimMode>
     <RunAOTCompilation>true</RunAOTCompilation>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
@@ -371,6 +371,7 @@
     <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
 
     <!-- Extras -->
+    <!--
     <TrimmerRootAssembly Include="Java.Interop" RootMode="visible" />
     <TrimmerRootAssembly Include="banditoth.MAUI.DeviceId" RootMode="visible" />
     <TrimmerRootAssembly Include="Mono.Android" RootMode="visible" />
@@ -385,6 +386,7 @@
     <TrimmerRootAssembly Include="Serilog" RootMode="visible" />
     <TrimmerRootAssembly Include="Serilog.Extensions.Logging" RootMode="visible" />
     <TrimmerRootAssembly Include="Serilog.Sinks.Xamarin" RootMode="visible" />
+    -->
   </ItemGroup>
 
   <ItemGroup>
