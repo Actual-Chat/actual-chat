@@ -431,6 +431,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 }
                 else
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+                update.ValidateForPlaceChat();
             }
             else if (chatKind != ChatKind.Peer)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.Kind.");
@@ -529,6 +530,8 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             ownerId.RequireNone();
             if (update.PlaceId.HasValue)
                 throw new ArgumentOutOfRangeException(nameof(command), "ChatDiff.PlaceId should be null.");
+            if (chatId.IsPlaceChat(out _))
+                update.ValidateForPlaceChat();
             dbChat.RequireVersion(expectedVersion);
 
             chat = ApplyDiff(dbChat.ToModel(), update);
