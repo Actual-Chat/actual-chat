@@ -18,7 +18,12 @@ Use:
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>full</TrimMode>
     <IsTrimmable>true</IsTrimmable>
-    <!--<RunAOTCompilation>true</RunAOTCompilation>-->
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <!-- Broken for now:
+    - https://github.com/dotnet/runtime/issues/92238
+    - https://github.com/dotnet/runtime/pull/90436
+    -->
+    <!-- <WasmStripILAfterAOT>true</WasmStripILAfterAOT> -->
     <InvariantGlobalization>true</InvariantGlobalization>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
     <WasmEnableWebcil>true</WasmEnableWebcil>
