@@ -63,7 +63,7 @@
         var hasRegularMembers = allAuthorIds.Except(ownerIds).Any();
         if (hasRegularMembers)
             return false;
-        var peopleContacts = await ChatListUI.ListAllUnordered(ChatListFilter.People, cancellationToken);
+        var peopleContacts = await ChatListUI.ListPeopleContacts(cancellationToken);
         return peopleContacts.Count > 0;
     }
 

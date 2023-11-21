@@ -37,14 +37,13 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
     private MomentClockSet Clocks => ChatHub.Clocks();
     private ILogger Log => _log ??= ChatHub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
+    private Moment Now => Clocks.SystemClock.Now;
 
     public IMutableState<ChatListSettings> Settings => _settings;
 #pragma warning disable CA1721 // Confusing w/ GetUnreadChatCount
     public IState<Trimmed<int>> UnreadChatCount => _unreadChatCount!;
 #pragma warning restore CA1721
     public Task WhenLoaded => _settings.WhenRead;
-
-    private Moment Now => Clocks.SystemClock.Now;
 
     public ChatListUI(ChatHub chatHub)
     {
@@ -90,35 +89,16 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
         };
 
     [ComputeMethod]
-    public virtual Task<int> GetCount(ChatListKind listKind)
+    public virtual Task<ChatListCount> GetCount(ChatListKind listKind)
     {
         var items = GetItems(listKind);
-        lock (items)
-            return Task.FromResult(items.Count);
+        lock (items) {
+            var chatListCount = items.Count > 0
+                ? new ChatListCount(items.Count, items[0].GetPlaceId())
+                : new ChatListCount(0, PlaceId.None);
+            return Task.FromResult(chatListCount);
+        }
     }
-
-    // [ComputeMethod]
-    // public virtual async Task<int> GetCount(ChatListKind listKind)
-    // {
-    //     var items = GetItems(listKind);
-    //     if (listKind == ChatListKind.All) {
-    //         var placeId = await ChatHub.ChatUI.ActivePlaceId.Use().ConfigureAwait(false);
-    //         lock (items) {
-    //             if (items.Count > 0) {
-    //                 var chatId = items[0];
-    //                 chatId.IsPlaceChat(out var placeChatId);
-    //                 var chatPlaceId = placeChatId.PlaceId;
-    //                 if (placeId == chatPlaceId)
-    //                     return items.Count;
-    //             }
-    //             return 0;
-    //         }
-    //     }
-    //     else {
-    //         lock (items)
-    //             return items.Count;
-    //     }
-    // }
 
     [ComputeMethod]
     public virtual Task<ChatId> GetItem(ChatListKind listKind, int index)
@@ -137,10 +117,17 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
         };
 
     [ComputeMethod(InvalidationDelay = 0.6)]
-    public virtual async Task<Trimmed<int>> GetUnreadChatCount(ChatListFilter filter, CancellationToken cancellationToken = default)
+    public virtual async Task<Trimmed<int>> GetUnreadChatCount(PlaceId placeId, ChatListFilter filter, CancellationToken cancellationToken = default)
     {
-        var chatById = await ListAllUnordered(filter, cancellationToken).ConfigureAwait(false);
+        var chatById = await ListAllUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
         return chatById.Select(c => c.Value).UnreadChatCount();
+    }
+
+    [ComputeMethod(InvalidationDelay = 0.6)]
+    public virtual async Task<Trimmed<int>> GetUnmutedUnreadChatCount(PlaceId placeId, CancellationToken cancellationToken = default)
+    {
+        var chatById = await ListAllUnordered(placeId, ChatListFilter.None, cancellationToken).ConfigureAwait(false);
+        return chatById.Select(c => c.Value).UnmutedUnreadChatCount();
     }
 
     [ComputeMethod]
@@ -159,18 +146,25 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
     }
 
     [ComputeMethod]
-    public virtual async Task<IReadOnlyList<ChatInfo>> ListAll(CancellationToken cancellationToken = default)
+    public virtual async Task<IReadOnlyList<ChatInfo>> ListAll(
+        CancellationToken cancellationToken = default)
     {
-        var settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
-        return await ListAll(settings, cancellationToken).ConfigureAwait(false);
+        await ChatUI.WhenActivePlaceRestored.ConfigureAwait(false);
+        var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
+        var settings = ChatListSettings.None;
+        // Use ChatListSettings only for Chats navigation group.
+        if (placeId.IsNone)
+            settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
+        return await ListAll(placeId, settings, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> ListAll(
+        PlaceId placeId,
         ChatListSettings settings,
         CancellationToken cancellationToken = default)
     {
-        var chatById = await ListAllUnordered(settings.Filter, cancellationToken).ConfigureAwait(false);
+        var chatById = await ListAllUnordered(placeId, settings.Filter, cancellationToken).ConfigureAwait(false);
         var chats = chatById.Values.OrderBy(settings.Order);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
@@ -178,11 +172,31 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
         return chats.ToList();
     }
 
+    public virtual Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListPeopleContacts(
+        CancellationToken cancellationToken = default)
+        => ListAllUnordered(PlaceId.None, ChatListFilter.People, cancellationToken);
+
     [ComputeMethod]
     public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListAllUnordered(
+        PlaceId placeId,
         CancellationToken cancellationToken = default)
     {
-        var chatById = await ListAllUnorderedRaw(cancellationToken).ConfigureAwait(false);
+        var chatById = await ListAllUnorderedRaw(placeId, cancellationToken).ConfigureAwait(false);
+        chatById = await AddUnlistedSelectedChat(chatById, cancellationToken).ConfigureAwait(false);
+        return chatById;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListOverallUnordered(
+        CancellationToken cancellationToken = default)
+    {
+        var chatById = await ListOverallUnorderedRaw(cancellationToken).ConfigureAwait(false);
+        chatById = await AddUnlistedSelectedChat(chatById, cancellationToken).ConfigureAwait(false);
+        return chatById;
+    }
+
+    private async Task<IReadOnlyDictionary<ChatId, ChatInfo>> AddUnlistedSelectedChat(IReadOnlyDictionary<ChatId, ChatInfo> chatById, CancellationToken cancellationToken)
+    {
         if (await _isSelectedChatUnlisted.Use(cancellationToken).ConfigureAwait(false)) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
             if (!selectedChatId.IsPlaceChat(out _)) {
@@ -201,10 +215,11 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
 
     [ComputeMethod]
     public virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListAllUnordered(
+        PlaceId placeId,
         ChatListFilter filter,
         CancellationToken cancellationToken = default)
     {
-        var chatById = await ListAllUnordered(cancellationToken).ConfigureAwait(false);
+        var chatById = await ListAllUnordered(placeId, cancellationToken).ConfigureAwait(false);
         return chatById.Values
             .Where(filter.Filter ?? (_ => true))
             .ToDictionary(c => c.Id, c => c);
@@ -213,7 +228,22 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
     // Protected methods
 
     [ComputeMethod]
-    protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListAllUnorderedRaw(CancellationToken cancellationToken)
+    protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListOverallUnorderedRaw(
+        CancellationToken cancellationToken)
+    {
+        var result = new Dictionary<ChatId, ChatInfo>();
+        var placeIds = await ChatHub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
+        var extendedPlaceIds = new List<PlaceId> { PlaceId.None };
+        extendedPlaceIds.AddRange(placeIds);
+        foreach (var placeId in extendedPlaceIds) {
+            var chatById = await ListAllUnorderedRaw(placeId, cancellationToken).ConfigureAwait(false);
+            result.AddRange(chatById);
+        }
+        return result;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListAllUnorderedRaw(PlaceId placeId, CancellationToken cancellationToken)
     {
         if (_isFirstLoad) {
             _isFirstLoad = false;
@@ -226,31 +256,36 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
 #endif
         }
         try {
-            DebugLog?.LogDebug("-> ListAllUnorderedRaw");
+            DebugLog?.LogDebug("-> ListAllUnorderedRaw (PlaceId={PlaceId})", placeId);
             var startedAt = CpuTimestamp.Now;
-            await ChatUI.WhenActivePlaceRestored.ConfigureAwait(false);
-            var placeId = await ChatHub.ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
+
+            await PseudoListAllUnorderedRawDependency().ConfigureAwait(false);
             var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
             var loadLimit = _loadLimit.Value; // It is explicitly invalidated in IncreaseLoadLimit
             if (contactIds.Count > loadLimit) {
                 contactIds = contactIds[..loadLimit];
-                _ = IncreaseLoadLimit();
+                _ = IncreaseLoadLimit(placeId);
             }
 
             var contacts = (await contactIds
-                .Select(contactId => ChatUI.Get(contactId.ChatId, cancellationToken))
-                .CollectResults(256)
-                .ConfigureAwait(false)
+                    .Select(contactId => ChatUI.Get(contactId.ChatId, cancellationToken))
+                    .CollectResults(256)
+                    .ConfigureAwait(false)
                 ).Select(x => x.ValueOrDefault)
                 .SkipNullItems()
                 .ToDictionary(c => c.Id);
-            DebugLog?.LogDebug("<- ListAllUnorderedRaw ({Count} contacts, {Duration})", contacts.Count, startedAt.Elapsed.ToShortString());
+            DebugLog?.LogDebug("<- ListAllUnorderedRaw (PlaceId={PlaceId}, {Count} contacts, {Duration})",
+                placeId, contacts.Count, startedAt.Elapsed.ToShortString());
             return contacts;
         }
         finally {
             LoadingUI.MarkChatListLoaded();
         }
     }
+
+    [ComputeMethod]
+    protected virtual Task<Unit> PseudoListAllUnorderedRawDependency()
+        => Stl.Async.TaskExt.UnitTask;
 
     [ComputeMethod]
     protected virtual async Task<bool> IsSelectedChatUnlistedInternal(CancellationToken cancellationToken)
@@ -261,7 +296,7 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
 
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
-        var chatById = await ListAllUnorderedRaw(cancellationToken).ConfigureAwait(false);
+        var chatById = await ListAllUnorderedRaw(PlaceId.None, cancellationToken).ConfigureAwait(false);
         return !chatById.ContainsKey(selectedChatId);
     }
 
@@ -274,7 +309,7 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
             _ => throw new ArgumentOutOfRangeException(nameof(listKind)),
         };
 
-    private async Task IncreaseLoadLimit()
+    private async Task IncreaseLoadLimit(PlaceId placeId)
     {
         await Task.Delay(TimeSpan.FromSeconds(0.5)).ConfigureAwait(false);
         if (_loadLimit.Value == int.MaxValue)
@@ -283,15 +318,15 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
         _loadLimit.Value = int.MaxValue;
         _ = UICommander.RunNothing(); // No UI update delays in near term
         using (Computed.Invalidate())
-            _ = ListAllUnorderedRaw(default);
+            _ = ListAllUnorderedRaw(placeId, default);
     }
 
     private async Task<Trimmed<int>> ComputeUnreadChatCount(
         IComputedState<Trimmed<int>> state,
         CancellationToken cancellationToken)
     {
-        var chatById = await ListAllUnordered(cancellationToken).ConfigureAwait(false);
-        var count = chatById.Values.Where(c => c.UnmutedUnreadCount > 0).UnreadChatCount();
+        var chatById = await ListOverallUnordered(cancellationToken).ConfigureAwait(false);
+        var count = chatById.Values.UnmutedUnreadChatCount();
         return count;
     }
 }

@@ -13,4 +13,9 @@ public static class ChatInfoExt
         => chats
             .Select(c => new Trimmed<int>(c.UnreadCount.Value > 0 ? 1 : 0, MaxUnreadChatCount))
             .Sum();
+
+    public static Trimmed<int> UnmutedUnreadChatCount(this IEnumerable<ChatInfo> chats)
+        => chats
+            .Where(c => c.UnmutedUnreadCount > 0)
+            .UnreadChatCount();
 }

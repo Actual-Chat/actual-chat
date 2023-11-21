@@ -14,7 +14,6 @@ public partial class ChatListUI
             new($"{nameof(PushItems)}({ChatListKind.Active})", ct => PushItems(ChatListKind.Active, ct)),
             new($"{nameof(PushItems)}({ChatListKind.All})", ct => PushItems(ChatListKind.All, ct)),
             AsyncChainExt.From(ResetPushIfStuck),
-            AsyncChainExt.From(InvalidateAllChatListWhenPlaceChanged),
             AsyncChainExt.From(PlayTuneOnNewMessages),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
@@ -43,7 +42,6 @@ public partial class ChatListUI
 
     private async Task PushItems(ChatListKind listKind, CancellationToken cancellationToken)
     {
-        await ChatUI.WhenActivePlaceRestored.ConfigureAwait(false);
         var cList = await Computed
             .Capture(() => List(listKind, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
@@ -65,8 +63,17 @@ public partial class ChatListUI
         bool isCountChanged;
         var changedIndexes = new List<int>();
         var oldItems = GetItems(listKind);
+        int oldCount;
+        int newCount;
+        PlaceId oldPlaceId;
+        PlaceId newPlaceId;
+
         lock (oldItems) {
-            isCountChanged = oldItems.Count != newItems.Length;
+            oldCount = oldItems.Count;
+            newCount = newItems.Length;
+            oldPlaceId = listKind != ChatListKind.Active && oldItems.Count > 0 ? oldItems[0].GetPlaceId() : PlaceId.None;
+            newPlaceId = listKind != ChatListKind.Active && newItems.Length > 0 ? newItems[0].GetPlaceId() : PlaceId.None;
+            isCountChanged = oldItems.Count != newItems.Length || oldPlaceId != newPlaceId;
             var commonLength = Math.Min(oldItems.Count, newItems.Length);
             for (int i = 0; i < commonLength; i++)
                 if (oldItems[i] != newItems[i])
@@ -84,9 +91,11 @@ public partial class ChatListUI
             return;
 
         using (Computed.Invalidate()) {
-            DebugLog?.LogDebug("PushItems({ListKind}): invalidating GetCount", listKind);
-            if (isCountChanged)
+            if (isCountChanged) {
+                DebugLog?.LogDebug("PushItems({ListKind}, {OldCount}->{NewCount}, '{OldPlace}'->'{NewPlace}'): invalidating GetCount",
+                    listKind, oldCount, newCount, oldPlaceId, newPlaceId);
                 _ = GetCount(listKind);
+            }
 
             DebugLog?.LogDebug("PushItems({ListKind}): invalidating {Count} indexes: {Indexes}",
                 listKind, changedIndexes.Count, changedIndexes.ToDelimitedString());
@@ -122,33 +131,7 @@ public partial class ChatListUI
                 Log.LogWarning($"{nameof(ResetPushIfStuck)}: chat list stuck in the loading state, invalidating...");
                 tryIndex++;
                 using (Computed.Invalidate())
-                    _ = ListAllUnorderedRaw(CancellationToken.None);
-            }
-        }
-    }
-
-    private async Task InvalidateAllChatListWhenPlaceChanged(CancellationToken cancellationToken)
-    {
-        await ChatUI.WhenActivePlaceRestored.ConfigureAwait(false);
-        var lastPlaceId = ChatHub.ChatUI.SelectedPlaceId.Value;
-        var cValueBase = await Computed
-            .Capture(() => ChatHub.ChatUI.SelectedPlaceId.Use(cancellationToken))
-            .ConfigureAwait(false);
-        var changes = cValueBase.Changes(cancellationToken);
-        await foreach (var cValue in changes.ConfigureAwait(false)) {
-            var placeId = cValue.Value;
-            if (lastPlaceId == placeId)
-                continue;
-
-            lastPlaceId = placeId;
-            var oldItems = GetItems(ChatListKind.All);
-            int count;
-            lock (oldItems)
-                count = oldItems.Count;
-            using (Computed.Invalidate()) {
-                for (int i = 0; i < count; i++)
-                    _ = GetItem(ChatListKind.All, i);
-                _ = GetCount(ChatListKind.All);
+                    _ = PseudoListAllUnorderedRawDependency();
             }
         }
     }
@@ -159,7 +142,7 @@ public partial class ChatListUI
             return; // skip tune notifications for mobile MAUI
 
         var cChatInfoMap = await Computed
-            .Capture(() => ListAllUnorderedRaw(cancellationToken), cancellationToken)
+            .Capture(() => ListOverallUnorderedRaw(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var previous = await cChatInfoMap.Use(cancellationToken).ConfigureAwait(false);
         var lastPlayedAt = Clocks.SystemClock.Now; // Skip tune after loading

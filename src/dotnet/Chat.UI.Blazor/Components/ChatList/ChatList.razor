@@ -2,7 +2,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatList.Model>
 @{
-    // ChatUI.Services.LogFor(GetType()).LogDebug("Rendered: {List}", Kind);
+    DebugLog?.LogDebug("Rendered: {List}, '{PlaceId}'", Kind, _placeId);
     var m = _rendered = State.Value;
     if (m is { ChatCount: 0, IsSearchModeOn: false })
         return;
@@ -46,13 +46,31 @@
 
 @code {
     private Model _rendered;
+    private ILogger? _log;
+    private PlaceId _placeId;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
+    [Parameter, EditorRequired] public string PlaceSid { get; set; } = "";
+
+    private Session Session => ChatHub.Session;
+    private ChatUI ChatUI => ChatHub.ChatUI;
+    private ChatListUI ChatListUI => ChatHub.ChatListUI;
+    private SearchUI SearchUI => ChatHub.SearchUI;
+    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
+
+    protected override void OnInitialized() {
+        _placeId = PlaceId.Parse(PlaceSid);
+        DebugLog?.LogDebug("Initialized: {List}, {PlaceId}", Kind, _placeId);
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet() {
+        _placeId = PlaceId.Parse(PlaceSid);
+        base.OnParametersSet();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -61,11 +79,23 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var chatCount = await ChatListUI.GetCount(Kind);
-        if (Kind != ChatListKind.Active)
+        DebugLog?.LogDebug("-> ComputeState: {List}, '{PlaceId}'", Kind, _placeId);
+        var chatListCount = await ChatListUI.GetCount(Kind);
+        if (chatListCount.PlaceId != _placeId) {
+            DebugLog?.LogDebug("<- ComputeState: {List}, '{PlaceId}'." +
+                " Invalid place. Expected: '{ExpectedPlaceId}', Actual: '{ActualPlaceId}'." +
+                " Override count to 0",
+                Kind, _placeId, _placeId, chatListCount.PlaceId);
+            return new Model(0);
+        }
+        var chatCount = chatListCount.Count;
+        if (Kind != ChatListKind.Active) {
+            DebugLog?.LogDebug("<- ComputeState: {List}, '{PlaceId}'. Count={Count}", Kind, _placeId, chatCount);
             return new Model(chatCount);
+        }
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        DebugLog?.LogDebug("<- ComputeState: {List}, '{PlaceId}'. Count={Count}", Kind, _placeId, chatCount);
         return new Model(chatCount, !searchPhrase.IsEmpty);
     }
 

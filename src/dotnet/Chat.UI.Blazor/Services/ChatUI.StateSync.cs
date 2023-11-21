@@ -125,7 +125,7 @@ public partial class ChatUI
     private async Task SynchronizeSelectedChatIdAndActivePlaceId(CancellationToken cancellationToken)
     {
         await WhenLoaded.ConfigureAwait(false);
-        var restoreTask = RestoreActivePlace(cancellationToken);
+        var restoreTask = RestoreSelectedPlace(cancellationToken);
         var synchronizeSelectedChatIdsTask = SynchronizeSelectedChatIds();
         await Task.WhenAll(restoreTask, synchronizeSelectedChatIdsTask).ConfigureAwait(false);
         await UpdateSelectedChatWhenPlaceChanged(cancellationToken).ConfigureAwait(false);
@@ -147,7 +147,7 @@ public partial class ChatUI
         }
     }
 
-    private async Task RestoreActivePlace(CancellationToken cancellationToken)
+    private async Task RestoreSelectedPlace(CancellationToken cancellationToken)
     {
         try {
             var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
@@ -181,7 +181,7 @@ public partial class ChatUI
     private async Task UpdateSelectedChatWhenPlaceChanged(CancellationToken cancellationToken)
     {
         var cValueBase = await Computed
-            .Capture(() => SelectedPlaceId.Use(cancellationToken))
+            .Capture(() => SelectedPlaceId.Use(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var changes = cValueBase.Changes(cancellationToken);
         await foreach (var cValue in changes.ConfigureAwait(false)) {
@@ -207,11 +207,15 @@ public partial class ChatUI
             else
                 DebugLog?.LogDebug("Restoring SelectedChatOnPlace. ChatId: '{ChatId}'", lastSelectedChatId);
 
-            await ChatHub.Dispatcher.InvokeAsync(() => {
-                if (!lastSelectedChatId.IsNone)
-                    return ChatHub.History.NavigateTo(Links.Chat(lastSelectedChatId));
-                SelectChat(ChatId.None);
-                return Task.CompletedTask;
+            await ChatHub.Dispatcher.InvokeAsync(async () => {
+                SelectChat(lastSelectedChatId);
+                if (!lastSelectedChatId.IsNone && ChatHub.PanelsUI.IsWide()) {
+                    // Do not navigate on narrow screen to prevent hiding panels
+                    // Navigate to selected chat only after delay to make ChatLists update smoother.
+                    await Task.Delay(500, default).ConfigureAwait(true);  // Continue on the Blazor Dispatcher
+                    if (SelectedChatId.Value == lastSelectedChatId)
+                        await ChatHub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
+                }
             }).ConfigureAwait(false);
         }
     }

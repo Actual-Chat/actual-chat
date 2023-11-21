@@ -11,8 +11,16 @@
 
 @code {
     private Model? _rendered;
+    private PlaceId _placeId;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string PlaceSid { get; set; } = "";
+
+    protected override void OnInitialized() {
+        _placeId = PlaceId.Parse(PlaceSid);
+        base.OnInitialized();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions() {
         return new() {
@@ -23,7 +31,7 @@
     }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await ChatListUI.UnreadChatCount.Use(cancellationToken);
+        var count = await ChatListUI.GetUnmutedUnreadChatCount(_placeId, cancellationToken);
         return new Model(count);
     }
 

@@ -77,6 +77,9 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
         return !placeChatId.IsNone;
     }
 
+    public PlaceId GetPlaceId()
+        => PlaceChatId.PlaceId;
+
     // Conversion
 
     public override string ToString() => Value;

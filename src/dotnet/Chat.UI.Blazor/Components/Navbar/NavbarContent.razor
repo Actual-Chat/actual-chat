@@ -10,18 +10,22 @@
 <div class="navbar-content">
 
 @if (NavbarUI.SelectedGroupId == NavbarGroupIds.Chats) {
-    <ChatListNavbarWidget />
+    <NavbarGroup Class="navbar-chats" Id="@NavbarGroupIds.Chats">
+        <ChatListNavbarWidget PlaceSid="@PlaceId.None" />
+    </NavbarGroup>
 }
-@if (NavbarUI.IsPlaceSelected(out _)) {
-    <PlaceChatListNavbarWidget PlaceId="@ChatUI.SelectedPlaceId.Value" />
+@if (NavbarUI.IsPlaceSelected(out var placeId)) {
+    <NavbarGroup Class="navbar-chats" Id="@placeId.GetNavbarGroupId()">
+        <ChatListNavbarWidget PlaceSid="@placeId" />
+    </NavbarGroup>
 }
 @if (m.IsAdmin) {
-    <NavbarGroup Title="Administration" Class="navbar-pages" Id="@NavbarGroupIds.Administration">
+    <NavbarGroup Class="navbar-pages" Id="@NavbarGroupIds.Administration">
         <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/user-invites">Invite Users</NavbarItem>
     </NavbarGroup>
 }
 @if (HostInfo.IsDevelopmentInstance) {
-    <NavbarGroup Title="Test pages" Class="navbar-pages" Id="@NavbarGroupIds.TestPages">
+    <NavbarGroup Class="navbar-pages" Id="@NavbarGroupIds.TestPages">
         <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>
         <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-player">Audio Player</NavbarItem>
         <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-recorder">Audio Recorder</NavbarItem>

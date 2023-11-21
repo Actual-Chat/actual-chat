@@ -1,7 +1,7 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatListItem.Model>
 @{
-    // ChatUI.Services.LogFor(GetType()).LogDebug("Rendered: {ListKind} #{Index}", ListKind, Index);
+    DebugLog?.LogDebug("Rendered: {ListKind} #{Index}", ListKind, Index);
     var m = State.Value;
     if (m == Model.None)
         return;
@@ -96,16 +96,27 @@ else {
 }
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    private ILogger? _log;
 
-    [CascadingParameter] public ScreenSize ScreenSize { get; init; }
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+
+    private ChatUI ChatUI => ChatHub.ChatUI;
+    private ChatListUI ChatListUI => ChatHub.ChatListUI;
+    private SearchUI SearchUI => ChatHub.SearchUI;
+    private ScreenSize ScreenSize => ChatHub.BrowserInfo.ScreenSize.Value;
+
+    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
     [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;
     [Parameter, EditorRequired] public int Index { get; init; }
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object> Attributes { get; set; } = new();
+
+    protected override void OnInitialized() {
+        DebugLog?.LogDebug("Initialized: {ListKind} #{Index}", ListKind, Index);
+        base.OnInitialized();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -115,22 +126,29 @@ else {
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
+        DebugLog?.LogDebug("-> ComputeState: {ListKind} #{Index}", ListKind, Index);
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
         var listKind = ListKind;
         var index = Index;
 
         var chatId = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
-        if (chatId.IsNone)
+        if (chatId.IsNone) {
+            DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, Loading", ListKind, Index);
             return Model.Loading;
+        }
 
         var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chatInfo == null)
+        if (chatInfo == null) {
+            DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, No ChatInfo", ListKind, Index);
             return Model.None;
+        }
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
-        if (chatState == null)
+        if (chatState == null) {
+            DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, No ChatState", ListKind, Index);
             return Model.None;
+        }
 
         var isLastItemInBlock = false;
         if (chatState.Contact.IsPinned && listKind == ChatListKind.All) {
@@ -141,6 +159,7 @@ else {
                 isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
         }
 
+        DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, ChatState is OK", ListKind, Index);
         return new Model {
             ChatState = chatState,
             IsLastItemInBlock = isLastItemInBlock,

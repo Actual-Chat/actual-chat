@@ -64,7 +64,7 @@
         };
 
     protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
-        var allChats = await ChatListUI.ListAllUnordered(Filter, cancellationToken);
+        var allChats = await ChatListUI.ListAllUnordered(PlaceId.None, Filter, cancellationToken);
         _allChats.Value = allChats;
 
         var chats = allChats.Values;
