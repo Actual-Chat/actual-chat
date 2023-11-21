@@ -67,7 +67,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
         _selectedChatId = StateFactory.NewKvasStored<ChatId>(new(LocalSettings, nameof(SelectedChatId)) {
             Corrector = FixSelectedChatId,
         });
-        _selectedPlaceId = Services.StateFactory().NewMutable(
+        _selectedPlaceId = StateFactory.NewMutable(
             PlaceId.None,
             StateCategories.Get(type, nameof(SelectedPlaceId)));
         _selectedChatIds = StateFactory.NewKvasStored<IImmutableDictionary<PlaceId, ChatId>>(new (LocalSettings, nameof(SelectedChatIds)) {

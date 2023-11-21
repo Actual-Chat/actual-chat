@@ -2,7 +2,7 @@
 
 public class Places(IServiceProvider services) : IPlaces
 {
-    private IChats Chats{ get; } = services.GetRequiredService<IChats>();
+    private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private ICommander Commander { get; } = services.Commander();
 
     public virtual async Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken)

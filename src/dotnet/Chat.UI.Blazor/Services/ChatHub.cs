@@ -60,7 +60,6 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     private TuneUI? _tuneUI;
     private LoadingUI? _loadingUI;
     private ICommander? _commander;
-    private PlaceUI? _placeUI;
     private UICommander? _uiCommander;
     private UIEventHub? _uiEventHub;
     private History? _history;
@@ -124,8 +123,6 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
     public FeedbackUI FeedbackUI => _feedbackUI ??= Services.GetRequiredService<FeedbackUI>();
     public TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
-    public UICommander UICommander => _uiCommander ??= Services.UICommander();
-    public UIEventHub UIEventHub => _uiEventHub ??= Services.UIEventHub();
     public LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     public History History => _history ??= Services.GetRequiredService<History>();
     public Features Features => _features ??= Services.GetRequiredService<Features>();
