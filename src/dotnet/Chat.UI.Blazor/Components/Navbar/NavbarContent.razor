@@ -12,7 +12,7 @@
 @if (NavbarUI.SelectedGroupId == NavbarGroupIds.Chats) {
     <ChatListNavbarWidget />
 }
-@if (NavbarUI.SelectedGroupId.StartsWith(NavbarGroupIds.PlacePrefix)) {
+@if (NavbarUI.IsPlaceSelected(out _)) {
     <PlaceChatListNavbarWidget PlaceId="@ChatUI.SelectedPlaceId.Value" />
 }
 @if (m.IsAdmin) {
