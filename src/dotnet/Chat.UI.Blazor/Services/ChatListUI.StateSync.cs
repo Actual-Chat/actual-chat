@@ -65,23 +65,24 @@ public partial class ChatListUI
         var oldItems = GetItems(listKind);
         int oldCount;
         int newCount;
-        PlaceId oldPlaceId;
-        PlaceId newPlaceId;
 
         lock (oldItems) {
             oldCount = oldItems.Count;
             newCount = newItems.Length;
-            oldPlaceId = listKind != ChatListKind.Active && oldItems.Count > 0 ? oldItems[0].GetPlaceId() : PlaceId.None;
-            newPlaceId = listKind != ChatListKind.Active && newItems.Length > 0 ? newItems[0].GetPlaceId() : PlaceId.None;
-            isCountChanged = oldItems.Count != newItems.Length || oldPlaceId != newPlaceId;
+            isCountChanged = oldItems.Count != newItems.Length;
             var commonLength = Math.Min(oldItems.Count, newItems.Length);
             for (int i = 0; i < commonLength; i++)
                 if (oldItems[i] != newItems[i])
                     changedIndexes.Add(i);
 
-            var maxLength = Math.Max(oldItems.Count, newItems.Length);
-            for (int i = commonLength; i < maxLength; i++)
-                changedIndexes.Add(i);
+            // If list is shrinking, do not invalidate items with index greater than new list length.
+            // It will prevent recalculating correspondent ChatListItem`s. They will anyway will
+            // be removed on ChatList re-render.
+            // If list is expanding, do invalidate items with index greater than old list length.
+            if (newItems.Length > oldItems.Count) {
+                for (int i = commonLength; i < newItems.Length; i++)
+                    changedIndexes.Add(i);
+            }
 
             oldItems.Clear();
             oldItems.AddRange(newItems);
@@ -92,8 +93,8 @@ public partial class ChatListUI
 
         using (Computed.Invalidate()) {
             if (isCountChanged) {
-                DebugLog?.LogDebug("PushItems({ListKind}, {OldCount}->{NewCount}, '{OldPlace}'->'{NewPlace}'): invalidating GetCount",
-                    listKind, oldCount, newCount, oldPlaceId, newPlaceId);
+                DebugLog?.LogDebug("PushItems({ListKind}, {OldCount}->{NewCount}): invalidating GetCount",
+                    listKind, oldCount, newCount);
                 _ = GetCount(listKind);
             }
 
@@ -111,7 +112,7 @@ public partial class ChatListUI
             .ConfigureAwait(false);
         var delaySeq = RetryDelaySeq.Exp(5, 120, 0, 2);
         while (true) {
-            if (!cItem0.ValueOrDefault.IsNone) {
+            if (!cItem0.ValueOrDefault.Item2.IsNone) {
                 // We're fine
                 await cItem0.WhenInvalidated(cancellationToken).ConfigureAwait(false);
                 await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
@@ -124,7 +125,7 @@ public partial class ChatListUI
             while (true) {
                 await Task.Delay(delaySeq[tryIndex], cancellationToken).ConfigureAwait(false);
                 cItem0 = await cItem0.Update(cancellationToken).ConfigureAwait(false);
-                if (!cItem0.ValueOrDefault.IsNone)
+                if (!cItem0.ValueOrDefault.Item2.IsNone)
                     break; // We're fine
 
                 // And it's still None after delay

@@ -78,23 +78,22 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         };
 
     [ComputeMethod]
-    public virtual Task<ChatListCount> GetCount(ChatListKind listKind)
-    {
-        var items = GetItems(listKind);
-        lock (items) {
-            var chatListCount = items.Count > 0
-                ? new ChatListCount(items.Count, items[0].GetPlaceId())
-                : new ChatListCount(0, PlaceId.None);
-            return Task.FromResult(chatListCount);
-        }
-    }
-
-    [ComputeMethod]
-    public virtual Task<ChatId> GetItem(ChatListKind listKind, int index)
+    public virtual Task<int> GetCount(ChatListKind listKind)
     {
         var items = GetItems(listKind);
         lock (items)
-            return Task.FromResult(index < 0 || index >= items.Count ? ChatId.None : items[index]);
+            return Task.FromResult(items.Count);
+    }
+
+    [ComputeMethod]
+    public virtual Task<(bool, ChatId)> GetItem(ChatListKind listKind, int index)
+    {
+        var items = GetItems(listKind);
+        lock (items) {
+            var indexIsValid = index >= 0 && index < items.Count;
+            var chatId = indexIsValid ? items[index] : ChatId.None;
+            return Task.FromResult((indexIsValid, chatId));
+        }
     }
 
     // In fact, this is compute method, we just don't need one here, coz it routes the call further
