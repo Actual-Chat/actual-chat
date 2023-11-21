@@ -28,6 +28,7 @@ public sealed partial class MauiWebView
     public Session? Session { get; private set; }
     public bool IsDead { get; private set; }
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiWebView))]
     public MauiWebView()
     {
         Id = Interlocked.Increment(ref _lastId);

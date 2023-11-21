@@ -1,10 +1,10 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
-using ActualChat.Security;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
+[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiClientAuth))]
 internal sealed class MauiClientAuth(IServiceProvider services) : IClientAuth
 {
     private SessionTokens? _sessionTokens;

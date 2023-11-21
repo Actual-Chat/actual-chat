@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace ActualChat.App.Maui.Services;
 
+[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ScopedServicesDisposeTracker))]
 public sealed class ScopedServicesDisposeTracker(IServiceProvider services) : IDisposable
 {
     private static ILogger? _log;

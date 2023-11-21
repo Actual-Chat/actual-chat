@@ -83,6 +83,11 @@
     <IsProfilingEnabled>false</IsProfilingEnabled>
   </PropertyGroup>
 
+  <!-- Trimming roots -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="ActualChat" RootMode="visible" />
+  </ItemGroup>
+
   <!-- Project references -->
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
@@ -130,9 +135,6 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
     <PackageReference Include="Serilog.Sinks.Debug" />
     <PackageReference Include="Serilog.Sinks.File" />
-  </ItemGroup>
-  <ItemGroup>
-    <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
   </ItemGroup>
 
   <!--
@@ -361,6 +363,28 @@
       issue: [Web Workers API doesn't work](https://github.com/MicrosoftEdge/WebView2Feedback/issues/2296)
      -->
     <Watch Include="wwwroot\dist\**" />
+  </ItemGroup>
+
+  <!-- Trimming roots -->
+  <ItemGroup>
+    <!-- Entry points -->
+    <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
+
+    <!-- Extras -->
+    <TrimmerRootAssembly Include="Java.Interop" RootMode="visible" />
+    <TrimmerRootAssembly Include="banditoth.MAUI.DeviceId" RootMode="visible" />
+    <TrimmerRootAssembly Include="Mono.Android" RootMode="visible" />
+    <TrimmerRootAssembly Include="Mono.Android.Export" RootMode="visible" />
+    <TrimmerRootAssembly Include="Mono.Android.Runtime" RootMode="visible" />
+    <TrimmerRootAssembly Include="Sentry" RootMode="visible" />
+    <TrimmerRootAssembly Include="Sentry.Android.AssemblyReader" RootMode="visible" />
+    <TrimmerRootAssembly Include="Sentry.Bindings.Android" RootMode="visible" />
+    <TrimmerRootAssembly Include="Sentry.Extensions.Logging" RootMode="visible" />
+    <TrimmerRootAssembly Include="Sentry.OpenTelemetry" RootMode="visible" />
+    <TrimmerRootAssembly Include="Sentry.Serilog " RootMode="visible" />
+    <TrimmerRootAssembly Include="Serilog" RootMode="visible" />
+    <TrimmerRootAssembly Include="Serilog.Extensions.Logging" RootMode="visible" />
+    <TrimmerRootAssembly Include="Serilog.Sinks.Xamarin" RootMode="visible" />
   </ItemGroup>
 
   <ItemGroup>

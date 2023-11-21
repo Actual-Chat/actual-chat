@@ -1,4 +1,5 @@
-﻿using ActualChat.UI.Blazor.Services;
+﻿using System.Diagnostics.CodeAnalysis;
+using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
 using Stl.Diagnostics;
 
@@ -25,6 +26,7 @@ public class MauiLivenessProbe : WorkerBase
     public static void Check(TimeSpan delay)
         => _ = Task.Delay(delay).ContinueWith(_ => Check(), TaskScheduler.Default);
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiLivenessProbe))]
     public static void Check()
     {
         lock (_lock)

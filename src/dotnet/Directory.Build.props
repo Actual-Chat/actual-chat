@@ -120,13 +120,11 @@
 
   <!-- Extra trimming roots -->
   <ItemGroup>
-    <!-- Entry points -->
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="EntryPoint" />
-
     <!-- ActualChat - common -->
     <TrimmerRootAssembly Include="ActualChat.Core" RootMode="visible"/>
     <TrimmerRootAssembly Include="ActualChat.SignalR.Client" RootMode="visible"/>
     <TrimmerRootAssembly Include="ActualChat.UI.Blazor" RootMode="visible" />
+    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" RootMode="visible" />
 
     <!-- ActualChat - specific projects -->
     <TrimmerRootAssembly Include="ActualChat.Audio" RootMode="visible"/>

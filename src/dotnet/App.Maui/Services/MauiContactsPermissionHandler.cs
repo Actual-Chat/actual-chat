@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Permissions;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
@@ -6,6 +7,7 @@ namespace ActualChat.App.Maui.Services;
 
 public class MauiContactsPermissionHandler : ContactsPermissionHandler
 {
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiContactsPermissionHandler))]
     public MauiContactsPermissionHandler(IServiceProvider services, bool mustStart = true)
         : base(services, false)
     {

@@ -1,9 +1,11 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
 public class MauiReloadUI : ReloadUI
 {
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiReloadUI))]
     public MauiReloadUI(IServiceProvider services) : base(services) { }
 
     public override void Reload(bool clearCaches = false, bool clearLocalSettings = false)

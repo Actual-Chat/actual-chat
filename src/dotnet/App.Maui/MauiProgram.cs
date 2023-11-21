@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.Configuration;
@@ -30,6 +31,8 @@ public static partial class MauiProgram
     private static readonly Tracer Tracer = MauiDiagnostics.Tracer[nameof(MauiProgram)];
     private static HostInfo HostInfo => Constants.HostInfo;
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiDiagnostics))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiProgram))]
     public static MauiApp CreateMauiApp()
     {
         using var _1 = Tracer.Region();
@@ -205,9 +208,7 @@ public static partial class MauiProgram
             ConfigureNonLazyServicesVisibleFromLazyServices(services);
 
         // All other (module) services
-        AppStartup.ConfigureServices(services, AppKind.MauiApp, c => new HostModule[] {
-            new Module.MauiAppModule(c),
-        });
+        MauiAppStartup.ConfigureServices(services);
 
         // Platform services
         services.AddPlatformServices();

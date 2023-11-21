@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
-using ActualChat.Diff.Handlers;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
 // ReSharper disable once RedundantUsingDirective
@@ -13,15 +12,6 @@ using Microsoft.Extensions.Configuration; // Keep it: it lets <Project Sdk="Micr
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenTelemetry.Trace;
 using Sentry;
-using Stl.CommandR.Interception;
-using Stl.Fusion.Client.Interception;
-using Stl.Fusion.Client.Internal;
-using Stl.Fusion.Interception;
-using Stl.Interception;
-using Stl.Interception.Interceptors;
-using Stl.Interception.Internal;
-using Stl.Rpc;
-using Stl.Rpc.Infrastructure;
 using Tracer = ActualChat.Performance.Tracer;
 
 namespace ActualChat.App.Wasm;

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Services;
 using Stl.IO;
 
@@ -22,6 +23,7 @@ public sealed class SQLiteClientComputedCache : AppClientComputedCache
 
     private new Options Settings { get; }
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SQLiteClientComputedCache))]
     public SQLiteClientComputedCache(Options settings, IServiceProvider services)
         : base(settings, services)
     {

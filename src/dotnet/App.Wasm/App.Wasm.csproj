@@ -18,17 +18,21 @@ Use:
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>full</TrimMode>
     <IsTrimmable>true</IsTrimmable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
+    <WasmEnableWebcil>true</WasmEnableWebcil>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <RunAOTCompilation>true</RunAOTCompilation>
     <!-- Broken for now:
     - https://github.com/dotnet/runtime/issues/92238
     - https://github.com/dotnet/runtime/pull/90436
     -->
     <!-- <WasmStripILAfterAOT>true</WasmStripILAfterAOT> -->
-    <InvariantGlobalization>true</InvariantGlobalization>
-    <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
-    <WasmEnableWebcil>true</WasmEnableWebcil>
   </PropertyGroup>
 
+  <!-- Trimming roots -->
   <ItemGroup>
     <TrimmerRootAssembly Include="ActualChat.App.Wasm" RootMode="EntryPoint" />
   </ItemGroup>

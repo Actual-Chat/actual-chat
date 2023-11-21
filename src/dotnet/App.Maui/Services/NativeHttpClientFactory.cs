@@ -1,24 +1,20 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 
 namespace ActualChat.App.Maui.Services;
 
-public partial class NativeHttpClientFactory : IHttpClientFactory, IHttpMessageHandlerFactory
+[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NativeHttpClientFactory))]
+public partial class NativeHttpClientFactory(IServiceProvider services)
+    : IHttpClientFactory, IHttpMessageHandlerFactory
 {
     private static readonly Tracer Tracer = Tracer.Default[nameof(NativeHttpClientFactory)];
     private readonly ConcurrentDictionary<string, HttpMessageHandler> _messageHandlers = new (StringComparer.Ordinal);
 
-    private IServiceProvider Services { get; }
-    private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; }
-    private List<IHttpMessageHandlerBuilderFilter> Filters { get; }
-
-    public NativeHttpClientFactory(IServiceProvider services)
-    {
-        Services = services;
-        Options = services.GetRequiredService<IOptionsSnapshot<HttpClientFactoryOptions>>();
-        Filters = services.GetRequiredService<IEnumerable<IHttpMessageHandlerBuilderFilter>>().ToList();
-    }
+    private IServiceProvider Services { get; } = services;
+    private IOptionsSnapshot<HttpClientFactoryOptions> Options { get; } = ServiceProviderServiceExtensions.GetRequiredService<IOptionsSnapshot<HttpClientFactoryOptions>>(services);
+    private List<IHttpMessageHandlerBuilderFilter> Filters { get; } = ServiceProviderServiceExtensions.GetRequiredService<IEnumerable<IHttpMessageHandlerBuilderFilter>>(services).ToList();
 
     public HttpClient CreateClient(string name)
         // Each call to CreateClient(String) is guaranteed to return a new HttpClient instance.

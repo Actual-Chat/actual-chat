@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Security;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -21,6 +22,7 @@ public sealed class MauiSession(IServiceProvider services)
     private TrueSessionResolver TrueSessionResolver { get; } = services.GetRequiredService<TrueSessionResolver>();
     private IMobileSessions MobileSessions => _mobileSessions ??= Services.GetRequiredService<IMobileSessions>();
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiSession))]
     public static Task Start()
         => _readSessionTask = Task.Run(Read);
 

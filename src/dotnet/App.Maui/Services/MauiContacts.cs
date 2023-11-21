@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Mail;
 using ActualChat.Contacts;
 using ActualChat.Contacts.UI.Blazor.Services;
@@ -11,6 +12,7 @@ using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace ActualChat.App.Maui.Services;
 
+[method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiContacts))]
 public class MauiContacts(IServiceProvider services) : DeviceContacts
 {
     private Symbol? _deviceId;
