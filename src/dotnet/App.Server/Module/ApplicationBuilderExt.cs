@@ -1,6 +1,4 @@
-using System.Net.Mime;
 using ActualChat.Hosting;
-using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
@@ -53,9 +51,7 @@ public static class ApplicationBuilderExt
 
     private static StaticFileOptions CreateStaticFilesOptions(IFileProvider webRootFileProvider)
     {
-        var contentTypeProvider = new FileExtensionContentTypeProvider();
-        AddMapping(contentTypeProvider, ".br", MediaTypeNames.Application.Octet);
-        AddMapping(contentTypeProvider, ".onnx", MediaTypeNames.Application.Octet);
+        var contentTypeProvider = ContentTypeProvider.Instance;
         return  new StaticFileOptions {
             FileProvider = webRootFileProvider,
             ContentTypeProvider = contentTypeProvider,
@@ -103,12 +99,6 @@ public static class ApplicationBuilderExt
                     ctx.Context.Response.ContentType = originalContentType;
             },
         };
-    }
-
-    private static void AddMapping(FileExtensionContentTypeProvider provider, string name, string mimeType)
-    {
-        if (!provider.Mappings.ContainsKey(name))
-            provider.Mappings.Add(name, mimeType);
     }
 
     internal sealed class ContentEncodingNegotiator

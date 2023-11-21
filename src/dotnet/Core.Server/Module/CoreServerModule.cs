@@ -1,19 +1,15 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.Options;
 
 namespace ActualChat.Module;
 
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class CoreServerModule : HostModule<CoreServerSettings>
+public sealed class CoreServerModule(IServiceProvider moduleServices) : HostModule<CoreServerSettings>(moduleServices)
 {
-    public CoreServerModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override CoreServerSettings ReadSettings()
         => Cfg.GetSettings<CoreServerSettings>(nameof(CoreSettings));
 
@@ -29,8 +25,7 @@ public sealed class CoreServerModule : HostModule<CoreServerSettings>
 
         var storageBucket = Settings.GoogleStorageBucket;
         if (storageBucket.IsNullOrEmpty()) {
-            services.AddSingleton<IContentTypeProvider>(c
-                => c.GetRequiredService<IOptions<StaticFileOptions>>().Value.ContentTypeProvider);
+            services.AddSingleton<IContentTypeProvider>(ContentTypeProvider.Instance);
             services.AddSingleton<LocalFolderBlobStorage.Options>();
             services.AddSingleton<IBlobStorageProvider>(c => new LocalFolderBlobStorageProvider(c));
         }
