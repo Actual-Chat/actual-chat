@@ -16,7 +16,7 @@
     [Inject] private ChatHub ChatHub { get; init; } = null!;
 
     private void OnCreateChatClick()
-        => ChatHub.ModalUI.Show(new NewChatModal.Model(ChatHub.PlaceUI.ActivePlaceId.Value));
+        => ChatHub.ModalUI.Show(new NewChatModal.Model(ChatHub.ChatUI.SelectedPlaceId.Value));
 
     private void OnCreatePlaceClick() {
         _ = ChatHub.UICommander.Run(new Places_Change(ChatHub.Session, default, default, new Change<PlaceDiff>() {

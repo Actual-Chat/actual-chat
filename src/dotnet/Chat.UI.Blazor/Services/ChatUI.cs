@@ -15,8 +15,12 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly SharedResourcePool<Symbol, IComputedState<Range<long>>> _chatIdRangeStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
+    private readonly IMutableState<PlaceId> _selectedPlaceId;
+    private readonly IStoredState<IImmutableDictionary<PlaceId, ChatId>> _selectedChatIds;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private readonly object _lock = new();
+    private readonly TaskCompletionSource _whenActivePlaceRestored = TaskCompletionSourceExt.New();
+    private List<ChatId>? _pendingSelectedChatIdChanges = new ();
     private ILogger? _log;
 
     private ChatHub ChatHub { get; }
@@ -45,17 +49,29 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     private ILogger Log => _log ??= ChatHub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
+    private NavbarUI NavbarUI { get; }
     public IState<ChatId> SelectedChatId => _selectedChatId;
+    public IState<PlaceId> SelectedPlaceId => _selectedPlaceId;
+    public IState<IImmutableDictionary<PlaceId, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
     public Task WhenLoaded => _selectedChatId.WhenRead;
+    public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
 
     public ChatUI(ChatHub chatHub)
     {
         ChatHub = chatHub;
+        NavbarUI = chatHub.Services.GetRequiredService<NavbarUI>();
+        NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
 
         var type = GetType();
         _selectedChatId = StateFactory.NewKvasStored<ChatId>(new(LocalSettings, nameof(SelectedChatId)) {
             Corrector = FixSelectedChatId,
+        });
+        _selectedPlaceId = Services.StateFactory().NewMutable(
+            PlaceId.None,
+            StateCategories.Get(type, nameof(SelectedPlaceId)));
+        _selectedChatIds = StateFactory.NewKvasStored<IImmutableDictionary<PlaceId, ChatId>>(new (LocalSettings, nameof(SelectedChatIds)) {
+            InitialValue = ImmutableDictionary<PlaceId, ChatId>.Empty
         });
         _highlightedEntryId = StateFactory.NewMutable(
             ChatEntryId.None,
@@ -254,8 +270,21 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
                 return false;
 
             _selectedChatId.Value = chatId;
+            SaveSelectedChatIds(chatId);
         }
         // The rest is done by InvalidateSelectedChatDependencies
+        return true;
+    }
+
+    public bool SelectPlace(PlaceId placeId)
+    {
+        lock (_lock) {
+            if (_selectedPlaceId.Value == placeId)
+                return false;
+
+            _selectedPlaceId.Value = placeId;
+        }
+        // The rest is done by SynchronizeSelectedChatIdAndActivePlaceId
         return true;
     }
 
@@ -383,5 +412,32 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
         };
         return Task.FromResult(StateFactory.NewComputed(options, (s, ct) =>
             Chats.GetIdRange(Session, pChatId, ChatEntryKind.Text, cancellationToken)));
+    }
+
+    private void SaveSelectedChatIds(ChatId chatId)
+    {
+        // Is executing under _lock;
+        if (_pendingSelectedChatIdChanges != null) {
+            // Postpone _selectedChatIds update till _selectedChatIds is read.
+            _pendingSelectedChatIdChanges.Add(chatId);
+            return;
+        }
+        _selectedChatIds.Value = SetItem(_selectedChatIds.Value, chatId);
+    }
+
+    private IImmutableDictionary<PlaceId, ChatId> SetItem(IImmutableDictionary<PlaceId, ChatId> selectedChatIds, ChatId chatId)
+    {
+        chatId.IsPlaceChat(out var placeChatId);
+        return selectedChatIds.SetItem(placeChatId.PlaceId, chatId);
+    }
+
+    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
+    {
+        var placeId = PlaceId.None;
+        if (NavbarUI.SelectedGroupId.OrdinalStartsWith(NavbarGroupIds.PlacePrefix)) {
+            var sPlaceId = NavbarUI.SelectedGroupId.Substring(NavbarGroupIds.PlacePrefix.Length);
+            placeId = new PlaceId(sPlaceId, AssumeValid.Option);
+        }
+        SelectPlace(placeId);
     }
 }

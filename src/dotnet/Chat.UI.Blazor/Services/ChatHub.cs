@@ -124,7 +124,6 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
     public FeedbackUI FeedbackUI => _feedbackUI ??= Services.GetRequiredService<FeedbackUI>();
     public TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
-    public PlaceUI PlaceUI => _placeUI ??= Services.GetRequiredService<PlaceUI>();
     public UICommander UICommander => _uiCommander ??= Services.UICommander();
     public UIEventHub UIEventHub => _uiEventHub ??= Services.UIEventHub();
     public LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();

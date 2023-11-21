@@ -15,6 +15,7 @@ public partial class ChatUI
             AsyncChainExt.From(NavigateToFixedSelectedChat),
             AsyncChainExt.From(ResetHighlightedEntry),
             AsyncChainExt.From(PushKeepAwakeState),
+            AsyncChainExt.From(SynchronizeSelectedChatIdAndActivePlaceId),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -118,6 +119,102 @@ public partial class ChatUI
         }
         finally {
             cts.CancelAndDisposeSilently();
+        }
+    }
+
+    private async Task SynchronizeSelectedChatIdAndActivePlaceId(CancellationToken cancellationToken)
+    {
+        await WhenLoaded.ConfigureAwait(false);
+        var restoreTask = RestoreActivePlace(cancellationToken);
+        var synchronizeSelectedChatIdsTask = SynchronizeSelectedChatIds();
+        await Task.WhenAll(restoreTask, synchronizeSelectedChatIdsTask).ConfigureAwait(false);
+        await UpdateSelectedChatWhenPlaceChanged(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SynchronizeSelectedChatIds()
+    {
+        await _selectedChatIds.WhenRead.ConfigureAwait(false);
+        lock(_lock) {
+            var value = _selectedChatIds.Value;
+            if (_pendingSelectedChatIdChanges != null) {
+                // Selected chat ids are not loaded yet.
+                foreach (var chatId in _pendingSelectedChatIdChanges)
+                    value = SetItem(value, chatId);
+            }
+            _pendingSelectedChatIdChanges = null;
+            if (!Equals(_selectedChatIds.Value, value))
+                _selectedChatIds.Value = value;
+        }
+    }
+
+    private async Task RestoreActivePlace(CancellationToken cancellationToken)
+    {
+        try {
+            var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            if (selectedChatId.IsNone)
+                return;
+
+            if (!selectedChatId.IsPlaceChat(out var placeChatId))
+                return;
+
+            var placeId = placeChatId.PlaceId;
+            var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
+            if (chat == null)
+                placeId = PlaceId.None;
+            Place? place = null;
+            if (!placeId.IsNone)
+                place = await ChatHub.Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+
+            await ChatHub.Dispatcher.InvokeAsync(() => {
+                    if (place == null)
+                        SelectChat(ChatId.None);
+                    else {
+                        var navbarUI = Services.GetRequiredService<NavbarUI>();
+                        navbarUI.SelectGroup(NavbarGroupIds.PlacePrefix + place.Id, place.Title);
+                    }
+                })
+                .ConfigureAwait(false);
+        }
+        finally {
+            _whenActivePlaceRestored.TrySetResult();
+        }
+    }
+
+    private async Task UpdateSelectedChatWhenPlaceChanged(CancellationToken cancellationToken)
+    {
+        var cValueBase = await Computed
+            .Capture(() => SelectedPlaceId.Use(cancellationToken))
+            .ConfigureAwait(false);
+        var changes = cValueBase.Changes(cancellationToken);
+        await foreach (var cValue in changes.ConfigureAwait(false)) {
+            var placeId = cValue.Value;
+
+            var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            selectedChatId.IsPlaceChat(out var placeChatId);
+            var placeId2 = placeChatId.PlaceId;
+            if (placeId == placeId2)
+                continue;
+
+            var selectedChatIds = SelectedChatIds.Value;
+            if (selectedChatIds.TryGetValue(placeId, out var lastSelectedChatId)) {
+                Chat? readChat = null;
+                if (!lastSelectedChatId.IsNone)
+                    readChat =  await Chats.Get(Session, lastSelectedChatId, cancellationToken).ConfigureAwait(false);
+                if (readChat == null)
+                    lastSelectedChatId = ChatId.None;
+            }
+
+            if (lastSelectedChatId == ChatId.None)
+                DebugLog?.LogDebug("ResetSelectedChatOnPlaceChange");
+            else
+                DebugLog?.LogDebug("Restoring SelectedChatOnPlace. ChatId: '{ChatId}'", lastSelectedChatId);
+
+            await ChatHub.Dispatcher.InvokeAsync(() => {
+                if (!lastSelectedChatId.IsNone)
+                    return ChatHub.History.NavigateTo(Links.Chat(lastSelectedChatId));
+                SelectChat(ChatId.None);
+                return Task.CompletedTask;
+            }).ConfigureAwait(false);
         }
     }
 }

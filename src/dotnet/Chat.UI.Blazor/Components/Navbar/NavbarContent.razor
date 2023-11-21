@@ -13,7 +13,7 @@
     <ChatListNavbarWidget />
 }
 @if (NavbarUI.SelectedGroupId.StartsWith(NavbarGroupIds.PlacePrefix)) {
-    <PlaceChatListNavbarWidget PlaceId="@PlaceUI.ActivePlaceId.Value" />
+    <PlaceChatListNavbarWidget PlaceId="@ChatUI.SelectedPlaceId.Value" />
 }
 @if (m.IsAdmin) {
     <NavbarGroup Title="Administration" Class="navbar-pages" Id="@NavbarGroupIds.Administration">
@@ -55,7 +55,7 @@
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private PlaceUI PlaceUI { get; init; } = null!;
+    [Inject] private ChatUI ChatUI { get; init; } = null!;
 
     private EventHandler _navbarUIOnSelectedGroupChanged = null!;
 

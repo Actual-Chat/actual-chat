@@ -97,6 +97,29 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
             return Task.FromResult(items.Count);
     }
 
+    // [ComputeMethod]
+    // public virtual async Task<int> GetCount(ChatListKind listKind)
+    // {
+    //     var items = GetItems(listKind);
+    //     if (listKind == ChatListKind.All) {
+    //         var placeId = await ChatHub.ChatUI.ActivePlaceId.Use().ConfigureAwait(false);
+    //         lock (items) {
+    //             if (items.Count > 0) {
+    //                 var chatId = items[0];
+    //                 chatId.IsPlaceChat(out var placeChatId);
+    //                 var chatPlaceId = placeChatId.PlaceId;
+    //                 if (placeId == chatPlaceId)
+    //                     return items.Count;
+    //             }
+    //             return 0;
+    //         }
+    //     }
+    //     else {
+    //         lock (items)
+    //             return items.Count;
+    //     }
+    // }
+
     [ComputeMethod]
     public virtual Task<ChatId> GetItem(ChatListKind listKind, int index)
     {
@@ -162,13 +185,16 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
         var chatById = await ListAllUnorderedRaw(cancellationToken).ConfigureAwait(false);
         if (await _isSelectedChatUnlisted.Use(cancellationToken).ConfigureAwait(false)) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-            selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
-            var selectedChat = selectedChatId.IsNone ? null
-                : await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
-            if (selectedChat != null)
-                chatById = new Dictionary<ChatId, ChatInfo>(chatById) {
-                    [selectedChat.Id] = selectedChat,
-                };
+            if (!selectedChatId.IsPlaceChat(out _)) {
+                selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
+                var selectedChat = selectedChatId.IsNone
+                    ? null
+                    : await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
+                if (selectedChat != null)
+                    chatById = new Dictionary<ChatId, ChatInfo>(chatById) {
+                        [selectedChat.Id] = selectedChat,
+                    };
+            }
         }
         return chatById;
     }
@@ -202,7 +228,9 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
         try {
             DebugLog?.LogDebug("-> ListAllUnorderedRaw");
             var startedAt = CpuTimestamp.Now;
-            var contactIds = await Contacts.ListIds(Session, cancellationToken).ConfigureAwait(false);
+            await ChatUI.WhenActivePlaceRestored.ConfigureAwait(false);
+            var placeId = await ChatHub.ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
+            var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
             var loadLimit = _loadLimit.Value; // It is explicitly invalidated in IncreaseLoadLimit
             if (contactIds.Count > loadLimit) {
                 contactIds = contactIds[..loadLimit];
@@ -227,9 +255,12 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
     [ComputeMethod]
     protected virtual async Task<bool> IsSelectedChatUnlistedInternal(CancellationToken cancellationToken)
     {
+        var placeId = await ChatHub.ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
+        if (!placeId.IsNone)
+            return false;
+
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
         selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
-
         var chatById = await ListAllUnorderedRaw(cancellationToken).ConfigureAwait(false);
         return !chatById.ContainsKey(selectedChatId);
     }
