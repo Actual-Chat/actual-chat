@@ -187,11 +187,11 @@
     <AndroidDexTool>d8</AndroidDexTool>
     <!-- <AndroidLinkTool>r8</AndroidLinkTool> --> <!-- Doesn't work with .NET 8! -->
     <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
+    <TrimMode>full</TrimMode>
     <RunAOTCompilation>true</RunAOTCompilation>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
-    <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
+    <EnableLLVM>true</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
     <!-- <DebuggerSupport>false</DebuggerSupport> --> <!-- When false, it also removes symbols -->
 
     <!-- Runtime -->

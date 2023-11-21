@@ -60,8 +60,6 @@ public static class AppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(RecordDiffHandler<,>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(OptionDiffHandler<>))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
-    // Proxies
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ContactSyncProxy))]
     // Pages
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(HomePage))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UnavailablePage))]

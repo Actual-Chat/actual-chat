@@ -30,7 +30,7 @@ Use:
   </PropertyGroup>
 
   <ItemGroup>
-    <TrimmerRootAssembly Include="ActualChat.UI.Blazor.App" TrimMode="EntryPoint" />
+    <TrimmerRootAssembly Include="ActualChat.App.Wasm" RootMode="EntryPoint" />
   </ItemGroup>
 
   <ItemGroup>
