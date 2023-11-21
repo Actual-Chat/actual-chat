@@ -1,4 +1,5 @@
-﻿using Stl.IO;
+﻿using ActualChat.IO;
+using Stl.IO;
 
 namespace ActualChat.Audio.UnitTests;
 
@@ -20,8 +21,9 @@ public class OggStreamConverterTest(ILogger log)
         var outByteStream = oggOpusStreamConverter.ToByteStream(audio, CancellationToken.None);
         await using var outputStream = new FileStream(
             Path.Combine(Environment.CurrentDirectory, "data", "0000-out.ogg"),
-            FileMode.Truncate,
+            FileMode.OpenOrCreate,
             FileAccess.ReadWrite);
+        outputStream.SetLength(0);
 
         await foreach (var chunk in outByteStream)
             await outputStream.WriteAsync(chunk, CancellationToken.None);
