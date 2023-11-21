@@ -168,9 +168,8 @@ public partial class ChatUI
             await ChatHub.Dispatcher.InvokeAsync(() => {
                     if (place == null)
                         SelectChat(ChatId.None);
-                    else {
-                        NavbarUI.SelectGroup(NavbarGroupIds.PlacePrefix + place.Id, place.Title);
-                    }
+                    else
+                        NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), place.Title);
                 })
                 .ConfigureAwait(false);
         }

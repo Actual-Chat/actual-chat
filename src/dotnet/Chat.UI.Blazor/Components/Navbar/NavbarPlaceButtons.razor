@@ -12,7 +12,7 @@
     foreach (var place in places) {
         <NavbarGroupSelectionButton
             Title="@place.Title"
-            Id="@(NavbarGroupIds.PlacePrefix + place.Id)"
+            Id="@place.Id.GetNavbarGroupId()"
             Tooltip="@place.Title">
             <Pic
                 Title="@place.Title"

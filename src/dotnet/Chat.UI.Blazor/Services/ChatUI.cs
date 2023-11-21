@@ -425,7 +425,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
         _selectedChatIds.Value = SetItem(_selectedChatIds.Value, chatId);
     }
 
-    private IImmutableDictionary<PlaceId, ChatId> SetItem(IImmutableDictionary<PlaceId, ChatId> selectedChatIds, ChatId chatId)
+    private static IImmutableDictionary<PlaceId, ChatId> SetItem(IImmutableDictionary<PlaceId, ChatId> selectedChatIds, ChatId chatId)
     {
         chatId.IsPlaceChat(out var placeChatId);
         return selectedChatIds.SetItem(placeChatId.PlaceId, chatId);
@@ -433,11 +433,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
 
     private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
     {
-        var placeId = PlaceId.None;
-        if (NavbarUI.SelectedGroupId.OrdinalStartsWith(NavbarGroupIds.PlacePrefix)) {
-            var sPlaceId = NavbarUI.SelectedGroupId.Substring(NavbarGroupIds.PlacePrefix.Length);
-            placeId = new PlaceId(sPlaceId, AssumeValid.Option);
-        }
+        NavbarUI.IsPlaceSelected(out var placeId);
         SelectPlace(placeId);
     }
 }
