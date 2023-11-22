@@ -122,8 +122,7 @@ public class PlaceOperationsTest : AppHostTestBase
         chat.Title.Should().Be(ChatTitle);
         chat.IsPublic.Should().Be(isPublicChat);
         chat.Kind.Should().Be(ChatKind.Place);
-        chat.Id.IsPlaceChat(out var chatPlaceId);
-        chatPlaceId.PlaceId.Should().Be(place.Id);
+        chat.Id.PlaceId.Should().Be(place.Id);
 
         var contacts = services.GetRequiredService<IContacts>();
         await Task.Delay(100); // Let's wait events are processed

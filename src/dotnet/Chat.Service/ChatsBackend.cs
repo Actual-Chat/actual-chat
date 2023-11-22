@@ -396,8 +396,8 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 _ = Get(invChat.Id, default);
                 if (invChat is { TemplateId: not null, TemplatedForUserId: not null })
                     _ = GetTemplatedChatFor(invChat.TemplateId.Value, invChat.TemplatedForUserId.Value, default);
-                if (invChat.Id.IsPlaceChat(out var placeChatId))
-                    _ = GetPublicChatIdsFor(placeChatId.PlaceId, default);
+                if (invChat.Id.IsPlaceChat)
+                    _ = GetPublicChatIdsFor(invChat.Id.PlaceId, default);
             }
             return null!;
         }
@@ -530,7 +530,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             ownerId.RequireNone();
             if (update.PlaceId.HasValue)
                 throw new ArgumentOutOfRangeException(nameof(command), "ChatDiff.PlaceId should be null.");
-            if (chatId.IsPlaceChat(out _))
+            if (chatId.IsPlaceChat)
                 update.ValidateForPlaceChat();
             dbChat.RequireVersion(expectedVersion);
 

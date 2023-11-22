@@ -48,12 +48,12 @@ public class Places(IServiceProvider services) : IPlaces
         await Commander.Call(joinCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
-    private Place ToPlace(Chat chat)
+    private static Place ToPlace(Chat chat)
     {
-        if (!chat.Id.IsPlaceChat(out var placeChatId) || !placeChatId.IsRoot)
+        if (!chat.Id.IsPlaceChat || !chat.Id.PlaceChatId.IsRoot)
             throw StandardError.Constraint("Place root chat expected");
 
-        return new Place(placeChatId.PlaceId, chat.Version) {
+        return new Place(chat.Id.PlaceId, chat.Version) {
             CreatedAt = chat.CreatedAt,
             IsPublic = chat.IsPublic,
             Title = chat.Title,
@@ -62,7 +62,7 @@ public class Places(IServiceProvider services) : IPlaces
         };
     }
 
-    private ChatDiff ToChatDiff(PlaceDiff placeDiff)
+    private static ChatDiff ToChatDiff(PlaceDiff placeDiff)
         => new() {
             IsPublic = placeDiff.IsPublic,
             Title = placeDiff.Title,
