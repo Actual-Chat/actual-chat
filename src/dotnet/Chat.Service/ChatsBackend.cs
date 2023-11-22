@@ -1132,11 +1132,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             return AuthorRules.None(chatId);
 
         var rootChatId = placeChatId.PlaceId.ToRootChatId();
-        var rootChatAuthor = await AuthorsBackend.GetByUserId(rootChatId, account.Id, cancellationToken).ConfigureAwait(false);
-        if (rootChatAuthor == null)
-            return AuthorRules.None(chatId);
-
-        var rootChatPrincipalId = new PrincipalId(rootChatAuthor.Id, AssumeValid.Option);
+        var rootChatPrincipalId = new PrincipalId(account.Id, AssumeValid.Option);
         var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (chat.IsPublic)
             return rootChatRules;
