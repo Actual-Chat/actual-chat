@@ -42,6 +42,9 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeIds = await ChatHub.Contacts.ListPlaceIds(Session, cancellationToken);
+        var selectedChatId = await ChatHub.ChatUI.SelectedChatId.Use(cancellationToken);
+        if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
+            placeIds = placeIds.Add(selectedChatId.PlaceId, true);
         var places = (await placeIds
             .Select(id => ChatHub.Places.Get(Session, id, cancellationToken))
             .Collect())
