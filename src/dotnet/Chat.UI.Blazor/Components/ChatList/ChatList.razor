@@ -2,8 +2,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatList.Model>
 @{
-    DebugLog?.LogDebug("Rendered: {List}", Kind);
     var m = _rendered = State.Value;
+    DebugLog?.LogDebug("Rendered: {List}, ChatCount={ChatCount}", Kind, m.ChatCount);
     if (m is { ChatCount: 0, IsSearchModeOn: false })
         return;
 }

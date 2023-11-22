@@ -433,7 +433,43 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
 
     private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
     {
-        NavbarUI.IsPlaceSelected(out var placeId);
-        SelectPlace(placeId);
+        var placeId = PlaceId.None;
+        var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || NavbarUI.IsPlaceSelected(out placeId);
+        if (!isChats)
+            return;
+        if (SelectPlace(placeId))
+            return;
+        // It's the same place, lets ensure that selected chat is displayed.
+        _ = EnsureSelectedChatIsDisplayed();
+
+        async Task EnsureSelectedChatIsDisplayed(CancellationToken cancellationToken = default)
+        {
+            try {
+                var lastSelectedChatId = SelectedChatId.Value;
+                if (lastSelectedChatId.IsNone)
+                    return;
+
+                var chat = await Chats.Get(Session, lastSelectedChatId, cancellationToken)
+                    .ConfigureAwait(true); // Continue on the Blazor Dispatcher
+                if (SelectedChatId.Value != lastSelectedChatId)
+                    return;
+
+                if (chat == null) {
+                    SelectChat(ChatId.None);
+                    return;
+                }
+
+                if (!lastSelectedChatId.IsNone && ChatHub.PanelsUI.IsWide()) {
+                    // Do not navigate on narrow screen to prevent hiding panels
+                    // Navigate to selected chat only after delay to make ChatLists update smoother.
+                    await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
+                    if (SelectedChatId.Value == lastSelectedChatId)
+                        await ChatHub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
+                }
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to navigate to selected chat");
+            }
+        }
     }
 }
