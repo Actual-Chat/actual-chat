@@ -19,7 +19,11 @@
                 @if (!m.IsGuest) {
                     <div>
                         <span class="c-text">To post or talk,</span>
-                        <Button Click="@OnJoin" Class="btn-sm btn-primary">Join this chat</Button>
+                        @if (m.ShouldJoinPlaceFirst) {
+                            <Button Click="@(() => OnJoinPlace(m.Place!))" Class="btn-sm btn-primary">Join '@m.Place!.Title' place</Button>
+                        } else {
+                            <Button Click="@OnJoin" Class="btn-sm btn-primary">Join this chat</Button>
+                        }
                     </div>
                 } else {
                     <div class="signin-footer">
@@ -64,6 +68,21 @@
 
         async Task JoinWithAvatar(AvatarFull avatar) {
             var command = new Authors_Join(Session, Chat.Id, avatar.Id, JoinAnonymously: avatar.IsAnonymous);
+            await UICommander.Run(command);
+        }
+    }
+
+    private async Task OnJoinPlace(Place place) {
+        if (!Model.HasMultipleAvatars) {
+            var command = new Places_Join(Session, place.Id);
+            await UICommander.Run(command);
+            return;
+        }
+
+        await ModalUI.Show(new AvatarSelectModal.Model(ChatId.None, Model.CanJoinAnonymously, JoinWithAvatar));
+
+        async Task JoinWithAvatar(AvatarFull avatar) {
+            var command = new Places_Join(Session, place.Id, avatar.Id);
             await UICommander.Run(command);
         }
     }
