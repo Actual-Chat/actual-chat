@@ -146,6 +146,7 @@
     <TrimmerRootAssembly Include="ActualChat.Notification" RootMode="visible"/>
     <TrimmerRootAssembly Include="ActualChat.Notification.Contracts" RootMode="visible"/>
     <TrimmerRootAssembly Include="ActualChat.Notification.UI.Blazor" RootMode="visible"/>
+    <TrimmerRootAssembly Include="ActualChat.SignalR.Client" RootMode="visible"/>
     <TrimmerRootAssembly Include="ActualChat.Transcription.Contracts" RootMode="visible"/>
     <TrimmerRootAssembly Include="ActualChat.Users" RootMode="visible"/>
     <TrimmerRootAssembly Include="ActualChat.Users.Contracts" RootMode="visible"/>
@@ -168,6 +169,10 @@
     <TrimmerRootAssembly Include="System.Text.Json" RootMode="visible"/>
     <TrimmerRootAssembly Include="Sentry" RootMode="visible"/>
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Microsoft.AspNetCore.SignalR.Client" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Microsoft.AspNetCore.SignalR.Client.Core" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Microsoft.AspNetCore.SignalR.Common" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" RootMode="visible"/>
     <!-- System.Private.CoreLib is needed only if you want to enable TaskEventListener -->
     <!--
     <TrimmerRootAssembly Include="System.Private.CoreLib" />

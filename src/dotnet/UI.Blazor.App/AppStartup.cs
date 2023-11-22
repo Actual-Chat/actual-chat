@@ -105,7 +105,7 @@ public static class AppStartup
         Func<IServiceProvider, HostModule[]>? platformModuleFactory = null)
     {
 #if !DEBUG
-            InterceptorBase.Options.Defaults.IsValidationEnabled = false;
+        InterceptorBase.Options.Defaults.IsValidationEnabled = false;
 #else
         if (appKind.IsMauiApp())
             InterceptorBase.Options.Defaults.IsValidationEnabled = false;
@@ -120,7 +120,9 @@ public static class AppStartup
             var clientBaseUrl = urlMapper.ApiBaseUrl.ToUri();
             o.HttpClientActions.Add(client => {
                 client.BaseAddress = clientBaseUrl;
-                client.DefaultRequestVersion = HttpVersion.Version30;
+                client.DefaultRequestVersion = OSInfo.IsAndroid
+                    ? HttpVersion.Version20
+                    : HttpVersion.Version30;
                 client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
                 // c.LogFor(typeof(AppStartup)).LogInformation(
                 //     "HTTP client '{Name}' configured @ {BaseAddress}", name, client.BaseAddress);
@@ -141,12 +143,12 @@ public static class AppStartup
                 });
         });
 
-        fusion.Rpc.AddWebSocketClient(_ => new RpcWebSocketClient.Options() {
+        fusion.Rpc.AddWebSocketClient(c => new RpcWebSocketClient.Options() {
             ConnectionUriResolver = (client, peer) => {
                 var settings = client.Settings;
                 var urlMapper = client.Services.GetRequiredService<UrlMapper>();
 
-                using var sb = ZString.CreateStringBuilder();
+                var sb = StringBuilderExt.Acquire();
                 if (peer.Ref == RpcPeerRef.Default)
                     sb.Append(urlMapper.WebsocketBaseUrl);
                 else {
@@ -159,7 +161,9 @@ public static class AppStartup
                 sb.Append(settings.ClientIdParameterName);
                 sb.Append('=');
                 sb.Append(client.ClientId.UrlEncode());
-                return sb.ToString().ToUri();
+                var uri = sb.ToStringAndRelease().ToUri();
+                c.LogFor(peer.GetType()).LogInformation("Connection Url: {Url}", uri);
+                return uri;
             },
         });
         if (appKind.IsMauiApp())
