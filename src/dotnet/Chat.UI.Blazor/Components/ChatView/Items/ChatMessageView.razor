@@ -327,7 +327,7 @@
     private (List<TextEntryAttachment>, List<TextEntryAttachment>) GetOrderedAttachmentList(ChatEntry entry) {
         var mediaList = new List<TextEntryAttachment>();
         var fileList = new List<TextEntryAttachment>();
-        foreach (var attachment in entry.Attachments.OrderBy(x => x.Index)) {
+        foreach (var attachment in entry.Attachments) {
             if (attachment.IsVisualMedia())
                 mediaList.Add(attachment);
             else
