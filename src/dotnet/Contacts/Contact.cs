@@ -28,7 +28,7 @@ public sealed partial record Contact(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public ChatId ChatId => Id.ChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public PlaceId PlaceId => Id.ChatId.IsPlaceChat(out var placeChatId) ? placeChatId.PlaceId : PlaceId.None;
+    public PlaceId PlaceId => Id.ChatId.PlaceId;
 
     // Populated on backend on reads
     [DataMember, MemoryPackOrder(5)] public Account? Account { get; init; }

@@ -198,7 +198,7 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
     {
         if (await _isSelectedChatUnlisted.Use(cancellationToken).ConfigureAwait(false)) {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-            if (!selectedChatId.IsPlaceChat(out _)) {
+            if (!selectedChatId.IsPlaceChat) {
                 selectedChatId = await ChatUI.FixChatId(selectedChatId, cancellationToken).ConfigureAwait(false);
                 var selectedChat = selectedChatId.IsNone
                     ? null

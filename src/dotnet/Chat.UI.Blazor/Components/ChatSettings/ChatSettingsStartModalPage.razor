@@ -17,7 +17,7 @@
         return;
 
     Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
-    var isPlaceChat = m.Chat.Id.IsPlaceChat(out _);
+    var isPlaceChat = m.Chat.Id.IsPlaceChat;
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -331,7 +331,7 @@
 
     private async Task Save() {
         var chat = await ChatHub.Chats.Get(Session, ChatId, default).Require();
-        var isPlaceChat = chat.Id.IsPlaceChat(out _);
+        var isPlaceChat = chat.Id.IsPlaceChat;
         var newChat = chat with {
             Title = _form!.Title,
             IsPublic = _form.IsPublic,

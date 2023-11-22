@@ -426,10 +426,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     }
 
     private static IImmutableDictionary<PlaceId, ChatId> SetItem(IImmutableDictionary<PlaceId, ChatId> selectedChatIds, ChatId chatId)
-    {
-        chatId.IsPlaceChat(out var placeChatId);
-        return selectedChatIds.SetItem(placeChatId.PlaceId, chatId);
-    }
+        => selectedChatIds.SetItem(chatId.PlaceId, chatId);
 
     private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
     {

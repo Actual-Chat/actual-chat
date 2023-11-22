@@ -22,8 +22,10 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     public Symbol Id { get; }
 
     // Set on deserialization
-    private readonly PeerChatId PeerChatId;
-    private readonly PlaceChatId PlaceChatId;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public PeerChatId PeerChatId { get; }
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public PlaceChatId PlaceChatId { get; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
@@ -36,6 +38,10 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
         : PeerChatId.IsNone
             ? ChatKind.Group
             : ChatKind.Peer;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsPlaceChat => !PlaceChatId.IsNone;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public PlaceId PlaceId => PlaceChatId.PlaceId;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public ChatId(Symbol id)
@@ -70,15 +76,6 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
         peerChatId = PeerChatId;
         return !peerChatId.IsNone;
     }
-
-    public bool IsPlaceChat(out PlaceChatId placeChatId)
-    {
-        placeChatId = PlaceChatId;
-        return !placeChatId.IsNone;
-    }
-
-    public PlaceId GetPlaceId()
-        => PlaceChatId.PlaceId;
 
     // Conversion
 

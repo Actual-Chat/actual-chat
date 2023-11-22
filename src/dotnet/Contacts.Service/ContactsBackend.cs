@@ -119,8 +119,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var (id, expectedVersion, change) = command;
         var ownerId = id.OwnerId;
         var chatId = id.ChatId;
-        chatId.IsPlaceChat(out var placeChatId);
-        var placeId = placeChatId.PlaceId;
+        var placeId = chatId.PlaceId;
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
@@ -198,8 +197,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var id = command.Id;
         var ownerId = id.OwnerId;
         var chatId = id.ChatId;
-        chatId.IsPlaceChat(out var placeChatId);
-        var placeId = placeChatId.PlaceId;
+        var placeId = chatId.PlaceId;
         var context = CommandContext.GetCurrent();
         if (Computed.IsInvalidating()) {
             var invIndex = context.Operation().Items.GetOrDefault(long.MinValue);
@@ -370,10 +368,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (chatId.Kind == ChatKind.Peer && author.HasLeft) // Users can't leave peer chats
             return;
 
-        if (chatId.IsPlaceChat(out var placeChatId)) {
-            var changePlaceMembership = new ContactsBackend_ChangePlaceMembership(userId, placeChatId.PlaceId, author.HasLeft);
+        if (chatId.IsPlaceChat) {
+            var changePlaceMembership = new ContactsBackend_ChangePlaceMembership(userId, chatId.PlaceId, author.HasLeft);
             await Commander.Call(changePlaceMembership, true, cancellationToken).ConfigureAwait(false);
-            if (placeChatId.IsRoot)
+            if (chatId.PlaceChatId.IsRoot)
                 return;
         }
 

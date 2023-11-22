@@ -154,10 +154,10 @@ public partial class ChatUI
             if (selectedChatId.IsNone)
                 return;
 
-            if (!selectedChatId.IsPlaceChat(out var placeChatId))
+            if (!selectedChatId.IsPlaceChat)
                 return;
 
-            var placeId = placeChatId.PlaceId;
+            var placeId = selectedChatId.PlaceId;
             var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
             if (chat == null)
                 placeId = PlaceId.None;
@@ -187,9 +187,7 @@ public partial class ChatUI
         await foreach (var cValue in changes.ConfigureAwait(false)) {
             var placeId = cValue.Value;
             var selectedChatId = SelectedChatId.Value;
-            selectedChatId.IsPlaceChat(out var placeChatId);
-            var placeId2 = placeChatId.PlaceId;
-            if (placeId == placeId2)
+            if (placeId == selectedChatId.PlaceId)
                 continue;
 
             var selectedChatIds = SelectedChatIds.Value;
