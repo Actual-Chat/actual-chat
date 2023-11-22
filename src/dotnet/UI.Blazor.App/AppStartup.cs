@@ -162,7 +162,7 @@ public static class AppStartup
                 sb.Append('=');
                 sb.Append(client.ClientId.UrlEncode());
                 var uri = sb.ToStringAndRelease().ToUri();
-                c.LogFor(peer.GetType()).LogInformation("Connection Url: {Url}", uri);
+                c.LogFor(peer.GetType()).LogInformation("Stl.Rpc endpoint URL: {Url}", uri);
                 return uri;
             },
         });
