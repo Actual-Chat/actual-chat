@@ -7,7 +7,7 @@
     if (attachment.IsGif() || attachment.IsSvg()) {
         previewUrl = url; // currently image proxy fails on large gifs
     } else if(attachment.IsSupportedImage()) {
-        previewUrl = UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxImageWidth * ActualResolutionMultiplier, Constants.Attachments.MaxImageHeight * ActualResolutionMultiplier);
+        previewUrl = UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxActualResolution);
     }
 }
 
@@ -15,12 +15,10 @@
     <a class="cursor-pointer"
        href="@url"
        role="button"
-       @onclick="@(_ => VisualMediaViewerUI.Show(url, previewUrl, null, ChatEntry))"
+       @onclick="@(() => VisualMediaViewerUI.Show(url, previewUrl, null, ChatEntry))"
        @onclick:preventDefault="true">
         @if (attachment.IsSupportedVideo()) {
-            <video preload="metadata" muted playsinline>
-                <source src="@url#t=,5" />
-            </video>
+            <VideoAttachmentThumbnail Attachment="attachment"/>
         } else {
             <image-skeleton
                 class="loading"
@@ -31,9 +29,6 @@
 </div>
 
 @code {
-    private const int ActualResolutionMultiplier = 2;
-    private static readonly Vector2 MaxSize = new(Constants.Attachments.MaxImageWidth, Constants.Attachments.MaxImageHeight);
-
     [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private NavigationManager Nav { get; init; } = null!;

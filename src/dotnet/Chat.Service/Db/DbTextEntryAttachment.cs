@@ -15,6 +15,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     [ConcurrencyCheck] public long Version { get; set; }
     public string EntryId { get; set; } = "";
     public string MediaId { get; set; } = "";
+    public string ThumbnailMediaId { get; set; } = "";
     public int Index { get; set; }
 
     [Obsolete("2023.03: Use MediaId instead.")]
@@ -30,6 +31,7 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
             EntryId = new TextEntryId(EntryId),
             Index = Index,
             MediaId = new MediaId(MediaId),
+            ThumbnailMediaId = new MediaId(ThumbnailMediaId),
         };
 
     public void UpdateFrom(TextEntryAttachment model)
@@ -43,5 +45,6 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
         EntryId = model.EntryId;
         Index = model.Index;
         MediaId = model.MediaId;
+        ThumbnailMediaId = model.ThumbnailMediaId;
     }
 }

@@ -15,11 +15,14 @@ interface Attachment {
     tempUrl: string;
     id: number;
     mediaId: string;
+    thumbnailMediaId?: string;
 }
 
 interface MediaContent {
     mediaId: string;
     contentId: string;
+    thumbnailMediaId?: string;
+    thumbnailContentId?: string;
 }
 
 type ProgressReporter = (progressPercent: number) => void;
@@ -96,7 +99,8 @@ export class AttachmentList {
             const upload = new FileUpload(chatId, blob, fileName, pct => this.invokeUploadProgress(attachment.id, pct))
             upload.whenCompleted.then(x => {
                 attachment.mediaId = x.mediaId;
-                this.invokeUploadSucceed(attachment.id, x.mediaId);
+                attachment.thumbnailMediaId = x.thumbnailMediaId;
+                this.invokeUploadSucceed(attachment.id, x.mediaId, x.thumbnailMediaId);
             }).catch(e => {
                 if (!(e instanceof OperationCancelledError)) {
                     errorLog?.log('Failed to upload file', e);
@@ -175,8 +179,8 @@ export class AttachmentList {
         return  this.blazorRef.invokeMethodAsync('OnUploadProgress', id, Math.trunc(progressPercent));
     }
 
-    private async invokeUploadSucceed(id: number, mediaId: string) {
-        return  this.blazorRef.invokeMethodAsync('OnUploadSucceed', id, mediaId);
+    private async invokeUploadSucceed(id: number, mediaId: string, thumbnailMediaId?: string) {
+        return  this.blazorRef.invokeMethodAsync('OnUploadSucceed', id, mediaId, thumbnailMediaId);
     }
 
     private async invokeUploadFailed(id: number) {

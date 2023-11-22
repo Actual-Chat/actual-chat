@@ -1,0 +1,11 @@
+.video-thumbnail {
+    @apply relative flex flex-1;
+}
+.video-thumbnail .c-overlay {
+    @apply absolute top-1/2 left-1/2;
+    @apply flex flex-x h-15 w-15 -mt-7.5 -ml-7.5 rounded-full items-center justify-center;
+    @apply backdrop-brightness-50;
+}
+.video-thumbnail .c-play {
+    @apply text-white text-xl;
+}

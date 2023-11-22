@@ -49,9 +49,8 @@
     }
 
     [JSInvokable]
-    public async Task OnUploaded(MediaContent mediaContent) {
-        await Uploaded.InvokeAsync(mediaContent).ConfigureAwait(false);
-    }
+    public Task OnUploaded(MediaContent mediaContent)
+        => Uploaded.InvokeAsync(mediaContent);
 
     [JSInvokable]
     public void OnInvalidSize() {

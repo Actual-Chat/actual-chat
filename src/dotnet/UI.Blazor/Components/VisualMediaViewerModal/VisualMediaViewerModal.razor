@@ -45,7 +45,7 @@
                 var mediaCls = IsActive(id) ? "active" : "inactive";
                 var cachedImageUrl = url == ModalModel.Url
                     ? ModalModel.CachedImageUrl
-                    : UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxImageWidth, Constants.Attachments.MaxImageHeight);
+                    : UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxResolution);
                 @if (attachment.IsSupportedVideo()) {
                     <video
                         id="@id"

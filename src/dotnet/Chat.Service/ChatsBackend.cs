@@ -299,9 +299,9 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var mediaIds = dbAttachments
-                .Where(dba => !dba.MediaId.IsNullOrEmpty())
-                .Select(dba => MediaId.ParseOrNone(dba.MediaId))
+            var mediaIds = dbAttachments.Select(x => x.MediaId)
+                .Concat(dbAttachments.Select(x => x.ThumbnailMediaId))
+                .Select(MediaId.ParseOrNone)
                 .Where(mid => !mid.IsNone)
                 .ToList();
             var allMedia = mediaIds.Count > 0
@@ -318,7 +318,10 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     if (attachment.MediaId.IsNone)
                         return attachment;
 
-                    return attachment with { Media = allMedia.GetValueOrDefault(attachment.MediaId)!};
+                    return attachment with {
+                        Media = allMedia.GetValueOrDefault(attachment.MediaId)!,
+                        ThumbnailMedia = !attachment.ThumbnailMediaId.IsNone ? allMedia.GetValueOrDefault(attachment.ThumbnailMediaId) : null,
+                    };
                 })
                 .ToLookup(a => a.EntryId);
         }

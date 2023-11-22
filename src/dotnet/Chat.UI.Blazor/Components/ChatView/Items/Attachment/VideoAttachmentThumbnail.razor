@@ -1,0 +1,32 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var url = GetUrl();
+}
+<div class="video-thumbnail">
+    @if (Attachment.ThumbnailMedia is null) {
+        // OBSOLETE 2023.11: For backward compatibility for old videos. Probably convert in background.
+        <video preload="metadata">
+            <source src="@url#t=0.5" />
+        </video>
+    } else {
+        <image-skeleton src="@url" />
+    }
+    <div class="c-overlay">
+        <i class="c-play icon-play-fill"></i>
+    </div>
+</div>
+@code {
+    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+
+    [Parameter] public TextEntryAttachment Attachment { get; set; } = null!;
+
+    private string GetUrl()
+    {
+        if (Attachment.ThumbnailMedia is not {} thumbnail)
+            // OBSOLETE 2023.11: For backward compatibility for old videos. Probably convert in background.
+            return UrlMapper.ContentUrl(Attachment.Media.ContentId);
+
+        var contentUrl = UrlMapper.ContentUrl(thumbnail.ContentId);
+        return UrlMapper.ImagePreviewUrl(contentUrl, Constants.Attachments.MaxActualResolution);
+    }
+}

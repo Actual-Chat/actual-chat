@@ -199,7 +199,7 @@
                 var repliedEntryLid = relatedChatEntryId.IsNone ? (long?)null : relatedChatEntryId.LocalId;
                 cmd = new Chats_UpsertTextEntry(Session, Chat.Id, null, text) {
                     RepliedChatEntryId = repliedEntryLid,
-                    Attachments = attachmentListSnapshot.Attachments,
+                    EntryAttachments = attachmentListSnapshot.Attachments,
                 };
             }
             var chatEntry = await UICommander.Run(cmd, CancellationToken.None);

@@ -183,23 +183,21 @@
         return fileUploads;
     }
 
-    private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IReadOnlyCollection<(Task<MediaContent>, string?)> fileUploads)
+    private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IReadOnlyCollection<(Task<MediaContent> UploadTask, string? ContentType)> fileUploads)
     {
-        await Task.WhenAll(fileUploads.Select(c => c.Item1));
+        await Task.WhenAll(fileUploads.Select(c => c.UploadTask));
         var media = fileUploads
-            .Where(c => c.Item1.IsCompletedSuccessfully)
-            .Select(c => new { MediaContent = c.Item1.Result, ContentType = c.Item2})
-            .Select(c => new Media {
-                Id = c.MediaContent.MediaId,
-                ContentId = c.MediaContent.ContentId,
-                ContentType = c.ContentType ?? ""
-            })
+            .Where(c => c.UploadTask.IsCompletedSuccessfully)
+            .Select(c => new { MediaContent = c.UploadTask.Result, ContentType = c.ContentType ?? ""})
             .ToArray();
         if (media.Length == 0 && _comment.IsNullOrEmpty())
             return null;
         var cmd = new Chats_UpsertTextEntry(Services.Session(), chatId, null, comment) {
             RepliedChatEntryId = null,
-            Attachments = media.Select(c => c.Id).ToApiArray(),
+            EntryAttachments = media.Select(x => new TextEntryAttachment {
+                MediaId = x.MediaContent.MediaId,
+                ThumbnailMediaId = x.MediaContent.ThumbnailMediaId,
+            }).ToApiArray(),
         };
         var chatEntry = await Services.UICommander().Call(cmd).ConfigureAwait(false);
         var textEntryId = new TextEntryId(chatEntry.ChatId, chatEntry.LocalId, AssumeValid.Option);
@@ -208,11 +206,12 @@
             Attachments = media
                 .Select(c => new TextEntryAttachment {
                     EntryId = textEntryId,
-                    MediaId = c.Id,
+                    MediaId = c.MediaContent.MediaId,
+                    ThumbnailMediaId = c.MediaContent.ThumbnailMediaId,
                     Media = new Media {
-                        ContentType = c.ContentType
-                    }
-                }).ToApiArray()
+                        ContentType = c.ContentType,
+                    },
+                }).ToApiArray(),
             };
         return chatEntry;
     }

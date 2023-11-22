@@ -4,6 +4,7 @@ using ActualChat.Uploads;
 using ActualChat.Users;
 using ActualChat.Web;
 using Microsoft.AspNetCore.Mvc;
+using SixLabors.ImageSharp;
 
 namespace ActualChat.Chat.Controllers;
 
@@ -50,19 +51,29 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
             formFile.Length,
             () => Task.FromResult(formFile.OpenReadStream()));
         using var processedFile = await UploadProcessors.Process(uploadedFile, cancellationToken).ConfigureAwait(false);
+        var media = await SaveMedia(chatId, processedFile.File, processedFile.Size, cancellationToken).ConfigureAwait(false);
+        if (processedFile.Thumbnail == null)
+            return Ok(new MediaContent(media.Id, media.ContentId));
+
+        var thumbnailMedia = await SaveMedia(chatId, processedFile.Thumbnail, processedFile.Size, cancellationToken).ConfigureAwait(false);
+        return Ok(new MediaContent(media.Id, media.ContentId, thumbnailMedia.Id, thumbnailMedia.ContentId));
+    }
+
+    private async Task<Media.Media> SaveMedia(ChatId chatId, UploadedFile file, Size? size, CancellationToken cancellationToken)
+    {
         var mediaId = new MediaId(chatId, Generate.Option);
         var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
         var media = new Media.Media(mediaId) {
-            ContentId = $"media/{hashCode}/{mediaId.LocalId}{Path.GetExtension(formFile.FileName)}",
-            FileName = processedFile.File.FileName,
-            Length = processedFile.File.Length,
-            ContentType = processedFile.File.ContentType,
-            Width = processedFile.Size?.Width ?? 0,
-            Height = processedFile.Size?.Height ?? 0,
+            ContentId = $"media/{hashCode}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
+            FileName = file.FileName,
+            Length = file.Length,
+            ContentType = file.ContentType,
+            Width = size?.Width ?? 0,
+            Height = size?.Height ?? 0,
         };
-        var stream = await processedFile.File.Open().ConfigureAwait(false);
+        var stream = await file.Open().ConfigureAwait(false);
         await using (stream.ConfigureAwait(false)) {
-            var content = new Content(media.ContentId, processedFile.File.ContentType, stream);
+            var content = new Content(media.ContentId, file.ContentType, stream);
             await ContentSaver.Save(content, cancellationToken).ConfigureAwait(false);
         }
 
@@ -72,6 +83,6 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
                 Create = media,
             });
         await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
-        return Ok(new MediaContent(media.Id, media.ContentId));
+        return media;
     }
 }

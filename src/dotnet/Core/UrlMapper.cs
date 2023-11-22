@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text.RegularExpressions;
 using ActualChat.Hosting;
 
@@ -127,6 +128,10 @@ public sealed partial class UrlMapper
     // Returns absolute URL
     public string ContentUrl(string contentId)
         => ToAbsolute(ContentBaseUrl, contentId, true);
+
+    // Returns absolute URL
+    public string ImagePreviewUrl(string imageUrl, Vector2 maxResolution)
+        => ImagePreviewUrl(imageUrl, (int)maxResolution.X, (int)maxResolution.Y);
 
     // Returns absolute URL
     public string ImagePreviewUrl(string imageUrl, int? maxWidth, int? maxHeight)

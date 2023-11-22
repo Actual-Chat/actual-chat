@@ -206,7 +206,15 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
-        if (string.IsNullOrWhiteSpace(text) && command.Attachments.IsEmpty)
+        var attachments = command.EntryAttachments;
+ #pragma warning disable CS0618 // Type or member is obsolete
+        if (attachments.IsEmpty && !command.Attachments.IsEmpty)
+            attachments = command.Attachments.Select(x => new TextEntryAttachment {
+                    MediaId = x,
+                })
+                .ToApiArray();
+ #pragma warning restore CS0618 // Type or member is obsolete
+        if (string.IsNullOrWhiteSpace(text) && attachments.IsEmpty)
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 
         ChatEntry textEntry;
@@ -244,15 +252,16 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
                     ForwardedChatEntryId = command.ForwardedChatEntryId,
                     ForwardedChatEntryBeginsAt = command.ForwardedChatEntryBeginsAt,
                 },
-                command.Attachments.Count > 0);
+                attachments.Count > 0);
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
             textEntryId = textEntry.Id.ToTextEntryId();
 
-            for (var index = 0; index < command.Attachments.Count; index++) {
+            for (var index = 0; index < attachments.Count; index++) {
                 var attachment = new TextEntryAttachment {
                     EntryId = textEntryId,
                     Index = index,
-                    MediaId = command.Attachments[index],
+                    MediaId = attachments[index].MediaId,
+                    ThumbnailMediaId = attachments[index].ThumbnailMediaId,
                 };
                 var createAttachmentCommand = new ChatsBackend_CreateAttachment(attachment);
                 await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
@@ -517,7 +526,10 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
                     ForwardedAuthorName = forwardedAuthorName,
                     ForwardedChatEntryBeginsAt = forwardedChatEntryBeginsAt,
                     ForwardedChatTitle = forwardedChatTitle,
-                    Attachments = chatEntry.Attachments.Select(x => x.MediaId).ToApiArray(),
+                    EntryAttachments = chatEntry.Attachments.Select(x => new TextEntryAttachment {
+                        MediaId = x.MediaId,
+                        ThumbnailMediaId = x.ThumbnailMediaId,
+                    }).ToApiArray(),
                 };
                 await Commander.Run(cmd, CancellationToken.None).ConfigureAwait(false);
             }
