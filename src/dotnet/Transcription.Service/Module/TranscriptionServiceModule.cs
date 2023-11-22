@@ -5,7 +5,7 @@ using ActualChat.Transcription.Google;
 namespace ActualChat.Transcription.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class TranscriptionServiceModule: HostModule
+public class TranscriptionServiceModule: HostModule<TranscriptSettings>
 {
     public TranscriptionServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
