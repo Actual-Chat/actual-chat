@@ -15,7 +15,7 @@
 .loading-overlay {
     @apply absolute inset-0 z-[1900] overflow-hidden;
     background-color: var(--loading-overlay-bg-color);
-    @apply transition-opacity ease-in duration-500;
+    @apply transition-opacity ease-in duration-250;
 }
 
 /* The background of a square */
