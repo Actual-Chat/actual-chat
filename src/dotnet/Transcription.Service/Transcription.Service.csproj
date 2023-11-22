@@ -15,4 +15,8 @@
     <EmbeddedResource Include="data\silence.opuss" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DeepGram\" />
+  </ItemGroup>
+
 </Project>
