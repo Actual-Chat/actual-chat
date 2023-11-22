@@ -112,58 +112,11 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (chatId.IsPeerChat(out var peerChatId)) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        // Group chat
-        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return AuthorRules.None(chatId);
+        if (chatId.IsPlaceChat && !chatId.PlaceChatId.IsRoot)
+            return await GetPlaceChatRules(chatId.PlaceChatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        AuthorFull? author;
-        AccountFull? account;
-        if (principalId.IsUser(out var userId)) {
-            account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-                return AuthorRules.None(chatId);
-
-            author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
-        }
-        else if (principalId.IsAuthor(out var authorId)) {
-            author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-            if (author == null)
-                return AuthorRules.None(chatId);
-
-            account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-                return AuthorRules.None(chatId);
-        }
-        else
-            return AuthorRules.None(chatId);
-
-        var roles = ApiArray<Role>.Empty;
-        var isJoined = author is { HasLeft: false };
-        if (isJoined) {
-            var isGuest = account.IsGuestOrNone;
-            var isAnonymous = author is { IsAnonymous: true };
-            roles = await RolesBackend
-                .List(chatId, author!.Id, isGuest, isAnonymous, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        var permissions = roles.ToPermissions();
-        if (chat.IsPublic) {
-            if (chatId != Constants.Chat.AnnouncementsChatId)
-                permissions |= ChatPermissions.Join;
-            if (!isJoined) {
-                var anyoneSystemRole = await RolesBackend.GetSystem(chatId, SystemRole.Anyone, cancellationToken).ConfigureAwait(false);
-                if (anyoneSystemRole != null) {
-                    // Full permissions of Anyone role are granted after you join,
-                    // but until you joined, we grant only a subset of these permissions.
-                    permissions |= anyoneSystemRole.Permissions & (ChatPermissions.Read | ChatPermissions.SeeMembers | ChatPermissions.Join);
-                }
-            }
-        }
-        permissions = permissions.AddImplied();
-
-        var rules = new AuthorRules(chatId, author, account, permissions);
-        return rules;
+        // Group chat or Root place chat
+        return await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -1062,6 +1015,103 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbEntry;
+    }
+
+    protected virtual async Task<AuthorRules> GetRulesRaw(
+        ChatId chatId,
+        PrincipalId principalId,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return AuthorRules.None(chatId);
+
+        AuthorFull? author;
+        AccountFull? account;
+        if (principalId.IsUser(out var userId)) {
+            account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return AuthorRules.None(chatId);
+
+            author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+        }
+        else if (principalId.IsAuthor(out var authorId)) {
+            author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            if (author == null)
+                return AuthorRules.None(chatId);
+
+            account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return AuthorRules.None(chatId);
+        }
+        else
+            return AuthorRules.None(chatId);
+
+        var roles = ApiArray<Role>.Empty;
+        var isJoined = author is { HasLeft: false };
+        if (isJoined) {
+            var isGuest = account.IsGuestOrNone;
+            var isAnonymous = author is { IsAnonymous: true };
+            roles = await RolesBackend
+                .List(chatId, author!.Id, isGuest, isAnonymous, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        var permissions = roles.ToPermissions();
+        if (chat.IsPublic) {
+            if (chatId != Constants.Chat.AnnouncementsChatId)
+                permissions |= ChatPermissions.Join;
+            if (!isJoined) {
+                var anyoneSystemRole = await RolesBackend.GetSystem(chatId, SystemRole.Anyone, cancellationToken).ConfigureAwait(false);
+                if (anyoneSystemRole != null) {
+                    // Full permissions of Anyone role are granted after you join,
+                    // but until you joined, we grant only a subset of these permissions.
+                    permissions |= anyoneSystemRole.Permissions & (ChatPermissions.Read | ChatPermissions.SeeMembers | ChatPermissions.Join);
+                }
+            }
+        }
+        permissions = permissions.AddImplied();
+
+        var rules = new AuthorRules(chatId, author, account, permissions);
+        return rules;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<AuthorRules> GetPlaceChatRules(
+        PlaceChatId placeChatId,
+        PrincipalId principalId,
+        CancellationToken cancellationToken)
+    {
+        var chatId = (ChatId)placeChatId;
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return AuthorRules.None(chatId);
+
+        if (!principalId.IsUser(out var userId) && principalId.IsAuthor(out var authorId)) {
+            var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            userId = author?.UserId ?? default;
+        }
+
+        if (userId.IsNone)
+            return AuthorRules.None(chatId);
+
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return AuthorRules.None(chatId);
+
+        var rootChatId = placeChatId.PlaceId.ToRootChatId();
+        var rootChatAuthor = await AuthorsBackend.GetByUserId(rootChatId, account.Id, cancellationToken).ConfigureAwait(false);
+        if (rootChatAuthor == null)
+            return AuthorRules.None(chatId);
+
+        var rootChatPrincipalId = new PrincipalId(rootChatAuthor.Id, AssumeValid.Option);
+        var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (chat.IsPublic)
+            return rootChatRules;
+
+        if (!rootChatRules.CanRead())
+            return AuthorRules.None(chatId);
+
+        return await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
     }
 
     // Private / internal methods
