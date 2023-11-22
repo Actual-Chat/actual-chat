@@ -125,8 +125,11 @@
         var attachments = PopAttachments();
         StateHasChanged();
 
-        var mediaIds = attachments.Where(x => x.Uploaded).Select(x => x.MediaId).ToApiArray();
-        return new (mediaIds, () => Rollback(attachments), InvokeClear);
+        var entryAttachments = attachments.Where(x => x.Uploaded).Select(x => new TextEntryAttachment {
+            MediaId = x.MediaId,
+            ThumbnailMediaId = x.ThumbnailMediaId,
+        }).ToApiArray();
+        return new (entryAttachments, () => Rollback(attachments), InvokeClear);
 
         ImmutableList<Attachment> PopAttachments()
         {
@@ -178,8 +181,8 @@
     }
 
     [JSInvokable]
-    public void OnUploadSucceed(int id, MediaId mediaId) {
-        UpdateAttachment(id, x => x with { MediaId = mediaId });
+    public void OnUploadSucceed(int id, MediaId mediaId, MediaId thumbnailMediaId) {
+        UpdateAttachment(id, x => x with { MediaId = mediaId, ThumbnailMediaId = thumbnailMediaId });
         StateHasChanged();
     }
 
@@ -216,12 +219,12 @@
         private readonly Func<ValueTask> _confirm;
         private readonly Action _rollback;
         private bool _isRolledBack;
-        public ApiArray<MediaId> Attachments { get; }
+        public ApiArray<TextEntryAttachment> Attachments { get; }
 
         public ValueTask DisposeAsync()
             => !_isRolledBack ? _confirm.Invoke() : default;
 
-        internal ResetIntent(ApiArray<MediaId> attachments, Action rollback, Func<ValueTask> confirm) {
+        internal ResetIntent(ApiArray<TextEntryAttachment> attachments, Action rollback, Func<ValueTask> confirm) {
             Attachments = attachments;
             _rollback = rollback;
             _confirm = confirm;
@@ -233,7 +236,7 @@
         }
     }
 
-    private record Attachment(int Id, string Url, string FileName, string FileType, int Length, int Progress = 0, MediaId MediaId = default)
+    private record Attachment(int Id, string Url, string FileName, string FileType, int Length, int Progress = 0, MediaId MediaId = default, MediaId ThumbnailMediaId = default)
     {
         public bool IsImage => MediaTypeExt.IsSupportedImage(FileType);
         public bool IsVideo => MediaTypeExt.IsSupportedVideo(FileType);

@@ -10,11 +10,11 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
     public bool Supports(string contentType)
         => MediaTypeExt.IsImage(contentType);
 
-    public async Task<ProcessedFile> Process(UploadedFile file, CancellationToken cancellationToken)
+    public async Task<ProcessedFile> Process(UploadedTempFile upload, CancellationToken cancellationToken)
     {
-        var imageInfo = await GetImageInfo(file).ConfigureAwait(false);
+        var imageInfo = await GetImageInfo(upload).ConfigureAwait(false);
         if (imageInfo == null) {
-            var fileInfo = file with {
+            var fileInfo = upload with {
                 ContentType = System.Net.Mime.MediaTypeNames.Application.Octet,
             };
             return new ProcessedFile(fileInfo, null);
@@ -28,13 +28,13 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
         // So we need to switch width and height to get appropriate size for image preview.
         var imageProcessingRequired = imageInfo.Metadata.ExifProfile != null || resizeRequired;
         if (!imageProcessingRequired)
-            return new ProcessedFile(file, imageInfo.Size);
+            return new ProcessedFile(upload, imageInfo.Size);
 
         Size imageSize;
-        var outPath = FilePath.GetApplicationTempDirectory() & (Guid.NewGuid().ToString("N") + "_" + file.FileName);
+        var outPath = FilePath.GetApplicationTempDirectory() & (Guid.NewGuid().ToString("N") + "_" + upload.FileName);
         var outStream = File.OpenWrite(outPath);
         await using (var _ = outStream.ConfigureAwait(false)) {
-            var inputStream = await file.Open().ConfigureAwait(false);
+            var inputStream = await upload.Open().ConfigureAwait(false);
             await using var __ = inputStream.ConfigureAwait(false);
             using (Image image = await Image.LoadAsync(inputStream, cancellationToken).ConfigureAwait(false)) {
                 image.Mutate(img => {
@@ -50,7 +50,7 @@ public class ImageUploadProcessor(ILogger<ImageUploadProcessor> log) : IUploadPr
             }
         }
 
-        return new ProcessedFile(new UploadedTempFile(file.FileName, file.ContentType, outPath), imageSize);
+        return new ProcessedFile(new UploadedTempFile(upload.FileName, upload.ContentType, outPath), imageSize);
     }
 
     private async Task<ImageInfo?> GetImageInfo(UploadedFile file)

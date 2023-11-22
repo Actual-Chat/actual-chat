@@ -1,3 +1,4 @@
+using System.Numerics;
 using ActualChat.Hosting;
 
 namespace ActualChat;
@@ -81,6 +82,8 @@ public static partial class Constants
         public const int FileCountLimit = 10;
         public const int MaxImageWidth = 480; // In pixels
         public const int MaxImageHeight = 360; // In pixels
+        public static readonly Vector2 MaxResolution = new(MaxImageWidth, MaxImageHeight);
+        public static readonly Vector2 MaxActualResolution = MaxResolution * 2;
     }
 
     public static class Contacts
