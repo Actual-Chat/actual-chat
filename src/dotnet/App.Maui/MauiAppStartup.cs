@@ -1,7 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net.WebSockets;
 using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App;
+using Android.Net.Http;
+using Xamarin.Android.Net;
 
 namespace ActualChat.App.Maui;
 
@@ -15,6 +18,7 @@ public static class MauiAppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NativeHttpClientFactory))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SafeJSRuntime))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SafeJSObjectReference))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ClientWebSocket))]
 #if ANDROID
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidWebChromeClient))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidWebViewClientOverride))]
@@ -23,6 +27,10 @@ public static class MauiAppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MainActivity))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MainApplication))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NativeGoogleAuth))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidHttpClient))]
+ #pragma warning disable CS0618 // Type or member is obsolete
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidClientHandler))]
+ #pragma warning restore CS0618 // Type or member is obsolete
 #elif IOS
 #endif
     public static void ConfigureServices(IServiceCollection services)

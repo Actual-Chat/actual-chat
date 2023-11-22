@@ -169,9 +169,10 @@
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
     <!-- Using managed HTTP Handler doesn't fix LLVM, so... -->
-    <!-- <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType> -->
+    <AndroidHttpClientHandlerType>Xamarin.Android.Net.AndroidClientHandler</AndroidHttpClientHandlerType>
+    <!-- <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType>-->
     <!-- This instructs trimmer to remove managed HTTP handler - don't use it with HttpClientHandler  -->
-    <UseNativeHttpHandler>true</UseNativeHttpHandler>
+    <!-- <UseNativeHttpHandler>true</UseNativeHttpHandler> -->
   </PropertyGroup>
   <ItemGroup>
     <ProguardConfiguration Include="proguard.cfg" />
@@ -193,7 +194,7 @@
     <RunAOTCompilation>true</RunAOTCompilation>
     <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
-    <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
+    <EnableLLVM>true</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
     <!-- <DebuggerSupport>false</DebuggerSupport> --> <!-- When false, it also removes symbols -->
 
     <!-- Runtime -->
