@@ -1,58 +1,26 @@
-Before release:
- 
-- ~~Pre-rendered landing page [AY]~~
-- Add proper site image and description to _Host.cshtml [Andrey, Grisha]
-- ~~Show <Recording> sign for streaming entries in chat list~~
-- ~~Use max(activity date, contact creation date) in all sort modes to make sure new contacts go on top~~
-- Check all new text messages (esp. ~~"Share"~~ + troubleshooters) [AY]
-- ~~Phone sign-in: enable it [Frol]~~
-- ~~Add more languages: Hindi, Bengali, Tamil, Modern Standard Arabic, Turkish, Vietnamese, Italian, Thai, Portuguese, Polish~~
-- ~~Sign-in: replace sign-in menu w/ modal everywhere + remove menu [EK]~~
-- ~~Languages: add Chinese, Korean, etc. + update settings page layout [DF]~~
-- ~~New chat: 2-page layout [DF]~~
-- ~~Chat: empty chat must contain invite link + splash [DF]~~
-- ~~Audio activity: blinking "Listen" [AY, Andrey]~~
-- ~~Onboarding: use stored phone number [Frol]~~
-- ~~Service worker / asset caching [EK]~~
-- ~~Push-to-talk must not change the playback state [AY]~~
-- ~~Stop historical playback in other chats when recording starts [Frol]~~
-- ~~Don't update SelectedChat when MiddlePanel isn't visible~~
-- ~~Fade out loading overlay [AY]~~
-- ~~New Active Chats UX [AY]~~
-- ~~Fix copy action text [AY]~~ 
+Near term:
 
-- Critical bugs:
-    - Share into the app: sometimes auto-navigation instantly closes share modal [DF]
-    - ~~2 "Notes" chats on dev / no upgrade on prod [AK]~~
-    - Android: echo problem is still there, but only sometimes on S23
-    - ~~Android: language switch triggers "No mic access" modal [AK]~~
-    - ~~"No mic access" -> "OK" shouldn't be there / should have "X" instead [AK]~~
-    - ~~iOS: background playback issues [AK]~~
-    - ~~iOS 16.1.1 - exit on startup [AK]~~
-    - ~~Hot restart / WebView close: make sure the old view doesn't record [AK]~~
-    - ~~Audio: use mono playback on Android? [AK]~~
-    - ~~"Verify phone" hangs the UI [Frol] [Unable to reproduce]~~
-    - ~~Audio on iPhone: the latest prod version still triggers "no access to mic" sometimes [AK]~~
-    - Investigate white screen issue [AY]
-- Important, but not critical bugs:
-    - Chat: scrolling issues [AK]
+- Default chats:
+  - No preselected default chats (all [x] to [ ])
+  - Replace "Alumni" with "[You name it] Clan", 
+  - Allow name edits for each of default chats
+  - Ask Grisha to come up with icon for "Clan" 
+- Chat permissions:
+  - Only owners can post
+  - Later:
+    - Max. voice fragment duration: [0 (Voice is disabled), 10, 30, 1 min., 3 min., 5min., no limit] seconds
+    - Pause between voice fragments: [same as above + 10 min., 30 min., 1 hour]
+    - Pause between text messages: [same as above]
+- Anonymous chats:
+  - Hide anonymous members unless there are N of them 
+    - N should be 1 for all existing chats
+    - N should be 1 for any P2P anonymous chat by default  
 
-Next week:
-
-- Onboarding: pre-create chats page [EK]
-- Onboarding: request mic access permission [EK]
-- Onboarding: request notification permission
-- Onboarding: request contacts permission
-- Check what's off w/ tracing / activities
-- HEIC support?
-
-Near-term:
-
-- Make sure server caching works as expected - we have had suspicious stats messages in the log with 0% hit
-- Voice conversation is interrupted on pod scale-down
+- Bugs:
+  - Back button behavior on Android 
+  - Virtual list: AK, please list all known issues here.
 
 Mid-term (team):
-
 - Extract Session service & migrate it to Redis
 - ~~"Notes" chat [AK]~~
 - "Search in this chat / everywhere" feature
