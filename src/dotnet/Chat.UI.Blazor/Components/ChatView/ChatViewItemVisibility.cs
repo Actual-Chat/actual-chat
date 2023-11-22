@@ -14,7 +14,7 @@ public sealed record ChatViewItemVisibility(
 
     public ChatViewItemVisibility(VirtualListItemVisibility source)
         : this(
-            source.VisibleKeys.Select(k => long.TryParse(k, CultureInfo.InvariantCulture, out var lid) ? lid : 0).Where(lid => lid > 0).ToHashSet(),
+            source.VisibleKeys.Select(k => NumberExt.TryParseLong(k, out var lid) ? lid : 0).Where(lid => lid > 0).ToHashSet(),
             source.IsEndAnchorVisible)
     { }
 

@@ -50,7 +50,7 @@ public static class EnumerableExt
     // Constructs "a, b, and c" strings
     public static string ToCommaPhrase(this IEnumerable<string> source)
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = StringBuilderExt.Acquire();
         var prev = "";
         var i = 0;
         foreach (var item in source) {
@@ -74,7 +74,7 @@ public static class EnumerableExt
             break;
         }
         sb.Append(prev);
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source)

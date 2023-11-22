@@ -104,9 +104,7 @@ public readonly partial struct TextEntryId : ISymbolIdentifier<TextEntryId>
             return false;
 
         var sLocalId = s.AsSpan(kindLength + 1);
-        if (!long.TryParse(sLocalId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
-            return false;
-        if (localId < 0)
+        if (!NumberExt.TryParsePositiveLong(sLocalId, out var localId))
             return false;
 
         result = new TextEntryId(s, chatId, localId, AssumeValid.Option);

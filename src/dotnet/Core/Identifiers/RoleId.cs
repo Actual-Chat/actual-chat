@@ -97,9 +97,7 @@ public readonly partial struct RoleId : ISymbolIdentifier<RoleId>
         if (!ChatId.TryParse(s[..chatIdLength], out var chatId))
             return false;
 
-        if (!long.TryParse(s.AsSpan(chatIdLength + 1), NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
-            return false;
-        if (localId < 0)
+        if (!NumberExt.TryParsePositiveLong(s.AsSpan(chatIdLength + 1), out var localId))
             return false;
 
         result = new RoleId(s, chatId, localId, AssumeValid.Option);

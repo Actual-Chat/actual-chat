@@ -110,7 +110,7 @@ public readonly partial struct NotificationId : ISymbolIdentifier<NotificationId
             return false;
 
         var sKind = s.AsSpan(kindStart, kindLength - kindStart);
-        if (!int.TryParse(sKind, NumberStyles.Integer, CultureInfo.InvariantCulture, out var kind))
+        if (!NumberExt.TryParsePositiveInt(sKind, out var kind))
             return false;
         if (kind is < 1 or >= (int)NotificationKind.Invalid)
             return false;

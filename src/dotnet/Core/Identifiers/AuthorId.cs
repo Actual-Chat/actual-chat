@@ -98,7 +98,7 @@ public readonly partial struct AuthorId : ISymbolIdentifier<AuthorId>
             return false;
 
         var tail = s[(chatIdLength + 1)..];
-        if (!long.TryParse(tail, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
+        if (!NumberExt.TryParseLong(tail, out var localId))
             return false;
 
         result = new AuthorId(s, chatId, localId, AssumeValid.Option);

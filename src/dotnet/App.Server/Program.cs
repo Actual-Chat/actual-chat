@@ -53,9 +53,9 @@ internal static class Program
 
             var sMinWorker = (Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_WORKER") ?? "").Trim();
             var sMinIO = (Environment.GetEnvironmentVariable("DOTNET_THREADPOOL_MIN_IO") ?? "").Trim();
-            if (!int.TryParse(sMinWorker, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minWorker))
+            if (!NumberExt.TryParsePositiveInt(sMinWorker, out int minWorker))
                 minWorker = HardwareInfo.GetProcessorCountFactor(4);
-            if (!int.TryParse(sMinIO, NumberStyles.Integer, CultureInfo.InvariantCulture, out int minIO))
+            if (!NumberExt.TryParsePositiveInt(sMinIO, out int minIO))
                 minIO = HardwareInfo.GetProcessorCountFactor(4);
             ThreadPool.GetMinThreads(out int currentMinWorker, out int currentMinIO);
             minIO = Math.Max(minIO, currentMinIO);
@@ -72,7 +72,7 @@ internal static class Program
         static void AdjustGrpcCoreThreadPool()
         {
             var threadCountEnv = (Environment.GetEnvironmentVariable("GRPC_CORE_THREADPOOL_SIZE") ?? "").Trim();
-            if (!int.TryParse(threadCountEnv, NumberStyles.Integer, CultureInfo.InvariantCulture, out int threadCount))
+            if (!NumberExt.TryParsePositiveInt(threadCountEnv, out int threadCount))
                 threadCount = HardwareInfo.GetProcessorCountFactor(4);
 
             Console.WriteLine($"GRPC thread pool size: {threadCount}");

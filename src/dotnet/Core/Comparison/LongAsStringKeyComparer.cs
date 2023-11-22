@@ -7,8 +7,7 @@ public sealed class LongAsStringKeyComparer : IComparer<string>
     public IComparer<string> BaseComparer { get; init; } = StringComparer.Ordinal;
 
     public int Compare(string? x, string? y)
-        => long.TryParse(x, NumberStyles.Number, NumberFormatInfo.InvariantInfo, out var lx)
-           && long.TryParse(y, NumberStyles.Number, NumberFormatInfo.InvariantInfo, out var ly)
+        => NumberExt.TryParseLong(x, out var lx) && NumberExt.TryParseLong(y, out var ly)
             ? lx.CompareTo(ly)
             : BaseComparer.Compare(x, y);
 }

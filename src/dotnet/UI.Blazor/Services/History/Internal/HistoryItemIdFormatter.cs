@@ -17,11 +17,6 @@ public sealed record HistoryItemIdFormatter(string Prefix)
             return null;
 
         var suffix = value.AsSpan(Prefix.Length);
-        if (!long.TryParse(suffix, CultureInfo.InvariantCulture, out var result))
-            return null;
-        if (result < 0)
-            return null;
-
-        return result;
+        return NumberExt.TryParsePositiveLong(suffix, out var result) ? result : null;
     }
 }

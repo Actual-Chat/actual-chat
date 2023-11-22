@@ -122,15 +122,13 @@ public readonly partial struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
             return false;
 
         var sKind = s.AsSpan(kindStart, kindLength - kindStart);
-        if (!int.TryParse(sKind, NumberStyles.Integer, CultureInfo.InvariantCulture, out var kind))
+        if (!NumberExt.TryParsePositiveInt(sKind, out var kind))
             return false;
-        if (kind is < 0 or > 2)
+        if (kind > 2)
             return false;
 
         var sLocalId = s.AsSpan(kindLength + 1);
-        if (!long.TryParse(sLocalId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var localId))
-            return false;
-        if (localId < 0)
+        if (!NumberExt.TryParsePositiveLong(sLocalId, out var localId))
             return false;
 
         result = new ChatEntryId(s, chatId, (ChatEntryKind)kind, localId, AssumeValid.Option);

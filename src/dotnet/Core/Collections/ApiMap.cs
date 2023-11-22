@@ -25,7 +25,7 @@ public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICl
 
     public override string ToString()
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = StringBuilderExt.Acquire();
         sb.Append('<');
         sb.Append(typeof(TKey).GetName());
         sb.Append(',');
@@ -38,7 +38,8 @@ public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICl
         var i = 0;
         foreach (var (key, value) in this) {
             if (i >= ApiConstants.MaxToStringItems) {
-                sb.Append($", ...{Count - ApiConstants.MaxToStringItems} more");
+                sb.Append(CultureInfo.InvariantCulture,
+                    $", ...{Count - ApiConstants.MaxToStringItems} more");
                 break;
             }
             sb.Append(i > 0 ? ", " : " ");
@@ -50,6 +51,6 @@ public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICl
             i++;
         }
         sb.Append(" }");
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 }

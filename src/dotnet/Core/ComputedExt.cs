@@ -25,7 +25,7 @@ public static class ComputedExt
         var type = computed.GetType();
         var pFlags = GetProperty(type, "Flags")!;
 
-        using var sb = ZString.CreateStringBuilder();
+        var sb = StringBuilderExt.Acquire();
         // var flags = pFlags.GetGetter<ComputedFlags>().Invoke(computed);
         var flags = (ComputedFlags)pFlags.GetMethod!.Invoke(computed, Array.Empty<object?>())!;
         sb.Append("Computed: ");
@@ -38,7 +38,7 @@ public static class ComputedExt
             sb.Append("  - ");
             sb.AppendLine(d.ToString()!);
         }
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     private static PropertyInfo? GetProperty(Type type, string name)

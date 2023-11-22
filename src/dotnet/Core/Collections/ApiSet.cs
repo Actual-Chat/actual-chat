@@ -24,7 +24,7 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
 
     public override string ToString()
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = StringBuilderExt.Acquire();
         sb.Append('<');
         sb.Append(typeof(T).GetName());
         sb.Append(">{");
@@ -35,7 +35,8 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
         var i = 0;
         foreach (var item in this) {
             if (i >= ApiConstants.MaxToStringItems) {
-                sb.Append($", ...{Count - ApiConstants.MaxToStringItems} more");
+                sb.Append(CultureInfo.InvariantCulture,
+                    $", ...{Count - ApiConstants.MaxToStringItems} more");
                 break;
             }
             sb.Append(i > 0 ? ", " : " ");
@@ -43,7 +44,7 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
             i++;
         }
         sb.Append(" }");
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 }
 

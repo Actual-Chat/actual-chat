@@ -71,14 +71,15 @@ public readonly partial struct ApiArray<T>(T[] items)
 
     public override string ToString()
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = StringBuilderExt.Acquire();
         sb.Append('<');
         sb.Append(typeof(T).GetName());
         sb.Append(">[");
         var i = 0;
         foreach (var item in Items) {
             if (i >= ApiConstants.MaxToStringItems) {
-                sb.Append($", ...{Count - ApiConstants.MaxToStringItems} more");
+                sb.Append(CultureInfo.InvariantCulture,
+                    $", ...{Count - ApiConstants.MaxToStringItems} more");
                 break;
             }
             if (i > 0)
@@ -87,7 +88,7 @@ public readonly partial struct ApiArray<T>(T[] items)
             i++;
         }
         sb.Append(']');
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 
     public bool Contains(T item)

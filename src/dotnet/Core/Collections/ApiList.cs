@@ -16,14 +16,15 @@ public sealed partial class ApiList<T> : List<T>, ICloneable<ApiList<T>>
 
     public override string ToString()
     {
-        using var sb = ZString.CreateStringBuilder();
+        var sb = StringBuilderExt.Acquire();
         sb.Append('<');
         sb.Append(typeof(T).GetName());
         sb.Append(">[");
         var i = 0;
         foreach (var item in this) {
             if (i >= ApiConstants.MaxToStringItems) {
-                sb.Append($", ...{Count - ApiConstants.MaxToStringItems} more");
+                sb.Append(CultureInfo.InvariantCulture,
+                    $", ...{Count - ApiConstants.MaxToStringItems} more");
                 break;
             }
             if (i > 0)
@@ -32,6 +33,6 @@ public sealed partial class ApiList<T> : List<T>, ICloneable<ApiList<T>>
             i++;
         }
         sb.Append(']');
-        return sb.ToString();
+        return sb.ToStringAndRelease();
     }
 }

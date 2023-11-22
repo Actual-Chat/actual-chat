@@ -34,7 +34,7 @@ public static partial class LocalUrlExt
         if (!url.IsChat(out chatId, out _, out var hash))
             return false;
 
-        long.TryParse(hash, CultureInfo.InvariantCulture, out entryLid);
+        _ = NumberExt.TryParsePositiveLong(hash, out entryLid);
         return true;
     }
 

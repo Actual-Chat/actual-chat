@@ -10,12 +10,10 @@ internal static class KubeEnvironmentVars
         => _podIP ??= Environment.GetEnvironmentVariable("POD_IP") ?? "";
     public static string KubernetesServiceHost
         => _kubernetesServiceHost ??= Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST") ?? "";
-    public static int KubernetesServicePort
-        => _kubernetesServicePort ??=
-            int.TryParse(
-                Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_PORT") ?? "",
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out var port)
-            ? port : 0;
+    public static int KubernetesServicePort {
+        get {
+            var sPort = Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_PORT") ?? "";
+            return _kubernetesServicePort ??= NumberExt.TryParsePositiveInt(sPort, out var port) ? port : 0;
+        }
+    }
 }
