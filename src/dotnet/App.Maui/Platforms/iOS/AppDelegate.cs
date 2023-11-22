@@ -6,8 +6,14 @@ using UIKit;
 namespace ActualChat.App.Maui;
 
 [Register("AppDelegate")]
-public class AppDelegate : UIApplicationDelegate
+public class AppDelegate : MauiUIApplicationDelegate
 {
+    protected override MauiApp CreateMauiApp()
+    {
+        NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
+        return MauiProgram.CreateMauiApp();
+    }
+
     public override bool ContinueUserActivity(
         UIApplication application,
         NSUserActivity userActivity,
