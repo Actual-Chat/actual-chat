@@ -167,6 +167,16 @@
             : default;
         var canPost = chat.Rules.CanWrite();
         var canJoin = !canPost && chat.Rules.CanJoin();
+        var shouldJoinPlaceFirst = false;
+        Place? place = null;
+        if (!canPost && chat.Id.IsPlaceChat) {
+            shouldJoinPlaceFirst = chat.IsPublic;
+            place = await ChatHub.Places.Get(Session, chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
+            if (place == null) {
+                Log.LogWarning("Can't read Place #Id='{PlaceId}' while it should be possible to join to it", chat.Id.PlaceId);
+                canJoin = false;
+            }
+        }
         var hasMultipleAvatars = false;
         var canJoinWithGuestAccount = false;
         var canJoinAnonymously = false;
@@ -187,9 +197,11 @@
             IsGuest = account.IsGuestOrNone,
             CanPost = canPost,
             CanJoin = canJoin,
+            ShouldJoinPlaceFirst = shouldJoinPlaceFirst,
             HasMultipleAvatars = hasMultipleAvatars,
             CanJoinWithGuestAccount = canJoinWithGuestAccount,
             CanJoinAnonymously = canJoinAnonymously,
+            Place = place,
         };
     }
 
@@ -236,5 +248,7 @@
         public bool HasMultipleAvatars { get; init; }
         public bool CanJoinWithGuestAccount { get; init; }
         public bool CanJoinAnonymously { get; init; }
+        public bool ShouldJoinPlaceFirst { get; init; }
+        public Place? Place { get; init; }
     }
 }
