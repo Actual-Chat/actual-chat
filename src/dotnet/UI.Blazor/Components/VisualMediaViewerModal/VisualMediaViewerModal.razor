@@ -1,120 +1,93 @@
 @using ActualChat.Chat
 @using ActualChat.UI.Blazor.Module
-@using System.Diagnostics.CodeAnalysis
 @implements IAsyncDisposable
 @implements IModalView<VisualMediaViewerModal.Model>
 @namespace ActualChat.UI.Blazor.Components
 
 @{
-    RenderFragment RenderThumbnail(TextEntryAttachment attachment) {
-        var id = attachment.MediaId;
-        var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
-        string? previewUrl = null;
-        if (attachment.IsGif() || attachment.IsSvg()) {
-            previewUrl = url; // currently image proxy fails on large gifs
-        } else if(attachment.IsSupportedImage()) {
-            previewUrl = UrlMapper.ImagePreviewUrl(url, 80, 54);
-        }
-        var activeCls = IsActive(id) ? " active" : " inactive";
-        return @<div class="gallery-item @activeCls" id="@id">
-                   @if (attachment.IsSupportedVideo()) {
-                       <video preload="metadata" playsinline>
-                           <source src="@url#t=,5" type="@attachment.Media.ContentType"/>
-                       </video>
-                   } else {
-                       <image-skeleton
-                           class="loading"
-                           src="@previewUrl"
-                       />
-                   }
-               </div>;
-    }
-
-    var selectedAttachment = _attachments?.FirstOrDefault(x => x.MediaId == _activeMediaId);
-    var selectedAttachmentDownloadUrl = selectedAttachment != null ? UrlMapper.ContentUrl(selectedAttachment.Media.ContentId) : ModalModel.Url;
+    var selectedAttachment = _attachments.ElementAtOrDefault(_selectedSlide);
+    var selectedAttachmentDownloadUrl = selectedAttachment != null
+        ? UrlMapper.ContentUrl(selectedAttachment.Media.ContentId)
+        : ModalModel.Url;
 }
 
 <ModalFrame Class="image-viewer-modal">
-    <VisualMediaViewerHeader CloseClick="CloseModal" ChatEntry="@ModalModel.ChatEntry" DownloadUrl="@selectedAttachmentDownloadUrl" ContentType="@(selectedAttachment?.Media.ContentType ?? "")"/>
-    <div @ref="@Ref" class="image-viewer-content invisible">
-        @if (_attachments != null) {
-            foreach (var attachment in _attachments) {
-                var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
-                var id = attachment.MediaId;
-                var idCached = "cached:" + id;
-                var mediaCls = IsActive(id) ? "active" : "inactive";
-                var cachedImageUrl = url == ModalModel.Url
-                    ? ModalModel.CachedImageUrl
-                    : UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxResolution);
-                @if (attachment.IsSupportedVideo()) {
-                    <video
-                        id="@id"
-                        class="video-container c-full-media @mediaCls"
-                        width="@attachment.Media.Width"
-                        height="@attachment.Media.Height"
-                        preload="auto"
-                        controls>
-                        <source src="@url" type="@attachment.Media.ContentType"/>
-                    </video>
-                } else {
-                    <img class="image-container c-full-media @mediaCls"
-                         id="@id"
-                         width="@attachment.Media.Width"
-                         height="@attachment.Media.Height"
-                         src="@url"
-                         alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"
-                         />
-                    <img id="@idCached"
-                         class="image-container @mediaCls"
-                         width="@attachment.Media.Width"
-                         height="@attachment.Media.Height"
-                         src="@cachedImageUrl"
-                         alt="@(ModalModel.AltText.NullIfEmpty() ?? "Image attachment")"/>
-
-                }
+    <VisualMediaViewerHeader
+        CloseClick="CloseModal"
+        ChatEntry="@ModalModel.ChatEntry"
+        DownloadUrl="@selectedAttachmentDownloadUrl"
+        ContentType="@(selectedAttachment?.Media.ContentType ?? "")"/>
+    <swiper-container
+        @ref="@Ref"
+        style="--swiper-navigation-color: #fff; --swiper-pagination-color: #fff"
+        class="media-swiper"
+        space-between="10"
+        zoom="true"
+        mousewheel="true"
+        initial-slide="@_selectedSlide"
+        thumbs-swiper=".media-preview-swiper"
+        navigation="true">
+        @foreach (var attachment in _attachments) {
+            var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
+            @if (attachment.IsSupportedImage()) {
+                <swiper-slide>
+                    <div class="swiper-zoom-container">
+                        <img src="@url" alt=""/>
+                    </div>
+                </swiper-slide>
+            } else if (attachment.IsSupportedVideo()) {
+                <swiper-slide>
+                    <div class="swiper-zoom-container">
+                        <video
+                            preload="auto">
+                            <source src="@url" type="@attachment.Media.ContentType"/>
+                        </video>
+                    </div>
+                </swiper-slide>
             }
         }
-    </div>
-    @if (_attachments?.Count > 1) {
-        <div class="c-previous invisible">
-            <i class="icon-gallery-arrow-left text-3.5xl"></i>
-        </div>
-        <div class="c-next invisible">
-            <i class="icon-gallery-arrow-right text-3.5xl"></i>
-        </div>
-    }
-    <div class="image-viewer-footer">
-        <div class="footer-gallery">
-            @if (_attachments != null) {
-                foreach (var attachment in _attachments) {
-                    @RenderThumbnail(attachment)
+    </swiper-container>
+    @if (_attachments.Count > 1) {
+        <swiper-container
+            class="media-preview-swiper image-viewer-footer"
+            space-between="10"
+            slides-per-view="@_attachments.Count"
+            free-mode="true"
+            watch-slides-progress="true">
+            @foreach (var attachment in _attachments) {
+                @if (attachment.IsSupportedImage()) {
+                    var previewUrl = GetPreviewUrl(attachment);
+                    <swiper-slide>
+                        <img src="@previewUrl" alt=""/>
+                    </swiper-slide>
+                } else if (attachment.IsSupportedVideo()) {
+                    var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
+                    <swiper-slide>
+                        <video preload="metadata" playsinline>
+                            <source src="@url#t=,5" type="@attachment.Media.ContentType"/>
+                        </video>
+                    </swiper-slide>
                 }
             }
-        </div>
-    </div>
+        </swiper-container>
+    }
 </ModalFrame>
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.VisualMediaViewer.create";
-    private List<TextEntryAttachment>? _attachments;
-    private MediaId _activeMediaId;
-
+    private List<TextEntryAttachment> _attachments = new();
+    private int _selectedSlide;
     private DotNetObjectReference<VisualMediaViewerModal> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private ILogger<VisualMediaViewerModal> Log { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(VisualMediaViewerModal))]
-    public VisualMediaViewerModal() { }
-
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
         JSRef = null!;
         BlazorRef.DisposeSilently();
@@ -122,9 +95,11 @@
     }
 
     protected override void OnInitialized() {
-        _attachments = ModalModel.ChatEntry?.Attachments.ToList();
-        var selectedAttachment = _attachments?.FirstOrDefault(x => OrdinalIgnoreCaseEquals(UrlMapper.ContentUrl(x.Media.ContentId), ModalModel.Url));
-        _activeMediaId = selectedAttachment?.MediaId ?? MediaId.None;
+        _attachments = ModalModel.ChatEntry?.Attachments.ToList() ?? new ();
+        var selectedAttachment = _attachments.FirstOrDefault(x => OrdinalIgnoreCaseEquals(UrlMapper.ContentUrl(x.Media.ContentId), ModalModel.Url));
+        if (selectedAttachment != null) {
+            _selectedSlide = _attachments.IndexOf(selectedAttachment);
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -137,21 +112,29 @@
     private void CloseModal()
         => Modal.Close();
 
-    private bool IsActive(MediaId id)
-        => _activeMediaId.IsNone || id == _activeMediaId;
-
-    [JSInvokable]
-    public void LogJS(string text)
-        => Log.LogInformation(text);
-
     [JSInvokable]
     public void Close()
         => CloseModal();
 
     [JSInvokable]
-    public void ChangeMedia(string mediaId) {
-        _activeMediaId = new MediaId(mediaId);
+    public void SlideChanged(int selectedSlide) {
+        _selectedSlide = selectedSlide;
         StateHasChanged();
+    }
+
+    private string GetPreviewUrl(TextEntryAttachment attachment) {
+        var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
+
+        if (attachment.IsGif() || attachment.IsSvg()) {
+            return url; // currently image proxy fails on large gifs
+        }
+
+        if (attachment.IsSupportedImage()) {
+            // this resolution is already cached in the media gallery
+            return UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxActualResolution);
+        }
+
+        return url;
     }
 
     public sealed record Model(
