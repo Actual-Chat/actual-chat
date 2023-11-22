@@ -82,9 +82,11 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                 var externalContact = await ChangeItem(itemChange, cancellationToken).ConfigureAwait(false);
                 result.Add(new Result<ExternalContact?>(externalContact, null));
             }
-            catch (Exception e)
-            {
-                Log.LogError(e, "Failed to change external contact #{ExternalContactId}", itemChange.Id);
+            catch (Exception e) {
+                Log.LogError(e,
+                    "Failed to {ChangeKind} external contact #{ExternalContactId}",
+                    itemChange.Change.Kind.ToString().ToLowerInvariant(),
+                    itemChange.Id);
                 result.Add(new Result<ExternalContact?>(null, e));
             }
         if (command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
