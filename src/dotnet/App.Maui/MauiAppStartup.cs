@@ -3,8 +3,10 @@ using System.Net.WebSockets;
 using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App;
+#if ANDROID
 using Android.Net.Http;
 using Xamarin.Android.Net;
+#endif
 
 namespace ActualChat.App.Maui;
 
