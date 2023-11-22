@@ -17,11 +17,15 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
     public async Task<ProcessedFile> Process(UploadedTempFile upload, CancellationToken cancellationToken)
     {
         var (mustConvert, size, duration) = await GetVideoInfo(upload, upload.TempFilePath, cancellationToken).ConfigureAwait(false);
-        if (size == null)
+        if (size is null)
             // we consider it as a file not as a video
             return new ProcessedFile(upload with { ContentType = MediaTypeNames.Application.Octet }, null);
 
         var thumbnail = await GetThumbnail(upload, upload.TempFilePath, duration).ConfigureAwait(false);
+        if (thumbnail is null)
+            // we consider it as a file not as a video
+            return new ProcessedFile(upload with { ContentType = MediaTypeNames.Application.Octet }, null);
+
         if (!mustConvert)
             return new ProcessedFile(upload, size, thumbnail);
 
@@ -74,6 +78,9 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
 
     private async Task<UploadedTempFile?> GetThumbnail(UploadedFile videoUpload, FilePath videoTempFile, TimeSpan totalVideoDuration)
     {
+        if (totalVideoDuration <= TimeSpan.Zero)
+            return null;
+
         try {
             var at = (totalVideoDuration * 0.1).Clamp(TimeSpan.Zero, TimeSpan.FromSeconds(10));
             var thumbnailPath = FilePath.GetApplicationTempDirectory() | $"snapshot_{Guid.NewGuid()}.jpg";
