@@ -1,3 +1,4 @@
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
 using Stl.Interception;
 
@@ -13,6 +14,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     private readonly IMutableState<PlaybackState?> _playbackState;
 
     private ChatHub ChatHub { get; }
+    private AudioInitializer AudioInitializer => ChatHub.AudioInitializer;
     private IAudioOutputController AudioOutputController => ChatHub.AudioOutputController;
     private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
     private TuneUI TuneUI => ChatHub.TuneUI;

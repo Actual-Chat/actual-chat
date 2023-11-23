@@ -1,4 +1,5 @@
 using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Rpc;
 using ActualChat.UI.Blazor.Services;
 
@@ -136,6 +137,7 @@ public partial class ChatAudioUI
 
     private async Task RecordChat(Computed<RecordingState> cRecordingState, CancellationToken cancellationToken)
     {
+        AudioInitializer.Start();
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
         var (chatId, language) = cRecordingState.Value;

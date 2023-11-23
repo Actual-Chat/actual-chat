@@ -95,25 +95,28 @@ public class AppScopedServiceStarter
         try {
             await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(true);
             _ = Services.GetRequiredService<OnboardingUI>().TryShow();
+            var appKind = HostInfo.AppKind;
+            var baseDelay = TimeSpan.FromSeconds(appKind.IsServer() ? 0.25 : 1);
 
             // Starting less important UI services
-            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
-            var appKind = HostInfo.AppKind;
-            Services.GetRequiredService<AudioInitializer>().Start();
+            await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
             if (appKind.IsClient())
                 Services.GetRequiredService<SessionTokens>().Start();
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client
-            Services.GetRequiredService<ContactSync>().Start();
-            Services.GetRequiredService<TuneUI>(); // Auto-starts on construction
-            if (appKind.IsClient()) {
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
-                await StartHostedServices().ConfigureAwait(false);
-            }
             Services.GetRequiredService<BackgroundUI>(); // Auto-starts on construction
+            Services.GetRequiredService<TuneUI>(); // Auto-starts on construction
             if (!HostInfo.IsProductionInstance)
                 Services.GetRequiredService<DebugUI>();
+
+            await Task.Delay(baseDelay * 2, cancellationToken).ConfigureAwait(false);
+            Services.GetRequiredService<AudioInitializer>().Start();
+            if (appKind.IsClient())
+                await StartHostedServices().ConfigureAwait(false);
+
+            await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+            Services.GetRequiredService<ContactSync>().Start();
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, $"{nameof(AfterFirstRender)} failed");

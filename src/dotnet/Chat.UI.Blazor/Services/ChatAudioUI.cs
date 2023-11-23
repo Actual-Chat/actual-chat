@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
 using Stl.Interception;
 
@@ -18,6 +19,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private IChats Chats => ChatHub.Chats;
     private ChatActivity ChatActivity => ChatHub.ChatActivity;
     private ActiveChatsUI ActiveChatsUI => ChatHub.ActiveChatsUI;
+    private AudioInitializer AudioInitializer => ChatHub.AudioInitializer;
     private AudioSettings AudioSettings => ChatHub.AudioSettings;
     private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
     private ChatPlayers ChatPlayers => ChatHub.ChatPlayers;
