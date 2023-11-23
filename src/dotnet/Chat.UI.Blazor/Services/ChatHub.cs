@@ -63,6 +63,7 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     private UICommander? _uiCommander;
     private UIEventHub? _uiEventHub;
     private History? _history;
+    private NavbarUI? _navbarUI;
     private Features? _features;
     private BrowserInfo? _browserInfo;
     private TimeZoneConverter? _timeZoneConverter;
@@ -125,6 +126,7 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
     public LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
     public History History => _history ??= Services.GetRequiredService<History>();
+    public NavbarUI NavbarUI => _navbarUI ??= Services.GetRequiredService<NavbarUI>();
     public Features Features => _features ??= Services.GetRequiredService<Features>();
     public BrowserInfo BrowserInfo => _browserInfo ??= Services.GetRequiredService<BrowserInfo>();
     public TimeZoneConverter TimeZoneConverter => _timeZoneConverter ??= Services.GetRequiredService<TimeZoneConverter>();

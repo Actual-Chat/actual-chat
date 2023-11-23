@@ -169,7 +169,7 @@ public partial class ChatUI
                     if (place == null)
                         SelectChat(ChatId.None);
                     else
-                        NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), place.Title);
+                        ChatHub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), place.Title);
                 })
                 .ConfigureAwait(false);
         }

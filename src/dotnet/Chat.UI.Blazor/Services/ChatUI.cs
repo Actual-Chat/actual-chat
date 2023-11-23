@@ -49,7 +49,6 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     private ILogger Log => _log ??= ChatHub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
-    private NavbarUI NavbarUI { get; }
     public IState<ChatId> SelectedChatId => _selectedChatId;
     public IState<PlaceId> SelectedPlaceId => _selectedPlaceId;
     public IState<IImmutableDictionary<PlaceId, ChatId>> SelectedChatIds => _selectedChatIds;
@@ -60,8 +59,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     public ChatUI(ChatHub chatHub)
     {
         ChatHub = chatHub;
-        NavbarUI = chatHub.Services.GetRequiredService<NavbarUI>();
-        NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
+        ChatHub.NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
 
         var type = GetType();
         _selectedChatId = StateFactory.NewKvasStored<ChatId>(new(LocalSettings, nameof(SelectedChatId)) {
@@ -431,7 +429,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
     {
         var placeId = PlaceId.None;
-        var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || NavbarUI.IsPlaceSelected(out placeId);
+        var isChats = OrdinalEquals(ChatHub.NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || ChatHub.NavbarUI.IsPlaceSelected(out placeId);
         if (!isChats)
             return;
         if (SelectPlace(placeId))
