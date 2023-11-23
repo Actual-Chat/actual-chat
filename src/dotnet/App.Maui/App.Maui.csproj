@@ -278,9 +278,6 @@
 
   <ItemGroup>
     <!-- App Icon -->
-    <EmbeddedResource Include="ILLink.Descriptors.xml">
-      <LogicalName>ILLink.Descriptors.xml</LogicalName>
-    </EmbeddedResource>
     <MauiIcon Include="Resources\AppIcon\appicon.svg" />
 
     <!-- Splash Screen -->
@@ -382,7 +379,7 @@
 
   <!-- Trimming descriptors -->
   <ItemGroup>
-    <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />
+    <TrimmerRootDescriptor Include="ILLink.Descriptors.Maui.xml" />
   </ItemGroup>
 
   <Target Name="UpdateBundleHash" AfterTargets="Build">
