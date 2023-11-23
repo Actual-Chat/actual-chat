@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
@@ -20,6 +21,7 @@ public static class Program
 {
     private static Tracer Tracer { get; set; } = Tracer.None;
 
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
     public static async Task Main(string[] args)
     {
 #if DEBUG

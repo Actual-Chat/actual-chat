@@ -3,20 +3,24 @@
   <assembly fullname="ActualChat" />
 
   <!-- Extras -->
-<!--  <assembly fullname="mscorlib" />-->
-<!--  <assembly fullname="Java.Interop" />-->
+  <!--
+  <assembly fullname="Java.Interop" />
+  <assembly fullname="Mono.Android" />
+  <assembly fullname="mscorlib" />
+  <assembly fullname="Mono.Android.Export" />
+  <assembly fullname="Mono.Android.Runtime" />
+  -->
   <assembly fullname="banditoth.MAUI.DeviceId" />
-<!--  <assembly fullname="Mono.Android" />-->
-<!--  <assembly fullname="Mono.Android.Export" />-->
-<!--  <assembly fullname="Mono.Android.Runtime" />-->
   <assembly fullname="K4os.Compression.LZ4" />
+  <assembly fullname="System.ComponentModel" />
+  <assembly fullname="Microsoft.AspNetCore.Components" />
+  <assembly fullname="Microsoft.AspNetCore.Components.Web" />
+  <assembly fullname="Microsoft.AspNetCore.Components.WebView" />
   <assembly fullname="Microsoft.AspNetCore.Components.WebView.Maui" />
   <assembly fullname="Microsoft.Maui" />
   <assembly fullname="Microsoft.Maui.Controls" />
   <assembly fullname="Microsoft.Maui.Controls.Compatibility" />
   <assembly fullname="Microsoft.JSInterop" />
-  <assembly fullname="RestEase"/>
-  <assembly fullname="Sentry" />
   <assembly fullname="Sentry.Android.AssemblyReader" />
   <assembly fullname="Sentry.Bindings.Android" />
   <assembly fullname="Sentry.Extensions.Logging" />
@@ -28,6 +32,7 @@
   <assembly fullname="SQLitePCLRaw.core" />
   <assembly fullname="SQLitePCLRaw.lib.e_sqlite3.android" />
   <assembly fullname="SQLitePCLRaw.provider.e_sqlite3" />
+  <!--
   <assembly fullname="System.Net.Http" />
   <assembly fullname="System.Net.Mail" />
   <assembly fullname="System.Net.NameResolution" />
@@ -44,4 +49,5 @@
   <assembly fullname="System.Reflection" />
   <assembly fullname="System.Reflection.Metadata" />
   <assembly fullname="System.Security.Cryptography" />
+  -->
 </linker>

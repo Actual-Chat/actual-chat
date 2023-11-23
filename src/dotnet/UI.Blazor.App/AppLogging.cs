@@ -31,8 +31,8 @@ public static class AppLogging
         // We can't use appsettings*.json on the client, so client-side log filters are configured here
         logging
             .AddFilter(null, LogLevel.Information)
-            .AddFilter("System", LogLevel.Warning)
-            .AddFilter("Microsoft", LogLevel.Warning)
+            .AddFilter("System", LogLevel.Debug)
+            .AddFilter("Microsoft", LogLevel.Debug)
             .AddFilter("ActualChat", MinLevel);
         return logging;
     }

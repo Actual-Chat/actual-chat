@@ -175,7 +175,8 @@ public static class MauiDiagnostics
             throw new ArgumentNullException(nameof (builder));
 
         if (dispose)
-            builder.Services.AddSingleton<ILoggerProvider, SerilogLoggerProvider>(_ => new SerilogLoggerProvider(logger, true));
+            builder.Services.AddSingleton<ILoggerProvider, SerilogLoggerProvider>(
+                _ => new SerilogLoggerProvider(logger, true));
         else
             builder.AddProvider(new SerilogLoggerProvider(logger));
         // builder.AddFilter<SerilogLoggerProvider>(null, LogLevel.Trace);

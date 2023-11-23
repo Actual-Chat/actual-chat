@@ -194,8 +194,8 @@
     <!-- <AndroidLinkTool>r8</AndroidLinkTool> --> <!-- Doesn't work with .NET 8! -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
-    <RunAOTCompilation>false</RunAOTCompilation>
-    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
     <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
 
@@ -224,9 +224,7 @@
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-exc.aotprofile" />
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-inc.aotprofile" />
     -->
-    <!--
     <AndroidMibcProfile Include="android.mibc" />
-    -->
   </ItemGroup>
 
   <!-- Android: AOT profiling mode -->
@@ -305,6 +303,7 @@
     <None Remove="Resources\Images\**" />
     <None Remove="android.nettrace" />
     <None Remove="android.etlx" />
+    <None Remove="android.etlx" />
   </ItemGroup>
   <!-- Android -->
   <ItemGroup Condition="'$(IsDevMaui)' == 'true' AND $(TargetFramework.Contains('-android'))">
@@ -377,9 +376,21 @@
     <None Remove="wwwroot\dist\images\webonly\**" />
   </ItemGroup>
 
-  <!-- Trimming descriptors -->
   <ItemGroup>
-    <TrimmerRootDescriptor Include="ILLink.Descriptors.Maui.xml" />
+    <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
+  </ItemGroup>
+  <ItemGroup>
+    <TrimmableAssembly Include="Microsoft.CodeAnalysis" />
+    <TrimmableAssembly Include="Microsoft.CodeAnalysis.Workspaces" />
+    <TrimmableAssembly Include="Microsoft.CodeAnalysis.CSharp" />
+    <TrimmableAssembly Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+    <TrimmableAssembly Include="Stl" />
+    <TrimmableAssembly Include="System.Linq" />
+    <TrimmableAssembly Include="System.Linq.Async" />
+    <TrimmableAssembly Include="System.Linq.Expressions" />
+    <TrimmableAssembly Include="System.Reactive" />
+    <TrimmableAssembly Include="System.Xml" />
+    <TrimmableAssembly Include="ZString" />
   </ItemGroup>
 
   <Target Name="UpdateBundleHash" AfterTargets="Build">
