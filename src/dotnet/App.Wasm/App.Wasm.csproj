@@ -24,7 +24,7 @@ Use:
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <RunAOTCompilation>true</RunAOTCompilation>
+    <RunAOTCompilation>false</RunAOTCompilation>
     <!-- Broken for now:
     - https://github.com/dotnet/runtime/issues/92238
     - https://github.com/dotnet/runtime/pull/90436
