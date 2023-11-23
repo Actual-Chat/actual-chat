@@ -351,10 +351,31 @@
     --link-preview-icon: var(--blue-70);
 
     /* Specific colors */
-    --cat-color-01: var(--gray-70);
-    --cat-color-02: var(--gray-40);
-    --cat-color-03: var(--gray-30);
-    --cat-color-04: var(--white);
+    --loading-cat-lines: var(--gray-70);
+    --loading-cat-body: var(--gray-40);
+    --loading-cat-window: var(--gray-30);
+    --loading-cat-stars: var(--white);
+
+    ---not-found-cat-bg: var(--white);
+    --not-found-cat-body: var(--gray-95);
+    --not-found-cat-lines: var(--gray-60);
+    --not-found-cat-face: var(--gray-90);
+
+    --empty-chat-cat-round: var(--gray-95);
+    --empty-chat-cat-corner: var(--gray-80);
+    --empty-chat-cat-lines: var(--gray-60);
+    --empty-chat-cat-body: var(--white);
+
+    --verify-cat-round: var(--gray-90);
+    --verify-cat-back: var(--gray-90);
+    --verify-cat-body: var(--white);
+    --verify-cat-paws: var(--gray-70);
+    --verify-cat-tail: var(--white);
+    --verify-cat-phone-glow: var(--white);
+    --verify-cat-lines: var(--gray-30);
+    --verify-cat-face: var(--gray-80);
+    --verify-cat-shadow: var(--gray-80);
+    --verify-cat-display: var(--blue-80);
 }
 .theme-dark {
     /* Background */
@@ -506,8 +527,29 @@
     --left-side-logo: var(--white);
 
     /* Specific colors */
-    --cat-color-01: var(--ash-80);
-    --cat-color-02: var(--ash-50);
-    --cat-color-03: var(--ash-30);
-    --cat-color-04: var(--white);
+    --loading-cat-lines: var(--ash-80);
+    --loading-cat-body: var(--ash-50);
+    --loading-cat-window: var(--ash-30);
+    --loading-cat-stars: var(--white);
+
+    --not-found-cat-bg: var(--ash-80);
+    --not-found-cat-body: var(--ash-50);
+    --not-found-cat-lines: var(--ash-30);
+    --not-found-cat-face: var(--ash-60);
+
+    --empty-chat-cat-round: var(--ash-50);
+    --empty-chat-cat-corner: var(--ash-40);
+    --empty-chat-cat-lines: var(--ash-30);
+    --empty-chat-cat-body: var(--ash-80);
+
+    --verify-cat-round: var(--ash-50);
+    --verify-cat-back: var(--ash-95);
+    --verify-cat-body: var(--ash-80);
+    --verify-cat-paws: var(--ash-60);
+    --verify-cat-tail: var(--ash-80);
+    --verify-cat-phone-glow: var(--white);
+    --verify-cat-lines: var(--ash-30);
+    --verify-cat-face: var(--white);
+    --verify-cat-shadow: var(--ash-40);
+    --verify-cat-display: var(--blue-80);
 }
