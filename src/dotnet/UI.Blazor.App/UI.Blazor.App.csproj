@@ -15,4 +15,11 @@
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
   </ItemGroup>
 
+  <!-- Trimming descriptors -->
+  <ItemGroup>
+    <EmbeddedResource Include="ILLink.Descriptors.xml">
+      <LogicalName>ILLink.Descriptors.xml</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
 </Project>

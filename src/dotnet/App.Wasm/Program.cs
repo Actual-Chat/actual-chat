@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using ActualChat.Audio.WebM;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor;
@@ -8,7 +7,8 @@ using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 // ReSharper disable once RedundantUsingDirective
-using Microsoft.Extensions.Configuration; // Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
+using Microsoft.Extensions.Configuration;
+// Keep it: it lets <Project Sdk="Microsoft.NET.Sdk.Razor"> compile
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenTelemetry.Trace;
 using Sentry;
@@ -20,7 +20,6 @@ public static class Program
 {
     private static Tracer Tracer { get; set; } = Tracer.None;
 
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WasmApp))]
     public static async Task Main(string[] args)
     {
 #if DEBUG

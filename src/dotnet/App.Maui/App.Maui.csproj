@@ -80,11 +80,6 @@
     <IsProfilingEnabled>false</IsProfilingEnabled>
   </PropertyGroup>
 
-  <!-- Trimming roots -->
-  <ItemGroup>
-    <TrimmerRootAssembly Include="ActualChat" RootMode="visible" />
-  </ItemGroup>
-
   <!-- Project references -->
   <ItemGroup>
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
@@ -199,8 +194,8 @@
     <!-- <AndroidLinkTool>r8</AndroidLinkTool> --> <!-- Doesn't work with .NET 8! -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
-    <RunAOTCompilation>true</RunAOTCompilation>
-    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
     <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
 
@@ -283,6 +278,9 @@
 
   <ItemGroup>
     <!-- App Icon -->
+    <EmbeddedResource Include="ILLink.Descriptors.xml">
+      <LogicalName>ILLink.Descriptors.xml</LogicalName>
+    </EmbeddedResource>
     <MauiIcon Include="Resources\AppIcon\appicon.svg" />
 
     <!-- Splash Screen -->
@@ -372,38 +370,6 @@
     <Watch Include="wwwroot\dist\**" />
   </ItemGroup>
 
-  <!-- Trimming roots -->
-  <ItemGroup>
-    <!-- Entry points -->
-    <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
-
-    <!-- Extras -->
-    <TrimmerRootAssembly Include="Java.Interop" RootMode="visible" />
-    <TrimmerRootAssembly Include="banditoth.MAUI.DeviceId" RootMode="visible" />
-    <TrimmerRootAssembly Include="Mono.Android" RootMode="visible" />
-    <TrimmerRootAssembly Include="Mono.Android.Export" RootMode="visible" />
-    <TrimmerRootAssembly Include="Mono.Android.Runtime" RootMode="visible" />
-    <TrimmerRootAssembly Include="K4os.Compression.LZ4" RootMode="visible" />
-    <TrimmerRootAssembly Include="Microsoft.Maui" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Microsoft.Maui.Controls" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Microsoft.Maui.Controls.Compatibility" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView.Maui" RootMode="visible"/>
-    <TrimmerRootAssembly Include="RestEase" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Sentry" RootMode="visible" />
-    <TrimmerRootAssembly Include="Sentry.Android.AssemblyReader" RootMode="visible" />
-    <TrimmerRootAssembly Include="Sentry.Bindings.Android" RootMode="visible" />
-    <TrimmerRootAssembly Include="Sentry.Extensions.Logging" RootMode="visible" />
-    <TrimmerRootAssembly Include="Sentry.OpenTelemetry" RootMode="visible" />
-    <TrimmerRootAssembly Include="Sentry.Serilog " RootMode="visible" />
-    <TrimmerRootAssembly Include="Serilog" RootMode="visible" />
-    <TrimmerRootAssembly Include="Serilog.Extensions.Logging" RootMode="visible" />
-    <TrimmerRootAssembly Include="Serilog.Sinks.Xamarin" RootMode="visible" />
-    <!-- System.Private.CoreLib is needed only if you want to enable TaskEventListener -->
-    <!--
-    <TrimmerRootAssembly Include="System.Private.CoreLib" />
-    -->
-  </ItemGroup>
-
   <ItemGroup>
     <Content Remove="appsettings.Development.json" />
     <Content Remove="appsettings.json" />
@@ -412,6 +378,11 @@
     <Content Remove="Resources\Images\**" />
     <Content Remove="wwwroot\dist\images\webonly\**" />
     <None Remove="wwwroot\dist\images\webonly\**" />
+  </ItemGroup>
+
+  <!-- Trimming descriptors -->
+  <ItemGroup>
+    <TrimmerRootDescriptor Include="ILLink.Descriptors.xml" />
   </ItemGroup>
 
   <Target Name="UpdateBundleHash" AfterTargets="Build">
