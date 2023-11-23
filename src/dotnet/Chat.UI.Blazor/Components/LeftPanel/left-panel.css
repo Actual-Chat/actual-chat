@@ -44,12 +44,20 @@
 }
 .left-panel-content-header .c-content {
     @apply ordinary-header;
+    @apply gap-x-1;
     @apply px-2;
     @apply border-b border-separator;
 }
 .left-panel-content-header .c-title {
     @apply text-01 text-lg font-medium;
+    @apply truncate;
     @apply pl-1;
+}
+.left-panel-content-header .c-ending {
+    @apply flex-x items-center;
+}
+.left-panel-content-header .menu .btn {
+    @apply w-8;
 }
 .left-panel-content > .download-app-banner {
     @apply px-2 pt-2;
