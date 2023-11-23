@@ -24,4 +24,7 @@ public sealed partial record UserBubbleSettings : IHasOrigin
 
         return this with { ReadBubbles = readBubbles };
     }
+
+    public UserBubbleSettings RestartBubbles()
+        => this with { ReadBubbles = ApiArray<string>.Empty };
 }

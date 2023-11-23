@@ -33,7 +33,12 @@
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]
-    public BubbleHost() { }
+    public BubbleHost() {
+    }
+
+    protected override void OnInitialized() {
+        ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
+    }
 
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");
@@ -81,6 +86,12 @@
         BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubbles(bubbleRef.ToString()));
         _bubble = null;
         await _jsRef.InvokeVoidAsync("readBubble", CancellationToken.None, bubbleRef.ToString());
+        StateHasChanged();
+    }
+
+    public async Task RestartBubbles() {
+        _bubble = null;
+        await _jsRef.InvokeVoidAsync("restartBubbles", CancellationToken.None);
         StateHasChanged();
     }
 

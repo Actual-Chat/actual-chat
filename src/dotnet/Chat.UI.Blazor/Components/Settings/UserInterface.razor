@@ -40,6 +40,18 @@
     <ThemeSettings/>
 </Tile>
 
+<TileTopic Topic="Bubbles"/>
+<Button
+    Class="btn-w-full add-avatar-btn"
+    Click="@(OnBubblesRestart)">
+    <div class="flex min-w-10 items-center justify-center">
+        <i class="icon-refresh text-xl text-primary"></i>
+    </div>
+    <div class="text-primary">
+        Restart help bubbles
+    </div>
+</Button>
+
 @code {
     private static readonly string JSFontSizesClassName = "window.FontSizes";
     private static readonly string JSFontSizeListMethod = $"{JSFontSizesClassName}.list";
@@ -56,6 +68,9 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private ILogger<UserInterface> Log { get; init; } = null!;
+    [Inject] private BubbleUI BubbleUI { get; init; } = null!;
+    [Inject] private ToastUI ToastUI { get; init; } = null!;
+
 
     protected override void OnInitialized() {
         _formModel = new FormModel(ComponentIdGenerator);
@@ -73,6 +88,11 @@
         await JS.InvokeAsync<string>(JSFontSizeSetMethod, fontSize);
         _fontSize = await JS.InvokeAsync<string>(JSFontSizeGetMethod);
         StateHasChanged();
+    }
+
+    private async Task OnBubblesRestart() {
+        await BubbleUI.RestartBubbles().ConfigureAwait(true);
+        ToastUI.Show("Bubbles restarted", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     public sealed class FormModel {

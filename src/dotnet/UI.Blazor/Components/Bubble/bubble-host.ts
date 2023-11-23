@@ -104,6 +104,17 @@ export class BubbleHost {
         this.showNextBubble();
     }
 
+    public async restartBubbles(): Promise<void> {
+        debugLog?.log(`restartBubbles`);
+
+        while (this.readBubbles.length)
+            this.readBubbles.pop();
+
+        this._bubbles.forEach(x => x.isRead = false);
+        this.updateBubbles();
+        this.showNextBubble();
+    }
+
     public async showBubble(id: string, bubbleRef: string): Promise<void> {
         debugLog?.log(`showBubble:`, id, bubbleRef);
 
