@@ -6,7 +6,7 @@
     string? previewUrl = null;
     if (attachment.IsGif() || attachment.IsSvg()) {
         previewUrl = url; // currently image proxy fails on large gifs
-    } else if(attachment.IsSupportedImage()) {
+    } else if (attachment.IsSupportedImage()) {
         previewUrl = UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxActualResolution);
     }
 }

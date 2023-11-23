@@ -1,9 +1,9 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-
 @{
     var fileSize = Attachment.Media.Length / (1024 * 1024d);
     var url = UrlMapper.ContentUrl(Attachment.Media.ContentId);
 }
+
 <div class="file-attachment">
     <div class="flex w-[400px] p-2 bg-zinc-200 rounded-md items-center">
         <div class="pr-2">

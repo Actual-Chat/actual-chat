@@ -33,9 +33,6 @@
     <ApplicationId>chat.actual.app</ApplicationId>
     <ApplicationIdGuid>7AC72B49-8FEA-45AB-B7B8-C32719677E9D</ApplicationIdGuid>
 
-    <!-- Required for C# Hot Reload -->
-    <UseInterpreter Condition="'$(Configuration)' == 'Debug'">True</UseInterpreter>
-
     <!-- Original defaults for MAUI project: -->
     <!--
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">14.2</SupportedOSPlatformVersion>
@@ -148,6 +145,12 @@
   </PropertyGroup>
   -->
 
+  <!-- Common Windows, iOS and Android build properties -->
+  <PropertyGroup>
+    <UseInterpreter Condition="'$(Configuration)' == 'Debug'">true</UseInterpreter>
+    <UseInterpreter Condition="'$(Configuration)' == 'Release'">false</UseInterpreter>
+  </PropertyGroup>
+
   <!-- Common iOS and Android build properties -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios'))">
     <!-- Trimmer settings -->
@@ -175,16 +178,18 @@
 
   <!-- Android: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
+    <AndroidUseInterpreter>$(UseInterpreter)</AndroidUseInterpreter>
     <!-- This instructs trimmer to remove managed HTTP handler - don't use it with HttpClientHandler  -->
     <UseNativeHttpHandler>true</UseNativeHttpHandler>
     <!-- <AndroidHttpClientHandlerType>Xamarin.Android.Net.AndroidClientHandler</AndroidHttpClientHandlerType> -->
     <!-- <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType> -->
+    <!-- This also ensures debug symbols are there -->
+    <DebuggerSupport>true</DebuggerSupport>
   </PropertyGroup>
 
   <!-- Android: Debug configuration -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <EmbedAssembliesIntoApk>False</EmbedAssembliesIntoApk>
-    <AndroidUseInterpreter>true</AndroidUseInterpreter>
   </PropertyGroup>
 
   <!-- Android: Release configuration -->
@@ -194,17 +199,12 @@
     <!-- <AndroidLinkTool>r8</AndroidLinkTool> --> <!-- Doesn't work with .NET 8! -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
-    <RunAOTCompilation>false</RunAOTCompilation>
-    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
-    <AndroidStripILAfterAOT>false</AndroidStripILAfterAOT>
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+    <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
     <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
-    <!--
-    <DebuggerSupport>false</DebuggerSupport>
-    <AndroidUseInterpreter>true</AndroidUseInterpreter>
-    -->
 
     <!-- Runtime -->
-    <AndroidUseInterpreter>false</AndroidUseInterpreter>
     <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
     <!-- Doesn't seem to give any speedup:
     <AndroidGenerateJniMarshalMethods>True</AndroidGenerateJniMarshalMethods>
@@ -236,8 +236,6 @@
 
   <!-- Android: AOT profiling mode -->
   <PropertyGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
-    <UseInterpreter>False</UseInterpreter>
-    <AndroidUseInterpreter>false</AndroidUseInterpreter>
     <AndroidEnableProfiler>true</AndroidEnableProfiler>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>
@@ -380,12 +378,17 @@
     <TrimmerRootAssembly Include="ActualChat" RootMode="EntryPoint" />
 
     <!-- Extras -->
-    <!--
     <TrimmerRootAssembly Include="Java.Interop" RootMode="visible" />
     <TrimmerRootAssembly Include="banditoth.MAUI.DeviceId" RootMode="visible" />
     <TrimmerRootAssembly Include="Mono.Android" RootMode="visible" />
     <TrimmerRootAssembly Include="Mono.Android.Export" RootMode="visible" />
     <TrimmerRootAssembly Include="Mono.Android.Runtime" RootMode="visible" />
+    <TrimmerRootAssembly Include="K4os.Compression.LZ4" RootMode="visible" />
+    <TrimmerRootAssembly Include="Microsoft.Maui" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Microsoft.Maui.Controls" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Microsoft.Maui.Controls.Compatibility" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView.Maui" RootMode="visible"/>
+    <TrimmerRootAssembly Include="RestEase" RootMode="visible"/>
     <TrimmerRootAssembly Include="Sentry" RootMode="visible" />
     <TrimmerRootAssembly Include="Sentry.Android.AssemblyReader" RootMode="visible" />
     <TrimmerRootAssembly Include="Sentry.Bindings.Android" RootMode="visible" />
@@ -395,6 +398,9 @@
     <TrimmerRootAssembly Include="Serilog" RootMode="visible" />
     <TrimmerRootAssembly Include="Serilog.Extensions.Logging" RootMode="visible" />
     <TrimmerRootAssembly Include="Serilog.Sinks.Xamarin" RootMode="visible" />
+    <!-- System.Private.CoreLib is needed only if you want to enable TaskEventListener -->
+    <!--
+    <TrimmerRootAssembly Include="System.Private.CoreLib" />
     -->
   </ItemGroup>
 

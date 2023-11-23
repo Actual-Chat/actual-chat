@@ -166,6 +166,7 @@
 
     <!-- Additional assemblies -->
     <TrimmerRootAssembly Include="MemoryPack.Core" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Newtonsoft.Json" RootMode="visible"/>
     <TrimmerRootAssembly Include="System.Text.Json" RootMode="visible"/>
     <TrimmerRootAssembly Include="Sentry" RootMode="visible"/>
     <TrimmerRootAssembly Include="System.Security.Cryptography.X509Certificates" RootMode="visible"/>
@@ -173,26 +174,19 @@
     <TrimmerRootAssembly Include="Microsoft.AspNetCore.SignalR.Client.Core" RootMode="visible"/>
     <TrimmerRootAssembly Include="Microsoft.AspNetCore.SignalR.Common" RootMode="visible"/>
     <TrimmerRootAssembly Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Microsoft.Maui" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Microsoft.Maui.Controls" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Microsoft.Maui.Controls.Compatibility" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView.Maui" RootMode="visible"/>
+    <TrimmerRootAssembly Include="RestEase" RootMode="visible"/>
+
+    <!-- Partial trim mode works w/o these: -->
+    <!--
+    <TrimmerRootAssembly Include="OpenTelemetry.Api" RootMode="visible"/>
+    <TrimmerRootAssembly Include="Pidgin" RootMode="visible"/>
+    <TrimmerRootAssembly Include="PhoneNumbers" RootMode="visible"/>
     <TrimmerRootAssembly Include="System.Net.Http" RootMode="visible"/>
     <TrimmerRootAssembly Include="System.Net.NameResolution" RootMode="visible"/>
     <TrimmerRootAssembly Include="System.Net.Security" RootMode="visible"/>
     <TrimmerRootAssembly Include="System.Net.Sockets" RootMode="visible"/>
     <TrimmerRootAssembly Include="System.Net.WebSockets" RootMode="visible"/>
     <TrimmerRootAssembly Include="System.Net.WebSockets.Client" RootMode="visible"/>
-    <!-- System.Private.CoreLib is needed only if you want to enable TaskEventListener -->
-    <!--
-    <TrimmerRootAssembly Include="System.Private.CoreLib" />
-    -->
-
-    <!-- Partial trim mode works w/o these: -->
-    <!--
-    <TrimmerRootAssembly Include="Newtonsoft.Json" RootMode="visible"/>
-    <TrimmerRootAssembly Include="Pidgin" RootMode="visible"/>
-    <TrimmerRootAssembly Include="RestEase" RootMode="visible"/>
     -->
   </ItemGroup>
 

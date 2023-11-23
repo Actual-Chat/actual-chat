@@ -22,6 +22,11 @@ public static class MauiAppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SafeJSRuntime))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SafeJSObjectReference))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Editor))] // Triggers VTable setup crash
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ILoggerFactory))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Serilog.LoggerConfiguration))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Serilog.ILogger))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(System.Net.WebRequest))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(System.Net.WebResponse))]
 #if ANDROID
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidWebChromeClient))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidWebViewClientOverride))]
