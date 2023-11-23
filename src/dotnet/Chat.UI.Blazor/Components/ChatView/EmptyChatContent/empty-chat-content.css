@@ -2,13 +2,6 @@
     @apply flex-y items-center gap-y-4;
     @apply py-8;
 }
-.empty-chat-content > .c-image {
-    height: 279px;
-    width: 282px;
-    background-image: url('/dist/images/empty-chat-content-image.svg');
-    background-repeat: no-repeat;
-    background-size: cover;
-}
 .empty-chat-content > .c-text {
     @apply flex-y items-center;
     @apply text-lg text-03 text-headline-5;

@@ -175,11 +175,15 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply h-full;
 }
 .chat-not-found-container > .c-wrapper {
-    @apply relative;
-    @apply flex-y items-center justify-center;
+    @apply flex-y items-center justify-center gap-y-4;
 }
 .chat-not-found-container > .c-wrapper > .text-wrapper {
-    @apply absolute bottom-0;
     @apply flex-y items-center;
     @apply text-headline-6 text-03;
+}
+
+.no-chat-body {
+    @apply flex items-center justify-center;
+    @apply h-full;
+    @apply text-02;
 }
