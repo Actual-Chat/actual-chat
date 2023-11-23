@@ -1,0 +1,51 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@implements IDisposable
+@using ActualChat.Chat.UI.Blazor.Events
+
+<OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
+<div class="left-panel-content-header">
+    <div class="c-content">
+        <div class="c-title">
+            @NavbarUI.SelectedGroupTitle
+        </div>
+        <div class="flex grow"></div>
+        <ChatSearchBox
+            @ref="_searchBoxRef"
+            Placeholder="Find chat..."
+            IsCollapsed="true"
+            ShowSpinner="true"
+            ShowClose="true"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@_onSearchBoxTextChanged" />
+    </div>
+</div>
+
+@code {
+    private ChatSearchBox? _searchBoxRef = null;
+    private EventCallback<string> _onSearchBoxTextChanged;
+
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+
+    private NavbarUI NavbarUI => ChatHub.NavbarUI;
+    private SearchUI SearchUI => ChatHub.SearchUI;
+    private ScreenSize ScreenSize => ChatHub.BrowserInfo.ScreenSize.Value;
+
+    protected override void OnInitialized() {
+        _onSearchBoxTextChanged = NoStateHasChanged.EventCallback<string>(OnSearchBoxTextChanged);
+        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
+    }
+
+    public void Dispose()
+        => NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
+
+    private void OnSearchBoxTextChanged(string text)
+        => SearchUI.Text.Value = text;
+
+    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
+        if (_searchBoxRef != null)
+            await _searchBoxRef.Cancel();
+    }
+}

@@ -8,7 +8,11 @@
     VisibilityChanged="@(isOpen => PanelsUI.Left.SetIsVisible(isOpen))">
     <div class="left-panel">
         <LeftPanelButtons/>
-        <LeftPanelContent/>
+        <div class="left-panel-content">
+            <LeftPanelContentHeader />
+            <DownloadAppBanner CanBeClosed="true"/>
+            <NavbarContent />
+        </div>
     </div>
 </SideNav>
 

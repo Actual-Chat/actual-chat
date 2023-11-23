@@ -82,10 +82,12 @@
 
     public async Task Cancel()
     {
-        _text = "";
+        if (!OrdinalEquals(_text, "")) {
+            _text = "";
+            await TextChanged.InvokeAsync(_text).ConfigureAwait(false);
+        }
         if (IsCollapsed)
             _isCollapsed = true;
-
         await Cancelled.InvokeAsync();
     }
 
