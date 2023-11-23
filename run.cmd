@@ -2,7 +2,7 @@
 if "%1" == "--build-js" (
     call npm-build
 )
-dotnet build
+dotnet build ActualChat.sln
 
 set ASPNETCORE_ENVIRONMENT=Development
 set ASPNETCORE_URLS=http://localhost:7080

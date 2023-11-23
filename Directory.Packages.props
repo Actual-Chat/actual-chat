@@ -29,6 +29,7 @@
     <PackageVersion Include="AspNet.Security.OAuth.Apple" Version="8.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="7.1.0" />
     <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="6.0.14" />
+    <PackageVersion Include="CommunityToolkit.Maui.Core" Version="7.0.0" />
     <PackageVersion Include="EFCore.CheckConstraints" Version="$(EntityFrameworkCoreCheckConstraintsVersion)" />
     <PackageVersion Include="FFMpegCore" Version="5.1.0" />
     <PackageVersion Include="FirebaseAdmin" Version="2.4.0" />

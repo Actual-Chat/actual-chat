@@ -1,4 +1,7 @@
-﻿using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Blazor.Services;
+using CommunityToolkit.Maui.Core;
+using CommunityToolkit.Maui.Core.Platform;
+using Color = Microsoft.Maui.Graphics.Color;
 
 namespace ActualChat.App.Maui;
 
@@ -20,16 +23,16 @@ public class MauiThemeHandler
     public void TryRestoreLastTheme()
     {
         var colors = Preferences.Default.Get<string>(PreferencesKey, "");
-        ApplyColors(colors);
+        ApplyColors(colors, null);
     }
 
     public void OnThemeChanged(ThemeInfo themeInfo)
     {
         Preferences.Default.Set(PreferencesKey, themeInfo.Colors);
-        ApplyColors(themeInfo.Colors);
+        ApplyColors(themeInfo.Colors, themeInfo.Theme);
     }
 
-    private void ApplyColors(string colors)
+    private void ApplyColors(string colors, Theme? theme)
     {
         if (colors.IsNullOrEmpty())
             return;
@@ -47,7 +50,7 @@ public class MauiThemeHandler
                     bottomBarColor = items[1];
                 }
 
-                if (ApplyColors(topBarColor, bottomBarColor))
+                if (ApplyColors(topBarColor, bottomBarColor, theme))
                     _lastAppliedColors = colors;
             }
             catch (Exception e) {
@@ -56,13 +59,21 @@ public class MauiThemeHandler
         });
     }
 
-    protected virtual bool ApplyColors(string topBarColor, string bottomBarColor)
+    protected virtual bool ApplyColors(string topBarColor, string bottomBarColor, Theme? theme)
     {
         var mainPage = App.Current.MainPage;
         if (mainPage == null)
             return false;
 
+        var style = theme switch {
+            Theme.Light => StatusBarStyle.DarkContent,
+            Theme.Dark => StatusBarStyle.LightContent,
+            _ => StatusBarStyle.Default,
+        };
+        StatusBar.SetColor(Color.FromArgb(topBarColor));
+        StatusBar.SetStyle(style);
         mainPage.BackgroundColor = Color.FromArgb(bottomBarColor);
+
         return true;
     }
 }
