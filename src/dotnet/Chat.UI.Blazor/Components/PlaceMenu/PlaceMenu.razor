@@ -1,0 +1,34 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits MenuBase
+
+<MenuEntry
+    Class="important-item"
+    Icon="icon-person-add"
+    Text="Invite members"
+    Click="OnInviteMembersClick">
+</MenuEntry>
+<MenuEntry
+    Icon="icon-edit"
+    Text="Settings"
+    Click="OnPlaceSettingsClick">
+</MenuEntry>
+
+@code {
+    private PlaceId _placeId;
+
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var placeSid ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _placeId = new PlaceId(placeSid);
+        await base.OnParametersSetAsync();
+    }
+
+    private void OnInviteMembersClick()
+        => _ = ChatHub.FeedbackUI.AskFeatureRequestFeedback("place-invite", "Invite place members");
+
+    private void OnPlaceSettingsClick()
+        => _ = ChatHub.FeedbackUI.AskFeatureRequestFeedback("place-edit", "Edit place settings");
+}

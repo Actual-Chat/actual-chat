@@ -9,14 +9,28 @@
             @NavbarUI.SelectedGroupTitle
         </div>
         <div class="flex grow"></div>
-        <ChatSearchBox
-            @ref="_searchBoxRef"
-            Placeholder="Find chat..."
-            IsCollapsed="true"
-            ShowSpinner="true"
-            ShowClose="true"
-            MaxLength="@Constants.Chat.MaxSearchFilterLength"
-            TextChanged="@_onSearchBoxTextChanged" />
+        <div class="c-ending">
+            <ChatSearchBox
+                @ref="_searchBoxRef"
+                Placeholder="Find chat..."
+                IsCollapsed="true"
+                ShowSpinner="true"
+                ShowClose="true"
+                MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                TextChanged="@_onSearchBoxTextChanged" />
+            @if (NavbarUI.IsPlaceSelected(out var placeId)) {
+                <div
+                    class="menu"
+                    data-menu="@(MenuRef.New<PlaceMenu>(placeId).ToString())"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+
+                    <ButtonRound Class="blackout" ContentClass="!bg-transparent">
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </ButtonRound>
+                </div>
+            }
+        </div>
     </div>
 </div>
 
