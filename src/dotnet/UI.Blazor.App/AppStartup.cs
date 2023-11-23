@@ -11,7 +11,6 @@ using ActualChat.Chat.UI.Blazor.Pages;
 using ActualChat.Chat.UI.Blazor.Testing;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
-using ActualChat.Contacts.UI.Blazor.Services.StlInterceptionProxies;
 using ActualChat.Diff.Handlers;
 using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
@@ -36,11 +35,11 @@ using ActualChat.UI.Blazor.Pages.RenderSlotTestPage;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using ActualChat.Users.UI.Blazor.Pages;
-using Cysharp.Text;
 using Stl.Interception.Interceptors;
 using Stl.RestEase;
 using Stl.Rpc;
 using Stl.Rpc.Clients;
+using Stl.Rpc.WebSockets;
 
 namespace ActualChat.UI.Blazor.App;
 
@@ -143,41 +142,53 @@ public static class AppStartup
                 });
         });
 
-        fusion.Rpc.AddWebSocketClient(c => new RpcWebSocketClient.Options() {
-            ConnectionUriResolver = (client, peer) => {
-                var settings = client.Settings;
-                var urlMapper = client.Services.GetRequiredService<UrlMapper>();
+        fusion.Rpc.AddWebSocketClient(c => {
+            var options = new RpcWebSocketClient.Options() {
+                ConnectionUriResolver = (client, peer) => {
+                    var settings = client.Settings;
+                    var urlMapper = client.Services.GetRequiredService<UrlMapper>();
 
-                var sb = StringBuilderExt.Acquire();
-                if (peer.Ref == RpcPeerRef.Default)
-                    sb.Append(urlMapper.WebsocketBaseUrl);
-                else {
-                    var addressAndPort = peer.Ref.Key.Value;
-                    sb.Append(addressAndPort.OrdinalEndsWith(":443") ? "wss://" : "ws://");
-                    sb.Append(addressAndPort);
-                }
-                sb.Append(settings.RequestPath);
-                sb.Append('?');
-                sb.Append(settings.ClientIdParameterName);
-                sb.Append('=');
-                sb.Append(client.ClientId.UrlEncode());
-                var uri = sb.ToStringAndRelease().ToUri();
-                c.LogFor(peer.GetType()).LogInformation("Stl.Rpc endpoint URL: {Url}", uri);
-                return uri;
-            },
-        });
-        if (appKind.IsMauiApp())
-            services.AddTransient<ClientWebSocket>(c => {
+                    var sb = StringBuilderExt.Acquire();
+                    if (peer.Ref == RpcPeerRef.Default)
+                        sb.Append(urlMapper.WebsocketBaseUrl);
+                    else {
+                        var addressAndPort = peer.Ref.Key.Value;
+                        sb.Append(addressAndPort.OrdinalEndsWith(":443") ? "wss://" : "ws://");
+                        sb.Append(addressAndPort);
+                    }
+                    sb.Append(settings.RequestPath);
+                    sb.Append('?');
+                    sb.Append(settings.ClientIdParameterName);
+                    sb.Append('=');
+                    sb.Append(client.ClientId.UrlEncode());
+                    return sb.ToStringAndRelease().ToUri();
+                },
+            };
+            if (appKind.IsMauiApp())
                 // NOTE(AY): "new ClientWebSocket()" triggers this exception in WASM:
                 // - PlatformNotSupportedException: Operation is not supported on this platform.
                 // So the code below should never run in WASM.
-                var ws = new ClientWebSocket();
-                var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
-                ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
-                if (c.GetService<TrueSessionResolver>() is { HasSession: true } trueSessionResolver)
-                    ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id.Value);
-                return ws;
-            });
+                options = options with {
+                    WebSocketOwnerFactory = (client, peer) => {
+                        var ws = new ClientWebSocket();
+                        var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
+                        ws.Options.SetRequestHeader(gclbCookieHeader.Name, gclbCookieHeader.Value);
+                        if (c.GetService<TrueSessionResolver>() is { HasSession: true } trueSessionResolver)
+                            ws.Options.SetRequestHeader(Constants.Session.HeaderName, trueSessionResolver.Session.Id.Value);
+                        return new WebSocketOwner(peer.Ref.Key, ws, client.Services);
+#if false
+                        // Non-native Android WebSocket stack requires SocketsHttpHandler to support TLS 1.2
+                        var handler = new SocketsHttpHandler() {
+                            SslOptions = new SslClientAuthenticationOptions() {
+                                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                            },
+                        };
+                        return new WebSocketOwner(peer.Ref.Key, ws, client.Services) { Handler = handler };
+#endif
+                    },
+                };
+            return options;
+        });
 
         // Creating modules
         using var _ = tracer.Region($"{nameof(ModuleHostBuilder)}.{nameof(ModuleHostBuilder.Build)}");

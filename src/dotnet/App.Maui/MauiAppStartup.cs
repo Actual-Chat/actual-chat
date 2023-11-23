@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using ActualChat.App.Maui.Services;
 using ActualChat.Hosting;
@@ -20,7 +21,7 @@ public static class MauiAppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NativeHttpClientFactory))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SafeJSRuntime))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SafeJSObjectReference))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(ClientWebSocket))]
+    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Editor))] // Triggers VTable setup crash
 #if ANDROID
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidWebChromeClient))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidWebViewClientOverride))]
@@ -29,9 +30,9 @@ public static class MauiAppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MainActivity))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MainApplication))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NativeGoogleAuth))]
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidHttpClient))]
+    // [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidHttpClient))]
  #pragma warning disable CS0618 // Type or member is obsolete
-    [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidClientHandler))]
+    // [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(AndroidClientHandler))]
  #pragma warning restore CS0618 // Type or member is obsolete
 #elif IOS
 #endif

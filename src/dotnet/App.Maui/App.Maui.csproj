@@ -168,15 +168,18 @@
     <AndroidSigningKeyPass>password</AndroidSigningKeyPass>
     <AndroidSigningStorePass>password</AndroidSigningStorePass>
     <AndroidUseNegotiateAuthentication>false</AndroidUseNegotiateAuthentication>
-    <!-- Using managed HTTP Handler doesn't fix LLVM, so... -->
-    <AndroidHttpClientHandlerType>Xamarin.Android.Net.AndroidClientHandler</AndroidHttpClientHandlerType>
-    <!-- <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType>-->
-    <!-- This instructs trimmer to remove managed HTTP handler - don't use it with HttpClientHandler  -->
-    <!-- <UseNativeHttpHandler>true</UseNativeHttpHandler> -->
   </PropertyGroup>
   <ItemGroup>
     <ProguardConfiguration Include="proguard.cfg" />
   </ItemGroup>
+
+  <!-- Android: Both Debug & Release configurations -->
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
+    <!-- This instructs trimmer to remove managed HTTP handler - don't use it with HttpClientHandler  -->
+    <UseNativeHttpHandler>true</UseNativeHttpHandler>
+    <!-- <AndroidHttpClientHandlerType>Xamarin.Android.Net.AndroidClientHandler</AndroidHttpClientHandlerType> -->
+    <!-- <AndroidHttpClientHandlerType>System.Net.Http.HttpClientHandler, System.Net.Http</AndroidHttpClientHandlerType> -->
+  </PropertyGroup>
 
   <!-- Android: Debug configuration -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
@@ -191,11 +194,14 @@
     <!-- <AndroidLinkTool>r8</AndroidLinkTool> --> <!-- Doesn't work with .NET 8! -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
-    <RunAOTCompilation>true</RunAOTCompilation>
-    <AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
-    <AndroidStripILAfterAOT>true</AndroidStripILAfterAOT>
-    <EnableLLVM>true</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
-    <!-- <DebuggerSupport>false</DebuggerSupport> --> <!-- When false, it also removes symbols -->
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <AndroidStripILAfterAOT>false</AndroidStripILAfterAOT>
+    <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
+    <!--
+    <DebuggerSupport>false</DebuggerSupport>
+    <AndroidUseInterpreter>true</AndroidUseInterpreter>
+    -->
 
     <!-- Runtime -->
     <AndroidUseInterpreter>false</AndroidUseInterpreter>
@@ -223,7 +229,9 @@
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-exc.aotprofile" />
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-inc.aotprofile" />
     -->
+    <!--
     <AndroidMibcProfile Include="android.mibc" />
+    -->
   </ItemGroup>
 
   <!-- Android: AOT profiling mode -->
@@ -241,7 +249,7 @@
 
   <!-- iOS build properties -->
 
-  <!-- iOS: Common properties -->
+  <!-- iOS: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <IntermediateOutputPath>..\..\..\artifacts\out</IntermediateOutputPath>
     <UseShortFileNames>True</UseShortFileNames>
