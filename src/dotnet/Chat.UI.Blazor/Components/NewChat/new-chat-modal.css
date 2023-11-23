@@ -6,22 +6,6 @@
     @apply flex-y;
     @apply gap-y-2;
 }
-.new-chat-modal-contact-list {
-    @apply flex-y grow;
-    @apply gap-y-1;
-    @apply overflow-y-auto custom-scrollbar;
-}
-.new-chat-modal-contact-list-item {
-    @apply flex-x items-center;
-    @apply gap-x-2 py-1 px-2;
-    @apply rounded-md;
-    @apply hover:bg-hover;
-}
-.new-chat-modal-contact-list-item,
-.new-chat-modal-contact-list-item * {
-    @apply cursor-pointer;
-}
-
 .new-chat-modal .tile-item {
     @apply hover:bg-inherit;
 }

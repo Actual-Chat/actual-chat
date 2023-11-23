@@ -1,0 +1,84 @@
+@implements IModalView<NewPlaceModal.Model>
+@inherits FusionComponentBase
+@namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var title = _place?.Title ?? "New place";
+}
+
+<DialogFrame
+    Class="new-place-modal"
+    Title="@title"
+    HasCloseButton="true"
+    NarrowViewSettings="@_narrowViewSettings">
+    <Body>
+        @if (_page == Page.Props) {
+            <NewPlaceModalProps
+                ButtonsSlotName="@_buttonsSlotName"
+                PlaceCreated="OnPlaceCreated"
+                Cancelled="Close" />
+        }
+        else if (_page == Page.Members){
+            <NewPlaceModalMembers
+                ButtonsSlotName="@_buttonsSlotName"
+                PlaceSid="@_place!.Id"
+                Skipped="Close"
+                Completed="Close" />
+        }
+    </Body>
+    <Buttons>
+        <RenderSlot Name="@_buttonsSlotName" />
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private readonly DialogFrameNarrowViewSettings _narrowViewSettings = DialogFrameNarrowViewSettings.Stretch with {
+        UseInteractiveHeader = true,
+        ShouldHideButtons = false,
+    };
+    private readonly string _buttonsSlotName = Guid.NewGuid().ToString();
+
+    private Place? _place;
+    private Chat? _defaultChat;
+    private Page _page = Page.Props;
+
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _ = NavigateToPlaceWhenClosed();
+
+    private async void OnPlaceCreated(Place place, Chat? defaultChat) {
+        _place = place;
+        _defaultChat = defaultChat;
+        var peopleContacts = await ChatHub.ChatListUI.ListPeopleContacts();
+        if (peopleContacts.Count == 0) {
+            // If there is no people to add, close the dialog.
+            Close();
+        } else {
+            _page = Page.Members;
+            // Re-render component to show Add members page.
+            StateHasChanged();
+        }
+    }
+
+    private async Task NavigateToPlaceWhenClosed() {
+        await Modal.Ref.WhenClosed;
+        if (_place == null)
+            return;
+
+        if (_defaultChat != null)
+            _ = ChatHub.History.NavigateTo(Links.Chat(_defaultChat.Id));
+        else
+            ChatHub.NavbarUI.SelectGroup(_place.Id.GetNavbarGroupId(), _place.Title);
+    }
+
+    private void Close()
+        => Modal.Close();
+
+    // Nested types
+
+    public sealed record Model;
+    private enum Page { Props, Members }
+}

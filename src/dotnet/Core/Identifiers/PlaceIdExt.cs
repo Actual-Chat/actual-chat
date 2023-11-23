@@ -1,4 +1,4 @@
-﻿namespace ActualChat.Chat;
+﻿namespace ActualChat;
 
 public static class PlaceIdExt
 {
