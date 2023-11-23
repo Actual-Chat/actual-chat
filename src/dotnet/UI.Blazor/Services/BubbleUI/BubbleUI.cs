@@ -3,8 +3,9 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BubbleUI : IDisposable
+public sealed class BubbleUI : IDisposable, IHasAcceptor<BubbleHost>
 {
+    private readonly Acceptor<BubbleHost> _hostAcceptor = new(true);
     private readonly ISyncedState<UserBubbleSettings> _settings;
     private AccountUI? _accountUI;
 
@@ -13,8 +14,11 @@ public sealed class BubbleUI : IDisposable
     private AccountUI AccountUI => _accountUI ??= Services.GetRequiredService<AccountUI>();
     private AccountSettings AccountSettings { get; }
     private MomentClockSet Clocks { get; }
+    Acceptor<BubbleHost> IHasAcceptor<BubbleHost>.Acceptor => _hostAcceptor;
 
     public IState<UserBubbleSettings> Settings => _settings;
+    public Task WhenReady => _hostAcceptor.WhenAccepted();
+    public BubbleHost Host => _hostAcceptor.Value;
 
     public BubbleUI(IServiceProvider services)
     {
@@ -53,4 +57,10 @@ public sealed class BubbleUI : IDisposable
 
     public void UpdateSettings(UserBubbleSettings value)
         => _settings.Value = value;
+
+    public async Task RestartBubbles() {
+        UpdateSettings(Settings.Value.RestartBubbles());
+        await WhenReady.ConfigureAwait(true);
+        await Host.RestartBubbles().ConfigureAwait(true);
+    }
 }
