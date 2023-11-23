@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
@@ -89,6 +89,7 @@
   <ItemGroup>
     <PackageReference Remove="Microsoft.SourceLink.GitHub" />
     <PackageReference Include="banditoth.MAUI.DeviceId" />
+    <PackageReference Include="CommunityToolkit.Maui.Core" />
     <!-- Extra packages for .NET 8: -->
     <PackageReference Include="Microsoft.Maui.Controls" />
     <PackageReference Include="Microsoft.Maui.Controls.Compatibility" />

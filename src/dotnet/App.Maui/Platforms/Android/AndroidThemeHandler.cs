@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using AndroidX.Core.View;
 
 namespace ActualChat.App.Maui;
@@ -6,7 +7,7 @@ public class AndroidThemeHandler : MauiThemeHandler
 {
     private static Android.Views.Window? Window => (Platform.CurrentActivity as MainActivity)?.Window;
 
-    protected override bool ApplyColors(string topBarColor, string bottomBarColor)
+    protected override bool ApplyColors(string topBarColor, string bottomBarColor, Theme? theme)
     {
         var cTopBar = Android.Graphics.Color.ParseColor(topBarColor);
         var cBottomBar = Android.Graphics.Color.ParseColor(bottomBarColor);

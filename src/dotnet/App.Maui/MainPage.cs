@@ -1,3 +1,6 @@
+using Microsoft.Maui.Controls.PlatformConfiguration;
+using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
+
 namespace ActualChat.App.Maui;
 
 public class MainPage : ContentPage
@@ -9,8 +12,9 @@ public class MainPage : ContentPage
     public MainPage()
     {
         Interlocked.Exchange(ref _current, this);
-        BackgroundColor = Color.FromRgb(0x44, 0x44, 0x44);
         RecreateWebView();
+        BackgroundColor = Color.FromRgb(0x44, 0x44, 0x44);
+        On<iOS>().SetUseSafeArea(true);
     }
 
     public void RecreateWebView()
