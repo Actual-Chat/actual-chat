@@ -415,7 +415,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
     {
         var placeId = PlaceId.None;
-        var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || NavbarUI.IsPlaceSelected(out placeId);
+        var isChats = OrdinalEquals(ChatHub.NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || ChatHub.NavbarUI.IsPlaceSelected(out placeId);
         if (!isChats)
             return;
         if (SelectPlace(placeId))
