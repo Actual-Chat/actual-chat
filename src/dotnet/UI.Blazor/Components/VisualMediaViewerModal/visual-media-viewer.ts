@@ -28,7 +28,7 @@ export class VisualMediaViewer {
                 .pipe(takeUntil(this.disposed$))
                 .subscribe(() => this.onVideoClick(video));
         })
-        
+
          fromEvent(this.overlay, 'click')
              .pipe(takeUntil(this.disposed$))
              .subscribe((event: PointerEvent) => this.onClick(event));
@@ -67,6 +67,8 @@ export class VisualMediaViewer {
         this.header.classList.add('hide-to-show');
         this.footer?.classList.remove('show-to-hide');
         this.footer?.classList.add('hide-to-show');
+        this.imageViewer.classList.remove('navigation-hidden');
+        this.imageViewer.classList.add('navigation-visible');
     }
 
     private hideHeaderAndFooter() {
@@ -78,6 +80,8 @@ export class VisualMediaViewer {
         this.header.classList.add('show-to-hide');
         this.footer?.classList.remove('hide-to-show');
         this.footer?.classList.add('show-to-hide');
+        this.imageViewer.classList.remove('navigation-visible');
+        this.imageViewer.classList.add('navigation-hidden');
     }
 
     private toggleHeaderAndFooterVisibility() {
@@ -94,12 +98,14 @@ export class VisualMediaViewer {
     private onMouseMove(event: MouseEvent) {
          if (this.isHeaderAndFooterVisibilityForced)
              return;
-         const { pageY } = event;
+        const { pageY, pageX } = event;
+        const cursorInPrevButtonArea = pageX <= 40;
+        const cursorInNextButtonArea = this.overlay.offsetWidth - pageX <= 40;
          const cursorInHeaderArea = pageY <= this.header.offsetHeight;
          const cursorInFooterArea = this.footer
              ? this.overlay.offsetHeight - pageY <= this.footer.offsetHeight
              : false;
-         if (cursorInHeaderArea || cursorInFooterArea) {
+         if (cursorInHeaderArea || cursorInFooterArea || cursorInPrevButtonArea || cursorInNextButtonArea) {
              this.showHeaderAndFooter();
          } else {
              this.hideHeaderAndFooter();
