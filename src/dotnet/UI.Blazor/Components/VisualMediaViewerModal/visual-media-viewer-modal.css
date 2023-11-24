@@ -129,3 +129,17 @@ swiper-container.media-preview-swiper::part(wrapper) {
 .media-preview-swiper .swiper-slide-thumb-active {
     opacity: 1;
 }
+swiper-container.media-swiper.navigation-hidden::part(button-prev) {
+    opacity: 0;
+    transform: translateX(-40px);
+    transition: all 300ms ease-in-out;
+}
+swiper-container.media-swiper.navigation-hidden::part(button-next) {
+    opacity: 0;
+    transform: translateX(40px);
+    transition: all 300ms ease-in-out;
+}
+swiper-container.media-swiper.navigation-visible::part(button-next),
+swiper-container.media-swiper.navigation-visible::part(button-prev) {
+    transition: all 300ms ease-in-out;
+}
