@@ -356,7 +356,7 @@
     --loading-cat-window: var(--gray-30);
     --loading-cat-stars: var(--white);
 
-    ---not-found-cat-bg: var(--white);
+    --not-found-cat-bg: var(--white);
     --not-found-cat-body: var(--gray-95);
     --not-found-cat-lines: var(--gray-60);
     --not-found-cat-face: var(--gray-90);
