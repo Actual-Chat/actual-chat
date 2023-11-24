@@ -235,11 +235,38 @@
                      maxRetries: @(blazorMaxReconnectRetries),
                      retryIntervalMilliseconds: 3000,
                 },
+                loadBootResource: function (type, name, defaultUri, integrity) {
+                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration') {
+                        return (async function () {
+                            const response = await fetch(defaultUri+'?hash='+integrity, { integrity: integrity });
+                            if (!response.ok) {
+                                throw new Error(response.statusText);
+                            }
+                            return response;
+                        })();
+                    }
+                }
             });
-            </script>
+        </script>
     }
     else {
-        <script src="_framework/blazor.webassembly@(blazorScriptSuffix).js"></script>
+        <script src="_framework/blazor.webassembly@(blazorScriptSuffix).js" autostart="false"></script>
+        <script nonce="@blazorReloadNonce">
+            Blazor.start({
+                loadBootResource: function (type, name, defaultUri, integrity) {
+                    if (type !== 'dotnetjs' && location.hostname !== 'localhost' && type !== 'configuration') {
+                        return (async function () {
+                            const hash = encodeURIComponent(integrity);
+                            const response = await fetch(defaultUri+'?hash='+hash, { integrity: integrity });
+                            if (!response.ok) {
+                                throw new Error(response.statusText);
+                            }
+                            return response;
+                        })();
+                    }
+                }
+            });
+        </script>
     }
 }
 </body>
