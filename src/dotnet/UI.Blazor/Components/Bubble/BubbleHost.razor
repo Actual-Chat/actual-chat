@@ -36,9 +36,8 @@
     public BubbleHost() {
     }
 
-    protected override void OnInitialized() {
-        ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
-    }
+    protected override void OnInitialized()
+        => ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
 
     public async ValueTask DisposeAsync() {
         await _jsRef.DisposeSilentlyAsync("dispose");
