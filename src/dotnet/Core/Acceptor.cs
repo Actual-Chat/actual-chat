@@ -25,7 +25,7 @@ public readonly struct Acceptor<TValue>(bool runContinuationsConcurrently) : IEq
     {
         var hasAccepted = _whenAcceptedSource.Task.IsCompletedSuccessfully;
         if (hasAccepted && !EqualityComparer<TValue>.Default.Equals(value, Value))
-            throw StandardError.Internal("Another value has been provided already.");
+            throw StandardError.Internal("Another value has been already provided.");
 
         _whenAcceptedSource.TrySetResult(value);
     }
