@@ -9,7 +9,6 @@ public partial class ChatUI
         ChatId chatId,
         Range<long> idRange,
         ChatMessage? prevMessage,
-        bool? isUnread,
         long lastReadEntryId,
         CancellationToken cancellationToken = default)
     {
@@ -53,7 +52,7 @@ public partial class ChatUI
             var isBlockStart = IsBlockStart(prevEntry, entry);
             var isForwardFromOtherChat = prevForwardChatId != entry.ForwardedChatEntryId.ChatId;
             var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
-            var isEntryUnread = isUnread ?? entry.LocalId > lastReadEntryId;
+            var isEntryUnread = entry.LocalId > lastReadEntryId;
             var isAudio = entry.AudioEntryId != null;
             var shouldAddToResult = idRange.Contains(entry.LocalId);
             var flags = default(ChatMessageFlags);

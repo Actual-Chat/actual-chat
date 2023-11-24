@@ -249,19 +249,23 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var lastReadEntryLid = _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid;
         var tiles = new List<VirtualListTile<ChatMessage>>();
-        foreach (var idTile in idTiles) {
-            bool? isUnread = null;
-            if (lastReadEntryLid < idTile.Range.Start)
-                isUnread = true;
-            else if (lastAuthorEntryLid >= idTile.Range.End - 1)
-                isUnread = false;
-            var lastReadEntryLidArg = isUnread.HasValue ? 0 : lastReadEntryLid;
-            var tile = await ChatUI
-                .GetTile(chatId, idTile.Range, prevMessage, isUnread, lastReadEntryLidArg, cancellationToken);
-            if (tile.Items.Count == 0)
-                continue;
+        while (true) {
+            foreach (var idTile in idTiles) {
+                var lastReadEntryLidArg = lastReadEntryLid < idTile.Range.Start
+                    ? 0
+                    : lastReadEntryLid >= idTile.Range.End - 1
+                        ? long.MaxValue
+                        : lastAuthorEntryLid;
+                var tile = await ChatUI
+                    .GetTile(chatId,
+                        idTile.Range,
+                        prevMessage,
+                        lastReadEntryLidArg,
+                        cancellationToken);
+                if (tile.Items.Count == 0)
+                    continue;
 
-            tiles.Add(tile);
+                tiles.Add(tile);
 #if false
             // Uncomment for debugging:
             DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
@@ -269,7 +273,22 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             foreach (var item in tile.Items)
                 DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
 #endif
-            prevMessage = tile.Items[^1];
+                prevMessage = tile.Items[^1];
+            }
+            var lastOwnItem = tiles
+                .SelectMany(t => t.Items)
+                .Reverse()
+                .FirstOrDefault(i => i.Entry.AuthorId == authorId);
+            if (lastOwnItem != null && lastOwnItem.Flags.HasFlag(ChatMessageFlags.Unread)) {
+                var lastOwnEntryLid = lastOwnItem.Entry.LocalId;
+                lastReadEntryLid = lastOwnEntryLid;
+                if (LastAuthorTextEntryLidState.Value.EntryLid < lastOwnEntryLid)
+                    LastAuthorTextEntryLidState.Value = (authorId, lastOwnEntryLid);
+                if (ReadPositionState.Value.EntryLid < lastOwnEntryLid)
+                    ReadPositionState.Value = new ReadPosition(Chat.Id, lastOwnEntryLid);
+            }
+            else
+                break;
         }
         if (tiles.Count == 0) {
             var isEmpty = await ChatUI.IsEmpty(chatId, cancellationToken);
@@ -284,6 +303,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     RequestedEndExpansion = null,
                 };
         }
+
 
         var scrollToKey = (string?)null;
         var highlightEntryLid = scrollAnchor != null && scrollAnchor == navigationAnchor
@@ -324,19 +344,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     ? null
                     : query.ExpandEndBy,
             };
-
-        var visibility = ItemVisibility.Value;
-        // Keep most recent entry as read if end anchor is visible
-        if (visibility != ChatViewItemVisibility.Empty
-            && visibility.IsEndAnchorVisible
-            && hasVeryLastItem
-            && tiles.Count > 0) {
-            var lastEntryLid = tiles[^1].Items[^1].Entry.LocalId;
-            if (lastEntryLid > readEntryLid)
-                ReadPositionState.Value = new ReadPosition(chatId,  lastEntryLid);
-            else if (readEntryLid >= chatIdRange.End)
-                ReadPositionState.Value = new ReadPosition(chatId,chatIdRange.End - 1);
-        }
 
         if (highlightEntryLid.HasValue) {
             // highlight entry when it has already been loaded
