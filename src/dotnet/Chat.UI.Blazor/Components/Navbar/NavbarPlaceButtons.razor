@@ -10,9 +10,11 @@
 
 @if (places.Count > 0) {
     foreach (var place in places) {
+        var groupId = place.Id.GetNavbarGroupId();
+        ChatHub.NavbarUI.UpdateTitle(groupId, place.Title);
         <NavbarGroupSelectionButton
             Title="@place.Title"
-            Id="@place.Id.GetNavbarGroupId()"
+            Id="@groupId"
             Tooltip="@place.Title">
             <ChildContent>
                 <Pic

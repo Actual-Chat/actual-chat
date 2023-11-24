@@ -30,5 +30,5 @@
         => _ = ChatHub.FeedbackUI.AskFeatureRequestFeedback("place-invite", "Invite place members");
 
     private void OnPlaceSettingsClick()
-        => _ = ChatHub.FeedbackUI.AskFeatureRequestFeedback("place-edit", "Edit place settings");
+        => _ = ChatHub.ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
 }

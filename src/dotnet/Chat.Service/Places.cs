@@ -15,7 +15,10 @@ public class Places(IServiceProvider services) : IPlaces
         if (!placeRootChat.Rules.CanRead())
             return null;
 
-        return ToPlace(placeRootChat);
+        var place = ToPlace(placeRootChat) with {
+            Rules = ToPlaceRules(placeId, placeRootChat.Rules)
+        };
+        return place;
     }
 
     public virtual async Task<Place> OnChange(Places_Change command, CancellationToken cancellationToken)
@@ -61,6 +64,9 @@ public class Places(IServiceProvider services) : IPlaces
             Picture = chat.Picture,
         };
     }
+
+    private static PlaceRules ToPlaceRules(PlaceId placeId, AuthorRules authorRules)
+        => new (placeId, authorRules.Author, authorRules.Account, (PlacePermissions)(int)authorRules.Permissions);
 
     private static ChatDiff ToChatDiff(PlaceDiff placeDiff)
         => new() {
