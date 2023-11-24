@@ -35,7 +35,6 @@ public static class AppStartup
 {
     // Stl.Interception, Stl.Rpc, Stl.CommandR, Stl.Fusion dependencies are referenced
     // by [DynamicDependency] on FusionBuilder from v6.7.2.
-    // The rest is in ILLink.Descriptors.xml
     // Libraries
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PriorityQueue<,>))] // MemoryPack uses it
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(Range<>))] // JS dependency

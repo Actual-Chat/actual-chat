@@ -14,25 +14,24 @@ Use:
     <WasmEmitSymbolMap>true</WasmEmitSymbolMap>
     <WasmNativeStrip>false</WasmNativeStrip>
     -->
-
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>full</TrimMode>
-    <IsTrimmable>true</IsTrimmable>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <WasmEnableWebcil>false</WasmEnableWebcil>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
-    <WasmEnableWebcil>true</WasmEnableWebcil>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <RunAOTCompilation>false</RunAOTCompilation>
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <IsTrimmable>true</IsTrimmable>
+    <RunAOTCompilation>true</RunAOTCompilation>
     <!-- Broken for now:
     - https://github.com/dotnet/runtime/issues/92238
     - https://github.com/dotnet/runtime/pull/90436
     -->
-    <!-- <WasmStripILAfterAOT>true</WasmStripILAfterAOT> -->
+    <WasmStripILAfterAOT>false</WasmStripILAfterAOT>
   </PropertyGroup>
 
-  <!-- Trimming roots -->
+  <!-- Trimming -->
   <ItemGroup>
     <TrimmerRootAssembly Include="ActualChat.App.Wasm" RootMode="EntryPoint" />
   </ItemGroup>

@@ -107,6 +107,27 @@
     <Using Include="System.Net.Http" />
   </ItemGroup>
 
+  <!-- Trimmable assemblies -->
+  <ItemGroup>
+    <TrimmableAssembly Include="Microsoft.CodeAnalysis" />
+    <TrimmableAssembly Include="Microsoft.CodeAnalysis.Workspaces" />
+    <TrimmableAssembly Include="Microsoft.CodeAnalysis.CSharp" />
+    <TrimmableAssembly Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
+    <TrimmableAssembly Include="Microsoft.CSharp" />
+    <TrimmableAssembly Include="Microsoft.Toolkit.HighPerformance" />
+    <!-- <TrimmableAssembly Include="PhoneNumbers" /> Just in case -->
+    <TrimmableAssembly Include="System.Data.Common" />
+    <TrimmableAssembly Include="System.Collections.Immutable" />
+    <TrimmableAssembly Include="System.Linq" />
+    <TrimmableAssembly Include="System.Linq.Async" />
+    <TrimmableAssembly Include="System.Linq.Expressions" />
+    <TrimmableAssembly Include="System.Private.CoreLib" />
+    <TrimmableAssembly Include="System.Private.Xml" />
+    <TrimmableAssembly Include="System.Reactive" />
+    <TrimmableAssembly Include="System.Xml" />
+    <TrimmableAssembly Include="ZString" />
+  </ItemGroup>
+
   <!-- We disable SetEmbeddedFilesFromSourceControlManagerUntrackedFiles, that's why we embed this file in pdb manually -->
   <ItemGroup Condition="'$(EnableSourceLink)' =='true'">
     <EmbeddedFiles Include="$(BaseIntermediateOutputPath)$(Configuration)\**\*.cs" />

@@ -7,7 +7,6 @@ namespace ActualChat.App.Maui;
 
 public static class MauiAppStartup
 {
-    // The rest is in ILLink.Descriptors.Maui.xml
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(WebViewManager))]
     [DynamicDependency(DynamicallyAccessedMemberTypes.All,
         "Microsoft.AspNetCore.Components.WebView.Maui.AndroidWebKitWebViewManager", "Microsoft.AspNetCore.Components.WebView.Maui")]
