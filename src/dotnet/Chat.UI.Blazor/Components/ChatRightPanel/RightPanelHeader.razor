@@ -2,26 +2,45 @@
 @inherits ComputedStateComponent<AuthorRules>
 @{
     var m = State.Value;
+    var isPublicGroupChat = Chat is { Kind: ChatKind.Group, IsPublic: true };
 }
 
 <div class="c-header">
-    <HeaderButton Click="OnHideRightPanelClick" Class="md:!hidden">
-        <i class="icon-arrow-left"></i>
-    </HeaderButton>
+    <ButtonRound Click="@OnHideRightPanelClick" Class="right-panel-close-btn btn-md">
+        <i class="icon-close text-2xl"></i>
+    </ButtonRound>
+
+    <div class="c-top"></div>
+
     <div class="c-center">
-        <div class="c-title">Chat Settings</div>
-        @if (m.CanEditProperties()) {
-            <HeaderButton
-                Click="@OnEditChatSettingsClick"
-                Tooltip="Edit"
-                TooltipPosition="FloatingPosition.Bottom">
-                <i class="icon-edit"></i>
-            </HeaderButton>
-        }
+            <ChatIcon Chat="Chat" Size="SquareSize.Size16"/>
+            <div class="c-buttons">
+                @if (m.CanEditProperties()) {
+                    <ButtonRound Class="btn-md" Click="@OnEditChatSettingsClick">
+                        <i class="icon-edit text-2xl"></i>
+                    </ButtonRound>
+                }
+                @if (Chat.CanInvite()) {
+                    <ButtonRound Class="btn-md" Click="@OnInviteClick">
+                        <i class="icon-person-add text-2xl"></i>
+                    </ButtonRound>
+                }
+                @if (ShareModel != null) {
+                    <ButtonRound Class="btn-md" Click="@(() => OnShareClick(ShareModel))">
+                        <i class="icon-share text-2xl"></i>
+                    </ButtonRound>
+                }
+            </div>
     </div>
-    <HeaderButton Click="OnHideRightPanelClick" Class="!hidden md:!flex">
-        <i class="icon-layout"></i>
-    </HeaderButton>
+
+    <div class="c-bottom">
+        <div class="c-title">
+            @Chat.Title
+        </div>
+        <div class="c-public">
+            @(isPublicGroupChat ? "Public" : "Private")
+        </div>
+    </div>
 </div>
 
 @code {
@@ -31,8 +50,10 @@
     private FeedbackUI FeedbackUI => ChatContext.FeedbackUI;
     private PanelsUI PanelsUI => ChatContext.PanelsUI;
     private ModalUI ModalUI => ChatContext.ModalUI;
+    private ShareUI ShareUI => ChatContext.ShareUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter] public ShareModalModel? ShareModel { get; set; }
 
     protected override ComputedState<AuthorRules>.Options GetStateOptions()
         => new() {
@@ -49,4 +70,10 @@
 
     private Task OnEditChatSettingsClick()
         => ModalUI.Show(new ChatSettingsModal.Model(Chat.Id));
+
+    private void OnShareClick(ShareModalModel shareModel)
+        => ShareUI.Share(shareModel);
+
+    private Task OnInviteClick()
+        => ModalUI.Show(new AddMemberModal.Model(Chat.Id));
 }

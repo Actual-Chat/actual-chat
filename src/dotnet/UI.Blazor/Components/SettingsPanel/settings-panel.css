@@ -203,7 +203,11 @@ body.hoverable .tile-btn:hover {
 }
 
 .tile-item.tile-item-share {
+    @apply bg-transparent;
     @apply cursor-pointer;
+}
+.tile-item.tile-item-share:hover {
+    @apply bg-hover;
 }
 .tile-item.tile-item-share i {
     @apply text-primary;
