@@ -8,7 +8,7 @@
     if (ReferenceEquals(m, Model.Loading))
         return;
 
-    var isPublicGroupChat = Chat is { Kind: ChatKind.Group, IsPublic: true };
+    var isPublicGroupChat = Chat.IsPublic && Chat.Kind is not ChatKind.Peer;
 }
 
 <div class="c-chat-info">
