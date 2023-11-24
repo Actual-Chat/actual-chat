@@ -31,15 +31,18 @@
     [Inject] private IJSRuntime JS { get; init; } = null!;
     [Inject] private BubbleUI BubbleUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject] private AccountUI AccountUI { get; init; } = null!;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]
-    public BubbleHost() {
+    public BubbleHost() { }
+
+    protected override void OnInitialized() {
+        ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
+        AccountUI.Changed += OnOwnAccountChanged;
     }
 
-    protected override void OnInitialized()
-        => ((IHasAcceptor<BubbleHost>)BubbleUI).Acceptor.Accept(this);
-
     public async ValueTask DisposeAsync() {
+        AccountUI.Changed -= OnOwnAccountChanged;
         await _jsRef.DisposeSilentlyAsync("dispose");
         _jsRef = null!;
         _blazorRef.DisposeSilently();
@@ -90,7 +93,7 @@
 
     public async Task RestartBubbles() {
         _bubble = null;
-        await _jsRef.InvokeVoidAsync("restartBubbles", CancellationToken.None);
+        await _jsRef.InvokeVoidAsync("restartBubbles", CancellationToken.None, Array.Empty<object>());
         StateHasChanged();
     }
 
@@ -104,6 +107,13 @@
             var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
             _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, _blazorRef, readBubbles);
         }
+    }
+
+    private async void OnOwnAccountChanged(AccountFull account) {
+        _bubble = null;
+        var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
+        await _jsRef.InvokeVoidAsync("restartBubbles", CancellationToken.None, readBubbles);
+        StateHasChanged();
     }
 
     // Nested types
