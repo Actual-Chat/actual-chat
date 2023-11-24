@@ -11,6 +11,9 @@
 .author-modal .header-tile-item {
     @apply h-8 md:h-10;
 }
+.author-modal .tile {
+    @apply bg-modal;
+}
 .author-modal .tile-item-body-content {
     @apply text-01;
     @apply max-h-6;

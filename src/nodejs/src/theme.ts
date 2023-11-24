@@ -4,7 +4,7 @@ import { EventHandlerSet } from 'event-handling';
 const { debugLog } = Log.get('Theme');
 
 const StorageKey = 'ui.theme'
-const AvailableThemes = ['light', 'dark'];
+const AvailableThemes = ['light', 'dark', 'ash'];
 const Storage = globalThis?.localStorage;
 const IsEnabled = window != null && Storage != null;
 

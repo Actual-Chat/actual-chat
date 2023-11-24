@@ -1,6 +1,7 @@
 .landing.new {
     @apply flex-y;
     @apply select-text;
+    color-scheme: only light;
 }
 .landing.new .landing-video,
 .landing.new .landing-video-plug {
@@ -12,6 +13,7 @@
     @apply flex-y justify-center items-center;
     @apply px-16 lg:px-32;
     @apply overflow-hidden;
+    @apply bg-01;
 }
 .landing.new .page > .c-content {
     @apply gap-x-12;

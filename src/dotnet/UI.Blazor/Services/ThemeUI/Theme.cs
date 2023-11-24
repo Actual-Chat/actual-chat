@@ -1,3 +1,3 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public enum Theme { Light = 0, Dark }
+public enum Theme { Light = 0, Dark, Ash }

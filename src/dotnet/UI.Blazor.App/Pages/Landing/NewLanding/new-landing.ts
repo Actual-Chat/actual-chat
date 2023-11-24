@@ -22,6 +22,7 @@ export class NewLanding {
     constructor(
         private readonly landing: HTMLElement,
     ) {
+        this.disableAutoDarkMode();
         this.header = landing.querySelector('.landing-header');
         this.onScreenSizeChange();
         ScreenSize.event$
@@ -81,6 +82,7 @@ export class NewLanding {
 
         this.disposed$.next();
         this.disposed$.complete();
+        document.querySelector("[name='color-scheme']").remove();
     }
 
     // Event handlers
@@ -239,6 +241,13 @@ export class NewLanding {
             this.scrollToPageLinks();
         else
             return;
+    }
+
+    private disableAutoDarkMode() {
+        const meta = document.createElement('meta');
+        meta.name = "color-scheme";
+        meta.content = "only light";
+        document.getElementsByTagName('head')[0].appendChild(meta);
     }
 }
 

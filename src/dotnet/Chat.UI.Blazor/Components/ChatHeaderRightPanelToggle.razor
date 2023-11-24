@@ -1,31 +1,13 @@
-@inherits ComputedStateComponent<bool>
-@{
-    var isVisible = !State.Value;
-}
-
-@if (isVisible) {
-    <HeaderButton
-        data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
-        data-bubble-priority="401"
-        data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
-        Click="Click"
-        Tooltip="Chat properties"
-        TooltipPosition="FloatingPosition.Bottom">
-        <i class="icon-layout"></i>
-    </HeaderButton>
-}
+<HeaderButton
+    data-bubble="@(BubbleRef.New<RightChatPanelButtonBubble>())"
+    data-bubble-priority="401"
+    data-bubble-placement="@(FloatingPosition.BottomEnd.ToPositionString())"
+    Click="Click"
+    Tooltip="Chat properties"
+    TooltipPosition="FloatingPosition.Bottom">
+    <i class="icon-layout"></i>
+</HeaderButton>
 
 @code {
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-
     [Parameter] public EventCallback Click { get; set; }
-
-    protected override ComputedState<bool>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.Instant,
-            Category = GetStateCategory(),
-        };
-
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await PanelsUI.Right.IsVisible.Use(cancellationToken);
 }

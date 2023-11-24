@@ -35,6 +35,17 @@
             <TileItem>
                 <Icon>
                     <FormRadio
+                        Id="@_formModel.AshThemeFormId"
+                        Value="@GetThemeKey(Theme.Ash)"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.AshThemeFormId" Text="Ash"></Label>
+                </Content>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
                         Id="@_formModel.SystemThemeFormId"
                         Value="@GetThemeKey(null)"/>
                 </Icon>
@@ -75,6 +86,7 @@
         private string FormId { get; }
         public string LightThemeFormId { get; }
         public string DarkThemeFormId { get; }
+        public string AshThemeFormId { get; }
         public string SystemThemeFormId { get; }
 
         public string? Theme {
@@ -93,6 +105,7 @@
             FormId = componentIdGenerator.Next("theme-form");
             LightThemeFormId = $"{FormId}-user-light-theme";
             DarkThemeFormId = $"{FormId}-user-dark-theme";
+            AshThemeFormId = $"{FormId}-user-ash-theme";
             SystemThemeFormId = $"{FormId}-user-system-theme";
         }
     }
