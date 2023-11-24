@@ -5,12 +5,14 @@ using ActualChat.Transcription.Google;
 namespace ActualChat.Transcription.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class TranscriptionServiceModule: HostModule<TranscriptSettings>
+public class TranscriptionServiceModule(IServiceProvider moduleServices) : HostModule<TranscriptSettings>(moduleServices)
 {
-    public TranscriptionServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
+    protected override TranscriptSettings ReadSettings()
+        => Cfg.GetSettings<TranscriptSettings>(nameof(TranscriptSettings));
 
     protected override void InjectServices(IServiceCollection services)
     {
+        base.InjectServices(services);
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 

@@ -6,6 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Deepgram" />
     <PackageReference Include="Google.Cloud.Speech.V2" />
     <PackageReference Include="Google.Api.Gax" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" />
@@ -13,10 +14,6 @@
 
   <ItemGroup>
     <EmbeddedResource Include="data\silence.opuss" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="DeepGram\" />
   </ItemGroup>
 
 </Project>
