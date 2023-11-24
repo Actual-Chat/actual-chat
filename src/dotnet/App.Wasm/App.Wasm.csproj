@@ -15,7 +15,7 @@ Use:
     <WasmNativeStrip>false</WasmNativeStrip>
     -->
     <InvariantGlobalization>true</InvariantGlobalization>
-    <WasmEnableWebcil>false</WasmEnableWebcil>
+    <WasmEnableWebcil>true</WasmEnableWebcil>
     <SuppressTrimAnalysisWarnings>false</SuppressTrimAnalysisWarnings>
   </PropertyGroup>
 
