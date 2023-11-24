@@ -102,6 +102,7 @@
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(AspNetCoreVersion)" />
   </ItemGroup>
   <ItemGroup Label="Nupkg Versions 3">
+    <PackageVersion Include="Deepgram" Version="3.4.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Abstractions" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="$(EntityFrameworkCoreInMemoryVersion)" />
