@@ -1,10 +1,9 @@
 @using ActualChat.Hosting
 @using ActualChat.Users
-@implements IDisposable
 
 <ModalHost />
 <MenuHost />
-<BubbleHost @key="@_ownAccount.Id" />
+<BubbleHost />
 @if (ScreenSize.IsWide()) {
     <TooltipHost />
 }
@@ -23,7 +22,6 @@
 }
 
 @code {
-    private AccountFull _ownAccount = null!;
 
     [Inject] private HostInfo HostInfo { get; init; } = null!;
     [Inject] protected AccountUI AccountUI { get; init; } = null!;
@@ -31,21 +29,8 @@
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
-    protected override void OnInitialized() {
-        _ownAccount = AccountUI.OwnAccount.Value;
-        AccountUI.Changed += OnOwnAccountChanged;
-    }
-
-    public void Dispose()
-        => AccountUI.Changed -= OnOwnAccountChanged;
-
     protected override void OnAfterRender(bool firstRender) {
         if (firstRender)
             LoadingUI.MarkRendered();
-    }
-
-    private void OnOwnAccountChanged(AccountFull account) {
-        _ownAccount = account;
-        StateHasChanged();
     }
 }
