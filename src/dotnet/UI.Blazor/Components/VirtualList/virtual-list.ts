@@ -775,10 +775,17 @@ export class VirtualList {
         const time = Date.now();
         const pivots = new Array<Pivot>();
         const pivotRefs = new Array<HTMLElement>();
-        // add query edges and first\last items as pivots
-        const itemKeys = [this.getFirstItemKey(), this._query.keyRange?.start, this._query.keyRange?.end, this.getLastItemKey()];
+        // add query edges and second\last items as pivots
+
+        // do not use first item as pivot - it might be changed during rendering of items above - e.g. author circle might disappear
+        const firstItemRef = this.getFirstItemRef();
+        const firstItemKey = getItemKey(firstItemRef);
+        const secondItemRef = firstItemRef.nextElementSibling as HTMLElement;
+        const secondItemKey = getItemKey(secondItemRef);
+
+        const itemKeys = [secondItemKey, this._query.keyRange?.start, this._query.keyRange?.end, this.getLastItemKey()];
         for (let itemKey of itemKeys) {
-            if (pivots.some(p => p.itemKey === itemKey))
+            if (itemKey === firstItemKey)
                 continue;
 
             const pivotRef = this.getItemRef(itemKey);
@@ -790,7 +797,7 @@ export class VirtualList {
             const itemRect = pivotRef.getBoundingClientRect();
             const pivot: Pivot = {
                 itemKey,
-                offset: Math.ceil(itemRect.bottom),
+                offset: Math.round(itemRect.top),
                 time,
             };
             pivots.push(pivot);
@@ -941,11 +948,11 @@ export class VirtualList {
                 read: () => {
                     const pivotOffset = pivot.offset;
                     const itemRect = pivotRef.getBoundingClientRect();
-                    const currentPivotOffset = itemRect.bottom;
+                    const currentPivotOffset = Math.round(itemRect.top);
                     const dPivotOffset = pivotOffset - currentPivotOffset;
                     scrollTop = this._ref.scrollTop;
                     if (Math.abs(dPivotOffset) > pivotEpsilon) {
-                        debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${itemRect.bottom} + ${dPivotOffset}`, pivot);
+                        debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${Math.round(itemRect.top)} + ${dPivotOffset}`, pivot);
                         scrollTop -= dPivotOffset;
                         shouldResync = true;
                     }
