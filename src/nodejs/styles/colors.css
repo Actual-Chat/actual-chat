@@ -118,6 +118,8 @@
     --orange-20: #973600;
     --orange-10: #3D1600;
 
+    --indigo-99: #ECE8FF;
+    --indigo-95: #E7E1FF;
     --indigo-90: #D2C7FF;
     --indigo-80: #AA95FF;
     --indigo-70: #7957FF;
@@ -342,7 +344,7 @@
     --place: var(--indigo-80);
     --menuitem-hover: var(--blue-50-10);
     --menuitem-hover-warning: var(--magenta-50-10);
-    --bubble: var(--indigo-60);
+    --bubble: var(--indigo-70);
     --bubble-text: var(--white);
     --bubble-btn-hover: var(--black-10);
     --reaction: var(--blue-50-20);
@@ -524,7 +526,7 @@
     --place: var(--indigo-80);
     --menuitem-hover: var(--white-05);
     --menuitem-hover-warning: var(--magenta-50-10);
-    --bubble: var(--indigo-60);
+    --bubble: var(--indigo-70);
     --bubble-text: var(--white);
     --bubble-btn-hover: var(--white-10);
     --reaction: var(--white-05);
@@ -704,7 +706,7 @@
     --place: var(--indigo-80);
     --menuitem-hover: var(--blue-50-10);
     --menuitem-hover-warning: var(--magenta-50-10);
-    --bubble: var(--indigo-60);
+    --bubble: var(--indigo-70);
     --bubble-text: var(--white);
     --bubble-btn-hover: var(--black-10);
     --reaction: var(--blue-50-20);
