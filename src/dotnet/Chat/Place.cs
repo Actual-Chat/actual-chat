@@ -19,6 +19,7 @@ public sealed partial record Place(
     [DataMember, MemoryPackOrder(5)] public MediaId MediaId { get; init; }
 
     // Populated only on front-end
+    [DataMember, MemoryPackOrder(11)] public PlaceRules Rules { get; init; } = null!;
     [DataMember, MemoryPackOrder(12)] public Media.Media? Picture { get; init; }
 
     // This record relies on referential equality

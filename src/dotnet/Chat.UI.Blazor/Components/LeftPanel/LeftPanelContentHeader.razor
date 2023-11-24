@@ -46,16 +46,19 @@
 
     protected override void OnInitialized() {
         _onSearchBoxTextChanged = NoStateHasChanged.EventCallback<string>(OnSearchBoxTextChanged);
-        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
+        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupOrTitleChanged;
+        NavbarUI.SelectedGroupTitleUpdated += OnNavbarSelectedGroupOrTitleChanged;
     }
 
-    public void Dispose()
-        => NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
+    public void Dispose() {
+        NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupOrTitleChanged;
+        NavbarUI.SelectedGroupTitleUpdated -= OnNavbarSelectedGroupOrTitleChanged;
+    }
 
     private void OnSearchBoxTextChanged(string text)
         => SearchUI.Text.Value = text;
 
-    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
+    private void OnNavbarSelectedGroupOrTitleChanged(object? s, EventArgs e)
         => InvokeAsync(StateHasChanged);
 
     private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {

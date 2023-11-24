@@ -83,6 +83,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
             .Add<AvatarSelectModal.Model, AvatarSelectModal>()
             .Add<VoiceSettingsModal.Model, VoiceSettingsModal>()
             .Add<ChatSettingsModal.Model, ChatSettingsModal>()
+            .Add<PlaceSettingsModal.Model, PlaceSettingsModal>()
             .Add<AddMemberModal.Model, AddMemberModal>()
             .Add<NewChatModal.Model, NewChatModal>()
             .Add<NewPlaceModal.Model, NewPlaceModal>()

@@ -1,0 +1,55 @@
+﻿.edit-place-settings-modal {
+    @apply text-03;
+    @apply h-full md:w-90;
+}
+
+.edit-place-settings-modal.modal-frame {
+    @apply px-0;
+    @apply gap-y-0;
+}
+
+.edit-place-settings-modal .no-padding-header-decorator {
+    @apply mx-0;
+}
+
+
+.edit-place-settings-modal .dialog-buttons {
+    @apply pt-4;
+}
+.edit-place-settings-modal .dialog-buttons .btn-group {
+    @apply flex-1;
+    @apply max-w-none;
+}
+
+.edit-place-settings-modal .form-block {
+    @apply px-4;
+}
+
+.edit-place-settings-modal .tile-item {
+    @apply hover:bg-inherit;
+}
+
+.form .field-chat-public-url section {
+    @apply mt-0;
+}
+
+.form.form-y .field-chat-public-url section .form-section-content {
+    @apply mt-0;
+}
+
+.tile-item.field-chat-public-url .label-inside-input input {
+    @apply h-6;
+}
+
+.tile-item.field-chat-public-url .tile-item-icon,
+.tile-item.field-chat-public-url .tile-item-right {
+    @apply my-auto;
+}
+
+.wide .field-chat-title input {
+    @apply h-10;
+}
+
+.edit-place-settings-modal .tile-item-icon i {
+    @apply text-2xl;
+}
