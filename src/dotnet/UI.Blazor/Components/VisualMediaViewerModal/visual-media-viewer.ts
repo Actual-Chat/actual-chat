@@ -22,13 +22,6 @@ export class VisualMediaViewer {
         this.header = this.overlay.querySelector('.image-viewer-header');
         this.footer = this.overlay.querySelector('.image-viewer-footer');
 
-        const videos = this.imageViewer.getElementsByTagName('video');
-        [...videos].forEach((video: HTMLMediaElement) => {
-            fromEvent(video, 'click')
-                .pipe(takeUntil(this.disposed$))
-                .subscribe(() => this.onVideoClick(video));
-        })
-
          fromEvent(this.overlay, 'click')
              .pipe(takeUntil(this.disposed$))
              .subscribe((event: PointerEvent) => this.onClick(event));
@@ -110,14 +103,6 @@ export class VisualMediaViewer {
          } else {
              this.hideHeaderAndFooter();
          }
-    }
-
-    private onVideoClick(video: HTMLMediaElement): void {
-        if (video.paused) {
-            void video.play();
-        } else {
-            video.pause();
-        }
     }
 
     private onClick(event: PointerEvent | MouseEvent) {
