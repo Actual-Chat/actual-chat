@@ -41,13 +41,14 @@ public static partial class MauiProgram
         RpcOutboundCommandCallMiddleware.DefaultTimeout = TimeSpan.FromSeconds(20);
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
+        AppContext.SetSwitch("System.Net.DisableIPv6", true);
 #if IOS
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
 #endif
-        if (OSInfo.IsAndroid || OSInfo.IsWindows)
-            _ = Task.Run(() => new SentryOptions()); // JIT compile SentryOptions in advance
+#if ANDROID || WINDOWS
+        _ = Task.Run(() => new SentryOptions()); // JIT compile SentryOptions in advance
+#endif
         OtelDiagnostics.SetupConditionalPropagator();
-
 #if WINDOWS
         if (Tracer.IsEnabled) {
             // EventSources and EventListeners do not work in Mono. So no sense to enable but platforms different from Windows
