@@ -129,10 +129,16 @@ export class VisualMediaViewer {
         if (this.isHeaderAndFooterVisible && (cursorInHeaderArea || cursorInFooterArea))
             return;
 
-        if ((event.target as HTMLElement).classList.contains('media-swiper'))
-            return;
-
-        this.toggleHeaderAndFooterVisibility();
+        const target = event.target as HTMLElement;
+        if (target.classList.contains('media-swiper')) {
+            // click on prev / next buttons
+        } else if (target.classList.contains('swiper-zoom-container')) {
+            // click outside image/video
+            void this.blazorRef.invokeMethodAsync('Close');
+        } else {
+            // click on image/video
+            this.toggleHeaderAndFooterVisibility();
+        }
     }
 
     private async onSlideChange(event: any): Promise<void> {
