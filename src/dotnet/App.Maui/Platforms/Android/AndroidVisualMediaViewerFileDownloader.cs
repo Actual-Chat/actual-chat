@@ -82,9 +82,10 @@ public class AndroidVisualMediaViewerFileDownloader(IServiceProvider services)
     }
 
     [BroadcastReceiver(Enabled = true, Exported = false, Label = "Download completion Broadcast Receiver")]
-    private class DownloadCompletedBroadcastReceiver(Action<long> onDownloadCompleted) : BroadcastReceiver
+    private class DownloadCompletedBroadcastReceiver(Action<long>? onDownloadCompleted) : BroadcastReceiver
     {
-        private readonly Action<long>? _onDownloadCompleted = onDownloadCompleted;
+        public DownloadCompletedBroadcastReceiver() : this(null)
+        { }
 
         public override void OnReceive(Context? context, Intent? intent)
         {
@@ -93,7 +94,7 @@ public class AndroidVisualMediaViewerFileDownloader(IServiceProvider services)
 
             var id = intent.GetLongExtra(DownloadManager.ExtraDownloadId, -1);
             if (id >= 0)
-                _onDownloadCompleted?.Invoke(id);
+                onDownloadCompleted?.Invoke(id);
         }
     }
 }
