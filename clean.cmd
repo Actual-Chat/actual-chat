@@ -3,6 +3,7 @@
     rmdir /S /Q artifacts
     dotnet restore ActualChat.Maui.sln
     echo "Clean completed."
+    exit /b
 BATCH
 
 #!/bin/sh
