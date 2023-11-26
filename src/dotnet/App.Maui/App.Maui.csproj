@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
@@ -186,6 +186,9 @@
     <!-- This also ensures debug symbols are there -->
     <DebuggerSupport>true</DebuggerSupport>
   </PropertyGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
+    <AndroidEnvironment Include="android-env.txt" />
+  </ItemGroup>
 
   <!-- Android: Debug configuration -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
@@ -205,7 +208,9 @@
     <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
 
     <!-- Runtime -->
+    <!-- Has no effect, because android-env.txt contains MONO_GC_PARAMS
     <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
+    -->
     <!-- Doesn't seem to give any speedup:
     <AndroidGenerateJniMarshalMethods>True</AndroidGenerateJniMarshalMethods>
     -->
@@ -240,7 +245,7 @@
     <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
   </PropertyGroup>
   <ItemGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
-    <AndroidEnvironment Include="diagnostics-env.txt" />
+    <AndroidEnvironment Include="android-profiling-env.txt" />
   </ItemGroup>
 
   <!-- iOS build properties -->

@@ -1,12 +1,12 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
-using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.Media;
 using Android.OS;
 using Android.Runtime;
 using Kotlin.Jvm.Functions;
 using Xamarin.Twilio.AudioSwitch;
+using JObject = Java.Lang.Object;
 using static Android.Media.AudioManager;
 
 namespace ActualChat.App.Maui;
@@ -161,13 +161,13 @@ public sealed class AndroidAudioOutputController : IAudioOutputController, IDisp
         _audioManager.Mode = Mode.InCommunication;
     }
 
-    private class StartupCallback : Java.Lang.Object, IFunction2
+    private class StartupCallback : JObject, IFunction2
     {
-        public Java.Lang.Object? Invoke(Java.Lang.Object? devices, Java.Lang.Object? selectedDevice)
+        public JObject? Invoke(JObject? devices, JObject? selectedDevice)
             => null;
     }
 
-    private class FocusChangeListener(ILogger log) : Java.Lang.Object, IOnAudioFocusChangeListener
+    private class FocusChangeListener(ILogger log) : JObject, IOnAudioFocusChangeListener
     {
         private ILogger Log { get; } = log;
 
@@ -176,7 +176,7 @@ public sealed class AndroidAudioOutputController : IAudioOutputController, IDisp
             => Log.LogDebug("AudioFocus changed: {AudioFocus}", focusChange);
     }
 
-    private class ModeChangedListener(ILogger log) : Java.Lang.Object, IOnModeChangedListener
+    private class ModeChangedListener(ILogger log) : JObject, IOnModeChangedListener
     {
         private ILogger Log { get; } = log;
 

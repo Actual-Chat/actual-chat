@@ -12,6 +12,7 @@ using AndroidX.Activity.Result;
 using AndroidX.Activity.Result.Contract;
 using Microsoft.Maui.Controls.Platform;
 using AView = Android.Views.View;
+using JObject = Java.Lang.Object;
 
 namespace ActualChat.App.Maui;
 
@@ -47,8 +48,8 @@ public partial class MainActivity : MauiAppCompatActivity
     public static MainActivity Current => _current
         ?? throw StandardError.Internal($"{nameof(MainActivity)} isn't created yet.");
     public static readonly TimeSpan MaxPermissionRequestDuration = TimeSpan.FromMinutes(1);
+    private static readonly Tracer _tracer = Tracer.Default[nameof(MainActivity)];
 
-    private readonly Tracer _tracer = Tracer.Default[nameof(MainActivity)];
     private ActivityResultLauncher _permissionRequestLauncher = null!;
     private TaskCompletionSource? _permissionRequestCompletedSource;
 
@@ -243,14 +244,10 @@ public partial class MainActivity : MauiAppCompatActivity
             view.StartAnimation(fade);
         }
     }
-    private class SplashScreenDelayer : Java.Lang.Object, ViewTreeObserver.IOnPreDrawListener
+    private class SplashScreenDelayer(AView contentView) : JObject, ViewTreeObserver.IOnPreDrawListener
     {
         private static bool _splashRemoved; // Iron pants to prevent splash screen displayed after app is taken back from background.
-        private readonly AView _contentView;
-        private readonly Task _whenSplashRemoved = LoadingUI.WhenViewCreated; // .WithDelay(TimeSpan.FromMilliseconds(50));
-
-        public SplashScreenDelayer(AView contentView)
-            => _contentView = contentView;
+        private static readonly Task _whenSplashRemoved = LoadingUI.WhenViewCreated; // .WithDelay(TimeSpan.FromMilliseconds(50));
 
         public bool OnPreDraw()
         {
@@ -260,7 +257,7 @@ public partial class MainActivity : MauiAppCompatActivity
                 return false;
 
             _splashRemoved = true;
-            _contentView.ViewTreeObserver!.RemoveOnPreDrawListener(this);
+            contentView.ViewTreeObserver!.RemoveOnPreDrawListener(this);
             return true;
         }
     }

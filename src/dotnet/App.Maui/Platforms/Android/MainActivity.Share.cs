@@ -16,5 +16,4 @@ namespace ActualChat.App.Maui;
     DataMimeTypes = new [] { "*/*" },
     Categories = new [] { Intent.CategoryDefault, Intent.CategoryBrowsable })]
 public partial class MainActivity
-{
-}
+{ }

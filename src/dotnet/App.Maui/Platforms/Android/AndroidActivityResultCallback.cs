@@ -1,13 +1,13 @@
 using AndroidX.Activity.Result;
-using Object = Java.Lang.Object;
+using JObject = Java.Lang.Object;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidActivityResultCallback(Action<Object?> callback) : Object, IActivityResultCallback
+public class AndroidActivityResultCallback(Action<JObject?> callback) : JObject, IActivityResultCallback
 {
-    public AndroidActivityResultCallback(TaskCompletionSource<Object?> tcs) : this(tcs.SetResult)
+    public AndroidActivityResultCallback(TaskCompletionSource<JObject?> tcs) : this(tcs.SetResult)
     { }
 
-    public void OnActivityResult(Object? p0)
-        => callback.Invoke(p0);
+    public void OnActivityResult(JObject? p0)
+        => callback.Invoke(p0.IsNotNull() ? p0 : null);
 }

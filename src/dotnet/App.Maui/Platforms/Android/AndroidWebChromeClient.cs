@@ -9,6 +9,7 @@ using AndroidX.Activity.Result;
 using AndroidX.Activity.Result.Contract;
 using AndroidX.Core.Content;
 using Java.Interop;
+using JObject = Java.Lang.Object;
 using View = Android.Views.View;
 using WebView = Android.Webkit.WebView;
 
@@ -78,14 +79,14 @@ internal class AndroidWebChromeClient : WebChromeClient
     }
 
     public override void OnGeolocationPermissionsShowPrompt(string? origin, GeolocationPermissions.ICallback? callback)
-    {
-        ArgumentNullException.ThrowIfNull(callback, nameof(callback));
-        RequestPermission(Manifest.Permission.AccessFineLocation, isGranted => callback.Invoke(origin, isGranted, false));
-    }
+        => RequestPermission(
+            Manifest.Permission.AccessFineLocation,
+            isGranted => callback?.Invoke(origin, isGranted, false));
 
     public override void OnPermissionRequest(PermissionRequest? request)
     {
-        ArgumentNullException.ThrowIfNull(request, nameof(request));
+        if (request == null)
+            return;
 
         if (request.GetResources() is not { } requestedResources) {
             request.Deny();
@@ -106,7 +107,7 @@ internal class AndroidWebChromeClient : WebChromeClient
     {
         if (requestedResources.Length == 0) {
             // No resources to request - invoke the callback with an empty list.
-            callback(new());
+            callback.Invoke(new());
             return;
         }
 
@@ -123,12 +124,13 @@ internal class AndroidWebChromeClient : WebChromeClient
         });
     }
 
-    public override bool OnShowFileChooser(WebView? webView, IValueCallback? filePathCallback, FileChooserParams? fileChooserParams)
-    {
-        if (filePathCallback == null)
-            return _client.OnShowFileChooser(webView, filePathCallback, fileChooserParams);
-        return _fileChooser.OnShowFileChooser(_activity, filePathCallback);
-    }
+    public override bool OnShowFileChooser(
+        WebView? webView,
+        IValueCallback? filePathCallback,
+        FileChooserParams? fileChooserParams)
+        => filePathCallback == null
+            ? _client.OnShowFileChooser(webView, filePathCallback, fileChooserParams)
+            : _fileChooser.OnShowFileChooser(_activity, filePathCallback);
 
     #region Unremarkable overrides
     // See: https://github.com/dotnet/maui/issues/6565
@@ -226,9 +228,9 @@ internal class AndroidWebChromeClient : WebChromeClient
 
     // Nested types
 
-    public sealed class ActivityResultCallback : Java.Lang.Object, IActivityResultCallback
+    public sealed class ActivityResultCallback : JObject, IActivityResultCallback
     {
-        public void OnActivityResult(Java.Lang.Object? isGranted)
+        public void OnActivityResult(JObject? isGranted)
         {
             var callback = _pendingPermissionRequestCallback;
             _pendingPermissionRequestCallback = null;

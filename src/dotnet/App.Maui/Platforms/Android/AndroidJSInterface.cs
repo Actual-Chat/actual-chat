@@ -2,12 +2,13 @@ using ActualChat.UI.Blazor.Services;
 using Android.Content;
 using Android.Webkit;
 using Java.Interop;
+using JObject = Java.Lang.Object;
 
 namespace ActualChat.App.Maui;
 
 #pragma warning disable CA1822 // Can be static
 
-internal class AndroidJSInterface(Android.Webkit.WebView webView) : Java.Lang.Object
+internal class AndroidJSInterface(Android.Webkit.WebView webView) : JObject
 {
     public event Action<string> MessageReceived = _ => { };
 

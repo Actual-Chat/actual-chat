@@ -1,3 +1,4 @@
+using Android.Views;
 using Android.Webkit;
 using WebView = Android.Webkit.WebView;
 
@@ -19,8 +20,9 @@ public class AndroidWebViewClientOverride(
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing); // Just to suppress warning
-        if (disposing)
-            Original.Dispose();
+        var original = Original;
+        if (disposing && original.IsNotNull())
+            original.Dispose();
     }
 
     public override bool OnRenderProcessGone(WebView? view, RenderProcessGoneDetail? detail)
@@ -28,9 +30,10 @@ public class AndroidWebViewClientOverride(
         var didCrash = detail?.DidCrash() == true;
         var details = $"DidCrash: {didCrash}, RendererPriorityAtExit: {detail?.RendererPriorityAtExit()}, {detail}";
         log.LogWarning("OnRenderProcessGone: {Details}", details);
-        var markedDead = view != null
+        var markedDead = view.IsNotNull()
             && MauiWebView.Current is { } mauiWebView
-            && ReferenceEquals(mauiWebView.AndroidWebView, view)
+            && mauiWebView.AndroidWebView.IfNotNull() is { } androidWebView
+            && ReferenceEquals(androidWebView, view)
             && mauiWebView.MarkDead();
         if (didCrash && markedDead) {
             MainThread.BeginInvokeOnMainThread(() => MainPage.Current.RecreateWebView());
@@ -40,7 +43,7 @@ public class AndroidWebViewClientOverride(
     }
 
     public override bool ShouldOverrideUrlLoading(WebView? view, IWebResourceRequest? request)
-        => Original.ShouldOverrideUrlLoading(view, request);
+        => Original.IfNotNull()?.ShouldOverrideUrlLoading(view, request) ?? false;
 
     public override WebResourceResponse? ShouldInterceptRequest(WebView? view, IWebResourceRequest? request)
     {

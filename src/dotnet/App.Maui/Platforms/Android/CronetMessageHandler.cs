@@ -62,28 +62,22 @@ public class CronetMessageHandler(IExecutorService executor) : HttpMessageHandle
 
     // Nested types
 
-    private class CronetCallback : UrlRequest.Callback
+    private class CronetCallback(HttpRequestMessage requestMessage, CancellationToken cancellationToken)
+        : UrlRequest.Callback
     {
         private const int MaxRedirectCount = 3;
         private static readonly RecyclableMemoryStreamManager MemoryStreamManager = new ();
 
-        private readonly TaskCompletionSource<HttpResponseMessage> _resultSource;
+        private readonly TaskCompletionSource<HttpResponseMessage> _resultSource = TaskCompletionSourceExt.New<HttpResponseMessage>();
 
         private int _redirectCount;
         private MemoryStream? _responseBody;
         private IWritableByteChannel? _responseBodyChannel;
 
-        private HttpRequestMessage RequestMessage { get; }
-        private CancellationToken CancellationToken { get; }
+        private HttpRequestMessage RequestMessage { get; } = requestMessage;
+        private CancellationToken CancellationToken { get; } = cancellationToken;
 
         public Task<HttpResponseMessage> ResultTask => _resultSource.Task;
-
-        public CronetCallback(HttpRequestMessage requestMessage, CancellationToken cancellationToken)
-        {
-            RequestMessage = requestMessage;
-            CancellationToken = cancellationToken;
-            _resultSource = TaskCompletionSourceExt.New<HttpResponseMessage>();
-        }
 
         public override void OnFailed(UrlRequest p0, UrlResponseInfo p1, CronetException p2)
         {

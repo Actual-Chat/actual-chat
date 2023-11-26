@@ -51,8 +51,11 @@ public class AndroidVisualMediaViewerFileDownloader(IServiceProvider services)
     {
         if (_downloadCompletedReceiver != null)
             return;
+
         _downloadCompletedReceiver = new DownloadCompletedBroadcastReceiver(OnDownloadCompleted);
-        Platform.AppContext.RegisterReceiver(_downloadCompletedReceiver, new IntentFilter(DownloadManager.ActionDownloadComplete));
+        Platform.AppContext.RegisterReceiver(
+            _downloadCompletedReceiver,
+            new IntentFilter(DownloadManager.ActionDownloadComplete));
     }
 
     private void OnDownloadCompleted(long downloadRef)
@@ -65,28 +68,30 @@ public class AndroidVisualMediaViewerFileDownloader(IServiceProvider services)
         if (downloadRef < 0)
             return;
 
-        var dm = (DownloadManager)Platform.AppContext.GetSystemService(Android.Content.Context.DownloadService)!;
+        var dm = Platform.AppContext.GetSystemService(Context.DownloadService) as DownloadManager;
+        if (dm.IsNull())
+            return;
+
         var uri = dm.GetUriForDownloadedFile(downloadRef);
         if (uri == null)
             return;
+
         MainThread.BeginInvokeOnMainThread(() => {
             ToastUI.Show("1 file downloaded", "icon-checkmark-circle-2", ToastDismissDelay.Short);
         });
     }
 
     [BroadcastReceiver(Enabled = true, Exported = false, Label = "Download completion Broadcast Receiver")]
-    private class DownloadCompletedBroadcastReceiver : BroadcastReceiver
+    private class DownloadCompletedBroadcastReceiver(Action<long> onDownloadCompleted) : BroadcastReceiver
     {
-        private readonly Action<long>? _onDownloadCompleted;
-
-        public DownloadCompletedBroadcastReceiver() {}
-
-        public DownloadCompletedBroadcastReceiver(Action<long> onDownloadCompleted)
-            => _onDownloadCompleted = onDownloadCompleted;
+        private readonly Action<long>? _onDownloadCompleted = onDownloadCompleted;
 
         public override void OnReceive(Context? context, Intent? intent)
         {
-            long id = intent!.GetLongExtra(DownloadManager.ExtraDownloadId, -1);
+            if (intent.IsNull())
+                return;
+
+            var id = intent.GetLongExtra(DownloadManager.ExtraDownloadId, -1);
             if (id >= 0)
                 _onDownloadCompleted?.Invoke(id);
         }

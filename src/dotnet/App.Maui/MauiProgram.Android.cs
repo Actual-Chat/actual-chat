@@ -62,7 +62,7 @@ public static partial class MauiProgram
     {
         // This method either moves the current activity to background (back),
         // or makes AndroidWebView to navigate back.
-        var webView = MauiWebView.Current?.AndroidWebView;
+        var webView = MauiWebView.Current?.AndroidWebView.IfNotNull();
         if (webView == null || !await TryGoBack(webView).ConfigureAwait(false))
             activity.MoveTaskToBack(true);
     }

@@ -41,7 +41,6 @@ public static partial class MauiProgram
         RpcOutboundCommandCallMiddleware.DefaultTimeout = TimeSpan.FromSeconds(20);
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         MauiThreadPoolSettings.Apply();
-        AppContext.SetSwitch("System.Net.DisableIPv6", true);
 #if IOS
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
 #endif
