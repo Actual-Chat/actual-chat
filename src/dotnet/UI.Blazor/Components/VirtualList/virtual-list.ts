@@ -357,6 +357,9 @@ export class VirtualList {
                 this._shouldRecalculateItemRange = itemsWereMeasured;
             });
         }
+        // restore sticky end edge on item resize
+        if (this._stickyEdge?.edge === VirtualListEdge.End)
+            this.scrollToEnd(false);
 
         const lastItemWasMeasured = itemsWereMeasured && this._unmeasuredItems.size == 0;
         if (lastItemWasMeasured)
@@ -555,14 +558,15 @@ export class VirtualList {
                 // Server-side scroll request
                 if (!this.isItemFullyVisible(scrollToItemRef)) {
                     if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
-                        this.scrollToEnd(false);
                         this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
+                        this.scrollToEnd(false);
                     } else {
                         this.scrollTo(scrollToItemRef, false, 'center');
                     }
                 }
                 else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
+                    this.scrollToEnd(false);
                 }
             } else if (this._stickyEdge != null) {
                 // Sticky edge scroll
@@ -580,8 +584,10 @@ export class VirtualList {
                     this.setStickyEdge(null);
                 } else {
                     this.setStickyEdge({ itemKey: itemKey, edge: this._stickyEdge.edge });
-                    // scroll is required for start edge only - the list is reverse-rendered
-                    if (this._stickyEdge?.edge === VirtualListEdge.Start) {
+                    if (this._stickyEdge?.edge === VirtualListEdge.End) {
+                        this.scrollToEnd(true);
+                    }
+                    else if (this._stickyEdge?.edge === VirtualListEdge.Start) {
                         let itemRef = this.getItemRef(itemKey);
                         this.scrollTo(itemRef, false);
                     }
@@ -780,7 +786,7 @@ export class VirtualList {
         // do not use first item as pivot - it might be changed during rendering of items above - e.g. author circle might disappear
         const firstItemRef = this.getFirstItemRef();
         const firstItemKey = getItemKey(firstItemRef);
-        const secondItemRef = firstItemRef.nextElementSibling as HTMLElement;
+        const secondItemRef = firstItemRef?.nextElementSibling as HTMLElement;
         const secondItemKey = getItemKey(secondItemRef);
 
         const itemKeys = [secondItemKey, this._query.keyRange?.start, this._query.keyRange?.end, this.getLastItemKey()];
@@ -911,10 +917,20 @@ export class VirtualList {
         });
     }
 
-    private scrollToEnd(
-        useSmoothScroll: boolean = false) {
+    private scrollToEnd(useSmoothScroll: boolean = false) {
         debugLog?.log('scrollTo end');
-        this.scrollTo(this._endAnchorRef, useSmoothScroll, 'center');
+        this._inertialScroll.freeze();
+        this._scrollTime = Date.now();
+        this._endAnchorRef.scrollIntoView({
+            behavior: useSmoothScroll ? 'smooth' : 'auto',
+            block: 'end',
+            inline: 'end',
+        });
+        fastRaf({
+            write: () => {
+                this._inertialScroll.unfreeze();
+            }
+        });
     }
 
     private setStickyEdge(stickyEdge: VirtualListStickyEdgeState | null): boolean {
@@ -982,12 +998,13 @@ export class VirtualList {
 
                     whenRestoreCompleted.resolve(undefined);
                 },
+                key: "restore-scroll-position",
             });
 
             await whenRestoreCompleted;
             // check position again, on Chromium scrollTop can be stale
-            if (DeviceInfo.isChromium && (shouldResync || iteration < 2 ))
-                await this.restoreScrollPosition(renderTime, iteration+1);
+            // if (DeviceInfo.isChromium && (shouldResync || iteration < 2 ))
+            //     await this.restoreScrollPosition(renderTime, iteration+1);
 
             return;
         }

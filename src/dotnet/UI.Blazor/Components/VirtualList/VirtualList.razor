@@ -63,14 +63,9 @@
         </RenderAtDepth>
     </div>
 
-    <div @key="@VirtualListSpecialKeys.EndAnchor"
-         class="c-end-anchor">
-        &nbsp;
-    </div>
-
-    <div @key="@VirtualListSpecialKeys.EndSpacer"
-         class="c-spacer-end"
-         style="height: @(endSpacerSize)px">
+    <div @key="@VirtualListSpecialKeys.Spacer"
+         class="c-spacer-start"
+         style="height: @(spacerSize)px">
         <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
@@ -83,9 +78,15 @@
         }
     </ul>
 
-    <div @key="@VirtualListSpecialKeys.Spacer"
-         class="c-spacer-start"
-         style="height: @(spacerSize)px">
+    <div @key="@VirtualListSpecialKeys.EndSpacer"
+         class="c-spacer-end"
+         style="height: @(endSpacerSize)px">
         <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
+
+    <div @key="@VirtualListSpecialKeys.EndAnchor"
+         class="c-end-anchor">
+        &nbsp;
+    </div>
+
 </div>

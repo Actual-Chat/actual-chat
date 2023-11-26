@@ -213,7 +213,7 @@
     }
 
     private ValueTask InvokeClear()
-        => JSRef.InvokeVoidAsync("clear");
+        => JSRef?.InvokeVoidAsync("clear") ?? ValueTask.CompletedTask;
 
     public sealed class ResetIntent : IAsyncDisposable {
         private readonly Func<ValueTask> _confirm;

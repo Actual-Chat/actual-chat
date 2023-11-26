@@ -377,7 +377,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     {
         var pChatId = new ChatId(chatId, ParseOrNone.Option);
         var options = new ComputedState<Range<long>>.Options {
-            UpdateDelayer = FixedDelayer.Instant,
+            UpdateDelayer = FixedDelayer.ZeroUnsafe,
             InitialValue = default,
             Category = StateCategories.Get(GetType(), nameof(CreateChatIdRangeState)),
         };

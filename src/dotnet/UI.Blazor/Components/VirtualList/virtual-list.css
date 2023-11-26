@@ -8,7 +8,7 @@
     /*animation-name: scroller-overflow-hack;*/
     animation-fill-mode: forwards;
     animation-duration: 1ms;
-    @apply flex flex-nowrap flex-col-reverse items-stretch content-start justify-start;
+    @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     overflow-anchor: none;
 }
 
@@ -31,6 +31,7 @@
 .virtual-list > .c-end-anchor {
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     @apply min-h-22 md:min-h-1;
+    line-height: 0.25rem;
     overflow-anchor: none;
 }
 
@@ -41,7 +42,7 @@
 }
 
 .virtual-list > .c-spacer-start {
-    @apply flex flex-nowrap flex-col-reverse flex-none items-stretch content-start justify-start;
+    @apply flex flex-nowrap flex-col flex-none items-stretch content-start justify-start;
     @apply overflow-y-hidden;
     overflow-anchor: none;
 }

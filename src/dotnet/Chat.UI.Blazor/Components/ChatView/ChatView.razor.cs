@@ -282,6 +282,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (lastOwnItem != null && lastOwnItem.Flags.HasFlag(ChatMessageFlags.Unread)) {
                 var lastOwnEntryLid = lastOwnItem.Entry.LocalId;
                 lastReadEntryLid = lastOwnEntryLid;
+                lastAuthorEntryLid = lastOwnEntryLid;
                 if (LastAuthorTextEntryLidState.Value.EntryLid < lastOwnEntryLid)
                     LastAuthorTextEntryLidState.Value = (authorId, lastOwnEntryLid);
                 if (ReadPositionState.Value.EntryLid < lastOwnEntryLid)
