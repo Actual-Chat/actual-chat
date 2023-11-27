@@ -438,16 +438,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             (true, true) => new Range<long>(secondLayer.GetTile(chatIdRange.End - MinLoadLimit).Start,
                 chatIdRange.End + minTileSize),
             (true, false) when
-                Math.Abs(oldData.Tiles[^1].Items[^1].Entry.LocalId - chatIdRange.End) <= minTileSize // reduce range when new messages were added
+                Math.Abs(oldData.Tiles[^1].Items[^1].Entry.LocalId - chatIdRange.End) <= minTileSize // Reduce the range when new messages were added
                 => new Range<long>(secondLayer.GetTile(
-                            oldData.Tiles.SelectMany(t => t.Items)
-                                .Reverse()
-                                .Skip((int)MinLoadLimit * 2)
-                                .FirstOrDefault()
-                                ?.Entry.LocalId
-                            ?? oldData.Tiles[0].Items[0].Entry.LocalId
-                        )
-                        .Start,
+                        oldData.Tiles.SelectMany(t => t.Items)
+                            .Reverse()
+                            .Skip((int)MinLoadLimit * 2)
+                            .FirstOrDefault()
+                            ?.Entry.LocalId
+                        ?? oldData.Tiles[0].Items[0].Entry.LocalId
+                    ).Start,
                     chatIdRange.End + minTileSize),
             (true, false) => new Range<long>(oldData.Tiles[0].Items[0].Entry.LocalId,
                 oldData.Tiles[^1].Items[^1].Entry.LocalId),
