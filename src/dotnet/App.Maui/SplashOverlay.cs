@@ -77,9 +77,9 @@ public class SplashOverlay : Grid
         var steps = totalDuration / interval;
         for (int i = 1; i <= steps; i++) {
             var stopAt = startedAt + (i * interval);
-            await clock.Delay(stopAt).ConfigureAwait(true);
             if (!uiAction(i / steps))
                 return;
+            await clock.Delay(stopAt).ConfigureAwait(true);
         }
     }
 }
