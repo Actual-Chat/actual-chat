@@ -4,7 +4,7 @@ namespace ActualChat.App.Maui;
 
 public class SplashOverlay : Grid
 {
-    private static readonly TimeSpan ExpectedRenderDuration = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan ExpectedRenderDuration = TimeSpan.FromSeconds(1.5);
     private static readonly TimeSpan FadeDuration = TimeSpan.FromSeconds(0.5);
     private static readonly double RenderPart = ExpectedRenderDuration / (ExpectedRenderDuration + FadeDuration);
     private static readonly double FadePart = 1 - RenderPart;
