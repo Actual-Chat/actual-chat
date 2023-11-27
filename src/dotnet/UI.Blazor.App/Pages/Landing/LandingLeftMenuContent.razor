@@ -92,7 +92,7 @@
 
     private void NavigateTo(string url) {
         Owner.Close();
-        History.NavigateTo(url);
+        _ = History.NavigateTo(url);
     }
 
     private Task SignIn()

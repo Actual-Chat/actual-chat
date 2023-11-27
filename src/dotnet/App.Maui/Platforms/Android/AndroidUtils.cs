@@ -1,45 +1,38 @@
 using Android.App;
 using Android.Content;
-using Android.Gms.Common.Util;
 using Android.Gms.Common.Util.Concurrent;
 using Android.Graphics;
 using Android.Util;
 using Firebase.Messaging;
 using Java.Lang;
 using Java.Util.Concurrent;
+using Application = Android.App.Application;
 using JavaTimeoutException = Java.Util.Concurrent.TimeoutException;
 
 namespace ActualChat.App.Maui;
 
-public class FirebaseMessagingUtils(Context context)
+public static class AndroidUtils
 {
     private const int ImageDownloadTimeoutSeconds = 5;
     private const string Tag = Firebase.Messaging.Constants.Tag;
     private const string ThreadNetworkIo = "Firebase-Messaging-Network-Io";
 
-    private readonly Context _context = context ?? throw new ArgumentNullException(nameof(context));
-
-    public bool IsAppForeground()
+    public static bool? IsAppForeground()
     {
         // port from https://github.com/firebase/firebase-android-sdk/blob/c51a44f6e55d88223c81d6cc5d9bfd11c05b530c/firebase-messaging/src/main/java/com/google/firebase/messaging/DisplayNotification.java#L60
-        var keyguardManager = (KeyguardManager)_context.GetSystemService(Context.KeyguardService)!;
+        var applicationContext = Application.Context;
+        if (applicationContext.GetSystemService(Context.KeyguardService) is not KeyguardManager keyguardManager)
+            return null;
+        if (applicationContext.GetSystemService(Context.ActivityService) is not ActivityManager activityManager)
+            return null;
+
         if (keyguardManager.IsKeyguardLocked)
             return false; // Screen is off or lock screen is showing
+
         // Screen is on and unlocked, now check if the process is in the foreground
 
-        if (!PlatformVersion.IsAtLeastLollipop) {
-            // Before L the process has IMPORTANCE_FOREGROUND while it executes BroadcastReceivers.
-            // As soon as the service is started the BroadcastReceiver should stop.
-            // UNFORTUNATELY the system might not have had the time to downgrade the process
-            // (this is happening consistently in JellyBean).
-            // With SystemClock.sleep(10) we tell the system to give a little bit more of CPU
-            // to the main thread (this code is executing on a secondary thread) allowing the
-            // BroadcastReceiver to exit the onReceive() method and downgrade the process priority.
-            Android.OS.SystemClock.Sleep(10);
-        }
         int pid = Android.OS.Process.MyPid();
-        ActivityManager am = (ActivityManager)_context.GetSystemService(Context.ActivityService)!;
-        var appProcesses = am.RunningAppProcesses;
+        var appProcesses = activityManager.RunningAppProcesses;
         if (appProcesses != null) {
             foreach (var process in appProcesses) {
                 if (process.Pid == pid)

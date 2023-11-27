@@ -17,7 +17,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     private const int ImageCacheSize = 5;
 
     private static readonly ThreadSafeLruCache<string, Bitmap?> _imagesCache = new (ImageCacheSize);
-    private static FirebaseMessagingUtils? _utils;
+    private static ILogger? _log;
     /**
     * Request code used by display notification pending intents.
     *
@@ -33,13 +33,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
     private static readonly AtomicInteger _requestCodeProvider =
         new((int)Android.OS.SystemClock.ElapsedRealtime());
 
-    private ILogger Log { get; set; } = NullLogger.Instance;
-
-    public override void OnCreate()
-    {
-        _utils ??= new FirebaseMessagingUtils(ApplicationContext!);
-        Log = AppServices.LogFor(GetType());
-    }
+    private static ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger<FirebaseMessagingService>();
 
     public override void OnNewToken(string token)
     {
@@ -78,7 +72,7 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
         if (title.IsNullOrEmpty() || text.IsNullOrEmpty())
             return;
 
-        if (_utils!.IsAppForeground()) {
+        if (AndroidUtils.IsAppForeground() ?? false) {
             data.TryGetValue(Constants.Notification.MessageDataKeys.ChatId, out var sChatId);
             var chatId = new ChatId(sChatId, ParseOrNone.Option);
             if (!chatId.IsNone && TryGetScopedServices(out var scopedServices)) {
@@ -147,8 +141,8 @@ public class FirebaseMessagingService : Firebase.Messaging.FirebaseMessagingServ
 
     private static Bitmap? DownloadImage(string imageUrl)
     {
-        var imageDownload = FirebaseMessagingUtils.StartImageDownloadInBackground(imageUrl.ToUri());
-        var largeImage = FirebaseMessagingUtils.WaitForAndApplyImageDownload(imageDownload);
+        var imageDownload = AndroidUtils.StartImageDownloadInBackground(imageUrl.ToUri());
+        var largeImage = AndroidUtils.WaitForAndApplyImageDownload(imageDownload);
         return largeImage;
     }
 }

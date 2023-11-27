@@ -101,7 +101,7 @@ public partial class History
 
     private void EndSave(ref HistoryItem item)
     {
-        if (ReplaceItem(ref item, out var _)) {
+        if (ReplaceItem(ref item, out _)) {
             var itemCopy = item;
             _saveRegion.ExitAction = () => _ = AddHistoryEntry(itemCopy, true);
             DebugLog?.LogDebug("EndSave: +AddHistoryEntry({Item})", itemCopy.ToString());
