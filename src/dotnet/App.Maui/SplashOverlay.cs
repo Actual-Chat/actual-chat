@@ -4,9 +4,10 @@ namespace ActualChat.App.Maui;
 
 public class SplashOverlay : Grid
 {
-    private const double RenderPart = 0.8;
-    private const double FadePart = 1 - RenderPart;
-    private static readonly TimeSpan ExpectedRenderDuration = TimeSpan.FromSeconds(1.5);
+    private static readonly TimeSpan ExpectedRenderDuration = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan FadeDuration = TimeSpan.FromSeconds(0.5);
+    private static readonly double RenderPart = ExpectedRenderDuration / (ExpectedRenderDuration + FadeDuration);
+    private static readonly double FadePart = 1 - RenderPart;
     private static readonly TimeSpan SplashTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan UpdateInterval = TimeSpan.FromSeconds(0.05);
 
@@ -48,7 +49,8 @@ public class SplashOverlay : Grid
                         return true;
                     })
                 .ConfigureAwait(true);
-            await LoadingUI.WhenAppRendered.WaitAsync(SplashTimeout - ExpectedRenderDuration).ConfigureAwait(true);
+            if (!LoadingUI.WhenAppRendered.IsCompleted)
+                await LoadingUI.WhenAppRendered.WaitAsync(SplashTimeout - ExpectedRenderDuration).ConfigureAwait(true);
             await UpdateLoop(TimeSpan.FromSeconds(0.5),
                     UpdateInterval,
                     progress => {
