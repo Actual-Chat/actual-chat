@@ -116,7 +116,7 @@
 
         _bubble = null;
         var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
-        await _jsRef.InvokeVoidAsync("restartBubbles", CancellationToken.None, readBubbles);
+        await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, readBubbles);
         StateHasChanged();
     }
 
