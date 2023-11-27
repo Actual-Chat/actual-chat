@@ -11,7 +11,7 @@ public sealed partial record UserBubbleSettings : IHasOrigin
     [DataMember, MemoryPackOrder(0)] public ApiArray<string> ReadBubbles { get; init; }
     [DataMember, MemoryPackOrder(1)] public string Origin { get; init; } = "";
 
-    public UserBubbleSettings WithReadBubbles(params string[] bubbleRefs)
+    public UserBubbleSettings WithRead(params string[] bubbleRefs)
     {
         if (bubbleRefs.Length == 0)
             return this;
@@ -25,6 +25,6 @@ public sealed partial record UserBubbleSettings : IHasOrigin
         return this with { ReadBubbles = readBubbles };
     }
 
-    public UserBubbleSettings RestartBubbles()
+    public UserBubbleSettings WithAllUnread()
         => this with { ReadBubbles = ApiArray<string>.Empty };
 }

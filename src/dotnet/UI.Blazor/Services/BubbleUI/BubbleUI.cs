@@ -58,9 +58,9 @@ public sealed class BubbleUI : IDisposable, IHasAcceptor<BubbleHost>
     public void UpdateSettings(UserBubbleSettings value)
         => _settings.Value = value;
 
-    public async Task RestartBubbles() {
-        UpdateSettings(Settings.Value.RestartBubbles());
+    public async Task ResetSettings() {
         await WhenReady.ConfigureAwait(true);
-        await Host.RestartBubbles().ConfigureAwait(true);
+        UpdateSettings(Settings.Value.WithAllUnread());
+        await Host.ResetBubbles().ConfigureAwait(false);
     }
 }
