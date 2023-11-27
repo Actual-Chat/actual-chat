@@ -4,6 +4,12 @@ namespace ActualChat.App.Maui;
 
 public class SplashOverlay : Grid
 {
+    private const double RenderPart = 0.8;
+    private const double FadePart = 1 - RenderPart;
+    private static readonly TimeSpan ExpectedRenderDuration = TimeSpan.FromSeconds(1.5);
+    private static readonly TimeSpan SplashTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan UpdateInterval = TimeSpan.FromSeconds(0.05);
+
     public SplashOverlay()
     {
         var progressBar = new ProgressBar {
@@ -32,27 +38,31 @@ public class SplashOverlay : Grid
     private async Task AnimateSplash(ProgressBar progressBar)
     {
         try {
-            var fadePct = 0.2;
-            await UpdateLoop(TimeSpan.FromSeconds(1.5),
-                    TimeSpan.FromSeconds(0.1),
+            await UpdateLoop(ExpectedRenderDuration,
+                    UpdateInterval,
                     progress => {
                         if (LoadingUI.WhenAppRendered.IsCompleted)
                             return false;
 
-                        progressBar.Progress = progress * (1 - fadePct);
+                        progressBar.Progress = progress * RenderPart;
                         return true;
                     })
                 .ConfigureAwait(true);
-            await LoadingUI.WhenAppRendered.ConfigureAwait(true);
+            await LoadingUI.WhenAppRendered.WaitAsync(SplashTimeout - ExpectedRenderDuration).ConfigureAwait(true);
             await UpdateLoop(TimeSpan.FromSeconds(0.5),
-                    TimeSpan.FromSeconds(0.05),
+                    UpdateInterval,
                     progress => {
-                        progressBar.Progress = (progress * fadePct) + (1 - fadePct);
-                        Opacity = 1 - progress;
+                        progressBar.Progress = (progress * FadePart) + RenderPart;
+                        // Opacity = 1 - progress;
                         return true;
                     })
                 .ConfigureAwait(true);
             progressBar.Progress = 1;
+            // Opacity = 0;
+        }
+        catch(OperationCanceledException) { }
+        catch (Exception e) {
+            DefaultLog.LogCritical(e, "Failed to show splash screen");
         }
         finally {
             (Parent as Layout)!.Remove(this);
