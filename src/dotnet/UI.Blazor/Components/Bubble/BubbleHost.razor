@@ -110,12 +110,11 @@
     }
 
     private async void OnOwnAccountChanged(AccountFull account) {
-        // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-        if (_jsRef == null)
-            return;
-
         _bubble = null;
+        await BubbleUI.WhenReadyToShowBubbles();
         var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
+        if (ReferenceEquals(_jsRef, null))
+            return;
         await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, readBubbles);
         StateHasChanged();
     }
