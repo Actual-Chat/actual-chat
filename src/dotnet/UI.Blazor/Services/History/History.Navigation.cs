@@ -70,9 +70,9 @@ public partial class History
             backItem = GetItemById(backItem.BackItemId);
         // Or generating one
         backItem ??= currentItem.GenerateBackItem();
-
         if (backItem == null)
             return false; // No way to step back: can't neither get nor generate the back step
+
         if (currentItem.BackItemId == backItem.Id) {
             // History back step is the right one
             await NavigateBack().ConfigureAwait(false);
