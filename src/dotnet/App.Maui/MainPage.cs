@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.Controls.PlatformConfiguration;
 using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
 
@@ -18,7 +19,10 @@ public class MainPage : ContentPage
     }
 
     public void RecreateWebView()
-        => Content = new MauiWebView().BlazorWebView;
+        => Content = new Grid {
+            new SplashOverlay(),
+            new MauiWebView().BlazorWebView,
+        };
 
     public void Reload()
     {

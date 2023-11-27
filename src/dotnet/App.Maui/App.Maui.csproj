@@ -291,6 +291,7 @@
 
     <!-- Images: none -->
     <MauiImage Remove="Resources\Images\**" />
+    <MauiImage Include="Resources\Splash\splashscreen.svg" />
     <MauiXaml Remove="Resources\Images\**" />
     <EmbeddedResource Remove="Resources\Images\**" />
 
