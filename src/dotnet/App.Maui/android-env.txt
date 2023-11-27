@@ -1,2 +1,2 @@
 DOTNET_SYSTEM_NET_DISABLEIPV6=1
-MONO_GC_PARAMS=bridge-implementation=tarjan,major=marksweep-c‌​onc,nursery-size=2m
+MONO_GC_PARAMS=bridge-implementation=tarjan,bridge-require-precise-merge,major=marksweep-conc,nursery-size=2m,soft-heap-limit=512m

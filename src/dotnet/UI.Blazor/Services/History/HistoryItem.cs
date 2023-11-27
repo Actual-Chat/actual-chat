@@ -18,8 +18,6 @@ public sealed record HistoryItem(
     public int BackStepCount => States.Values.Sum(s => s.BackStepCount);
     public bool HasBackSteps => States.Values.Any(s => s.BackStepCount > 0);
 
-    public HistoryItem? BackItem => History[BackItemId];
-
     public HistoryState? this[Type stateType]
         => States.GetValueOrDefault(stateType);
 

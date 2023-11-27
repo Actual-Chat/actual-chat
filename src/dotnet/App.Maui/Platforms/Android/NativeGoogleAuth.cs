@@ -44,12 +44,6 @@ public sealed class NativeGoogleAuth
         AndroidActivityResultHandlers.Register(OnActivityResult);
     }
 
-    public void Dispose()
-    {
-        AndroidActivityResultHandlers.Unregister(OnActivityResult);
-        _googleSignInClient.Dispose();
-    }
-
     public bool IsAvailable()
     {
         var statusCode = GoogleApiAvailability.Instance.IsGooglePlayServicesAvailable(Platform.AppContext);

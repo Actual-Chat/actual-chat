@@ -29,6 +29,7 @@ public partial class History
     [JSInvokable]
     public async Task NavigateTo(string uri, bool mustReplace = false, bool force = false, bool addInFront = false)
     {
+        Dispatcher.AssertAccess();
         await WhenNavigationCompletedOrTimeout().ConfigureAwait(true);
 
         var fixedUri = new LocalUrl(uri).Value;
@@ -54,6 +55,40 @@ public partial class History
             return itemId;
         });
         await entry.WhenCompleted.ConfigureAwait(false);
+    }
+
+    public async Task<bool> TryStepBack()
+    {
+        Dispatcher.AssertAccess();
+        var currentItem = _currentItem;
+        if (!currentItem.HasBackSteps)
+            return false;
+
+        var backItem = GetItemById(currentItem.BackItemId);
+        // Looking for a back item with the smaller BackStepCount
+        while (backItem != null && backItem.CompareBackStepCount(currentItem) >= 0)
+            backItem = GetItemById(backItem.BackItemId);
+        // Or generating one
+        backItem ??= currentItem.GenerateBackItem();
+
+        if (backItem == null)
+            return false; // No way to step back: can't neither get nor generate the back step
+        if (currentItem.BackItemId == backItem.Id) {
+            // History back step is the right one
+            await NavigateBack().ConfigureAwait(false);
+            return true;
+        }
+
+        // Back item is either found or generated
+        Log.LogInformation("TryStepBack: 'back' item is a generated one");
+        RegisterItem(backItem);
+        RegisterCurrentItem(currentItem with { BackItemId = backItem.Id });
+        Nav.NavigateTo(backItem.Uri, new NavigationOptions() {
+            ForceLoad = false,
+            HistoryEntryState = ItemIdFormatter.Format(backItem.Id),
+            ReplaceHistoryEntry = true,
+        });
+        return true;
     }
 
     public ValueTask ForceReload(string reason, string url, bool mustReplace = true)

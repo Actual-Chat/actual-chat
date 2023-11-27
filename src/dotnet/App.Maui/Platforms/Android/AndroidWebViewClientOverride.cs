@@ -1,4 +1,3 @@
-using Android.Views;
 using Android.Webkit;
 using WebView = Android.Webkit.WebView;
 
@@ -17,9 +16,10 @@ public class AndroidWebViewClientOverride(
     private WebViewClient Original { get; } = original;
     private AndroidContentDownloader ContentDownloader { get; } = contentDownloader;
 
+#pragma warning disable CA2215
     protected override void Dispose(bool disposing)
+#pragma warning restore CA2215
     {
-        base.Dispose(disposing); // Just to suppress warning
         var original = Original;
         if (disposing && original.IsNotNull())
             original.Dispose();

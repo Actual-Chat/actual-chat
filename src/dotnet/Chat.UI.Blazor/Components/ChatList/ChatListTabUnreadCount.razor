@@ -36,7 +36,7 @@
 
     private async Task OnUnreadBadgeClick() {
         var settings = ChatListUI.Settings.Value with { FilterId = ChatListFilter.Id };
-        var list = await ChatListUI.ListAll(settings).ConfigureAwait(false);
+        var list = await ChatListUI.ListAll(settings).ConfigureAwait(true);
         var firstUnreadChat = list.FirstOrDefault(c => c.UnreadCount > 0);
         if (firstUnreadChat == null || firstUnreadChat.Id == ChatUI.SelectedChatId.Value)
             return;

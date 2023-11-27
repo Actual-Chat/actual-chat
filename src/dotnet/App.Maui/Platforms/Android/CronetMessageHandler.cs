@@ -24,9 +24,10 @@ public class CronetMessageHandler(IExecutorService executor) : HttpMessageHandle
 
     private IExecutorService Executor { get; } = executor;
 
+#pragma warning disable CA2215
     protected override void Dispose(bool disposing)
+#pragma warning restore CA2215
     {
-        base.Dispose(disposing); // Just to suppress warning
         if (disposing)
             _cronetEngine.Dispose();
     }
