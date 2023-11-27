@@ -1,5 +1,10 @@
 @using ActualChat.Chat.UI.Blazor.Module
 
+<TileTopic Topic="Theme"/>
+<Tile Class="theme-tile">
+    <ThemeSettings/>
+</Tile>
+
 <TileTopic Topic="Font"/>
 <Tile>
     <div class="ui-settings">
@@ -9,7 +14,6 @@
 
             <FormBlock>
                 <FormSection
-                    Class="field-transcription-primary-language"
                     For="() => _formModel.UserFontSizeFormId"
                     InputId="@_formModel.UserFontSizeFormId"
                     IsLabelInsideInput="true"
@@ -35,20 +39,15 @@
     </div>
 </Tile>
 
-<TileTopic Topic="Theme"/>
-<Tile Class="theme-tile">
-    <ThemeSettings/>
-</Tile>
-
-<TileTopic Topic="Bubbles"/>
+<TileTopic Topic="Walk-through"/>
 <Button
     Class="btn-w-full add-avatar-btn"
-    Click="@(OnBubblesRestart)">
+    Click="@(OnRestartWalkThrough)">
     <div class="flex min-w-10 items-center justify-center">
         <i class="icon-refresh text-xl text-primary"></i>
     </div>
     <div class="text-primary">
-        Restart help bubbles
+        Restart walk-through
     </div>
 </Button>
 
@@ -90,9 +89,9 @@
         StateHasChanged();
     }
 
-    private async Task OnBubblesRestart() {
-        await BubbleUI.RestartBubbles().ConfigureAwait(true);
-        ToastUI.Show("Bubbles restarted", "icon-checkmark-circle", ToastDismissDelay.Short);
+    private async Task OnRestartWalkThrough() {
+        await BubbleUI.ResetSettings().ConfigureAwait(true);
+        ToastUI.Show("Walk-through tips are back!", "icon-checkmark-circle", ToastDismissDelay.Short);
     }
 
     public sealed class FormModel {

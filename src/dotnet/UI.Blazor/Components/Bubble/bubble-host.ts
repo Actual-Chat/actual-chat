@@ -104,8 +104,8 @@ export class BubbleHost {
         this.showNextBubble();
     }
 
-    public async restartBubbles(readBubbles: string[]): Promise<void> {
-        debugLog?.log(`restartBubbles`);
+    public async resetBubbles(readBubbles: string[]): Promise<void> {
+        debugLog?.log(`resetBubbles`);
 
         while (this.readBubbles.length)
             this.readBubbles.pop();

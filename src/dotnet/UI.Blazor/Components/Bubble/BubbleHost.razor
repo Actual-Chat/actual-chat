@@ -76,7 +76,7 @@
         _bubble = null;
 
         var bubbleRefs = await _jsRef.InvokeAsync<string[]>("skipBubbles", CancellationToken.None);
-        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubbles(bubbleRefs));
+        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithRead(bubbleRefs));
         StateHasChanged();
     }
 
@@ -85,15 +85,15 @@
             return;
 
         var bubbleRef = _bubble.Ref;
-        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithReadBubbles(bubbleRef.ToString()));
+        BubbleUI.UpdateSettings(BubbleUI.Settings.Value.WithRead(bubbleRef.ToString()));
         _bubble = null;
         await _jsRef.InvokeVoidAsync("readBubble", CancellationToken.None, bubbleRef.ToString());
         StateHasChanged();
     }
 
-    public async Task RestartBubbles() {
+    public async Task ResetBubbles() {
         _bubble = null;
-        await _jsRef.InvokeVoidAsync("restartBubbles", CancellationToken.None, Array.Empty<object>());
+        await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, Array.Empty<object>());
         StateHasChanged();
     }
 

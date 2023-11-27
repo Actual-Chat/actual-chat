@@ -24,6 +24,17 @@
             <TileItem>
                 <Icon>
                     <FormRadio
+                        Id="@_formModel.AshThemeFormId"
+                        Value="@GetThemeKey(Theme.Ash)"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.AshThemeFormId" Text="Light, Link Water accent"></Label>
+                </Content>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
                         Id="@_formModel.DarkThemeFormId"
                         Value="@GetThemeKey(Theme.Dark)"/>
                 </Icon>
@@ -35,22 +46,11 @@
             <TileItem>
                 <Icon>
                     <FormRadio
-                        Id="@_formModel.AshThemeFormId"
-                        Value="@GetThemeKey(Theme.Ash)"/>
-                </Icon>
-                <Content>
-                    <Label InputId="@_formModel.AshThemeFormId" Text="Ash"></Label>
-                </Content>
-            </TileItem>
-
-            <TileItem>
-                <Icon>
-                    <FormRadio
                         Id="@_formModel.SystemThemeFormId"
                         Value="@GetThemeKey(null)"/>
                 </Icon>
                 <Content>
-                    <Label InputId="@_formModel.SystemThemeFormId" Text="System"></Label>
+                    <Label InputId="@_formModel.SystemThemeFormId" Text="Match system theme"></Label>
                 </Content>
             </TileItem>
 
