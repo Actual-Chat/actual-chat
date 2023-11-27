@@ -209,7 +209,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var scrollAnchor = isFirstRender && readEntryLid != 0
             ? new NavigationAnchor(readEntryLid)
             : null;
-        var (authorId, lastAuthorEntryLid) = await LastAuthorTextEntryLidState.Use(cancellationToken);
+        var (authorId, lastAuthorEntryLid) = LastAuthorTextEntryLidState.Value;
         if (lastAuthorEntryLid > _lastReadEntryLid) {
             // Scroll to the latest Author's entry - e.g.m when the author submits a new one
             _lastReadEntryLid = lastAuthorEntryLid;
@@ -249,7 +249,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var lastReadEntryLid = _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid;
         var tiles = new List<VirtualListTile<ChatMessage>>();
-        while (true) {
+        for (int i = 0; i < 2; i++) {
             foreach (var idTile in idTiles) {
                 var lastReadEntryLidArg = lastReadEntryLid < idTile.Range.Start
                     ? 0
@@ -287,6 +287,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     LastAuthorTextEntryLidState.Value = (authorId, lastOwnEntryLid);
                 if (ReadPositionState.Value.EntryLid < lastOwnEntryLid)
                     ReadPositionState.Value = new ReadPosition(Chat.Id, lastOwnEntryLid);
+                tiles.Clear();
             }
             else
                 break;
@@ -304,7 +305,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                     RequestedEndExpansion = null,
                 };
         }
-
 
         var scrollToKey = (string?)null;
         var highlightEntryLid = scrollAnchor != null && scrollAnchor == navigationAnchor

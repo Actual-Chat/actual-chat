@@ -14,7 +14,7 @@
 @if (isVisible) {
     <RenderIntoSlot Name="PermissionBanner">
         <Banner
-            @key="GetType()"
+            @key="@GetType()"
             IsVisible="@isVisible"
             Severity="BannerSeverity.Info"
             ShowDismissButton="true"

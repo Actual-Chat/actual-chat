@@ -382,6 +382,6 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
             Category = StateCategories.Get(GetType(), nameof(CreateChatIdRangeState)),
         };
         return Task.FromResult(StateFactory.NewComputed(options, (s, ct) =>
-            Chats.GetIdRange(Session, pChatId, ChatEntryKind.Text, cancellationToken)));
+            Chats.GetIdRange(Session, pChatId, ChatEntryKind.Text, ct)));
     }
 }
