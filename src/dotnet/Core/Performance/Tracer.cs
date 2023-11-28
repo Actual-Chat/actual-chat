@@ -55,7 +55,7 @@ public sealed class Tracer
         => Writer?.Invoke(point);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Point(string label)
+    public void Point([CallerMemberName] string label = "")
         => Writer?.Invoke(new TracePoint(this, label, Elapsed));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

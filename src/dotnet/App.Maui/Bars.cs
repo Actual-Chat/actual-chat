@@ -2,12 +2,13 @@ namespace ActualChat.App.Maui;
 
 public class Bars
 {
+    public static readonly Bars Instance =
 #if IOS
-    public static readonly IosBars Instance = new IosBars();
+     new IosBars();
 #elif ANDROID
-    public static readonly AndroidBars Instance = new AndroidBars();
+    new AndroidBars();
 #else
-    public static readonly Bars Instance = new Bars();
+    new Bars();
 #endif
 
     public virtual int GetStatusBarHeight()

@@ -1,5 +1,4 @@
 using Foundation;
-using UIKit;
 
 namespace ActualChat.App.Maui;
 
