@@ -51,7 +51,7 @@ public class SplashOverlay : Grid
                 .ConfigureAwait(true);
             if (!LoadingUI.WhenAppRendered.IsCompleted)
                 await LoadingUI.WhenAppRendered.WaitAsync(SplashTimeout - ExpectedRenderDuration).ConfigureAwait(true);
-            await UpdateLoop(TimeSpan.FromSeconds(0.5),
+            await UpdateLoop(FadeDuration,
                     UpdateInterval,
                     progress => {
                         progressBar.Progress = (progress * FadePart) + RenderPart;
