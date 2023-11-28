@@ -14,6 +14,9 @@ public interface IPlaces : IComputeService
 
     [CommandHandler]
     Task OnJoin(Places_Join command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnInvite(Places_Invite command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -31,4 +34,12 @@ public sealed partial record Places_Join(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(2)] Symbol AvatarId = default
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Places_Invite(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(2)] UserId[] UserIds
 ) : ISessionCommand<Unit>;
