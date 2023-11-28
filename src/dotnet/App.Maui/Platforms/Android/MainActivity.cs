@@ -29,9 +29,14 @@ namespace ActualChat.App.Maui;
     // See:
     // - https://stackoverflow.com/questions/25773928/setting-launchmode-singletask-vs-setting-activity-launchmode-singletop
     LaunchMode = LaunchMode.SingleTask,
+    DocumentLaunchMode = DocumentLaunchMode.None,
+    HardwareAccelerated = true,
     ConfigurationChanges =
-        ConfigChanges.ScreenSize | ConfigChanges.Orientation | ConfigChanges.UiMode |
-        ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize | ConfigChanges.Density
+        ConfigChanges.UiMode |
+        ConfigChanges.Density | ConfigChanges.FontScale | ConfigChanges.FontWeightAdjustment |
+        ConfigChanges.ScreenSize |  ConfigChanges.SmallestScreenSize | ConfigChanges.ScreenLayout |
+        ConfigChanges.Orientation | ConfigChanges.LayoutDirection |
+        ConfigChanges.Touchscreen | ConfigChanges.Keyboard | ConfigChanges.KeyboardHidden
     )]
 [IntentFilter(
     new [] { Intent.ActionView },
