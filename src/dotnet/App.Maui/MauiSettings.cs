@@ -13,6 +13,7 @@ public static class MauiSettings
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
     public static readonly ClientKind ClientKind;
+    public static readonly Color SplashBackgroundColor = Color.FromArgb("#0036A3");
 
     static MauiSettings()
     {
