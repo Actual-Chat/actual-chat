@@ -30,9 +30,11 @@
         @foreach (var attachment in _attachments) {
             var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
             @if (attachment.IsSupportedImage()) {
-                <swiper-slide>
+                <swiper-slide lazy="true">
                     <div class="swiper-zoom-container">
-                        <img src="@url" alt=""/>
+                        <img src="@url"
+                             alt=""
+                             loading="lazy"/>
                     </div>
                 </swiper-slide>
             } else if (attachment.IsSupportedVideo()) {
