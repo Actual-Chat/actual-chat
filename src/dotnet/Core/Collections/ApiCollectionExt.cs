@@ -27,7 +27,7 @@ public static class ApiCollectionExt
 
     // That's just a bit more efficient conversion than .Select().ToApiArray()
     public static ApiArray<TResult> ToApiArray<TSource, TResult>(
-        this ICollection<TSource> source,
+        this IReadOnlyCollection<TSource> source,
         Func<TSource, TResult> selector)
     {
         var result = new TResult[source.Count];

@@ -53,7 +53,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         else
             author = dbAuthor.ToModel();
 
-        author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
+        if (!chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
+            author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
         return author;
     }
 
@@ -88,7 +89,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                 return null;
         }
 
-        author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
+        if (!chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
+            author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
         return author;
     }
 
