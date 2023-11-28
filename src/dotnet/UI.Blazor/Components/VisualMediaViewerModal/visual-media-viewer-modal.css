@@ -1,7 +1,7 @@
 .image-viewer-modal.modal-frame {
     @apply relative;
     @apply flex-1 flex-y justify-center items-center;
-    @apply w-full h-screen min-h-screen;
+    @apply w-full h-screen min-h-screen min-h-[100dvh];
     @apply p-0;
     @apply overflow-hidden;
     @apply rounded-none;
@@ -9,12 +9,6 @@
     @apply bg-transparent;
     @apply backdrop-blur-sm;
     @apply backdrop-brightness-30;
-}
-
-@supports (-webkit-touch-callout: none) {
-    .image-viewer-modal.modal-frame {
-        min-height: -webkit-fill-available;
-    }
 }
 
 /* Image viewer header */
