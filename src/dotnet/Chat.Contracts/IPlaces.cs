@@ -7,6 +7,9 @@ public interface IPlaces : IComputeService
     [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]
