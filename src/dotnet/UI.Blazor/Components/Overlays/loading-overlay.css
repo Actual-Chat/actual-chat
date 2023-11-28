@@ -16,6 +16,7 @@
     @apply absolute inset-0 z-[1900] overflow-hidden;
     background-color: var(--loading-overlay-bg-color);
     @apply transition-opacity ease-in duration-250;
+    will-change: custom;
 }
 
 /* The background of a square */
@@ -39,6 +40,7 @@
     @apply animate-swipe-by;
     content: '';
     background: linear-gradient(to left, transparent 0%, #fff 40%, #fff 60%, transparent 100%);
+    will-change: custom;
 }
 
 /* Logo */
@@ -57,4 +59,5 @@
     @apply bg-transparent;
     box-shadow: 0 0 0 100vw var(--loading-overlay-bg-color);
     animation: rotate-4 8s infinite;
+    will-change: custom;
 }

@@ -83,7 +83,7 @@
     private static object AttachmentListKey { get; } = new();
     private static object MarkupEditorKey { get; } = new();
 
-    private readonly AsyncLock _postLock = AsyncLock.New(LockReentryMode.CheckedPass);
+    private readonly AsyncLock _postLock = new(LockReentryMode.CheckedFail);
     private bool Autofocus => ScreenSize.IsWide();
     private DotNetObjectReference<IChatMessageEditorBackend> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -171,7 +171,9 @@
     // Private methods
 
     private async Task Post(string? text = null) {
-        using var __ = await _postLock.Lock();
+        using var releaser = await _postLock.Lock();
+        releaser.MarkLockedLocally();
+
         text ??= await MarkupEditorRef.GetText();
         text = text.Trim();
         if (AttachmentListRef.IsUploading) {

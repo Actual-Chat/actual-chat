@@ -14,7 +14,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
 
-    private readonly AsyncLock _stateLock = AsyncLock.New(LockReentryMode.Unchecked);
+    private readonly AsyncLock _stateLock = new(LockReentryMode.CheckedPass);
     private readonly IMutableState<AudioRecorderState> _state;
     private Activity? _recordingActivity;
     private IJSObjectReference _jsRef = null!;
@@ -58,7 +58,9 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
 
     protected override async Task DisposeAsyncCore()
     {
-        using var _ = await _stateLock.Lock().ConfigureAwait(false);
+        using var releaser = await _stateLock.Lock().ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+
         await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(false);
         _blazorRef.DisposeSilently();
         _jsRef = null!;
@@ -77,7 +79,9 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
         var audioInitializer = Services.GetRequiredService<AudioInitializer>();
         await audioInitializer.WhenInitialized.ConfigureAwait(false);
 
-        using var _ = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var releaser = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+
         var state = _state.Value;
         if (state.ChatId == chatId) {
             if (state.IsRecording)
@@ -128,7 +132,9 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public async Task<bool> StopRecording(CancellationToken cancellationToken = default)
     {
         await WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
-        using var _ = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var releaser = await _stateLock.Lock(cancellationToken).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+
         return await StopRecordingUnsafe().ConfigureAwait(false);
     }
 

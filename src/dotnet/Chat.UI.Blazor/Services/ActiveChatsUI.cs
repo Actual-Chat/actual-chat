@@ -8,7 +8,7 @@ public class ActiveChatsUI
     public const int MaxActiveChatCount = 3;
     public static readonly TimeSpan MaxContinueListeningRecency = TimeSpan.FromMinutes(5);
 
-    private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.CheckedPass);
+    private readonly AsyncLock _updateLock = new(LockReentryMode.CheckedFail);
     private readonly IStoredState<ApiArray<ActiveChat>> _activeChats;
     private ILogger? _log;
 
@@ -41,14 +41,17 @@ public class ActiveChatsUI
         Func<ApiArray<ActiveChat>, ApiArray<ActiveChat>> updater,
         CancellationToken cancellationToken = default)
     {
-        using var _1 = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
-        var originalValue = ActiveChats.Value;
-        var updatedValue = updater.Invoke(originalValue);
-        if (originalValue == updatedValue)
-            return;
+        using (var releaser = await _updateLock.Lock(cancellationToken).ConfigureAwait(false)) {
+            releaser.MarkLockedLocally();
 
-        updatedValue = await FixActiveChats(updatedValue, cancellationToken).ConfigureAwait(false);
-        ActiveChats.Value = updatedValue;
+            var originalValue = ActiveChats.Value;
+            var updatedValue = updater.Invoke(originalValue);
+            if (originalValue == updatedValue)
+                return;
+
+            updatedValue = await FixActiveChats(updatedValue, cancellationToken).ConfigureAwait(false);
+            ActiveChats.Value = updatedValue;
+        }
         _ = UICommander.RunNothing();
     }
 

@@ -10,7 +10,7 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
 
     private static readonly string JSSetCurrentMethod = $"{BlazorUICoreModule.ImportName}.SessionTokens.setCurrent";
 
-    private readonly AsyncLock _asyncLock = AsyncLock.New(LockReentryMode.Unchecked);
+    private readonly AsyncLock _asyncLock = new(LockReentryMode.CheckedFail);
     private volatile SecureToken? _current;
     private Session? _session;
     private ISecureTokens? _secureTokens;
@@ -81,7 +81,9 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
 
     private async ValueTask<SecureToken> GetNew(CancellationToken cancellationToken = default)
     {
-        using var _ = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var releaser = await _asyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+
         var result = _current;
         if (result != null && result.ExpiresAt >= Now + (SecureToken.Lifespan / 2))
             return result;

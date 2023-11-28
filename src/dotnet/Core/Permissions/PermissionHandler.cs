@@ -22,7 +22,7 @@ public abstract class PermissionHandler : WorkerBase
     protected IMomentClock Clock => _clock ??= Services.Clocks().CpuClock;
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    protected AsyncLock AsyncLock { get; } = AsyncLock.New(LockReentryMode.CheckedPass);
+    protected AsyncLock AsyncLock { get; } = new(LockReentryMode.CheckedPass);
     protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
 
     public IState<bool?> Cached => _cached;
@@ -46,11 +46,12 @@ public abstract class PermissionHandler : WorkerBase
         if (_cached.Value == true)
             return true;
 
-        using var _ = await AsyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var releaser = await AsyncLock.Lock(cancellationToken).ConfigureAwait(false);
 
         if (_cached.Value == true)
             return true;
 
+        releaser.MarkLockedLocally();
         if (!DispatcherResolver.WhenReady.IsCompleted)
             await DispatcherResolver.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         return await DispatcherResolver.Dispatcher.InvokeAsync(async () => {
@@ -82,11 +83,12 @@ public abstract class PermissionHandler : WorkerBase
         if (_cached.Value == true)
             return true;
 
-        using var _ = await AsyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var releaser = await AsyncLock.Lock(cancellationToken).ConfigureAwait(false);
 
         if (_cached.Value == true)
             return true;
 
+        releaser.MarkLockedLocally();
         if (!DispatcherResolver.WhenReady.IsCompleted)
             await DispatcherResolver.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
         return await DispatcherResolver.Dispatcher.InvokeAsync(async () => {
@@ -130,7 +132,9 @@ public abstract class PermissionHandler : WorkerBase
         => Set(value, null, cancellationToken);
     protected async ValueTask Set(bool? value, Computed<bool?>? expected = null, CancellationToken cancellationToken = default)
     {
-        using var _ = await AsyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        using var releaser = await AsyncLock.Lock(cancellationToken).ConfigureAwait(false);
+        releaser.MarkLockedLocally();
+
         SetUnsafe(value, expected);
     }
 
