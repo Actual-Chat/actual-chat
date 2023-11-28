@@ -60,7 +60,7 @@
                 @if (attachment.IsSupportedImage()) {
                     var previewUrl = GetPreviewUrl(attachment);
                     <swiper-slide>
-                        <img src="@previewUrl" alt=""/>
+                        <image-skeleton src="@previewUrl"/>
                     </swiper-slide>
                 } else if (attachment.IsSupportedVideo()) {
                     <swiper-slide>
