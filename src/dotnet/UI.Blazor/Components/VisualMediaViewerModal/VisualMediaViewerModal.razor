@@ -63,11 +63,8 @@
                         <img src="@previewUrl" alt=""/>
                     </swiper-slide>
                 } else if (attachment.IsSupportedVideo()) {
-                    var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
                     <swiper-slide>
-                        <video preload="metadata" playsinline>
-                            <source src="@url#t=,5" type="@attachment.Media.ContentType"/>
-                        </video>
+                        <VideoAttachmentThumbnail Attachment="attachment"/>
                     </swiper-slide>
                 }
             }
