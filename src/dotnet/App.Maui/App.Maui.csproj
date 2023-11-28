@@ -291,7 +291,7 @@
     <MauiIcon Include="Resources\AppIcon\appicon.svg" />
 
     <!-- Splash Screen -->
-    <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" Color="#0036A3" />
+    <MauiSplashScreen Include="Resources\Splash\splashscreen.svg" Color="#0036A3" BaseSize="200,200" />
 
     <!-- Images: none -->
     <MauiImage Remove="Resources\Images\**" />
