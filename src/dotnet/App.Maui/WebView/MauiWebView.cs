@@ -34,6 +34,7 @@ public sealed partial class MauiWebView
         Id = Interlocked.Increment(ref _lastId);
         BlazorWebView = new BlazorWebView {
             HostPage = "wwwroot/index.html",
+            BackgroundColor = MauiSettings.SplashBackgroundColor,
         };
         BlazorWebView.BlazorWebViewInitializing += OnInitializing;
         BlazorWebView.BlazorWebViewInitialized += OnInitialized;
