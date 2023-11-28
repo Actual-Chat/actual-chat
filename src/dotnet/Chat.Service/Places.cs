@@ -3,6 +3,7 @@
 public class Places(IServiceProvider services) : IPlaces
 {
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private ICommander Commander { get; } = services.Commander();
 
     public virtual async Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken)
@@ -20,6 +21,9 @@ public class Places(IServiceProvider services) : IPlaces
         };
         return place;
     }
+
+    public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
+        => await Authors.ListUserIds(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
 
     public virtual async Task<Place> OnChange(Places_Change command, CancellationToken cancellationToken)
     {

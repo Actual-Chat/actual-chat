@@ -27,7 +27,7 @@
     }
 
     private void OnInviteMembersClick()
-        => _ = ChatHub.FeedbackUI.AskFeatureRequestFeedback("place-invite", "Invite place members");
+        => _ = ChatHub.ModalUI.Show(new AddMemberModal.Model(_placeId));
 
     private void OnPlaceSettingsClick()
         => _ = ChatHub.ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
