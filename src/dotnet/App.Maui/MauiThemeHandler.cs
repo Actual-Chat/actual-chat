@@ -23,13 +23,23 @@ public class MauiThemeHandler
     public void TryRestoreLastTheme()
     {
         var colors = Preferences.Default.Get<string>(PreferencesKey, "");
-        ApplyColors(colors, null);
+        _ = ApplyColorsAfterSplash(colors, null);
     }
 
     public void OnThemeChanged(ThemeInfo themeInfo)
     {
         Preferences.Default.Set(PreferencesKey, themeInfo.Colors);
-        ApplyColors(themeInfo.Colors, themeInfo.Theme);
+        _ = ApplyColorsAfterSplash(themeInfo.Colors, themeInfo.Theme);
+    }
+
+    private async Task ApplyColorsAfterSplash(string colors, Theme? theme)
+    {
+        if (!LoadingUI.WhenSplashOverlayHidden.IsCompleted) {
+            ApplyColors(MauiSettings.SplashBackgroundColor.ToArgbHex(true), theme);
+            await LoadingUI.WhenSplashOverlayHidden.ConfigureAwait(false);
+        }
+
+        ApplyColors(colors, theme);
     }
 
     private void ApplyColors(string colors, Theme? theme)
@@ -67,12 +77,15 @@ public class MauiThemeHandler
 
         var style = theme switch {
             Theme.Light => StatusBarStyle.DarkContent,
+            Theme.Ash => StatusBarStyle.DarkContent,
             Theme.Dark => StatusBarStyle.LightContent,
             _ => StatusBarStyle.Default,
         };
         StatusBar.SetColor(Color.FromArgb(topBarColor));
         StatusBar.SetStyle(style);
         mainPage.BackgroundColor = Color.FromArgb(bottomBarColor);
+        if (MauiWebView.Current is {} mauiWebView)
+            mauiWebView.BlazorWebView.BackgroundColor = Color.FromArgb(bottomBarColor);
 
         return true;
     }

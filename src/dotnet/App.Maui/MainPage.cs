@@ -13,7 +13,7 @@ public class MainPage : ContentPage
     {
         Interlocked.Exchange(ref _current, this);
         RecreateWebView();
-        BackgroundColor = Color.FromRgb(0x44, 0x44, 0x44);
+        BackgroundColor = MauiSettings.SplashBackgroundColor;
         On<iOS>().SetUseSafeArea(true);
     }
 

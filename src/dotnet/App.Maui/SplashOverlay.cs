@@ -5,7 +5,7 @@ namespace ActualChat.App.Maui;
 public class SplashOverlay : Grid
 {
     private static readonly TimeSpan ExpectedRenderDuration = TimeSpan.FromSeconds(1.5);
-    private static readonly TimeSpan FadeDuration = TimeSpan.FromSeconds(0.25);
+    private static readonly TimeSpan FadeDuration = TimeSpan.FromSeconds(0.15);
     private static readonly double RenderPart = ExpectedRenderDuration / (ExpectedRenderDuration + FadeDuration);
     private static readonly double FadePart = 1 - RenderPart;
     private static readonly TimeSpan SplashTimeout = TimeSpan.FromSeconds(5);
@@ -29,7 +29,6 @@ public class SplashOverlay : Grid
         };
 
         ZIndex = 1;
-        Opacity = 0.99;
         BackgroundColor = MauiSettings.SplashBackgroundColor;
         VerticalOptions = LayoutOptions.Fill;
         HorizontalOptions = LayoutOptions.Fill;
@@ -72,6 +71,7 @@ public class SplashOverlay : Grid
                 .ConfigureAwait(true);
             _progressBar.Progress = 1;
             Opacity = 0;
+            LoadingUI.MarkSplashOverlayHidden();
         }
         catch(OperationCanceledException) { }
         catch (Exception e) {

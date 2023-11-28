@@ -11,11 +11,13 @@ public sealed class LoadingUI
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
     private static readonly TaskCompletionSource _whenViewCreatedSource = new();
     private static readonly TaskCompletionSource _whenAppRenderedSource = new();
+    private static readonly TaskCompletionSource _whenSplashOverlayHiddenSource = new();
 
     public static TimeSpan AppCreationTime { get; private set; }
     public static TimeSpan AppBuildTime { get; private set; }
     public static Task WhenViewCreated => _whenViewCreatedSource.Task;
     public static Task WhenAppRendered => _whenAppRenderedSource.Task;
+    public static Task WhenSplashOverlayHidden => _whenSplashOverlayHiddenSource.Task;
 
     private readonly TaskCompletionSource _whenLoadedSource = new();
     private readonly TaskCompletionSource _whenRenderedSource = new();
@@ -110,4 +112,12 @@ public sealed class LoadingUI
             .AsTask()
             .WithErrorHandler(
                 e => Services.LogFor<LoadingUI>().LogError(e, "An error occurred during RemoveLoadingOverlay call"));
+
+    public static void MarkSplashOverlayHidden()
+    {
+        if (!_whenSplashOverlayHiddenSource.TrySetResult())
+            return;
+
+        StaticTracer.Point();
+    }
 }
