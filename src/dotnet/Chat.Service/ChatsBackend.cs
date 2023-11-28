@@ -1119,9 +1119,11 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (chat == null)
             return AuthorRules.None(chatId);
 
+        var rootChatId = placeChatId.PlaceId.ToRootChatId();
         if (!principalId.IsUser(out var userId) && principalId.IsAuthor(out var authorId)) {
-            var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-            userId = author?.UserId ?? default;
+            var rootAuthorId = new AuthorId(rootChatId, authorId.LocalId, AssumeValid.Option);
+            var rootAuthor = await AuthorsBackend.Get(rootChatId, rootAuthorId, cancellationToken).ConfigureAwait(false);
+            userId = rootAuthor?.UserId ?? default;
         }
 
         if (userId.IsNone)
@@ -1131,7 +1133,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (account == null)
             return AuthorRules.None(chatId);
 
-        var rootChatId = placeChatId.PlaceId.ToRootChatId();
         var rootChatPrincipalId = new PrincipalId(account.Id, AssumeValid.Option);
         var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
         if (chat.IsPublic)

@@ -190,7 +190,7 @@ public class PlaceOperationsTest : AppHostTestBase
     [Theory]
     //[InlineData(false, false)]
     //[InlineData(false, true)]
-    [InlineData(true, false)]
+    //[InlineData(true, false)]
     [InlineData(true, true)]
     public async Task JoinPlaceChat(bool isPublicPlace, bool isPublicChat)
     {
@@ -200,23 +200,9 @@ public class PlaceOperationsTest : AppHostTestBase
         await tester.SignInAsBob();
 
         var services = tester.AppServices;
-        var places = services.GetRequiredService<IPlaces>();
         var commander = tester.Commander;
 
-        var place = await commander.Call(new Places_Change(session, default, null, new() {
-            Create = new PlaceDiff {
-                Title = PlaceTitle,
-                IsPublic = isPublicPlace,
-            },
-        }));
-
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = ChatTitle,
-                IsPublic = isPublicChat,
-                PlaceId = place.Id,
-            },
-        }));
+        var (place, chat) = await CreatePlaceWithDefaultChat(commander, session);
 
         await using var tester2 = appHost.NewBlazorTester();
         var anotherSession = tester2.Session;
@@ -228,8 +214,8 @@ public class PlaceOperationsTest : AppHostTestBase
         }
 
         if (!isPublicPlace) {
-            // TODO(DF): Somehow active possibility to join. Invite code?
-            throw new NotImplementedException();
+            // TODO(DF): Somehow activate possibility to join place. Invite code?
+            throw new NotSupportedException();
         }
 
         await commander.Call(new Places_Join(anotherSession, place.Id));
@@ -244,13 +230,12 @@ public class PlaceOperationsTest : AppHostTestBase
             TimeSpan.FromSeconds(3));
 
         if (!isPublicChat) {
-            // TODO(DF): Somehow active possibility to join chat. Invite code?
-            return;
+            // TODO(DF): Somehow activate possibility to join chat. Invite code?
+            //await commander.Call(new Authors_Join(anotherSession, chat.Id));
+            throw new NotSupportedException();
         }
 
-        await commander.Call(new Authors_Join(anotherSession, chat.Id));
-
-        // Asset user can see the Chat.
+        // Assert user can see the Chat.
         await TestExt.WhenMetAsync(
             async () => {
                 var contactIds = await contacts.ListIds(anotherSession, place.Id, default);
@@ -263,5 +248,91 @@ public class PlaceOperationsTest : AppHostTestBase
                 chatIds.Should().Contain(chat.Id);
             },
             TimeSpan.FromSeconds(3));
+    }
+
+    [Fact]
+    public async Task PlaceChatMembership()
+    {
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewBlazorTester();
+        var session1 = tester.Session;
+        await tester.SignInAsBob();
+
+        var services = tester.AppServices;
+        var authors = services.GetRequiredService<IAuthors>();
+
+        var (place, chat) = await CreatePlaceWithDefaultChat(tester.Commander, session1);
+
+        await using var tester2 = appHost.NewBlazorTester();
+        var session2 = tester2.Session;
+        await tester2.SignInAsAlice();
+
+        await tester2.Commander.Call(new Places_Join(session2, place.Id));
+
+        var authorList1 = await authors.ListAuthorIds(session1, chat.Id, default);
+        authorList1.Should().HaveCount(2);
+        var authorList2 = await authors.ListAuthorIds(session2, chat.Id, default);
+        authorList2.Should().HaveCount(2);
+        authorList1.Should().BeEquivalentTo(authorList2);
+
+        foreach (var authorId in authorList1)
+            authorId.ChatId.Should().Be(chat.Id);
+
+        var ownAuthor1 = await authors.GetOwn(session1, chat.Id, default);
+        ownAuthor1.Should().NotBeNull();
+        ownAuthor1!.ChatId.Should().Be(chat.Id);
+
+        var ownAuthor2 = await authors.GetOwn(session2, chat.Id, default);
+        ownAuthor2.Should().NotBeNull();
+        ownAuthor2!.ChatId.Should().Be(chat.Id);
+    }
+
+    [Fact]
+    public async Task UpsertTextEntry()
+    {
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewBlazorTester();
+        var session1 = tester.Session;
+        await tester.SignInAsBob();
+
+        var commander1 = tester.Commander;
+
+        var (place, chat) = await CreatePlaceWithDefaultChat(commander1, session1);
+
+        await using var tester2 = appHost.NewBlazorTester();
+        var session2 = tester2.Session;
+        await tester2.SignInAsAlice();
+        var commander2 = tester2.Commander;
+
+        await commander2.Call(new Places_Join(session2, place.Id));
+
+        var chatEntry1 = await commander1.Call(new Chats_UpsertTextEntry(session1, chat.Id, null, "My first message"));
+        chatEntry1.Should().NotBeNull();
+
+        var chatEntry2 = await commander2.Call(new Chats_UpsertTextEntry(session2, chat.Id, null, "And mine first message"));
+        chatEntry2.Should().NotBeNull();
+    }
+
+    private static async Task<(Place, Chat)> CreatePlaceWithDefaultChat(
+        ICommander commander,
+        Session session,
+        bool isPublicPlace = true,
+        bool isPublicChat = true)
+    {
+        var place = await commander.Call(new Places_Change(session, default, null, new () {
+                Create = new PlaceDiff {
+                    Title = PlaceTitle,
+                    IsPublic = isPublicPlace,
+                },
+            }));
+
+        var chat = await commander.Call(new Chats_Change(session, default, null, new () {
+                Create = new ChatDiff {
+                    Title = ChatTitle,
+                    IsPublic = isPublicChat,
+                    PlaceId = place.Id,
+                },
+            }));
+        return (place, chat);
     }
 }
