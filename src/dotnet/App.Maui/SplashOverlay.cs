@@ -10,14 +10,22 @@ public class SplashOverlay : Grid
     private static readonly double FadePart = 1 - RenderPart;
     private static readonly TimeSpan SplashTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan UpdateInterval = TimeSpan.FromSeconds(0.05);
+    private readonly ProgressBar _progressBar;
+    private readonly Image _logo;
 
     public SplashOverlay()
     {
-        var progressBar = new ProgressBar {
+        _progressBar = new ProgressBar {
             HorizontalOptions = LayoutOptions.Fill,
             ProgressColor = Colors.White,
             WidthRequest = 200,
-            Margin = new (0,200,0,0),
+        };
+        _logo = new Image {
+            WidthRequest = 200,
+            HeightRequest = 200,
+            VerticalOptions = LayoutOptions.Center,
+            HorizontalOptions = LayoutOptions.Center,
+            Source = "splashscreen.png",
         };
 
         ZIndex = 1;
@@ -25,18 +33,21 @@ public class SplashOverlay : Grid
         BackgroundColor = MauiSettings.SplashBackgroundColor;
         VerticalOptions = LayoutOptions.Fill;
         HorizontalOptions = LayoutOptions.Fill;
-        Add(new Image {
-            WidthRequest = 200,
-            HeightRequest = 200,
-            VerticalOptions = LayoutOptions.Center,
-            HorizontalOptions = LayoutOptions.Center,
-            Source = "splashscreen.png",
-        });
-        Add(progressBar);
-        _ = AnimateSplash(progressBar);
+        Add(_logo);
+        Add(_progressBar);
+        _ = AnimateSplash();
     }
 
-    private async Task AnimateSplash(ProgressBar progressBar)
+    protected override void OnSizeAllocated(double width, double height)
+    {
+        var statusBarHeight = Bars.Instance.GetStatusBarHeight();
+        var bottomBarHeight = Window!.Height - MainPage.Current.Height - statusBarHeight;
+        var offset = (bottomBarHeight - statusBarHeight) / 2;
+        _logo.Margin = new(0, offset, 0, 0);
+        _progressBar.Margin = new(0, 200 + offset, 0, 0);
+    }
+
+    private async Task AnimateSplash()
     {
         try {
             await UpdateLoop(ExpectedRenderDuration,
@@ -45,7 +56,7 @@ public class SplashOverlay : Grid
                         if (LoadingUI.WhenAppRendered.IsCompleted)
                             return false;
 
-                        progressBar.Progress = progress * RenderPart;
+                        _progressBar.Progress = progress * RenderPart;
                         return true;
                     })
                 .ConfigureAwait(true);
@@ -54,12 +65,12 @@ public class SplashOverlay : Grid
             await UpdateLoop(FadeDuration,
                     UpdateInterval,
                     progress => {
-                        progressBar.Progress = (progress * FadePart) + RenderPart;
+                        _progressBar.Progress = (progress * FadePart) + RenderPart;
                         Opacity = 1 - progress;
                         return true;
                     })
                 .ConfigureAwait(true);
-            progressBar.Progress = 1;
+            _progressBar.Progress = 1;
             Opacity = 0;
         }
         catch(OperationCanceledException) { }
