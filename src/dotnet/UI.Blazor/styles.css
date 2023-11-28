@@ -1,4 +1,5 @@
 @import './Components/Avatar/avatar.css';
+@import './Components/VideoAttachmentThumbnail/video-thumbnail.css';
 @import './Components/Badge/badge.css';
 @import './Components/Banner/banner.css';
 @import './Components/BlazorModeToggle/blazor-mode-toggle.css';
