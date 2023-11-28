@@ -34,7 +34,7 @@ export class AudioInitializer {
 
         const initRecorder = async () => {
             try {
-                await Promise.all([
+                await Promise.allSettled([
                     AudioRecorder.init(),
                     opusMediaRecorder.init(baseUri, canUseNNVad),
                 ]);
@@ -50,7 +50,7 @@ export class AudioInitializer {
             this.isPlayerInitialized ? ResolvedPromise.Void : initPlayer(),
             this.isRecorderInitialized ? ResolvedPromise.Void : initRecorder(),
         ];
-        await Promise.all(promises);
+        await Promise.allSettled(promises);
         infoLog?.log(`<- init`);
     }
 

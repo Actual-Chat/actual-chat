@@ -241,7 +241,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             throw new Error('start: chatId is unspecified.');
 
         debugLog?.log(`start(): awaiting whenInitialized`);
-        await this.whenInitialized;
+        await this.ensureInitialized();
         debugLog?.log(`start(): whenInitialized completed`);
 
         await this.stop();
@@ -531,18 +531,23 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     // Private methods
 
     private async ensureInitialized(): Promise<void> {
-        if (this.initStarted)
-            await this.whenInitialized;
-        else {
-            const origin = window.location.origin;
-            const isMaui = origin.includes('0.0.0.0');
-            let baseUri = origin.replace(/\/?$/, '/');
-            if (isMaui) {
-                await BrowserInit.whenInitialized;
-                baseUri = BrowserInit.baseUri;
-            }
-            await this.init(baseUri, true);
+        if (this.initStarted) {
+            if (this.whenInitialized.isCompleted())
+                return;
+
+            await Promise.race([this.whenInitialized, delayAsync(5000)]);
+            if (this.whenInitialized.isCompleted())
+                return;
         }
+        // retry init again
+        const origin = window.location.origin;
+        const isMaui = origin.includes('0.0.0.0');
+        let baseUri = origin.replace(/\/?$/, '/');
+        if (isMaui) {
+            await BrowserInit.whenInitialized;
+            baseUri = BrowserInit.baseUri;
+        }
+        await this.init(baseUri, true);
     }
 
     private recordingFailedDebounced = debounce(() => this.recordingFailed(), RecordingFailedInterval);

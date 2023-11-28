@@ -45,7 +45,7 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
         var retryDelays = RetryDelaySeq.Exp(0.1, 3);
         var whenInitialized = AsyncChainExt.From(Initialize, $"{nameof(AudioInitializer)}.{nameof(Initialize)}")
             .Log(LogLevel.Debug, Log)
-            .RetryForever(retryDelays, Log)
+            .Retry(retryDelays, 5, Log)
             .Run(cancellationToken);
         await _whenInitializedSource.TrySetFromTaskAsync(whenInitialized, cancellationToken).ConfigureAwait(false);
         Log.LogInformation("AudioInitializer: initialized with status {Status}", whenInitialized.Status);
