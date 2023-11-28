@@ -130,7 +130,7 @@
 
         if (attachment.IsSupportedImage()) {
             // this resolution is already cached in the media gallery
-            return UrlMapper.ImagePreviewUrl(url, Constants.Attachments.MaxActualResolution);
+            return UrlMapper.ImagePreviewUrl(url, null, (int?)Constants.Attachments.MaxActualResolution.Y);
         }
 
         return url;
