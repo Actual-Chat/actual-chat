@@ -24,6 +24,7 @@ import * as signalR from "@microsoft/signalr";
 import { AudioInitializer } from "../../Services/audio-initializer";
 import { BrowserInit } from "../../../UI.Blazor/Services/BrowserInit/browser-init";
 import { AudioDiagnosticsState } from "./audio-recorder";
+import { BrowserInfo } from "../../../UI.Blazor/Services/BrowserInfo/browser-info";
 
 /*
 ┌─────────────────────────────────┐  ┌──────────────────────┐
@@ -470,6 +471,13 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
         diagnosticsState = (await Promise.race([this.encoderWorker?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
         diagnosticsState = (await Promise.race([this.vadWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
         diagnosticsState = (await Promise.race([this.encoderWorklet?.runDiagnostics(diagnosticsState), delayAsyncWith(timeout, diagnosticsState)])) ?? diagnosticsState;
+
+        if (diagnosticsState.lastFrameProcessedAt == 0 || diagnosticsState.lastEncoderWorkletFrameProcessedAt) {
+            await audioContextSource.context.suspend();
+            if (BrowserInfo.appKind === 'MauiApp')
+                await audioContextSource.context.resume(); // we don't need user interaction to resume
+        }
+
         return diagnosticsState;
     }
 

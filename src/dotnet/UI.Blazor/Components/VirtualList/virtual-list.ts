@@ -24,7 +24,7 @@ const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 120;
-const ScrollDebounce: number = 200;
+const ScrollDebounce: number = 320;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
 const RequestDataTimeout: number = 800;
@@ -497,7 +497,7 @@ export class VirtualList {
         // console.warn("skeleton os off");
     }
 
-    private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce);
+    private turnOffIsEndAnchorVisibleDebounced = debounce(() => this.turnOffIsEndAnchorVisible(), ScrollDebounce * 3);
     private turnOffIsEndAnchorVisible(): void {
         this._isEndAnchorVisible = false;
         if (this._stickyEdge?.edge === VirtualListEdge.End) {

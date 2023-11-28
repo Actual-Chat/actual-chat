@@ -212,6 +212,10 @@
     <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
     -->
     <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
+    <!-- fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
+    <AndroidEnableMarshalMethods >true</AndroidEnableMarshalMethods >
+    -->
+    <RuntimeIdentifier>android-arm64</RuntimeIdentifier>
     <AndroidEnablePreloadAssemblies>true</AndroidEnablePreloadAssemblies>
     <!-- When AndroidEnablePreloadAssemblies == true, it lazy loads non-AOT code -->
     <!-- false: -100ms or so to startup time -->
