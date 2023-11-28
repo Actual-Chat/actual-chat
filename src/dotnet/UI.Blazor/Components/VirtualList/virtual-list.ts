@@ -13,6 +13,7 @@ import { Pivot } from './ts/pivot';
 import { Log } from 'logging';
 import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
 import { DeviceInfo } from 'device-info';
+import { BrowserInfo } from "../../Services/BrowserInfo/browser-info";
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
@@ -39,6 +40,7 @@ export class VirtualList {
     private readonly _endSpacerRef: HTMLElement;
     private readonly _renderIndexRef: HTMLElement;
     private readonly _endAnchorRef: HTMLElement;
+    private readonly _layoutFooter?: HTMLElement;
     private readonly _inertialScroll: InertialScroll;
     private readonly _abortController: AbortController;
     private readonly _itemSetChangeObserver: MutationObserver;
@@ -107,6 +109,7 @@ export class VirtualList {
         this._renderStateRef = this._ref.querySelector(':scope > .data.render-state');
         this._renderIndexRef = this._ref.querySelector(':scope > .data.render-index');
         this._endAnchorRef = this._ref.querySelector(':scope > .c-end-anchor');
+        this._layoutFooter = document.querySelector('.layout-body-wrapper > .c-container > .layout-footer');
         this._inertialScroll = new InertialScroll(this._ref);
 
         // Events & observers
@@ -150,6 +153,8 @@ export class VirtualList {
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
 
+        this._sizeObserver.observe(this._containerRef);
+        this._sizeObserver.observe(this._layoutFooter);
         this._visibilityObserver.observe(this._endAnchorRef);
         this._skeletonObserver0.observe(this._spacerRef);
         this._skeletonObserver0.observe(this._endSpacerRef);
@@ -314,11 +319,16 @@ export class VirtualList {
 
     private onResize = (entries: ResizeObserverEntry[], _observer: ResizeObserver): void => {
         let itemsWereMeasured = false;
+        let notAnItem = false;
         const itemRefsWithWrongSize = new Array<HTMLElement>();
         for (const entry of entries) {
             const rect = entry.contentRect;
             const key = getItemKey(entry.target as HTMLElement);
             const size = rect.height;
+            if (!key) {
+                notAnItem = true;
+                continue; // container or footer also can be resized
+            }
 
             const item = this._items.get(key);
             if (item) {
@@ -357,8 +367,8 @@ export class VirtualList {
                 this._shouldRecalculateItemRange = itemsWereMeasured;
             });
         }
-        // restore sticky end edge on item resize
-        if (this._stickyEdge?.edge === VirtualListEdge.End)
+        // restore sticky end edge on item resize - not adding new one!
+        if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
             this.scrollToEnd(false);
 
         const lastItemWasMeasured = itemsWereMeasured && this._unmeasuredItems.size == 0;
@@ -420,11 +430,7 @@ export class VirtualList {
             if (!hasStickyEdge && rs.hasVeryFirstItem) {
                 if (this._visibleItems.has(firstItemKey)) {
                     this.setStickyEdge({ itemKey: firstItemKey, edge: VirtualListEdge.Start });
-                    hasStickyEdge = true;
                 }
-            }
-            if (!hasStickyEdge && this._stickyEdge !== null) {
-                this.setStickyEdge(null);
             }
 
             this.updateVisibleKeysThrottled();
@@ -559,14 +565,14 @@ export class VirtualList {
                 if (!this.isItemFullyVisible(scrollToItemRef)) {
                     if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                         this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
-                        this.scrollToEnd(false);
+                        this.scrollToEnd(true);
                     } else {
-                        this.scrollTo(scrollToItemRef, false, 'center');
+                        this.scrollTo(scrollToItemRef, false);
                     }
                 }
                 else if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
-                    this.scrollToEnd(false);
+                    this.scrollToEnd(true);
                 }
             } else if (this._stickyEdge != null) {
                 // Sticky edge scroll
@@ -579,7 +585,7 @@ export class VirtualList {
                     // let's scroll to the latest edge key when we've got a lot of new messages
                     if (this._stickyEdge?.edge === VirtualListEdge.End) {
                         let itemRef = this.getItemRef(this._stickyEdge.itemKey);
-                        this.scrollTo(itemRef, false, 'end');
+                        this.scrollTo(itemRef, false);
                     }
                     this.setStickyEdge(null);
                 } else {
@@ -615,6 +621,14 @@ export class VirtualList {
             this._pivots = [];
             this._itemRange = null;
             this._viewport = null;
+
+            // make layout footer visible on mobile when virtual keyboard is open
+            this._layoutFooter.scrollIntoView(false);
+            fastRaf({
+                write: () => {
+                    this._layoutFooter.scrollIntoView(false);
+                }
+            });
 
             // trigger update only for first render to load data if needed
             if (rs.renderIndex <= 1)
@@ -897,7 +911,7 @@ export class VirtualList {
     private scrollTo(
         itemRef?: HTMLElement,
         useSmoothScroll: boolean = false,
-        blockPosition: ScrollLogicalPosition = 'nearest') {
+        blockPosition: ScrollLogicalPosition = 'center') {
         debugLog?.log(`scrollTo, item key:`, getItemKey(itemRef));
         this._inertialScroll.freeze();
         this._scrollTime = Date.now();
@@ -918,16 +932,23 @@ export class VirtualList {
     }
 
     private scrollToEnd(useSmoothScroll: boolean = false) {
-        debugLog?.log('scrollTo end');
+        if (this._renderState.renderIndex <= 1)
+            useSmoothScroll = false; // fix for scroll to the end on chat switch
+        if (DeviceInfo.isMobile && BrowserInfo.appKind !== 'MauiApp')
+            useSmoothScroll = false; // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
+
+        debugLog?.log('scrollTo end', useSmoothScroll);
         this._inertialScroll.freeze();
+        this._layoutFooter.scrollIntoView(false);
         this._scrollTime = Date.now();
         this._endAnchorRef.scrollIntoView({
             behavior: useSmoothScroll ? 'smooth' : 'auto',
             block: 'end',
-            inline: 'end',
+            inline: 'nearest',
         });
         fastRaf({
             write: () => {
+                this._layoutFooter.scrollIntoView(false);
                 this._inertialScroll.unfreeze();
             }
         });
@@ -938,6 +959,11 @@ export class VirtualList {
         if (old?.itemKey !== stickyEdge?.itemKey || old?.edge !== stickyEdge?.edge) {
             debugLog?.log(`setStickyEdge:`, stickyEdge);
             this._stickyEdge = stickyEdge;
+            if (stickyEdge?.edge === VirtualListEdge.End) {
+                const lastItemRef = this.getLastItemRef();
+                if (lastItemRef && !lastItemRef.classList.contains('anchor'))
+                    lastItemRef.classList.add('anchor');
+            }
             return true;
         }
         return false;
@@ -991,7 +1017,7 @@ export class VirtualList {
                         debugLog?.log(`restoreScrollPosition: scrollTop ~= 0`, this.isRendering);
 
                         // we have lost scroll offset so let's scroll to the last visible pivot
-                        this.scrollTo(pivotRef, false, 'center');
+                        this.scrollTo(pivotRef, false);
                     } else
                         debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
 

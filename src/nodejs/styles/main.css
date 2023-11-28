@@ -129,6 +129,8 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply w-full min-h-footer;
     @apply overflow-visible;
     @apply shadow-none;
+    overflow-anchor: auto;
+    overscroll-behavior: none;
 }
 
 .layout-subfooter {

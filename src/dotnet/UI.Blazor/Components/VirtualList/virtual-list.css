@@ -25,12 +25,6 @@
 .virtual-list > .c-end-anchor {
     @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
     @apply min-h-22 md:min-h-1;
-    overflow-anchor: none;
-}
-
-.virtual-list > .c-end-anchor {
-    @apply flex flex-nowrap flex-col items-stretch content-start justify-start;
-    @apply min-h-22 md:min-h-1;
     line-height: 0.25rem;
     overflow-anchor: none;
 }
