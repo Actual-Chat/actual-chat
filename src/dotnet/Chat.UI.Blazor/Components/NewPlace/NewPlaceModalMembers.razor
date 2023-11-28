@@ -72,8 +72,7 @@
             .Select(c => c.Id)
             .ToArray();
         if (userIds.Length != 0) {
-            var placeRootChatId = _placeId.ToRootChatId();
-            var createAuthorsCommand = new Authors_Invite(Session, placeRootChatId, userIds);
+            var createAuthorsCommand = new Places_Invite(Session, _placeId, userIds);
             var (_, error) = await UICommander.Run(createAuthorsCommand);
             if (error != null)
                 return;

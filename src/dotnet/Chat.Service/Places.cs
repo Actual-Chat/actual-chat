@@ -51,6 +51,16 @@ public class Places(IServiceProvider services) : IPlaces
         await Commander.Call(joinCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    public virtual async Task OnInvite(Places_Invite command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, placeId, userIds) = command;
+        var inviteCommand = new Authors_Invite(session, placeId.ToRootChatId(), userIds);
+        await Commander.Call(inviteCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
     private static Place ToPlace(Chat chat)
     {
         if (!chat.Id.IsPlaceChat || !chat.Id.PlaceChatId.IsRoot)
