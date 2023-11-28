@@ -53,6 +53,7 @@ FROM node:16-alpine as nodejs-restore
 ARG GITHUB_TOKEN
 ENV GITHUB_TOKEN=$GITHUB_TOKEN
 WORKDIR /src/src/nodejs
+RUN apk update && apk add brotli gzip
 RUN npm -g config set user root && \
     npm -g config set audit false && \
     npm -g config set audit-level critical && \
@@ -73,7 +74,13 @@ COPY --from=dotnet-restore /src/nuget.config ./
 
 FROM nodejs-restore as nodejs-build
 COPY src/dotnet/ /src/src/dotnet/
-RUN npm run build:Release
+RUN npm run build:Release \
+    && find /src/src/dotnet/App.Wasm/wwwroot/dist/wasm/*.wasm -print | xargs gzip -k9 \
+    && find /src/src/dotnet/App.Wasm/wwwroot/dist/wasm/*.wasm -print | xargs brotli -Z \
+    && find /src/src/dotnet/App.Wasm/wwwroot/dist/*.js -print | xargs gzip -k9 \
+    && find /src/src/dotnet/App.Wasm/wwwroot/dist/*.js -print | xargs brotli -Z \
+    && find /src/src/dotnet/App.Wasm/wwwroot/dist/*.css -print | xargs gzip -k9 \
+    && find /src/src/dotnet/App.Wasm/wwwroot/dist/*.css -print | xargs brotli -Z
 
 FROM dotnet-restore as base
 COPY src/dotnet/ src/dotnet/
