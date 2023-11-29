@@ -435,21 +435,23 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         var secondLayer = IdTileStack.Layers[1];
         var minTileSize = IdTileStack.MinTileSize;
-        var range = (!query.IsNone, oldData.FirstItem, oldData.LastItem) switch {
+        var firstItem = oldData.FirstItem;
+        var lastItem = oldData.LastItem;
+        var range = (!query.IsNone, firstItem != null) switch {
             // No query, no data -> initial load
-            (false, null, null) => new Range<long>(
+            (false, false) => new Range<long>(
                 secondLayer.GetTile(chatIdRange.End - MinLoadLimit).Start,
                 chatIdRange.End + minTileSize),
             // No query, but there is old data + we're close to the end
-            (false, { } firstItem, { } lastItem) when Math.Abs(lastItem.Entry.LocalId - chatIdRange.End) <= minTileSize
+            (false, true) when Math.Abs(lastItem!.Entry.LocalId - chatIdRange.End) <= minTileSize
                 => new Range<long>(
                     secondLayer.GetTile(
                         oldData.GetNthItem((int)MinLoadLimit * 2, true)?.Entry.LocalId
-                        ?? firstItem.Entry.LocalId
+                        ?? firstItem!.Entry.LocalId
                     ).Start,
                     chatIdRange.End + minTileSize),
             // No query, but there is old data
-            (false, { } firstItem, { } lastItem) => new Range<long>(firstItem.Entry.LocalId, lastItem.Entry.LocalId),
+            (false, true) => new Range<long>(firstItem!.Entry.LocalId, lastItem.Entry.LocalId),
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToLongRange().Expand(new Range<long>(query.ExpandStartBy, query.ExpandEndBy)),
         };
