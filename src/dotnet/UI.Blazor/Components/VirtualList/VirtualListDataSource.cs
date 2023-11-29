@@ -1,7 +1,7 @@
 namespace ActualChat.UI.Blazor.Components;
 
 public static class VirtualListDataSource<TItem>
-    where TItem : IVirtualListItem
+    where TItem : class, IVirtualListItem
 {
     public static readonly IVirtualListDataSource<TItem> Empty = new EmptyDataSource();
 

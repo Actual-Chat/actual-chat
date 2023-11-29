@@ -1,7 +1,7 @@
 ﻿namespace ActualChat.UI.Blazor.Components;
 
 public sealed record VirtualListTile<TItem>(string Key, IReadOnlyList<TItem> Items)
-    where TItem : IVirtualListItem
+    where TItem : class, IVirtualListItem
 {
     public static readonly VirtualListTile<TItem> Empty = new("tile:empty", Array.Empty<TItem>());
 

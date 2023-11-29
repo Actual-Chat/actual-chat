@@ -1,7 +1,7 @@
 namespace ActualChat.UI.Blazor.Components;
 
 public interface IVirtualListDataSource<TItem>
-    where TItem : IVirtualListItem
+    where TItem : class, IVirtualListItem
 {
     Task<VirtualListData<TItem>> GetData(
         VirtualListDataQuery query,

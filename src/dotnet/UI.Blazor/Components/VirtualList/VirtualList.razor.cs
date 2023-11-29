@@ -10,7 +10,7 @@ public static class VirtualList
 }
 
 public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualListData<TItem>>, IVirtualListBackend
-    where TItem : IVirtualListItem
+    where TItem : class, IVirtualListItem
 {
     private ILogger? _log;
 

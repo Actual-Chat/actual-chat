@@ -12,7 +12,6 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
 {
     private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
-    private readonly SharedResourcePool<Symbol, IComputedState<Range<long>>> _chatIdRangeStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
@@ -64,7 +63,6 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
         // Read entry states from other windows / devices are delayed by 1s
         _readStateUpdateDelayer = FixedDelayer.Get(1);
         _readPositionStates = new SharedResourcePool<Symbol, ISyncedState<ReadPosition>>(CreateReadPositionState);
-        _chatIdRangeStates = new SharedResourcePool<Symbol, IComputedState<Range<long>>>(CreateChatIdRangeState);
     }
 
     void INotifyInitialized.Initialized()
@@ -192,8 +190,13 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     [ComputeMethod]
     public virtual async Task<bool> IsEmpty(ChatId chatId, CancellationToken cancellationToken)
     {
-        using var idRangeLease = await LeaseChatIdRangeState(chatId, cancellationToken).ConfigureAwait(false);
-        var idRange = idRangeLease.Value;
+        Computed<Range<long>> cIdRange;
+        using (Computed.SuspendDependencyCapture()) {
+            cIdRange = await Computed
+                .Capture(() => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+        }
+        var idRange = cIdRange.Value;
         if (idRange.End - idRange.Start >= 100) {
             // Heuristics, it may produce false negatives - e.g. if the chat was cleaned up,
             // but it's still better than to scan a lot. Prob better to implement an actual check
@@ -279,20 +282,6 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
         try {
             var result = new SyncedStateLease<ReadPosition>(lease);
             await result.WhenFirstTimeRead.WaitAsync(cancellationToken).ConfigureAwait(false);
-            return result;
-        }
-        catch {
-            lease.Dispose();
-            throw;
-        }
-    }
-
-    public async ValueTask<ComputedStateLease<Range<long>>> LeaseChatIdRangeState(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var lease = await _chatIdRangeStates.Rent(chatId, cancellationToken).ConfigureAwait(false);
-        try {
-            var result = new ComputedStateLease<Range<long>>(lease);
-            await result.WhenSynchronized(cancellationToken).ConfigureAwait(false);
             return result;
         }
         catch {
