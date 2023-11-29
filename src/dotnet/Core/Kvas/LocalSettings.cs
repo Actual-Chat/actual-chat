@@ -14,5 +14,6 @@ public class LocalSettings : BatchingKvas
     {
         Settings = settings;
         Backend = settings.BackendFactory.Invoke(services);
+        _ = Reader.Start();
     }
 }

@@ -13,5 +13,6 @@ public sealed class WebClientComputedCache : AppClientComputedCache
     {
         Settings = settings;
         Backend = new WebKvasBackend($"{BlazorUICoreModule.ImportName}.clientComputedCache", services);
+        _ = Reader.Start();
     }
 }

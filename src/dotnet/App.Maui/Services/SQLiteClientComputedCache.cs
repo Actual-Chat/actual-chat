@@ -29,5 +29,6 @@ public sealed class SQLiteClientComputedCache : AppClientComputedCache
     {
         Settings = settings;
         Backend = new SQLiteBatchingKvasBackend(settings.DbPath, settings.Version, services);
+        _ = Reader.Start();
     }
 }
