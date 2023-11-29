@@ -492,6 +492,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         {
             HasLeft = author2.HasLeft || rootAuthor.HasLeft,
             AvatarId = rootAuthor.AvatarId, // Always use avatar for the Place.
+            Avatar = rootAuthor.Avatar, // Always use avatar for the Place.
             // RoleIds = TODO(DF): should we alter roles?
         };
     }
