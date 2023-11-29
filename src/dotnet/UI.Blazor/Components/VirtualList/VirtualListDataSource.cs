@@ -10,8 +10,9 @@ public static class VirtualListDataSource<TItem>
     private class EmptyDataSource : IVirtualListDataSource<TItem>
     {
         public Task<VirtualListData<TItem>> GetData(
+            IComputedState<VirtualListData<TItem>> state,
             VirtualListDataQuery query,
-            VirtualListData<TItem> oldData,
+            VirtualListData<TItem> renderedData,
             CancellationToken cancellationToken)
             => Task.FromResult(VirtualListData<TItem>.None);
     }

@@ -22,6 +22,8 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
     public bool HasVeryFirstItem { get; init; }
     public bool HasVeryLastItem { get; init; }
     public string? ScrollToKey { get; init; }
+    public object? VisibilitySnapshot { get; init; }
+    public CpuTimestamp ComputedAt { get; init; } = CpuTimestamp.Now;
 
     public bool HasAllItems => HasVeryFirstItem && HasVeryLastItem;
     public TItem? FirstItem => Tiles.Count == 0 ? null : Tiles[0].Items[0];

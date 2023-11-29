@@ -38,8 +38,9 @@
     public int? ContentSeed { get; set; } = null;
 
     public Task<VirtualListData<TestListItemRef>> GetData(
+        IComputedState<VirtualListData<TestListItemRef>> state,
         VirtualListDataQuery query,
-        VirtualListData<TestListItemRef> oldData,
+        VirtualListData<TestListItemRef> renderedData,
         CancellationToken cancellationToken)
         => Service.GetItemKeys(query, RangeSeed, ContentSeed, cancellationToken);
 }

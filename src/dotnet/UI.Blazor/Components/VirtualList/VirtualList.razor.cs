@@ -111,8 +111,7 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         var query = Query;
         VirtualListData<TItem> data;
         try {
-            var lastRenderedData = LastData;
-            data = await DataSource.GetData(query, lastRenderedData, cancellationToken).ConfigureAwait(false);
+            data = await DataSource.GetData(State, query, LastData, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);

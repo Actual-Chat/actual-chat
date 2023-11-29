@@ -24,7 +24,7 @@ public sealed record ChatViewItemVisibility(
     public bool IsFullyVisible(long entryLid)
         => VisibleEntryLids.Contains(entryLid) && !IsPartiallyVisible(entryLid);
 
-    public bool ContentEquals(ChatViewItemVisibility other)
+    public bool IsIdenticalTo(ChatViewItemVisibility other)
     {
         if (VisibleEntryLids.Count != other.VisibleEntryLids.Count)
             return false;
