@@ -10,7 +10,7 @@ public partial class ChatUI
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
-        var baseChains = new AsyncChain[] {
+        var baseChains = new[] {
             AsyncChainExt.From(InvalidateSelectedChatDependencies),
             AsyncChainExt.From(NavigateToFixedSelectedChat),
             AsyncChainExt.From(ResetHighlightedEntry),

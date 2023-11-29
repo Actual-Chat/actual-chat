@@ -35,7 +35,7 @@ public class ServerTimeSync : WorkerBase
             return Task.CompletedTask;
         }
 
-        return new AsyncChain(nameof(Sync), Sync)
+        return AsyncChainExt.From(Sync)
             .RetryForever(RetryDelaySeq.Exp(0.5, 60))
             .AppendDelay(GetNextSyncDelay)
             .CycleForever()

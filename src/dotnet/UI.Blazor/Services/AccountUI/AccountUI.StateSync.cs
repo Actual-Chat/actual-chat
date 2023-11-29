@@ -10,7 +10,7 @@ public partial class AccountUI
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return new AsyncChain(nameof(MonitorAccountChange), MonitorAccountChange)
+        return AsyncChainExt.From(MonitorAccountChange)
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .RunIsolated(cancellationToken);
