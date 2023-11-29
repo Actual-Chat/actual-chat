@@ -69,6 +69,7 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
             new ComputedState<Trimmed<int>>.Options() {
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(UnreadChatCount)),
+                TryComputeSynchronously = false,
             },
             ComputeUnreadChatCount);
         this.Start();
