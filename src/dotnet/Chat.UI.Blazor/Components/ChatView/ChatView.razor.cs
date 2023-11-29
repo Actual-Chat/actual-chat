@@ -278,7 +278,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
 #endif
             }
-            if (lastOwnMessage != null && lastOwnMessage.Flags.HasFlag(ChatMessageFlags.Unread)) {
+            if (lastOwnMessage != null && lastOwnMessage.Flags.HasFlag(ChatMessageFlags.Unread) && lastOwnMessage.Entry is { IsStreaming: false, HasAudioEntry: false }) {
                 newOwnEntryLid = lastOwnMessage.Entry.LocalId;
                 lastReadEntryLid = newOwnEntryLid;
                 if (NewOwnEntryLidState.Value.EntryLid < newOwnEntryLid)
@@ -564,12 +564,12 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var entryReader = ChatContext.NewEntryReader(ChatEntryKind.Text);
         var entries = entryReader.Observe(chatIdRange.End, cancellationToken);
         await foreach (var entry in entries.ConfigureAwait(false)) {
-            if (entry.AuthorId != authorId)
+            if (entry.AuthorId != authorId || entry.IsStreaming || entry.HasAudioEntry)
                 continue;
 
             if (NewOwnEntryLidState.Value.EntryLid < entry.LocalId)
                 NewOwnEntryLidState.Value = (authorId, entry.LocalId);
-            if (!entry.IsStreaming && ReadPositionState.Value.EntryLid < entry.LocalId)
+            if (ReadPositionState.Value.EntryLid < entry.LocalId)
                 ReadPositionState.Value = new ReadPosition(Chat.Id, entry.LocalId);
         }
     }
