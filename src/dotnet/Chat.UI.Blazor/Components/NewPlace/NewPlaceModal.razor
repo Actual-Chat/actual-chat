@@ -69,9 +69,8 @@
             return;
 
         if (_defaultChat != null)
-            _ = ChatHub.History.NavigateTo(Links.Chat(_defaultChat.Id));
-        else
-            ChatHub.NavbarUI.SelectGroup(_place.Id.GetNavbarGroupId(), _place.Title);
+            await ChatHub.History.NavigateTo(Links.Chat(_defaultChat.Id));
+        ChatHub.NavbarUI.SelectGroup(_place.Id.GetNavbarGroupId(), _place.Title);
     }
 
     private void Close()
