@@ -49,8 +49,8 @@
     [Inject] private IAuthors Authors { get; init; } = null!;
     [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
 
-    private bool IsLoading => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
-    private bool IsListening => !IsLoading && State.Value.AudioState.IsListening;
+    private bool IsUpdating => !Chat.Id.IsNone && (State is not { } state || state.Value.Chat.Id != Chat.Id);
+    private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -77,7 +77,7 @@
     }
 
     private void OnListenClick() {
-        if (IsLoading)
+        if (IsUpdating)
             return;
 
         _ = ChatAudioUI.SetListeningState(Chat.Id, !IsListening);

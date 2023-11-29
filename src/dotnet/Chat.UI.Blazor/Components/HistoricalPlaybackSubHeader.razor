@@ -107,11 +107,11 @@
         var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
-        var lastValue = State.Value;
+        var lastState = State?.Value ?? Model.NotPlaying; // State can be null when ComputeState runs synchronously
         if (playback == null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.
-            return lastValue; // Keep the last state to avoid blinking
+            return lastState; // Keep the last state to avoid blinking
         }
 
         var isPaused = await playback.IsPaused.Use(cancellationToken);
@@ -140,11 +140,11 @@
                 AuthorSids = authorSids,
             };
 
-        var canUseLastModel = !ReferenceEquals(lastValue, Model.NotPlaying)
-            && lastValue.ChatId == chatId
-            && lastValue.ChatPlayer == historicalChatPlayer
-            && lastValue.IsPaused == isPaused;
-        return canUseLastModel ? lastValue! : Model.NotPlaying;
+        var canUseLastModel = !ReferenceEquals(lastState, Model.NotPlaying)
+            && lastState.ChatId == chatId
+            && lastState.ChatPlayer == historicalChatPlayer
+            && lastState.IsPaused == isPaused;
+        return canUseLastModel ? lastState! : Model.NotPlaying;
     }
 
     private void OnStop()

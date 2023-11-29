@@ -99,7 +99,7 @@
 
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        var lastState = State.ValueOrDefault;
+        var lastState = State?.ValueOrDefault; // State can be null when ComputeState runs synchronously
         var lastContext = lastState?.ChatContext;
         var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);

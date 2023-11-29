@@ -1,7 +1,6 @@
 @using ActualChat.Users
 @using ActualChat.Hosting
 @inherits ComputedStateComponent<AccountFull>
-
 @{
     var account = State.Value;
     var isGuest = account is not { IsGuest: false };

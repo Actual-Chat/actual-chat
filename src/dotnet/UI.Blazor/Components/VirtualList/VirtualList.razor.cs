@@ -23,7 +23,8 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     private DotNetObjectReference<IVirtualListBackend> BlazorRef { get; set; } = null!;
 
     private VirtualListDataQuery Query { get; set; } = VirtualListDataQuery.None;
-    private VirtualListData<TItem> Data => State.LastNonErrorValue;
+    // State can be null when ComputeState runs synchronously
+    private VirtualListData<TItem> Data => State?.LastNonErrorValue ?? VirtualListData<TItem>.None;
     private VirtualListData<TItem> LastData { get; set; } = VirtualListData<TItem>.None;
     private VirtualListItemVisibility LastReportedItemVisibility { get; set; } = VirtualListItemVisibility.Empty;
 
@@ -51,11 +52,12 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     public VirtualList() { }
 
     [JSInvokable]
-    public Task RequestData(VirtualListDataQuery query)
+    public async Task RequestData(VirtualListDataQuery query)
     {
         Query = query;
+        while (State == null)
+            await Task.Delay(100);
         _ = State.Recompute();
-        return Task.CompletedTask;
     }
 
     [JSInvokable]

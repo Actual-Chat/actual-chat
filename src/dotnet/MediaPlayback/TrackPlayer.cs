@@ -166,14 +166,15 @@ public abstract class TrackPlayer(IMediaSource source, ILogger log) : ProcessorB
 
     protected void UpdateState<TArg>(Func<TArg, PlayerState, PlayerState> updater, TArg arg)
     {
-        PlayerState state;
         lock (_stateUpdateLock) {
             var lastState = _state;
             if (lastState.IsEnded)
                 return; // No need to update it further
-            state = updater.Invoke(arg, lastState);
+
+            var state = updater.Invoke(arg, lastState);
             if (lastState == state)
                 return;
+
             _state = state;
             try {
                 StateChanged?.Invoke(new(lastState, state));

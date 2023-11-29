@@ -3,7 +3,6 @@
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @inherits ComputedStateComponent<AccountFull>
-
 @{
     var account = State.Value;
     var isGuest = account is not { IsGuest: false };
