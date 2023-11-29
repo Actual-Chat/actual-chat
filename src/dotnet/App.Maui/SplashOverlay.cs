@@ -13,6 +13,12 @@ public class SplashOverlay : Grid
     private static readonly double MaxOpacity = 0.99;
     private readonly ProgressBar _progressBar;
     private readonly Image _logo;
+    private LoadingUI? _loadingUI;
+    private MomentClockSet? _clocks;
+
+    private IServiceProvider Services { get; set; } = null!;
+    private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();
+    private MomentClockSet Clocks => _clocks ??= Services.Clocks();
 
     public SplashOverlay()
     {
@@ -36,6 +42,7 @@ public class SplashOverlay : Grid
         HorizontalOptions = LayoutOptions.Fill;
         Add(_logo);
         Add(_progressBar);
+
         _ = AnimateSplash();
     }
 
@@ -51,17 +58,18 @@ public class SplashOverlay : Grid
     private async Task AnimateSplash()
     {
         try {
+            Services = await WhenScopedServicesReady().ConfigureAwait(true);
             await UpdateLoop(ExpectedRenderDuration,
                 UpdateInterval,
                 progress => {
-                    if (LoadingUI.WhenAppRendered.IsCompleted)
+                    if (LoadingUI.WhenRendered.IsCompleted)
                         return false;
 
                     _progressBar.Progress = progress * RenderPart;
                     return true;
                 }).ConfigureAwait(true);
-            if (!LoadingUI.WhenAppRendered.IsCompleted)
-                await LoadingUI.WhenAppRendered.WaitAsync(SplashTimeout - ExpectedRenderDuration).ConfigureAwait(true);
+            if (!LoadingUI.WhenRendered.IsCompleted)
+                await LoadingUI.WhenRendered.WaitAsync(SplashTimeout - ExpectedRenderDuration).ConfigureAwait(true);
             await UpdateLoop(FadeDuration,
                 UpdateInterval,
                 progress => {
@@ -82,10 +90,9 @@ public class SplashOverlay : Grid
         }
     }
 
-    private static async Task UpdateLoop(TimeSpan totalDuration, TimeSpan interval, Func<double, bool> uiAction)
+    private async Task UpdateLoop(TimeSpan totalDuration, TimeSpan interval, Func<double, bool> uiAction)
     {
-        var services = await WhenScopedServicesReady().ConfigureAwait(true);
-        var clock = services.Clocks().CpuClock;
+        var clock = Clocks.CpuClock;
         var startedAt = clock.Now;
         var steps = totalDuration / interval;
         for (int i = 1; i <= steps; i++) {
