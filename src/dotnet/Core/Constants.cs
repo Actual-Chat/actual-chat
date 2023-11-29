@@ -188,4 +188,10 @@ public static partial class Constants
 
         public static readonly TimeSpan PermissionRequestDismissPeriod = TimeSpan.FromDays(7);
     }
+
+    public static class Audio
+    {
+        public const int OpusFrameDurationMs = 20;
+        public static TimeSpan OpusFrameDuration = TimeSpan.FromMilliseconds(OpusFrameDurationMs);
+    }
 }

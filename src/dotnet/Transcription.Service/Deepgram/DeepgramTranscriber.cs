@@ -116,24 +116,16 @@ public partial class DeepGramTranscriber : ITranscriber
 
         [SuppressMessage("ReSharper", "AccessToDisposedClosure")]
         void HandleConnectionOpened(object? sender, ConnectionOpenEventArgs e)
-        {
-            whenConnectedSource.SetResult();
-        }
+            => whenConnectedSource.SetResult();
 
         void HandleTranscriptReceived(object? sender, TranscriptReceivedEventArgs e)
-        {
-            ProcessResponse(transcriptState, e.Transcript);
-        }
+            => ProcessResponse(transcriptState, e.Transcript);
 
         void HandleConnectionClosed(object? sender, ConnectionClosedEventArgs e)
-        {
-            whenCompletedSource.TrySetResult();
-        }
+            => whenCompletedSource.TrySetResult();
 
         void HandleConnectionError(object? sender, ConnectionErrorEventArgs e)
-        {
-            whenCompletedSource.TrySetException(e.Exception);
-        }
+            => whenCompletedSource.TrySetException(e.Exception);
     }
 
     private async Task PushAudio(DeepgramTranscribeState state,
@@ -253,12 +245,6 @@ public partial class DeepGramTranscriber : ITranscriber
 
     private static string FixSuffix(string prefix, string suffix)
     {
-        /*
-        // Trim trailing whitespace
-        var lastLetterIndex = suffix.Length - Transcript.ContentStartRegex.Match(suffix).Length;
-        suffix = suffix[..lastLetterIndex];
-        */
-
         var firstLetterIndex = Transcript.ContentStartRegex.Match(suffix).Length;
         if (firstLetterIndex == suffix.Length)
             return suffix; // Suffix is all whitespace or empty

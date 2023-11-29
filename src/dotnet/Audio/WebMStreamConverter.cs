@@ -268,8 +268,8 @@ public sealed class WebMStreamConverter : IAudioStreamConverter
                     var duration = frameOffset - blockOffset;
                     if (duration == TimeSpan.Zero)
                         duration = simpleBlock.Data!.Length < 100
-                            ? TimeSpan.FromMilliseconds(20)
-                            : TimeSpan.FromMilliseconds(60);
+                            ? TimeSpan.FromMilliseconds(Constants.Audio.OpusFrameDurationMs)
+                            : TimeSpan.FromMilliseconds(3 * Constants.Audio.OpusFrameDurationMs);
                     var mediaFrame = new AudioFrame {
                             Data = simpleBlock.Data!,
                             Offset = frameOffset,
