@@ -5,6 +5,15 @@ namespace ActualChat.Kvas;
 
 public interface ISyncedState : IMutableState, IDisposable
 {
+    public static class DefaultOptions
+    {
+        public static RandomTimeSpan ReadFailureDelay { get; set; } = TimeSpan.FromSeconds(1);
+        public static RandomTimeSpan WriteFailureDelay { get; set; } = TimeSpan.FromSeconds(1);
+        public static bool ExposeReadErrors { get; set; } = false;
+        public static bool TryComputeSynchronously { get; set; } = false;
+        public static bool FlowExecutionContext { get; set; } = IComputedState.DefaultOptions.FlowExecutionContext;
+    }
+
     CancellationToken DisposeToken { get; }
     Task WhenFirstTimeRead { get; }
     Task WhenDisposed { get; }
@@ -66,6 +75,8 @@ public sealed class SyncedState<
             new ComputedState<T>.Options() {
                 ComputedOptions = options.ComputedOptions,
                 UpdateDelayer = options.UpdateDelayer,
+                TryComputeSynchronously = options.TryComputeSynchronously,
+                FlowExecutionContext = options.FlowExecutionContext,
                 Category = StateCategories.Get(Category, nameof(ReadState)),
             },
             async (_, ct) => {
@@ -244,9 +255,11 @@ public sealed class SyncedState<
     public new abstract record Options : MutableState<T>.Options
     {
         public IUpdateDelayer? UpdateDelayer { get; init; }
-        public RandomTimeSpan ReadFailureDelay { get; init; } = TimeSpan.FromSeconds(1);
-        public RandomTimeSpan WriteFailureDelay { get; init; } = TimeSpan.FromSeconds(1);
-        public bool ExposeReadErrors { get; init; }
+        public RandomTimeSpan ReadFailureDelay { get; init; } = ISyncedState.DefaultOptions.ReadFailureDelay;
+        public RandomTimeSpan WriteFailureDelay { get; init; } = ISyncedState.DefaultOptions.WriteFailureDelay;
+        public bool ExposeReadErrors { get; init; } = ISyncedState.DefaultOptions.ExposeReadErrors;
+        public bool TryComputeSynchronously { get; init; } = ISyncedState.DefaultOptions.TryComputeSynchronously;
+        public bool FlowExecutionContext { get; init; } = ISyncedState.DefaultOptions.FlowExecutionContext;
 
         internal abstract Task<T> Read(CancellationToken cancellationToken);
         internal abstract Task Write(T value, CancellationToken cancellationToken);
