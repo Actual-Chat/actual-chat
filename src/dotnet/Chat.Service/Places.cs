@@ -1,9 +1,12 @@
-﻿namespace ActualChat.Chat;
+﻿using ActualChat.Contacts;
+
+namespace ActualChat.Chat;
 
 public class Places(IServiceProvider services) : IPlaces
 {
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
+    private IContacts Contacts { get; } = services.GetRequiredService<IContacts>();
     private ICommander Commander { get; } = services.Commander();
 
     public virtual async Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken)
@@ -63,6 +66,28 @@ public class Places(IServiceProvider services) : IPlaces
         var (session, placeId, userIds) = command;
         var inviteCommand = new Authors_Invite(session, placeId.ToRootChatId(), userIds);
         await Commander.Call(inviteCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task OnDelete(Places_Delete command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, placeId) = command;
+        var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
+            return;
+
+        place.Rules.Require(PlacePermissions.Owner);
+        var contacts = await Contacts.ListIds(session, placeId, cancellationToken).ConfigureAwait(false);
+        foreach (var contact in contacts) {
+            var chatId = contact.ChatId;
+            var deleteChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
+            await Commander.Call(deleteChatCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+
+        var deleteRootChatCommand = new Chats_Change(session, place.Id.ToRootChatId(), null, new Change<ChatDiff> { Remove = true });
+        await Commander.Call(deleteRootChatCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     private static Place ToPlace(Chat chat)

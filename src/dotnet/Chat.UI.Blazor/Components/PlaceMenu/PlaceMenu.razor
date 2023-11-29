@@ -12,9 +12,20 @@
     Text="Settings"
     Click="OnPlaceSettingsClick">
 </MenuEntry>
+@if (!_isOwner) {
+    return;
+}
+<MenuEntrySeparator />
+<MenuEntry
+    Class="warning-item"
+    Icon="icon-log-out"
+    Text="Leave place & delete"
+    Click="OnPlaceDeleteClick">
+</MenuEntry>
 
 @code {
     private PlaceId _placeId;
+    private bool _isOwner;
 
     [Inject] private ChatHub ChatHub { get; init; } = null!;
 
@@ -23,7 +34,8 @@
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         _placeId = new PlaceId(placeSid);
-        await base.OnParametersSetAsync();
+        var place = await ChatHub.Places.Get(ChatHub.Session, _placeId, default).ConfigureAwait(false);
+        _isOwner = place?.Rules.IsOwner() ?? false;
     }
 
     private void OnInviteMembersClick()
@@ -31,4 +43,24 @@
 
     private void OnPlaceSettingsClick()
         => _ = ChatHub.ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
+
+    private async Task OnPlaceDeleteClick() {
+        var (_, error) = await ChatHub.UICommander().Run(new Places_Delete(ChatHub.Session, _placeId));
+        if (error != null)
+            return;
+        ChatHub.NavbarUI.SelectGroup(NavbarGroupIds.Chats, NavbarGroupIds.ChatsTitle);
+
+        // TODO(DF): Dummy code. Foreseen something better to synchronize selected Nav group and Url.
+        await Task.Delay(500);
+        await ChatHub.Dispatcher.InvokeAsync(
+            async () => {
+                var selectedChatId = ChatHub.ChatUI.SelectedChatId.Value;
+                if (selectedChatId.PlaceId == _placeId) {
+                    // Force selected chat and url change if they still refer to the removed place.
+                    ChatHub.ChatUI.SelectChat(ChatId.None);
+                    await ChatHub.History.NavigateTo(Links.Chats);
+                }
+            })
+            .ConfigureAwait(false);
+    }
 }
