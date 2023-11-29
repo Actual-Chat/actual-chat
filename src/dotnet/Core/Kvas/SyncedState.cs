@@ -10,7 +10,7 @@ public interface ISyncedState : IMutableState, IDisposable
         public static RandomTimeSpan ReadFailureDelay { get; set; } = TimeSpan.FromSeconds(1);
         public static RandomTimeSpan WriteFailureDelay { get; set; } = TimeSpan.FromSeconds(1);
         public static bool ExposeReadErrors { get; set; } = false;
-        public static bool TryComputeSynchronously { get; set; } = false;
+        public static bool TryComputeSynchronously { get; set; } = IComputedState.DefaultOptions.TryComputeSynchronously;
         public static bool FlowExecutionContext { get; set; } = IComputedState.DefaultOptions.FlowExecutionContext;
     }
 
