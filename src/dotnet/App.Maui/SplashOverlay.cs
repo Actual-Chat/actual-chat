@@ -10,6 +10,7 @@ public class SplashOverlay : Grid
     private static readonly double FadePart = 1 - RenderPart;
     private static readonly TimeSpan SplashTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan UpdateInterval = TimeSpan.FromSeconds(0.05);
+    private static readonly double MaxOpacity = 0.995;
     private readonly ProgressBar _progressBar;
     private readonly Image _logo;
 
@@ -29,6 +30,7 @@ public class SplashOverlay : Grid
         };
 
         ZIndex = 1;
+        Opacity = MaxOpacity;
         BackgroundColor = MauiSettings.SplashBackgroundColor;
         VerticalOptions = LayoutOptions.Fill;
         HorizontalOptions = LayoutOptions.Fill;
@@ -50,25 +52,23 @@ public class SplashOverlay : Grid
     {
         try {
             await UpdateLoop(ExpectedRenderDuration,
-                    UpdateInterval,
-                    progress => {
-                        if (LoadingUI.WhenAppRendered.IsCompleted)
-                            return false;
+                UpdateInterval,
+                progress => {
+                    if (LoadingUI.WhenAppRendered.IsCompleted)
+                        return false;
 
-                        _progressBar.Progress = progress * RenderPart;
-                        return true;
-                    })
-                .ConfigureAwait(true);
+                    _progressBar.Progress = progress * RenderPart;
+                    return true;
+                }).ConfigureAwait(true);
             if (!LoadingUI.WhenAppRendered.IsCompleted)
                 await LoadingUI.WhenAppRendered.WaitAsync(SplashTimeout - ExpectedRenderDuration).ConfigureAwait(true);
             await UpdateLoop(FadeDuration,
-                    UpdateInterval,
-                    progress => {
-                        _progressBar.Progress = (progress * FadePart) + RenderPart;
-                        Opacity = 1 - progress;
-                        return true;
-                    })
-                .ConfigureAwait(true);
+                UpdateInterval,
+                progress => {
+                    _progressBar.Progress = (progress * FadePart) + RenderPart;
+                    Opacity = (1 - progress).Clamp(0, MaxOpacity);
+                    return true;
+                }).ConfigureAwait(true);
             _progressBar.Progress = 1;
             Opacity = 0;
             LoadingUI.MarkSplashOverlayHidden();
