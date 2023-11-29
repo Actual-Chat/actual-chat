@@ -10,7 +10,7 @@ public class SplashOverlay : Grid
     private static readonly double FadePart = 1 - RenderPart;
     private static readonly TimeSpan SplashTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan UpdateInterval = TimeSpan.FromSeconds(0.05);
-    private static readonly double MaxOpacity = 0.995;
+    private static readonly double MaxOpacity = 0.99;
     private readonly ProgressBar _progressBar;
     private readonly Image _logo;
 
