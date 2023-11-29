@@ -238,7 +238,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var lastIdRangeToLoad = _lastIdRangeToLoad;
         _lastIdRangeToLoad = idRangeToLoad;
         var newIdRanges = idRangeToLoad.Subtract(lastIdRangeToLoad);
-        using (var __ = ExecutionContextExt.SuppressFlow()) {
+        using (var __ = ExecutionContextExt.TrySuppressFlow()) {
             // We don't want dependencies to be captured for prefetch calls
             _ = PrefetchTiles(chatId, newIdRanges.Item1, cancellationToken);
             _ = PrefetchTiles(chatId, newIdRanges.Item2, cancellationToken);

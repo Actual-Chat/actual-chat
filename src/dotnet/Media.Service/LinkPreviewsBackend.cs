@@ -45,7 +45,6 @@ public class LinkPreviewsBackend(IServiceProvider services)
             return linkPreview;
 
         // Regenerate link preview in background in case there is no preview yet (or it was wiped)
-        using var _1 = ExecutionContextExt.SuppressFlow();
         _ = BackgroundTask.Run(() => GenerateForEntry(entry, CancellationToken.None), CancellationToken.None);
         return null;
     }
