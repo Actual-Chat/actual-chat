@@ -230,6 +230,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var hasVeryLastItem = idRangeToLoad.End >= chatIdRange.End;
         if (hasVeryLastItem)
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
+        else
+            await NewOwnEntryLidState.Use(cancellationToken); // OR add dependency on author own text entry
 
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
         activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
