@@ -10,6 +10,7 @@
     _formModel.PrimaryLanguageId = languages.GetOrDefault(0).Value;
     _formModel.SecondaryLanguageId = languages.GetOrDefault(1).Value;
     _formModel.TertiaryLanguageId = languages.GetOrDefault(2).Value;
+    var shouldDisplayTranscriberEngineSettings = m.ShouldDisplayTranscriberEngineSettings;
 }
 
 <TileTopic Topic="Languages"/>
@@ -70,16 +71,18 @@
     </Form>
 </Tile>
 
-<TileTopic Topic="Transcription Engines"/>
-<Tile Class="theme-tile">
-    <TranscriptionEngineSettings/>
-</Tile>
+@if (shouldDisplayTranscriberEngineSettings) {
+    <TileTopic Topic="Transcription Engines"/>
+    <Tile Class="theme-tile">
+        <TranscriptionEngineSettings/>
+    </Tile>
+}
 
 
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     protected override void OnInitialized() {
@@ -94,14 +97,15 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var languages = await LanguageUI.Settings.Use(cancellationToken);
-        return new(languages);
+        var languages = await ChatHub.LanguageUI.Settings.Use(cancellationToken);
+        var enableIncompleteUI = await ChatHub.Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        return new(languages, enableIncompleteUI);
     }
 
     private void OnLanguageChanged(int index, string languageId) {
         var language = Language.ParseOrNone(languageId);
         var languages = State.Value.Languages;
-        LanguageUI.UpdateSettings(languages.With(index, language));
+        ChatHub.LanguageUI.UpdateSettings(languages.With(index, language));
         State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
 
@@ -125,7 +129,7 @@
         }
     }
 
-    public sealed record Model(UserLanguageSettings Languages) {
-        public static readonly Model Loading = new(new UserLanguageSettings());
+    public sealed record Model(UserLanguageSettings Languages, bool ShouldDisplayTranscriberEngineSettings) {
+        public static readonly Model Loading = new(new(), false);
     }
 }
