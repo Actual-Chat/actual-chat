@@ -538,12 +538,16 @@ export class VirtualList {
             this._whenRequestDataCompleted?.resolve(undefined);
             return;
         }
-
         const rs = this.parseRenderState();
         if (rs === null) {
             this._renderStartedAt = null;
             this._whenRequestDataCompleted?.resolve(undefined);
             return;
+        }
+
+        if (rs.renderIndex <= 1 && DeviceInfo.isIos) {
+            // Hack for iOS to keep text editor visible when virtual keyboard appears or new message is submitted
+            document.body.style.position = 'fixed';
         }
 
         const startedAt = this._renderStartedAt;
@@ -940,7 +944,7 @@ export class VirtualList {
     private scrollToEnd(useSmoothScroll: boolean = false) {
         if (this._renderState.renderIndex <= 1)
             useSmoothScroll = false; // fix for scroll to the end on chat switch
-        if (this.windowScrollTop != 0) // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
+        if (this.windowScrollTop != 0 && DeviceInfo.isIos) // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
             useSmoothScroll = false;
         debugLog?.log('scrollTo end', useSmoothScroll);
         this._inertialScroll.freeze();
