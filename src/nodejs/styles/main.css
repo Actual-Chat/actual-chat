@@ -7,11 +7,13 @@
 html {
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
     font-size: var(--font-size);
+    position: fixed; /* required for footer positioning when virtual keyboard is opened */
 }
 body {
     @apply select-none;
     -webkit-touch-callout: none;
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
+    position: fixed; /* required for footer positioning when virtual keyboard is opened */
 }
 
 /* prevent pull-to-refresh for Safari 16+ */

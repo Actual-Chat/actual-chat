@@ -61,6 +61,7 @@ export class VirtualList {
     private _whenRequestDataCompleted: PromiseSource<void> | null = null;
     private _pivots: Pivot[] = [];
     private _top: number;
+    private windowScrollTop: number = 0;
 
     private _renderStartedAt: number | null = null;
     private _isNearSkeleton: boolean = false;
@@ -366,6 +367,9 @@ export class VirtualList {
                 // recalculate item range as some elements were updated
                 this._shouldRecalculateItemRange = itemsWereMeasured;
             });
+        }
+        if (notAnItem) {
+            this.windowScrollTop = window.visualViewport.offsetTop;
         }
         // restore sticky end edge on item resize - not adding new one!
         if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
@@ -936,21 +940,27 @@ export class VirtualList {
     private scrollToEnd(useSmoothScroll: boolean = false) {
         if (this._renderState.renderIndex <= 1)
             useSmoothScroll = false; // fix for scroll to the end on chat switch
-        if (DeviceInfo.isMobile && BrowserInfo.appKind !== 'MauiApp')
-            useSmoothScroll = false; // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
-
+        if (this.windowScrollTop != 0) // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
+            useSmoothScroll = false;
         debugLog?.log('scrollTo end', useSmoothScroll);
         this._inertialScroll.freeze();
-        this._layoutFooter.scrollIntoView(false);
         this._scrollTime = Date.now();
-        this._endAnchorRef.scrollIntoView({
-            behavior: useSmoothScroll ? 'smooth' : 'auto',
-            block: 'end',
-            inline: 'nearest',
-        });
+        if (useSmoothScroll) {
+            this._endAnchorRef.scrollIntoView({
+                behavior: "smooth",
+                block: 'center',
+                inline: 'nearest',
+            });
+        }
+        let offset = 0;
         fastRaf({
+            read: () => {
+                offset = this._containerRef.offsetHeight;
+            },
             write: () => {
-                this._layoutFooter.scrollIntoView(false);
+                if (!useSmoothScroll) {
+                    this._ref.scrollTop = offset;
+                }
                 this._inertialScroll.unfreeze();
             }
         });
