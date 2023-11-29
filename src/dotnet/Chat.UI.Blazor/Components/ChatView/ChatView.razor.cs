@@ -45,7 +45,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     private IMutableState<NavigationAnchor?> NavigationAnchorState { get; set; } = null!;
-    private IMutableState<(AuthorId AuthorId, long EntryLid)> LastOwnEntryLidState { get; set; } = null!;
+    private IMutableState<(AuthorId AuthorId, long EntryLid)> NewOwnEntryLidState { get; set; } = null!;
     private SyncedStateLease<ReadPosition> ReadPositionState { get; set; } = null!;
 
     public IState<bool> IsViewportAboveUnreadEntry => _isViewportAboveUnreadEntry!;
@@ -70,9 +70,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             NavigationAnchorState = StateFactory.NewMutable(
                 (NavigationAnchor?)null,
                 StateCategories.Get(type, nameof(NavigationAnchorState)));
-            LastOwnEntryLidState = StateFactory.NewMutable(
+            NewOwnEntryLidState = StateFactory.NewMutable(
                 (AuthorId.None, 0L),
-                StateCategories.Get(type, nameof(LastOwnEntryLidState)));
+                StateCategories.Get(type, nameof(NewOwnEntryLidState)));
             _itemVisibility = StateFactory.NewMutable(
                 ChatViewItemVisibility.Empty,
                 StateCategories.Get(type, nameof(ItemVisibility)));
@@ -205,11 +205,11 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var scrollAnchor = isFirstRender && readEntryLid != 0
             ? new NavigationAnchor(readEntryLid)
             : null;
-        var (authorId, lastOwnEntryLid) = LastOwnEntryLidState.Value;
-        if (lastOwnEntryLid > _lastReadEntryLid) {
+        var (authorId, newOwnEntryLid) = NewOwnEntryLidState.Value;
+        if (newOwnEntryLid > _lastReadEntryLid) {
             // Scroll to the latest Author's entry - e.g.m when the author submits a new one
-            _lastReadEntryLid = lastOwnEntryLid;
-            scrollAnchor ??= new NavigationAnchor(lastOwnEntryLid);
+            _lastReadEntryLid = newOwnEntryLid;
+            scrollAnchor ??= new NavigationAnchor(newOwnEntryLid);
         }
         // Handle NavigateToEntry
         var navigationAnchor = await NavigationAnchorState.Use(cancellationToken);
@@ -220,16 +220,16 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var mustScrollToEntry = scrollAnchor != null && !ItemVisibility.Value.IsFullyVisible(scrollAnchor.EntryLid);
         Computed<Range<long>> cChatIdRange;
         using (Computed.SuspendDependencyCapture()) {
-            cChatIdRange = await Computed
-                .Capture(() => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken), cancellationToken)
-                .ConfigureAwait(false);
+            cChatIdRange = await Computed.Capture(
+                () => Chats.GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken),
+                cancellationToken);
         }
         var chatIdRange = cChatIdRange.Value;
         var idRangeToLoad = GetIdRangeToLoad(query, oldData, scrollAnchor, chatIdRange);
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End >= chatIdRange.End;
         if (hasVeryLastItem)
-            await cChatIdRange.Use(cancellationToken).ConfigureAwait(false); // Add dependency on chatIdRange
+            await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
         activity?.SetTag("AC." + "ReadEntryLid", readEntryLid);
@@ -251,23 +251,25 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var prevMessage = hasVeryFirstItem ? ChatMessage.Welcome(chatId) : null;
         var lastReadEntryLid = _suppressNewMessagesEntry ? long.MaxValue : _lastReadEntryLid;
         var tiles = new List<VirtualListTile<ChatMessage>>();
+        var lastOwnMessage = (ChatMessage?)null;
         for (int i = 0; i < 2; i++) {
             foreach (var idTile in idTiles) {
                 var lastReadEntryLidArg = lastReadEntryLid < idTile.Range.Start
                     ? 0
                     : lastReadEntryLid >= idTile.Range.End - 1
                         ? long.MaxValue
-                        : lastOwnEntryLid;
-                var tile = await ChatUI
-                    .GetTile(chatId,
-                        idTile.Range,
-                        prevMessage,
-                        lastReadEntryLidArg,
-                        cancellationToken);
+                        : newOwnEntryLid;
+                var tile = await ChatUI.GetTile(chatId,
+                    idTile.Range,
+                    prevMessage,
+                    lastReadEntryLidArg,
+                    cancellationToken);
                 if (tile.Items.Count == 0)
                     continue;
 
                 tiles.Add(tile);
+                prevMessage = tile.Items[^1];
+                lastOwnMessage = tile.Items.LastOrDefault(x => x.Entry.AuthorId == authorId) ?? lastOwnMessage;
 #if false
             // Uncomment for debugging:
             DebugLog?.LogDebug("Tile: #{IdRange}, {IsUnread}, {LastReadEntryLid}",
@@ -275,19 +277,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             foreach (var item in tile.Items)
                 DebugLog?.LogDebug("- {Key}: {ReplacementKind}", item.Key, item.ReplacementKind);
 #endif
-                prevMessage = tile.Items[^1];
             }
-            var lastOwnItem = tiles.AsEnumerable()
-                .Reverse()
-                .SelectMany(t => t.Items.Reverse())
-                .FirstOrDefault(i => i.Entry.AuthorId == authorId);
-            if (lastOwnItem != null && lastOwnItem.Flags.HasFlag(ChatMessageFlags.Unread)) {
-                lastOwnEntryLid = lastOwnItem.Entry.LocalId;
-                lastReadEntryLid = lastOwnEntryLid;
-                if (LastOwnEntryLidState.Value.EntryLid < lastOwnEntryLid)
-                    LastOwnEntryLidState.Value = (authorId, lastOwnEntryLid);
-                if (ReadPositionState.Value.EntryLid < lastOwnEntryLid)
-                    ReadPositionState.Value = new ReadPosition(Chat.Id, lastOwnEntryLid);
+            if (lastOwnMessage != null && lastOwnMessage.Flags.HasFlag(ChatMessageFlags.Unread)) {
+                newOwnEntryLid = lastOwnMessage.Entry.LocalId;
+                lastReadEntryLid = newOwnEntryLid;
+                if (NewOwnEntryLidState.Value.EntryLid < newOwnEntryLid)
+                    NewOwnEntryLidState.Value = (authorId, newOwnEntryLid);
+                if (ReadPositionState.Value.EntryLid < newOwnEntryLid)
+                    ReadPositionState.Value = new ReadPosition(Chat.Id, newOwnEntryLid);
                 tiles.Clear();
             }
             else
@@ -565,15 +562,15 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             .GetIdRange(Session, chatId, ChatEntryKind.Text, cancellationToken)
             .ConfigureAwait(false);
         var entryReader = ChatContext.NewEntryReader(ChatEntryKind.Text);
-        var newEntries = entryReader.Observe(chatIdRange.End, cancellationToken);
-        // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
-        var authorEntries = newEntries
-            .Where(e => e.AuthorId == authorId && e is { IsStreaming: false, AudioEntryId: null })
-            .ConfigureAwait(false);
-        await foreach (var newOwnEntry in authorEntries) {
-            LastOwnEntryLidState.Value = (authorId, newOwnEntry.LocalId);
-            if (ReadPositionState.Value.EntryLid < newOwnEntry.LocalId)
-                ReadPositionState.Value = new ReadPosition(Chat.Id, newOwnEntry.LocalId);
+        var entries = entryReader.Observe(chatIdRange.End, cancellationToken);
+        await foreach (var entry in entries.ConfigureAwait(false)) {
+            if (entry.AuthorId != authorId)
+                continue;
+
+            if (NewOwnEntryLidState.Value.EntryLid < entry.LocalId)
+                NewOwnEntryLidState.Value = (authorId, entry.LocalId);
+            if (!entry.IsStreaming && ReadPositionState.Value.EntryLid < entry.LocalId)
+                ReadPositionState.Value = new ReadPosition(Chat.Id, entry.LocalId);
         }
     }
 
