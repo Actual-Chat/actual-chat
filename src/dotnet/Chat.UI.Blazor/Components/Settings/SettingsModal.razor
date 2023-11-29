@@ -1,4 +1,3 @@
-@using LanguageSettings = ActualChat.Chat.UI.Blazor.Components.LanguageSettings
 @using ActualChat.Hosting
 @implements IModalView<SettingsModal.Model>
 @inherits ComputedStateComponent<AccountFull>
@@ -38,7 +37,7 @@
                     <LanguageShortcut/>
                 </TitleContent>
                 <ChildContent>
-                    <LanguageSettings/>
+                    <TranscriptionSettings/>
                 </ChildContent>
             </SettingsTab>
         }

@@ -1,6 +1,6 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Components.Notifications
-@inherits ComputedStateComponent<LanguageSettings.Model>
+@inherits ComputedStateComponent<TranscriptionSettings.Model>
 @{
     var m = State.Value;
     if (ReferenceEquals(m, Model.Loading))
@@ -68,6 +68,11 @@
             </FormSection>
         </FormBlock>
     </Form>
+</Tile>
+
+<TileTopic Topic="Transcription Engines"/>
+<Tile Class="theme-tile">
+    <TranscriptionEngineSettings/>
 </Tile>
 
 
