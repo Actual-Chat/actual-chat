@@ -52,6 +52,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             contact = contact with { Account = account.ToAccount() };
         }
 
+        // Subscribe on Chat removal
+        if (!contactId.ChatId.IsNone && contactId.ChatId != Constants.Chat.AnnouncementsChatId)
+            await PseudoChatContact(contactId.ChatId).ConfigureAwait(false);
+
         return contact;
     }
 
@@ -74,22 +78,37 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+
+
+        ApiArray<ContactId> result;
         if (placeId.IsNone) {
             var announcementChatContactId = new ContactId(ownerId, Constants.Chat.AnnouncementsChatId);
             if (!sContactIds.Any(c => OrdinalEquals(c, announcementChatContactId.Value)))
                 sContactIds.Add(announcementChatContactId);
-            return sContactIds.ToApiArray(c => new ContactId(c));
+            result = sContactIds.ToApiArray(c => new ContactId(c));
+        }
+        else {
+            var chatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
+            var contactIds = sContactIds.Select(c => new ContactId(c)).ToList();
+            var addedChatIds = contactIds.Select(c => c.ChatId).ToList();
+            var chatIdsToAdd = chatIds.Except(addedChatIds).ToList();
+            if (chatIdsToAdd.Count > 0) {
+                var contactsToAdd = chatIdsToAdd.Select(c => new ContactId(ownerId, c, AssumeValid.Option)).ToList();
+                contactIds.InsertRange(0, contactsToAdd);
+            }
+            result = contactIds.ToApiArray();
         }
 
-        var chatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
-        var contactIds = sContactIds.Select(c => new ContactId(c)).ToList();
-        var addedChatIds = contactIds.Select(c => c.ChatId).ToList();
-        var chatIdsToAdd = chatIds.Except(addedChatIds).ToList();
-        if (chatIdsToAdd.Count > 0) {
-            var contactsToAdd = chatIdsToAdd.Select(c => new ContactId(ownerId, c, AssumeValid.Option)).ToList();
-            contactIds.InsertRange(0, contactsToAdd);
+        // Subscribe on Chat removal
+        foreach (var contactId in result) {
+            if (contactId.ChatId.IsNone)
+                continue;
+            if (contactId.ChatId == Constants.Chat.AnnouncementsChatId)
+                continue;
+            await PseudoChatContact(contactId.ChatId).ConfigureAwait(false);
         }
-        return contactIds.ToApiArray();
+
+        return result;
     }
 
     public virtual async Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken)
@@ -108,7 +127,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return contactIds.ToApiArray(c => new PlaceId(c, AssumeValid.Option));
+        var result = contactIds.ToApiArray(c => new PlaceId(c, AssumeValid.Option));
+        // Subscribe on Place removal
+        foreach (var placeId in result)
+            await PseudoPlaceContact(placeId).ConfigureAwait(false);
+        return result;
     }
 
     // [CommandHandler]
@@ -266,6 +289,50 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [CommandHandler]
+    public virtual async Task OnRemoveChatContacts(ContactsBackend_RemoveChatContacts command, CancellationToken cancellationToken)
+    {
+        var chatId = command.ChatId;
+        var context = CommandContext.GetCurrent();
+
+        if (Computed.IsInvalidating()) {
+            var invPlaceId = context.Operation().Items.GetOrDefault<PlaceId>();
+            if (!invPlaceId.IsNone)
+                _ = PseudoPlaceContact(invPlaceId);
+            var invChatId = context.Operation().Items.GetOrDefault<ChatId>();
+            if (!invChatId.IsNone)
+                _ = PseudoChatContact(invChatId);
+            return;
+        }
+
+        if (chatId.IsPlaceChat && chatId.PlaceChatId.IsRoot) {
+            var placeId = chatId.PlaceId;
+
+            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
+
+            await dbContext.PlaceContacts
+                .Where(c => c.PlaceId == placeId)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            context.Operation().Items.Set(placeId);
+        }
+        else {
+            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
+
+            await dbContext.Contacts
+                .Where(c => c.ChatId == chatId)
+                .ExecuteDeleteAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            context.Operation().Items.Set(chatId);
+        }
+    }
+
+    // [CommandHandler]
     public virtual async Task OnGreet(ContactsBackend_Greet command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -351,6 +418,20 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     // Events
 
     [EventHandler]
+    public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (chat, oldChat, changeKind) = eventCommand;
+
+        if (changeKind == ChangeKind.Remove) {
+            var command = new ContactsBackend_RemoveChatContacts(chat.Id);
+            await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    [EventHandler]
     public virtual async Task OnAuthorChangedEvent(AuthorChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
@@ -414,6 +495,16 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var command = new ContactsBackend_Touch(contact.Id);
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
+
+    // protected methods
+
+    [ComputeMethod]
+    protected virtual Task<Unit> PseudoPlaceContact(PlaceId placeId)
+        => Stl.Async.TaskExt.UnitTask;
+
+    [ComputeMethod]
+    protected virtual Task<Unit> PseudoChatContact(ChatId chatId)
+        => Stl.Async.TaskExt.UnitTask;
 
     // private methods
 

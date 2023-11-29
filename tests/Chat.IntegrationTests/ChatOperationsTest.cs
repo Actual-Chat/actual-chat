@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
 using ActualChat.Users;
@@ -390,6 +391,40 @@ public class ChatOperationsTest : AppHostTestBase
         var chat = await chats.Get(ownerTester.Session, chatId, default);
         chat.Should().NotBeNull();
         chat!.Rules.IsOwner().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemovingChatShouldRemoveItFromContactsList()
+    {
+        using var appHost = await NewAppHost();
+        await using var ownerTester = appHost.NewBlazorTester();
+        await ownerTester.SignInAsAlice();
+        var session = ownerTester.Session;
+
+        var (chatId, _) = await ChatOperations.CreateChat(ownerTester, true);
+
+        var contacts = ownerTester.AppServices.GetRequiredService<IContacts>();
+        await TestExt.WhenMetAsync(async () => {
+                var contactIds = await contacts.ListIds(session, PlaceId.None, default);
+                var chatIds = contactIds.Select(c => c.ChatId).ToArray();
+                chatIds.Should().Contain(chatId);
+            },
+            TimeSpan.FromSeconds(3));
+
+        var commander = ownerTester.AppServices.Commander();
+        var removeChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
+        await commander.Call(removeChatCommand);
+
+        var chats = ownerTester.AppServices.GetRequiredService<IChats>();
+        var chat = await chats.Get(session, chatId, default);
+        chat.Should().BeNull();
+
+        await TestExt.WhenMetAsync(async () => {
+                var contactIds = await contacts.ListIds(session, PlaceId.None, default);
+                var chatIds = contactIds.Select(c => c.ChatId).ToArray();
+                chatIds.Should().NotContain(chatId);
+            },
+            TimeSpan.FromSeconds(10));
     }
 
     private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
