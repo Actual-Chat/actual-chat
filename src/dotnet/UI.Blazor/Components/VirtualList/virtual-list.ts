@@ -370,10 +370,10 @@ export class VirtualList {
         }
         if (notAnItem) {
             this.windowScrollTop = window.visualViewport.offsetTop;
+            // restore sticky end edge on item resize - not adding new one!
+            if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
+                this.scrollToEnd(false);
         }
-        // restore sticky end edge on item resize - not adding new one!
-        if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
-            this.scrollToEnd(false);
 
         const lastItemWasMeasured = itemsWereMeasured && this._unmeasuredItems.size == 0;
         if (lastItemWasMeasured)
