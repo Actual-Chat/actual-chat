@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 
 namespace ActualChat.App.Maui;
 
-public sealed partial class MauiWebView
+public sealed partial class MauiWebView : IDisposable
 {
     private static readonly Tracer Tracer = Tracer.Default[nameof(MauiWebView)];
     private static readonly object StaticLock = new();
@@ -46,9 +46,20 @@ public sealed partial class MauiWebView
                 ComponentType = typeof(MauiBlazorApp),
                 Selector = "#app",
             });
-        lock (StaticLock)
+        lock (StaticLock) {
+            _current.DisposeSilently();
             _current = this;
+        }
         Tracer.Point($"Current = #{Id}");
+    }
+
+    public void Dispose()
+    {
+        BlazorWebView.BlazorWebViewInitializing -= OnInitializing;
+        BlazorWebView.BlazorWebViewInitialized -= OnInitialized;
+        BlazorWebView.UrlLoading -= OnLoading;
+        BlazorWebView.Loaded -= OnLoaded;
+        BlazorWebView.Unloaded -= OnUnloaded;
     }
 
     public static bool IsCurrent(object platformWebView, [NotNullWhen(true)] out MauiWebView? mauiWebView)
