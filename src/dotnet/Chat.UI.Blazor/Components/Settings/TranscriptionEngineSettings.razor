@@ -1,0 +1,115 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Kvas
+@using ActualChat.Transcription
+@inherits ComputedStateComponent<TranscriptionEngineSettings.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
+    _formModel.FromModel(m);
+}
+
+<Form Model="@_formModel">
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+
+    <FormBlock>
+        <InputRadioGroup
+            Name="theme"
+            DisplayName="Theme"
+            @bind-Value="_formModel.Engine">
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
+                        Id="@_formModel.DeepgramFormId"
+                        Value="@TranscriptionEngine.Deepgram"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.DeepgramFormId" Text="Deepgram"></Label>
+                </Content>
+            </TileItem>
+
+            <TileItem>
+                <Icon>
+                    <FormRadio
+                        Id="@_formModel.GoogleFormId"
+                        Value="@TranscriptionEngine.Google"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_formModel.GoogleFormId" Text="Google Cloud"></Label>
+                </Content>
+            </TileItem>
+
+        </InputRadioGroup>
+    </FormBlock>
+</Form>
+
+@code {
+    private FormModel _formModel = null!;
+
+    [Inject] private AccountSettings AccountSettings { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        _formModel = new (ComponentIdGenerator);
+        _formModel.EngineChanged += OnEngineChanged;
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+
+        var settings = await AccountSettings.GetUserTranscriptionEngineSettings(cancellationToken);
+        return new(settings.TranscriptionEngine);
+    }
+
+    private async Task OnEngineChanged(TranscriptionEngine engine) {
+        var settings = new UserTranscriptionEngineSettings { TranscriptionEngine = engine };
+        await AccountSettings.SetUserTranscriptionEngineSettings(settings, CancellationToken.None);
+        await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
+    }
+
+    // Nested types
+
+    public sealed class FormModel {
+        private TranscriptionEngine _engine;
+
+        private string FormId { get; }
+        public string DeepgramFormId { get; }
+        public string GoogleFormId { get; }
+
+        public TranscriptionEngine Engine {
+            get => _engine;
+            set {
+                if (_engine == value)
+                    return;
+
+                _engine = value;
+                _ = EngineChanged?.Invoke(value);
+            }
+        }
+
+        public event Func<TranscriptionEngine, Task>? EngineChanged;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("transcription-engine-form");
+            DeepgramFormId = $"{FormId}-use-deepgram";
+            GoogleFormId = $"{FormId}-use-google";
+        }
+
+        public void FromModel(Model model) {
+            _engine = model.Engine;
+        }
+    }
+
+    public sealed record Model(TranscriptionEngine Engine) {
+        public static readonly Model Loading = new(TranscriptionEngine.Google);
+    }
+}

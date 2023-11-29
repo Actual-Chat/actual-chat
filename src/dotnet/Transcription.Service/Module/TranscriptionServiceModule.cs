@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.Transcription.DeepGram;
 using ActualChat.Transcription.Google;
 
 namespace ActualChat.Transcription.Module;
@@ -16,6 +17,8 @@ public class TranscriptionServiceModule(IServiceProvider moduleServices) : HostM
         if (!HostInfo.AppKind.IsServer())
             return; // Server-side only module
 
-        services.AddSingleton<ITranscriber, GoogleTranscriber>();
+        services.AddSingleton<ITranscriberFactory, TranscriberFactory>();
+        services.AddSingleton<GoogleTranscriber>();
+        services.AddSingleton<DeepGramTranscriber>();
     }
 }
