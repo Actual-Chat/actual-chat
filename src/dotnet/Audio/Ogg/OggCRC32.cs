@@ -37,14 +37,6 @@ internal class OggCRC32
     public static uint Get(uint crc, ReadOnlySpan<byte> data)
     {
         ReadOnlySpan<uint> crcTable = _crcTable;
-        // // ReSharper disable once ForCanBeConvertedToForeach
-        // for (int i = 0; i < data.Length; i++)
-        // {
-        //     byte idx = (byte)crc;
-        //     idx ^= data[i];
-        //     crc = crcTable[idx] ^ (crc >> 8);
-        // }
-
         // ReSharper disable once ForCanBeConvertedToForeach
         for (var i = 0; i < data.Length; i++) {
             var idx = (int)((crc >> 24) & 0xFF);

@@ -23,6 +23,4 @@ public struct OggHeader
         + sizeof(uint)
         + sizeof(byte)
         + (SegmentTable.Length * sizeof(byte));
-
-
 }
