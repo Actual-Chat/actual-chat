@@ -107,7 +107,7 @@
         var player = await ChatPlayers.Get(chatId, ChatPlayerKind.Historical, cancellationToken);
         var historicalChatPlayer = player as HistoricalChatPlayer;
         var playback = historicalChatPlayer?.Playback;
-        var lastState = State?.Value ?? Model.NotPlaying; // State can be null when ComputeState runs synchronously
+        var lastState = State.Value;
         if (playback == null) {
             // This happens when player is being disposed, which means this method
             // will soon recompute anyway.

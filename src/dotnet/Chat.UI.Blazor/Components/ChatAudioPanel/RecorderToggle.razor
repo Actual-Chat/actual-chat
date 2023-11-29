@@ -77,8 +77,8 @@
     private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
     private IJSRuntime JS => ChatHub.JS;
 
+    private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsForcePushed { get; set; } = false;
-    private bool IsUpdating => !Chat.Id.IsNone && (State is not { } state || state.Value.Chat.Id != Chat.Id);
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
 
