@@ -18,10 +18,13 @@ public class MainPage : ContentPage
     }
 
     public void RecreateWebView()
-        => Content = new Grid {
+    {
+        var mauiWebView = new MauiWebView();
+        Content = new Grid {
             new SplashOverlay(),
-            new MauiWebView().BlazorWebView,
+            mauiWebView.BlazorWebView,
         };
+    }
 
     public void Reload()
     {
