@@ -1,4 +1,3 @@
-using ActualChat.IO;
 using Microsoft.JSInterop;
 
 namespace ActualChat.Kvas;
@@ -96,8 +95,11 @@ public class BatchingKvas : SafeAsyncDisposableBase, IKvas
 
     private async Task ReadBatch(List<BatchProcessor<string, byte[]?>.Item> batch, CancellationToken cancellationToken)
     {
+        var items = new string[batch.Count];
+        for (var i = 0; i < batch.Count; i++)
+            items[i] = batch[i].Input;
         var results = await Backend
-            .GetMany(batch.Select(i => i.Input).ToArray(), cancellationToken)
+            .GetMany(items, cancellationToken)
             .ConfigureAwait(false);
         for (var i = 0; i < batch.Count; i++) {
             var batchItem = batch[i];

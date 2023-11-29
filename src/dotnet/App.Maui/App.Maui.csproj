@@ -208,14 +208,16 @@
     <EnableLLVM>false</EnableLLVM> <!-- Almost works, but no WebSocket connection! -->
 
     <!-- Runtime -->
+    <!-- Unnecessary:
+    <RuntimeIdentifier>android-arm64</RuntimeIdentifier>
+    -->
     <!-- Has no effect, because android-env.txt contains MONO_GC_PARAMS
     <AndroidEnableSGenConcurrent>false</AndroidEnableSGenConcurrent>
     -->
     <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
-    <!-- fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
-    <AndroidEnableMarshalMethods >true</AndroidEnableMarshalMethods >
+    <!-- Fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
+    <AndroidEnableMarshalMethods>true</AndroidEnableMarshalMethods >
     -->
-    <RuntimeIdentifier>android-arm64</RuntimeIdentifier>
     <AndroidEnablePreloadAssemblies>true</AndroidEnablePreloadAssemblies>
     <!-- When AndroidEnablePreloadAssemblies == true, it lazy loads non-AOT code -->
     <!-- false: -100ms or so to startup time -->
