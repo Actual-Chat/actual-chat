@@ -606,6 +606,8 @@ export class VirtualList {
                 await fastWriteRaf();
             }
             else {
+                if (rs.renderIndex <= 1)
+                    this.scrollToEnd(false);
                 warnLog?.log(`endRender: there are no pivots`);
             }
         } finally {
