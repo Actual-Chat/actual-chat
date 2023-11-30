@@ -11,12 +11,17 @@ let id = 0;
 class BeamAvatar extends LitElement {
     @property() key: string;
     @property() square: boolean = false;
+    @property() css: string = "";
+    @property() width: number = 36;
+    @property() height: number = 36;
     @property() colors: string[] = ['FFDBA0', 'BBBEFF', '9294E1', 'FF9BC0', '0F2FE8'];
 
     private maskId = `beam-avatar-${++id}`;
 
     render() {
         const data = this.generateData(this.key, this.colors);
+        const w = this.width == 0 ? 36 : this.width;
+        const h = this.height == 0 ? 36 : this.height;
         const mouth = data.isMouthOpen
             ? svg`
                 <path
@@ -36,22 +41,23 @@ class BeamAvatar extends LitElement {
         return html`
             <svg
                 xmlns='http://www.w3.org/2000/svg'
-                viewBox='${'0 0 ' + SIZE + ' ' + SIZE}'
+                viewBox='${'0 0 ' + w + ' ' + h}'
                 fill='none'
                 role='img'
                 width='100%'
                 height='100%'
+                style='${this.css}'
             >
-                <mask id='${this.maskId}' maskUnits='userSpaceOnUse' x='0' y='0' width='${SIZE}' height='${SIZE}'>
-                    <rect width='${SIZE}' height='${SIZE}' rx='${this.square ? undefined : SIZE * 2}' fill='#FFFFFF' />
+                <mask id='${this.maskId}' maskUnits='userSpaceOnUse' x='0' y='0' width='${w}' height='${h}'>
+                    <rect width='${w}' height='${h}' fill='#FFFFFF' />
                 </mask>
                 <g mask='url(#${this.maskId})'>
-                    <rect width='${SIZE}' height='${SIZE}' fill='#${data.backgroundColor}' />
+                    <rect width='${w}' height='${h}' fill='#${data.backgroundColor}' />
                     <rect
                         x='0'
                         y='0'
-                        width='${SIZE}'
-                        height='${SIZE}'
+                        width='${w}'
+                        height='${h * 2}'
                         transform='${
                             'translate(' +
                             data.wrapperTranslateX +
@@ -60,9 +66,9 @@ class BeamAvatar extends LitElement {
                             ') rotate(' +
                             data.wrapperRotate +
                             ' ' +
-                            SIZE / 2 +
+                            w / 2 +
                             ' ' +
-                            SIZE / 2 +
+                            h / 2 +
                             ') scale(' +
                             data.wrapperScale +
                             ')'

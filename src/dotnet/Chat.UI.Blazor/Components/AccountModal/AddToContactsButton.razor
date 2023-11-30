@@ -1,0 +1,57 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Contacts
+@inherits ComputedStateComponent<AddToContactsButton.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+}
+
+@if (m.CanAddToContacts) {
+    <ButtonRound
+        Class="btn-md"
+        Tooltip="Add to Contacts"
+        TooltipPosition="FloatingPosition.Top"
+        Click="@OnAddClick">
+        <i class="icon-person-add text-2xl"></i>
+    </ButtonRound>
+}
+
+@code {
+    private Session Session => ChatHub.Session;
+    private IContacts Contacts => ChatHub.Contacts;
+    private UICommander UICommander => ChatHub.UICommander();
+    private AuthorUI AuthorUI => ChatHub.AuthorUI;
+
+    [Inject] private ChatHub ChatHub { get; set; } = null!;
+
+    [Parameter, EditorRequired] public Author Author { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var peerChatId = await AuthorUI.GetPeerChatId(Author.Id, cancellationToken);
+        if (peerChatId == PeerChatId.None)
+            return new ();
+        var contact = await Contacts.GetForChat(Session, peerChatId, cancellationToken);
+        return new(contact);
+    }
+
+    private async Task OnAddClick() {
+        var contact = State.Value.Contact!;
+        var command = new Contacts_Change(Session, contact.Id, null, new Change<Contact> {
+            Create = contact,
+        });
+        await UICommander.Run(command);
+    }
+
+    public sealed record Model(Contact? Contact = null) {
+        public  static readonly Model Loading = new();
+
+        public bool CanAddToContacts => Contact is { ChatId.Kind: ChatKind.Peer } && !Contact.IsStored();
+    }
+}

@@ -110,6 +110,9 @@ body.hoverable .tile:hover {
     @apply rounded-lg;
     @apply hover:bg-hover;
 }
+.tile-item.not-hover {
+    @apply hover:bg-transparent;
+}
 .tile-item.unselected {
     @apply hover:bg-transparent;
 }

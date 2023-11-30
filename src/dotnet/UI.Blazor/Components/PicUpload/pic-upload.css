@@ -99,3 +99,7 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
 .pic-size-30 {
     @apply w-30 h-30 min-w-30 min-h-30 max-w-30 max-h-30 text-2xl;
 }
+
+.pic-size-100 {
+    @apply w-full h-full min-w-full min-h-full max-w-none max-h-none text-2xl;
+}

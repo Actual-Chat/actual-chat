@@ -37,7 +37,13 @@
 }
 .avatar-circle > .c-content > .c-avatar {
     @apply block;
+}
+.avatar-circle > .c-content > .c-avatar.pic-rounded {
     @apply rounded-full;
+}
+.avatar-circle > .c-content > .c-avatar.pic-blurred {
+    @apply blur-lg;
+    @apply opacity-70;
 }
 /* This dummy selector just "uses" the widths that are picked randomly by AuthorName.razor */
 .avatar-name-spacing {
