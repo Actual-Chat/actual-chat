@@ -57,7 +57,7 @@ public sealed class PermissionStepModel(IServiceProvider services)
 
     public void MarkCompleted()
     {
-        var onboardingUI = (OnboardingUI)services.GetRequiredService<IOnboardingUI>();
+        var onboardingUI = services.GetRequiredService<OnboardingUI>();
         onboardingUI.UpdateLocalSettings(onboardingUI.LocalSettings.Value with {
             IsPermissionsStepCompleted = true,
         });

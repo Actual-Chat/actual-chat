@@ -61,7 +61,8 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped(c => new LanguageUI(c));
 
         // OnboardingUI
-        services.AddScoped<IOnboardingUI>(c => new OnboardingUI(c.ChatHub()));
+        services.AddScoped(c => new OnboardingUI(c.ChatHub()));
+        services.AddAlias<IOnboardingUI, OnboardingUI>(ServiceLifetime.Scoped);
 
         // IMarkupViews
         services.AddTypeMapper<IMarkupView>(map => map
