@@ -79,7 +79,7 @@
             await Task.Delay(_hideUntil - now + TimeSpan.FromMilliseconds(50), cancellationToken);
 
         var readEntryLid = await ChatView.ShownReadEntryLid.Use(cancellationToken);
-        var canScrollToUnread = itemVisibility.MaxEntryLid < readEntryLid;
+        var canScrollToUnread = readEntryLid < lastEntryId && itemVisibility.MaxEntryLid < readEntryLid;
         var unreadCount = await ChatUI.GetUnreadCount(Chat.Id, cancellationToken);
         return new(true, lastEntryId, canScrollToUnread ? readEntryLid : null, unreadCount);
     }
