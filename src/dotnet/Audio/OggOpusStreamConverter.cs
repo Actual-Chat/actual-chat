@@ -42,7 +42,7 @@ public class OggOpusStreamConverter(OggOpusStreamConverter.Options? options = nu
             .GetFrames(cancellationToken)
             .ToMaybeHasNextSequence(cancellationToken)
             .ChunkWhile(list => list.Sum(t => t.Duration.Milliseconds) <= pageDuration, cancellationToken);
-        await foreach (var (audioFrames, hasNext) in frameChunks) {
+        await foreach (var (audioFrames, hasNext) in frameChunks.ConfigureAwait(false)) {
             position += WriteFrame(new OggOpusWriter(state, buffer.Span[position..]), audioFrames, hasNext);
             yield return (buffer.Span[..position].ToArray(), audioFrames[^1]);
 

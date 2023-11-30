@@ -1,5 +1,7 @@
 ﻿namespace ActualChat.Audio.Ogg;
 
+#pragma warning disable CA1028
+
 [Flags]
 public enum OggHeaderTypeFlag: byte
 {
