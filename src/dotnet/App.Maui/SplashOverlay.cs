@@ -59,6 +59,7 @@ public class SplashOverlay : Grid
     {
         try {
             Services = await WhenScopedServicesReady().ConfigureAwait(true);
+            LoadingUI.RemoveLoadingOverlay();
             await UpdateLoop(ExpectedRenderDuration,
                 progress => {
                     if (LoadingUI.WhenRendered.IsCompleted)

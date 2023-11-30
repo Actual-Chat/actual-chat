@@ -51,7 +51,7 @@ public sealed class LoadingUI
             return;
 
         AppBuildTime = StaticTracer.Elapsed;
-        StaticTracer.Point(nameof(MarkAppBuilt));
+        StaticTracer.Point();
     }
 
     public static void MarkViewCreated()
@@ -59,7 +59,7 @@ public sealed class LoadingUI
         if (!_whenViewCreatedSource.TrySetResult())
             return;
 
-        StaticTracer.Point(nameof(MarkViewCreated));
+        StaticTracer.Point();
     }
 
     public static void MarkAppCreated()
@@ -68,7 +68,7 @@ public sealed class LoadingUI
             return;
 
         AppCreationTime = StaticTracer.Elapsed;
-        StaticTracer.Point(nameof(MarkAppCreated));
+        StaticTracer.Point();
     }
 
     public void MarkLoaded()
@@ -77,7 +77,7 @@ public sealed class LoadingUI
             return;
 
         LoadTime = Tracer.Elapsed;
-        Tracer.Point(nameof(MarkLoaded));
+        Tracer.Point();
 
         // We want to make sure MarkRendered is called no matter what (e.g. even if render fails)
         _ = Task.Delay(TimeSpan.FromSeconds(0.5)).ContinueWith(
@@ -91,7 +91,7 @@ public sealed class LoadingUI
             return;
 
         RenderTime = Tracer.Elapsed;
-        Tracer.Point(nameof(MarkRendered));
+        Tracer.Point();
         _whenAppRenderedSource.TrySetResult();
         RemoveLoadingOverlay();
     }
@@ -102,12 +102,10 @@ public sealed class LoadingUI
             return;
 
         ChatListLoadTime = Tracer.Elapsed;
-        Tracer.Point(nameof(MarkChatListLoaded));
+        Tracer.Point();
     }
 
-    // Private methods
-
-    private void RemoveLoadingOverlay()
+    public void RemoveLoadingOverlay()
         => _ = Services.JSRuntime().InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.BrowserInit.removeLoadingOverlay")
             .AsTask()
             .WithErrorHandler(
