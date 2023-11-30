@@ -60,7 +60,6 @@ public class SplashOverlay : Grid
         try {
             Services = await WhenScopedServicesReady().ConfigureAwait(true);
             await UpdateLoop(ExpectedRenderDuration,
-                UpdateInterval,
                 progress => {
                     if (LoadingUI.WhenRendered.IsCompleted)
                         return false;
@@ -71,7 +70,6 @@ public class SplashOverlay : Grid
             if (!LoadingUI.WhenRendered.IsCompleted)
                 await LoadingUI.WhenRendered.WaitAsync(SplashTimeout - ExpectedRenderDuration).ConfigureAwait(true);
             await UpdateLoop(FadeDuration,
-                UpdateInterval,
                 progress => {
                     _progressBar.Progress = (progress * FadePart) + RenderPart;
                     Opacity = (1 - progress).Clamp(0, MaxOpacity);
@@ -90,13 +88,13 @@ public class SplashOverlay : Grid
         }
     }
 
-    private async Task UpdateLoop(TimeSpan totalDuration, TimeSpan interval, Func<double, bool> uiAction)
+    private async Task UpdateLoop(TimeSpan totalDuration, Func<double, bool> uiAction)
     {
         var clock = Clocks.CpuClock;
         var startedAt = clock.Now;
-        var steps = totalDuration / interval;
+        var steps = totalDuration / UpdateInterval;
         for (int i = 1; i <= steps; i++) {
-            var stopAt = startedAt + (i * interval);
+            var stopAt = startedAt + (i * UpdateInterval);
             if (!uiAction(i / steps))
                 return;
             await clock.Delay(stopAt).ConfigureAwait(true);
