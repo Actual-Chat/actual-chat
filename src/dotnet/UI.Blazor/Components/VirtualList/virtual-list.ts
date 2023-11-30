@@ -372,6 +372,16 @@ export class VirtualList {
             // restore sticky end edge on item resize - not adding new one!
             if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
                 this.scrollToEnd(false);
+
+            if (DeviceInfo.isIos) {
+                if (this.windowScrollTop == 0) {
+                    document.body.style.position = 'static';
+                }
+                else {
+                    // Hack for iOS to keep text editor visible when virtual keyboard appears or new message is submitted
+                    document.body.style.position = 'fixed';
+                }
+            }
         }
         else if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
             this.scrollToEnd(true);
@@ -544,11 +554,6 @@ export class VirtualList {
             this._renderStartedAt = null;
             this._whenRequestDataCompleted?.resolve(undefined);
             return;
-        }
-
-        if (rs.renderIndex <= 1 && DeviceInfo.isIos) {
-            // Hack for iOS to keep text editor visible when virtual keyboard appears or new message is submitted
-            document.body.style.position = 'fixed';
         }
 
         const startedAt = this._renderStartedAt;
