@@ -264,14 +264,14 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
 
     public void HighlightEntry(ChatEntryId entryId, bool navigate, bool updateUI = true)
     {
-        lock (_lock) {
+        if (navigate)
+            _ = UIEventHub.Publish(new NavigateToChatEntryEvent(entryId, true));
+        else lock (_lock) {
             if (_highlightedEntryId.Value == entryId)
                 return;
 
             _highlightedEntryId.Value = entryId;
         }
-        if (navigate)
-            _ = UIEventHub.Publish(new NavigateToChatEntryEvent(entryId));
         if (updateUI)
             _ = UICommander.RunNothing();
     }

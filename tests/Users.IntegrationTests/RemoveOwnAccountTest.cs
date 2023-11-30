@@ -44,7 +44,7 @@ public class RemoveOwnAccountTest : AppHostTestBase
         var chat1 = await chats.Get(session, chat.Id, CancellationToken.None);
         chat1.Should().BeNull();
 
-        var lastEntryLid = entries[^1].Id.LocalId;
+        var lastEntryLid = entries[^1].LocalId;
         var idTileStack = Constants.Chat.ReaderIdTileStack;
         var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid + 1))[^1];
         await FluentActions.Awaiting(() => chats.GetTile(session,
@@ -55,7 +55,7 @@ public class RemoveOwnAccountTest : AppHostTestBase
             .Should()
             .ThrowAsync<NotFoundException>();
 
-        var lastActualEntryId = entriesActual[^1].Id.LocalId;
+        var lastActualEntryId = entriesActual[^1].LocalId;
         var idTileActual = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastActualEntryId, lastActualEntryId + 1))[^1];
         var tile = await chats.GetTile(session,
                 TestChatId,

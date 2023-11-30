@@ -82,17 +82,25 @@ public partial class History : IHasServices, IDisposable
 
     public void Dispose()
     {
+        _whenReadySource.TrySetCanceled();
         _blazorRef.DisposeSilently();
         _blazorRef = null;
     }
 
-    public Task Initialize(LocalUrl autoNavigationUrl)
+    public async Task Initialize(LocalUrl autoNavigationUrl)
     {
         Log.LogInformation("Initialize @ {AutoNavigationUrl}", autoNavigationUrl);
         _blazorRef = DotNetObjectReference.Create(this);
         var sCurrentItemId = ItemIdFormatter.Format(_currentItem.Id);
-        _ = JS.InvokeVoidAsync(JSInitMethod, _blazorRef, autoNavigationUrl.Value, sCurrentItemId);
-        return WhenReady;
+        var initTask = JS.InvokeVoidAsync(JSInitMethod, _blazorRef, autoNavigationUrl.Value, sCurrentItemId);
+        await initTask.ConfigureAwait(false);
+        try {
+            await WhenReady.WaitAsync(TimeSpan.FromSeconds(0.5)).ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            Log.LogWarning("Initialize: timed out");
+            _whenReadySource.TrySetResult();
+        }
     }
 
     public void Register<TState>(TState defaultState, bool ignoreIfAlreadyRegistered = false)

@@ -37,4 +37,8 @@ public sealed record ChatViewItemVisibility(
 
         return true;
     }
+
+    // This record relies on referential equality
+    public bool Equals(ChatViewItemVisibility? other) => ReferenceEquals(this, other);
+    public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

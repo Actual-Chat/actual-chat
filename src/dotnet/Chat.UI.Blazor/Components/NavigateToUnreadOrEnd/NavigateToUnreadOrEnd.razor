@@ -9,7 +9,7 @@
     if (_animator.MustHideComponent)
         return;
 
-    var tooltip = m.CanScrollToUnread ? "Navigate to the new message" : "Navigate to the last message";
+    var tooltip = m.UnreadEntryLid.HasValue ? "Go to the unread part" : "Go to the last message";
 }
 
 <div class="navigate-to-end @_animator.Class">
@@ -58,46 +58,56 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (Chat.Id.IsNone)
+        if (Chat.Id.IsNone || !await RegionVisibility.IsVisible.Use(cancellationToken))
             return Model.None;
 
-        var isContainerVisible = await RegionVisibility.IsVisible.Use(cancellationToken);
-        if (!isContainerVisible)
-            return Model.None;
+        var lastEntryId = await GetLastTextEntryLid(cancellationToken);
+        if (lastEntryId == 0)
+            return Model.Invisible;
 
+        await ChatView.WhenInitialized;
         var itemVisibility = await ChatView.ItemVisibility.Use(cancellationToken);
         var isVisible = !itemVisibility.IsEndAnchorVisible;
         if (!isVisible)
             return Model.Invisible;
 
-        var chat = await ChatUI.Get(Chat.Id, cancellationToken);
-        if (chat == null)
-            return Model.Invisible;
-
-        var lastEntryId = chat.News.LastTextEntry?.Id ?? default;
-        if (lastEntryId.IsNone)
-            return Model.Invisible;
-
         // Delay showing the button for the first time
         var now = Now;
         if (_hideUntil == default)
-            _hideUntil = now + TimeSpan.FromSeconds(1.5);
+            _hideUntil = now + TimeSpan.FromSeconds(0.35);
         if (_hideUntil > now)
             await Task.Delay(_hideUntil - now + TimeSpan.FromMilliseconds(50), cancellationToken);
 
+        var readEntryLid = await ChatView.ShownReadEntryLid.Use(cancellationToken);
+        var canScrollToUnread = itemVisibility.MaxEntryLid < readEntryLid;
         var unreadCount = await ChatUI.GetUnreadCount(Chat.Id, cancellationToken);
-        var canScrollToUnread = await ChatView.CanScrollToUnread.Use(cancellationToken);
-        return new(true, lastEntryId, unreadCount, canScrollToUnread);
+        return new(true, lastEntryId, canScrollToUnread ? readEntryLid : null, unreadCount);
     }
 
-    private Task OnClick()
-        => ChatView.NavigateToUnreadOrEnd();
+    private void OnClick() {
+        var m = State.Value;
+        if (!m.IsVisible)
+            return;
+
+        if (m.UnreadEntryLid is { } unreadEntryLid)
+            _ = ChatView.NavigateToNext(unreadEntryLid, true);
+        else
+            _ = ChatView.NavigateTo(m.LastEntryLid, false, true);
+    }
+
+    private async ValueTask<long> GetLastTextEntryLid(CancellationToken cancellationToken)
+    {
+        var chatNews = await Chats.GetNews(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+        return chatNews.LastTextEntry?.LocalId ?? 0;
+    }
+
+    // Nested types
 
     public sealed record Model(
         bool IsVisible,
-        ChatEntryId LastEntryId,
-        Trimmed<int> UnreadCount,
-        bool CanScrollToUnread)
+        long LastEntryLid,
+        long? UnreadEntryLid,
+        Trimmed<int> UnreadCount)
     {
         public static readonly Model None = new(false, default, default, default);
         public static readonly Model Invisible = new(false, default, default, default);

@@ -77,7 +77,7 @@ public class RemoveAccountTest : AppHostTestBase
         var chat1 = await chats.Get(session, chat.Id, CancellationToken.None);
         chat1.Should().BeNull();
 
-        var lastEntryLid = entries[^1].Id.LocalId;
+        var lastEntryLid = entries[^1].LocalId;
         var idTileStack = Constants.Chat.ReaderIdTileStack;
         var idTile = idTileStack.GetOptimalCoveringTiles(new Range<long>(lastEntryLid, lastEntryLid + 1))[^1];
         await FluentActions.Awaiting(() => chats.GetTile(session,
