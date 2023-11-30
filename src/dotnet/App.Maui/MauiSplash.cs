@@ -4,8 +4,8 @@ namespace ActualChat.App.Maui;
 
 public class MauiSplash : Grid
 {
-    private static readonly TimeSpan HalfLifeDuration = TimeSpan.FromSeconds(0.5);
-    private static readonly TimeSpan FadeDuration = TimeSpan.FromSeconds(0.25);
+    private static readonly TimeSpan HalfLifeDuration = TimeSpan.FromSeconds(0.667); // 2s = 88% there
+    private static readonly TimeSpan FadeDuration = TimeSpan.FromSeconds(0.5);
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5.5); // Must be > 5s (web loading overlay auto-removal time)
     private static readonly double MaxOpacity = 0.99;
     private readonly ProgressBar _progressBar;
@@ -59,6 +59,7 @@ public class MauiSplash : Grid
 
     private async Task Animate()
     {
+        LoadingUI.MarkViewCreated();
         LoadingUI.IsMauiSplashShown = true;
         MauiThemeHandler.Instance.Apply();
         try {
