@@ -38,6 +38,7 @@ class ImageSkeleton extends LitElement {
     @property({ reflect: true }) class: string;
     @property() src: string;
     @property() title: string = "";
+    @property() css: string = "";
 
     private _imageRef: Ref<HTMLImageElement> = createRef();
 
@@ -60,6 +61,7 @@ class ImageSkeleton extends LitElement {
             <img
                 ${ref(this._imageRef)}
                 class="image"
+                style='${this.css}'
                 crossorigin='${ isSubDomain ? nothing : 'anonymous' }'
                 draggable="false"
                 alt=""

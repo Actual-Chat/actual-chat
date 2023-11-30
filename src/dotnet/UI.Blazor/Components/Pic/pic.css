@@ -7,6 +7,18 @@
     @apply cursor-default pointer-events-none select-none;
 }
 
+.pic-rounded {
+    @apply overflow-hidden;
+    @apply rounded-full;
+}
+.pic-blurred {
+    @apply blur-lg;
+    @apply opacity-70;
+}
+.pic-blurred .pic-image {
+    @apply rounded-none;
+}
+
 .pic-image {
     @apply rounded-full;
 }
@@ -61,4 +73,12 @@
 
 .pic-size-24 {
     @apply w-24 h-24 min-w-24 min-h-24 max-w-24 max-h-24 text-2xl;
+}
+
+.pic-size-30 {
+    @apply w-30 h-30 min-w-30 min-h-30 max-w-30 max-h-30 text-2xl;
+}
+
+.pic-size-100 {
+    @apply w-full h-full min-w-full min-h-full max-w-none max-h-none text-2xl;
 }

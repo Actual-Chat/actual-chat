@@ -47,13 +47,21 @@ public sealed class AuthorUI(ChatHub chatHub)
         if (authorId.IsNone)
             return;
 
+        var peerChatId = await GetPeerChatId(authorId, cancellationToken);
+        var localUrl = Links.Chat(peerChatId);
+        _ = History.NavigateTo(localUrl);
+    }
+
+    public async Task<PeerChatId> GetPeerChatId(AuthorId authorId, CancellationToken cancellationToken = default)
+    {
+        if (authorId.IsNone)
+            return PeerChatId.None;
+
         var ownAccountTask = Accounts.GetOwn(Session, cancellationToken);
         var accountTask = Authors.GetAccount(Session, authorId.ChatId, authorId, cancellationToken);
         var ownAccount = await ownAccountTask.ConfigureAwait(false);
         var account = await accountTask.ConfigureAwait(false);
-        var peerChatId = new PeerChatId(ownAccount.Id, account!.Id);
-        var localUrl = Links.Chat(peerChatId);
-        _ = History.NavigateTo(localUrl);
+        return new PeerChatId(ownAccount.Id, account!.Id);
     }
 
     public async Task StartAnonymousPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)

@@ -22,6 +22,8 @@ body.hoverable .message-reactions-add {
 .reaction-authors-menu-item {
     @apply flex-x justify-between items-center gap-2;
     @apply mx-1;
+    @apply bg-transparent;
+    @apply text-02;
 }
 .reaction-authors-menu-item-emoji {
     @apply h-5 w-5;

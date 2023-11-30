@@ -10,14 +10,30 @@ case ChatKind.Group:
         Title="@chat.Title"
         Picture="@chat.Picture.ToPicture()"
         Size="@Size"
+        Width="@Width"
+        Height="@Height"
+        IsSquare="@IsSquare"
+        HideTitle="@HideTitle"
+        IsBlurred="@IsBlurred"
         AvatarKind="@AvatarKind.Marble"
         AvatarKey="@chat.Id.Value"/>
     break;
 case ChatKind.Peer when !_peerChatUserId.IsNone:
-    <AccountCircle ShowPresence="true" UserSid="@_peerChatUserId" Size="@Size"/>
+    <AccountCircle
+        ShowPresence="true"
+        UserSid="@_peerChatUserId"
+        Size="@Size"
+        Width="@Width"
+        Height="@Height"
+        IsBlurred="@IsBlurred"/>
     break;
 default:
-    <AvatarCircle Avatar="@Avatar.None" Size="@Size" />
+    <AvatarCircle
+        Avatar="@Avatar.None"
+        Size="@Size"
+        Width="@Width"
+        Height="@Height"
+        IsBlurred="@IsBlurred" />
     break;
 }
 
@@ -31,6 +47,11 @@ default:
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool ShowPresence { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public int Width { get; set; } = 40;
+    [Parameter] public int Height { get; set; } = 40;
+    [Parameter] public bool IsSquare { get; set; }
+    [Parameter] public bool HideTitle { get; set; }
+    [Parameter] public bool IsBlurred { get; set; }
 
     protected override async Task OnParametersSetAsync()
         => _peerChatUserId = await GetPeerChatUserId();

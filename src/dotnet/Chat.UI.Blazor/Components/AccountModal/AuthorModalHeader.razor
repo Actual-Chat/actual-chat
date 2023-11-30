@@ -1,0 +1,86 @@
+@using ActualChat.Users.UI.Blazor
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<div class="c-header">
+    <ButtonRound Click="@OnClose" Class="author-modal-close-btn btn-md">
+        <i class="icon-close text-2xl"></i>
+    </ButtonRound>
+
+    <div class="c-top">
+        <AuthorCircle
+            AuthorSid="@Author.Id"
+            Size="SquareSize.SizeFull"
+            Width="480"
+            Height="120"
+            IsBlurred="@true"
+            IsSquare="@true" />
+    </div>
+
+    <div class="c-center">
+        <AuthorCircle AuthorSid="@Author.Id" Size="SquareSize.Size16">
+            <BadgeContent>
+                @if (!Author.IsAnonymous) {
+                    <AuthorPresenceIndicator AuthorSid="@Author.Id" ShowRecording="true"></AuthorPresenceIndicator>
+                }
+            </BadgeContent>
+        </AuthorCircle>
+        <div class="c-buttons">
+            @if (IsOwn) {
+                <ButtonRound
+                    Class="btn-md"
+                    Tooltip="Edit"
+                    TooltipPosition="FloatingPosition.Top"
+                    Click="@OnEditClick">
+                    <i class="icon-edit text-2xl"></i>
+                </ButtonRound>
+            }
+            @if (!IsOwn) {
+                <AddToContactsButton Author="@Author"/>
+            }
+            @if (!Author.IsAnonymous) {
+                <ButtonRound
+                    Class="btn-md"
+                    Tooltip="Share"
+                    TooltipPosition="FloatingPosition.Top"
+                    Click="@(OnShareClick)">
+                    <i class="icon-share text-2xl"></i>
+                </ButtonRound>
+            }
+        </div>
+    </div>
+
+    <div class="c-bottom">
+        <div class="c-title">
+            <AuthorName AuthorSid="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
+        </div>
+        <div class="c-public">
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private ChatHub ChatHub { get; set; } = null!;
+    private Session Session => ChatHub.Session;
+    private IAuthors Authors => ChatHub.Authors;
+    private ShareUI ShareUI => ChatHub.ShareUI;
+    private Chat? Chat => ChatHub.Chats.Get(Session, Author.ChatId, CancellationToken.None).Result;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter, EditorRequired] public Author Author { get; set; } = null!;
+    [Parameter, EditorRequired] public bool IsOwn { get; set; }
+    [Parameter] public EventCallback OnEditClick { get; set; }
+
+    private void OnClose()
+        => Modal.Close();
+
+    private async Task OnShareClick() {
+        if (IsOwn) {
+            _ = ShareUI.ShareOwnAccount();
+            return;
+        }
+
+        var account = await Authors.GetAccount(Session, Author.ChatId, Author.Id, default);
+        if (account != null)
+            _ = ShareUI.Share(account.Id);
+    }
+}

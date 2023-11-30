@@ -2,30 +2,10 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
 <Tile>
-    <TileItem IsHoverable="false" Class="first-tile-item my-2">
-        <Icon>
-            <AuthorCircle AuthorSid="@Author.Id" Size="SquareSize.Size14">
-                <BadgeContent>
-                    @if (!Author.IsAnonymous) {
-                        <AuthorPresenceIndicator AuthorSid="@Author.Id" ShowRecording="true"></AuthorPresenceIndicator>
-                    }
-                </BadgeContent>
-            </AuthorCircle>
-        </Icon>
-        <Right>
-        </Right>
-        <Content>
-            <AuthorName AuthorSid="@Author.Id" Class="text-01 font-medium text-title-1" ShowDetailsOnClick="false"/>
-        </Content>
-        <Caption>
-            Name
-        </Caption>
-    </TileItem>
-
     @if (Author.IsAnonymous) {
         <TileItem Class="anonymous-bio">
             <Icon>
-                <i class="icon-alert-triangle text-xl"></i>
+                <i class="icon-alert-triangle text-2xl"></i>
             </Icon>
             <Content>
                 @if (IsOwn) {
@@ -42,17 +22,18 @@
         </TileItem>
     }
 
-    @if (!Author.IsAnonymous) {
-        <div @onclick="@(() => _ = OnShareClick())">
-            <TileItem Class="tile-item-share">
-                <Icon>
-                    <i class="icon-share text-xl"></i>
-                </Icon>
-                <Content>
-                    Share
-                </Content>
-            </TileItem>
-        </div>
+    @if (!Author.Avatar.Bio.IsNullOrEmpty()) {
+        <TileItem Class="tile-promote-to-owner not-hover">
+            <Icon>
+                <i class="icon-person text-2xl text-03"></i>
+            </Icon>
+            <Content>
+                @Author.Avatar.Bio
+            </Content>
+            <Caption>
+                Bio
+            </Caption>
+        </TileItem>
     }
 
     @{ var m = EditMemberModel; }
@@ -64,7 +45,7 @@
     @if (m is { CanPromoteToOwner: true }) {
         <TileItem Class="tile-promote-to-owner" Click="@OnPromoteToOwner">
             <Icon>
-                <i class="icon-star text-xl"></i>
+                <i class="icon-admin02 text-2xl text-03"></i>
             </Icon>
             <Content>
                 Promote to Owner
@@ -78,7 +59,7 @@
     @if (m is { CanRemoveFromGroup: true }) {
         <TileItem Class="tile-remove-from-group" Click="@OnRemoveFromGroupClick">
             <Icon>
-                <i class="icon-minus-circle text-xl"></i>
+                <i class="icon-minus-circle text-2xl"></i>
             </Icon>
             <Content>
                 Remove from group

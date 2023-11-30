@@ -7,7 +7,7 @@
 @{
     RenderFragment? noPictureRenderFragment = null;
     if (_isAnonymous && _form.Picture is null) {
-        noPictureRenderFragment = @<AvatarCircle Size="SquareSize.Size24" Avatar="_avatar"></AvatarCircle>;
+        noPictureRenderFragment = @<AvatarCircle Size="SquareSize.Size24" Width="96" Height="96" Avatar="_avatar"></AvatarCircle>;
     }
 }
 
@@ -27,6 +27,8 @@
                 Title="@_form.Name"
                 Picture="@_form.Picture"
                 Size="@SquareSize.Size24"
+                Width="96"
+                Height="96"
                 GenerateAvatar="@OnGenerateAvatarClick"
                 NoPicture="@noPictureRenderFragment"
                 Picked="@OnImagePicked"/>

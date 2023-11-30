@@ -16,4 +16,5 @@ public enum SquareSize
     Size20 = 20, // pic-size-20 w-20 h-20
     Size24 = 24, // pic-size-24 w-24 h-24
     Size30 = 30, // pic-size-30 w-30 h-30
+    SizeFull = 100, // pic-size-full-screen w-full h-full
 }

@@ -4,6 +4,79 @@
 .author-modal .form-block {
     @apply py-0;
 }
+.author-modal .modal-header {
+    @apply hidden;
+}
+
+/*Author modal header*/
+.author-modal .c-header {
+    @apply relative;
+    @apply min-h-36 w-full;
+}
+.author-modal .c-header > .c-top {
+    @apply relative;
+    @apply h-3/5 w-full;
+    @apply rounded-b-xl;
+    @apply overflow-hidden;
+}
+.author-modal .c-header > .c-top > .avatar-circle {
+    @apply h-full;
+}
+.author-modal .c-header > .c-top > .avatar-circle > .c-content > .c-avatar.pic-blurred {
+    @apply -ml-16 -mt-4;
+}
+.author-modal .c-header > .c-bottom {
+    @apply absolute bottom-0 z-10;
+    @apply flex-y items-start justify-center;
+    @apply h-2/5 w-full;
+    @apply px-4;
+    @apply bg-modal;
+}
+.author-modal .c-header > .c-bottom  > .c-title {
+    @apply w-full;
+    @apply text-caption-2 text-02;
+    @apply truncate;
+}
+.author-modal .c-header > .c-bottom > .c-public {
+    @apply text-caption-6 text-03;
+}
+.author-modal .c-header > .c-center {
+    @apply absolute top-13 z-20;
+    @apply flex-x;
+    @apply h-16 w-full;
+    @apply px-4;
+}
+.author-modal .c-header > .c-center > .avatar-circle {
+    @apply mb-8;
+}
+.author-modal .c-header > .c-center > .c-buttons {
+    @apply flex-1 flex-x items-center justify-end gap-x-3;
+}
+.author-modal .c-header > .c-center > .c-buttons .btn.btn-round {
+    @apply bg-[var(--round-right-panel)];
+}
+.author-modal .c-header > .c-center > .c-buttons .btn.btn-round .btn-content {
+    @apply text-primary;
+}
+.author-modal .c-header > .c-center > .c-title {
+    @apply flex flex-1 md:flex-none self-center;
+    @apply text-02 text-caption-2;
+}
+.author-modal .c-header > .c-center i.icon-edit {
+    @apply text-primary;
+}
+.author-modal-close-btn.btn.btn-round {
+    @apply absolute top-2 right-4 z-10;
+    @apply bg-[var(--white-10)];
+}
+.author-modal-close-btn.btn.btn-round .btn-content {
+    @apply text-03;
+}
+
+.author-modal .form-block {
+    @apply border-none;
+}
+
 .author-modal .header-tile-item .tile-item-body-content {
     @apply max-h-8;
     @apply text-title-1 text-02;
@@ -63,4 +136,8 @@ body.hoverable .author-modal .tile:hover {
 .author-modal .tile-remove-from-group .tile-item-icon,
 .author-modal .tile-remove-from-group .tile-item-body-content {
     @apply text-danger;
+}
+
+.author-modal .dialog-buttons {
+    @apply mt-2;
 }

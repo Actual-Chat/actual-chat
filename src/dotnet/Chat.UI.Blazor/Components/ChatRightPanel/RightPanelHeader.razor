@@ -10,10 +10,19 @@
         <i class="icon-close text-2xl"></i>
     </ButtonRound>
 
-    <div class="c-top"></div>
+    <div class="c-top">
+        <ChatIcon
+            Chat="Chat"
+            Size="SquareSize.SizeFull"
+            Width="320"
+            Height="80"
+            IsSquare="@true"
+            HideTitle="@true"
+            IsBlurred="@true"/>
+    </div>
 
     <div class="c-center">
-            <ChatIcon Chat="Chat" Size="SquareSize.Size16"/>
+            <ChatIcon Chat="Chat" Size="SquareSize.Size16" Height="64" Width="64"/>
             <div class="c-buttons">
                 @if (m.CanEditProperties()) {
                     <ButtonRound Class="btn-md" Click="@OnEditChatSettingsClick">

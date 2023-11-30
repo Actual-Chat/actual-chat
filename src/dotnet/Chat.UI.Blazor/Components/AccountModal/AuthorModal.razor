@@ -16,17 +16,26 @@
 
 <DialogFrame Title="@title" Class="@cls" HasCloseButton="true">
     <Body>
+    <AuthorModalHeader
+        Author="m.Author"
+        IsOwn="m.IsOwn"
+        OnEditClick="@OnSettingsClick"/>
     <FormBlock>
-        <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn" EditMemberModel="@m.EditMemberModel" />
+        <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn" EditMemberModel="@m.EditMemberModel"/>
     </FormBlock>
     </Body>
     <Buttons>
         @if (m.IsOwn) {
             if (!m.Author.IsAnonymous) {
-                <Button Class="btn-modal" Click="OnSettingsClick">Edit profile</Button>
-                <Button Class="btn-modal" Click="OnChangeAvatarClicked">Change avatar</Button>
+                <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
+                    <i class="icon-sync text-xl text-primary-title"></i>
+                    Change avatar
+                </Button>
             } else {
-                <Button Class="btn-modal" Click="@(_ => OnEditAvatarClicked(m.Author))">Change avatar</Button>
+                <Button Class="btn-modal" Click="@(_ => OnEditAvatarClicked(m.Author))">
+                    <i class="icon-sync text-xl text-primary-title"></i>
+                    Change avatar
+                </Button>
                 @if (m.EnableIncompleteUI) {
                     <Button Class="btn-modal danger" Click="OnRevealClicked">Reveal</Button>
                 }
@@ -35,13 +44,13 @@
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                <Button Class="btn-modal" Click="OnStartAnonymousPeerChat">
-                    <i class="icon-question-mark-bubble text-xl"></i>
-                    Start anonymous chat
-                </Button>
                 <Button Class="btn-modal btn-primary" Click="OnStartPeerChat">
                     <i class="icon-message-ellipse text-xl"></i>
                     Chat with @m.Author.Avatar.Name
+                </Button>
+                <Button Class="btn-modal" Click="OnStartAnonymousPeerChat">
+                    <i class="icon-question-mark-bubble text-xl"></i>
+                    Start anonymous chat
                 </Button>
             } else {
                 <Button Class="btn-modal" Click="OnCancel">Close</Button>
@@ -93,7 +102,7 @@
             OwnAccount = ownAccount,
             CanStartPeerChat = canStartPeerChat,
             EditMemberModel = editMemberModel,
-            EnableIncompleteUI = enableIncompleteUI
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
