@@ -207,13 +207,13 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         var attachments = command.EntryAttachments;
- #pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
         if (attachments.IsEmpty && !command.Attachments.IsEmpty)
             attachments = command.Attachments.Select(x => new TextEntryAttachment {
                     MediaId = x,
                 })
                 .ToApiArray();
- #pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
         if (string.IsNullOrWhiteSpace(text) && attachments.IsEmpty)
             throw StandardError.Constraint("Sorry, you can't post empty messages.");
 

@@ -53,7 +53,7 @@ public ref struct OggOpusWriter(OggOpusWriter.State state, Span<byte> span)
     public bool Write(OpusTags opusTags)
     {
         var header = new OggHeader {
-            HeaderType = default,
+            HeaderType = 0,
             GranulePosition = 0,
             StreamSerialNumber = state.SerialNumber,
             PageSequenceNumber = state.PageCount++,

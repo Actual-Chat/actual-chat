@@ -28,7 +28,7 @@ public sealed class KubernetesModule : HostModule<KubernetesSettings>
                 var log = c.GetRequiredService<ILogger<KubeServices>>();
                 var caCertString = File.ReadAllText(kubeInfo.CACertPath);
                 var caCert = X509Certificate2.CreateFromPem(caCertString);
-                #pragma warning disable MA0039
+#pragma warning disable MA0039
                 handler.ServerCertificateCustomValidationCallback =
                     handler.ServerCertificateCustomValidationCallback =
                         (_, cert, _, policyErrors) =>
@@ -52,7 +52,7 @@ public sealed class KubernetesModule : HostModule<KubernetesSettings>
                             }
                         };
                 return handler;
-                #pragma warning restore MA0039
+#pragma warning restore MA0039
             })
             .SetHandlerLifetime(TimeSpan.FromMinutes(5))
             .AddPolicyHandler(GetRetryPolicy());

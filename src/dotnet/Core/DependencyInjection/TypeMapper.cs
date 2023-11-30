@@ -57,9 +57,9 @@ public sealed class TypeMapper<TScope>
                 if (!match.IsGenericTypeDefinition)
                     throw Stl.Internal.Errors.ConcreteMatchForGenericType(gType, match);
 
-                #pragma warning disable IL2055
+#pragma warning disable IL2055
                 match = match.MakeGenericType(gTypeArgs);
-                #pragma warning restore IL2055
+#pragma warning restore IL2055
 
                 if (!match.IsAssignableTo(typeof(TScope)))
                     throw Stl.Internal.Errors.MustBeAssignableTo<TScope>(match);

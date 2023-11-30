@@ -58,10 +58,10 @@ public readonly struct MenuRef(
 
         var typeId = parts[0];
         result = parts.Length == 1
- #pragma warning disable IL2072
+#pragma warning disable IL2072
             ? new MenuRef(MenuRegistry.GetType(typeId))
             : new MenuRef(MenuRegistry.GetType(typeId), parts[1..]);
- #pragma warning restore IL2072
+#pragma warning restore IL2072
         return true;
     }
 }
