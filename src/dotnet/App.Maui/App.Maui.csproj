@@ -199,7 +199,7 @@
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <!-- Trimming & AOT -->
     <AndroidDexTool>d8</AndroidDexTool>
-    <!-- <AndroidLinkTool>r8</AndroidLinkTool> --> <!-- Doesn't work with .NET 8! -->
+    <AndroidLinkTool>r8</AndroidLinkTool>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <RunAOTCompilation>true</RunAOTCompilation>
