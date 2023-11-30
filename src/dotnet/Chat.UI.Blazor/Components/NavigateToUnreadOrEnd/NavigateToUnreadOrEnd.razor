@@ -74,7 +74,7 @@
         // Delay showing the button for the first time
         var now = Now;
         if (_hideUntil == default)
-            _hideUntil = now + TimeSpan.FromSeconds(0.35);
+            _hideUntil = now + TimeSpan.FromSeconds(1.35);
         if (_hideUntil > now)
             await Task.Delay(_hideUntil - now + TimeSpan.FromMilliseconds(50), cancellationToken);
 
