@@ -7,16 +7,12 @@ namespace ActualChat.Core.UnitTests;
 
 #pragma warning disable VSTHRD104
 
-public class PlatformFeatureTest: TestBase
+public class PlatformFeatureTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private ServiceProvider Services { get; }
-
-    public PlatformFeatureTest(ITestOutputHelper @out) : base(@out)
-        => Services = new ServiceCollection()
-            .AddSingleton(MomentClockSet.Default)
-            .AddSingleton<IStateFactory>(c => new StateFactory(c))
-            .AddSingleton(_ => LTagVersionGenerator.Default)
-            .BuildServiceProvider();
+    private ServiceProvider Services { get; } = new ServiceCollection()
+        .AddFusion()
+        .Services
+        .BuildServiceProvider();
 
     [Fact]
     public void DefaultValueTaskTest()

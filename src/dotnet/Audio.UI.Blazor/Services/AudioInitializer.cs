@@ -18,8 +18,8 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
-    private BackgroundUI? _backgroundUI;
     private HostInfo? _hostInfo;
+    private AppActivity? _appActivity;
     private IJSRuntime? _js;
     private UrlMapper? _urlMapper;
     private ILogger? _log;
@@ -28,7 +28,7 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
     private IJSRuntime JS => _js ??= Services.JSRuntime();
     private UrlMapper UrlMapper => _urlMapper ??= Services.UrlMapper();
     private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
-    private BackgroundUI BackgroundUI => _backgroundUI ??= Services.GetRequiredService<BackgroundUI>();
+    private AppActivity AppActivity => _appActivity ??= Services.GetRequiredService<AppActivity>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public Task WhenInitialized => _whenInitializedSource.Task;
@@ -88,8 +88,8 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
     private async Task UpdateBackgroundState(CancellationToken cancellationToken)
     {
-        var prevState = (BackgroundState?)null; // Assuming "unknown"
-        var changes = BackgroundUI.State.Changes(cancellationToken);
+        var prevState = (ActivityState?)null; // Assuming "unknown"
+        var changes = AppActivity.State.Changes(cancellationToken);
         await foreach (var cState in changes.ConfigureAwait(false)) {
             var state = cState.Value;
             if (state == prevState)

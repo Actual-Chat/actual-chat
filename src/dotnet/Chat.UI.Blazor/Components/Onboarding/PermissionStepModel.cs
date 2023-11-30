@@ -3,6 +3,7 @@ using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.Permissions;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
@@ -56,7 +57,9 @@ public sealed class PermissionStepModel(IServiceProvider services)
 
     public void MarkCompleted()
     {
-        var onboardingUI = services.GetRequiredService<OnboardingUI>();
-        onboardingUI.UpdateLocalSettings(onboardingUI.LocalSettings.Value with { IsPermissionsStepCompleted = true });
+        var onboardingUI = (OnboardingUI)services.GetRequiredService<IOnboardingUI>();
+        onboardingUI.UpdateLocalSettings(onboardingUI.LocalSettings.Value with {
+            IsPermissionsStepCompleted = true,
+        });
     }
 }

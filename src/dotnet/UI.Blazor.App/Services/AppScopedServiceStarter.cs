@@ -94,7 +94,7 @@ public class AppScopedServiceStarter
         // Starts in Blazor dispatcher
         try {
             await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(true);
-            _ = Services.GetRequiredService<OnboardingUI>().TryShow();
+            _ = Services.GetRequiredService<IOnboardingUI>().TryShow();
             var appKind = HostInfo.AppKind;
             var baseDelay = TimeSpan.FromSeconds(appKind.IsServer() ? 0.25 : 1);
 
@@ -104,8 +104,8 @@ public class AppScopedServiceStarter
                 Services.GetRequiredService<SessionTokens>().Start();
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<AppIconBadgeUpdater>().Start();
+            Services.GetRequiredService<AppActivity>().Start();
             Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client
-            Services.GetRequiredService<BackgroundUI>(); // Auto-starts on construction
             Services.GetRequiredService<TuneUI>(); // Auto-starts on construction
             if (!HostInfo.IsProductionInstance)
                 Services.GetRequiredService<DebugUI>();

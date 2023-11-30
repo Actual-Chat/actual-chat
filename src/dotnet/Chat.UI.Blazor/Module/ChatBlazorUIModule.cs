@@ -44,7 +44,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddService<ChatAudioUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
-        fusion.AddService<IBackgroundActivities, BackgroundActivities>(ServiceLifetime.Scoped);
+        fusion.AddService<AppActivity, ChatAppActivity>(ServiceLifetime.Scoped);
         services.AddScoped(c => new SelectionUI(c.ChatHub()));
         services.AddScoped(c => new ActiveChatsUI(c.ChatHub()));
         services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));
@@ -61,8 +61,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped(c => new LanguageUI(c));
 
         // OnboardingUI
-        services.AddScoped(c => new OnboardingUI(c.ChatHub()));
-        services.AddAlias<IOnboardingUI, OnboardingUI>(ServiceLifetime.Scoped);
+        services.AddScoped<IOnboardingUI>(c => new OnboardingUI(c.ChatHub()));
 
         // IMarkupViews
         services.AddTypeMapper<IMarkupView>(map => map

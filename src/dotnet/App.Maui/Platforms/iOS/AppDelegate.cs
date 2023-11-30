@@ -25,17 +25,13 @@ public class AppDelegate : MauiUIApplicationDelegate
 
     public override void OnActivated(UIApplication application)
     {
-        _ = DispatchToBlazor(
-            c => c.GetRequiredService<IBackgroundStateHandler>().SetIsBackground(false),
-            "IBackgroundStateHandler.SetBackgroundState(false)");
+        SetBackgroundState(false);
         base.OnActivated(application);
     }
 
     public override void DidEnterBackground(UIApplication application)
     {
-        _ = DispatchToBlazor(
-            c => c.GetRequiredService<IBackgroundStateHandler>().SetIsBackground(true),
-            "IBackgroundStateHandler.SetBackgroundState(true)");
+        SetBackgroundState(true);
         base.DidEnterBackground(application);
     }
 
@@ -61,4 +57,10 @@ public class AppDelegate : MauiUIApplicationDelegate
         if (!url.IsNullOrEmpty())
             App.Current.SendOnAppLinkRequestReceived(url.ToUri());
     }
+
+    private static void SetBackgroundState(bool isBackground)
+        => WhenAppServicesReady().ContinueWith(_ => {
+            var t = (MauiBackgroundStateTracker)AppServices.GetRequiredService<BackgroundStateTracker>();
+            t.IsBackground.Value = isBackground;
+        });
 }

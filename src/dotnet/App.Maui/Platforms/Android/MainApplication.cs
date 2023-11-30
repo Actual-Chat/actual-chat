@@ -21,23 +21,25 @@ public class MainApplication : MauiApplication, ILifecycleObserver
         ProcessLifecycleOwner.Get().Lifecycle.AddObserver(this);
     }
 
-    [Export, Lifecycle.Event.OnStop]
-    public void OnAppBackgrounded()
+    [Export, Lifecycle.Event.OnStart]
+    public void OnBecameForeground()
     {
-        Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnAppBackgrounded");
-        _ = DispatchToBlazor(
-            c => c.GetRequiredService<IBackgroundStateHandler>().SetIsBackground(true),
-            "IBackgroundStateHandler.SetBackgroundState(true)");
+        Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameForeground");
+        SetBackgroundState(false);
     }
 
-    [Export, Lifecycle.Event.OnStart]
-    public void OnAppForegrounded()
+    [Export, Lifecycle.Event.OnStop]
+    public void OnBecameBackground()
     {
-        Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnAppForegrounded");
-        _ = DispatchToBlazor(
-            c => c.GetRequiredService<IBackgroundStateHandler>().SetIsBackground(false),
-            "IBackgroundStateHandler.SetBackgroundState(false)");
+        Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameBackground");
+        SetBackgroundState(true);
     }
 
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
+
+    private static void SetBackgroundState(bool isBackground)
+        => WhenAppServicesReady().ContinueWith(_ => {
+            var t = (MauiBackgroundStateTracker)AppServices.GetRequiredService<BackgroundStateTracker>();
+            t.IsBackground.Value = isBackground;
+        });
 }

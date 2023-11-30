@@ -1,6 +1,5 @@
 using ActualChat.UI.Blazor.Services;
 using CoreHaptics;
-using Microsoft.JSInterop;
 
 namespace ActualChat.App.Maui;
 
@@ -15,6 +14,23 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
 
     protected override bool UseJsVibration => false;
     private ILogger Log { get; } = services.LogFor<IosTuneUI>();
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        List<ICHHapticPatternPlayer> toDispose;
+        lock (_lock) {
+            if (_players.Count == 0)
+                return;
+
+            toDispose = _players.Values.ToList();
+            _players.Clear();
+        }
+        foreach (var player in toDispose)
+            player.DisposeSilently();
+    }
+
+    // Protected methods
 
     protected override async ValueTask Vibrate(Tune tune)
     {
@@ -32,6 +48,8 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
             Log.LogError(e, "Failed to vibrate '{Tune}'", tune);
         }
     }
+
+    // Private methods
 
     private CHHapticEngine CreateHapticEngine()
     {
@@ -96,20 +114,5 @@ public class IosTuneUI(IServiceProvider services) : TuneUI(services), IDisposabl
         }
 
         return new CHHapticParameterCurve(CHHapticDynamicParameterId.HapticIntensityControl, curvePoints, 0);
-    }
-
-    public override void Dispose()
-    {
-        base.Dispose();
-        List<ICHHapticPatternPlayer> toDispose;
-        lock (_lock) {
-            if (_players.Count == 0)
-                return;
-
-            toDispose = _players.Values.ToList();
-            _players.Clear();
-        }
-        foreach (var player in toDispose)
-            player.DisposeSilently();
     }
 }

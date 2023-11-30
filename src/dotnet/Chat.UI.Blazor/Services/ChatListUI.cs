@@ -68,8 +68,8 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
         _unreadChatCount = StateFactory.NewComputed(
             new ComputedState<Trimmed<int>>.Options() {
                 UpdateDelayer = FixedDelayer.Instant,
-                Category = StateCategories.Get(GetType(), nameof(UnreadChatCount)),
                 TryComputeSynchronously = false,
+                Category = StateCategories.Get(GetType(), nameof(UnreadChatCount)),
             },
             ComputeUnreadChatCount);
         this.Start();

@@ -89,7 +89,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // UI services
         services.AddScoped(c => new ReloadUI(c));
 
-        services.AddScoped<IBackgroundStateHandler>(c => c.GetRequiredService<BackgroundUI>());
+        if (appKind.IsMauiApp())
+            services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c));
+        else
+            services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
         services.AddScoped(c => new LoadingUI(c));
         services.AddScoped(c => new ReconnectUI(c));
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
@@ -110,7 +113,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new ShareUI(c));
         services.AddScoped(c => new SignInRequesterUI(c));
         services.AddScoped(_ => new ToastUI());
-        fusion.AddService<BackgroundUI>(ServiceLifetime.Scoped);
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
 
         // Actual Chat-specific UI services
@@ -141,9 +143,10 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         // Temporarily disabled for WASM due to startup issues
         if (appKind.IsWasmApp() && !HostInfo.IsTested) {
             services.AddSingleton(_ => new WebClientComputedCache.Options());
-            services.AddSingleton(c => new WebClientComputedCache(
-                c.GetRequiredService<WebClientComputedCache.Options>(), c));
-            services.AddAlias<IClientComputedCache, WebClientComputedCache>();
+            services.AddSingleton<IClientComputedCache>(c => {
+                var options = c.GetRequiredService<WebClientComputedCache.Options>();
+                return new WebClientComputedCache(options, c);
+            });
         }
 
         // Test services

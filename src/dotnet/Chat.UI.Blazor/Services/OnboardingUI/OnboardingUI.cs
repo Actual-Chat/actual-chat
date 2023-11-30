@@ -4,7 +4,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class OnboardingUI : IDisposable, IOnboardingUI
+public class OnboardingUI : IOnboardingUI
 {
     private readonly ISyncedState<UserOnboardingSettings> _userSettings;
     private readonly IStoredState<LocalOnboardingSettings> _localSettings;
