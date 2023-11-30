@@ -18,7 +18,7 @@ public class MauiSplash : Grid
                 return _scopedLoadingUI;
 
             _scopedLoadingUI = TryGetScopedServices(out var services) ? services.GetRequiredService<LoadingUI>() : null;
-            _scopedLoadingUI?.RemoveLoadingOverlay();
+            _scopedLoadingUI?.RemoveLoadingOverlay(true);
             return _scopedLoadingUI;
         }
     }

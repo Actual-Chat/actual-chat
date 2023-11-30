@@ -109,8 +109,10 @@ public sealed class LoadingUI
         Tracer.Point();
     }
 
-    public void RemoveLoadingOverlay()
-        => _ = Services.JSRuntime().InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.BrowserInit.removeLoadingOverlay")
+    public void RemoveLoadingOverlay(bool instantly = false)
+        => _ = Services.JSRuntime().InvokeVoidAsync(
+                $"{BlazorUICoreModule.ImportName}.BrowserInit.removeLoadingOverlay",
+                instantly)
             .AsTask()
             .WithErrorHandler(
                 e => Services.LogFor<LoadingUI>().LogError(e, "An error occurred during RemoveLoadingOverlay call"));

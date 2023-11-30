@@ -126,12 +126,19 @@ export class BrowserInit {
         }
     }
 
-    public static removeLoadingOverlay() {
+    public static removeLoadingOverlay(instantly = false) {
         document.body.style.backgroundColor = null;
         const overlay = document.getElementById('until-ui-is-ready');
-        if (overlay) {
+        if (!overlay)
+            return;
+
+        if (instantly)
+            overlay.remove();
+        else {
             overlay.style.opacity = '0';
-            setTimeout(function() { overlay.remove(); }, 500);
+            setTimeout(function () {
+                overlay.remove();
+            }, 500);
         }
     }
 
