@@ -154,7 +154,6 @@ export class VirtualList {
         this._unmeasuredItems = new Set<string>();
         this._visibleItems = new Set<string>();
 
-        this._sizeObserver.observe(this._containerRef);
         this._sizeObserver.observe(this._layoutFooter);
         this._visibilityObserver.observe(this._endAnchorRef);
         this._skeletonObserver0.observe(this._spacerRef);
@@ -374,6 +373,8 @@ export class VirtualList {
             if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
                 this.scrollToEnd(false);
         }
+        else if (!itemsWereMeasured && this._stickyEdge?.edge === VirtualListEdge.End)
+            this.scrollToEnd(true);
 
         const lastItemWasMeasured = itemsWereMeasured && this._unmeasuredItems.size == 0;
         if (lastItemWasMeasured)
