@@ -267,7 +267,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         // Update delay: we want to collect as many dependencies as possible here,
         // but don't want to delay rapid updates.
-        {
+        // We don't need delays when data is being requested by the client code - e.g. when query isn't None
+        if (query.IsNone) {
             var lastData = state.ValueOrDefault ?? VirtualListData<ChatMessage>.None;
             var lastComputedAt = lastData.IsNone ? startedAt : lastData.ComputedAt;
             var isFastUpdate = startedAt - lastComputedAt <= FastUpdateRecency;
