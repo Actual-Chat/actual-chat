@@ -156,7 +156,7 @@ public static class AsyncEnumerableExt
     public static async IAsyncEnumerable<T> Prepend<T>(
         this IAsyncEnumerator<T> enumerator,
         T value,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         yield return value;
 
@@ -167,13 +167,13 @@ public static class AsyncEnumerableExt
     public static (IAsyncEnumerable<TSource> Matched, IAsyncEnumerable<TSource> NotMatched) Split<TSource>(
         this IAsyncEnumerable<TSource> source,
         Func<TSource,bool> splitPredicate,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
         => source.Split((_, s) => splitPredicate(s), cancellationToken);
 
     public static (IAsyncEnumerable<TSource> Matched, IAsyncEnumerable<TSource> NotMatched) Split<TSource>(
         this IAsyncEnumerable<TSource> source,
         Func<int,TSource,bool> splitPredicate,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var matched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
             SingleWriter = true,
@@ -208,7 +208,7 @@ public static class AsyncEnumerableExt
 
     public static (Task<TSource> HeadTask, IAsyncEnumerable<TSource> Tail) SplitHead<TSource>(
         this IAsyncEnumerable<TSource> source,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var headSource = TaskCompletionSourceExt.New<TSource>();
         var notMatched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
@@ -246,7 +246,7 @@ public static class AsyncEnumerableExt
     public static async IAsyncEnumerable<List<TSource>> Chunk<TSource>(
         this IAsyncEnumerable<TSource> source,
         int count,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
@@ -257,7 +257,6 @@ public static class AsyncEnumerableExt
                 continue;
 
             yield return buffer;
-
             buffer = new List<TSource>(count);
         }
 
@@ -268,7 +267,7 @@ public static class AsyncEnumerableExt
     public static async IAsyncEnumerable<List<TSource>> ChunkWhile<TSource>(
         this IAsyncEnumerable<TSource> source,
         Func<List<TSource>, bool> predicate,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (predicate == null)
             throw new ArgumentNullException(nameof(predicate));
@@ -280,7 +279,6 @@ public static class AsyncEnumerableExt
                 continue;
 
             yield return buffer;
-
             buffer = new List<TSource>();
         }
 
@@ -288,10 +286,10 @@ public static class AsyncEnumerableExt
             yield return buffer;
     }
 
-    public static async IAsyncEnumerable<ItemWithHasNext<List<TSource>>> ChunkWhile<TSource>(
-        this IAsyncEnumerable<ItemWithHasNext<TSource>> source,
+    public static async IAsyncEnumerable<MaybeHasNext<List<TSource>>> ChunkWhile<TSource>(
+        this IAsyncEnumerable<MaybeHasNext<TSource>> source,
         Func<List<TSource>, bool> predicate,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         if (predicate == null)
             throw new ArgumentNullException(nameof(predicate));
@@ -304,20 +302,21 @@ public static class AsyncEnumerableExt
             if (predicate(buffer))
                 continue;
 
-            yield return new ItemWithHasNext<List<TSource>>(buffer, hasNext);
+            yield return new MaybeHasNext<List<TSource>>(buffer, hasNext);
 
-            buffer = [];
+            buffer = new List<TSource>();
         }
 
         if (buffer.Count > 0)
-            yield return new ItemWithHasNext<List<TSource>>(buffer, false);
+            yield return new MaybeHasNext<List<TSource>>(buffer, false);
     }
 
-    public static async IAsyncEnumerable<ItemWithHasNext<TSource>> WithHasNext<TSource>(
+    public static async IAsyncEnumerable<MaybeHasNext<TSource>> ToMaybeHasNextSequence<TSource>(
         this IAsyncEnumerable<TSource> source,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await using var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        var enumerator = source.GetAsyncEnumerator(cancellationToken);
+        await using var _ = enumerator.ConfigureAwait(false);
         var hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
         if (!hasNext)
             yield break;
@@ -325,7 +324,7 @@ public static class AsyncEnumerableExt
         do {
             var item = enumerator.Current;
             hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
-            yield return new ItemWithHasNext<TSource>(item, hasNext);
+            yield return new MaybeHasNext<TSource>(item, hasNext);
         } while (hasNext);
     }
 
