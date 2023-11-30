@@ -59,8 +59,8 @@ public class AppDelegate : MauiUIApplicationDelegate
     }
 
     private static void SetBackgroundState(bool isBackground)
-        => WhenAppServicesReady().ContinueWith(_ => {
+        => _ = WhenAppServicesReady().ContinueWith(_ => {
             var t = (MauiBackgroundStateTracker)AppServices.GetRequiredService<BackgroundStateTracker>();
             t.IsBackground.Value = isBackground;
-        });
+        }, TaskScheduler.Default);
 }

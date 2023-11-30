@@ -47,7 +47,7 @@ public sealed class AuthorUI(ChatHub chatHub)
         if (authorId.IsNone)
             return;
 
-        var peerChatId = await GetPeerChatId(authorId, cancellationToken);
+        var peerChatId = await GetPeerChatId(authorId, cancellationToken).ConfigureAwait(true);
         var localUrl = Links.Chat(peerChatId);
         _ = History.NavigateTo(localUrl);
     }

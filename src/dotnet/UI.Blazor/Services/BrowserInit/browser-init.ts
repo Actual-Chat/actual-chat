@@ -127,6 +127,7 @@ export class BrowserInit {
     }
 
     public static removeLoadingOverlay() {
+        document.body.style.backgroundColor = null;
         const overlay = document.getElementById('until-ui-is-ready');
         if (overlay) {
             overlay.style.opacity = '0';

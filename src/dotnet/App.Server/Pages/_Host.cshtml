@@ -163,7 +163,7 @@
     }
 </head>
 
-<body class="app-web @(isBlazorServer ? "app-server" : "app-wasm")">
+<body class="app-web @(isBlazorServer ? "app-server" : "app-wasm")" style="background-color: #0036A3">
 
 @if (!isBlazorServer && !isCloseWindowRequest) {
     <div id="until-ui-is-ready" class="loading-overlay"></div>

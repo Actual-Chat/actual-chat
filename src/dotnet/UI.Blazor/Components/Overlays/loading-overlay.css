@@ -1,7 +1,7 @@
 /* Loading overlay */
 
-:root, .theme-light, .theme-dark {
-    --loading-overlay-bg-color: var(--background-01);
+:root, .theme-light, .theme-dark, .theme-ash {
+    --loading-overlay-bg-color: var(--blue-30); /* Old: --background-01 */
     --loading-overlay-box-size: 24rem;
     --loading-overlay-shine-size: 30%;
     --loading-overlay-logo-size: 12rem;

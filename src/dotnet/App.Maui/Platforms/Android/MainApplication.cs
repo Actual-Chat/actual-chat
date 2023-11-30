@@ -38,8 +38,8 @@ public class MainApplication : MauiApplication, ILifecycleObserver
     protected override MauiApp CreateMauiApp() => MauiProgram.CreateMauiApp();
 
     private static void SetBackgroundState(bool isBackground)
-        => WhenAppServicesReady().ContinueWith(_ => {
+        => _ = WhenAppServicesReady().ContinueWith(_ => {
             var t = (MauiBackgroundStateTracker)AppServices.GetRequiredService<BackgroundStateTracker>();
             t.IsBackground.Value = isBackground;
-        });
+        }, TaskScheduler.Default);
 }

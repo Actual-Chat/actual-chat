@@ -21,7 +21,7 @@ public class MainPage : ContentPage
     {
         var mauiWebView = new MauiWebView();
         Content = new Grid {
-            new SplashOverlay(),
+            new MauiSplash(),
             mauiWebView.BlazorWebView,
         };
     }

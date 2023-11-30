@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui;
 
 public class MauiThemeHandler
 {
-    private const string PreferencesKey = "Theme_Colors";
+    private const string ThemeKey = "Theme";
     public static readonly MauiThemeHandler Instance =
 #if ANDROID
         new AndroidThemeHandler();
@@ -15,40 +15,53 @@ public class MauiThemeHandler
         new();
 #endif
 
-    private string _lastAppliedColors = "";
+    private Theme? _theme;
+    private string _colors = "";
+    private string _serialized;
+    private string _appliedColors = "";
     private ILogger? _log;
 
     protected ILogger Log => _log ??= MauiDiagnostics.LoggerFactory.CreateLogger(GetType());
 
-    public void TryRestoreLastTheme()
+    protected MauiThemeHandler()
     {
-        var colors = Preferences.Default.Get<string>(PreferencesKey, "");
-        _ = ApplyColorsAfterSplash(colors, null);
+        _serialized = Preferences.Default.Get<string>(ThemeKey, "");
+        var parts = _serialized.Split('|');
+        if (parts.Length == 2) {
+            _theme = Enum.TryParse<Theme>(parts[0], false, out var v) ? v : null;
+            _colors = parts[1];
+        }
     }
 
     public void OnThemeChanged(ThemeInfo themeInfo)
     {
-        Preferences.Default.Set(PreferencesKey, themeInfo.Colors);
-        _ = ApplyColorsAfterSplash(themeInfo.Colors, themeInfo.Theme);
-    }
-
-    private async Task ApplyColorsAfterSplash(string colors, Theme? theme)
-    {
-        if (!LoadingUI.WhenSplashOverlayHidden.IsCompleted) {
-            ApplyColors(MauiSettings.SplashBackgroundColor.ToArgbHex(true), theme);
-            await LoadingUI.WhenSplashOverlayHidden.ConfigureAwait(false);
+        _theme = themeInfo.Theme;
+        _colors = themeInfo.Colors;
+        var serialized = string.Join('|', themeInfo.Theme?.ToString("G") ?? "", themeInfo.Colors);
+        if (!OrdinalEquals(serialized, _serialized)) {
+            _serialized = serialized;
+            Preferences.Default.Set(ThemeKey, serialized);
         }
-
-        ApplyColors(colors, theme);
+        Apply();
     }
 
-    private void ApplyColors(string colors, Theme? theme)
+    public void Apply()
+    {
+        if (LoadingUI.IsMauiSplashShown)
+            Apply(null, MauiSettings.SplashBackgroundColor.ToArgbHex(true));
+        else
+            Apply(_theme, _colors);
+    }
+
+    // Protected methods
+
+    protected void Apply(Theme? theme, string colors)
     {
         if (colors.IsNullOrEmpty())
             return;
 
         MainThread.BeginInvokeOnMainThread(() => {
-            if (OrdinalEquals(colors, _lastAppliedColors))
+            if (OrdinalEquals(colors, _appliedColors))
                 return;
 
             try {
@@ -60,8 +73,8 @@ public class MauiThemeHandler
                     bottomBarColor = items[1];
                 }
 
-                if (ApplyColors(topBarColor, bottomBarColor, theme))
-                    _lastAppliedColors = colors;
+                if (Apply(topBarColor, bottomBarColor, theme))
+                    _appliedColors = colors;
             }
             catch (Exception e) {
                 Log.LogWarning(e, "ApplyColors failed, colors: {Colors}", colors);
@@ -69,7 +82,7 @@ public class MauiThemeHandler
         });
     }
 
-    protected virtual bool ApplyColors(string topBarColor, string bottomBarColor, Theme? theme)
+    protected virtual bool Apply(string topBarColor, string bottomBarColor, Theme? theme)
     {
         var mainPage = App.Current.MainPage;
         if (mainPage == null)
