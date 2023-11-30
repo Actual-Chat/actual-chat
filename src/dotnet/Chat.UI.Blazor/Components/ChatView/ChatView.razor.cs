@@ -453,8 +453,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             (false, false) => new Range<long>(
                 firstLayer.GetTile(chatIdRange.End - MinLoadLimit).Start,
                 chatIdRangeEndPlus),
-#if false
             // No query, but there is old data + we're close to the end
+            // KEEP THIS case, otherwise virtual list will grow indefinitely!
             (false, true) when Math.Abs(lastItem!.Entry.LocalId - chatIdRange.End) <= minTileSize
                 => new Range<long>(
                     firstLayer.GetTile(
@@ -462,7 +462,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                         ?? firstItem!.Entry.LocalId
                     ).Start,
                     chatIdRangeEndPlus),
-#endif
             // No query, but there is old data -> retaining it
             (false, true) => new Range<long>(firstItem!.Entry.LocalId, lastItem!.Entry.LocalId),
             // Query is there, so data is irrelevant
