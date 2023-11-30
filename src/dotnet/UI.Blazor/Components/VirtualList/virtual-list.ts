@@ -582,8 +582,8 @@ export class VirtualList {
                     this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
                     this.scrollToEnd(true);
                 }
-            } else if (this._stickyEdge != null) {
-                // Sticky edge scroll
+            } else if (this._stickyEdge != null && rs.query.isNone) {
+                // Sticky edge scroll when we are not requesting data with query - render of new items only
                 const itemKey = this._stickyEdge?.edge === VirtualListEdge.Start && rs.hasVeryFirstItem
                     ? this.getFirstItemKey()
                     : this._stickyEdge?.edge === VirtualListEdge.End && rs.hasVeryLastItem
