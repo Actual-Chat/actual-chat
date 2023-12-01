@@ -34,7 +34,8 @@
 
     protected override void OnInitialized() {
         var chatId = Chat.Id;
-        var key = $"AddChatMembersBanner_Dismissed_{chatId.Value}";
+        var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? Chat.Id.PlaceId.ToRootChatId() :  chatId;
+        var key = $"AddChatMembersBanner_Dismissed_{dismissChatId.Value}";
         _dismissed = StateFactory.NewKvasStored<bool>(new(AccountSettings, key));
         base.OnInitialized();
     }
@@ -63,8 +64,8 @@
         var hasRegularMembers = allAuthorIds.Except(ownerIds).Any();
         if (hasRegularMembers)
             return false;
-        var peopleContacts = await ChatListUI.ListPeopleContacts(cancellationToken);
-        return peopleContacts.Count > 0;
+
+        return await ChatContext.EditMembersUI.HaveMembersToAdd(Chat);
     }
 
     // Event handlers

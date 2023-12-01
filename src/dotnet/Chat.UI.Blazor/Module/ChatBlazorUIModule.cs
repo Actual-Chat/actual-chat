@@ -34,6 +34,7 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
         services.AddScoped(c => new NavbarUI(c));
         services.AddScoped(c => new PanelsUI(c.UIHub()));
         services.AddScoped(c => new AuthorUI(c.ChatUIHub()));
+        services.AddScoped(c => new EditMembersUI(c.ChatHub()));
         services.AddScoped<IAudioOutputController>(c => new AudioOutputController(c.UIHub()));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
