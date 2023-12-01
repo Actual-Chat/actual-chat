@@ -22,7 +22,7 @@ public static class MauiLoadingUI
         => DispatchToBlazor(async scopedServices => {
             var loadingUI = scopedServices.GetRequiredService<LoadingUI>();
             await Task.WhenAny(
-                loadingUI.WhenChatListLoaded.WithDelay(TimeSpan.FromSeconds(0.25)),
+                loadingUI.WhenChatListLoaded.WithDelay(TimeSpan.FromSeconds(0.1)),
                 Task.Delay(TimeSpan.FromSeconds(1))
             ).SilentAwait(false);
         }, whenRendered: true);
