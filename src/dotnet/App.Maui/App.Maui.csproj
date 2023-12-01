@@ -219,10 +219,30 @@
     <!-- Fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
     <AndroidEnableMarshalMethods>true</AndroidEnableMarshalMethods >
     -->
-    <AndroidEnablePreloadAssemblies>true</AndroidEnablePreloadAssemblies>
-    <!-- When AndroidEnablePreloadAssemblies == true, it lazy loads non-AOT code -->
+    <!-- On preloading:
+    1. There are 250 assemblies (bundled), so preloading assemblies hurts the startup.
+       The delay isn't shown in our internal stats, coz it happens before any code runs,
+       but it's percievable - maybe 300ms or so. Thus preloading all assemblies isn't
+       a good option.
+    3. Preloading AOT-d assemblies adds a delay as well, but since the amount of
+       PGO AOT code is much smaller, this delay isn't quite percievable.
+       When AOT code is preloaded, the startup delay is measurably smaller, but
+       not by a lot - maybe 50ms or so.
+    3. We know for sure that not everything we use on startup gets into AOT profiles.
+       E.g. .mibc profiles are recorded with tracing, which definitely skips a
+       decent part of calls. Funny enough, it's the same with .aprof profiles,
+       which are supposed to be perfect.
+    4. Overall, the best settings are:
+       - AndroidEnablePreloadAssemblies = False // don't preload MSIL code
+       - AndroidAotEnableLazyLoad = False // preload AOT code, though True might make sense here w/ larger AOT
+       The default settings for release builds are also:
+       - AndroidEnablePreloadAssemblies = False
+       - AndroidAotEnableLazyLoad = True
+    -->
+    <AndroidEnablePreloadAssemblies>False</AndroidEnablePreloadAssemblies>
+    <!-- When AndroidEnablePreloadAssemblies == true, it lazy loads AOT assemblies -->
     <!-- false: -100ms or so to startup time -->
-    <AndroidAotEnableLazyLoad>false</AndroidAotEnableLazyLoad>
+    <AndroidAotEnableLazyLoad>True</AndroidAotEnableLazyLoad>
   </PropertyGroup>
 
   <!-- Android: Profile-guided AOT profiles -->
@@ -235,13 +255,13 @@
     <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>
   </PropertyGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release' and !$(IsProfilingEnabled)">
-    <!-- Somehow this just makes things worse
-    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-exc.aotprofile" />
-    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-inc.aotprofile" />
-    <AndroidMibcProfile Include="android.mibc" />
-    -->
+    <!--
+    // This profile makes things much worse:
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-v1.aprof" />
-    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-v1.mibc" />
+    // And this causes crash on startup:
+    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/maui-blazor.aotprofile" />
+    -->
+    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-merged.mibc" />
   </ItemGroup>
 
   <!-- Android: AOT profiling mode -->
