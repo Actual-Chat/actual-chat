@@ -3,6 +3,12 @@
 
 <MenuEntry
     Class="important-item"
+    Icon="icon-plus"
+    Text="New chat"
+    Click="OnCreateChatClick">
+</MenuEntry>
+<MenuEntry
+    Class="important-item"
     Icon="icon-person-add"
     Text="Invite members"
     Click="OnInviteMembersClick">
@@ -37,6 +43,9 @@
         var place = await ChatHub.Places.Get(ChatHub.Session, _placeId, default).ConfigureAwait(false);
         _isOwner = place?.Rules.IsOwner() ?? false;
     }
+
+    private void OnCreateChatClick()
+        => ChatHub.ModalUI.Show(new NewChatModal.Model(_placeId));
 
     private void OnInviteMembersClick()
         => _ = ChatHub.ModalUI.Show(new AddMemberModal.Model(_placeId));
