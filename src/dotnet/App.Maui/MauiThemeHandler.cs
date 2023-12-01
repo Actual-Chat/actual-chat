@@ -87,6 +87,10 @@ public class MauiThemeHandler
 
     protected virtual bool Apply(string topBarColor, string bottomBarColor, Theme? theme)
     {
+        var mainPage = App.Current.MainPage;
+        if (mainPage == null)
+            return false;
+
         var style = theme switch {
             Theme.Light => StatusBarStyle.DarkContent,
             Theme.Ash => StatusBarStyle.DarkContent,
@@ -95,6 +99,8 @@ public class MauiThemeHandler
         };
         StatusBar.SetColor(Color.FromArgb(topBarColor));
         StatusBar.SetStyle(style);
+        mainPage.BackgroundColor = Color.FromArgb(bottomBarColor);
+
         return true;
     }
 }
