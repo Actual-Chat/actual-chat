@@ -30,6 +30,7 @@
 .left-panel-buttons > .c-content > .c-buttons {
     @apply flex-y grow items-center gap-y-3 md:gap-y-2;
     @apply w-full;
+    @apply overflow-hidden;
 }
 .left-panel-buttons > .c-content > .c-account {
     @apply flex justify-center;
