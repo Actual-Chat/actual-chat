@@ -75,7 +75,10 @@
     <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PRODUCTION</DefineConstants>
   </PropertyGroup>
 
-  <!-- Profiling -->
+  <!-- Profiling & tracing -->
+  <PropertyGroup Condition="'$(IsTracingEnabled)' == ''">
+    <IsTracingEnabled>false</IsTracingEnabled>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(IsProfilingEnabled)' == ''">
     <IsProfilingEnabled>false</IsProfilingEnabled>
   </PropertyGroup>
@@ -236,19 +239,26 @@
     <!-- Somehow this just makes things worse
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-exc.aotprofile" />
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-inc.aotprofile" />
-    -->
     <AndroidMibcProfile Include="android.mibc" />
+    -->
+    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-big.aprof" />
   </ItemGroup>
 
   <!-- Android: AOT profiling mode -->
   <PropertyGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <AndroidEnableProfiler>true</AndroidEnableProfiler>
+    <AndroidEmbedProfilers>aot</AndroidEmbedProfilers>
+    <AndroidAotProfilerPort>9999</AndroidAotProfilerPort>
+  </PropertyGroup>
+  <!-- Android: Tracing mode -->
+  <PropertyGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <AndroidEnableProfiler>true</AndroidEnableProfiler>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>
     <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
   </PropertyGroup>
-  <ItemGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
-    <AndroidEnvironment Include="android-profiling-env.txt" />
+  <ItemGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <AndroidEnvironment Include="android-tracing-env.txt" />
   </ItemGroup>
 
   <!-- iOS build properties -->
