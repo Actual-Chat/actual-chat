@@ -59,7 +59,7 @@ public static partial class LocalUrlExt
         => url.Value.OrdinalStartsWith("/u/");
 
     public static bool IsSettings(this LocalUrl url)
-        => OrdinalEquals(url.Value, "/settings");
+        => url.Value.OrdinalStartsWith("/settings");
 
     public static bool IsPrivateChatInvite(this LocalUrl url)
         => url.Value.OrdinalStartsWith("/join/");

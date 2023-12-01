@@ -1,0 +1,34 @@
+﻿@page "/settings/{SettingsOption}"
+@page "/settings"
+@using ActualChat.Chat.UI.Blazor.Components.Settings
+
+<div class="flex-x h-full">
+    <SkeletonChatPanel/>
+    <SkeletonRightPanel/>
+</div>
+
+
+@code {
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
+    [Inject]  public Dispatcher Dispatcher { get; init; } = null!;
+
+    [Parameter] public string? SettingsOption { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        var modalRef = await ModalUI.Show(SettingsModal.Model.Instance, ModalOptions.FullScreen, CancellationToken.None);
+        if (SettingsOption.OrdinalIgnoreCaseStartsWith("delete-account"))
+            _ = ModalUI.Show(OwnAccountEditorModal.Model.Default);
+        _ = modalRef.WhenClosed.ContinueWith(_ => NavigateToDefaultLocation());
+    }
+
+    private void NavigateToDefaultLocation() {
+        Dispatcher.InvokeAsync(() => {
+            _ = History.NavigateTo(Links.Chats, false, false, true);
+        });
+    }
+}

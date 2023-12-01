@@ -83,7 +83,7 @@ public partial class AccountUI
             if (!signInRequest.RedirectTo.IsNullOrEmpty())
                 _ = autoNavigationUI.History.NavigateTo(signInRequest.RedirectTo, true);
         }
-        else if (!history.LocalUrl.IsChatOrChatRoot())
+        else if (!history.LocalUrl.IsChatOrChatRoot() && !history.LocalUrl.IsSettings() )
             _ = autoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);
     }
 }
