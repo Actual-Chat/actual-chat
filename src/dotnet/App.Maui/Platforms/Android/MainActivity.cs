@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using Android;
 using Android.App;
 using Android.Content.PM;
@@ -103,7 +104,7 @@ public partial class MainActivity : MauiAppCompatActivity
         // Keep the splash screen on-screen for longer periods
         // https://developer.android.com/develop/ui/views/launch/splash-screen#suspend-drawing
         var contentView = FindViewById(Android.Resource.Id.Content);
-        contentView!.ViewTreeObserver!.AddOnPreDrawListener(new SplashScreenDelayer(contentView));
+        contentView!.ViewTreeObserver!.AddOnPreDrawListener(new SplashDelayer(contentView));
     }
 
 // NOTE(AY): Doesn't work, not sure why
@@ -231,35 +232,15 @@ public partial class MainActivity : MauiAppCompatActivity
             processInfo.ImportanceReasonCode);
     }
 
-    public class SplashScreenExitAnimationListener : GenericAnimatorListener, ISplashScreenOnExitAnimationListener
+    private class SplashDelayer(AView contentView) : JObject, ViewTreeObserver.IOnPreDrawListener
     {
-        public void OnSplashScreenExit(SplashScreenView view)
-        {
-            Tracer.Default.Point("OnSplashScreenExit");
-            var fade = new AlphaAnimation(1f, 0f) {
-                Duration = 500,
-                Interpolator = new LinearInterpolator(),
-            };
-            view.AnimationEnd += (_, _) => {
-                Tracer.Default.Point("OnSplashScreenExit - AnimationEnd");
-                view.Remove();
-            };
-            view.StartAnimation(fade);
-        }
-    }
-    private class SplashScreenDelayer(AView contentView) : JObject, ViewTreeObserver.IOnPreDrawListener
-    {
-        private static bool _splashRemoved; // Iron pants to prevent splash screen displayed after app is taken back from background.
-        private static readonly Task _whenSplashRemoved = LoadingUI.WhenViewCreated; // .WithDelay(TimeSpan.FromMilliseconds(50));
+        private static readonly Task WhenRemoved = MauiLoadingUI.WhenFirstWebViewCreated;
 
         public bool OnPreDraw()
         {
-            if (_splashRemoved)
-                return true;
-            if (!_whenSplashRemoved.IsCompleted)
+            if (!WhenRemoved.IsCompleted)
                 return false;
 
-            _splashRemoved = true;
             contentView.ViewTreeObserver!.RemoveOnPreDrawListener(this);
             return true;
         }

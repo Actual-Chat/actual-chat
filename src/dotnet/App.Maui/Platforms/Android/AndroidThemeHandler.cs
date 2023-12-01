@@ -20,9 +20,9 @@ public class AndroidThemeHandler : MauiThemeHandler
         // I do it from here because I can not modify theme 'Maui.MainTheme'
         // which is applied after calling base.OnCreate.
         window.SetStatusBarColor(cTopBar);
+        var isStatusBarDark = IsDark(cTopBar);
         var wic = new WindowInsetsControllerCompat(window, window.DecorView);
-        var isDarkStatusBar = IsDark(cTopBar);
-        wic.AppearanceLightStatusBars = !isDarkStatusBar;
+        wic.AppearanceLightStatusBars = !isStatusBarDark;
         window.SetNavigationBarColor(cBottomBar);
         return true;
 

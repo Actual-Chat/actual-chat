@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using CommunityToolkit.Maui.Core;
 using CommunityToolkit.Maui.Core.Platform;
@@ -47,10 +48,12 @@ public class MauiThemeHandler
 
     public void Apply()
     {
-        if (LoadingUI.IsMauiSplashShown)
-            Apply(null, MauiSettings.SplashBackgroundColor.ToArgbHex(true));
-        else
+        if (MauiLoadingUI.WhenFirstSplashRemoved.IsCompleted)
             Apply(_theme, _colors);
+#if false // Happens with a significant delay on Android, so it's better to apply the change just once
+        else
+            Apply(null, MauiSettings.SplashBackgroundColor.ToArgbHex(true));
+#endif
     }
 
     // Protected methods
@@ -84,10 +87,6 @@ public class MauiThemeHandler
 
     protected virtual bool Apply(string topBarColor, string bottomBarColor, Theme? theme)
     {
-        var mainPage = App.Current.MainPage;
-        if (mainPage == null)
-            return false;
-
         var style = theme switch {
             Theme.Light => StatusBarStyle.DarkContent,
             Theme.Ash => StatusBarStyle.DarkContent,
@@ -96,10 +95,6 @@ public class MauiThemeHandler
         };
         StatusBar.SetColor(Color.FromArgb(topBarColor));
         StatusBar.SetStyle(style);
-        mainPage.BackgroundColor = Color.FromArgb(bottomBarColor);
-        if (MauiWebView.Current is {} mauiWebView)
-            mauiWebView.BlazorWebView.BackgroundColor = Color.FromArgb(bottomBarColor);
-
         return true;
     }
 }

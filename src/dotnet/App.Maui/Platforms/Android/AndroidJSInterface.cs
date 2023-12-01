@@ -13,11 +13,6 @@ internal class AndroidJSInterface(Android.Webkit.WebView webView) : JObject
     public event Action<string> MessageReceived = _ => { };
 
     [JavascriptInterface]
-    [Export("DOMContentLoaded")]
-    public void OnDOMContentLoaded()
-        => LoadingUI.MarkViewCreated();
-
-    [JavascriptInterface]
     [Export("postMessage")]
     public void OnPostMessage(string data)
         => webView.Post(() => {

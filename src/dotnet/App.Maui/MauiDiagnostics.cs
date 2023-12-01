@@ -53,10 +53,9 @@ public static class MauiDiagnostics
             _ = LoadingUI.WhenAppRendered
                 .WithDelay(SentryStartDelay)
                 .ContinueWith(_ => {
-                        InitSentrySdk(_sentryOptions);
-                        var _1 = CreateClientSentryTraceProvider();
-                    },
-                    TaskScheduler.Default);
+                    InitSentrySdk(_sentryOptions);
+                    var _1 = CreateClientSentryTraceProvider();
+                }, TaskScheduler.Default);
     }
 
     public static IServiceCollection AddMauiDiagnostics(this IServiceCollection services, bool dispose)

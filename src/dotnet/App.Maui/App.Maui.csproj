@@ -7,6 +7,7 @@
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
     <Configurations>Release;Debug</Configurations>
+    <DefineConstants>$(DefineConstants);USE_MAUI_SPLASH</DefineConstants>
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>

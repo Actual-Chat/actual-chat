@@ -6,26 +6,19 @@ namespace ActualChat.UI.Blazor.Services;
 /// <summary>
 /// Keeps splash screen / splash UI open in WASM & MAUI.
 /// </summary>
-public sealed class LoadingUI
+public class LoadingUI
 {
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
-    private static readonly TaskCompletionSource _whenViewCreatedSource = new();
     private static readonly TaskCompletionSource _whenAppRenderedSource = new();
-    private static volatile int _isMauiSplashShown;
 
     public static TimeSpan AppCreationTime { get; private set; }
     public static TimeSpan AppBuildTime { get; private set; }
-    public static Task WhenViewCreated => _whenViewCreatedSource.Task;
     public static Task WhenAppRendered => _whenAppRenderedSource.Task;
-
-    public static bool IsMauiSplashShown {
-        get => _isMauiSplashShown != 0;
-        set => Interlocked.Exchange(ref _isMauiSplashShown, value ? 1 : 0);
-    }
 
     private readonly TaskCompletionSource _whenLoadedSource = new();
     private readonly TaskCompletionSource _whenRenderedSource = new();
     private readonly TaskCompletionSource _whenChatListLoadedSource = new();
+    private volatile int _isLoadingOverlayRemoved;
 
     private IServiceProvider Services { get; }
     private HostInfo HostInfo { get; }
@@ -41,12 +34,13 @@ public sealed class LoadingUI
     public LoadingUI(IServiceProvider services)
     {
         Services = services;
-        Tracer = services.Tracer(GetType());
         HostInfo = Services.GetRequiredService<HostInfo>();
         if (HostInfo.AppKind.IsMauiApp() && StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
             // This is to make sure first scope's timings in MAUI are relative to app start
             Tracer = StaticTracer[GetType()];
         }
+        else
+            Tracer = services.Tracer(GetType());
     }
 
     public static void MarkAppBuilt()
@@ -55,14 +49,6 @@ public sealed class LoadingUI
             return;
 
         AppBuildTime = StaticTracer.Elapsed;
-        StaticTracer.Point();
-    }
-
-    public static void MarkViewCreated()
-    {
-        if (!_whenViewCreatedSource.TrySetResult())
-            return;
-
         StaticTracer.Point();
     }
 
@@ -110,10 +96,18 @@ public sealed class LoadingUI
     }
 
     public void RemoveLoadingOverlay(bool instantly = false)
-        => _ = Services.JSRuntime().InvokeVoidAsync(
-                $"{BlazorUICoreModule.ImportName}.BrowserInit.removeLoadingOverlay",
-                instantly)
-            .AsTask()
-            .WithErrorHandler(
-                e => Services.LogFor<LoadingUI>().LogError(e, "An error occurred during RemoveLoadingOverlay call"));
+    {
+        if (_isLoadingOverlayRemoved != 0)
+            return;
+
+        _ = ForegroundTask.Run(async () => {
+                await Services.JSRuntime()
+                    .InvokeVoidAsync(
+                        $"{BlazorUICoreModule.ImportName}.BrowserInit.removeLoadingOverlay",
+                        instantly
+                    ).ConfigureAwait(false);
+                Interlocked.Exchange(ref _isLoadingOverlayRemoved, 1);
+            },
+            e => Services.LogFor<LoadingUI>().LogError(e, "An error occurred during RemoveLoadingOverlay call"));
+    }
 }

@@ -4,11 +4,10 @@ using Stl.Fusion.Internal;
 
 namespace ActualChat.Users;
 
-public class SystemProperties : DbServiceBase<UsersDbContext>, ISystemProperties
+public class SystemProperties(IServiceProvider services)
+    : DbServiceBase<UsersDbContext>(services), ISystemProperties
 {
     private static readonly Task<string> ApiVersionTask = Task.FromResult(Constants.Api.Version);
-
-    public SystemProperties(IServiceProvider services) : base(services) { }
 
     // Not a [ComputeMethod]!
     public Task<double> GetTime(CancellationToken cancellationToken)

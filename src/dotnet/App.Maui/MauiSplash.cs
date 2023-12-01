@@ -1,16 +1,21 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui;
+
+#if USE_MAUI_SPLASH
 
 public class MauiSplash : Grid
 {
     private static readonly TimeSpan HalfLifeDuration = TimeSpan.FromSeconds(0.667); // 2s = 88% there
     private static readonly TimeSpan FadeDuration = TimeSpan.FromSeconds(0.5);
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5.5); // Must be > 5s (web loading overlay auto-removal time)
-    private static readonly double MaxOpacity = 0.99;
+    private static readonly double MaxOpacity = 1;
+    private static int _lastIndex;
     private readonly ProgressBar _progressBar;
     private readonly Image _logo;
     private LoadingUI? _scopedLoadingUI;
+    private int index = Interlocked.Increment(ref _lastIndex);
 
     private LoadingUI? ScopedLoadingUI {
         get {
@@ -25,11 +30,6 @@ public class MauiSplash : Grid
 
     public MauiSplash()
     {
-        _progressBar = new ProgressBar {
-            HorizontalOptions = LayoutOptions.Fill,
-            ProgressColor = Colors.White,
-            WidthRequest = 200,
-        };
         _logo = new Image {
             WidthRequest = 200,
             HeightRequest = 200,
@@ -37,12 +37,18 @@ public class MauiSplash : Grid
             HorizontalOptions = LayoutOptions.Center,
             Source = "splashscreen.png",
         };
+        _progressBar = new ProgressBar {
+            HorizontalOptions = LayoutOptions.Fill,
+            ProgressColor = Colors.White,
+            WidthRequest = 200,
+        };
 
         ZIndex = 1;
-        SetOpacity(MaxOpacity);
         BackgroundColor = MauiSettings.SplashBackgroundColor;
         VerticalOptions = LayoutOptions.Fill;
         HorizontalOptions = LayoutOptions.Fill;
+        SetOpacity(MaxOpacity);
+
         Add(_logo);
         Add(_progressBar);
         _ = Animate();
@@ -59,12 +65,13 @@ public class MauiSplash : Grid
 
     private async Task Animate()
     {
-        LoadingUI.MarkViewCreated();
-        LoadingUI.IsMauiSplashShown = true;
-        MauiThemeHandler.Instance.Apply();
+        var whenSplashRemoved = index == 1
+            ? MauiLoadingUI.WhenFirstSplashRemoved
+            : MauiLoadingUI.WhenSplashRemoved();
+        var isThemeApplied = false;
         try {
             await Animate(t => {
-                if (t >= Timeout || ScopedLoadingUI is { WhenRendered.IsCompleted: true })
+                if (t >= Timeout || whenSplashRemoved.IsCompleted)
                     return false;
 
                 _progressBar.Progress = 1.0 - Math.Pow(0.5, t / HalfLifeDuration);
@@ -75,17 +82,21 @@ public class MauiSplash : Grid
                     return false;
 
                 SetOpacity(double.Lerp(MaxOpacity, 0, t / FadeDuration).Clamp(0, MaxOpacity));
+                if (!isThemeApplied && t * 2 > FadeDuration) {
+                    isThemeApplied = true;
+                    MauiThemeHandler.Instance.Apply();
+                }
                 return true;
             }).ConfigureAwait(true);
         }
         catch (OperationCanceledException) { }
         catch (Exception e) {
-            DefaultLog.LogWarning(e, "Failed to animate splash");
+            DefaultLog.LogWarning(e, "Failed to animate MauiSplash");
         }
         finally {
             (Parent as Layout)!.Remove(this);
-            LoadingUI.IsMauiSplashShown = false;
-            MauiThemeHandler.Instance.Apply();
+            if (!isThemeApplied)
+                MauiThemeHandler.Instance.Apply();
         }
     }
 
@@ -112,3 +123,5 @@ public class MauiSplash : Grid
         }
     }
 }
+
+#endif

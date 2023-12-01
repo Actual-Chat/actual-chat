@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using Microsoft.Maui.Controls.PlatformConfiguration;
 using Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific;
 
@@ -12,18 +13,23 @@ public class MainPage : ContentPage
     public MainPage()
     {
         Interlocked.Exchange(ref _current, this);
-        RecreateWebView();
-        BackgroundColor = MauiSettings.SplashBackgroundColor;
         On<iOS>().SetUseSafeArea(true);
+        BackgroundColor = MauiSettings.SplashBackgroundColor;
+        MauiLoadingUI.MarkFirstWebViewCreated();
+        RecreateWebView();
     }
 
     public void RecreateWebView()
     {
         var mauiWebView = new MauiWebView();
+#if USE_MAUI_SPLASH
         Content = new Grid {
             new MauiSplash(),
             mauiWebView.BlazorWebView,
         };
+#else
+        Content = mauiWebView.BlazorWebView;
+#endif
     }
 
     public void Reload()
