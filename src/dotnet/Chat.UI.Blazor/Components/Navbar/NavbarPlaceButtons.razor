@@ -9,26 +9,28 @@
 }
 
 @if (places.Count > 0) {
-    foreach (var place in places) {
-        var groupId = place.Id.GetNavbarGroupId();
-        ChatHub.NavbarUI.UpdateTitle(groupId, place.Title);
-        <NavbarGroupSelectionButton
-            Title="@place.Title"
-            Id="@groupId"
-            Tooltip="@place.Title">
-            <ChildContent>
-                <Pic
-                    Title="@place.Title"
-                    Picture="@place.Picture.ToPicture()"
-                    Size="@SquareSize.Size8"
-                    AvatarKind="@AvatarKind.Marble"
-                    AvatarKey="@place.Id.Value"/>
-            </ChildContent>
-            <BadgeContent>
-                <ChatsNavbarButtonBadge PlaceSid="@place.Id"/>
-            </BadgeContent>
-        </NavbarGroupSelectionButton>
-    }
+    <div class="navbar-place-buttons">
+        @foreach (var place in places) {
+            var groupId = place.Id.GetNavbarGroupId();
+            ChatHub.NavbarUI.UpdateTitle(groupId, place.Title);
+            <NavbarGroupSelectionButton
+                Title="@place.Title"
+                Id="@groupId"
+                Tooltip="@place.Title">
+                <ChildContent>
+                    <Pic
+                        Title="@place.Title"
+                        Picture="@place.Picture.ToPicture()"
+                        Size="@SquareSize.Size8"
+                        AvatarKind="@AvatarKind.Marble"
+                        AvatarKey="@place.Id.Value"/>
+                </ChildContent>
+                <BadgeContent>
+                    <ChatsNavbarButtonBadge PlaceSid="@place.Id"/>
+                </BadgeContent>
+            </NavbarGroupSelectionButton>
+        }
+    </div>
 }
 
 @code {

@@ -114,3 +114,12 @@ body.hoverable .navbar-item:hover {
 .active-chats .navbar-item .pin-toggle {
     @apply visible;
 }
+
+.navbar-place-buttons {
+    @apply flex-y grow items-center gap-y-3 md:gap-y-2;
+    @apply w-full overflow-y-auto;
+}
+
+.navbar-place-buttons::-webkit-scrollbar {
+    display: none;
+}
