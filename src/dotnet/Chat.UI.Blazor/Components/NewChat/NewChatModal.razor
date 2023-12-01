@@ -41,8 +41,7 @@
     private Chat? _chat;
     private Page _page = Page.Props;
 
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -52,15 +51,16 @@
 
     private async void OnChatCreated(Chat chat) {
         _chat = chat;
-        var peopleContacts = await ChatListUI.ListPeopleContacts();
-        if (peopleContacts.Count == 0) {
+        var canAddMembers = await ChatHub.EditMembersUI.HaveMembersToAdd(chat);
+        if (!canAddMembers) {
             // If there is no people to add, close the dialog.
             Close();
-        } else {
-            _page = Page.Members;
-            // Re-render component to show Add members page.
-            StateHasChanged();
+            return;
         }
+
+        _page = Page.Members;
+        // Re-render component to show Add members page.
+        StateHasChanged();
     }
 
     private async Task NavigateToChatWhenClosed() {
@@ -68,7 +68,7 @@
         if (_chat == null)
             return;
 
-        _ = History.NavigateTo(Links.Chat(_chat.Id));
+        _ = ChatHub.History.NavigateTo(Links.Chat(_chat.Id));
     }
 
     private void Close()
