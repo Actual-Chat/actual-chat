@@ -7,7 +7,7 @@ namespace ActualChat.Media;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record Media : IHasId<MediaId>, IRequirementTarget
+public sealed partial record Media : IHasId<MediaId>, IHasMetadata, IRequirementTarget
 {
     private readonly NewtonsoftJsonSerialized<ImmutableOptionSet> _metadata =
         NewtonsoftJsonSerialized.New(ImmutableOptionSet.Empty);
@@ -28,37 +28,37 @@ public sealed partial record Media : IHasId<MediaId>, IRequirementTarget
 #pragma warning disable IL2026
         get => _metadata.Value;
 #pragma warning restore IL2026
-        init => _metadata.Value = value;
+        set => _metadata.Value = value;
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public long Length {
-        get => GetMetadataValue(0L);
-        init => SetMetadataValue(value);
+        get => this.GetMetadataValue(0L);
+        init => this.SetMetadataValue(value);
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string FileName {
-        get => GetMetadataValue("");
-        init => SetMetadataValue(value);
+        get => this.GetMetadataValue("");
+        init => this.SetMetadataValue(value);
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string ContentType {
-        get => GetMetadataValue("");
-        init => SetMetadataValue(value);
+        get => this.GetMetadataValue("");
+        init => this.SetMetadataValue(value);
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int Width {
-        get => GetMetadataValue<int>();
-        init => SetMetadataValue(value);
+        get => this.GetMetadataValue<int>();
+        init => this.SetMetadataValue(value);
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public int Height {
-        get => GetMetadataValue<int>();
-        init => SetMetadataValue(value);
+        get => this.GetMetadataValue<int>();
+        init => this.SetMetadataValue(value);
     }
 
     public Media() : this(MediaId.None) { }
@@ -76,22 +76,4 @@ public sealed partial record Media : IHasId<MediaId>, IRequirementTarget
     // This record relies on referential equality
     public bool Equals(Media? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
-
-    // Private methods
-
-    private T GetMetadataValue<T>(T @default = default!, [CallerMemberName] string symbol = "")
-    {
-        var value = Metadata[symbol];
-        if (value == null)
-            return @default;
-
-        // TODO: remove this workaround when int is not deserialized as long
-        if (typeof(T) == typeof(int))
-            value = Convert.ToInt32(value, CultureInfo.InvariantCulture);
-
-        return (T)value;
-    }
-
-    private void SetMetadataValue<T>(T value, [CallerMemberName] string symbol = "")
-        => _metadata.Value = Metadata.Set(symbol, value);
 }

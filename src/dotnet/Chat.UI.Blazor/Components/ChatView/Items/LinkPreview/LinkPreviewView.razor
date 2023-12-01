@@ -4,8 +4,8 @@
 @using LinkPreview = ActualChat.Media.LinkPreview
 @inherits FusionComponentBase
 @{
-    var m = Source;
-    if (Mode == LinkPreviewMode.None || m == null || m.IsEmpty)
+    var m = Entry.LinkPreview;
+    if (Entry.LinkPreviewMode == LinkPreviewMode.None || m == null || m.IsEmpty)
         return;
 
     var imageUrl = GetImageUrl(m.PreviewMedia);
@@ -16,7 +16,16 @@
 @* Keep height fixed *@
 <div class="link-preview @compactCls">
     @if (m.PreviewMedia != null) {
-        <image-skeleton class="c-thumbnail" src="@imageUrl" />
+        @if (m.IsYouTubeVideo) {
+            <image-skeleton
+                class="c-thumbnail"
+                src="@imageUrl"
+                @onclick="@OnVideoClick"/>
+        } else {
+            <image-skeleton
+                class="c-thumbnail"
+                src="@imageUrl"/>
+        }
     } else {
         <div class="c-icon">
             <i class="icon-link-2"></i>
@@ -39,9 +48,9 @@
     [Inject] private ILinkPreviews MediaLinkPreviews { get; init; } = null!;
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private ICommander Commander { get; init; } = null!;
+    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public LinkPreview? Source { get; set; }
-    [Parameter, EditorRequired] public LinkPreviewMode? Mode { get; set; }
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     private string GetImageUrl(Media? preview)
@@ -55,9 +64,13 @@
         return UrlMapper.ImagePreviewUrl(imageUrl, width, height);
     }
 
+    private void OnVideoClick() {
+        _ = VisualMediaViewerUI.Show("", Entry);
+    }
+
     private (int? Width, int Height) GetImageMaxSize() {
         const int sizeMultiplier = 2; // reduced images look blurry
-        switch (Mode) {
+        switch (Entry.LinkPreviewMode) {
             case LinkPreviewMode.Compact:
                 var maxHeight = ScreenSize.IsNarrow() ? 80 : 120;
                 return (maxHeight * sizeMultiplier, maxHeight * sizeMultiplier);

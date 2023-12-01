@@ -64,14 +64,26 @@ public class Crawler(IServiceProvider services) : IHasServices
         var description = graph.Metadata["og:description"].Value();
         if (!description.IsNullOrEmpty())
             description = description.HtmlDecode();
-        return new (graph.Title.HtmlDecode(), description, mediaId);
+
+        var siteNameValue = graph.Metadata["og:site_name"].Value();
+        var videoSecureUrlValue = graph.Metadata["og:video:secure_url"].Value();
+        var videoWidthValue = graph.Metadata["og:video:width"].Value();
+        var videoHeightValue = graph.Metadata["og:video:height"].Value();
+        var videoMetadata = new CrawledVideoMetadata(
+            SiteName: siteNameValue,
+            SecureUrl: videoSecureUrlValue,
+            Width: int.TryParse(videoWidthValue, CultureInfo.InvariantCulture, out var videoWidth) ? videoWidth : 0,
+            Height: int.TryParse(videoHeightValue, CultureInfo.InvariantCulture, out var videoHeight) ? videoHeight : 0
+        );
+
+        return new (graph.Title.HtmlDecode(), description, mediaId, videoMetadata);
     }
 
     private async Task<CrawledLink> CrawlImageLink(string url, CancellationToken cancellationToken)
     {
         // TODO: image size limit
         var mediaId = await GrabImage(new Uri(url), cancellationToken).ConfigureAwait(false);
-        return new CrawledLink("", "", mediaId);
+        return new CrawledLink("", "", mediaId, CrawledVideoMetadata.None);
     }
 
     private async Task<MediaId> GrabImage(Uri? imageUri, CancellationToken cancellationToken)
@@ -139,7 +151,21 @@ public class Crawler(IServiceProvider services) : IHasServices
     }
 }
 
-public sealed record CrawledLink(string Title, string Description, MediaId PreviewMediaId)
-{
-    public static readonly CrawledLink None = new ("", "", MediaId.None);
+public sealed record CrawledLink(
+    string Title,
+    string Description,
+    MediaId PreviewMediaId,
+    CrawledVideoMetadata VideoMetadata
+    ) {
+    public static readonly CrawledLink None = new ("", "", MediaId.None, CrawledVideoMetadata.None);
+}
+
+public sealed record CrawledVideoMetadata(
+    string SiteName,
+    string SecureUrl,
+    int Width,
+    int Height
+) {
+    public static readonly CrawledVideoMetadata None = new ("", "", 0, 0);
+    public bool IsNone => this == None;
 }

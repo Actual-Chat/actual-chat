@@ -9,6 +9,8 @@
     var selectedAttachmentDownloadUrl = selectedAttachment != null
         ? UrlMapper.ContentUrl(selectedAttachment.Media.ContentId)
         : ModalModel.Url;
+    var linkPreview = ModalModel.ChatEntry?.LinkPreview;
+    var isYouTubeVideo = linkPreview?.IsYouTubeVideo ?? false;
 }
 
 <ModalFrame Class="image-viewer-modal">
@@ -27,6 +29,19 @@
         initial-slide="@_selectedSlide"
         thumbs-swiper=".media-preview-swiper"
         navigation="true">
+        @if (isYouTubeVideo) {
+            <swiper-slide>
+                <div class="swiper-zoom-container">
+                    <iframe
+                        id="ytplayer"
+                        type="text/html"
+                        src="@($"{linkPreview!.VideoUrl}?autoplay=1")"
+                        allow="autoplay;"
+                        frameborder="0">
+                    </iframe>
+                </div>
+            </swiper-slide>
+        }
         @foreach (var attachment in _attachments) {
             var url = UrlMapper.ContentUrl(attachment.Media.ContentId);
             @if (attachment.IsSupportedImage()) {
@@ -142,7 +157,5 @@
 
     public sealed record Model(
         string Url,
-        string? CachedImageUrl,
-        string? AltText,
         ChatEntry? ChatEntry = default);
 }

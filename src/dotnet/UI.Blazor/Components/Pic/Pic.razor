@@ -5,7 +5,7 @@
 @{
     var sizeClass = $"pic-size-{(int)Size}";
     var roundedClass = IsSquare ? "" : "pic-rounded ";
-    var cursorClass = EnableImagePreview || Click.HasDelegate ? "pic-show-cursor" : "";
+    var cursorClass = Click.HasDelegate ? "pic-show-cursor" : "";
     var blurClass = IsBlurred ? "pic-blurred" : "";
     var style = "";
     if (Width != 0 && IsBlurred)
@@ -63,7 +63,6 @@
     [Parameter] public bool IsBlurred { get; set; }
     [Parameter] public AvatarKind AvatarKind { get; set; } = AvatarKind.Beam;
     [Parameter] public string? AvatarKey { get; set; }
-    [Parameter] public bool EnableImagePreview { get; set; }
     [Parameter] public RenderFragment? NoPicture { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
 
@@ -74,10 +73,5 @@
 
     private async Task OnPictureClick(MouseEventArgs arg) {
         await Click.InvokeAsync(arg).ConfigureAwait(false);
-
-        if (EnableImagePreview && Picture is { MediaContent: {} mediaContent }) {
-            var url = UrlMapper.ContentUrl(mediaContent.ContentId);
-            await VisualMediaViewerUI.Show(url);
-        }
     }
 }
