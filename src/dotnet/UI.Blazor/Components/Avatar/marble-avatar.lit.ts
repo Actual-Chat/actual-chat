@@ -7,6 +7,9 @@ const SIZE = 80;
 const ELEMENTS = 3;
 
 let id = 0;
+let w = 0;
+let h = 0;
+let multiplier = 1;
 
 @customElement('marble-avatar')
 class MarbleAvatar extends LitElement {
@@ -23,19 +26,19 @@ class MarbleAvatar extends LitElement {
         const properties = this.generateColors(this.key, this.colors);
         return html`
             <svg
-                viewBox='${'0 0 ' + this.width + ' ' + this.height}'
+                viewBox='${'0 0 ' + w + ' ' + h}'
                 fill='none'
                 role='img'
                 xmlns='http://www.w3.org/2000/svg'
-                width='${this.width}'
-                height='${this.height}'
+                width='${w}'
+                height='${h}'
                 style='${this.css}'
             >
-                <mask id='${this.maskId}' maskUnits='userSpaceOnUse' x='0' y='0' width='${this.width}' height='${this.height}'>
-                    <rect width='${this.width}' height='${this.height}' fill='#FFFFFF'/>
+                <mask id='${this.maskId}' maskUnits='userSpaceOnUse' x='0' y='0' width='${w}' height='${h}'>
+                    <rect width='${w}' height='${h}' fill='#FFFFFF'/>
                 </mask>
                 <g mask='url(#${this.maskId})'>
-                    <rect width='${this.width}' height='${this.height}' fill='#${properties[0].color}' />
+                    <rect width='${w}' height='${h}' fill='#${properties[0].color}' />
                     <path
                         filter='url(#prefix__filter0_f)'
                         d='M32.414 59.35L50.376 70.5H72.5v-71H33.728L26.5 13.381l19.057 27.08L32.414 59.35z'
@@ -48,9 +51,9 @@ class MarbleAvatar extends LitElement {
                             ') rotate(' +
                             properties[1].rotate +
                             ' ' +
-                            this.height / 2 +
+                            h / 2 +
                             ' ' +
-                            this.height / 2 +
+                            h / 2 +
                             ') scale(' +
                             properties[2].scale +
                             ')'
@@ -69,9 +72,9 @@ class MarbleAvatar extends LitElement {
                             ') rotate(' +
                             properties[2].rotate +
                             ' ' +
-                            this.height / 2 +
+                            h / 2 +
                             ' ' +
-                            this.height / 2 +
+                            h / 2 +
                             ') scale(' +
                             properties[2].scale +
                             ')'
@@ -82,7 +85,7 @@ class MarbleAvatar extends LitElement {
                       y="50%"
                       dominant-baseline="central"
                       text-anchor="middle"
-                      font-size='${this.height / 2}'
+                      font-size='${h / 2}'
                       font-weight='500'
                       fill='white'>
                     ${this.title}
@@ -103,13 +106,23 @@ class MarbleAvatar extends LitElement {
     }
 
     private generateColors(key: string, colors: string[]) {
+        let html = document.documentElement;
+        let fs = window.getComputedStyle(html, null).getPropertyValue('--font-size');
+        let fontSize = parseFloat(fs);
+        if (fontSize != 0 && fontSize != 16)
+            multiplier = fontSize / 16;
+
+        console.log('multiplier: ', multiplier);
+        w = this.width * multiplier;
+        h = this.height * multiplier;
+
         const numFromName = hashCode(key);
         const range = colors && colors.length;
         return Array.from({ length: ELEMENTS }, (_, i) => ({
             color: getRandomColor(numFromName + i, colors, range),
-            translateX: getUnit(numFromName * (i + 1), this.width / 10, 1),
-            translateY: getUnit(numFromName * (i + 1), this.height / 10, 2),
-            scale: 1.2 + getUnit(numFromName * (i + 1), this.height / 20, undefined) / 10,
+            translateX: getUnit(numFromName * (i + 1), w / 10, 1),
+            translateY: getUnit(numFromName * (i + 1), h / 10, 2),
+            scale: 1.2 + getUnit(numFromName * (i + 1), h / 20, undefined) / 10,
             rotate: getUnit(numFromName * (i + 1), 360, 1),
         }));
     }

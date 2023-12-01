@@ -6,6 +6,9 @@ import { getBoolDigit, getContrast, getRandomColor, getUnit, hashCode } from './
 const SIZE = 36;
 
 let id = 0;
+let multiplier = 1;
+let w = 0;
+let h = 0;
 
 @customElement('beam-avatar')
 class BeamAvatar extends LitElement {
@@ -20,8 +23,8 @@ class BeamAvatar extends LitElement {
 
     render() {
         const data = this.generateData(this.key, this.colors);
-        const w = this.width == 0 ? 36 : this.width;
-        const h = this.height == 0 ? 36 : this.height;
+        w = this.width == 0 ? 36 : this.width;
+        h = this.height == 0 ? 36 : this.height;
         const mouth = data.isMouthOpen
             ? svg`
                 <path
@@ -74,7 +77,7 @@ class BeamAvatar extends LitElement {
                             ')'
                         }'
                         fill='#${data.wrapperColor}'
-                        rx='${data.isCircle ? SIZE : SIZE / 6}'
+                        rx='${data.isCircle ? h : h / 6}'
                     />
                     <g
                         transform='${
@@ -85,27 +88,27 @@ class BeamAvatar extends LitElement {
                             ') rotate(' +
                             data.faceRotate +
                             ' ' +
-                            SIZE / 2 +
+                            w / 2 +
                             ' ' +
-                            SIZE / 2 +
+                            h / 2 +
                             ')'
                         }'
                     >
                         ${mouth}
                         <rect
                             x='${14 - data.eyeSpread}'
-                            y='14'
-                            width='1.5'
-                            height='2'
+                            y='${h / 2.5}'
+                            width='${1.5 * multiplier}'
+                            height='${2 * multiplier}'
                             rx='1'
                             stroke='none'
                             fill='${data.faceColor}'
                         />
                         <rect
                             x='${20 + data.eyeSpread}'
-                            y='14'
-                            width='1.5'
-                            height='2'
+                            y='${h / 2.5}'
+                            width='${1.5 * multiplier}'
+                            height='${2 * multiplier}'
                             rx='1'
                             stroke='none'
                             fill='${data.faceColor}'
@@ -117,13 +120,23 @@ class BeamAvatar extends LitElement {
     }
 
     private generateData(key: string, colors: string[]) {
+        let html = document.documentElement;
+        let fs = window.getComputedStyle(html, null).getPropertyValue('--font-size');
+        let fontSize = parseFloat(fs);
+        if (fontSize != 0 && fontSize != 16)
+            multiplier = fontSize / 16;
+
+        console.log('multiplier: ', multiplier);
+        w = this.width * multiplier;
+        h = this.height * multiplier;
+
         const numFromName = hashCode(key);
         const range = colors && colors.length;
         const wrapperColor = getRandomColor(numFromName, colors, range);
         const preTranslateX = getUnit(numFromName, 10, 1);
-        const wrapperTranslateX = preTranslateX < 5 ? preTranslateX + SIZE / 9 : preTranslateX;
+        const wrapperTranslateX = preTranslateX < 5 ? preTranslateX + h / 9 : preTranslateX;
         const preTranslateY = getUnit(numFromName, 10, 2);
-        const wrapperTranslateY = preTranslateY < 5 ? preTranslateY + SIZE / 9 : preTranslateY;
+        const wrapperTranslateY = preTranslateY < 5 ? preTranslateY + h / 9 : preTranslateY;
         return {
             wrapperColor: wrapperColor,
             faceColor: getContrast(wrapperColor),
@@ -131,14 +144,14 @@ class BeamAvatar extends LitElement {
             wrapperTranslateX: wrapperTranslateX,
             wrapperTranslateY: wrapperTranslateY,
             wrapperRotate: getUnit(numFromName, 360, undefined),
-            wrapperScale: 1 + getUnit(numFromName, SIZE / 12, undefined) / 10,
+            wrapperScale: 1 + getUnit(numFromName, h / 12, undefined) / 10,
             isMouthOpen: getBoolDigit(numFromName, 2),
             isCircle: getBoolDigit(numFromName, 1),
             eyeSpread: getUnit(numFromName, 5, undefined),
             mouthSpread: getUnit(numFromName, 3, undefined),
             faceRotate: getUnit(numFromName, 10, 3),
-            faceTranslateX: wrapperTranslateX > SIZE / 6 ? wrapperTranslateX / 2 : getUnit(numFromName, 8, 1),
-            faceTranslateY: wrapperTranslateY > SIZE / 6 ? wrapperTranslateY / 2 : getUnit(numFromName, 7, 2),
+            faceTranslateX: wrapperTranslateX > h / 6 ? wrapperTranslateX / 2 : getUnit(numFromName, 8, 1),
+            faceTranslateY: wrapperTranslateY > h / 6 ? wrapperTranslateY / 2 : getUnit(numFromName, 7, 2),
         };
     }
 }

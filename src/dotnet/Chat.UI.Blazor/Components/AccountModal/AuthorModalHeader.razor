@@ -17,7 +17,11 @@
     </div>
 
     <div class="c-center">
-        <AuthorCircle AuthorSid="@Author.Id" Size="SquareSize.Size16">
+        <AuthorCircle
+            AuthorSid="@Author.Id"
+            Size="SquareSize.Size16"
+            Width="64"
+            Height="64">
             <BadgeContent>
                 @if (!Author.IsAnonymous) {
                     <AuthorPresenceIndicator AuthorSid="@Author.Id" ShowRecording="true"></AuthorPresenceIndicator>
