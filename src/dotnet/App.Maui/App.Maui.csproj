@@ -76,11 +76,11 @@
   </PropertyGroup>
 
   <!-- Profiling & tracing -->
-  <PropertyGroup Condition="'$(IsTracingEnabled)' == ''">
-    <IsTracingEnabled>false</IsTracingEnabled>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(IsProfilingEnabled)' == ''">
     <IsProfilingEnabled>false</IsProfilingEnabled>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(IsTracingEnabled)' == ''">
+    <IsTracingEnabled>false</IsTracingEnabled>
   </PropertyGroup>
 
   <!-- Project references -->
@@ -121,7 +121,6 @@
     <PackageReference Include="Xamarin.Google.Dagger" />
     <PackageReference Include="Xamarin.Twilio.AudioSwitch" />
     <PackageReference Include="Serilog.Sinks.Xamarin" />
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Mono.AotProfiler.Android" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-ios'))">
     <PackageReference Include="Plugin.Firebase.CloudMessaging" />
@@ -227,7 +226,7 @@
   </PropertyGroup>
 
   <!-- Android: Profile-guided AOT profiles -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+  <PropertyGroup Condition="$(TargetFramework.Contains('-android'))">
     <!--
     These two profiles are different, we can include none, any of them, or both.
     Using both seems to be the most efficient option in .NET 7.
@@ -235,21 +234,35 @@
     <MauiUseDefaultAotProfile>false</MauiUseDefaultAotProfile>
     <AndroidUseDefaultAotProfile>false</AndroidUseDefaultAotProfile>
   </PropertyGroup>
-  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
+  <ItemGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release' and !$(IsProfilingEnabled)">
     <!-- Somehow this just makes things worse
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-exc.aotprofile" />
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)app-inc.aotprofile" />
     <AndroidMibcProfile Include="android.mibc" />
     -->
-    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-big.aprof" />
+    <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-v1.aprof" />
+    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-v1.mibc" />
   </ItemGroup>
 
   <!-- Android: AOT profiling mode -->
-  <PropertyGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+  <PropertyGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android'))">
     <AndroidEnableProfiler>true</AndroidEnableProfiler>
     <AndroidEmbedProfilers>aot</AndroidEmbedProfilers>
     <AndroidAotProfilerPort>9999</AndroidAotProfilerPort>
+    <AndroidAotCustomProfilePath>$(MSBuildThisFileDirectory)/_Profiling/android.aprof</AndroidAotCustomProfilePath>
+    <!-- Turn off AOT & JIT compilation -->
+    <PublishTrimmed>false</PublishTrimmed>
+    <UseInterpreter>false</UseInterpreter>
+    <AndroidUseInterpreter>false</AndroidUseInterpreter>
+    <RunAOTCompilation>false</RunAOTCompilation>
+    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <AndroidStripILAfterAOT>false</AndroidStripILAfterAOT>
+    <EnableLLVM>false</EnableLLVM>
+    <AndroidEnablePreloadAssemblies>false</AndroidEnablePreloadAssemblies>
   </PropertyGroup>
+  <ItemGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android'))">
+    <PackageReference Include="Mono.AotProfiler.Android" />
+  </ItemGroup>
   <!-- Android: Tracing mode -->
   <PropertyGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <AndroidEnableProfiler>true</AndroidEnableProfiler>
@@ -259,6 +272,9 @@
   </PropertyGroup>
   <ItemGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
     <AndroidEnvironment Include="android-tracing-env.txt" />
+  </ItemGroup>
+  <ItemGroup Condition="$(IsTracingEnabled) and $(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Debug'">
+    <PackageReference Include="Mono.Profiler.Android" />
   </ItemGroup>
 
   <!-- iOS build properties -->
