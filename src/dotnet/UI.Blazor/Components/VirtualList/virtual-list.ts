@@ -950,7 +950,7 @@ export class VirtualList {
     private scrollToEnd(useSmoothScroll: boolean = false) {
         if (this._renderState.renderIndex <= 1)
             useSmoothScroll = false; // fix for scroll to the end on chat switch
-        if (this.windowScrollTop != 0 && DeviceInfo.isIos) // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
+        if (DeviceInfo.isIos) // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
             useSmoothScroll = false;
         debugLog?.log('scrollTo end', useSmoothScroll);
         this._inertialScroll.freeze();
