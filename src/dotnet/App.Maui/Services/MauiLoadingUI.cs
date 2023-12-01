@@ -21,6 +21,7 @@ public static class MauiLoadingUI
     public static Task WhenSplashRemoved()
         => DispatchToBlazor(async scopedServices => {
             var loadingUI = scopedServices.GetRequiredService<LoadingUI>();
+            loadingUI.RemoveLoadingOverlay(true);
             await Task.WhenAny(
                 loadingUI.WhenChatListLoaded.WithDelay(TimeSpan.FromSeconds(0.1)),
                 Task.Delay(TimeSpan.FromSeconds(1))

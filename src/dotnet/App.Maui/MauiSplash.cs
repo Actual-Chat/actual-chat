@@ -12,21 +12,9 @@ public class MauiSplash : Grid
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5.5); // Must be > 5s (web loading overlay auto-removal time)
     private static readonly double MaxOpacity = 1;
     private static int _lastIndex;
+    private readonly int _index = Interlocked.Increment(ref _lastIndex);
     private readonly ProgressBar _progressBar;
     private readonly Image _logo;
-    private LoadingUI? _scopedLoadingUI;
-    private int index = Interlocked.Increment(ref _lastIndex);
-
-    private LoadingUI? ScopedLoadingUI {
-        get {
-            if (_scopedLoadingUI != null)
-                return _scopedLoadingUI;
-
-            _scopedLoadingUI = TryGetScopedServices(out var services) ? services.GetRequiredService<LoadingUI>() : null;
-            _scopedLoadingUI?.RemoveLoadingOverlay(true);
-            return _scopedLoadingUI;
-        }
-    }
 
     public MauiSplash()
     {
@@ -65,7 +53,7 @@ public class MauiSplash : Grid
 
     private async Task Animate()
     {
-        var whenSplashRemoved = index == 1
+        var whenSplashRemoved = _index == 1
             ? MauiLoadingUI.WhenFirstSplashRemoved
             : MauiLoadingUI.WhenSplashRemoved();
         var isThemeApplied = false;
