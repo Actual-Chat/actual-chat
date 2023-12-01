@@ -15,7 +15,7 @@
     <a class="cursor-pointer"
        href="@url"
        role="button"
-       @onclick="@(() => VisualMediaViewerUI.Show(url, previewUrl, null, ChatEntry))"
+       @onclick="@(() => VisualMediaViewerUI.Show(url, ChatEntry))"
        @onclick:preventDefault="true">
         @if (attachment.IsSupportedVideo()) {
             <VideoAttachmentThumbnail Attachment="attachment"/>

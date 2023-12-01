@@ -87,24 +87,44 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
             var linkMeta = await Crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
             if (dbLinkPreview == null) {
-                dbLinkPreview = new DbLinkPreview {
+                var linkPreview = new LinkPreview {
                     Id = LinkPreview.ComposeId(url),
                     Version = VersionGenerator.NextVersion(),
                     Url = url,
                     Title = linkMeta.Title,
                     Description = linkMeta.Description,
-                    ThumbnailMediaId = linkMeta.PreviewMediaId,
+                    PreviewMediaId = linkMeta.PreviewMediaId,
                     CreatedAt = Now,
                     ModifiedAt = Now,
                 };
-                dbContext.Add((object)dbLinkPreview);
+                if (!linkMeta.VideoMetadata.IsNone)
+                    linkPreview = linkPreview with {
+                        VideoSite = linkMeta.VideoMetadata.SiteName,
+                        VideoUrl = linkMeta.VideoMetadata.SecureUrl,
+                        VideoWidth = linkMeta.VideoMetadata.Width,
+                        VideoHeight = linkMeta.VideoMetadata.Height,
+                    };
+
+                dbLinkPreview = new DbLinkPreview(linkPreview);
+                dbContext.Add(dbLinkPreview);
             }
             else {
-                dbLinkPreview.ThumbnailMediaId = linkMeta.PreviewMediaId;
-                dbLinkPreview.Title = linkMeta.Title;
-                dbLinkPreview.Description = linkMeta.Description;
-                dbLinkPreview.ModifiedAt = Now;
-                dbLinkPreview.Version = VersionGenerator.NextVersion(dbLinkPreview.Version);
+                var linkPreview = dbLinkPreview.ToModel();
+                linkPreview = linkPreview with {
+                    PreviewMediaId = linkMeta.PreviewMediaId,
+                    Title = linkMeta.Title,
+                    Description = linkMeta.Description,
+                    ModifiedAt = Now,
+                    Version = VersionGenerator.NextVersion(linkPreview.Version),
+                };
+                if (!linkMeta.VideoMetadata.IsNone)
+                    linkPreview = linkPreview with {
+                        VideoSite = linkMeta.VideoMetadata.SiteName,
+                        VideoUrl = linkMeta.VideoMetadata.SecureUrl,
+                        VideoWidth = linkMeta.VideoMetadata.Width,
+                        VideoHeight = linkMeta.VideoMetadata.Height,
+                    };
+                dbLinkPreview.UpdateFrom(linkPreview);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

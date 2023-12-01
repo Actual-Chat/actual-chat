@@ -171,9 +171,9 @@
             @if (entry.HasReactions) {
                 <MessageReactions Entry="@entry"/>
             }
-            @if (m.ShowLinkPreview) {
+            @if (message.ShowLinkPreview) {
                 <div class="message-link-preview">
-                    <LinkPreviewView Source="@message.Entry.LinkPreview" Mode="@entry.LinkPreviewMode"/>
+                    <LinkPreviewView Entry="@entry" />
                 </div>
             }
         </div>
@@ -242,7 +242,6 @@
             initialValue = new Model {
                 OwnAuthorId = ownAuthorId,
                 RepliedEntry = repliedEntry,
-                ShowLinkPreview = Message.ShowLinkPreview,
             };
         return new() {
             InitialValue = initialValue,
@@ -278,7 +277,6 @@
             IsOwnAuthorMentioned = isOwnAuthorMentioned,
             ForwardedChat = forwardedChat,
             ForwardedAuthor = forwardedAuthor,
-            ShowLinkPreview = Message.ShowLinkPreview,
             ForwardedPeerAuthor = forwardedPeerAuthor,
         };
         return result.Equals(_rendered) ? _rendered! : result;
@@ -399,6 +397,5 @@
         public Chat? ForwardedChat { get; init; }
         public Author? ForwardedAuthor { get; init; }
         public Author? ForwardedPeerAuthor { get; init; }
-        public bool ShowLinkPreview { get; set; }
     }
 }
