@@ -50,7 +50,7 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         if (!_dismissed.WhenRead.IsCompleted)
             await _dismissed.WhenRead;
-        if (!Chat.CanInvite())
+        if (!ChatContext.EditMembersUI.CanAddMembers(Chat))
             return false;
 
         var dismissed = await _dismissed.Use(cancellationToken);

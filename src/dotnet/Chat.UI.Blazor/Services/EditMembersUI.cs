@@ -21,4 +21,26 @@ public class EditMembersUI(ChatHub chatHub)
         }
         return canAddContacts;
     }
+
+    public bool CanAddMembers(Chat chat)
+    {
+        if (!chat.CanInvite())
+            return false;
+
+        if (chat.IsPublicPlaceChat())
+            return false;
+
+        return true;
+    }
+
+    public bool CanEditMembers(Chat chat)
+    {
+        if (chat.Rules.CanEditMembers())
+            return false;
+
+        if (chat.IsPublicPlaceChat())
+            return false;
+
+        return true;
+    }
 }

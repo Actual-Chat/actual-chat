@@ -45,7 +45,7 @@
         </RightPanelChatInfoItem>
     }
 
-    @if (Chat.CanInvite()) {
+    @if (ChatContext.EditMembersUI.CanAddMembers(Chat)) {
         <RightPanelChatInfoItem
             Click="@OnInviteClick"
             ContentClass="text-primary"

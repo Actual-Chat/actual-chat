@@ -164,17 +164,31 @@
 
     @if (m.Chat.Rules.CanEditMembers()) {
         <FormBlock>
-            <TileItem Class="item-manage-members" Click="OnManageMembersClick">
-                <Icon>
-                    <i class="icon-people"></i>
-                </Icon>
-                <Content>
-                    @m.MembersCount Members
-                </Content>
-                <Right>
-                    <i class="icon-chevron-right text-3xl"></i>
-                </Right>
-            </TileItem>
+            @if (!m.Chat.IsPublicPlaceChat()) {
+                <TileItem Class="item-manage-members" Click="OnManageMembersClick">
+                    <Icon>
+                        <i class="icon-people"></i>
+                    </Icon>
+                    <Content>
+                        @m.MembersCount Members
+                    </Content>
+                    <Right>
+                        <i class="icon-chevron-right text-3xl"></i>
+                    </Right>
+                </TileItem>
+            } else {
+                <TileItem Class="item-manage-members">
+                    <Icon>
+                        <i class="icon-people"></i>
+                    </Icon>
+                    <Content>
+                        @m.MembersCount Members
+                    </Content>
+                    <Caption>
+                        Use place settings to edit
+                    </Caption>
+                </TileItem>
+            }
 
             @if (m.IsOwner) {
                 var leaveTitle = m.CanDelete ? "Delete chat" : "Leave chat";

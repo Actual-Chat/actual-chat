@@ -49,6 +49,9 @@ public sealed partial record Chat(
         // we let only Owners to invite people to chat.
         => Rules.IsOwner() && !HasSingleAuthor && !Id.IsPeerChat(out _);
 
+    public bool IsPublicPlaceChat()
+        => Kind == ChatKind.Place && !Id.PlaceChatId.IsRoot && IsPublic;
+
     // This record relies on referential equality
     public bool Equals(Chat? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
