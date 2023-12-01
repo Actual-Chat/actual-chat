@@ -14,7 +14,11 @@
             <i class="icon-close"></i>
         </HeaderButton>
         <div class="c-author">
-            <AvatarCircle Avatar="@_author.Avatar" Size="SquareSize.Size10"/>
+            <AvatarCircle
+                Avatar="@_author.Avatar"
+                Size="SquareSize.Size10"
+                Width="40"
+                Height="40"/>
             <div class="c-content">
                 <AvatarName Avatar="@_author.Avatar" Class="c-name"/>
                 <LiveTimeDeltaText Class="c-time" Moment="@ChatEntry.BeginsAt"/>
