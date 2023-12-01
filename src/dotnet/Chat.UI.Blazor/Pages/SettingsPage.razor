@@ -11,8 +11,6 @@
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
-    [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
-    [Inject]  public Dispatcher Dispatcher { get; init; } = null!;
 
     [Parameter] public string? SettingsOption { get; set; }
 
@@ -20,15 +18,14 @@
         if (!firstRender)
             return;
 
-        var modalRef = await ModalUI.Show(SettingsModal.Model.Instance, ModalOptions.FullScreen, CancellationToken.None);
+        var modalRef = await ModalUI.Show(SettingsModal.Model.Instance, ModalOptions.FullScreen);
         if (SettingsOption.OrdinalIgnoreCaseStartsWith("delete-account"))
             _ = ModalUI.Show(OwnAccountEditorModal.Model.Default);
-        _ = modalRef.WhenClosed.ContinueWith(_ => NavigateToDefaultLocation());
+        _ = NavigateToChatsWhen(modalRef.WhenClosed);
     }
 
-    private void NavigateToDefaultLocation() {
-        Dispatcher.InvokeAsync(() => {
-            _ = History.NavigateTo(Links.Chats, false, false, true);
-        });
+    private async Task NavigateToChatsWhen(Task when) {
+        await when;
+        _ = History.NavigateTo(Links.Chats, false, false, true);
     }
 }
