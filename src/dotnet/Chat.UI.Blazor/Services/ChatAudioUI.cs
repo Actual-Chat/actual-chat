@@ -6,16 +6,14 @@ using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitialized
+public partial class ChatAudioUI : ScopedWorkerBase, IComputeService, INotifyInitialized
 {
     private readonly IMutableState<Moment?> _stopRecordingAt;
     private readonly IMutableState<Moment?> _audioStoppedAt;
     private readonly IMutableState<NextBeepState?> _nextBeep;
     private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
-    private ILogger? _log;
 
     private ChatHub ChatHub { get; }
-    private Session Session => ChatHub.Session;
     private IChats Chats => ChatHub.Chats;
     private ChatActivity ChatActivity => ChatHub.ChatActivity;
     private ActiveChatsUI ActiveChatsUI => ChatHub.ActiveChatsUI;
@@ -32,9 +30,6 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     private TuneUI TuneUI => ChatHub.TuneUI;
     private IStateFactory StateFactory => ChatHub.StateFactory();
     private Dispatcher Dispatcher => ChatHub.Dispatcher;
-    private MomentClockSet Clocks => ChatHub.Clocks();
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     private Moment CpuNow => Clocks.CpuClock.Now;
     private Moment ServerNow => Clocks.ServerClock.Now;
@@ -44,7 +39,7 @@ public partial class ChatAudioUI : WorkerBase, IComputeService, INotifyInitializ
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
 
-    public ChatAudioUI(ChatHub chatHub)
+    public ChatAudioUI(ChatHub chatHub) : base(chatHub.Scope)
     {
         ChatHub = chatHub;
 

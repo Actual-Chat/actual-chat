@@ -3,27 +3,53 @@ using Stl.Rpc;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class ReconnectUI(IServiceProvider services)
+public enum RpcConnectionStateKind
+{
+    Unknown = 0,
+    Connecting,
+    Connected,
+    Reconnecting,
+}
+
+public sealed record RpcConnectionState(
+    RpcConnectionStateKind Kind,
+    Moment ReconnectsAt = default,
+    Moment ProducedAt = default)
+{
+    public static readonly RpcConnectionState Unknown = new(RpcConnectionStateKind.Unknown);
+    public static readonly RpcConnectionState Connected = new(RpcConnectionStateKind.Connected);
+}
+
+public class ReconnectUI : IComputeService
 {
     public static readonly RpcPeerState ConnectedState = new(true);
+    public static IMomentClock Clock => CpuClock.Instance; // Must match RpcClientPeerReconnectDelayer.Clock!
 
-    private HostInfo? _hostInfo;
+    private readonly IMutableState<RpcConnectionState> _state;
     private RpcPeerStateMonitor? _rpcPeerStateMonitor;
     private RpcClientPeerReconnectDelayer? _rpcReconnectDelayer;
-    private IMomentClock? _clock;
 
-    private HostInfo HostInfo => _hostInfo ??= services.GetRequiredService<HostInfo>();
+    private IServiceProvider Services { get; }
     private RpcPeerStateMonitor RpcPeerStateMonitor
-        => _rpcPeerStateMonitor ??= services.GetRequiredService<RpcPeerStateMonitor>();
+        => _rpcPeerStateMonitor ??= Services.GetRequiredService<RpcPeerStateMonitor>();
     private RpcClientPeerReconnectDelayer RpcReconnectDelayer
-        => _rpcReconnectDelayer ??= services.GetRequiredService<RpcClientPeerReconnectDelayer>();
+        => _rpcReconnectDelayer ??= Services.GetRequiredService<RpcClientPeerReconnectDelayer>();
 
-    public bool IsClient => HostInfo.AppKind.IsClient();
-    public IMomentClock Clock => _clock ??= IsClient ? RpcReconnectDelayer.Clock : services.Clocks().CpuClock;
+    public bool IsClient { get; }
+    public IState<RpcConnectionState> State => _state;
 
-    public RpcPeerState? State
-        => IsClient ? RpcPeerStateMonitor.State.Value : ConnectedState;
+    public ReconnectUI(IServiceProvider services)
+    {
+        Services = services;
+        IsClient = services.GetRequiredService<HostInfo>().AppKind.IsClient();
+        _state = services.StateFactory().NewMutable(
+            IsClient
+                ? RpcConnectionState.Unknown with { ProducedAt = Clock.Now }
+                : RpcConnectionState.Connected,
+            StateCategories.Get(GetType(), nameof (State)));
+    }
 
+    [ComputeMethod]
     public ValueTask<RpcPeerState?> UseState(CancellationToken cancellationToken = default)
         => IsClient
             ? RpcPeerStateMonitor.State.Use(cancellationToken)
@@ -49,4 +75,5 @@ public class ReconnectUI(IServiceProvider services)
             RpcReconnectDelayer.CancelDelays();
         });
     }
+
 }

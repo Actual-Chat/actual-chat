@@ -4,7 +4,7 @@ using Stl.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized, IHasServices
+public partial class AccountUI : ScopedWorkerBase, IComputeService, INotifyInitialized
 {
     private readonly TaskCompletionSource _whenLoadedSource = TaskCompletionSourceExt.New();
     private readonly IMutableState<AccountFull> _ownAccount;
@@ -12,33 +12,26 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
     private readonly TimeSpan _maxInvalidationDelay;
     private AppBlazorCircuitContext? _blazorCircuitContext;
     private IClientAuth? _clientAuth;
-    private ILogger? _log;
     private SignInRequesterUI? _signInRequesterUI;
 
     private AppBlazorCircuitContext BlazorCircuitContext =>
         _blazorCircuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
-    private ILogger Log => _log ??= Services.LogFor(GetType());
     private SignInRequesterUI SignInRequesterUI =>
         _signInRequesterUI ??= Services.GetRequiredService<SignInRequesterUI>();
     private IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
 
-    public IServiceProvider Services { get; }
-    public HostInfo HostInfo { get; }
-    public Session Session { get; }
     public IAccounts Accounts { get; }
     public IMomentClock Clock { get; }
 
+    public new Session Session => Scope.Session;
     public Task WhenLoaded => _whenLoadedSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
     public IState<Moment> LastChangedAt => _lastChangedAt;
     public Moment StartedAt { get; }
     public event Action<AccountFull>? Changed;
 
-    public AccountUI(IServiceProvider services)
+    public AccountUI(IServiceProvider services) : base(services)
     {
-        Services = services;
-        HostInfo = services.GetRequiredService<HostInfo>();
-        Session = services.Session();
         Accounts = services.GetRequiredService<IAccounts>();
         Clock = services.Clocks().CpuClock;
 
@@ -48,13 +41,12 @@ public partial class AccountUI : WorkerBase, IComputeService, INotifyInitialized
         var ownAccount = ownAccountComputed?.IsConsistent() == true &&  ownAccountComputed.HasValue ? ownAccountComputed.Value : null;
         var initialOwnAccount = ownAccount ?? AccountFull.Loading;
 
-        var stateFactory = services.StateFactory();
         var type = GetType();
-        _ownAccount = stateFactory.NewMutable<AccountFull>(new () {
+        _ownAccount = StateFactory.NewMutable<AccountFull>(new () {
             InitialValue = initialOwnAccount,
             Category = StateCategories.Get(type, nameof(OwnAccount)),
         });
-        _lastChangedAt = stateFactory.NewMutable<Moment>(new () {
+        _lastChangedAt = StateFactory.NewMutable<Moment>(new () {
             InitialValue = StartedAt,
             Category = StateCategories.Get(type, nameof(OwnAccount)),
         });

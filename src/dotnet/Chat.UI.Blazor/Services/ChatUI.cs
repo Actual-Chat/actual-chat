@@ -9,17 +9,14 @@ using Stl.Interception;
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
-public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
+public partial class ChatUI : ScopedWorkerBase, IComputeService, INotifyInitialized
 {
     private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
-    private readonly object _lock = new();
-    private ILogger? _log;
 
     private ChatHub ChatHub { get; }
-    private Session Session => ChatHub.Session;
     private IStateFactory StateFactory => ChatHub.StateFactory();
     private AccountSettings AccountSettings => ChatHub.AccountSettings();
     private LocalSettings LocalSettings => ChatHub.LocalSettings();
@@ -41,14 +38,12 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     private UICommander UICommander => ChatHub.UICommander();
     private UIEventHub UIEventHub => ChatHub.UIEventHub();
     private ICommander Commander => ChatHub.Commander();
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public IState<ChatId> SelectedChatId => _selectedChatId;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
     public Task WhenLoaded => _selectedChatId.WhenRead;
 
-    public ChatUI(ChatHub chatHub)
+    public ChatUI(ChatHub chatHub) : base(chatHub.Scope)
     {
         ChatHub = chatHub;
 
@@ -252,7 +247,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
 
     public bool SelectChat(ChatId chatId)
     {
-        lock (_lock) {
+        lock (Lock) {
             if (_selectedChatId.Value == chatId)
                 return false;
 
@@ -266,7 +261,7 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
     {
         if (navigate)
             _ = UIEventHub.Publish(new NavigateToChatEntryEvent(entryId, true));
-        else lock (_lock) {
+        else lock (Lock) {
             if (_highlightedEntryId.Value == entryId)
                 return;
 
@@ -360,17 +355,5 @@ public partial class ChatUI : WorkerBase, IComputeService, INotifyInitialized
                 Category = StateCategories.Get(GetType(), nameof(ChatPositions), "[*]"),
             }
         ));
-    }
-
-    private Task<IComputedState<Range<long>>> CreateChatIdRangeState(Symbol chatId, CancellationToken cancellationToken)
-    {
-        var pChatId = new ChatId(chatId, ParseOrNone.Option);
-        var options = new ComputedState<Range<long>>.Options {
-            UpdateDelayer = FixedDelayer.ZeroUnsafe,
-            InitialValue = default,
-            Category = StateCategories.Get(GetType(), nameof(CreateChatIdRangeState)),
-        };
-        return Task.FromResult(StateFactory.NewComputed(options, (_, ct) =>
-            Chats.GetIdRange(Session, pChatId, ChatEntryKind.Text, ct)));
     }
 }

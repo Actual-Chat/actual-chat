@@ -5,11 +5,10 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed record ChatContext(
-    IServiceProvider Services,
-    Session Session,
+    Scope Scope,
     Chat Chat,
     AccountFull OwnAccount
-    ) : ChatHub(Services, Session)
+    ) : ChatHub(Scope)
 {
     private IChatMarkupHub? _chatMarkupHub;
 
@@ -18,8 +17,7 @@ public sealed record ChatContext(
     public IChatMarkupHub ChatMarkupHub => GetChatMarkupHub();
 
     public static ChatContext New(
-        IServiceProvider services,
-        Session session,
+        Scope scope,
         Chat chat,
         AccountFull ownAccount,
         ChatContext? lastContext)
@@ -27,15 +25,15 @@ public sealed record ChatContext(
         // This method saves on allocation + service resolution
         // by reusing as much as possible from the lastContext
         if (lastContext == null)
-            return new ChatContext(services, session, chat, ownAccount);
+            return new ChatContext(scope, chat, ownAccount);
 
         // Technically there is Session too, but Session is "pinned" to scoped Services,
         // so no need to compare it.
         var mustReset =
-            !ReferenceEquals(services, lastContext.Services) // Services changed
+            !ReferenceEquals(scope, lastContext.Scope) // Service scope changed
             || !ReferenceEquals(ownAccount, lastContext.OwnAccount); // Own account changed
         if (mustReset)
-            return new ChatContext(services, session, chat, ownAccount);
+            return new ChatContext(scope, chat, ownAccount);
 
         // Maybe chat is unchanged, but we intentionally return a new context here,
         // coz the this method is called in ChatPage.ComputeState, which is invoked

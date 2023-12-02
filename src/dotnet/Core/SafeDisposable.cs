@@ -11,10 +11,7 @@ public class SafeDisposable(object disposable, TimeSpan timeout, ILogger? log = 
         : this(disposable, TimeSpan.FromSeconds(timeoutSeconds), log) { }
 
     public void Dispose()
-    {
-        GC.SuppressFinalize(this);
-        _ = DisposeAsync();
-    }
+        => _ = DisposeAsync();
 
     public async ValueTask DisposeAsync()
     {

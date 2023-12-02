@@ -7,13 +7,8 @@ public interface IAppIconBadge
     void SetUnreadChatCount(int count);
 }
 
-public class AppIconBadgeUpdater : WorkerBase
+public class AppIconBadgeUpdater(IServiceProvider services) : ScopedWorkerBase(services)
 {
-    private IServiceProvider Services { get; }
-
-    public AppIconBadgeUpdater(IServiceProvider services)
-        => Services = services;
-
     protected override Task OnRun(CancellationToken cancellationToken)
         => Task.WhenAll(
             UpdateAppIconBadge(cancellationToken),

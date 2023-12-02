@@ -1,5 +1,4 @@
 using ActualChat.Users;
-using Stl.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.Services;
 

@@ -4,7 +4,6 @@ using Stl.IO;
 
 namespace ActualChat.App.Maui.Services;
 
-#pragma warning disable MA0056
 #pragma warning disable MA0064
 
 // ReSharper disable once InconsistentNaming

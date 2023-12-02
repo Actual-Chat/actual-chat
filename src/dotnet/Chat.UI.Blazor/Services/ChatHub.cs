@@ -11,7 +11,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public record ChatHub(IServiceProvider Services, Session Session) : IHasServices, IServiceProvider
+public record ChatHub(Scope Scope) : IHasServices, IServiceProvider
 {
     private IChats? _chats;
     private IChatPositions? _chatPositions;
@@ -76,6 +76,9 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     private BlazorCircuitContext? _circuitContext;
     private HostInfo? _hostInfo;
     private IJSRuntime? _js;
+
+    public IServiceProvider Services { get; } = Scope.Services;
+    public Session Session { get; } = Scope.Session;
 
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     public IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
@@ -143,6 +146,9 @@ public record ChatHub(IServiceProvider Services, Session Session) : IHasServices
     public UIEventHub UIEventHub() => _uiEventHub ??= Services.UIEventHub();
     public UrlMapper UrlMapper() => _urlMapper ??= Services.UrlMapper();
     public MomentClockSet Clocks() => _clocks ??= Services.Clocks();
+
+    public ChatHub(IServiceProvider services)
+        : this(services.Scope()) { }
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

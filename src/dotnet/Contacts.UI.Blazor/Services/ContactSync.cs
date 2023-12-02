@@ -4,18 +4,27 @@ using ActualChat.Users;
 
 namespace ActualChat.Contacts.UI.Blazor.Services;
 
-public class ContactSync(IServiceProvider services) : WorkerBase, IComputeService
+public class ContactSync(Scope scope) : ScopedWorkerBase(scope), IComputeService
 {
     private static readonly TimeSpan ThrottlingInterval = TimeSpan.FromSeconds(30);
     private const int BatchSize = 100;
-    private Session Session { get; } = services.Session();
-    private AccountUI AccountUI { get; } = services.GetRequiredService<AccountUI>();
-    private IExternalContacts ExternalContacts { get; } = services.GetRequiredService<IExternalContacts>();
-    private DeviceContacts DeviceContacts { get; } = services.GetRequiredService<DeviceContacts>();
-    private ContactsPermissionHandler ContactsPermission { get; } = services.GetRequiredService<ContactsPermissionHandler>();
-    private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
-    private ICommander Commander { get; } = services.Commander();
-    private ILogger Log { get; } = services.LogFor<ContactSync>();
+
+    private AccountUI? _accountUI;
+    private IExternalContacts? _externalContacts;
+    private DeviceContacts? _deviceContacts;
+    private ContactsPermissionHandler? _contactsPermission;
+    private DiffEngine? _diffEngine;
+    private ICommander? _commander;
+
+    private AccountUI AccountUI => _accountUI ??= Services.GetRequiredService<AccountUI>();
+    private IExternalContacts ExternalContacts
+        => _externalContacts ??= Services.GetRequiredService<IExternalContacts>();
+    private DeviceContacts DeviceContacts
+        => _deviceContacts ??= Services.GetRequiredService<DeviceContacts>();
+    private ContactsPermissionHandler ContactsPermission
+        => _contactsPermission ??= Services.GetRequiredService<ContactsPermissionHandler>();
+    private DiffEngine DiffEngine => _diffEngine ??= Services.GetRequiredService<DiffEngine>();
+    private ICommander Commander => _commander ??= Services.Commander();
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {

@@ -59,7 +59,8 @@
     protected ChatView ChatViewRef = null!;
 
     [Inject] protected ChatHub ChatHub { get; init; } = null!;
-    protected Session Session => ChatHub.Session;
+    protected Scope Scope => ChatHub.Scope;
+    protected Session Session => Scope.Session;
     protected IChats Chats => ChatHub.Chats;
     protected IAccounts Accounts => ChatHub.Accounts;
     protected IAvatars Avatars => ChatHub.Avatars;
@@ -87,7 +88,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.Loading(Services, Session),
+            InitialValue = Model.Loading(Scope),
             Category = GetStateCategory(),
         };
 
@@ -139,7 +140,7 @@
                 chat ??= SpecialChat.Unavailable;
             }
             var footerModel = await GetFooterModel(chat, account, cancellationToken);
-            var chatContext = ChatContext.New(Services, Session, chat, account, lastContext);
+            var chatContext = ChatContext.New(Scope, chat, account, lastContext);
             return new Model(chatContext, footerModel);
         }
         catch (TimeoutException) {
@@ -147,12 +148,12 @@
             this.NotifyStateHasChanged();
             return lastState != null && chatId == lastChatId
                 ? lastState
-                : Model.Loading(Services, Session, lastContext);
+                : Model.Loading(Scope, lastContext);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
             this.NotifyStateHasChanged();
-            return Model.Unavailable(Services, Session, account, lastContext);
+            return Model.Unavailable(Scope, account, lastContext);
         }
     }
 
@@ -213,13 +214,13 @@
         ChatContext ChatContext,
         FooterModel FooterModel
     ) {
-        public static Model Loading(IServiceProvider services, Session session, ChatContext? lastContext = null) {
-            var chatContext = ChatContext.New(services, session, SpecialChat.Loading, AccountFull.Loading, lastContext);
+        public static Model Loading(Scope scope, ChatContext? lastContext = null) {
+            var chatContext = ChatContext.New(scope, SpecialChat.Loading, AccountFull.Loading, lastContext);
             return new(chatContext, FooterModel.None);
         }
 
-        public static Model Unavailable(IServiceProvider services, Session session, AccountFull account, ChatContext? lastContext = null) {
-            var chatContext = ChatContext.New(services, session, SpecialChat.Unavailable, account, lastContext);
+        public static Model Unavailable(Scope scope, AccountFull account, ChatContext? lastContext = null) {
+            var chatContext = ChatContext.New(scope, SpecialChat.Unavailable, account, lastContext);
             return new(chatContext, new FooterModel());
         }
     }

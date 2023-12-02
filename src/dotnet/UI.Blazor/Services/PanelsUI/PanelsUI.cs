@@ -2,11 +2,11 @@ using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class PanelsUI : WorkerBase, IHasServices
+public class PanelsUI : ScopedWorkerBase, IHasServices
 {
     private Dispatcher? _dispatcher;
 
-    public IServiceProvider Services { get; }
+    public new IServiceProvider Services => Scope.Services;
     public History History { get; }
     public Dispatcher Dispatcher => _dispatcher ??= History.Dispatcher;
     public IState<ScreenSize> ScreenSize { get; }
@@ -15,9 +15,8 @@ public class PanelsUI : WorkerBase, IHasServices
     public MiddlePanel Middle { get; }
     public RightPanel Right { get; }
 
-    public PanelsUI(IServiceProvider services)
+    public PanelsUI(IServiceProvider services) : base(services)
     {
-        Services = services;
         History = services.GetRequiredService<History>();
 
         var browserInfo = services.GetRequiredService<BrowserInfo>();

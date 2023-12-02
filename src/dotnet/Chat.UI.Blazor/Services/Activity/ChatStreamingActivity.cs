@@ -21,18 +21,20 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
 {
     public static readonly TimeSpan ExtraActivityDuration = TimeSpan.FromMilliseconds(250);
 
-    private readonly ILogger _log;
     private readonly IMutableState<Moment?> _lastTranscribedAt;
     private ChatEntryReader? _textEntryReader;
     private ChatEntryReader? _audioEntryReader;
     private volatile ImmutableList<ChatEntry> _activeEntries = ImmutableList<ChatEntry>.Empty;
+    private IMomentClock? _serverClock;
+    private ILogger? _log;
 
     public ChatActivity Owner { get; }
-    public MomentClockSet Clocks { get; }
     public ChatId ChatId { get; internal set; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<Moment?> LastTranscribedAt => _lastTranscribedAt;
-    private Moment Now => Clocks.SystemClock.Now;
+
+    private IMomentClock ServerClock => _serverClock ??= Owner.Services.Clocks().ServerClock;
+    private ILogger Log => _log ??= Owner.Services.LogFor(GetType());
 
     public ChatEntryReader TextEntryReader
         => _textEntryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryKind.Text);
@@ -42,10 +44,9 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     public ChatStreamingActivity(ChatActivity owner)
     {
         Owner = owner;
-        Clocks = owner.Services.Clocks();
-         _lastTranscribedAt = owner.Services.StateFactory()
-            .NewMutable((Moment?)Moment.MinValue, StateCategories.Get(GetType(), nameof(LastTranscribedAt)));
-        _log = owner.Services.LogFor(GetType());
+         _lastTranscribedAt = owner.Services.StateFactory().NewMutable(
+             (Moment?)Moment.MinValue,
+             StateCategories.Get(GetType(), nameof(LastTranscribedAt)));
     }
 
     // [ComputeMethod]
@@ -108,7 +109,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
                 }
                 catch (Exception e) {
                     if (e is not OperationCanceledException)
-                        _log.LogError(e, "Error while waiting for entry streaming completion");
+                        Log.LogError(e, "Error while waiting for entry streaming completion");
                     // We should catch every exception here
                 }
                 finally {
@@ -148,7 +149,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
         lock (Lock) {
             _activeEntries = _activeEntries.Remove(entry);
             if (_activeEntries.IsEmpty)
-                _lastTranscribedAt.Value = Now;
+                _lastTranscribedAt.Value = ServerClock.Now;
             thisAuthorEntryCount = _activeEntries.Count(e => e.AuthorId == entry.AuthorId);
         }
         using (Computed.Invalidate()) {

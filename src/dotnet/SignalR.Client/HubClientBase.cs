@@ -17,8 +17,6 @@ public abstract class HubClientBase : IDisposable
         Services = services;
         Log = services.LogFor(GetType());
         HubUrl = hubUrl;
-
-#pragma warning disable MA0056
         Connector = new(Connect) {
             ReconnectDelayer = reconnectDelayer,
             TerminalErrorDetector = e => e is ObjectDisposedException,
@@ -26,7 +24,6 @@ public abstract class HubClientBase : IDisposable
             LogTag = $"SignalR hub @ {HubUrl}",
             LogLevel = LogLevel.Debug,
         };
-#pragma warning restore MA0056
     }
 
     public void Dispose()

@@ -6,7 +6,7 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Audio.UI.Blazor.Services;
 
-public sealed partial class AudioInitializer(IServiceProvider services) : WorkerBase, IAudioInfoBackend
+public sealed partial class AudioInitializer(IServiceProvider services) : ScopedWorkerBase(services), IAudioInfoBackend
 {
     private static readonly string JSInitMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.init";
     private static readonly string JSUpdateBackgroundStateMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.setBackgroundState";
@@ -18,43 +18,37 @@ public sealed partial class AudioInitializer(IServiceProvider services) : Worker
 
     private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
-    private HostInfo? _hostInfo;
     private AppActivity? _appActivity;
     private IJSRuntime? _js;
     private UrlMapper? _urlMapper;
-    private ILogger? _log;
 
-    private IServiceProvider Services { get; } = services;
     private IJSRuntime JS => _js ??= Services.JSRuntime();
     private UrlMapper UrlMapper => _urlMapper ??= Services.UrlMapper();
-    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     private AppActivity AppActivity => _appActivity ??= Services.GetRequiredService<AppActivity>();
-    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public Task WhenInitialized => _whenInitializedSource.Task;
 
-    protected override Task DisposeAsyncCore()
-    {
-        _backendRef.DisposeSilently();
-        return base.DisposeAsyncCore();
-    }
-
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        Log.LogInformation("AudioInitializer: started");
-        var retryDelays = RetryDelaySeq.Exp(0.1, 3);
-        var whenInitialized = AsyncChainExt.From(Initialize, $"{nameof(AudioInitializer)}.{nameof(Initialize)}")
-            .Log(LogLevel.Debug, Log)
-            .Retry(retryDelays, 5, Log)
-            .Run(cancellationToken);
-        await _whenInitializedSource.TrySetFromTaskAsync(whenInitialized, cancellationToken).ConfigureAwait(false);
-        Log.LogInformation("AudioInitializer: initialized with status {Status}", whenInitialized.Status);
+        try {
+            Log.LogInformation("AudioInitializer: started");
+            var retryDelays = RetryDelaySeq.Exp(0.1, 3);
+            var whenInitialized = AsyncChainExt.From(Initialize, $"{nameof(AudioInitializer)}.{nameof(Initialize)}")
+                .Log(LogLevel.Debug, Log)
+                .Retry(retryDelays, 5, Log)
+                .Run(cancellationToken);
+            await _whenInitializedSource.TrySetFromTaskAsync(whenInitialized, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("AudioInitializer: initialized with status {Status}", whenInitialized.Status);
 
-        await AsyncChainExt.From(UpdateBackgroundState, $"{nameof(AudioInitializer)}.{nameof(UpdateBackgroundState)}")
-            .Log(LogLevel.Debug, Log)
-            .RetryForever(retryDelays, Log)
-            .Run(cancellationToken)
-            .ConfigureAwait(false);
+            await AsyncChainExt.From(UpdateBackgroundState, $"{nameof(AudioInitializer)}.{nameof(UpdateBackgroundState)}")
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log)
+                .Run(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        finally {
+            _backendRef.DisposeSilently();
+        }
     }
 
     private async Task Initialize(CancellationToken cancellationToken)

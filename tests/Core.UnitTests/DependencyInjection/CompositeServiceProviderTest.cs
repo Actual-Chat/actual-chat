@@ -1,6 +1,3 @@
-using ActualChat.DependencyInjection;
-using IServiceProvider = System.IServiceProvider;
-
 namespace ActualChat.Core.UnitTests.DependencyInjection;
 
 public class CompositeServiceProviderTest

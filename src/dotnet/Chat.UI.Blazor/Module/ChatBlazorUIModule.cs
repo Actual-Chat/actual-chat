@@ -36,7 +36,7 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped(c => new AuthorUI(c.ChatHub()));
         services.AddScoped<IAudioOutputController>(c => new AudioOutputController(c));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
-        services.AddScoped(c => new ChatHub(c, c.Session()));
+        services.AddScoped(c => new ChatHub(c));
 
         // Chat UI
         fusion.AddService<ChatUI>(ServiceLifetime.Scoped);

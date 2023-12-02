@@ -9,8 +9,6 @@ using Stl.Rpc.Caching;
 
 namespace ActualChat.UI.Blazor.Services;
 
-#pragma warning disable MA0056
-
 public abstract class AppClientComputedCache : BatchingKvas, IClientComputedCache
 {
     public new record Options : BatchingKvas.Options

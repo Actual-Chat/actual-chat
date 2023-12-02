@@ -50,6 +50,7 @@ public sealed class CoreModule : HostModule<CoreSettings>
         // Common services
         services.AddTracer();
         services.AddSingleton(c => new StaticImportsInitializer(c));
+        services.AddScoped(c => new Scope(c));
         services.AddHostedService(c => c.GetRequiredService<StaticImportsInitializer>());
         services.AddSingleton(c => new UrlMapper(c.GetRequiredService<HostInfo>()));
         services.AddSingleton(c => new HealthEventListener(c));

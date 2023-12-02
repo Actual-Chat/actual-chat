@@ -69,26 +69,28 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         DeviceContacts.Add(NewExternalContact(bob).WithPhone(JackPhone).WithEmail(JackEmail));
 
         // act
-        var sut = new ContactSync(_tester.ClientServices);
+        var scope = new Scope(_tester.ClientServices);
+        var sut = new ContactSync(scope);
         sut.Start();
 
         // assert
         var externalContacts = await ListExternalContacts(1);
         externalContacts.Should().BeEquivalentTo(DeviceContacts, options => options.ExcludingSystemProperties());
-        await sut.DisposeAsync();
+        await scope.DisposeAsync();
 
         // arrange
         DeviceContacts[0] = DeviceContacts[0].WithoutPhone(JackPhone).WithPhone(new Phone("1-1002003000"));
         DeviceContacts.Add(NewExternalContact(bob).WithPhone(JanePhone).WithEmail(JaneEmail));
 
         // act
-        sut = new ContactSync(_tester.ClientServices);
+        scope = new Scope(_tester.ClientServices);
+        sut = new ContactSync(scope);
         sut.Start();
 
         // assert
         externalContacts = await ListExternalContacts(2);
         externalContacts.Should().BeEquivalentTo(DeviceContacts, options => options.ExcludingSystemProperties());
-        await sut.DisposeAsync();
+        await scope.DisposeAsync();
     }
 
     private ExternalContact NewExternalContact(AccountFull account)

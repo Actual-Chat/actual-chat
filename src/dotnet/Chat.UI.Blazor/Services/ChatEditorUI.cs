@@ -5,14 +5,12 @@ using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
+public partial class ChatEditorUI : ScopedWorkerBase, IComputeService, INotifyInitialized
 {
     private readonly object _lock = new();
     private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
-    private ILogger? _log;
 
     private ChatHub ChatHub { get; }
-    private Session Session => ChatHub.Session;
     private IChats Chats => ChatHub.Chats;
     private IAuthors Authors => ChatHub.Authors;
     private TuneUI TuneUI => ChatHub.TuneUI;
@@ -20,13 +18,11 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
     private LocalSettings LocalSettings => ChatHub.LocalSettings();
     private UICommander UICommander => ChatHub.UICommander();
     private UIEventHub UIEventHub => ChatHub.UIEventHub();
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
 
-    public ChatEditorUI(ChatHub chatHub)
+    public ChatEditorUI(ChatHub chatHub) : base(chatHub.Scope)
     {
         ChatHub = chatHub;
 
@@ -117,9 +113,6 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
         await Edit(lastEditableEntry, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task SaveRelatedEntry(ChatId chatId, RelatedChatEntry? relatedChatEntry)
-        => LocalSettings.SetDraftRelatedEntry(chatId, relatedChatEntry);
-
     public async Task RestoreRelatedEntry(ChatId chatId)
     {
         if (chatId.IsNone)
@@ -130,30 +123,8 @@ public class ChatEditorUI : WorkerBase, IComputeService, INotifyInitialized
             _relatedChatEntry.Value = relatedEntry;
     }
 
-    protected override Task OnRun(CancellationToken cancellationToken)
-        => HideWhenRelatedEntryRemoved(cancellationToken);
+    // Private methods
 
-    private async Task HideWhenRelatedEntryRemoved(CancellationToken cancellationToken)
-    {
-        var cRelatedChatEntry = await Computed
-            .Capture(() => ComputeRelatedChatEntry(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        await foreach (var change in cRelatedChatEntry.Changes(cancellationToken).ConfigureAwait(false))
-        {
-            var (chatEntryLink, chatEntry) = change.Value;
-            if (chatEntryLink != null && chatEntry == null)
-                await HideRelatedEntry().ConfigureAwait(false);
-        }
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<(RelatedChatEntry?, ChatEntry?)> ComputeRelatedChatEntry(CancellationToken cancellationToken)
-    {
-        var entryLink = await RelatedChatEntry.Use(cancellationToken).ConfigureAwait(false);
-        if (entryLink == null)
-            return (null, null);
-
-        var entry = await Chats.GetEntry(Session, entryLink.Value.Id, cancellationToken).ConfigureAwait(false);
-        return (entryLink, entry);
-    }
+    private Task SaveRelatedEntry(ChatId chatId, RelatedChatEntry? relatedChatEntry)
+        => LocalSettings.SetDraftRelatedEntry(chatId, relatedChatEntry);
 }

@@ -4,7 +4,7 @@ using Stl.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComputeService
+public sealed class SessionTokens(IServiceProvider services) : ScopedWorkerBase(services), IComputeService
 {
     public const string HeaderName = "Session";
 
@@ -12,21 +12,14 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
 
     private readonly AsyncLock _asyncLock = new(LockReentryMode.CheckedFail);
     private volatile SecureToken? _current;
-    private Session? _session;
     private ISecureTokens? _secureTokens;
     private DeviceAwakeUI? _deviceAwakeUI;
     private IJSRuntime? _js;
-    private IServerClock? _clock;
-    private ILogger? _log;
 
-    private IServiceProvider Services { get; } = services;
-    private Session Session => _session ??= Services.Session();
     private ISecureTokens SecureTokens => _secureTokens ??= Services.GetRequiredService<ISecureTokens>();
     private DeviceAwakeUI DeviceAwakeUI => _deviceAwakeUI ??= Services.GetRequiredService<DeviceAwakeUI>();
+    private IMomentClock ServerClock => Clocks.ServerClock;
     private IJSRuntime JS => _js ??= Services.GetRequiredService<IJSRuntime>();
-    private IMomentClock Clock => _clock ??= Services.Clocks().ServerClock;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-    private Moment Now => Clock.Now;
 
     public TimeSpan MinLifespan { get; init; } = TimeSpan.FromMinutes(60);
     public TimeSpan RefreshLifespan { get; init; } = TimeSpan.FromMinutes(15);
@@ -58,9 +51,9 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
                 jsToken = current.Token;
             }
 
-            var now = Clock.Now;
+            var now = ServerClock.Now;
             await DeviceAwakeUI
-                .SleepUntil(Clock,  now + ((current.ExpiresAt - now) / 2) , cancellationToken)
+                .SleepUntil(ServerClock,  now + ((current.ExpiresAt - now) / 2) , cancellationToken)
                 .ConfigureAwait(false);
         }
     }
@@ -70,7 +63,7 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
         minLifespan = minLifespan
             .Add(TimeSpan.FromMinutes(1))
             .Clamp(default, SecureToken.Lifespan / 2);
-        var minExpiresAt = Now + minLifespan;
+        var minExpiresAt = ServerClock.Now + minLifespan;
         var result = _current;
         if (result != null && result.ExpiresAt >= minExpiresAt)
             return result;
@@ -85,7 +78,7 @@ public sealed class SessionTokens(IServiceProvider services) : WorkerBase, IComp
         releaser.MarkLockedLocally();
 
         var result = _current;
-        if (result != null && result.ExpiresAt >= Now + (SecureToken.Lifespan / 2))
+        if (result != null && result.ExpiresAt >= ServerClock.Now + (SecureToken.Lifespan / 2))
             return result;
 
         result = await SecureTokens.CreateSessionToken(Session, cancellationToken).ConfigureAwait(false);

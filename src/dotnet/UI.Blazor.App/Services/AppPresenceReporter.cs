@@ -5,34 +5,24 @@ using Stl.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AppPresenceReporter : WorkerBase, IComputeService
+public class AppPresenceReporter : ScopedWorkerBase, IComputeService
 {
-    private Session? _session;
     private UserActivityUI? _userActivityUI;
     private ChatAudioUI? _chatAudioUI;
     private ICommander? _commander;
     private RpcHub? _rpcHub;
-    private MomentClockSet? _clocks;
-    private ILogger? _log;
     private IMutableState<Moment> _lastCheckInAt;
 
-    private IServiceProvider Services { get; }
-    private Session Session => _session ??= Services.Session();
     private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
     private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
     private ICommander Commander => _commander ??= Services.Commander();
     private RpcHub RpcHub => _rpcHub ??= Services.RpcHub();
-    private MomentClockSet Clocks => _clocks ??= Services.Clocks();
     private Moment Now => Clocks.CpuClock.Now;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
 
-    public AppPresenceReporter(IServiceProvider services)
-    {
-        Services = services;
-        _lastCheckInAt = services.StateFactory().NewMutable(
+    public AppPresenceReporter(IServiceProvider services) : base(services)
+        => _lastCheckInAt = StateFactory.NewMutable(
             Now - Constants.Presence.OfflineTimeout,
             StateCategories.Get(GetType(), nameof(_lastCheckInAt)));
-    }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {

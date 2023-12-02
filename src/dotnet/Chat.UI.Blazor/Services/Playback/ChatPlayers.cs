@@ -4,7 +4,7 @@ using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
+public class ChatPlayers : ScopedWorkerBase, IComputeService, INotifyInitialized
 {
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
@@ -18,11 +18,10 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     private IAudioOutputController AudioOutputController => ChatHub.AudioOutputController;
     private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
     private TuneUI TuneUI => ChatHub.TuneUI;
-    private MomentClockSet Clocks => ChatHub.Clocks();
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
-    public ChatPlayers(ChatHub chatHub)
+    public ChatPlayers(ChatHub chatHub) : base(chatHub.Services)
     {
         ChatHub = chatHub;
         _playbackState = ChatHub.StateFactory().NewMutable(
@@ -33,17 +32,11 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    protected override async Task DisposeAsyncCore()
-    {
-        // ReSharper disable once InconsistentlySynchronizedField
-        var playerCloseTasks = _players.Select(kv => Close(kv.Key.ChatId, kv.Key.PlayerKind));
-        await Task.WhenAll(playerCloseTasks).SilentAwait(false);
-    }
-
     [ComputeMethod]
     public virtual Task<ChatPlayer?> Get(ChatId chatId, ChatPlayerKind playerKind, CancellationToken cancellationToken)
     {
-        lock (Lock) return Task.FromResult(_players.GetValueOrDefault((chatId, playerKind)));
+        lock (Lock)
+            return Task.FromResult(_players.GetValueOrDefault((chatId, playerKind)));
     }
 
     public void StartHistoricalPlayback(ChatId chatId, Moment startAt)
@@ -60,20 +53,28 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         // TODO(AY): Implement _players cleanup here
-        var lastPlaybackState = (PlaybackState?)null;
-        await foreach (var cPlaybackState in PlaybackState.Changes(cancellationToken).ConfigureAwait(false)) {
-            var newPlaybackState = cPlaybackState.Value;
-            try {
-                await ProcessPlaybackStateChange(lastPlaybackState, newPlaybackState, cancellationToken)
-                    .ConfigureAwait(false);
-                lastPlaybackState = newPlaybackState;
+        try {
+            var lastPlaybackState = (PlaybackState?)null;
+            await foreach (var cPlaybackState in PlaybackState.Changes(cancellationToken).ConfigureAwait(false)) {
+                var newPlaybackState = cPlaybackState.Value;
+                try {
+                    await ProcessPlaybackStateChange(lastPlaybackState, newPlaybackState, cancellationToken)
+                        .ConfigureAwait(false);
+                    lastPlaybackState = newPlaybackState;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException) {
+                    // Let's stop everything in this case
+                    StopPlayback();
+                    lastPlaybackState = null;
+                    _ = StopPlayers();
+                }
             }
-            catch (Exception ex) when (ex is not OperationCanceledException) {
-                // Let's stop everything in this case
-                StopPlayback();
-                lastPlaybackState = null;
-                _ = StopPlayers();
-            }
+        }
+        finally {
+            IEnumerable<Task> playerCloseTasks;
+            lock (Lock)
+                playerCloseTasks = _players.Select(kv => Close(kv.Key.ChatId, kv.Key.PlayerKind));
+            await Task.WhenAll(playerCloseTasks).SilentAwait(false);
         }
     }
 
@@ -159,7 +160,7 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
 
     private ChatPlayer GetOrCreate(ChatId chatId, ChatPlayerKind playerKind)
     {
-        this.ThrowIfDisposedOrDisposing();
+        StopToken.ThrowIfCancellationRequested();
         if (chatId.IsNone)
             throw new ArgumentOutOfRangeException(nameof(chatId));
 
@@ -228,7 +229,8 @@ public class ChatPlayers : WorkerBase, IComputeService, INotifyInitialized
     private Task StopPlayer(ChatId chatId, ChatPlayerKind playerKind)
     {
         ChatPlayer? player;
-        lock (Lock) player = _players.GetValueOrDefault((chatId, playerKind));
+        lock (Lock)
+            player = _players.GetValueOrDefault((chatId, playerKind));
         return player?.Stop() ?? Task.CompletedTask;
     }
 

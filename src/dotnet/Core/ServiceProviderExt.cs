@@ -1,4 +1,5 @@
 using ActualChat.Kvas;
+using ActualChat.UI;
 
 namespace ActualChat;
 
@@ -30,6 +31,10 @@ public static class ServiceProviderExt
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static AccountSettings AccountSettings(this IServiceProvider services)
         => services.GetRequiredService<AccountSettings>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Scope Scope(this IServiceProvider services)
+        => services.GetRequiredService<Scope>();
 
     public static async ValueTask SafelyDisposeAsync(this IServiceProvider services)
     {

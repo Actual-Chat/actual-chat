@@ -1,37 +1,28 @@
-using ActualChat.Hosting;
 using ActualChat.UI;
 using Stl.Locking;
 
 namespace ActualChat.Permissions;
 
-public abstract class PermissionHandler : WorkerBase
+public abstract class PermissionHandler : ScopedWorkerBase
 {
     private readonly IMutableState<bool?> _cached;
-    private HostInfo? _hostInfo;
     private SystemSettingsUI? _systemSettingsUI;
     private IDispatcherResolver? _dispatcherResolver;
     private IMomentClock? _clock;
-    private ILogger? _log;
 
-    protected IServiceProvider Services { get; }
-    protected HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     protected SystemSettingsUI SystemSettingsUI
         => _systemSettingsUI ??= Services.GetRequiredService<SystemSettingsUI>();
     protected IDispatcherResolver DispatcherResolver
         => _dispatcherResolver ??= Services.GetRequiredService<IDispatcherResolver>();
     protected IMomentClock Clock => _clock ??= Services.Clocks().CpuClock;
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
 
     protected AsyncLock AsyncLock { get; } = new(LockReentryMode.CheckedPass);
     protected TimeSpan? ExpirationPeriod { get; init; } = TimeSpan.FromSeconds(15);
 
     public IState<bool?> Cached => _cached;
 
-    protected PermissionHandler(IServiceProvider services, bool mustStart = true)
+    protected PermissionHandler(IServiceProvider services, bool mustStart = true) : base(services)
     {
-        Services = services;
-        _log = services.LogFor(GetType());
-
         _cached = services.StateFactory().NewMutable(
             (bool?)null,
             StateCategories.Get(GetType(), nameof(Cached)));
