@@ -8,12 +8,12 @@ public sealed class Scope : IAsyncDisposable, IHasServices, IHasIsDisposed
     private readonly CancellationTokenSource _whenStoppedCts;
     private Task? _whenStopped;
     private Session? _session;
+    private readonly IStateFactory _stateFactory;
+    private readonly ILoggerFactory _loggerFactory;
+    private readonly MomentClockSet _clocks;
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }
-    public IStateFactory StateFactory { get; }
-    public ILoggerFactory LoggerFactory { get; }
-    public MomentClockSet Clocks { get; }
     public Session Session => _session ??= Services.GetRequiredService<Session>();
 
     public CancellationToken StopToken { get; }
@@ -24,13 +24,20 @@ public sealed class Scope : IAsyncDisposable, IHasServices, IHasIsDisposed
     {
         Services = services;
         HostInfo = services.GetRequiredService<HostInfo>();
-        StateFactory = services.GetRequiredService<IStateFactory>();
-        LoggerFactory = services.GetRequiredService<ILoggerFactory>();
-        Clocks = services.GetRequiredService<MomentClockSet>();
+        _stateFactory = services.GetRequiredService<IStateFactory>();
+        _loggerFactory = services.GetRequiredService<ILoggerFactory>();
+        _clocks = services.GetRequiredService<MomentClockSet>();
 
         _whenStoppedCts = new CancellationTokenSource();
         StopToken = _whenStoppedCts.Token;
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public IStateFactory StateFactory() => _stateFactory;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ILoggerFactory LoggerFactory() => _loggerFactory;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public MomentClockSet Clocks() => _clocks;
 
     public ValueTask DisposeAsync()
     {

@@ -23,7 +23,7 @@ public abstract class ScopedServiceBase(Scope scope) : IHasIsDisposed
 
     protected MomentClockSet Clocks {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Scope.Clocks;
+        get => Scope.Clocks();
     }
 
     protected Session Session {
@@ -33,10 +33,10 @@ public abstract class ScopedServiceBase(Scope scope) : IHasIsDisposed
 
     protected IStateFactory StateFactory {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Scope.StateFactory;
+        get => Scope.StateFactory();
     }
 
-    protected ILogger Log => _log ??= Scope.LoggerFactory.CreateLogger(GetType());
+    protected ILogger Log => _log ??= Scope.LoggerFactory().CreateLogger(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     protected ScopedServiceBase(IServiceProvider services)

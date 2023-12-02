@@ -68,13 +68,12 @@ public record ChatHub(Scope Scope) : IHasServices, IServiceProvider
     private UrlMapper? _urlMapper;
     private NavigationManager? _nav;
     private Dispatcher? _dispatcher;
-    private MomentClockSet? _clocks;
-    private IStateFactory? _stateFactory;
+    private readonly MomentClockSet _clocks = Scope.Clocks();
+    private readonly IStateFactory _stateFactory = Scope.StateFactory();
     private AccountSettings? _accountSettings;
     private LocalSettings? _localSettings;
     private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
     private BlazorCircuitContext? _circuitContext;
-    private HostInfo? _hostInfo;
     private IJSRuntime? _js;
 
     public IServiceProvider Services { get; } = Scope.Services;
@@ -134,18 +133,18 @@ public record ChatHub(Scope Scope) : IHasServices, IServiceProvider
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public BlazorCircuitContext CircuitContext => _circuitContext ??= Services.GetRequiredService<BlazorCircuitContext>();
-    public HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    public HostInfo HostInfo => Scope.HostInfo;
     public IJSRuntime JS => _js ??= Services.JSRuntime();
 
     // These properties are exposed as methods to "close" the static ones on IServiceProvider
-    public IStateFactory StateFactory() => _stateFactory ??= Services.StateFactory();
+    public IStateFactory StateFactory() => _stateFactory;
     public AccountSettings AccountSettings() => _accountSettings ??= Services.AccountSettings();
     public LocalSettings LocalSettings() => _localSettings ??= Services.LocalSettings();
     public ICommander Commander() => _commander ??= Services.Commander();
     public UICommander UICommander() => _uiCommander ??= Services.UICommander();
     public UIEventHub UIEventHub() => _uiEventHub ??= Services.UIEventHub();
     public UrlMapper UrlMapper() => _urlMapper ??= Services.UrlMapper();
-    public MomentClockSet Clocks() => _clocks ??= Services.Clocks();
+    public MomentClockSet Clocks() => _clocks;
 
     public ChatHub(IServiceProvider services)
         : this(services.Scope()) { }
