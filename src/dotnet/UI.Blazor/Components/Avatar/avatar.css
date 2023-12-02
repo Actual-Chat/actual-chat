@@ -44,6 +44,7 @@
 .avatar-circle > .c-content > .c-avatar.pic-blurred {
     @apply blur-lg;
     @apply opacity-70;
+    @apply brightness-75;
 }
 /* This dummy selector just "uses" the widths that are picked randomly by AuthorName.razor */
 .avatar-name-spacing {

@@ -14,6 +14,7 @@
 .pic-blurred {
     @apply blur-lg;
     @apply opacity-70;
+    @apply brightness-75;
 }
 .pic-blurred .pic-image {
     @apply rounded-none;
