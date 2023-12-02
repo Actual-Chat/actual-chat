@@ -46,9 +46,9 @@ public class MauiThemeHandler
         Apply();
     }
 
-    public void Apply()
+    public void Apply(bool assumeNoSplash = false)
     {
-        if (MauiLoadingUI.WhenFirstSplashRemoved.IsCompleted)
+        if (assumeNoSplash || MauiLoadingUI.WhenFirstSplashRemoved.IsCompleted)
             Apply(_theme, _colors);
 #if false // Happens with a significant delay on Android, so it's better to apply the change just once
         else

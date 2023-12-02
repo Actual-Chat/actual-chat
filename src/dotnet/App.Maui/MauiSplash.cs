@@ -53,7 +53,8 @@ public class MauiSplash : Grid
 
     private async Task Animate()
     {
-        var whenSplashRemoved = _index == 1
+        var isFirstSplash = _index == 1;
+        var whenSplashRemoved = isFirstSplash
             ? MauiLoadingUI.WhenFirstSplashRemoved
             : MauiLoadingUI.WhenSplashRemoved();
         var isThemeApplied = false;
@@ -72,7 +73,7 @@ public class MauiSplash : Grid
                 SetOpacity(double.Lerp(MaxOpacity, 0, t / FadeDuration).Clamp(0, MaxOpacity));
                 if (!isThemeApplied && t * 2 > FadeDuration) {
                     isThemeApplied = true;
-                    MauiThemeHandler.Instance.Apply();
+                    MauiThemeHandler.Instance.Apply(true);
                 }
                 return true;
             }).ConfigureAwait(true);
@@ -84,7 +85,7 @@ public class MauiSplash : Grid
         finally {
             (Parent as Layout)!.Remove(this);
             if (!isThemeApplied)
-                MauiThemeHandler.Instance.Apply();
+                MauiThemeHandler.Instance.Apply(true);
         }
     }
 
