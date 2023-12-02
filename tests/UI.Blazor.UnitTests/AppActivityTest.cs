@@ -16,6 +16,7 @@ public class AppActivityTest: TestBase
                 Environment = HostInfo.DevelopmentEnvironment,
                 IsTested = true,
             })
+            .AddSingleton<Scope>()
             .AddSingleton<BackgroundStateTracker, MauiBackgroundStateTracker>()
             .AddFusion()
             .AddService<AppActivity, TestAppActivity>()
