@@ -21,7 +21,7 @@ public class ChatPlayers : ScopedWorkerBase, IComputeService, INotifyInitialized
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
-    public ChatPlayers(ChatHub chatHub) : base(chatHub.Services)
+    public ChatPlayers(ChatHub chatHub) : base(chatHub.Scope())
     {
         ChatHub = chatHub;
         _playbackState = ChatHub.StateFactory().NewMutable(

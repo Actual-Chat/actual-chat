@@ -17,11 +17,12 @@ public class ChatActivity
     public ChatActivity(IServiceProvider services)
     {
         Services = services;
-        Log = services.LogFor(GetType());
-        Session = services.Session();
+        var scope = Services.Scope();
+        Log = scope.LoggerFactory().CreateLogger(GetType());
+        Session = scope.Session;
+        Clocks = scope.Clocks();
+        StateFactory = scope.StateFactory();
         Chats = services.GetRequiredService<IChats>();
-        StateFactory = services.StateFactory();
-        Clocks = services.Clocks();
         _activityPool = new SharedResourcePool<ChatId, ChatStreamingActivity>(NewChatStreamingActivity);
     }
 

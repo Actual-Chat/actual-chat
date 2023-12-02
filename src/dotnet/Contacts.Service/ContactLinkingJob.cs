@@ -16,17 +16,19 @@ internal class ContactLinkingJob : WorkerBase, IHasServices, INotifyInitialized
     private ILogger? _log;
     private IAccountsBackend? _accountsBackend;
 
-    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
     public IServiceProvider Services { get; }
 
     private DbHub<ContactsDbContext> DbHub => _dbHub ??= Services.DbHub<ContactsDbContext>();
+    private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
     private ICommander Commander => _commander ??= Services.Commander();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     public ContactLinkingJob(IServiceProvider services)
     {
         Services = services;
-        _needsSync = services.StateFactory().NewMutable<bool>();
+        _needsSync = services.StateFactory().NewMutable(
+            false,
+            StateCategories.Get(GetType(), nameof(_needsSync)));
     }
 
     void INotifyInitialized.Initialized()

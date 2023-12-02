@@ -11,7 +11,7 @@ using static Android.Media.AudioManager;
 
 namespace ActualChat.App.Maui;
 
-public sealed class AndroidAudioOutputController : IAudioOutputController, IDisposable
+public sealed class AndroidAudioOutputController : ScopedServiceBase, IAudioOutputController
 {
     private const string AndroidAudioOutput = nameof(AndroidAudioOutput);
     private readonly AudioSwitch _audioSwitch;
@@ -21,16 +21,12 @@ public sealed class AndroidAudioOutputController : IAudioOutputController, IDisp
     private readonly IComputedState<bool> _isSpeakerphoneOn;
     private readonly object _lock = new();
 
-    private ILogger Log { get; }
-
     public IState<bool> IsAudioOn => _isAudioOn;
     public IState<bool> IsSpeakerphoneOn => _isSpeakerphoneOn;
 
-    public AndroidAudioOutputController(IServiceProvider services)
+    public AndroidAudioOutputController(IServiceProvider services) : base(services)
     {
         _audioManager = (AudioManager)Platform.AppContext.GetSystemService(Context.AudioService)!;
-        Log = services.LogFor(GetType());
-
         if (Build.VERSION.SdkInt >= BuildVersionCodes.S) {
             try {
                 _audioManager.AddOnModeChangedListener(
@@ -46,7 +42,7 @@ public sealed class AndroidAudioOutputController : IAudioOutputController, IDisp
             new FocusChangeListener(services.LogFor<FocusChangeListener>()));
         _audioSwitch.Start(new StartupCallback());
 
-        var stateFactory = services.StateFactory();
+        var stateFactory = StateFactory;
         var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(AndroidAudioOutput));
         var type = GetType();
         _isAudioOn = stateFactory.NewMutable(
@@ -66,10 +62,8 @@ public sealed class AndroidAudioOutputController : IAudioOutputController, IDisp
                 Category = StateCategories.Get(type, nameof(IsSpeakerphoneOn)),
             },
             (_, _) => Task.FromResult(IsSpeakerphoneActuallyOn(true)));
+        Scope.RegisterDisposable(_isSpeakerphoneOn);
     }
-
-    public void Dispose()
-        => _isSpeakerphoneOn.Dispose();
 
     // TODO(DF):
     // We need an audio player that can playback OPUS audio with

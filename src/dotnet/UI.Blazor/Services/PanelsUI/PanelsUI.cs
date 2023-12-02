@@ -7,6 +7,7 @@ public class PanelsUI : ScopedWorkerBase, IHasServices
     private Dispatcher? _dispatcher;
 
     public new IServiceProvider Services => Scope.Services;
+    public new Scope Scope => base.Scope;
     public History History { get; }
     public Dispatcher Dispatcher => _dispatcher ??= History.Dispatcher;
     public IState<ScreenSize> ScreenSize { get; }

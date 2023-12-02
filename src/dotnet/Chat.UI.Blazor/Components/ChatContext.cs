@@ -5,10 +5,11 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 [ParameterComparer(typeof(ByRefParameterComparer))]
 public sealed record ChatContext(
-    Scope Scope,
+    // ReSharper disable once InconsistentNaming
+    Scope scope,
     Chat Chat,
     AccountFull OwnAccount
-    ) : ChatHub(Scope)
+    ) : ChatHub(scope)
 {
     private IChatMarkupHub? _chatMarkupHub;
 

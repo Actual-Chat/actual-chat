@@ -46,7 +46,7 @@ public sealed class LazyServiceProvider(
             _lazyServices = null;
             WhenLazyServicesReady = Task.FromException<IServiceProvider>(new ObjectDisposedException(nameof(IServiceProvider)));
         }
-        return lazyServices?.SafelyDisposeAsync() ?? default;
+        return DisposableExt.DisposeUnknownSilently(lazyServices);
     }
 
     public object? GetService(Type serviceType)

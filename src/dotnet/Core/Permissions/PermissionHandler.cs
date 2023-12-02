@@ -23,7 +23,7 @@ public abstract class PermissionHandler : ScopedWorkerBase
 
     protected PermissionHandler(IServiceProvider services, bool mustStart = true) : base(services)
     {
-        _cached = services.StateFactory().NewMutable(
+        _cached = StateFactory.NewMutable(
             (bool?)null,
             StateCategories.Get(GetType(), nameof(Cached)));
         if (mustStart)

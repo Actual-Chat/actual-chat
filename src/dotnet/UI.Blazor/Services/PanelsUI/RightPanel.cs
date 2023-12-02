@@ -18,7 +18,7 @@ public class RightPanel
     public RightPanel(PanelsUI owner)
     {
         Owner = owner;
-        var stateFactory = Services.StateFactory();
+        var stateFactory = Owner.Scope.StateFactory();
         var localSettings = Services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
         _isVisible = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsVisible)) {

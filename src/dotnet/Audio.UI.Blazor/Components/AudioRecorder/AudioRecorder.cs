@@ -13,24 +13,28 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private static readonly string JSCreateMethod = $"{AudioBlazorUIModule.ImportName}.AudioRecorder.create";
     private static readonly TimeSpan StartRecordingTimeout = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan StopRecordingTimeout = TimeSpan.FromSeconds(3);
+    private static bool DebugMode => Constants.DebugMode.AudioRecording;
 
     private readonly AsyncLock _stateLock = new(LockReentryMode.CheckedPass);
     private readonly IMutableState<AudioRecorderState> _state;
-    private Activity? _recordingActivity;
-    private IJSObjectReference _jsRef = null!;
+    private HostInfo? _hostInfo;
     private SessionTokens? _sessionTokens;
+    private MicrophonePermissionHandler? _microphonePermission;
+    private IJSRuntime? _js;
+    private ILogger? _log;
 
-    private ILogger Log { get; }
-    private ILogger? DebugLog => DebugMode ? Log : null;
-    private static bool DebugMode => Constants.DebugMode.AudioRecording;
     private DotNetObjectReference<IAudioRecorderBackend>? _blazorRef;
+    private IJSObjectReference _jsRef = null!;
+    private Activity? _recordingActivity;
 
-    private HostInfo HostInfo { get; }
-    private IJSRuntime JS { get; }
     private IServiceProvider Services { get; }
-    private MomentClockSet Clocks { get; }
+    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    private IJSRuntime JS => _js ??= Services.JSRuntime();
+    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private ILogger? DebugLog => DebugMode ? Log : null;
 
-    public MicrophonePermissionHandler MicrophonePermission { get; }
+    public MicrophonePermissionHandler MicrophonePermission
+        => _microphonePermission ??= Services.GetRequiredService<MicrophonePermissionHandler>();
     public IState<AudioRecorderState> State => _state;
     public Task WhenInitialized { get; }
 
@@ -38,12 +42,6 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     public AudioRecorder(IServiceProvider services)
     {
         Services = services;
-        Log = services.LogFor(GetType());
-        Clocks = services.Clocks();
-        HostInfo = services.GetRequiredService<HostInfo>();
-        JS = services.JSRuntime();
-        MicrophonePermission = services.GetRequiredService<MicrophonePermissionHandler>();
-
         _state = services.StateFactory().NewMutable(
             AudioRecorderState.Idle,
             StateCategories.Get(GetType(), nameof(State)));

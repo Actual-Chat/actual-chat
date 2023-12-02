@@ -17,6 +17,7 @@ Near term:
     - N should be 1 for any P2P anonymous chat by default  
 
 - Bugs:
+  - SharedResourcePool -> IAsyncDisposable
   - Back button behavior on Android 
   - Virtual list: AK, please list all known issues here.
 

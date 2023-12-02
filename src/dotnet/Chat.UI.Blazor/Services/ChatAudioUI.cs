@@ -28,7 +28,6 @@ public partial class ChatAudioUI : ScopedWorkerBase, IComputeService, INotifyIni
     private InteractiveUI InteractiveUI => ChatHub.InteractiveUI;
     private DeviceAwakeUI DeviceAwakeUI => ChatHub.DeviceAwakeUI;
     private TuneUI TuneUI => ChatHub.TuneUI;
-    private IStateFactory StateFactory => ChatHub.StateFactory();
     private Dispatcher Dispatcher => ChatHub.Dispatcher;
 
     private Moment CpuNow => Clocks.CpuClock.Now;
@@ -39,7 +38,7 @@ public partial class ChatAudioUI : ScopedWorkerBase, IComputeService, INotifyIni
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
 
-    public ChatAudioUI(ChatHub chatHub) : base(chatHub.Scope)
+    public ChatAudioUI(ChatHub chatHub) : base(chatHub.Scope())
     {
         ChatHub = chatHub;
 

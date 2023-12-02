@@ -20,7 +20,7 @@ public sealed record RpcConnectionState(
     public static readonly RpcConnectionState Connected = new(RpcConnectionStateKind.Connected);
 }
 
-public class ReconnectUI : IComputeService
+public class ReconnectUI: ScopedWorkerBase, IComputeService
 {
     public static readonly RpcPeerState ConnectedState = new(true);
     public static IMomentClock Clock => CpuClock.Instance; // Must match RpcClientPeerReconnectDelayer.Clock!
@@ -29,7 +29,6 @@ public class ReconnectUI : IComputeService
     private RpcPeerStateMonitor? _rpcPeerStateMonitor;
     private RpcClientPeerReconnectDelayer? _rpcReconnectDelayer;
 
-    private IServiceProvider Services { get; }
     private RpcPeerStateMonitor RpcPeerStateMonitor
         => _rpcPeerStateMonitor ??= Services.GetRequiredService<RpcPeerStateMonitor>();
     private RpcClientPeerReconnectDelayer RpcReconnectDelayer
@@ -38,16 +37,18 @@ public class ReconnectUI : IComputeService
     public bool IsClient { get; }
     public IState<RpcConnectionState> State => _state;
 
-    public ReconnectUI(IServiceProvider services)
+    public ReconnectUI(IServiceProvider services) : base(services)
     {
-        Services = services;
-        IsClient = services.GetRequiredService<HostInfo>().AppKind.IsClient();
-        _state = services.StateFactory().NewMutable(
+        IsClient = HostInfo.AppKind.IsClient();
+        _state = StateFactory.NewMutable(
             IsClient
                 ? RpcConnectionState.Unknown with { ProducedAt = Clock.Now }
                 : RpcConnectionState.Connected,
             StateCategories.Get(GetType(), nameof (State)));
     }
+
+    protected override Task OnRun(CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     [ComputeMethod]
     public ValueTask<RpcPeerState?> UseState(CancellationToken cancellationToken = default)

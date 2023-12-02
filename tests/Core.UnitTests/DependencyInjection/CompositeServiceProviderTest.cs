@@ -63,14 +63,14 @@ public class CompositeServiceProviderTest
                 lazyScoped.Singleton.Should().BeSameAs(rootSingle);
                 lazyScoped.Scoped.Should().NotBeSameAs(rootScoped);
 
-                await services.SafelyDisposeAsync();
+                await DisposableExt.DisposeUnknownSilently(services);
                 single.IsDisposed.Should().BeFalse();
                 scoped.IsDisposed.Should().BeTrue();
                 lazySingle.IsDisposed.Should().BeFalse();
                 lazyScoped.IsDisposed.Should().BeTrue();
             }
             else {
-                await services.SafelyDisposeAsync();
+                await DisposableExt.DisposeUnknownSilently(services);
                 single.IsDisposed.Should().BeTrue();
                 scoped.IsDisposed.Should().BeTrue();
                 lazySingle.IsDisposed.Should().BeTrue();

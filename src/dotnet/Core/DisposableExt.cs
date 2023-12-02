@@ -2,6 +2,24 @@ namespace ActualChat;
 
 public static class DisposableExt
 {
+    public static ValueTask DisposeUnknownSilently(object? disposable)
+    {
+        if (disposable is IAsyncDisposable ad)
+            return ad.DisposeSilentlyAsync();
+        if (disposable is IDisposable d)
+            d.DisposeSilently();
+        return default;
+    }
+
+    public static ValueTask DisposeUnknown(object? disposable)
+    {
+        if (disposable is IAsyncDisposable ad)
+            return ad.DisposeAsync();
+        if (disposable is IDisposable d)
+            d.Dispose();
+        return default;
+    }
+
     public static void DisposeSilently(this IDisposable? disposable)
     {
         if (disposable == null)

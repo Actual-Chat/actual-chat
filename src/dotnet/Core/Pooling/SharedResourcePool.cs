@@ -1,5 +1,6 @@
 namespace ActualChat.Pooling;
 
+// TODO(AY): Make it IAsyncDisposable
 public partial class SharedResourcePool<TKey, TResource>(
     Func<TKey, CancellationToken, Task<TResource>> resourceFactory,
     Func<TKey, TResource, ValueTask>? resourceDisposer = null)

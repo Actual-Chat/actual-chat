@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class UserActivityUI : IUserActivityUIBackend, IDisposable
+public class UserActivityUI : ScopedServiceBase, IUserActivityUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.UserActivityUI.init";
 
@@ -17,23 +17,18 @@ public class UserActivityUI : IUserActivityUIBackend, IDisposable
     public IState<Moment> ActiveUntil => _activeUntil; // CPU time
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserActivityUI))]
-    public UserActivityUI(IServiceProvider services)
+    public UserActivityUI(IServiceProvider services) : base(services)
     {
         JS = services.JSRuntime();
-        Clock = services.Clocks().CpuClock;
-        _activeUntil = services.StateFactory().NewMutable(
+        Clock = Clocks.CpuClock;
+        _activeUntil = StateFactory.NewMutable(
             Now + Constants.Presence.CheckPeriod,
             nameof(ActiveUntil));
         _blazorRef = DotNetObjectReference.Create<IUserActivityUIBackend>(this);
+        Scope.RegisterDisposable(_blazorRef);
         _ = JS.InvokeVoidAsync(JSInitMethod, _blazorRef,
             Constants.Presence.ActivityPeriod.TotalMilliseconds,
             Constants.Presence.CheckPeriod.TotalMilliseconds);
-    }
-
-    public void Dispose()
-    {
-        _blazorRef.DisposeSilently();
-        _blazorRef = null!;
     }
 
     [JSInvokable]

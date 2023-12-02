@@ -59,7 +59,7 @@
     protected ChatView ChatViewRef = null!;
 
     [Inject] protected ChatHub ChatHub { get; init; } = null!;
-    protected Scope Scope => ChatHub.Scope;
+    protected Scope Scope => ChatHub.Scope();
     protected Session Session => Scope.Session;
     protected IChats Chats => ChatHub.Chats;
     protected IAccounts Accounts => ChatHub.Accounts;

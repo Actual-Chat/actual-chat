@@ -5,30 +5,26 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class DeviceAwakeUI : ISleepDurationProvider, IDeviceAwakeUIBackend, IDisposable
+public class DeviceAwakeUI : ScopedServiceBase, ISleepDurationProvider, IDeviceAwakeUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DeviceAwakeUI.init";
 
     private readonly DotNetObjectReference<IDeviceAwakeUIBackend> _backendRef;
     private readonly IMutableState<TimeSpan> _totalSleepDuration;
 
-    private HostInfo HostInfo { get; }
     private IJSRuntime JS { get; }
-    private ILogger Log { get; }
 
     public IState<TimeSpan> TotalSleepDuration => _totalSleepDuration;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DeviceAwakeUI))]
-    public DeviceAwakeUI(IServiceProvider services)
+    public DeviceAwakeUI(IServiceProvider services) : base(services)
     {
-        Log = services.LogFor(GetType());
         JS = services.JSRuntime();
-        HostInfo = services.GetRequiredService<HostInfo>();
-
-        _totalSleepDuration = services.StateFactory().NewMutable(
+        _totalSleepDuration = StateFactory.NewMutable(
             TimeSpan.Zero,
             StateCategories.Get(GetType(), nameof(TotalSleepDuration)));
         _backendRef = DotNetObjectReference.Create<IDeviceAwakeUIBackend>(this);
+        Scope.RegisterDisposable(_backendRef);
         _ = Initialize();
     }
 
@@ -76,7 +72,4 @@ public class DeviceAwakeUI : ISleepDurationProvider, IDeviceAwakeUIBackend, IDis
     [JSInvokable]
     public void OnDeviceAwake(double totalSleepDurationMs)
         => _totalSleepDuration.Value = TimeSpan.FromMilliseconds(totalSleepDurationMs);
-
-    void IDisposable.Dispose()
-        => _backendRef.DisposeSilently();
 }

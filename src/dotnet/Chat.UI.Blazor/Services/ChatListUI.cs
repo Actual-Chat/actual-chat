@@ -5,7 +5,7 @@ using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialized
+public partial class ChatListUI : ScopedWorkerBase, IComputeService, INotifyInitialized
 {
     public static readonly int ActiveItemCountWhenLoading = 0;
     public static readonly int AllItemCountWhenLoading = 14;
@@ -20,10 +20,8 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
 
     private bool _isFirstLoad = true;
     private IComputedState<Trimmed<int>>? _unreadChatCount;
-    private ILogger? _log;
 
     private ChatHub ChatHub { get; }
-    private Session Session => ChatHub.Session;
     private IContacts Contacts => ChatHub.Contacts;
     private IAuthors Authors => ChatHub.Authors;
     private ActiveChatsUI ActiveChatsUI => ChatHub.ActiveChatsUI;
@@ -31,12 +29,9 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
     private SearchUI SearchUI => ChatHub.SearchUI;
     private TuneUI TuneUI => ChatHub.TuneUI;
     private LoadingUI LoadingUI => ChatHub.LoadingUI;
-    private IStateFactory StateFactory => ChatHub.StateFactory();
     private AccountSettings AccountSettings => ChatHub.AccountSettings();
     private UICommander UICommander => ChatHub.UICommander();
-    private MomentClockSet Clocks => ChatHub.Clocks();
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
+    private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public IMutableState<ChatListSettings> Settings => _settings;
 #pragma warning disable CA1721 // Confusing w/ GetUnreadChatCount
@@ -46,7 +41,7 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
 
     private Moment Now => Clocks.SystemClock.Now;
 
-    public ChatListUI(ChatHub chatHub)
+    public ChatListUI(ChatHub chatHub) : base(chatHub.Scope())
     {
         ChatHub = chatHub;
 
@@ -72,13 +67,8 @@ public partial class ChatListUI : WorkerBase, IComputeService, INotifyInitialize
                 Category = StateCategories.Get(GetType(), nameof(UnreadChatCount)),
             },
             ComputeUnreadChatCount);
+        Scope.RegisterDisposable(_unreadChatCount);
         this.Start();
-    }
-
-    protected override Task DisposeAsyncCore()
-    {
-        _unreadChatCount.DisposeSilently();
-        return base.DisposeAsyncCore();
     }
 
 #pragma warning disable CA1822 // Can be static

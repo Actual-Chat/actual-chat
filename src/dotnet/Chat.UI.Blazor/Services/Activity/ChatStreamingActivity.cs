@@ -44,7 +44,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     public ChatStreamingActivity(ChatActivity owner)
     {
         Owner = owner;
-         _lastTranscribedAt = owner.Services.StateFactory().NewMutable(
+         _lastTranscribedAt = owner.StateFactory.NewMutable(
              (Moment?)Moment.MinValue,
              StateCategories.Get(GetType(), nameof(LastTranscribedAt)));
     }

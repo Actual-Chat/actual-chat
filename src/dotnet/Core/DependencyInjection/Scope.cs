@@ -4,20 +4,21 @@ namespace ActualChat.DependencyInjection;
 
 public sealed class Scope : IAsyncDisposable, IHasServices, IHasIsDisposed
 {
-    private readonly List<Task> _tasks = new();
-    private readonly CancellationTokenSource _whenStoppedCts;
-    private Task? _whenStopped;
-    private Session? _session;
     private readonly IStateFactory _stateFactory;
     private readonly ILoggerFactory _loggerFactory;
     private readonly MomentClockSet _clocks;
+    private readonly List<Task> _tasks = new();
+    private readonly List<object> _disposables = new();
+    private readonly CancellationTokenSource _whenStoppedCts;
+    private volatile Task? _whenDisposed;
+    private Session? _session;
 
     public IServiceProvider Services { get; }
     public HostInfo HostInfo { get; }
     public Session Session => _session ??= Services.GetRequiredService<Session>();
 
     public CancellationToken StopToken { get; }
-    public Task WhenStopped => _whenStopped ?? GetWhenDisposed();
+    public Task? WhenDisposed => _whenDisposed;
     public bool IsDisposed => StopToken.IsCancellationRequested;
 
     public Scope(IServiceProvider services)
@@ -41,12 +42,16 @@ public sealed class Scope : IAsyncDisposable, IHasServices, IHasIsDisposed
 
     public ValueTask DisposeAsync()
     {
-        lock (_tasks)
-            _whenStoppedCts.CancelAndDisposeSilently();
-        return Task.WhenAll(_tasks).ToValueTask();
+        lock (_tasks) {
+            if (_whenDisposed == null) {
+                _whenStoppedCts.CancelAndDisposeSilently();
+                _whenDisposed = DisposeAsyncCore();
+            }
+            return _whenDisposed.ToValueTask();
+        }
     }
 
-    public void Register(Task task)
+    public void RegisterAwaitable(Task task)
     {
         lock (_tasks) {
             StopToken.ThrowIfCancellationRequested();
@@ -54,19 +59,41 @@ public sealed class Scope : IAsyncDisposable, IHasServices, IHasIsDisposed
         }
     }
 
+    public void RegisterDisposable(object disposableOrAction)
+    {
+        var isDisposed = false;
+        lock (_tasks) {
+            if (IsDisposed)
+                isDisposed = true;
+            else
+                _disposables.Add(disposableOrAction);
+        }
+        if (isDisposed)
+            _ = DisposableExt.DisposeUnknownSilently(disposableOrAction);
+    }
+
     // Private methods
 
-    private Task GetWhenDisposed()
-    {
-        lock (_tasks) {
-            if (_whenStopped != null)
-                return _whenStopped;
-            if (_whenStoppedCts.IsCancellationRequested)
-                return _whenStopped = Task.FromCanceled(StopToken);
+    private async Task DisposeAsyncCore() {
+        await Task.WhenAll(_tasks).SilentAwait(false);
+        for (var i = _disposables.Count - 1; i >= 0; i--)
+            await Dispose(_disposables[i]).SilentAwait();
+    }
 
-            var tcs = new TaskCompletionSource();
-            StopToken.Register(() => tcs.TrySetCanceled(StopToken));
-            return _whenStopped = tcs.Task;
+    private static ValueTask Dispose(object? disposableOrAction)
+    {
+        switch (disposableOrAction) {
+        case IAsyncDisposable ad:
+            return ad.DisposeSilentlyAsync();
+        case IDisposable d:
+            d.DisposeSilently();
+            return default;
+        case Func<ValueTask> f:
+            return f.Invoke();
+        case Action a:
+            a.Invoke();
+            return default;
         }
+        return default;
     }
 }

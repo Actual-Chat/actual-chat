@@ -3,7 +3,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public sealed class AuthorUI(ChatHub chatHub)
+public sealed class AuthorUI(ChatHub chatHub) : ScopedServiceBase(chatHub.Scope())
 {
     private ILogger? _log;
 

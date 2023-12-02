@@ -3,7 +3,7 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class InteractiveUI : IInteractiveUIBackend, IDisposable
+public class InteractiveUI : ScopedServiceBase, IInteractiveUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.InteractiveUI.init";
 
@@ -14,37 +14,25 @@ public class InteractiveUI : IInteractiveUIBackend, IDisposable
     private Dispatcher? _dispatcher;
 
     // Services
-    private IServiceProvider Services { get; }
     private ModalUI ModalUI { get; }
     private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
     private IJSRuntime JS { get; }
-    private HostInfo HostInfo { get; }
-    private ILogger Log { get; }
 
     public IState<bool> IsInteractive => _isInteractive;
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ActiveDemandModel?> ActiveDemand => _activeDemand;
     public Task WhenReady { get; }
 
-    public InteractiveUI(IServiceProvider services)
+    public InteractiveUI(IServiceProvider services) : base(services)
     {
-        Services = services;
-        Log = services.LogFor(GetType());
-        HostInfo = services.GetRequiredService<HostInfo>();
-
         ModalUI = services.GetRequiredService<ModalUI>();
         JS = services.JSRuntime();
         _blazorRef = DotNetObjectReference.Create<IInteractiveUIBackend>(this);
+        Scope.RegisterDisposable(_blazorRef);
 
-        _isInteractive = services.StateFactory().NewMutable(false);
-        _activeDemand = services.StateFactory().NewMutable((ActiveDemandModel?)null);
+        _isInteractive = StateFactory.NewMutable(false);
+        _activeDemand = StateFactory.NewMutable((ActiveDemandModel?)null);
         WhenReady = JS.InvokeVoidAsync(JSInitMethod, _blazorRef).AsTask();
-    }
-
-    public void Dispose()
-    {
-        _blazorRef.DisposeSilently();
-        _blazorRef = null;
     }
 
     [JSInvokable]

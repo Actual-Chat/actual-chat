@@ -22,7 +22,7 @@ public abstract class ScopedWorkerBase(Scope scope)
 
             _whenRunning = Task.Run(() => OnRun(StopToken), StopToken);
         }
-        Scope.Register(_whenRunning);
+        Scope.RegisterAwaitable(_whenRunning);
         return _whenRunning;
     }
 

@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public interface IOnboardingUI : IDisposable
+public interface IOnboardingUI
 {
     Task<bool> TryShow();
 }

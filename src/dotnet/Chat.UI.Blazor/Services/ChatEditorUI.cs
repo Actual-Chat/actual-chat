@@ -14,7 +14,6 @@ public partial class ChatEditorUI : ScopedWorkerBase, IComputeService, INotifyIn
     private IChats Chats => ChatHub.Chats;
     private IAuthors Authors => ChatHub.Authors;
     private TuneUI TuneUI => ChatHub.TuneUI;
-    private IStateFactory StateFactory => ChatHub.StateFactory();
     private LocalSettings LocalSettings => ChatHub.LocalSettings();
     private UICommander UICommander => ChatHub.UICommander();
     private UIEventHub UIEventHub => ChatHub.UIEventHub();
@@ -22,7 +21,7 @@ public partial class ChatEditorUI : ScopedWorkerBase, IComputeService, INotifyIn
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
 
-    public ChatEditorUI(ChatHub chatHub) : base(chatHub.Scope)
+    public ChatEditorUI(ChatHub chatHub) : base(chatHub.Scope())
     {
         ChatHub = chatHub;
 

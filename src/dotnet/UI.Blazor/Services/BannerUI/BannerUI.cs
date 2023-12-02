@@ -3,16 +3,23 @@ using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class BannerUI(IServiceProvider serviceProvider)
+public class BannerUI : ScopedServiceBase
 {
-    private readonly object _lock = new ();
-    private readonly IMutableState<ImmutableList<BannerDef>> _banners
-        = serviceProvider.StateFactory().NewMutable(ImmutableList<BannerDef>.Empty, nameof(Banners));
+    private readonly object _lock = new();
+    private readonly IMutableState<ImmutableList<BannerDef>> _banners;
+
     private TypeMapper<IBannerView> ViewResolver { get; }
-        = serviceProvider.GetRequiredService<TypeMapper<IBannerView>>();
 
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ImmutableList<BannerDef>> Banners => _banners;
+
+    public BannerUI(IServiceProvider services) : base(services)
+    {
+        _banners = StateFactory.NewMutable(
+            ImmutableList<BannerDef>.Empty,
+            StateCategories.Get(GetType(), nameof(Banners)));
+        ViewResolver = services.GetRequiredService<TypeMapper<IBannerView>>();
+    }
 
     public BannerDef Show<TBannerModel>(TBannerModel bannerModel)
         where TBannerModel : notnull

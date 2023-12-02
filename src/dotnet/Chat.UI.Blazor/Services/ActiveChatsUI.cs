@@ -3,31 +3,24 @@ using Stl.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ActiveChatsUI
+public class ActiveChatsUI : ScopedServiceBase
 {
     public const int MaxActiveChatCount = 3;
     public static readonly TimeSpan MaxContinueListeningRecency = TimeSpan.FromMinutes(5);
 
     private readonly AsyncLock _updateLock = new(LockReentryMode.CheckedFail);
     private readonly IStoredState<ApiArray<ActiveChat>> _activeChats;
-    private ILogger? _log;
 
     private ChatHub ChatHub { get; }
-    private Session Session => ChatHub.Session;
     private IChats Chats => ChatHub.Chats;
-    private IStateFactory StateFactory => ChatHub.StateFactory();
     private LocalSettings LocalSettings => ChatHub.LocalSettings();
     private UICommander UICommander => ChatHub.UICommander();
-    private MomentClockSet Clocks => ChatHub.Clocks();
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
-
-    private Moment Now => Clocks.SystemClock.Now;
+    private Moment CpuNow => Clocks.CpuClock.Now;
 
     public IMutableState<ApiArray<ActiveChat>> ActiveChats => _activeChats;
     public Task WhenLoaded => _activeChats.WhenRead;
 
-    public ActiveChatsUI(ChatHub chatHub)
+    public ActiveChatsUI(ChatHub chatHub) : base(chatHub.Scope())
     {
         ChatHub = chatHub;
         _activeChats = StateFactory.NewKvasStored<ApiArray<ActiveChat>>(
@@ -70,7 +63,7 @@ public class ActiveChatsUI
                     chat = chat with { IsRecording = false };
 
                 var listeningRecency = Moment.Max(chat.Recency, chat.ListeningRecency);
-                if (chat.IsListening && Now - listeningRecency > MaxContinueListeningRecency)
+                if (chat.IsListening && CpuNow - listeningRecency > MaxContinueListeningRecency)
                     chat = chat with { IsListening = false };
 
                 return chat;

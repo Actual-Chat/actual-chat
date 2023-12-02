@@ -3,36 +3,31 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class SelectionUI
+public class SelectionUI : ScopedServiceBase
 {
     private readonly IMutableState<ImmutableHashSet<ChatEntryId>> _selection;
     private readonly IMutableState<bool> _hasSelection;
-    private ILogger? _log;
 
     private ChatHub ChatHub { get; }
-    private Session Session => ChatHub.Session;
     private IChats Chats => ChatHub.Chats;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => ChatHub.ChatMarkupHubFactory;
     private ModalUI ModalUI => ChatHub.ModalUI;
     private ToastUI ToastUI => ChatHub.ToastUI;
     private ClipboardUI ClipboardUI => ChatHub.ClipboardUI;
     private UICommander UICommander => ChatHub.UICommander();
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public IState<bool> HasSelection => _hasSelection;
     public IState<ImmutableHashSet<ChatEntryId>> Selection => _selection;
 
-    public SelectionUI(ChatHub chatHub)
+    public SelectionUI(ChatHub chatHub) : base(chatHub.Scope())
     {
         ChatHub = chatHub;
 
-        var stateFactory = chatHub.StateFactory();
         var type = GetType();
-        _selection = stateFactory.NewMutable(
+        _selection = StateFactory.NewMutable(
             ImmutableHashSet<ChatEntryId>.Empty,
             StateCategories.Get(type, nameof(Selection)));
-        _hasSelection = stateFactory.NewMutable(
+        _hasSelection = StateFactory.NewMutable(
             false,
             StateCategories.Get(type, nameof(HasSelection)));
         _selection.Updated += (state, _) => _hasSelection.Value = state.Value.Count != 0;

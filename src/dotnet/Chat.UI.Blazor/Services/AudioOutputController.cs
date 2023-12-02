@@ -8,7 +8,7 @@ public interface IAudioOutputController
     ValueTask<bool> ToggleSpeakerphone(bool mustEnable);
 }
 
-public sealed class AudioOutputController : IAudioOutputController
+public sealed class AudioOutputController : ScopedServiceBase, IAudioOutputController
 {
     private readonly IMutableState<bool> _isAudioOn;
     private readonly IMutableState<bool> _isSpeakerphoneOn;
@@ -16,9 +16,9 @@ public sealed class AudioOutputController : IAudioOutputController
     public IState<bool> IsAudioOn => _isAudioOn;
     public IState<bool> IsSpeakerphoneOn => _isSpeakerphoneOn;
 
-    public AudioOutputController(IServiceProvider services)
+    public AudioOutputController(IServiceProvider services) : base(services)
     {
-        var stateFactory = services.StateFactory();
+        var stateFactory = StateFactory;
         var type = GetType();
         _isAudioOn = stateFactory.NewMutable(
             false,

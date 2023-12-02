@@ -3,41 +3,31 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BubbleUI : IDisposable, IHasAcceptor<BubbleHost>
+public sealed class BubbleUI : ScopedServiceBase, IHasAcceptor<BubbleHost>
 {
     private readonly Acceptor<BubbleHost> _hostAcceptor = new(true);
     private readonly ISyncedState<UserBubbleSettings> _settings;
     private AccountUI? _accountUI;
 
-    private IServiceProvider Services { get; }
-    private Session Session { get; }
     private AccountUI AccountUI => _accountUI ??= Services.GetRequiredService<AccountUI>();
     private AccountSettings AccountSettings { get; }
-    private MomentClockSet Clocks { get; }
     Acceptor<BubbleHost> IHasAcceptor<BubbleHost>.Acceptor => _hostAcceptor;
 
     public IState<UserBubbleSettings> Settings => _settings;
     public Task WhenReady => _hostAcceptor.WhenAccepted();
     public BubbleHost Host => _hostAcceptor.Value;
 
-    public BubbleUI(IServiceProvider services)
+    public BubbleUI(IServiceProvider services) : base(services)
     {
-        Services = services;
-        Session = services.Session();
         AccountSettings = services.GetRequiredService<AccountSettings>();
-        Clocks = services.Clocks();
-
-        var stateFactory = services.StateFactory();
-        _settings = stateFactory.NewKvasSynced<UserBubbleSettings>(
+        _settings = StateFactory.NewKvasSynced<UserBubbleSettings>(
             new (AccountSettings, UserBubbleSettings.KvasKey) {
                 InitialValue = new UserBubbleSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
+        Scope.RegisterDisposable(_settings);
     }
-
-    public void Dispose()
-        => _settings.Dispose();
 
     public async Task WhenReadyToShowBubbles()
     {

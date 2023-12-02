@@ -11,8 +11,9 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public record ChatHub(Scope Scope) : IHasServices, IServiceProvider
+public record ChatHub : IHasServices, IServiceProvider
 {
+    private readonly Scope _scope;
     private IChats? _chats;
     private IChatPositions? _chatPositions;
     private IMentions? _mentions;
@@ -68,16 +69,16 @@ public record ChatHub(Scope Scope) : IHasServices, IServiceProvider
     private UrlMapper? _urlMapper;
     private NavigationManager? _nav;
     private Dispatcher? _dispatcher;
-    private readonly MomentClockSet _clocks = Scope.Clocks();
-    private readonly IStateFactory _stateFactory = Scope.StateFactory();
+    private readonly MomentClockSet _clocks;
+    private readonly IStateFactory _stateFactory;
     private AccountSettings? _accountSettings;
     private LocalSettings? _localSettings;
     private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
     private BlazorCircuitContext? _circuitContext;
     private IJSRuntime? _js;
 
-    public IServiceProvider Services { get; } = Scope.Services;
-    public Session Session { get; } = Scope.Session;
+    public IServiceProvider Services { get; }
+    public Session Session { get; }
 
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     public IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
@@ -133,10 +134,11 @@ public record ChatHub(Scope Scope) : IHasServices, IServiceProvider
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
     public BlazorCircuitContext CircuitContext => _circuitContext ??= Services.GetRequiredService<BlazorCircuitContext>();
-    public HostInfo HostInfo => Scope.HostInfo;
+    public HostInfo HostInfo { get; }
     public IJSRuntime JS => _js ??= Services.JSRuntime();
 
     // These properties are exposed as methods to "close" the static ones on IServiceProvider
+    public Scope Scope() => _scope;
     public IStateFactory StateFactory() => _stateFactory;
     public AccountSettings AccountSettings() => _accountSettings ??= Services.AccountSettings();
     public LocalSettings LocalSettings() => _localSettings ??= Services.LocalSettings();
@@ -148,6 +150,15 @@ public record ChatHub(Scope Scope) : IHasServices, IServiceProvider
 
     public ChatHub(IServiceProvider services)
         : this(services.Scope()) { }
+    public ChatHub(Scope scope)
+    {
+        _scope = scope;
+        Services = scope.Services;
+        Session = scope.Session;
+        HostInfo = scope.HostInfo;
+        _stateFactory = scope.StateFactory();
+        _clocks = scope.Clocks();
+    }
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

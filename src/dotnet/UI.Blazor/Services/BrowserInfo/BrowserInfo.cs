@@ -1,9 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using ActualChat.Hosting;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class BrowserInfo : IBrowserInfoBackend, IDisposable
+public class BrowserInfo : ScopedServiceBase, IBrowserInfoBackend
 {
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
@@ -12,14 +11,9 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
 
     protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
     protected readonly object Lock = new();
-    private HostInfo? _hostInfo;
     private UICommander? _uiCommander;
-    private ILogger? _log;
 
-    protected IServiceProvider Services { get; }
-    protected HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
     protected UICommander UICommander => _uiCommander ??= Services.GetRequiredService<UICommander>();
-    protected ILogger Log => _log ??= Services.LogFor(GetType());
 
     public DotNetObjectReference<IBrowserInfoBackend> BlazorRef { get; private set; }
     // ReSharper disable once InconsistentlySynchronizedField
@@ -39,21 +33,15 @@ public class BrowserInfo : IBrowserInfoBackend, IDisposable
     public Task WhenReady => WhenReadySource.Task;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BrowserInfo))]
-    public BrowserInfo(IServiceProvider services)
+    public BrowserInfo(IServiceProvider services) : base(services)
     {
-        Services = services;
         BlazorRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
-        var stateFactory = services.StateFactory();
+        var stateFactory = StateFactory;
         _screenSize = stateFactory.NewMutable<ScreenSize>();
         _isHoverable = stateFactory.NewMutable(false);
         _isVisible = stateFactory.NewMutable(true);
         _themeInfo = stateFactory.NewMutable(Blazor.Services.ThemeInfo.Default);
-    }
-
-    public void Dispose()
-    {
-        BlazorRef.DisposeSilently();
-        BlazorRef = null!;
+        Scope.RegisterDisposable(BlazorRef);
     }
 
     [JSInvokable]

@@ -17,7 +17,6 @@ public partial class ChatUI : ScopedWorkerBase, IComputeService, INotifyInitiali
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
 
     private ChatHub ChatHub { get; }
-    private IStateFactory StateFactory => ChatHub.StateFactory();
     private AccountSettings AccountSettings => ChatHub.AccountSettings();
     private LocalSettings LocalSettings => ChatHub.LocalSettings();
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => ChatHub.ChatMarkupHubFactory;
@@ -43,7 +42,7 @@ public partial class ChatUI : ScopedWorkerBase, IComputeService, INotifyInitiali
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
     public Task WhenLoaded => _selectedChatId.WhenRead;
 
-    public ChatUI(ChatHub chatHub) : base(chatHub.Scope)
+    public ChatUI(ChatHub chatHub) : base(chatHub.Scope())
     {
         ChatHub = chatHub;
 

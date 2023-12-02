@@ -4,32 +4,24 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class OnboardingUI : IOnboardingUI
+public class OnboardingUI : ScopedServiceBase, IOnboardingUI
 {
     private readonly ISyncedState<UserOnboardingSettings> _userSettings;
     private readonly IStoredState<LocalOnboardingSettings> _localSettings;
     private CancellationTokenSource? _lastTryShowCts;
     private ModalRef? _lastModalRef;
-    private ILogger? _log;
 
     private ChatHub ChatHub { get; }
-    private IServiceProvider Services => ChatHub.Services;
     private AccountUI AccountUI => ChatHub.AccountUI;
     private ModalUI ModalUI => ChatHub.ModalUI;
     private LoadingUI LoadingUI => ChatHub.LoadingUI;
-    private MomentClockSet Clocks => ChatHub.Clocks();
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
-
-    private Moment Now => Clocks.SystemClock.Now;
 
     public IState<UserOnboardingSettings> UserSettings => _userSettings;
     public IState<LocalOnboardingSettings> LocalSettings => _localSettings;
 
-    public OnboardingUI(ChatHub chatHub)
+    public OnboardingUI(ChatHub chatHub) : base(chatHub.Scope())
     {
         ChatHub = chatHub;
-
         var stateFactory = ChatHub.StateFactory();
         var accountSettings = ChatHub.AccountSettings();
         var localSettings = ChatHub.LocalSettings();
@@ -45,12 +37,10 @@ public class OnboardingUI : IOnboardingUI
                 InitialValue = new LocalOnboardingSettings(),
                 Category = StateCategories.Get(type, nameof(LocalSettings)),
             });
-    }
-
-    public void Dispose()
-    {
-        _lastTryShowCts.CancelAndDisposeSilently();
-        _userSettings.Dispose();
+        Scope.RegisterDisposable(() => {
+            _lastTryShowCts.CancelAndDisposeSilently();
+            _userSettings.Dispose();
+        });
     }
 
     public async Task<bool> TryShow()
