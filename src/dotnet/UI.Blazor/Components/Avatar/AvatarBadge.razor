@@ -4,11 +4,7 @@
 @inherits FusionComponentBase
 
 <div class="avatar-badge @Class" @onclick="@Click">
-    <AvatarCircle
-        Avatar="@Avatar"
-        Size="@Size"
-        IsBlurred="@IsBlurred"
-        BadgeContent="@BadgeContent" />
+    <AvatarCircle Avatar="@Avatar" Size="@Size" BadgeContent="@BadgeContent" />
     <div class="c-name">
         <AvatarName Avatar="@Avatar" Class="@NameClass"/>
         @if (ShowStatusText && !StatusText.IsNullOrEmpty()) {
@@ -23,7 +19,6 @@
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
     [Parameter] public RenderFragment? BadgeContent { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
-    [Parameter] public bool IsBlurred { get; set; }
     [Parameter] public string NameClass { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool ShowStatusText { get; set; }
