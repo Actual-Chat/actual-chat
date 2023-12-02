@@ -10,8 +10,6 @@
         <AuthorCircle
             AuthorSid="@Author.Id"
             Size="SquareSize.SizeFull"
-            Width="480"
-            Height="120"
             IsBlurred="@true"
             IsSquare="@true" />
     </div>
@@ -19,9 +17,7 @@
     <div class="c-center">
         <AuthorCircle
             AuthorSid="@Author.Id"
-            Size="SquareSize.Size16"
-            Width="64"
-            Height="64">
+            Size="SquareSize.Size16">
             <BadgeContent>
                 @if (!Author.IsAnonymous) {
                     <AuthorPresenceIndicator AuthorSid="@Author.Id" ShowRecording="true"></AuthorPresenceIndicator>

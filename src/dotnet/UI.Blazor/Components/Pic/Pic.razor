@@ -7,18 +7,12 @@
     var roundedClass = IsSquare ? "" : "pic-rounded ";
     var cursorClass = Click.HasDelegate ? "pic-show-cursor" : "";
     var blurClass = IsBlurred ? "pic-blurred" : "";
-    var style = "";
-    if (Width != 0 && IsBlurred)
-        style += $"width:{Width}px;";
-    if (Height != 0 && IsBlurred)
-        style += $"height:{Height}px";
 }
 
 <div class="@Class @sizeClass @roundedClass @blurClass">
     @if (!_pictureUrl.IsNullOrEmpty()) {
         <image-skeleton
             class="pic-image @sizeClass @cursorClass"
-            css="@style"
             src="@_pictureUrl"
             @onclick="@OnPictureClick"
             @onclick:preventDefault="true"/>
@@ -27,15 +21,14 @@
         case AvatarKind.Beam:
             <beam-avatar
                 class="pic-generated @sizeClass"
+                blurred="@IsBlurred"
                 key="@_avatarKey" />
             break;
         case AvatarKind.Marble:
             var title = Title.IsNullOrEmpty() || HideTitle ? "" : char.ToUpperInvariant(Title[0]).ToString();
             <marble-avatar
                 class="pic-generated @sizeClass"
-                width="@Width"
-                height="@Height"
-                css="@style"
+                blurred="@IsBlurred"
                 key="@_avatarKey"
                 title="@title"/>
             break;
@@ -56,8 +49,6 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
-    [Parameter] public int Width { get; set; } = 40;
-    [Parameter] public int Height { get; set; } = 40;
     [Parameter] public bool IsSquare { get; set; }
     [Parameter] public bool HideTitle { get; set; }
     [Parameter] public bool IsBlurred { get; set; }
