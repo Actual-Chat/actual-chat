@@ -8,8 +8,6 @@
 <AvatarBadge
     Avatar="@m.Author.Avatar"
     Size="@Size"
-    Width="@Width"
-    Height="@Height"
     IsBlurred="@IsBlurred"
     NameClass="@NameClass"
     ShowStatusText="@ShowStatusText"
@@ -22,8 +20,6 @@
     private EventCallback _onClickCallback;
 
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
-    [Parameter] public int Width { get; set; }
-    [Parameter] public int Height { get; set; }
     [Parameter] public bool IsBlurred { get; set; }
     [Parameter] public string NameClass { get; set; } = "";
     [Parameter] public EventCallback<AuthorId> Click { get; set; }
