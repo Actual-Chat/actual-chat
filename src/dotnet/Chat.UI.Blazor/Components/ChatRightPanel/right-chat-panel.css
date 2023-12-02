@@ -62,10 +62,6 @@
     @apply rounded-b-xl;
     @apply overflow-hidden;
 }
-.right-chat-panel > .c-header > .c-top > .avatar-circle {
-    @apply absolute -left-20 -right-20 -top-80;
-    @apply block;
-}
 .right-chat-panel > .c-header > .c-bottom {
     @apply absolute bottom-0 z-10;
     @apply flex-y items-start justify-end;

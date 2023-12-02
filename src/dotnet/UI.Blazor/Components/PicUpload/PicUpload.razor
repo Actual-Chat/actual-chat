@@ -16,6 +16,8 @@
         Title="@Title"
         Picture="@Picture"
         Size="@Size"
+        Width="@Width"
+        Height="@Height"
         NoPicture="@NoPicture"
         AvatarKind="@AvatarKind"
         AvatarKey="@AvatarKey"
@@ -65,6 +67,8 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+    [Parameter] public int Width { get; set; } = 40;
+    [Parameter] public int Height { get; set; } = 40;
     [Parameter] public AvatarKind AvatarKind { get; set; } = AvatarKind.Beam;
     [Parameter] public string? AvatarKey { get; set; }
     [Parameter] public string UploadUrl { get; set; } = "";
