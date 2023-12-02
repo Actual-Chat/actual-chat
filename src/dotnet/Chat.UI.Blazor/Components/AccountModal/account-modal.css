@@ -15,20 +15,18 @@
 }
 .author-modal .c-header > .c-top {
     @apply relative;
-    @apply h-3/5 w-full;
+    @apply h-22 w-full;
     @apply rounded-b-xl;
     @apply overflow-hidden;
 }
 .author-modal .c-header > .c-top > .avatar-circle {
-    @apply h-full;
-}
-.author-modal .c-header > .c-top > .avatar-circle > .c-content > .c-avatar.pic-blurred {
-    @apply -ml-16 -mt-4;
+    @apply absolute -left-20 -right-20 -top-56;
+    @apply block;
 }
 .author-modal .c-header > .c-bottom {
     @apply absolute bottom-0 z-10;
     @apply flex-y items-start justify-center;
-    @apply h-2/5 w-full;
+    @apply h-14 w-full;
     @apply px-4;
     @apply bg-modal;
 }
