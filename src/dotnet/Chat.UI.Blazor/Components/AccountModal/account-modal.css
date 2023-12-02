@@ -22,9 +22,6 @@
 .author-modal .c-header > .c-top > .avatar-circle {
     @apply h-full;
 }
-.author-modal .c-header > .c-top > .avatar-circle > .c-content > .c-avatar.pic-blurred {
-    @apply -ml-16 -mt-4;
-}
 .author-modal .c-header > .c-bottom {
     @apply absolute bottom-0 z-10;
     @apply flex-y items-start justify-center;

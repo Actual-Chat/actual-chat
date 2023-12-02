@@ -1,5 +1,5 @@
 .pic {
-    @apply relative;
+    @apply h-full;
 }
 
 .pic-generated {
@@ -14,9 +14,14 @@
 .pic-blurred {
     @apply blur-lg;
     @apply opacity-70;
+    @apply absolute right-0 top-0 left-0 bottom-0;
+    @apply scale-[2];
 }
 .pic-blurred .pic-image {
     @apply rounded-none;
+}
+.pic-blurred image-skeleton {
+    @apply h-full;
 }
 
 .pic-image {
