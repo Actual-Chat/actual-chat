@@ -7,9 +7,8 @@ public abstract class ScopedWorkerBase(Scope scope)
 {
     private volatile Task? _whenRunning;
 
-    protected CancellationToken StopToken { get; init; } = scope.StopToken;
     protected readonly object Lock = new();
-
+    protected CancellationToken StopToken => scope.StopToken;
     public Task? WhenRunning => _whenRunning;
 
     protected ScopedWorkerBase(IServiceProvider services)
