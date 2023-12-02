@@ -37,3 +37,6 @@
 .message-image-attachments:has(image-skeleton.loading) {
     @apply w-full;
 }
+.image-attachment image-skeleton::part(image) {
+    object-fit: cover;
+}

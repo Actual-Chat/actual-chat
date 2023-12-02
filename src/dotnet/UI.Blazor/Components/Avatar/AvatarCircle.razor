@@ -5,13 +5,10 @@
 @inherits FusionComponentBase
 @{
     var title = HasTooltip ? Avatar.Name : "";
-    var style = "";
-    if (Width != 0 && IsBlurred)
-        style += $"width:{Width}px;";
-    if (Height != 0 && IsBlurred)
-        style += $"height:{Height}px";
-    var blurClass = IsBlurred ? "pic-blurred" : "";
-    var roundedClass = IsSquare ? "" : "pic-rounded";
+    var hasPicture = !_pictureUrl.IsNullOrEmpty();
+    var isSvg = hasPicture && _pictureUrl.Contains("svg", StringComparison.OrdinalIgnoreCase);
+    if (isSvg)
+        _pictureUrl += "#svgView(preserveAspectRatio(none))";
 }
 
 <div class="avatar-circle">
@@ -20,17 +17,13 @@
             <div class="c-skeleton @_class"></div>
         } else if (!_pictureUrl.IsNullOrEmpty()){
             <image-skeleton
-                class="c-avatar @blurClass @roundedClass @_class"
-                css="@style"
+                class="c-avatar @_class"
                 src="@_pictureUrl"
                 title="@title"
                 @onclick="@Click"/>
         } else if (!_avatarKey.IsNullOrEmpty()){
             <beam-avatar
-                class="c-avatar @blurClass @roundedClass @_class"
-                css="@style"
-                width="@Width"
-                height="@Height"
+                class="c-avatar @_class"
                 key="@_avatarKey"
                 @onclick="@Click"/>
         }
@@ -48,15 +41,17 @@
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
     [Parameter] public RenderFragment? BadgeContent { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
-    [Parameter] public int Width { get; set; }
-    [Parameter] public int Height { get; set; }
     [Parameter] public bool IsBlurred { get; set; }
     [Parameter] public bool IsSquare { get; set; }
     [Parameter] public bool HasTooltip { get; set; }
     [Parameter] public EventCallback Click { get; set; }
 
     protected override void OnParametersSet() {
-        _class = GetSizeClass();
+        _class = IsBlurred ? "pic-blurred" : $"pic-size-{(int) Size}";
+
+        if (!IsSquare)
+            _class += " pic-rounded";
+
         if (Click.HasDelegate)
             _class += " cursor-pointer";
 
@@ -66,10 +61,5 @@
         } else {
             _avatarKey = DefaultUserPicture.GetAvatarKey(Avatar.Id);
         }
-    }
-
-    private string GetSizeClass() {
-        var size = (int) Size;
-        return $"pic-size-{size}";
     }
 }

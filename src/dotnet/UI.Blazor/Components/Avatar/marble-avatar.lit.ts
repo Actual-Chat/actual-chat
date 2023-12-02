@@ -12,9 +12,6 @@ let id = 0;
 class MarbleAvatar extends LitElement {
     @property() key: string;
     @property() title: string;
-    @property() width: number = 80;
-    @property() height: number = 80;
-    @property() css: string = "";
     @property() colors: string[] = ['F56095', 'F5CD65', '00B27D', '37D3F5', '2F89EB'];
 
     private maskId = `marble-avatar-${++id}`;
@@ -23,19 +20,19 @@ class MarbleAvatar extends LitElement {
         const properties = this.generateColors(this.key, this.colors);
         return html`
             <svg
-                viewBox='${'0 0 ' + this.width + ' ' + this.height}'
+                viewBox='${'0 0 ' + SIZE + ' ' + SIZE}'
                 fill='none'
                 role='img'
                 xmlns='http://www.w3.org/2000/svg'
-                width='${this.width}'
-                height='${this.height}'
-                style='${this.css}'
+                preserveAspectRatio='none'
+                width='100%'
+                height='100%'
             >
-                <mask id='${this.maskId}' maskUnits='userSpaceOnUse' x='0' y='0' width='${this.width}' height='${this.height}'>
-                    <rect width='${this.width}' height='${this.height}' fill='#FFFFFF'/>
+                <mask id='${this.maskId}' maskUnits='userSpaceOnUse' x='0' y='0' width='${SIZE}' height='${SIZE}'>
+                    <rect width='${SIZE}' height='${SIZE}'  fill='#FFFFFF' />
                 </mask>
                 <g mask='url(#${this.maskId})'>
-                    <rect width='${this.width}' height='${this.height}' fill='#${properties[0].color}' />
+                    <rect width='${SIZE}' height='${SIZE}' fill='#${properties[0].color}' />
                     <path
                         filter='url(#prefix__filter0_f)'
                         d='M32.414 59.35L50.376 70.5H72.5v-71H33.728L26.5 13.381l19.057 27.08L32.414 59.35z'
@@ -48,9 +45,9 @@ class MarbleAvatar extends LitElement {
                             ') rotate(' +
                             properties[1].rotate +
                             ' ' +
-                            this.height / 2 +
+                            SIZE / 2 +
                             ' ' +
-                            this.height / 2 +
+                            SIZE / 2 +
                             ') scale(' +
                             properties[2].scale +
                             ')'
@@ -69,9 +66,9 @@ class MarbleAvatar extends LitElement {
                             ') rotate(' +
                             properties[2].rotate +
                             ' ' +
-                            this.height / 2 +
+                            SIZE / 2 +
                             ' ' +
-                            this.height / 2 +
+                            SIZE / 2 +
                             ') scale(' +
                             properties[2].scale +
                             ')'
@@ -82,7 +79,7 @@ class MarbleAvatar extends LitElement {
                       y="50%"
                       dominant-baseline="central"
                       text-anchor="middle"
-                      font-size='${this.height / 2}'
+                      font-size='2.5em'
                       font-weight='500'
                       fill='white'>
                     ${this.title}
@@ -107,9 +104,9 @@ class MarbleAvatar extends LitElement {
         const range = colors && colors.length;
         return Array.from({ length: ELEMENTS }, (_, i) => ({
             color: getRandomColor(numFromName + i, colors, range),
-            translateX: getUnit(numFromName * (i + 1), this.width / 10, 1),
-            translateY: getUnit(numFromName * (i + 1), this.height / 10, 2),
-            scale: 1.2 + getUnit(numFromName * (i + 1), this.height / 20, undefined) / 10,
+            translateX: getUnit(numFromName * (i + 1), SIZE / 10, 1),
+            translateY: getUnit(numFromName * (i + 1), SIZE / 10, 2),
+            scale: 1.2 + getUnit(numFromName * (i + 1), SIZE / 20, undefined) / 10,
             rotate: getUnit(numFromName * (i + 1), 360, 1),
         }));
     }

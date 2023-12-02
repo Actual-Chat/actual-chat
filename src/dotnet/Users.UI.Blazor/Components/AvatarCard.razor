@@ -6,14 +6,10 @@
     Class="@Class"
     Title="@Avatar.Name"
     Picture="@Avatar.Picture"
-    Size="@Size"
-    Width="@Width"
-    Height="@Height"/>
+    Size="@Size"/>
 
 @code {
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = AvatarFull.None;
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size9;
-    [Parameter] public int Width { get; set; } = 36;
-    [Parameter] public int Height { get; set; } = 36;
     [Parameter] public string Class { get; set; } = "";
 }
