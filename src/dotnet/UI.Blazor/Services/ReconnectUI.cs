@@ -37,7 +37,7 @@ public class ReconnectUI : RpcPeerStateMonitor
             while (true) {
                 await State.When(x => !x.IsConnected, cts.Token).ConfigureAwait(false);
                 RpcReconnectDelayer.CancelDelays();
-                await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
+                await Task.Delay(TimeSpan.FromSeconds(1), cts.Token).ConfigureAwait(false);
             }
             // ReSharper disable once FunctionNeverReturns
         });

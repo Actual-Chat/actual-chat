@@ -5,18 +5,12 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class AuthorUI(ChatHub chatHub) : ScopedServiceBase(chatHub.Scope())
 {
-    private ILogger? _log;
-
     private ChatHub ChatHub { get; } = chatHub;
-    private Session Session => ChatHub.Session;
     private IAccounts Accounts => ChatHub.Accounts;
     private IAuthors Authors => ChatHub.Authors;
     private ModalUI ModalUI => ChatHub.ModalUI;
     private History History => ChatHub.History;
     private UICommander UICommander => ChatHub.UICommander();
-    private MomentClockSet Clocks => ChatHub.Clocks();
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
-    private ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public async Task Show(AuthorId authorId, CancellationToken cancellationToken = default)
     {

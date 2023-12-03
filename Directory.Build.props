@@ -144,12 +144,13 @@
     <!-- MA0018: Do not declare static members on generic types -->
     <!-- MA0048: File name must match type name -->
     <!-- MA0056: Virtual method call in constructor -->
+    <!-- MA0064: Avoid locking on publicly accessible instance - buggy, triggers on protected fields -->
     <!-- MA0099: Use Explicit enum value for 'Flag' instead of 0 -->
     <!-- RCS1047: Non-asynchronous method name should not end with 'Async' -->
     <!-- VSTHRD003: Avoid awaiting or returning a Task representing work that was not start ed within your context as that can lead to deadlocks. -->
     <!-- VSTHRD103: StateHasChanged synchronously blocks. Await NotifyStateHasChanged instead. -->
     <!-- VSTHRD110: Observe the awaitable result of this method call by awaiting it, assigning to a variable, or passing it to another method. -->
-    <NoWarn>$(NoWarn);MA0009;MA0018;MA0048;MA0056;MA0099;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110</NoWarn>
+    <NoWarn>$(NoWarn);MA0009;MA0018;MA0048;MA0056;MA0064;MA0099;RCS1047;VSTHRD003;VSTHRD103;VSTHRD110</NoWarn>
     <!-- New .NET 8 warnings -->
     <!-- CA1001: Type C owns disposable field(s) F but is not disposable -->
     <!-- CA1002: Change 'List<T>' in P to use 'Collection<T>', 'ReadOnlyCollection<T>' or 'KeyedCollection<K,V>' -->

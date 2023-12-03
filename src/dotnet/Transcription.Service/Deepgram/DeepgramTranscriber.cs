@@ -73,15 +73,13 @@ public partial class DeepGramTranscriber : ITranscriber
                 Model = language is "ru" or "zh-CN"
                     ? "general"
                     : "nova-2",
-            });
+            }).ConfigureAwait(false);
 
             await whenConnected.ConfigureAwait(false);
-
-            await PushAudio(transcriptState, cancellationToken);
+            await PushAudio(transcriptState, cancellationToken).ConfigureAwait(false);
 
             await whenCompleted.ConfigureAwait(false);
             await deepgramLive.StopConnectionAsync().ConfigureAwait(false);
-
         }
         catch (Exception e) {
             error = e;
@@ -183,7 +181,7 @@ public partial class DeepGramTranscriber : ITranscriber
         }
 
         if (state.Unstable.Length != 0)
-            state.Output.WriteAsync(state.Unstable);
+            _ = state.Output.WriteAsync(state.Unstable);
     }
 
     private static bool TryParseFinal(

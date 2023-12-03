@@ -1,6 +1,5 @@
 using ActualChat.Audio;
 using Deepgram.Interfaces;
-using Google.Cloud.Speech.V2;
 
 namespace ActualChat.Transcription.Deepgram;
 

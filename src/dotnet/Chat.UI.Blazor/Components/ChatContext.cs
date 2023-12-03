@@ -31,7 +31,7 @@ public sealed record ChatContext(
         // Technically there is Session too, but Session is "pinned" to scoped Services,
         // so no need to compare it.
         var mustReset =
-            !ReferenceEquals(scope, lastContext.Scope) // Service scope changed
+            !ReferenceEquals(scope, lastContext.Scope()) // Service scope changed
             || !ReferenceEquals(ownAccount, lastContext.OwnAccount); // Own account changed
         if (mustReset)
             return new ChatContext(scope, chat, ownAccount);
