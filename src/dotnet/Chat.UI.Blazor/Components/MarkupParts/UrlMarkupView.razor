@@ -15,17 +15,6 @@
     return;
 }
 
-@if (Markup.Kind == UrlMarkupKind.Image) {
-    <a class="@cls"
-       href="@_hrefUrl"
-       role="button"
-       @onclick="() => VisualMediaViewerUI.Show(_hrefUrl)"
-       @onclick:preventDefault="true">
-        <img draggable="false" src="@_hrefUrl" alt="@url"/>
-    </a>
-    return;
-}
-
 <a class="@cls" href="@_hrefUrl" target="_blank"
    data-menu="@(MenuRef.New<MessageMenu>(_message.Entry.Id, bool.FalseString, url, ""))">
     @url
@@ -34,7 +23,6 @@
 @code {
     private static readonly Dictionary<UrlMarkupKind, string> Classes = new[] {
         UrlMarkupKind.Www,
-        UrlMarkupKind.Image,
         UrlMarkupKind.Email,
     }.ToDictionary(x => x, x => $"url-markup url-markup-{x.ToString().ToLowerInvariant()}");
 

@@ -4,5 +4,4 @@ public enum UrlMarkupKind
 {
     Www,
     Email,
-    Image,
 }

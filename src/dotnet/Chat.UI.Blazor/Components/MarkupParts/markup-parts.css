@@ -14,15 +14,8 @@
     @apply bg-mention-own text-mention-own-text;
 }
 
-.url-markup:not(.url-markup-image) {
+.url-markup {
     @apply cursor-pointer no-underline hover:underline text-primary;
-}
-.url-markup.url-markup-image {
-    @apply cursor-pointer;
-}
-.url-markup.url-markup-image img {
-    max-width: 400px;
-    max-height: 300px;
 }
 
 .plain-text-markup {
