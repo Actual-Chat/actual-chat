@@ -12,6 +12,7 @@
 .author-modal .c-header {
     @apply relative;
     @apply min-h-36 w-full;
+    @apply mb-2;
 }
 .author-modal .c-header > .c-top {
     @apply relative;
@@ -24,7 +25,7 @@
 }
 .author-modal .c-header > .c-bottom {
     @apply absolute bottom-0 z-10;
-    @apply flex-y items-start justify-center;
+    @apply flex-y items-start justify-end;
     @apply h-2/5 w-full;
     @apply px-4;
     @apply bg-modal;
@@ -42,9 +43,6 @@
     @apply flex-x;
     @apply h-16 w-full;
     @apply px-4;
-}
-.author-modal .c-header > .c-center > .avatar-circle {
-    @apply mb-8;
 }
 .author-modal .c-header > .c-center > .c-buttons {
     @apply flex-1 flex-x items-center justify-end gap-x-3;
