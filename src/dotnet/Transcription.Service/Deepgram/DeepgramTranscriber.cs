@@ -163,7 +163,7 @@ public partial class DeepGramTranscriber : ITranscriber
         }
     }
 
-    private void ProcessResponse(DeepgramTranscribeState state, LiveTranscriptionResult result)
+    private static void ProcessResponse(DeepgramTranscribeState state, LiveTranscriptionResult result)
     {
         var isFinal = result.IsFinal;
         var suffix = result.Channel?.Alternatives.FirstOrDefault()?.Transcript ?? "";
