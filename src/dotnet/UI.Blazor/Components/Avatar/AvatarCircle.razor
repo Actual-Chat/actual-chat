@@ -9,9 +9,10 @@
     var isSvg = hasPicture && _pictureUrl.Contains("svg", StringComparison.OrdinalIgnoreCase);
     if (isSvg)
         _pictureUrl += "#svgView(preserveAspectRatio(none))";
+    var avatarClass = IsBlurred ? "avatar-blurred": "";
 }
 
-<div class="avatar-circle">
+<div class="avatar-circle @avatarClass">
     <div class="c-content">
         @if (ReferenceEquals(Avatar, Avatar.Loading)) {
             <div class="c-skeleton @_class"></div>

@@ -27,8 +27,10 @@
     @apply rounded-full;
 }
 .avatar-circle > .c-content {
-    @apply relative;
     @apply overflow-hidden;
+}
+.avatar-circle:not(.avatar-blurred) > .c-content {
+    @apply relative;
 }
 .avatar-circle > .c-content > .c-skeleton {
     @apply rounded-full;
