@@ -1,18 +1,14 @@
 @using ActualChat.UI.Blazor.Module
 @using Stl.Rpc
 @namespace ActualChat.UI.Blazor.Components
-@inherits ComputedStateComponent<RpcPeerState?>
+@inherits StatefulComponentBase<IState<RpcPeerState>>
 @{
-    var m = State.Value ?? ReconnectUI.ConnectedState;
-    if (m.IsConnected) {
-        _isVisible = false;
+    var m = State.Value;
+    if (m.Kind == RpcPeerStateKind.Connected)
         return;
-    }
 
-    var now = ReconnectUI.Clock.Now;
-    var isReconnecting = m.ReconnectsAt <= now;
-    if (_isVisible || m.ReconnectsAt > now + TimeSpan.FromSeconds(1))
-        _isVisible = true;
+    _isVisible = m.Kind is RpcPeerStateKind.Disconnected;
+    // Services.LogFor(GetType()).LogInformation("State: {State}", m);
 }
 
 <Banner Class="reconnect-banner" IsVisible="@_isVisible">
@@ -20,19 +16,25 @@
         <i class="icon-cloud-disconnected"></i>
     </Icon>
     <Body>
-        <div class="c-main-text">Connection lost.</div>
-        @if (isReconnecting) {
-            <div class="c-secondary-text">Reconnecting...</div>
-        } else {
-            <div class="c-secondary-text">
-                Will reconnect in
-                <Countdown Class="reconnect-countdown" EndsAt="@(m.ReconnectsAt + TimeSpan.FromSeconds(1))" Format="{0:mm\:ss}"/>
-            </div>
-
+        @if (m.Kind == RpcPeerStateKind.JustConnected) {
+            <div class="c-main-text">Connected!</div>
+        } else { // JustDisconnected or Disconnected
+            <div class="c-main-text">Connection lost.</div>
+            @if (m.ReconnectsIn == default) {
+                <div class="c-secondary-text">Reconnecting...</div>
+            } else {
+                <div class="c-secondary-text">
+                    Will reconnect in
+                    <Countdown
+                        Class="reconnect-countdown"
+                        EndsAt="@(ReconnectUI.Now + m.ReconnectsIn)"
+                        Format="{0:mm\:ss}"/>
+                </div>
+            }
         }
     </Body>
     <Buttons>
-        @if (!isReconnecting) {
+        @if (m.ReconnectsIn != default) {
             <Button Class="btn-transparent on" Click="@(_ => ReconnectUI.ReconnectIfDisconnected())">Retry</Button>
         }
     </Buttons>
@@ -43,19 +45,11 @@
 
     [Inject] private ReconnectUI ReconnectUI { get; init; } = null!;
 
-    protected override ComputedState<RpcPeerState?>.Options GetStateOptions()
-        => new() {
-            UpdateDelayer = FixedDelayer.Instant,
-            Category = GetStateCategory(),
-        };
-
-    protected override async Task<RpcPeerState?> ComputeState(CancellationToken cancellationToken)
-    {
-        try {
-            return await ReconnectUI.UseState(cancellationToken);
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            return null;
-        }
+    protected override void OnInitialized() {
+        State = ReconnectUI.State;
+        base.OnInitialized();
     }
+
+    public override ValueTask DisposeAsync()
+        => default; // Shouldn't dispose State!
 }

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Stl.Fusion.Client.Caching;
 using Stl.Fusion.Client.Interception;
 using Stl.Fusion.Diagnostics;
+using Stl.Rpc;
 
 namespace ActualChat.UI.Blazor.Module;
 
@@ -39,8 +40,6 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         fusion.AddBlazor();
         // The only thing we use from fusion.AddBlazor().AddAuthentication():
         services.AddScoped(c => new WebClientAuthHelper(c));
-        if (appKind.IsClient())
-            fusion.AddRpcPeerStateMonitor();
 
         // Authentication
         // fusion.AddAuthClient();
@@ -87,14 +86,13 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddScoped(c => new UIEventHub(c));
 
         // UI services
+        services.AddScoped(c => new LoadingUI(c));
+        services.AddScoped(c => new ReconnectUI(c.Scope()));
         services.AddScoped(c => new ReloadUI(c));
-
         if (appKind.IsMauiApp())
             services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c));
         else
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
-        services.AddScoped(c => new LoadingUI(c));
-        services.AddScoped(c => new ReconnectUI(c));
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new InteractiveUI(c));
         services.AddScoped(c => new History(c));

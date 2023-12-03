@@ -100,12 +100,12 @@ public class AppScopedServiceStarter
 
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
+            Services.GetRequiredService<ReconnectUI>().Start();
             if (appKind.IsClient())
                 Services.GetRequiredService<SessionTokens>().Start();
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<AppIconBadgeUpdater>().Start();
             Services.GetRequiredService<AppActivity>().Start();
-            Services.GetService<RpcPeerStateMonitor>()?.Start(); // Available only on the client
             Services.GetRequiredService<TuneUI>(); // Auto-starts on construction
             if (!HostInfo.IsProductionInstance)
                 Services.GetRequiredService<DebugUI>();

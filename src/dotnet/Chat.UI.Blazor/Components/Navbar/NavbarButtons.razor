@@ -49,8 +49,8 @@
     @if (m.IsAdmin) {
         <NavbarButton
             Class="mt-auto"
-            Tooltip="Restart"
-            Click="OnRestartClick">
+            Tooltip="Reload UI"
+            Click="@OnReloadUIClick">
             <i class="icon-refresh text-2xl font-medium"></i>
         </NavbarButton>
     }
@@ -62,6 +62,6 @@
     private Task OnCreateChatClick()
         => ModalUI.Show(new NewChatModal.Model());
 
-    private void OnRestartClick()
+    private void OnReloadUIClick()
         => Services.GetRequiredService<ReloadUI>().Reload();
 }

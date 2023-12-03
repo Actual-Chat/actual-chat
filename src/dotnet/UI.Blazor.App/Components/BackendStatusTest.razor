@@ -3,7 +3,7 @@
     var errors = State.Value;
 }
 
-<h3>Backend status:</h3>
+<h3>Connection state:</h3>
 @if (!errors.IsNullOrEmpty()) {
     <h4>@errors</h4>
 }
@@ -12,13 +12,12 @@ else {
 }
 
 @code {
-    private RpcPeerStateMonitor? _monitor;
+    private ReconnectUI? _reconnectUI;
 
     [Inject] private Session Session { get; init; } = null!;
 
     protected override void OnInitialized() {
-        _monitor = Services.GetService<RpcPeerStateMonitor>();
-        _monitor?.Start();
+        _reconnectUI = Services.GetService<ReconnectUI>();
         base.OnInitialized();
     }
 
@@ -29,15 +28,12 @@ else {
         };
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
-        if (_monitor == null)
+        if (_reconnectUI == null)
             return "";
 
         try {
-            var state = await _monitor.State.Use(cancellationToken);
-            if (state == null)
-                return "";
-
-            return state.Error?.Message ?? "Unknown error";
+            var state = await _reconnectUI.State.Use(cancellationToken);
+            return state.GetDescription();
         }
         catch (Exception e) {
             return e.Message;
