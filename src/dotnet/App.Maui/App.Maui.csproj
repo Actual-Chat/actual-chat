@@ -4,7 +4,7 @@
     <TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.22000.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
-    <AssemblyName>AC</AssemblyName>
+    <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
     <Configurations>Release;Debug</Configurations>
     <DefineConstants>$(DefineConstants);USE_MAUI_SPLASH</DefineConstants>
