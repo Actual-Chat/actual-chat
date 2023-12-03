@@ -120,13 +120,12 @@ public class MarkupParserTest : TestBase
     {
         var m = Parse<UrlMarkup>("https://pravlife.org/sites/field/image/13_48.jpg", out var text);
         m.Url.Should().Be(text);
-        m.Kind.Should().Be(UrlMarkupKind.Image);
+        m.Kind.Should().Be(UrlMarkupKind.Www);
 
         m = Parse<UrlMarkup>("www.pravlife.org/sites/field/image/13_48.jpg", out text);
         m.Url.Should().Be(text);
-        m.Kind.Should().Be(UrlMarkupKind.Image);
+        m.Kind.Should().Be(UrlMarkupKind.Www);
     }
-
 
     [Fact]
     public void EmailTest()

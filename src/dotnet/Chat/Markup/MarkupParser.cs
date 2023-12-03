@@ -67,11 +67,6 @@ public partial class MarkupParser : IMarkupParser
     private static readonly Parser<char, string> QuotedName =
         PreToken.Then(NotPreToken.Or(DoublePreToken).ManyString()).Before(PreToken);
 
-    // Regex: Image
-    [GeneratedRegex("\\.(jpg|jpeg|png|gif|png|webp)$", RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)]
-    private static partial Regex ImageUrlRegexFactory();
-    private static readonly Regex ImageUrlRegex = ImageUrlRegexFactory();
-
     // Regex: Url
 
     private static readonly UInt128 FirstUrlCharBits;
@@ -147,7 +142,7 @@ public partial class MarkupParser : IMarkupParser
         from tail in UrlChar.AtLeastOnceString()
         select head + tail)
         .Where(s => UrlRegex.IsMatch(s))
-        .Select(s => (Markup)new UrlMarkup(s, ImageUrlRegex.IsMatch(s) ? UrlMarkupKind.Image : UrlMarkupKind.Www));
+        .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Www));
     private static Parser<char, Markup> Email => (
         from head in FirstEmailChar
         from tail in EmailChar.AtLeastOnceString()
