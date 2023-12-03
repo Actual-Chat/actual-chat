@@ -6,7 +6,8 @@
 @{
     var title = HasTooltip ? Avatar.Name : "";
     var hasPicture = !_pictureUrl.IsNullOrEmpty();
-    var isSvg = hasPicture && _pictureUrl.Contains("svg", StringComparison.OrdinalIgnoreCase);
+    var isSvg = hasPicture && (_pictureUrl.Contains("svg", StringComparison.OrdinalIgnoreCase)
+        || _pictureUrl.Contains("boringavatars", StringComparison.OrdinalIgnoreCase));
     if (isSvg)
         _pictureUrl += "#svgView(preserveAspectRatio(none))";
     var avatarClass = IsBlurred ? "avatar-blurred": "";
