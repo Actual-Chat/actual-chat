@@ -1006,48 +1006,41 @@ export class VirtualList {
             let shouldResync = false;
 
             const pivotEpsilon = PivotSyncEpsilon + 100 * iteration;
-            // fastRaf performs read\update in proper order during single call to requestAnimationFrame
             const whenRestoreCompleted = new PromiseSource();
-            fastRaf({
-                read: () => {
-                    const pivotOffset = pivot.offset;
-                    const itemRect = pivotRef.getBoundingClientRect();
-                    const currentPivotOffset = Math.round(itemRect.top);
-                    const dPivotOffset = pivotOffset - currentPivotOffset;
-                    scrollTop = this._ref.scrollTop;
-                    if (Math.abs(dPivotOffset) > pivotEpsilon) {
-                        debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${Math.round(itemRect.top)} + ${dPivotOffset}`, pivot);
-                        scrollTop -= dPivotOffset;
-                        shouldResync = true;
+            // code below triggers forced reflow - but it's OK  - reflow will be triggered after adding new elements anyway
+            const pivotOffset = pivot.offset;
+            const itemRect = pivotRef.getBoundingClientRect();
+            const currentPivotOffset = Math.round(itemRect.top);
+            const dPivotOffset = pivotOffset - currentPivotOffset;
+            scrollTop = this._ref.scrollTop;
+            if (Math.abs(dPivotOffset) > pivotEpsilon) {
+                debugLog?.log(`restoreScrollPosition: [${pivot.itemKey}]: ~${scrollTop} = ${pivotOffset} ~> ${Math.round(itemRect.top)} + ${dPivotOffset}`, pivot);
+                scrollTop -= dPivotOffset;
+                shouldResync = true;
+            }
+            if (shouldResync) {
+                // debug helper
+                // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+
+                // set scroll styles to improve UX on iOS before setting scrollTop
+                this._inertialScroll.freeze();
+                this._ref.scrollTop = scrollTop;
+                fastRaf({
+                    write: () => {
+                        this._inertialScroll.unfreeze();
                     }
-                },
-                write: () => {
-                    if (shouldResync) {
-                        // debug helper
-                        // pivotRef.style.backgroundColor = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+                });
+                debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
+            } else if (this._isNearSkeleton && Math.abs(scrollTop) < PivotSyncEpsilon) {
+                debugLog?.log(`restoreScrollPosition: scrollTop ~= 0`, this.isRendering);
 
-                        // set scroll styles to improve UX on iOS before setting scrollTop
-                        this._inertialScroll.freeze();
-                        this._ref.scrollTop = scrollTop;
-                        fastRaf({
-                            write: () => {
-                                this._inertialScroll.unfreeze();
-                            }
-                        });
-                        debugLog?.log(`restoreScrollPosition: scroll set`, scrollTop);
-                    } else if (this._isNearSkeleton && Math.abs(scrollTop) < PivotSyncEpsilon) {
-                        debugLog?.log(`restoreScrollPosition: scrollTop ~= 0`, this.isRendering);
-
-                        // we have lost scroll offset so let's scroll to the last visible pivot
-                        this.scrollTo(pivotRef, false);
-                    } else
-                        debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
+                // we have lost scroll offset so let's scroll to the last visible pivot
+                this.scrollTo(pivotRef, false);
+            } else
+                debugLog?.log(`restoreScrollPosition: skipped [${pivot.itemKey}]: ~${scrollTop}`, pivot);
 
 
-                    whenRestoreCompleted.resolve(undefined);
-                },
-                key: "restore-scroll-position",
-            });
+            whenRestoreCompleted.resolve(undefined);
 
             await whenRestoreCompleted;
             // check position again, on Chromium scrollTop can be stale

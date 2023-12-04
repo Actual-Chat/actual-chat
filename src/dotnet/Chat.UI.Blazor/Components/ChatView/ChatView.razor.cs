@@ -11,9 +11,8 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessage>, IDisposable
 {
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
-    public static readonly long HalfMinLoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
-    public static readonly long MinLoadLimit = 4 * IdTileStack.Layers[1].TileSize; // 80
-    public static readonly long SearchLimit = 10 * IdTileStack.Layers[1].TileSize; // 200
+    public static readonly long HalfLoadLimit = IdTileStack.Layers[1].TileSize; // 20
+    public static readonly long LoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
     public static readonly TimeSpan FastUpdateRecency = TimeSpan.FromMilliseconds(100);
     public static readonly TimeSpan FastUpdateDelay = TimeSpan.FromMilliseconds(20);
     public static readonly TimeSpan SlowUpdateDelay = TimeSpan.FromMilliseconds(100);
@@ -268,7 +267,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Update delay: we want to collect as many dependencies as possible here,
         // but don't want to delay rapid updates.
         // We don't need delays when data is being requested by the client code - e.g. when query isn't None
-        if (query.IsNone) {
+        if (query.IsNone && renderedData.Index > 2) {
             var lastData = state.ValueOrDefault ?? VirtualListData<ChatMessage>.None;
             var lastComputedAt = lastData.IsNone ? startedAt : lastData.ComputedAt;
             var isFastUpdate = startedAt - lastComputedAt <= FastUpdateRecency;
@@ -304,7 +303,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var idRangeToLoad = GetIdRangeToLoad(query, renderedData, nav, chatIdRange);
         var hasVeryFirstItem = idRangeToLoad.Start <= chatIdRange.Start;
         var hasVeryLastItem = idRangeToLoad.End >= chatIdRange.End;
-        if (idRangeToLoad.End + HalfMinLoadLimit >= chatIdRange.End)
+        if (idRangeToLoad.End + HalfLoadLimit >= chatIdRange.End)
             await cChatIdRange.Use(cancellationToken); // Add dependency on chatIdRange
 
         activity?.SetTag("AC." + "IdRange", chatIdRange.Format());
@@ -390,6 +389,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         }
 
         var result = new VirtualListData<ChatMessage>(tiles) {
+            Index = renderedData.Index + 1,
             HasVeryFirstItem = hasVeryFirstItem,
             HasVeryLastItem = hasVeryLastItem,
             ScrollToKey = navEntry != null && mustScrollToEntry ? navEntry.LocalId.Format() : null,
@@ -452,14 +452,14 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var range = (!query.IsNone, firstItem != null) switch {
             // No query, no data -> initial load
             (false, false) => new Range<long>(
-                firstLayer.GetTile(chatIdRange.End - MinLoadLimit).Start,
+                firstLayer.GetTile(chatIdRange.End - LoadLimit).Start,
                 chatIdRangeEndPlus),
             // No query, but there is old data + we're close to the end
             // KEEP THIS case, otherwise virtual list will grow indefinitely!
             (false, true) when Math.Abs(lastItem!.Entry.LocalId - chatIdRange.End) <= minTileSize
                 => new Range<long>(
                     firstLayer.GetTile(
-                        oldData.GetNthItem((int)(2 * MinLoadLimit), true)?.Entry.LocalId // Chopping head
+                        oldData.GetNthItem( (int)LoadLimit, true)?.Entry.LocalId // Chopping head
                         ?? firstItem!.Entry.LocalId
                     ).Start,
                     chatIdRangeEndPlus),
@@ -472,8 +472,8 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // If we are scrolling somewhere, let's extend the range to scrollAnchor & nearby entries.
         if (scrollAnchor is { } vScrollAnchor) {
             var scrollAnchorRange = new Range<long>(
-                vScrollAnchor.EntryLid - HalfMinLoadLimit,
-                vScrollAnchor.EntryLid + HalfMinLoadLimit);
+                vScrollAnchor.EntryLid - HalfLoadLimit,
+                vScrollAnchor.EntryLid + HalfLoadLimit);
             range = scrollAnchorRange.Overlaps(range)
                 ? range.MinMaxWith(scrollAnchorRange)
                 : scrollAnchorRange;
@@ -525,7 +525,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return false; // No item visibility or we aren't at the end of the list
 
         var shownReadEntryLid = _shownReadEntryLid.Value;
-        if (shownReadEntryLid > itemVisibility.MinEntryLid - MinLoadLimit)
+        if (shownReadEntryLid > itemVisibility.MinEntryLid - LoadLimit)
             return false; // The marker is visible or near the viewport
 
         var newShownReadEntryLid = UpdateReadPosition(itemVisibility.MaxEntryLid);

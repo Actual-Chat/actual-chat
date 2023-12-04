@@ -17,6 +17,7 @@ public sealed class VirtualListData<TItem>(IReadOnlyList<VirtualListTile<TItem>>
             : default;
 
     public IReadOnlyList<VirtualListTile<TItem>> Tiles { get; } = tiles;
+    public int Index { get; init; }
     public int? RequestedStartExpansion { get; init; }
     public int? RequestedEndExpansion { get; init; }
     public bool HasVeryFirstItem { get; init; }
