@@ -13,7 +13,7 @@ Web site: [actual.chat](https://actual.chat)
 
 Install:
 - [Git](https://git-scm.com/downloads)
-- [.NET 7](https://dotnet.microsoft.com/download/dotnet/7.0)
+- [.NET 8](https://dotnet.microsoft.com/download/dotnet/8.0)
 - `dotnet workload install wasm-tools`  
 - [Docker](https://www.docker.com/get-started)
 - [NodeJS 16+](https://nodejs.org/en/) and the latest `npm`;
