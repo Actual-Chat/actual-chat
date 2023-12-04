@@ -11,7 +11,7 @@
 /*Author modal header*/
 .author-modal .c-header {
     @apply relative;
-    @apply min-h-36 w-full;
+    @apply min-h-36 h-36 w-full;
     @apply mb-2;
 }
 .author-modal .c-header > .c-top {
