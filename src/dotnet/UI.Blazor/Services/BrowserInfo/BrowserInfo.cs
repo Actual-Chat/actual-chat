@@ -106,7 +106,7 @@ public class BrowserInfo : ScopedServiceBase, IBrowserInfoBackend
         if (isUpdated)
             _ = UICommander.RunNothing(); // To instantly update everything
         if (becameVisible)
-            Services.GetRequiredService<ReconnectUI>().ReconnectWhenDisconnected(); // To reconnect on showing up
+            Services.GetRequiredService<ReconnectUI>().ResetReconnectDelays();
     }
 
     protected void UpdateThemeInfo(IBrowserInfoBackend.ThemeInfo themeInfo)

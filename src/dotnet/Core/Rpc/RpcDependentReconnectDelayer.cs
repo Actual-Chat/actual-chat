@@ -18,7 +18,7 @@ public sealed class RpcDependentReconnectDelayer : RpcServiceBase, IRetryDelayer
 
     public Task WhenDisconnected(CancellationToken cancellationToken)
     {
-        var peer = (RpcClientPeer)Hub.GetPeer(PeerRef);
+        var peer = Hub.GetClientPeer(PeerRef);
         var connectionState = peer.ConnectionState;
         return connectionState.Value.IsConnected()
             ? connectionState.When(x => !x.IsConnected(), cancellationToken)
@@ -27,7 +27,7 @@ public sealed class RpcDependentReconnectDelayer : RpcServiceBase, IRetryDelayer
 
     public Task WhenConnected(CancellationToken cancellationToken)
     {
-        var peer = (RpcClientPeer)Hub.GetPeer(PeerRef);
+        var peer = Hub.GetClientPeer(PeerRef);
         var connectionState = peer.ConnectionState;
         return connectionState.Value.IsConnected() ? Task.CompletedTask : WhenConnectedImpl();
 
@@ -49,7 +49,7 @@ public sealed class RpcDependentReconnectDelayer : RpcServiceBase, IRetryDelayer
 
                 // We want to avoid high CPU consumption on possible rapid iterations here
                 await Task.Delay(50, cancellationToken).ConfigureAwait(false);
-                peer = (RpcClientPeer)Hub.GetPeer(RpcPeerRef.Default);
+                peer = Hub.GetClientPeer(PeerRef);
                 connectionState = peer.ConnectionState;
             }
         }

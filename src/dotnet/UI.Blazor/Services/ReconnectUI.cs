@@ -17,7 +17,7 @@ public class ReconnectUI : RpcPeerStateMonitor
         : base(scope.Services, scope.HostInfo.AppKind.IsClient() ? RpcPeerRef.Default : null, false)
         => Scope = scope;
 
-    public void ReconnectIfDisconnected(TimeSpan? watchInterval = null)
+    public void ReconnectIfDisconnected()
     {
         if (!IsClient)
             return;
@@ -26,21 +26,18 @@ public class ReconnectUI : RpcPeerStateMonitor
             RpcReconnectDelayer.CancelDelays();
     }
 
-    public void ReconnectWhenDisconnected() => ReconnectIfDisconnected(TimeSpan.FromSeconds(5));
-    public void ReconnectWhenDisconnected(TimeSpan watchInterval)
+    public void ResetReconnectDelays()
     {
         if (!IsClient)
             return;
 
-        _ = Task.Run(async () => {
-            using var cts = new CancellationTokenSource(watchInterval);
-            while (true) {
-                await State.When(x => !x.IsConnected, cts.Token).ConfigureAwait(false);
-                RpcReconnectDelayer.CancelDelays();
-                await Task.Delay(TimeSpan.FromSeconds(1), cts.Token).ConfigureAwait(false);
-            }
-            // ReSharper disable once FunctionNeverReturns
-        });
+        try {
+            RpcHub.GetClientPeer(RpcPeerRef.Default).ResetTryIndex();
+        }
+        catch {
+            // Intended
+        }
+        RpcReconnectDelayer.CancelDelays();
     }
 
 }

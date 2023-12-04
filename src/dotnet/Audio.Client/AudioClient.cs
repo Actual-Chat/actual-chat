@@ -3,21 +3,18 @@ using ActualChat.Rpc;
 using ActualChat.SignalR;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
-using Stl.Rpc;
 
 namespace ActualChat.Audio;
 
-public class AudioClient : HubClientBase,
-    IAudioStreamer,
-    ITranscriptStreamer
+public class AudioClient(IServiceProvider services)
+    : HubClientBase("api/hub/audio",
+        services.GetRequiredService<RpcDependentReconnectDelayer>(),
+        services
+    ), IAudioStreamer, ITranscriptStreamer
 {
-    private ILogger AudioSourceLog { get; }
+    private ILogger AudioSourceLog { get; } = Stl.DependencyInjection.ServiceProviderExt.LogFor<AudioSource>(services);
 
     public int StreamBufferSize { get; init; } = 64;
-
-    public AudioClient(IServiceProvider services)
-        : base("api/hub/audio", services.GetRequiredService<RpcDependentReconnectDelayer>(), services)
-        => AudioSourceLog = services.LogFor<AudioSource>();
 
     public async Task<AudioSource> GetAudio(
         Symbol streamId,
