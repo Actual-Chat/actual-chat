@@ -20,12 +20,10 @@
 .pic-blurred .pic-image {
     @apply rounded-none;
 }
-.pic-blurred image-skeleton {
-    @apply h-full;
-}
 
 .pic-image {
     @apply rounded-full;
+    @apply h-full;
 }
 
 .pic-show-cursor.pic-image {
