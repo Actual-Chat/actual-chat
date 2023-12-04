@@ -53,12 +53,7 @@ public class Crawler(IServiceProvider services) : IHasServices
 
     private async Task<CrawledLink> CrawlWebSite(string url, CancellationToken cancellationToken)
     {
-#pragma warning disable CA2234
-        var graph = await OpenGraph.ParseUrlAsync(url,
-                timeout: (int)Settings.CrawlerGraphParsingTimeout.TotalMilliseconds,
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-#pragma warning restore CA2234
+        var graph = await ParseUrl(url, cancellationToken).ConfigureAwait(false);
         // TODO: image size limit
         var mediaId = await GrabImage(graph.Image, cancellationToken).ConfigureAwait(false);
         var description = graph.Metadata["og:description"].Value();
@@ -77,6 +72,24 @@ public class Crawler(IServiceProvider services) : IHasServices
         );
 
         return new (graph.Title.HtmlDecode(), description, mediaId, videoMetadata);
+    }
+
+    private async Task<OpenGraph> ParseUrl(string url, CancellationToken cancellationToken)
+    {
+        var openGraph = await OpenGraph.ParseUrlAsync(
+                url,
+                timeout: (int)Settings.CrawlerGraphParsingTimeout.TotalMilliseconds,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+        if (!openGraph.Title.IsNullOrEmpty())
+            return openGraph;
+
+        return await OpenGraph.ParseUrlAsync(
+                url,
+                userAgent: "googlebot",
+                timeout: (int)Settings.CrawlerGraphParsingTimeout.TotalMilliseconds,
+                cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task<CrawledLink> CrawlImageLink(string url, CancellationToken cancellationToken)
