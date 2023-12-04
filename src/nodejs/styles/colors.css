@@ -197,6 +197,8 @@
     --black-10: #0000001A;
     --black-05: #0000000D;
     --black-50: #00000080;
+    --white-50: #FFFFFF80;
+    --white-40: #FFFFFF66;
     --white-30: #FFFFFF4D;
     --white-10: #FFFFFF1A;
     --white-05: #FFFFFF0D;
@@ -379,7 +381,7 @@
     --verify-cat-face: var(--gray-80);
     --verify-cat-shadow: var(--gray-80);
     --verify-cat-display: var(--blue-80);
-    --active-chats: var(--white-30)
+    --active-chats: var(--white-50)
 }
 .theme-dark {
     /* Background */
@@ -735,5 +737,5 @@
     --verify-cat-face: var(--gray-80);
     --verify-cat-shadow: var(--gray-80);
     --verify-cat-display: var(--blue-80);
-    --active-chats: var(--white-30)
+    --active-chats: var(--white-50);
 }

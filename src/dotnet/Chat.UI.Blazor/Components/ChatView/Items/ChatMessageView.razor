@@ -19,6 +19,7 @@
     var isBlockStart = message.Flags.HasFlag(ChatMessageFlags.BlockStart);
     var showAuthor = !isSystem && (isBlockStart || isReply);
     var showForwardHeader = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardStart);
+    var showForwardAuthor = !isSystem && isForward && message.Flags.HasFlag(ChatMessageFlags.ForwardAuthorStart);
 
     // Classes
     var systemClass = isSystem ? "system-entry" : "";
@@ -121,7 +122,7 @@
                     }
                 </div>
             }
-            @if (isForward) {
+            @if (isForward && showForwardAuthor) {
                 <div class="forwarded-author-header">
                     @if (m.ForwardedAuthor != null) {
                         <span class="forwarded-author-header-name message-link"

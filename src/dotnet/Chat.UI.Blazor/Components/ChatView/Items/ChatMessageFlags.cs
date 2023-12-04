@@ -7,4 +7,5 @@ public enum ChatMessageFlags
     BlockStart = 1 << 1,
     ForwardStart = 1 << 2,
     HasEntryKindSign = 1 << 3,
+    ForwardAuthorStart = 1 << 4,
 }

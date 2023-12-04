@@ -64,6 +64,8 @@ public partial class ChatUI
                 flags |= ChatMessageFlags.ForwardStart;
             if (isEntryUnread)
                 flags |= ChatMessageFlags.Unread;
+            if (isForwardBlockStart || (isPrevForward && !isForwardFromOtherChat && prevEntry?.ForwardedAuthorId != entry.ForwardedAuthorId))
+                flags |= ChatMessageFlags.ForwardAuthorStart;
             if (shouldAddToResult) {
                 if (hasVeryFirstItem && !isWelcomeBlockAdded) {
                     messages.Add(new ChatMessage(entry) {
