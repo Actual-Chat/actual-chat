@@ -42,7 +42,7 @@
 .navbar-chats .c-active-chats {
     @apply flex-none flex-y;
     @apply overflow-y-hidden;
-    @apply bg-02;
+    @apply bg-[var(--active-chats)];
 }
 .navbar-chats .c-active-chats > .c-delimiter {
     @apply hidden;

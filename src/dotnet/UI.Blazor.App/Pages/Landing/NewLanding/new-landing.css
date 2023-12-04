@@ -1,6 +1,7 @@
 .landing.new {
     @apply flex-y;
     @apply select-text;
+    @apply bg-01 text-01;
     color-scheme: only light;
 }
 .landing.new .landing-video,

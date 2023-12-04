@@ -379,10 +379,7 @@
     --verify-cat-face: var(--gray-80);
     --verify-cat-shadow: var(--gray-80);
     --verify-cat-display: var(--blue-80);
-
-    --right-panel-gradient-01: var(--frost-60);
-    --right-panel-gradient-02: var(--violet-60);
-    --right-panel-gradient-03: var(--purple-60);
+    --active-chats: var(--white-30)
 }
 .theme-dark {
     /* Background */
@@ -560,10 +557,7 @@
     --verify-cat-face: var(--white);
     --verify-cat-shadow: var(--ash-40);
     --verify-cat-display: var(--blue-80);
-
-    --right-panel-gradient-01: var(--frost-60);
-    --right-panel-gradient-02: var(--violet-60);
-    --right-panel-gradient-03: var(--purple-60);
+    --active-chats: var(--white-05)
 }
 .theme-ash {
     /* Background */
@@ -741,8 +735,5 @@
     --verify-cat-face: var(--gray-80);
     --verify-cat-shadow: var(--gray-80);
     --verify-cat-display: var(--blue-80);
-
-    --right-panel-gradient-01: var(--frost-60);
-    --right-panel-gradient-02: var(--violet-60);
-    --right-panel-gradient-03: var(--purple-60);
+    --active-chats: var(--white-30)
 }
