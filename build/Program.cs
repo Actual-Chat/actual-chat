@@ -336,7 +336,7 @@ internal static class Program
                     "-noLogo",
                     "-maxCpuCount",
                     "-nodeReuse:false",
-                    "-f net7.0-windows10.0.22000.0",
+                    "-f net8.0-windows10.0.22000.0",
                     "-p:RuntimeIdentifierOverride=win10-x64",
                     $"-c {configuration}",
                     isProduction ? "-p:IsDevMaui=false" : "")
