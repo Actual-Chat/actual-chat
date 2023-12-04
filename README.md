@@ -109,7 +109,7 @@ The instructions below imply you're on Windows.
   - run `dotnet build` from repo root.
 - Run this command from repo root:
   ```bash
-  dotnet publish src/dotnet/App.Maui/App.Maui.csproj -f net7.0-windows10.0.22000.0 -c Debug-MAUI --no-restore -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=true -p:PackageCertificateThumbprint=0BFF799D82CC03E61A65584D31D800924149453A
+  dotnet publish src/dotnet/App.Maui/App.Maui.csproj -f net8.0-windows10.0.22000.0 -c Debug-MAUI --no-restore -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=true -p:PackageCertificateThumbprint=0BFF799D82CC03E61A65584D31D800924149453A
   ```  
 
 Possible issues:
