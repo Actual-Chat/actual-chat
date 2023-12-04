@@ -260,7 +260,7 @@
     // And this causes crash on startup:
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/maui-blazor.aotprofile" />
     -->
-    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-v2.mibc" />
+    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-v1.mibc" />
   </ItemGroup>
 
   <!-- Android: AOT profiling mode -->
