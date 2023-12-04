@@ -17,10 +17,16 @@
 <div class="link-preview @compactCls">
     @if (m.PreviewMedia != null) {
         @if (m.IsYouTubeVideo) {
-            <image-skeleton
-                class="c-thumbnail"
-                src="@imageUrl"
-                @onclick="@OnVideoClick"/>
+            <div
+                class="c-thumbnail c-video"
+                @onclick="@OnVideoClick">
+                <image-skeleton
+                    class="c-skeleton"
+                    src="@imageUrl"/>
+                <div class="c-overlay">
+                    <i class="c-play icon-play-fill"></i>
+                </div>
+            </div>
         } else {
             <image-skeleton
                 class="c-thumbnail"
