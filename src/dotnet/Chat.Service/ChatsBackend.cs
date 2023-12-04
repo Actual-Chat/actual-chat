@@ -310,6 +310,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                         .Collect()
                         .ConfigureAwait(false))
                     .Where(m => m != null)
+                    .DistinctBy(m => m!.Id)
                     .ToDictionary(m => m!.Id)!
                 :  new Dictionary<MediaId,Media.Media>();
             return dbAttachments
