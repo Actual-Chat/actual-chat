@@ -23,6 +23,7 @@ Urgent fixes:
   - Allow to rename contacts + use your custom contact name for any author of a given user (unless anonymous)
   - Pin chat/user to the left panel
   - Join requests feature
+  - "New message [in another chat]" notification banner
 - Chat Settings panel:
   - Allow to set chat background image (shown @ the top of Chat Settings tab)
   - Show bios in Members list
@@ -51,6 +52,7 @@ Urgent fixes:
 
 - Bugs:
   - Back button behavior on Android
+  - "Copy" for multiple messages should also contain author names.
 
 Mid-term (team):
 - Refactor notifications
@@ -59,10 +61,6 @@ Mid-term (team):
 - How private chat links work (no timer, no max. invite count, manually revoke, show the list of private links, but no "New private link" for public chats)
 - Create chat should have ~ the same anonymity options as in Chat Settings
 - "Join as guest": think of how key walk-through items should look like after this / onboarding
-- "New message [in another chat]" notification banner
-- Sound on any message, + different sound for voice messages w/ more intensive throttling
-- ~~Fix "Paste" action - there are almost always extra empty lines~~
-- Think of how how & when to push a person who joined chat as guest to leave contact info. Ideally, show some dialog after his first message allowing him to sign in or leave this info.
 
 Backlog (team):
 
