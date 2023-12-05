@@ -8,7 +8,7 @@ public partial class MauiWebView
 {
     // ReSharper disable once CollectionNeverUpdated.Local
     private static readonly HashSet<string> AllowedExternalHosts = MauiSettings.WebAuth.UseSystemBrowser
-        ? new(StringComparer.Ordinal)
+        ? new(StringComparer.Ordinal) { "www.youtube.com" }
         : new(StringComparer.Ordinal) { "accounts.google.com", "appleid.apple.com" };
 
     public static readonly Uri BaseLocalUri = new($"https://{MauiSettings.LocalHost}/");
