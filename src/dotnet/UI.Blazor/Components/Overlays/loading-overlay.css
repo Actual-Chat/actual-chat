@@ -14,50 +14,34 @@
 
 .loading-overlay {
     @apply absolute inset-0 z-[1900] overflow-hidden;
+    @apply flex items-center justify-center;
     background-color: var(--loading-overlay-bg-color);
     @apply transition-opacity ease-in duration-250;
     will-change: custom;
 }
 
-/* The background of a square */
-.loading-overlay > .c-box {
-    @apply absolute;
-    top: calc(50vh - var(--loading-overlay-box-size)/2);
-    left: calc(50vw - var(--loading-overlay-box-size)/2);
-    width: var(--loading-overlay-box-size);
-    height: var(--loading-overlay-box-size);
-    @apply flex items-center justify-center overflow-hidden;
-    @apply bg-gradient-to-b from-[#0036A3] to-[#9B0C80];
+.loading-overlay .c-content {
+    @apply flex-y gap-y-8 items-center justify-center;
+    @apply min-w-48 min-h-48 max-w-48 max-h-48;
 }
-
-/* Light/reflection strip */
-.loading-overlay > .c-box::after {
-    @apply absolute top-0 bottom-0;
-    left: calc(50% - var(--loading-overlay-shine-size)/2);
-    width: var(--loading-overlay-shine-size);
-    height: 100%;
-    @apply opacity-50 blur;
-    @apply animate-swipe-by;
-    content: '';
-    background: linear-gradient(to left, transparent 0%, #fff 40%, #fff 60%, transparent 100%);
-    will-change: custom;
+.loading-overlay .c-content > img {
+    @apply min-h-32 min-w-32;
 }
-
-/* Logo */
-.loading-overlay > .c-box > img {
-    height: calc(var(--loading-overlay-logo-size) * 0.667);
+.loading-overlay .progress {
+    @apply relative;
+    @apply flex justify-start items-center;
+    @apply w-full min-h-1;
+    @apply rounded-full;
+    @apply bg-[var(--white-05)];
 }
-
-/* Rotating background, which "clips" c-box with a rotating border + bg */
-.loading-overlay > .c-rotating-bg {
-    @apply absolute z-10;
-    top: calc(50vh - var(--loading-overlay-logo-size)/2);
-    left: calc(50vw - var(--loading-overlay-logo-size)/2);
-    width: var(--loading-overlay-logo-size);
-    height: var(--loading-overlay-logo-size);
-    @apply rounded-5xl;
-    @apply bg-transparent;
-    box-shadow: 0 0 0 100vw var(--loading-overlay-bg-color);
-    animation: rotate-4 8s infinite;
-    will-change: custom;
+.loading-overlay .progress-value {
+    @apply w-0 h-1;
+    @apply rounded-full;
+    @apply bg-[var(--white)];
+    box-shadow: 0 5px 5px -5px var(--white);
+    animation: load 3s normal forwards;
+}
+@keyframes load {
+    0% { width: 0; }
+    100% { width: 100%; }
 }

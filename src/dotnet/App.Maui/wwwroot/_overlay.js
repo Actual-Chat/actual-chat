@@ -12,10 +12,12 @@
         }
         */
         overlay.innerHTML = `
-            <div class="c-box">
+            <div class="c-content">
                 <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="Loading...">
+                <div class="progress">
+                    <div class="progress-value"></div>
+                </div>
             </div>
-            <div class="c-rotating-bg"></div>
         `;
     }
 })();

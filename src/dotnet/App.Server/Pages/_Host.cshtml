@@ -173,10 +173,12 @@
         const overlay = document.getElementById('until-ui-is-ready');
         if (overlay) {
           overlay.innerHTML = `
-              <div class="c-box">
-                  <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="Loading...">
-              </div>
-              <div class="c-rotating-bg"></div>
+            <div class="c-content">
+                <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="Loading...">
+                <div class="progress">
+                    <div class="progress-value"></div>
+                </div>
+            </div>
           `;
         }
     </script>
