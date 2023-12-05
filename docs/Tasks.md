@@ -10,6 +10,10 @@ Urgent fixes:
 
 - General:
   - New "Modal with tabs" - Andrey, you can start working on this somewhere in /test/
+  - Email digest (once per day):
+    - The updates you've missed
+    - Summary on your chat updates (list of chats & authors who posted there)
+    - Summary on your activities (chats you wrote to, messages sent, the amount of time saved by talking, etc.)
   - Custom chat & account IDs (actual.chat/u/xxx URLs, + similar ones for chats - should be aliases requiring no redirect)
   - Add open graph tags for /chat/xxx & u/xxx URLs
   - Application tab: move Server/WASM mode there
@@ -18,6 +22,7 @@ Urgent fixes:
   - Allow to set author's background image
   - Allow to rename contacts + use your custom contact name for any author of a given user (unless anonymous)
   - Pin chat/user to the left panel
+  - Join requests feature
 - Chat Settings panel:
   - Allow to set chat background image (shown @ the top of Chat Settings tab)
   - Show bios in Members list
@@ -31,6 +36,7 @@ Urgent fixes:
   - Only owners can post
   - Owners must be able to delete other people's messages
   - Allow/disallow reactions from others
+  - Require join to view the content above last N messages
   - Later:
     - Max. voice fragment duration: [0 (Voice is disabled), 10, 30, 1 min., 3 min., 5min., no limit] seconds
     - Pause between voice fragments: [same as above + 10 min., 30 min., 1 hour]
@@ -47,10 +53,8 @@ Urgent fixes:
   - Back button behavior on Android
 
 Mid-term (team):
+- Refactor notifications
 - Extract Session service & migrate it to Redis
-- Efficient operation log monitoring and processing without re-reads
-- Import contacts & notify when some of your contacts register in Actual Chat
-
 - Join as guest shouldn't be enabled by default in chats w/ anonymity enabled
 - How private chat links work (no timer, no max. invite count, manually revoke, show the list of private links, but no "New private link" for public chats)
 - Create chat should have ~ the same anonymity options as in Chat Settings
