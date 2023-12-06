@@ -5,44 +5,58 @@
 @{
     // Console.Out.WriteLine("VirtualList.Render() = "  + Data.KeyRange + " !" + Data.GetHashCode());
     var renderIndex = RenderIndex++;
-    var spacerSize = Data.HasVeryFirstItem
+    // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
+    // We are unable to scroll to the right location until JS client part of the Virtual List created
+    var hasJsComponentCreated = JSRef != null;
+    var data = hasJsComponentCreated
+        ? Data
+        : VirtualListData<TItem>.None;
+    var skeletonCount = SkeletonCount;
+    var spacerSize = data.HasVeryFirstItem
         ? 0
-        : renderIndex == 0 && Data.Tiles.Count == 0
+        : renderIndex == 0 && data.Tiles.Count == 0
             ? 1000 // initial spacer size to cover all list area on first load
             : SpacerSize;
-    var endSpacerSize = Data.HasVeryLastItem
+    var endSpacerSize = data.HasVeryLastItem
         ? 0
         : renderIndex == 0
             ? 0
             : SpacerSize;
+    if (!hasJsComponentCreated && !Data.IsNone) {
+        // We already have data loaded for render, but still don't have JS VirtualList created - let's avoid rendering of the skeletons
+        spacerSize = 0;
+        endSpacerSize = 0;
+        skeletonCount = 0;
+    }
+
     var startExpansion = Query.IsNone
         ? 0
-        : Data.Tiles
+        : data.Tiles
             .SelectMany(t => t.Items)
             .TakeWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.Start) < 0)
             .Sum(i => i.CountAs);
     var endExpansion = Query.IsNone
         ? 0
-        : Data.Tiles
+        : data.Tiles
             .SelectMany(t => t.Items)
             .SkipWhile(i => KeyComparer.Compare(i.Key, Query.KeyRange.End) <= 0)
             .Sum(i => i.CountAs);
     var renderState = new VirtualListRenderState {
         RenderIndex = renderIndex,
         Query = Query,
-        KeyRange = Data.KeyRange,
+        KeyRange = data.KeyRange,
         SpacerSize = spacerSize,
         EndSpacerSize = endSpacerSize,
-        RequestedStartExpansion = Data.RequestedStartExpansion,
-        RequestedEndExpansion = Data.RequestedEndExpansion,
+        RequestedStartExpansion = data.RequestedStartExpansion,
+        RequestedEndExpansion = data.RequestedEndExpansion,
         StartExpansion = startExpansion,
         EndExpansion = endExpansion,
-        HasVeryFirstItem = Data.HasVeryFirstItem,
-        HasVeryLastItem = Data.HasVeryLastItem,
-        ScrollToKey = Data.ScrollToKey,
+        HasVeryFirstItem = data.HasVeryFirstItem,
+        HasVeryLastItem = data.HasVeryLastItem,
+        ScrollToKey = data.ScrollToKey,
     };
-    var tiles = Data.Tiles;
-    LastData = Data;
+    var tiles = data.Tiles;
+    LastData = data;
     Query = VirtualListDataQuery.None;
 }
 
@@ -66,13 +80,13 @@
     <div @key="@VirtualListSpecialKeys.Spacer"
          class="c-spacer-start"
          style="height: @(spacerSize)px">
-        <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
+        <VirtualListSkeletonView SkeletonCount="@skeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <ul @key="@VirtualListSpecialKeys.Container"
         class="c-virtual-container">
         @foreach (var tile in tiles) {
-            var isLastTile = Data.HasVeryLastItem && ReferenceEquals(tile, tiles[^1]);
+            var isLastTile = data.HasVeryLastItem && ReferenceEquals(tile, tiles[^1]);
             var isLastTileVisible = isLastTile && LastReportedItemVisibility.IsEndAnchorVisible;
             <VirtualListTileView @key="@tile.Key" Tile="@tile" Item="@Item" IsLastTileVisible="@isLastTileVisible"/>
         }
@@ -81,7 +95,7 @@
     <div @key="@VirtualListSpecialKeys.EndSpacer"
          class="c-spacer-end"
          style="height: @(endSpacerSize)px">
-        <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
+        <VirtualListSkeletonView SkeletonCount="@skeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <div @key="@VirtualListSpecialKeys.EndAnchor"

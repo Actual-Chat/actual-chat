@@ -1,4 +1,4 @@
-import { debounce, delayAsync, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
+import { debounce, PromiseSource, PromiseSourceWithTimeout, serialize, throttle } from 'promises';
 import { clamp } from 'math';
 import { NumberRange, Range } from './ts/range';
 import { InertialScroll } from './ts/inertial-scroll';
@@ -13,7 +13,6 @@ import { Pivot } from './ts/pivot';
 import { Log } from 'logging';
 import { fastRaf, fastReadRaf, fastWriteRaf } from 'fast-raf';
 import { DeviceInfo } from 'device-info';
-import { BrowserInfo } from "../../Services/BrowserInfo/browser-info";
 
 const { warnLog, debugLog } = Log.get('VirtualList');
 
@@ -576,10 +575,13 @@ export class VirtualList {
             const scrollToItemRef = this.getItemRef(rs.scrollToKey);
             if (scrollToItemRef != null) {
                 // Server-side scroll request
-                if (!this.isItemFullyVisible(scrollToItemRef)) {
+                if (!this.isKeyVisible(rs.scrollToKey)) {
                     if (rs.scrollToKey === this.getLastItemKey() && rs.hasVeryLastItem) {
+                        if (this._stickyEdge?.edge == VirtualListEdge.End)
+                            this.scrollToEnd(true);
+                        else
+                            this.scrollToEnd(false);
                         this.setStickyEdge({ itemKey: rs.scrollToKey, edge: VirtualListEdge.End });
-                        this.scrollToEnd(true);
                     } else {
                         this.scrollTo(scrollToItemRef, false);
                     }
@@ -904,6 +906,10 @@ export class VirtualList {
         return getItemKey(this.getLastItemRef());
     }
 
+    private isKeyVisible(itemKey: string): boolean {
+        return this._visibleItems.has(itemKey);
+    }
+
     private isItemFullyVisible(itemRef: HTMLElement): boolean {
         const itemRect = itemRef.getBoundingClientRect();
         const viewRect = this._ref.getBoundingClientRect();
@@ -962,15 +968,11 @@ export class VirtualList {
                 inline: 'nearest',
             });
         }
-        let offset = 0;
+        else {
+            this._ref.scrollTop = this._ref.scrollHeight;
+        }
         fastRaf({
-            read: () => {
-                offset = this._containerRef.offsetHeight;
-            },
             write: () => {
-                if (!useSmoothScroll) {
-                    this._ref.scrollTop = offset;
-                }
                 this._inertialScroll.unfreeze();
             }
         });
