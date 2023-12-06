@@ -8,8 +8,9 @@
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
     // We are unable to scroll to the right location until JS client part of the Virtual List created
     var hasJsComponentCreated = JSRef != null;
+    var dataSnapshot = Data;
     var data = hasJsComponentCreated
-        ? Data
+        ? dataSnapshot
         : VirtualListData<TItem>.None;
     var skeletonCount = SkeletonCount;
     var spacerSize = data.HasVeryFirstItem
@@ -22,7 +23,7 @@
         : renderIndex == 0
             ? 0
             : SpacerSize;
-    if (!hasJsComponentCreated && !Data.IsNone) {
+    if (!hasJsComponentCreated && !dataSnapshot.IsNone) {
         // We already have data loaded for render, but still don't have JS VirtualList created - let's avoid rendering of the skeletons
         spacerSize = 0;
         endSpacerSize = 0;
