@@ -66,11 +66,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (id.IsEmpty)
             return null;
 
-        var alreadyCrawlingKey = ToRedisKey(id);
         try {
-            var canCrawl = await RedisDb.Database
-                .StringSetAsync(alreadyCrawlingKey, Now.ToString(), Settings.CrawlingTimeout, When.NotExists)
-                .ConfigureAwait(false);
+            var canCrawl = await MarkCrawling(id).ConfigureAwait(false);
             if (!canCrawl)
                 // crawling of this url is already in progress
                 return LinkPreview.UseExisting;
@@ -135,7 +132,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             return dbLinkPreview.ToModel();
         }
         finally {
-            await RedisDb.Database.KeyDeleteAsync(alreadyCrawlingKey).ConfigureAwait(false);
+            await MarkNotCrawling(id).ConfigureAwait(false);
         }
     }
 
@@ -157,9 +154,6 @@ public class LinkPreviewsBackend(IServiceProvider services)
     }
 
     // Private methods
-
-    private static string ToRedisKey(Symbol id)
-        => $"{RedisKeyPrefix}{id.Value}";
 
     private async Task<LinkPreview?> GenerateForEntry(ChatEntry entry, CancellationToken cancellationToken)
     {
@@ -204,11 +198,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var mustRefresh = !url.IsNullOrEmpty()
             && (linkPreview == null || linkPreview.ModifiedAt + Settings.LinkPreviewUpdatePeriod < Now);
         if (mustRefresh) {
-            var alreadyCrawlingKey = ToRedisKey(id);
-            var isAlreadyCrawling = await RedisDb.Database
-                .KeyExistsAsync(alreadyCrawlingKey)
-                .ConfigureAwait(false);
-            if (isAlreadyCrawling)
+            if (await IsAlreadyCrawling(id).ConfigureAwait(false))
                 return linkPreview;
 
             var refreshTask = Commander.Call(new LinkPreviewsBackend_Refresh(url!), cancellationToken);
@@ -233,4 +223,18 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var markup = MarkupParser.Parse(entry.Content);
         return new LinkExtractor().GetLinks(markup);
     }
+
+    // redis helpers
+
+    private static string ToRedisKey(Symbol id)
+        => $"{RedisKeyPrefix}{id.Value}";
+
+    private Task<bool> MarkCrawling(Symbol id)
+        => RedisDb.Database.StringSetAsync(ToRedisKey(id), Now.ToString(), Settings.CrawlingTimeout, When.NotExists);
+
+    private Task<bool> MarkNotCrawling(Symbol id)
+        => RedisDb.Database.KeyDeleteAsync(ToRedisKey(id));
+
+    private Task<bool> IsAlreadyCrawling(Symbol id)
+        => RedisDb.Database.KeyExistsAsync(ToRedisKey(id));
 }
