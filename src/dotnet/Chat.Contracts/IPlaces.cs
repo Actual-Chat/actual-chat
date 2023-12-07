@@ -13,6 +13,15 @@ public interface IPlaces : IComputeService
     [ComputeMethod]
     Task<ApiArray<AuthorId>> ListAuthorIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ApiArray<AuthorId>> ListOwnerIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
+
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    Task<AuthorFull?> GetOwn(Session session, PlaceId placeId, CancellationToken cancellationToken);
+
+    [ComputeMethod, ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    Task<Author?> Get(Session session, PlaceId placeId, AuthorId authorId, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]
@@ -23,6 +32,15 @@ public interface IPlaces : IComputeService
 
     [CommandHandler]
     Task OnInvite(Places_Invite command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnExclude(Places_Exclude command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnRestore(Places_Restore command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnPromoteToOwner(Places_PromoteToOwner command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnDelete(Places_Delete command, CancellationToken cancellationToken);
@@ -51,6 +69,27 @@ public sealed partial record Places_Invite(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(2)] UserId[] UserIds
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Places_Exclude(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Places_Restore(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Places_PromoteToOwner(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] AuthorId AuthorId
 ) : ISessionCommand<Unit>;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
