@@ -41,6 +41,7 @@ export * from './Components/PicUpload/pic-upload';
 export * from './Components/FileUpload/file-upload';
 export * from './Components/Skeleton';
 export * from './Components/Share/share';
+export * from './Components/YoutubePlayer/youtube-player';
 
 export * from './Layouts/base-layout';
 
