@@ -208,7 +208,6 @@
 
     protected override void OnInitialized() {
         _isAdmin = ChatHub.AccountUI.OwnAccount.Value.IsAdmin;
-        base.OnInitialized();
         ChatId = Context.GetTypedModel<ChatId>();
         Context.SetTitle("Edit chat settings");
         if (ChatId.IsPeerChat(out _)) {
@@ -220,6 +219,7 @@
         }
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        base.OnInitialized();
     }
 
     protected override async Task OnInitializedAsync() {

@@ -62,12 +62,12 @@
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         ChatId = Context.GetTypedModel<ChatId>();
         if (ChatId.IsPeerChat(out _))
             throw StandardError.NotSupported("Peer chat id should not be provided.");
         Context.SetClass("edit-members");
         Context.RegisterButtons(DialogButtonInfo.BackButton);
+        base.OnInitialized();
     }
 
     private void OnFilter(string filter) {
