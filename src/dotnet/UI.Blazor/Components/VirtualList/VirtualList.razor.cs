@@ -96,7 +96,6 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
         if (firstRender) {
             BlazorRef = DotNetObjectReference.Create<IVirtualListBackend>(this);
             JSRef = await JS.InvokeAsync<IJSObjectReference>(VirtualList.JSCreateMethod, Ref, BlazorRef, Identity);
-            StateHasChanged();
         }
     }
 

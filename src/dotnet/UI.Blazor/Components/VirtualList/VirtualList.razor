@@ -8,26 +8,22 @@
     // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
     // We are unable to scroll to the right location until JS client part of the Virtual List created
     var hasJsComponentCreated = JSRef != null;
-    var dataSnapshot = Data;
-    var data = hasJsComponentCreated
-        ? dataSnapshot
-        : VirtualListData<TItem>.None;
-    var skeletonCount = SkeletonCount;
-    var spacerSize = data.HasVeryFirstItem
-        ? 0
-        : renderIndex == 0 && data.Tiles.Count == 0
-            ? 1000 // initial spacer size to cover all list area on first load
-            : SpacerSize;
-    var endSpacerSize = data.HasVeryLastItem
-        ? 0
-        : renderIndex == 0
-            ? 0
-            : SpacerSize;
-    if (!hasJsComponentCreated && !dataSnapshot.IsNone) {
-        // We already have data loaded for render, but still don't have JS VirtualList created - let's avoid rendering of the skeletons
+    var data = Data;
+    var spacerSize = SpacerSize;
+    var endSpacerSize = SpacerSize;
+    if (data.HasVeryFirstItem) {
         spacerSize = 0;
+    }
+    if (data.HasVeryLastItem) {
         endSpacerSize = 0;
     }
+
+    if (!hasJsComponentCreated || data.Tiles.Count == 0)
+        spacerSize = 1000;
+
+    var containerClass = !hasJsComponentCreated
+        ? "hide"
+        : "";
 
     var startExpansion = Query.IsNone
         ? 0
@@ -80,11 +76,11 @@
     <div @key="@VirtualListSpecialKeys.Spacer"
          class="c-spacer-start"
          style="height: @(spacerSize)px">
-        <VirtualListSkeletonView SkeletonCount="@skeletonCount" Skeleton="@Skeleton"/>
+        <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <ul @key="@VirtualListSpecialKeys.Container"
-        class="c-virtual-container">
+        class="c-virtual-container @containerClass">
         @foreach (var tile in tiles) {
             var isLastTile = data.HasVeryLastItem && ReferenceEquals(tile, tiles[^1]);
             var isLastTileVisible = isLastTile && LastReportedItemVisibility.IsEndAnchorVisible;
@@ -95,7 +91,7 @@
     <div @key="@VirtualListSpecialKeys.EndSpacer"
          class="c-spacer-end"
          style="height: @(endSpacerSize)px">
-        <VirtualListSkeletonView SkeletonCount="@skeletonCount" Skeleton="@Skeleton"/>
+        <VirtualListSkeletonView SkeletonCount="@SkeletonCount" Skeleton="@Skeleton"/>
     </div>
 
     <div @key="@VirtualListSpecialKeys.EndAnchor"

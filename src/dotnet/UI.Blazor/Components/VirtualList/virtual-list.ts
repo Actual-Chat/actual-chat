@@ -197,6 +197,19 @@ export class VirtualList {
         };
         if (this.parseRenderState() === null)
             this._renderStartedAt = Date.now();
+
+        if (this._containerRef.classList.contains('hide')) {
+            this._containerRef.classList.remove('hide');
+            const rs = this.parseRenderState();
+            if (rs?.hasVeryFirstItem) {
+                this._spacerRef.style.height = '0px';
+            }
+            else {
+                this._spacerRef.style.height = '200px';
+            }
+            if (rs?.hasVeryLastItem)
+                this._endSpacerRef.style.height = '0px';
+        }
         this.onItemSetChange([], this._itemSetChangeObserver);
     };
 
