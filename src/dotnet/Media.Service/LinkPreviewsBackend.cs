@@ -68,22 +68,22 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         var alreadyCrawlingKey = ToRedisKey(id);
         try {
-            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-            await using var __ = dbContext.ConfigureAwait(false);
-
-            var dbLinkPreview = await dbContext.LinkPreviews.ForUpdate()
-                .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (dbLinkPreview != null && Now - dbLinkPreview.ModifiedAt.ToMoment() < TimeSpan.FromDays(1))
-                return dbLinkPreview.ToModel();
-
             var canCrawl = await RedisDb.Database
                 .StringSetAsync(alreadyCrawlingKey, Now.ToString(), Settings.CrawlingTimeout, When.NotExists)
                 .ConfigureAwait(false);
             if (!canCrawl)
                 // crawling of this url is already in progress
-                return null!;
+                return LinkPreview.UseExisting;
+
+            var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+            await using var __ = dbContext.ConfigureAwait(false);
+
+            var dbLinkPreview = await dbContext.LinkPreviews.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (dbLinkPreview != null && Now - dbLinkPreview.ModifiedAt.ToMoment() < TimeSpan.FromDays(1))
+                return dbLinkPreview.ToModel();
 
             var linkMeta = await Crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
             if (dbLinkPreview == null) {
@@ -109,7 +109,10 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 dbContext.Add(dbLinkPreview);
             }
             else {
-                var linkPreview = dbLinkPreview.ToModel();
+                dbLinkPreview = await dbContext.LinkPreviews.ForNoKeyUpdate()
+                    .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
+                    .ConfigureAwait(false);
+                var linkPreview = dbLinkPreview!.ToModel();
                 linkPreview = linkPreview with {
                     PreviewMediaId = linkMeta.PreviewMediaId,
                     Title = linkMeta.Title,
@@ -201,11 +204,20 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var mustRefresh = !url.IsNullOrEmpty()
             && (linkPreview == null || linkPreview.ModifiedAt + Settings.LinkPreviewUpdatePeriod < Now);
         if (mustRefresh) {
+            var alreadyCrawlingKey = ToRedisKey(id);
+            var isAlreadyCrawling = await RedisDb.Database
+                .KeyExistsAsync(alreadyCrawlingKey)
+                .ConfigureAwait(false);
+            if (isAlreadyCrawling)
+                return linkPreview;
+
             var refreshTask = Commander.Call(new LinkPreviewsBackend_Refresh(url!), cancellationToken);
             if (!allowStale)
                 linkPreview = await refreshTask.ConfigureAwait(false);
             else if (linkPreview == null)
                 linkPreview = LinkPreview.Updating;
+            else if (linkPreview == LinkPreview.UseExisting)
+                return linkPreview;
         }
         if (linkPreview == null || linkPreview.PreviewMediaId.IsNone)
             return linkPreview;
