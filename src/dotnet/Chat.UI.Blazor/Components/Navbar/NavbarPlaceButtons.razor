@@ -45,6 +45,10 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var enableIncompleteUI = await ChatHub.Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        if (!enableIncompleteUI)
+            return new Model();
+
         var placeIds = await ChatHub.Contacts.ListPlaceIds(Session, cancellationToken);
         var selectedChatId = await ChatHub.ChatUI.SelectedChatId.Use(cancellationToken);
         if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
