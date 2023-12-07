@@ -8,7 +8,7 @@
     var statusText = m.IsOwner ? "Owner" : null;
 }
 
-<div class="edit-member-menu">
+<div class="edit-member-menu edit-chat-member-menu">
 
     <AuthorBadge
         AuthorSid="@AuthorId"
@@ -31,7 +31,7 @@
         </MenuEntry>
     }
 
-    @if (!m.CanRemoveFromGroup) {
+    @if (m.CanRemoveFromGroup) {
         <MenuEntrySeparator/>
         <MenuEntry
             Class="warning-item"
