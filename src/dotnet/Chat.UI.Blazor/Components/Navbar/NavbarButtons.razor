@@ -61,11 +61,6 @@
 }
 
 @code {
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-
-    private Task OnCreateChatClick()
-        => ModalUI.Show(new NewChatModal.Model());
-
     private void OnReloadUIClick()
         => Services.GetRequiredService<ReloadUI>().Reload();
 }
