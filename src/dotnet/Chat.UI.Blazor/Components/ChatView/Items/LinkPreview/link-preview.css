@@ -37,6 +37,10 @@
 .link-preview .c-thumbnail .c-skeleton {
     @apply h-full w-full;
 }
+.link-preview image-skeleton::part(image) {
+    object-fit: cover;
+    object-position: 25%;
+}
 /* icon */
 .link-preview .c-icon {
     @apply h-20 md:h-24 w-20 md:w-24;
