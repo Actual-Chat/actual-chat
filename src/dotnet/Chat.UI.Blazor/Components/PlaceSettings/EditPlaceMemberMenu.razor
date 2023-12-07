@@ -1,0 +1,69 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedMenuBase<EditPlaceMemberModel?>
+
+@{
+    var m = State.Value;
+    if (m == null)
+        return;
+    var statusText = m.IsOwner ? "Owner" : null;
+}
+
+<div class="edit-member-menu edit-place-member-menu">
+
+    <AuthorBadge
+        AuthorSid="@AuthorId"
+        ShowPresence="true"
+        ShowStatusText="@(statusText != null)"
+        StatusText="@statusText"/>
+
+    @if (m.CanPromoteToOwner) {
+        <MenuEntry
+            Icon="icon-star"
+            Click="@(() => OnPromoteToOwnerClick(m.Author))">
+            <TextContent>
+                <div class="flex-y">
+                    <div>Promote to Owner</div>
+                    <div class="ac-menu-hint">
+                        Owners can do anything with this place, including deleting it. This action cannot be undone.
+                    </div>
+                </div>
+            </TextContent>
+        </MenuEntry>
+    }
+
+    @if (m.CanRemoveFromGroup) {
+        <MenuEntrySeparator/>
+        <MenuEntry
+            Class="warning-item"
+            Icon="icon-minus-circle"
+            Text="Remove from place"
+            Click="@(() => OnRemoveFromPlaceClick(m.Author))">
+        </MenuEntry>
+    }
+
+</div>
+
+@code {
+    [Inject] private ChatHub ChatHub { get; init; } = null!;
+
+    private AuthorId AuthorId { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sAuthorId ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        AuthorId = new AuthorId(sAuthorId);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override Task<EditPlaceMemberModel?> ComputeState(CancellationToken cancellationToken)
+        => EditPlaceMemberCommands.ComputeState(ChatHub, AuthorId, cancellationToken);
+
+    private Task OnRemoveFromPlaceClick(Author author)
+        => EditPlaceMemberCommands.OnRemoveFromPlaceClick(ChatHub, author);
+
+    private async Task OnPromoteToOwnerClick(Author author) {
+        await WhenClosed;
+        await EditPlaceMemberCommands.OnPromoteToOwnerClick(ChatHub, author);
+    }
+}
