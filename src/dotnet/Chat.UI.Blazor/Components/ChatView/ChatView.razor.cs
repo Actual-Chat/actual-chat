@@ -498,11 +498,20 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return Task.CompletedTask;
 
         return Task.Run(async () => {
-            await IdTileStack.FirstLayer
+            var tiles = await IdTileStack.FirstLayer
                 .GetCoveringTiles(idRange)
                 .Select(x => Chats.GetTile(Session, chatId, ChatEntryKind.Text, x.Range, cancellationToken))
                 .Collect()
                 .ConfigureAwait(false);
+
+            // prefetch authors
+            await tiles
+                .SelectMany(t => t.Entries)
+                .Select(e => e.AuthorId)
+                .Distinct()
+                .Select(authorId => Authors.Get(Session, chatId, authorId, cancellationToken))
+                .Collect();
+
         }, CancellationToken.None);
     }
 
