@@ -1,0 +1,3 @@
+.youtube-player {
+    @apply w-full h-screen h-[100dvh];
+}

@@ -1,0 +1,36 @@
+@using ActualChat.UI.Blazor.Module
+@namespace ActualChat.UI.Blazor.Components
+
+<iframe
+    @ref="@Ref"
+    class="youtube-player"
+    type="text/html"
+    src="@($"{VideoUrl}?autoplay=1&enablejsapi=1")"
+    allow="autoplay;"
+    frameborder="0">
+</iframe>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.YoutubePlayer.create";
+    private DotNetObjectReference<YoutubePlayer> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string VideoUrl { get; set; } = null!;
+
+    public async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+        }
+    }
+}

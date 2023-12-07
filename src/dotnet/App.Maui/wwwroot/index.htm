@@ -6,20 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        img-src 'self' https://*.actual.chat https://*.dicebear.com https://*.boringavatars.com/  blob: data:;
+        img-src 'self'
+                https://*.actual.chat
+                https://*.dicebear.com
+                https://*.boringavatars.com/
+                https://i.ytimg.com
+                blob: data:;
         media-src 'self' https://actual.chat https://*.actual.chat blob: data:;
         style-src 'self' 'unsafe-inline';
         frame-src https://www.youtube.com/;
         object-src 'none';
-        script-src 'self'   'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
-                            'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg=';
+        script-src 'self'
+                   'sha256-IWFoCSRBx0i01sF31ty8kSeDtD8PRi/efpTSg/fumWo='
+                   'sha256-zU2GIxfpzdHVMmYxjdLyOs4r4XWtc9oFoEFrwbxzdQg='
+                   https://www.youtube.com/iframe_api
+                   https://www.youtube.com/s/player/;
         connect-src 'self'
-                            https://actual.chat
-                            https://*.actual.chat
-                            https://*.dicebear.com
-                            https://*.ingest.sentry.io
-                            https://firebaseinstallations.googleapis.com
-                            https://fcmregistrations.googleapis.com;
+                    https://actual.chat
+                    https://*.actual.chat
+                    https://*.dicebear.com
+                    https://*.ingest.sentry.io
+                    https://firebaseinstallations.googleapis.com
+                    https://fcmregistrations.googleapis.com;
         " />
     <title>Actual Chat</title>
     <base href="/" />
