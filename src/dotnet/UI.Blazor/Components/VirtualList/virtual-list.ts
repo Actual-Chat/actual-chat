@@ -204,7 +204,7 @@ export class VirtualList {
             if (rs?.hasVeryFirstItem) {
                 this._spacerRef.style.height = '0px';
             }
-            else {
+            else if (rs.keyRange.start) {
                 this._spacerRef.style.height = '200px';
             }
             if (rs?.hasVeryLastItem)
