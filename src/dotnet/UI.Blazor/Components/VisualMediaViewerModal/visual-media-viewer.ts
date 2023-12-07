@@ -30,6 +30,10 @@ export class VisualMediaViewer {
             .pipe(takeUntil(this.disposed$))
             .subscribe((event) => this.onSlideChange(event));
 
+        fromEvent(this.overlay, 'youtubeplayeronstatechange')
+            .pipe(takeUntil(this.disposed$))
+            .subscribe((event: CustomEvent<YT.OnStateChangeEvent>) => this.onYouTubePlayerStateChange(event));
+
         setTimeout(() => {
             if (!this.isHeaderAndFooterVisibilityForced) {
                 this.hideHeaderAndFooter();
@@ -123,6 +127,19 @@ export class VisualMediaViewer {
         } else {
             // click on image/video
             this.toggleHeaderAndFooterVisibility();
+        }
+    }
+
+    private onYouTubePlayerStateChange(event: CustomEvent<YT.OnStateChangeEvent>): void {
+        switch (event.detail.data) {
+            case YT.PlayerState.PAUSED:
+            case YT.PlayerState.ENDED:
+                this.isHeaderAndFooterVisibilityForced = true;
+                this.showHeaderAndFooter();
+                break;
+            case YT.PlayerState.PLAYING:
+                this.hideHeaderAndFooter();
+                break;
         }
     }
 

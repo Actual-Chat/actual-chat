@@ -141,10 +141,3 @@ swiper-container.media-swiper.navigation-visible::part(button-next),
 swiper-container.media-swiper.navigation-visible::part(button-prev) {
     transition: all 300ms ease-in-out;
 }
-
-/* YouTube player */
-#ytplayer {
-    width: 100%;
-    height: calc(100vh - 7rem);
-    height: calc(100dvh - 7rem);
-}
