@@ -201,7 +201,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
             if (await IsAlreadyCrawling(id).ConfigureAwait(false))
                 return linkPreview;
 
-            var refreshTask = Commander.Call(new LinkPreviewsBackend_Refresh(url!), cancellationToken);
+            // intentionally not passing CancellationToken to avoid cancellation on exit
+            var refreshTask = Commander.Call(new LinkPreviewsBackend_Refresh(url!), CancellationToken.None);
             if (!allowStale)
                 linkPreview = await refreshTask.ConfigureAwait(false);
             else if (linkPreview == null)
