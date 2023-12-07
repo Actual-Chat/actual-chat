@@ -889,6 +889,10 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (chat is { SystemTag.IsEmpty: false })
             return;
 
+        // and place public chats
+        if (chat != null && chat.Kind == ChatKind.Place && chat.IsPublic && !chat.Id.PlaceChatId.IsRoot)
+            return;
+
         // Let's delay fetching an author a bit
         Author? readAuthor = null;
         var retrier = new Retrier(5, RetryDelaySeq.Exp(0.25, 1));
