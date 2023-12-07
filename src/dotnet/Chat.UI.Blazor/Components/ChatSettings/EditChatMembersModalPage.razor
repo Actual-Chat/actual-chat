@@ -1,6 +1,6 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Search
-@inherits ComputedStateComponent<EditMembersModalPage.ComputedModel>
+@inherits ComputedStateComponent<EditChatMembersModalPage.ComputedModel>
 
 @{
     var m = State.Value;
@@ -26,7 +26,7 @@
         var statusText = FormatStatusText(isOwner, isOwn);
         /* At the moment there is no available actions for owners and own membership hence do not show menu  */
         var showMenu = !(isOwn || isOwner);
-        var dataMenuAttr = showMenu ? MenuRef.New<EditMemberMenu>(authorId).ToString() : null;
+        var dataMenuAttr = showMenu ? MenuRef.New<EditChatMemberMenu>(authorId).ToString() : null;
         <li data-menu="@dataMenuAttr"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="grow">

@@ -97,7 +97,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
-    [Parameter, EditorRequired] public EditMemberModel? EditMemberModel { get; set; }
+    [Parameter, EditorRequired] public EditChatMemberModel? EditMemberModel { get; set; }
 
     private async Task OnShareClick() {
         if (IsOwn) {
@@ -111,8 +111,8 @@
     }
 
     private Task OnPromoteToOwner()
-        => EditMemberCommands.OnPromoteToOwnerClick(ChatHub, Author);
+        => EditChatMemberCommands.OnPromoteToOwnerClick(ChatHub, Author);
 
     private Task OnRemoveFromGroupClick()
-        => EditMemberCommands.OnRemoveFromGroupClick(ChatHub, Author);
+        => EditChatMemberCommands.OnRemoveFromGroupClick(ChatHub, Author);
 }

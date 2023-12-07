@@ -3,9 +3,9 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 
-public static class EditMemberCommands
+public static class EditChatMemberCommands
 {
-    public static async Task<EditMemberModel?> ComputeState(ChatHub chatHub, AuthorId authorId, CancellationToken cancellationToken)
+    public static async Task<EditChatMemberModel?> ComputeState(ChatHub chatHub, AuthorId authorId, CancellationToken cancellationToken)
     {
         var chatId = authorId.ChatId;
         var session = chatHub.Session;
@@ -19,7 +19,7 @@ public static class EditMemberCommands
         var isOwner = ownerIds.Contains(author.Id);
         var canPromoteToOwner = !isOwner && chat != null && chat.Rules.IsOwner();
         var canRemoveFromGroup = !isOwner && !isOwn;
-        return new EditMemberModel(author, isOwner, isOwn, canPromoteToOwner, canRemoveFromGroup);
+        return new EditChatMemberModel(author, isOwner, isOwn, canPromoteToOwner, canRemoveFromGroup);
     }
 
     public static async Task OnRemoveFromGroupClick(ChatHub chatHub, Author author)

@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedMenuBase<EditMemberModel?>
+@inherits ComputedMenuBase<EditChatMemberModel?>
 
 @{
     var m = State.Value;
@@ -56,14 +56,14 @@
         await base.OnParametersSetAsync();
     }
 
-    protected override Task<EditMemberModel?> ComputeState(CancellationToken cancellationToken)
-        => EditMemberCommands.ComputeState(ChatHub, AuthorId, cancellationToken);
+    protected override Task<EditChatMemberModel?> ComputeState(CancellationToken cancellationToken)
+        => EditChatMemberCommands.ComputeState(ChatHub, AuthorId, cancellationToken);
 
     private Task OnRemoveFromGroupClick(Author author)
-        => EditMemberCommands.OnRemoveFromGroupClick(ChatHub, author);
+        => EditChatMemberCommands.OnRemoveFromGroupClick(ChatHub, author);
 
     private async Task OnPromoteToOwnerClick(Author author) {
         await WhenClosed;
-        await EditMemberCommands.OnPromoteToOwnerClick(ChatHub, author);
+        await EditChatMemberCommands.OnPromoteToOwnerClick(ChatHub, author);
     }
 }

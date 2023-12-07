@@ -312,7 +312,7 @@
     }
 
     private void OnManageMembersClick()
-        => Context.StepIn(DiveInDialogPage.New<EditMembersModalPage>(ChatId));
+        => Context.StepIn(DiveInDialogPage.New<EditChatMembersModalPage>(ChatId));
 
     private async void OnLeaveGroupClick(ComputedModel m) {
         if (m.Chat == null)
