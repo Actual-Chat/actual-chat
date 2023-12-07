@@ -48,9 +48,6 @@ public class DbLinkPreview : IHasId<string>, IHasVersion<long>, IRequirementTarg
     {
         this.RequireSameOrEmptyId(model.Id);
 
-        if (!Id.IsNullOrEmpty())
-            return;
-
         Id = model.Id;
         Version = model.Version;
         Url = model.Url;
