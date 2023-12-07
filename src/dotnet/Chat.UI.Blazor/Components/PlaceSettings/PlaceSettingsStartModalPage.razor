@@ -14,6 +14,7 @@
     }
     if (_form == null)
         return;
+    Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -90,6 +91,22 @@
             </FormBlock>
         }
     }
+
+    @if (m.Place.Rules.CanEditMembers()) {
+        <FormBlock>
+            <TileItem Class="item-manage-members" Click="OnManageMembersClick">
+                    <Icon>
+                        <i class="icon-people"></i>
+                    </Icon>
+                    <Content>
+                        @m.MembersCount Members
+                    </Content>
+                    <Right>
+                        <i class="icon-chevron-right text-3xl"></i>
+                    </Right>
+                </TileItem>
+        </FormBlock>
+    }
 </Form>
 
 
@@ -145,10 +162,12 @@
         if (place == null || !place.Rules.CanEditProperties())
             return new ComputedModel { Place = place };
 
+        var allAuthorIds = await ChatHub.Places.ListAuthorIds(Session, place.Id, cancellationToken);
         var link = Links.Chat(place.Id.ToRootChatId()).ToDisplayUrl(ChatHub.UrlMapper());
         return new() {
             Place = place,
             Link = link,
+            MembersCount = allAuthorIds.Count,
             IsOwner = place.Rules.IsOwner(),
         };
     }
@@ -157,6 +176,9 @@
         _form!.Picture = new (mediaContent);
         StateHasChanged();
     }
+
+    private void OnManageMembersClick()
+        => Context.StepIn(DiveInDialogPage.New<EditPlaceMembersModalPage>(PlaceId));
 
     private async Task OnSubmit() {
         if (_formRef == null)
@@ -212,6 +234,7 @@
         public static readonly ComputedModel Loading = new();
 
         public Place? Place { get; init; }
+        public int MembersCount { get; init; }
         public DisplayUrl? Link { get; init; }
         public bool IsOwner { get; init; }
     }
