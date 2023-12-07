@@ -28,6 +28,9 @@ public class Places(IServiceProvider services) : IPlaces
     public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
         => await Authors.ListUserIds(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
 
+    public virtual async Task<ApiArray<AuthorId>> ListAuthorIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
+        => await Authors.ListAuthorIds(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
+
     public virtual async Task<Place> OnChange(Places_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())

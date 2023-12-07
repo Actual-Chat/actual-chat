@@ -1,31 +1,31 @@
-﻿.edit-chat-settings-modal {
+﻿.edit-settings-modal {
     @apply text-03;
     @apply h-full md:w-90;
 }
 
-.edit-chat-settings-modal.modal-frame {
+.edit-settings-modal.modal-frame {
     @apply px-0;
     @apply gap-y-0;
 }
 
-.edit-chat-settings-modal .no-padding-header-decorator {
+.edit-settings-modal .no-padding-header-decorator {
     @apply mx-0;
 }
 
 
-.edit-chat-settings-modal .dialog-buttons {
+.edit-settings-modal .dialog-buttons {
     @apply pt-4;
 }
-.edit-chat-settings-modal .dialog-buttons .btn-group {
+.edit-settings-modal .dialog-buttons .btn-group {
     @apply flex-1;
     @apply max-w-none;
 }
 
-.edit-chat-settings-modal .form-block {
+.edit-settings-modal .form-block {
     @apply px-4;
 }
 
-.edit-chat-settings-modal .tile-item {
+.edit-settings-modal .tile-item {
     @apply hover:bg-inherit;
 }
 
@@ -54,12 +54,12 @@
     @apply h-10;
 }
 
-.edit-chat-settings-modal .tile-item-icon i {
+.edit-settings-modal .tile-item-icon i {
     @apply text-2xl;
 }
 
-.edit-chat-settings-modal .item-leave-group .tile-item-icon,
-.edit-chat-settings-modal .item-leave-group .tile-item-body-content {
+.edit-settings-modal .item-leave-group .tile-item-icon,
+.edit-settings-modal .item-leave-group .tile-item-body-content {
     @apply text-danger;
 }
 
@@ -73,26 +73,26 @@
     @apply -ml-2;
 }
 
-.edit-chat-settings-modal.edit-members .dialog-body {
+.edit-settings-modal.edit-members .dialog-body {
     @apply overflow-hidden;
     @apply px-4;
 }
-.edit-chat-settings-modal.edit-members .dialog-body > * {
+.edit-settings-modal.edit-members .dialog-body > * {
     @apply mt-3;
 }
-.edit-chat-settings-modal.edit-members .list {
+.edit-settings-modal.edit-members .list {
     @apply -mr-4 pr-1.75;
     @apply overflow-y-auto custom-scrollbar;
 }
-.edit-chat-settings-modal.edit-members .list > li {
+.edit-settings-modal.edit-members .list > li {
     @apply flex-x;
     @apply min-h-12;
 }
-.edit-chat-settings-modal.edit-members .list .avatar-badge .c-status {
+.edit-settings-modal.edit-members .list .avatar-badge .c-status {
     @apply text-03 text-xs leading-3.5;
 }
 
-.edit-chat-settings-modal.edit-members .tile-item {
+.edit-settings-modal.edit-members .tile-item {
     @apply shrink-0; /* prevents shrinking tile item when list overflows */
 }
 

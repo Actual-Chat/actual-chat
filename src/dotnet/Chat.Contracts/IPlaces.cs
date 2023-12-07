@@ -10,6 +10,9 @@ public interface IPlaces : IComputeService
     [ComputeMethod]
     Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ApiArray<AuthorId>> ListAuthorIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]
