@@ -6,7 +6,7 @@ public abstract record HistoryState
     public virtual int BackStepCount => 0; // How many times you can "Back" from this state
     public virtual bool IsUriDependent => false;
 
-    public override string ToString()
+    public sealed override string ToString()
         => $"{Name}({Format()})";
 
     public abstract string Format();
