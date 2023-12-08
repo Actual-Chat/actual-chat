@@ -656,6 +656,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     }
 
     // [CommandHandler]
+    [Obsolete("2023.12: Was replaced with OnCreateAttachments")]
     public virtual async Task<TextEntryAttachment> OnCreateAttachment(
         ChatsBackend_CreateAttachment command,
         CancellationToken cancellationToken)
@@ -665,7 +666,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update);
             _ = GetEntryAttachments(entryId, default);
             return default!;
         }
@@ -687,6 +687,50 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         attachment = dbAttachment.ToModel();
         context.Operation().Items.Set(attachment);
         return attachment;
+    }
+
+    // [CommandHandler]
+    public virtual async Task<ApiArray<TextEntryAttachment>> OnCreateAttachments(
+        ChatsBackend_CreateAttachments command,
+        CancellationToken cancellationToken)
+    {
+        var attachments = command.Attachments;
+        if (attachments.Count > Constants.Attachments.FileCountLimit)
+            throw StandardError.Constraint("Too many attachments in bulk.");
+
+        var entryIds = attachments.Select(x => x.EntryId).Distinct().ToList();
+        if (entryIds.Count > 1)
+            throw StandardError.Constraint("Attachments cannot belong to different messages.");
+
+        var entryId = entryIds[0];
+
+        if (Computed.IsInvalidating()) {
+            _ = GetEntryAttachments(entryId, default);
+            InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update);
+            return default!;
+        }
+
+        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbAttachments = new List<DbTextEntryAttachment>();
+        foreach (var attachment in attachments) {
+
+            var dbChatEntry = await dbContext.ChatEntries.Get(entryId, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
+            if (dbChatEntry.IsRemoved)
+                throw StandardError.Constraint("Removed chat entries cannot be modified.");
+
+            var dbAttachment = new DbTextEntryAttachment(attachment with {
+                Version = VersionGenerator.NextVersion(),
+            });
+            dbContext.Add(dbAttachment);
+            dbAttachments.Add(dbAttachment);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return dbAttachments.Select(x => x.ToModel()).ToApiArray();
     }
 
     // [CommandHandler]
@@ -754,6 +798,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*2, ChangeKind.Remove);
                 InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*3, ChangeKind.Remove);
                 InvalidateTiles(chatId, ChatEntryKind.Text, entryId - tileSize*4, ChangeKind.Remove);
+                _ = GetEntryAttachments(new TextEntryId(chatId, entryId, AssumeValid.Option), default);
             }
             return;
         }

@@ -3,12 +3,9 @@ using Stl.Mathematics;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class RemoveAccountTest : AppHostTestBase
+public class RemoveAccountTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
     private ChatId TestChatId { get; } = Constants.Chat.DefaultChatId;
-
-    public RemoveAccountTest(ITestOutputHelper @out) : base(@out)
-    { }
 
     [Fact]
     public async Task RemoveOwnEntriesTest()

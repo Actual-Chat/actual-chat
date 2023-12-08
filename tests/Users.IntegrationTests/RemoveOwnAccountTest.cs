@@ -4,12 +4,9 @@ using Stl.Mathematics;
 
 namespace ActualChat.Users.IntegrationTests;
 
-public class RemoveOwnAccountTest : AppHostTestBase
+public class RemoveOwnAccountTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
     private ChatId TestChatId { get; } = new("the-actual-one");
-
-    public RemoveOwnAccountTest(ITestOutputHelper @out) : base(@out)
-    { }
 
     [Fact]
     public async Task DeleteOwnAccountTest()
