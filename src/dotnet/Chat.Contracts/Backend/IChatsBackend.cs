@@ -52,7 +52,10 @@ public interface IChatsBackend : IComputeService
     [CommandHandler]
     Task<ChatEntry> OnUpsertEntry(ChatsBackend_UpsertEntry command, CancellationToken cancellationToken);
     [CommandHandler]
+    [Obsolete("2023.12: Was replaced with OnCreateAttachments")]
     Task<TextEntryAttachment> OnCreateAttachment(ChatsBackend_CreateAttachment command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<ApiArray<TextEntryAttachment>> OnCreateAttachments(ChatsBackend_CreateAttachments command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveOwnChats(ChatsBackend_RemoveOwnChats command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -62,10 +65,17 @@ public interface IChatsBackend : IComputeService
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[Obsolete("2023.12: Was replaced with ChatsBackend_CreateAttachments")]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateAttachment(
     [property: DataMember, MemoryPackOrder(0)] TextEntryAttachment Attachment
 ) : ICommand<TextEntryAttachment>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_CreateAttachments(
+    [property: DataMember, MemoryPackOrder(0)] ApiArray<TextEntryAttachment> Attachments
+) : ICommand<ApiArray<TextEntryAttachment>>, IBackendCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming

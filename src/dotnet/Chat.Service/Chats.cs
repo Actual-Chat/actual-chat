@@ -256,15 +256,16 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
             textEntryId = textEntry.Id.ToTextEntryId();
 
-            for (var index = 0; index < attachments.Count; index++) {
-                var attachment = new TextEntryAttachment {
-                    EntryId = textEntryId,
-                    Index = index,
-                    MediaId = attachments[index].MediaId,
-                    ThumbnailMediaId = attachments[index].ThumbnailMediaId,
-                };
-                var createAttachmentCommand = new ChatsBackend_CreateAttachment(attachment);
-                await Commander.Call(createAttachmentCommand, true, cancellationToken).ConfigureAwait(false);
+            if (attachments.Count > 0) {
+                var cmd = new ChatsBackend_CreateAttachments(
+                    attachments.Select((x, i) => new TextEntryAttachment {
+                            EntryId = textEntryId,
+                            Index = i,
+                            MediaId = x.MediaId,
+                            ThumbnailMediaId = x.ThumbnailMediaId,
+                        })
+                        .ToApiArray());
+                await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
             }
         }
 
