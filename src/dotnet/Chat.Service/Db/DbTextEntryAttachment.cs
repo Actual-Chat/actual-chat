@@ -7,6 +7,7 @@ namespace ActualChat.Chat.Db;
 [Table("TextEntryAttachments")]
 public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    private const int IdSeparator = ':';
     public DbTextEntryAttachment() { }
     public DbTextEntryAttachment(TextEntryAttachment model) => UpdateFrom(model);
 
@@ -24,7 +25,10 @@ public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequire
     public string MetadataJson { get; set; } = "";
 
     public static string ComposeId(TextEntryId entryId, int index)
-        => $"{entryId}:{index}";
+        => $"{entryId}{IdSeparator}{index}";
+
+    public static string IdPrefix(TextEntryId entryId)
+        => entryId + IdSeparator;
 
     public TextEntryAttachment ToModel()
         => new (Id, Version) {
