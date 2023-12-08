@@ -14,7 +14,7 @@ namespace ActualChat.Chat;
 public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
-
+    private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
     private static readonly ILookup<TextEntryId, TextEntryAttachment> EmptyAttachments
         = Array.Empty<TextEntryAttachment>().ToLookup(ta => ta.EntryId);
     private static readonly Task<ILookup<TextEntryId, TextEntryAttachment>> EmptyAttachmentsTask
@@ -259,17 +259,13 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     .Select(dbe => dbe.ToModel())
                     .ToApiArray());
 
-        var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
-            .Select(x => x.Id)
-            .ToList();
         var linkPreviewIds  = dbEntries.Where(x => !x.LinkPreviewId.IsNullOrEmpty())
             .Select(x => (Symbol)x.LinkPreviewId)
             .Distinct()
             .ToList();
 
-        var allAttachmentsTask = entryIdsWithAttachments.Count > 0
-            ? GetAttachments(dbContext, entryIdsWithAttachments)
-            : EmptyAttachmentsTask;
+        var allAttachmentsTask = GetAttachments();
+
         var allLinkPreviewsTask = linkPreviewIds.Count > 0
             ? GetLinkPreviews(linkPreviewIds)
             : EmptyLinkPreviewsTask;
@@ -285,48 +281,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         });
         return new ChatTile(idTileRange, true, entries.ToApiArray());
 
-        async Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments(ChatDbContext dbContext1, ICollection<string> entryIdsWithAttachments1)
-        {
-            if (entryIdsWithAttachments1.Count == 0)
-                return EmptyAttachments;
-
-            var attachmentPrefixes = entryIdsWithAttachments1
-                .Select(id => $"{id}:%")
-                .ToArray();
-
-            var dbAttachments = await dbContext1.TextEntryAttachments
-                .Where(x => attachmentPrefixes.Any(entryIdPrefix => EF.Functions.Like(x.Id, entryIdPrefix)))
-                .ToListAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            var mediaIds = dbAttachments.Select(x => x.MediaId)
-                .Concat(dbAttachments.Select(x => x.ThumbnailMediaId))
-                .Select(MediaId.ParseOrNone)
-                .Where(mid => !mid.IsNone)
-                .ToList();
-            var allMedia = mediaIds.Count > 0
-                ? (await mediaIds
-                        .Select(mid => MediaBackend.Get(mid, cancellationToken))
-                        .Collect()
-                        .ConfigureAwait(false))
-                    .Where(m => m != null)
-                    .DistinctBy(m => m!.Id)
-                    .ToDictionary(m => m!.Id)!
-                :  new Dictionary<MediaId,Media.Media>();
-            return dbAttachments
-                .Select(dba => {
-                    var attachment = dba.ToModel();
-                    if (attachment.MediaId.IsNone)
-                        return attachment;
-
-                    return attachment with {
-                        Media = allMedia.GetValueOrDefault(attachment.MediaId)!,
-                        ThumbnailMedia = !attachment.ThumbnailMediaId.IsNone ? allMedia.GetValueOrDefault(attachment.ThumbnailMediaId) : null,
-                    };
-                })
-                .ToLookup(a => a.EntryId);
-        }
-
         async Task<IReadOnlyDictionary<Symbol, Media.LinkPreview>> GetLinkPreviews(ICollection<Symbol> linkPreviewIds1)
         {
             if (linkPreviewIds1.Count == 0)
@@ -338,6 +292,69 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     .ConfigureAwait(false))
                 .Where(lp => lp != null)
                 .ToDictionary(lp => lp!.Id)!;
+        }
+
+        Task<ILookup<TextEntryId, TextEntryAttachment>> GetAttachments()
+        {
+            var entryIdsWithAttachments = dbEntries.Where(x => x.HasAttachments)
+                .Select(x => new TextEntryId(x.Id))
+                .ToList();
+
+            return entryIdsWithAttachments.Count > 0
+                ? GetAttachmentsBulk()
+                : EmptyAttachmentsTask;
+
+            async Task<ILookup<TextEntryId,TextEntryAttachment>> GetAttachmentsBulk()
+            {
+                var attachments = await entryIdsWithAttachments.Select(x => GetEntryAttachments(x, cancellationToken)).Collect().ConfigureAwait(false);
+                return attachments.SelectMany(x => x).ToLookup(x => x.EntryId);
+            }
+        }
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ApiArray<TextEntryAttachment>> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = DbTextEntryAttachment.IdPrefix(entryId);
+        var dbAttachments = await dbContext.TextEntryAttachments
+            .Where(x => x.Id.StartsWith(idPrefix))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var mediaIds = dbAttachments.Select(x => x.MediaId)
+            .Concat(dbAttachments.Select(x => x.ThumbnailMediaId))
+            .Select(MediaId.ParseOrNone)
+            .Where(mid => !mid.IsNone)
+            .ToList();
+        var mediaMap = EmptyMediaMap;
+        if (mediaIds.Count > 0) {
+            var mediaList = await mediaIds
+                .Select(mid => MediaBackend.Get(mid, cancellationToken))
+                .Collect()
+                .ConfigureAwait(false);
+            mediaMap = mediaList
+                .SkipNullItems()
+                .DistinctBy(m => m.Id)
+                .ToDictionary(m => m.Id);
+        }
+        return dbAttachments.Select(x => WithMedia(x.ToModel())).ToApiArray();
+
+        TextEntryAttachment WithMedia(TextEntryAttachment attachment)
+        {
+            if (attachment.MediaId.IsNone)
+                return attachment;
+
+            var media = mediaMap.GetValueOrDefault(attachment.MediaId) ?? attachment.Media;
+            var thumbnailMedia = attachment.ThumbnailMedia;
+            if (!attachment.ThumbnailMediaId.IsNone)
+                thumbnailMedia = mediaMap.GetValueOrDefault(attachment.ThumbnailMediaId) ?? thumbnailMedia;
+            return attachment with {
+                Media = media,
+                ThumbnailMedia = thumbnailMedia,
+            };
         }
     }
 
@@ -649,6 +666,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         if (Computed.IsInvalidating()) {
             InvalidateTiles(entryId.ChatId, ChatEntryKind.Text, entryId.LocalId, ChangeKind.Update);
+            _ = GetEntryAttachments(entryId, default);
             return default!;
         }
 

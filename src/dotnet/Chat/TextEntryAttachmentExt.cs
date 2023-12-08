@@ -15,4 +15,21 @@ public static class TextEntryAttachmentExt
         => MediaTypeExt.IsSupportedVideo(attachment.Media.ContentType);
     public static bool IsVisualMedia(this TextEntryAttachment attachment)
         => MediaTypeExt.IsSupportedVisualMedia(attachment.Media.ContentType);
+
+    public static TextEntryAttachment WithMedia(
+        this TextEntryAttachment attachment,
+        Func<MediaId, Media.Media?> getMedia)
+    {
+        if (attachment.MediaId.IsNone)
+            return attachment;
+
+        var media = getMedia(attachment.MediaId) ?? attachment.Media;
+        var thumbnailMedia = attachment.ThumbnailMedia;
+        if (!attachment.ThumbnailMediaId.IsNone)
+            thumbnailMedia = getMedia(attachment.ThumbnailMediaId) ?? thumbnailMedia;
+        return attachment with {
+            Media = media,
+            ThumbnailMedia = thumbnailMedia,
+        };
+    }
 }
