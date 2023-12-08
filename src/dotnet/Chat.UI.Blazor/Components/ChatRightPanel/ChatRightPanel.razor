@@ -13,6 +13,10 @@
     VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
     <div class="right-chat-panel">
         @if (m.RenderContent) {
+            <RightPanelSearch
+                ChatContext="@ChatContext"
+                IsShown="@m.IsSearchMode"
+                ShowCloseButton="true"/>
             <RightPanelHeader ChatContext="@ChatContext" ShareModel="@m.ShareModel"/>
             <div class="c-panel-content">
                 <RightPanelChatInfo ChatContext="@ChatContext"/>
@@ -67,12 +71,14 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var isVisible = await PanelsUI.Right.IsVisible.Use(cancellationToken);
+        var isSearchMode = await PanelsUI.Right.IsSearchMode.Use(cancellationToken);
         var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
         var showMemberTab = rules.CanSeeMembers();
         var shareModel = await ShareUI.GetModel(Chat.Id, cancellationToken);
         return new () {
             IsVisible = isVisible,
+            IsSearchMode = isSearchMode,
             RenderContent = true,
             EnableIncompleteUI = enableIncompleteUI,
             ShowMembersTab = showMemberTab,
@@ -80,12 +86,16 @@
         };
     }
 
+    private void ShowSearchPanel()
+        => ChatContext.PanelsUI.Right.SearchToggle();
+
     // Nested types
 
     public sealed record Model {
         public static readonly Model Loading = new();
 
         public bool IsVisible { get; init; }
+        public bool IsSearchMode { get; init; }
         public bool RenderContent { get; init; }
         public bool EnableIncompleteUI { get; init; }
         public bool ShowTabs => ShowMembersTab || EnableIncompleteUI;

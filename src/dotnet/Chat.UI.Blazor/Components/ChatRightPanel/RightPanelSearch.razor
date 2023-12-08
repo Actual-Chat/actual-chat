@@ -1,0 +1,19 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<SearchPanel
+    Class="right-panel-search"
+    ShowCloseButton="@ShowCloseButton"
+    IsShown="@IsShown"
+    OnCloseClick="@CloseSearchPanel">
+    <RightPanelSearchTabs ChatContext="@ChatContext"/>
+</SearchPanel>
+
+@code {
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter] public bool IsShown { get; set; }
+    [Parameter] public bool ShowCloseButton { get; set; }
+
+    private void CloseSearchPanel()
+        => ChatContext.PanelsUI.Right.SearchToggle();
+
+}

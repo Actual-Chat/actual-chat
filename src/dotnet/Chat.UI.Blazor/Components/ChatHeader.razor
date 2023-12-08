@@ -31,7 +31,9 @@
     </div>
     @if (!chat.Id.IsNone) {
         <div class="chat-header-control-panel">
-            <ChatSearch @key="@chat.Id.Value" Chat="@chat"/>
+            <HeaderButton Click="@OnSearchClick">
+                <i class="icon-search text-2xl"></i>
+            </HeaderButton>
             @if (IsRightNavigateButtonVisible) {
                 <ChatHeaderRightPanelToggle Click="@OnToggleRightPanelClick"/>
             }
@@ -58,4 +60,7 @@
 
     private void OnOpenLeftPanelClick()
         => ChatContext.Hub.PanelsUI.Left.SetIsVisible(true);
+
+    private void OnSearchClick()
+        => ChatContext.Hub.PanelsUI.RightSearch.Toggle();
 }

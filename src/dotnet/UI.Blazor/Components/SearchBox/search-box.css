@@ -1,15 +1,23 @@
 .search-box {
     @apply flex-1;
     @apply max-h-10;
+    @apply rounded-full border border-transparent;
 }
 .search-box label {
     @apply relative flex-x;
 }
-.search-box i {
+.search-box .search-icon,
+.search-box .c-close-btn {
     @apply absolute;
     @apply flex items-center justify-center;
     @apply w-10 h-10;
     @apply text-03;
+}
+.search-box .search-icon {
+    @apply left-0;
+}
+.search-box .c-close-btn {
+    @apply right-0;
 }
 .search-box input {
     @apply h-10;
@@ -17,8 +25,20 @@
     @apply rounded-full;
     @apply text-left bg-input;
 }
+.search-box input:focus {
+    @apply pl-4;
+}
+.search-box input:focus + .search-icon {
+    @apply hidden;
+}
 .search-box input::placeholder {
     @apply text-left;
+}
+.search-box input:focus::placeholder {
+    @apply text-transparent;
+}
+.search-box:has(input:focus) {
+    @apply border-primary;
 }
 
 .search-box.icon-alight-right i {

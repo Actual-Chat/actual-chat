@@ -1,4 +1,5 @@
 .right-chat-panel {
+    @apply relative;
     @apply flex-y;
     @apply lg:w-80 h-full;
     @apply border-l border-transparent;
@@ -52,9 +53,15 @@
     @apply flex-y items-center gap-x-4;
     @apply min-h-40 max-h-40;
 }
-.right-panel-close-btn.btn.btn-round {
+.right-chat-panel > .c-header > .c-buttons {
     @apply absolute top-2 right-4 z-10;
-    @apply bg-[var(--white-10)];
+    @apply flex-x items-center justify-center gap-x-3;
+}
+.right-panel-close-btn.btn.btn-round {
+    @apply bg-[var(--white-05)];
+}
+.right-panel-close-btn.btn.btn-round .btn-content {
+    @apply text-toast-text;
 }
 .right-chat-panel > .c-header > .c-top {
     @apply relative;
