@@ -5,9 +5,11 @@
 }
 
 <div class="c-header">
-    <ButtonRound Click="@OnHideRightPanelClick" Class="right-panel-close-btn btn-md">
-        <i class="icon-close text-2xl"></i>
-    </ButtonRound>
+    <div class="c-buttons">
+        <ButtonRound Click="@OnHideRightPanelClick" Class="right-panel-close-btn btn-md">
+            <i class="icon-close text-2xl"></i>
+        </ButtonRound>
+    </div>
 
     <div class="c-top">
         <ChatIcon
@@ -19,24 +21,24 @@
     </div>
 
     <div class="c-center">
-            <ChatIcon Chat="Chat" Size="SquareSize.Size16"/>
-            <div class="c-buttons">
-                @if (m.CanEditProperties()) {
-                    <ButtonRound Class="btn-md" Click="@OnEditChatSettingsClick">
-                        <i class="icon-edit text-2xl"></i>
-                    </ButtonRound>
-                }
-                @if (Chat.CanInvite()) {
-                    <ButtonRound Class="btn-md" Click="@OnInviteClick">
-                        <i class="icon-person-add text-2xl"></i>
-                    </ButtonRound>
-                }
-                @if (ShareModel != null) {
-                    <ButtonRound Class="btn-md" Click="@(() => OnShareClick(ShareModel))">
-                        <i class="icon-share text-2xl"></i>
-                    </ButtonRound>
-                }
-            </div>
+        <ChatIcon Chat="Chat" Size="SquareSize.Size16"/>
+        <div class="c-buttons">
+            @if (m.CanEditProperties()) {
+                <ButtonRound Class="btn-md" Click="@OnEditChatSettingsClick">
+                    <i class="icon-edit text-2xl"></i>
+                </ButtonRound>
+            }
+            @if (Chat.CanInvite()) {
+                <ButtonRound Class="btn-md" Click="@OnInviteClick">
+                    <i class="icon-person-add text-2xl"></i>
+                </ButtonRound>
+            }
+            @if (ShareModel != null) {
+                <ButtonRound Class="btn-md" Click="@(() => OnShareClick(ShareModel))">
+                    <i class="icon-share text-2xl"></i>
+                </ButtonRound>
+            }
+        </div>
     </div>
 
     <div class="c-bottom">

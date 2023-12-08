@@ -1,0 +1,33 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@{
+    var shownCls = IsShown ? "shown" : "";
+}
+
+<div class="search-panel @shownCls @Class">
+    <div class="c-search">
+        <SearchBox
+            @ref="_searchBoxRef"
+            Placeholder="@Placeholder"
+            ShowCloseButton="@ShowCloseButton"
+            TextChanged="OnSearchBoxTextChanged"
+            OnCloseClick="@OnCloseClick"/>
+    </div>
+    @ChildContent
+</div>
+
+@code {
+    SearchBox? _searchBoxRef = null;
+
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "Search";
+    [Parameter] public bool ShowCloseButton { get; set; }
+    [Parameter] public bool IsShown { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnCloseClick { get; set; }
+
+    private void OnSearchBoxTextChanged(string text)
+        => SearchUI.Text.Value = text;
+}

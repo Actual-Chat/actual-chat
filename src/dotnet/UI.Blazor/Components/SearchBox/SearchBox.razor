@@ -4,7 +4,6 @@
 
 <div class="@Class search-box">
     <label>
-        <i class="icon-search text-2xl"></i>
         <TextInput
             @ref="_inputRef"
             Class="w-full dialog-unstyled"
@@ -12,6 +11,12 @@
             MaxLength="@MaxLength"
             TextChanged="OnInput">
         </TextInput>
+        <i class="icon-search text-2xl search-icon"></i>
+        @if (ShowCloseButton) {
+            <HeaderButton Click="Close" Class="c-close-btn">
+                <i class="icon-close text-2xl"></i>
+            </HeaderButton>
+        }
     </label>
 </div>
 
@@ -21,6 +26,8 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int? MaxLength { get; set; }
     [Parameter] public string Placeholder { get; set; } = "Search...";
+    [Parameter] public bool ShowCloseButton { get; set; }
+    [Parameter] public EventCallback OnCloseClick { get; set; }
     [Parameter] public EventCallback<string> TextChanged { get; set; }
 
     public ValueTask Focus()
@@ -28,6 +35,11 @@
 
     public ValueTask Cancel()
         => _inputRef?.Clear() ?? default;
+
+    private void Close() {
+        Cancel();
+        OnCloseClick.InvokeAsync();
+    }
 
     private Task OnInput(string text)
         => TextChanged.InvokeAsync(text);

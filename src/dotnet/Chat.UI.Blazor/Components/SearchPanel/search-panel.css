@@ -1,0 +1,14 @@
+.search-panel {
+    @apply absolute inset-0 z-minus;
+    @apply flex-y gap-y-2;
+    @apply overflow-hidden custom-scrollbar;
+    @apply p-2;
+    @apply bg-02;
+}
+.search-panel.shown {
+    @apply z-[100]
+}
+
+.side-nav.side-nav-right .search-panel .search-panel-tabs > .btn-group {
+    @apply px-0;
+}
