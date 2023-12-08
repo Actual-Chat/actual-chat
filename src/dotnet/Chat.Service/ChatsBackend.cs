@@ -656,40 +656,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     }
 
     // [CommandHandler]
-    [Obsolete("2023.12: Was replaced with OnCreateAttachments")]
-    public virtual async Task<TextEntryAttachment> OnCreateAttachment(
-        ChatsBackend_CreateAttachment command,
-        CancellationToken cancellationToken)
-    {
-        var attachment = command.Attachment;
-        var entryId = command.Attachment.EntryId;
-        var context = CommandContext.GetCurrent();
-
-        if (Computed.IsInvalidating()) {
-            _ = GetEntryAttachments(entryId, default);
-            return default!;
-        }
-
-        var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbChatEntry = await dbContext.ChatEntries.Get(entryId, cancellationToken).Require().ConfigureAwait(false);
-        if (dbChatEntry.IsRemoved)
-            throw StandardError.Constraint("Removed chat entries cannot be modified.");
-
-        attachment = attachment with {
-            Version = VersionGenerator.NextVersion(),
-        };
-        var dbAttachment = new DbTextEntryAttachment(attachment);
-        dbContext.Add(dbAttachment);
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        attachment = dbAttachment.ToModel();
-        context.Operation().Items.Set(attachment);
-        return attachment;
-    }
-
-    // [CommandHandler]
     public virtual async Task<ApiArray<TextEntryAttachment>> OnCreateAttachments(
         ChatsBackend_CreateAttachments command,
         CancellationToken cancellationToken)
