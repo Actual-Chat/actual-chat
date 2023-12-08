@@ -65,22 +65,21 @@ public partial class History
             return false;
 
         var backItem = GetItemById(currentItem.BackItemId);
-        // Looking for a back item with the smaller BackStepCount
-        while (backItem != null && backItem.CompareBackStepCount(currentItem) >= 0)
-            backItem = GetItemById(backItem.BackItemId);
-        // Or generating one
-        backItem ??= currentItem.GenerateBackItem();
-        if (backItem == null)
-            return false; // No way to step back: can't neither get nor generate the back step
-
-        if (currentItem.BackItemId == backItem.Id) {
-            // History back step is the right one
+        if (backItem != null) {
+            // Do back if there is History back step
             await NavigateBack().ConfigureAwait(false);
             return true;
         }
 
+        // There is no back item but there are back steps, so let's generating back item
+        if (backItem == null) {
+            backItem = currentItem.GenerateBackItem();
+            if (backItem == null)
+                return false; // No way to step back: can't neither get nor generate the back step
+            backItem = backItem with { Id = NewItemId() }; // Change Id to prevent endless loop
+        }
+
         // Back item is either found or generated
-        Log.LogInformation("TryStepBack: 'back' item is a generated one");
         RegisterItem(backItem);
         RegisterCurrentItem(currentItem with { BackItemId = backItem.Id });
         Nav.NavigateTo(backItem.Uri, new NavigationOptions() {
