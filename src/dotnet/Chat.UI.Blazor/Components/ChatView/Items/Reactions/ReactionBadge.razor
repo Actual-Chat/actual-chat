@@ -32,6 +32,7 @@
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     private Task ToggleReaction(Symbol emojiId) {
+        _ = ChatHub.TuneUI.Play(Tune.React);
         return UICommander.Run(new Reactions_React(Session, new Reaction {
             EntryId = Entry.Id.ToTextEntryId(),
             EmojiId = emojiId,
