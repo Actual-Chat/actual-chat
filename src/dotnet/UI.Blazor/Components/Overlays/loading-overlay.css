@@ -30,18 +30,18 @@
 .loading-overlay .progress {
     @apply relative;
     @apply flex justify-start items-center;
-    @apply w-full min-h-1;
+    @apply min-w-full max-w-full min-h-1 overflow-hidden;
     @apply rounded-full;
     @apply bg-[var(--white-05)];
 }
 .loading-overlay .progress-value {
-    @apply w-0 h-1;
+    @apply w-full h-1;
     @apply rounded-full;
     @apply bg-[var(--white)];
     box-shadow: 0 5px 5px -5px var(--white);
-    animation: load 3s normal forwards;
+    animation: load 3s normal cubic-bezier(0.3, 0.9, 0.3, 0.9);
 }
 @keyframes load {
-    0% { width: 0; }
-    100% { width: 100%; }
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(0); }
 }
