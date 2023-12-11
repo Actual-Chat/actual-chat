@@ -386,12 +386,20 @@ export class VirtualList {
                 this.scrollToEnd(false);
 
             if (DeviceInfo.isIos) {
+                const htmlElement = document.getElementsByTagName('html')[0];
+                const bodyElement = document.body;
                 if (this.windowScrollTop == 0) {
-                    document.body.style.position = 'static';
+                    htmlElement.style.position = 'static';
+                    htmlElement.style.overflowX = null;
+                    bodyElement.style.position = 'static';
+                    bodyElement.style.overflowX = null;
                 }
                 else {
                     // Hack for iOS to keep text editor visible when virtual keyboard appears or new message is submitted
-                    document.body.style.position = 'fixed';
+                    htmlElement.style.position = 'fixed';
+                    htmlElement.style.overflowX = 'hidden';
+                    bodyElement.style.position = 'fixed';
+                    bodyElement.style.overflowX = 'hidden';
                 }
             }
         }
