@@ -78,8 +78,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-
-
         ApiArray<ContactId> result;
         if (placeId.IsNone) {
             var announcementChatContactId = new ContactId(ownerId, Constants.Chat.AnnouncementsChatId);
