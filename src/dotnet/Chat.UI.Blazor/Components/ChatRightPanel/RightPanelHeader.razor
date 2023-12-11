@@ -2,7 +2,6 @@
 @inherits ComputedStateComponent<AuthorRules>
 @{
     var m = State.Value;
-    var isPublicGroupChat = Chat is { Kind: ChatKind.Group, IsPublic: true };
 }
 
 <div class="c-header">
@@ -44,9 +43,7 @@
         <div class="c-title">
             @Chat.Title
         </div>
-        <div class="c-public">
-            @(isPublicGroupChat ? "Public" : "Private")
-        </div>
+        <RightPanelHeaderChatInfo ChatContext="@ChatContext"/>
     </div>
 </div>
 
