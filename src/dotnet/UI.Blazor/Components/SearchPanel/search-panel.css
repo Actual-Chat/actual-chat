@@ -1,0 +1,61 @@
+.search-panel {
+    @apply absolute inset-0 z-[100];
+    @apply flex-y gap-y-2;
+    @apply overflow-hidden custom-scrollbar;
+    @apply p-2;
+    @apply bg-02;
+}
+.side-nav.side-nav-right .search-panel .search-panel-tabs > .btn-group {
+    @apply px-0;
+}
+
+.search-input {
+    @apply flex-1;
+    @apply max-h-10;
+    @apply rounded-full border border-transparent;
+}
+.search-input label {
+    @apply relative flex-x;
+}
+.search-input .search-icon,
+.search-input .c-close-btn {
+    @apply absolute;
+    @apply flex items-center justify-center;
+    @apply w-10 h-10;
+    @apply text-03;
+}
+.search-input .search-icon {
+    @apply left-0;
+}
+.search-input .c-close-btn {
+    @apply right-0;
+}
+.search-input input {
+    @apply h-10;
+    @apply pl-10 pr-4;
+    @apply rounded-full;
+    @apply text-left bg-input;
+}
+.search-input input:focus {
+    @apply pl-4;
+}
+.search-input input:focus + .search-icon {
+    @apply hidden;
+}
+.search-input input::placeholder {
+    @apply text-left;
+}
+.search-input input:focus::placeholder {
+    @apply text-transparent;
+}
+.search-input:has(input:focus) {
+    @apply border-primary;
+}
+
+.search-input.icon-alight-right i {
+    @apply right-0;
+}
+
+.search-input.icon-alight-right input {
+    @apply pr-10 pl-4;
+}

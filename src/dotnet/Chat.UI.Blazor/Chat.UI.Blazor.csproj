@@ -22,5 +22,9 @@
     <Using Include="ActualChat.Chat.UI.Blazor.Components" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Components\SearchPanel\" />
+  </ItemGroup>
+
 
 </Project>

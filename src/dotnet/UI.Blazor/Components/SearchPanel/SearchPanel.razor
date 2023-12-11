@@ -1,0 +1,49 @@
+@using ActualChat.UI.Blazor.Services
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="search-panel @Class">
+    <div class="c-search">
+        <div class="@Class search-input">
+            <label>
+                <TextInput
+                    @ref="_inputRef"
+                    Class="w-full dialog-unstyled"
+                    Placeholder="@Placeholder"
+                    MaxLength="@MaxLength"
+                    TextChanged="OnSearchInputTextChanged">
+                </TextInput>
+                <i class="icon-search text-2xl search-icon"></i>
+                @if (ShowCloseButton) {
+                    <HeaderButton Click="OnCloseClick" Class="c-close-btn">
+                        <i class="icon-close text-2xl"></i>
+                    </HeaderButton>
+                }
+            </label>
+        </div>
+
+    </div>
+    @ChildContent
+</div>
+
+@code {
+    TextInput? _inputRef = null;
+
+    [Inject] private SearchUI SearchUI { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "Search";
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public bool ShowCloseButton { get; set; }
+    [Parameter] public bool ShouldFocus { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnCloseClick { get; set; }
+
+    private void OnSearchInputTextChanged(string text)
+        => SearchUI.Text.Value = text;
+
+    public ValueTask Focus()
+        => _inputRef?.Focus() ?? default;
+
+    public ValueTask Cancel()
+        => _inputRef?.Clear() ?? default;
+}

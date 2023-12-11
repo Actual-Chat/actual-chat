@@ -1,19 +1,58 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@using Stl.Rpc
+@inherits ComputedStateComponent<RightPanelSearch.Model>
 
-<SearchPanel
-    Class="right-panel-search"
-    ShowCloseButton="@ShowCloseButton"
-    IsShown="@IsShown"
-    OnCloseClick="@CloseSearchPanel">
-    <RightPanelSearchTabs ChatContext="@ChatContext"/>
-</SearchPanel>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+    var isVisible = m.IsVisible;
+}
+
+@if (isVisible) {
+    <SearchPanel
+        @ref="_searchPanelRef"
+        Class="right-panel-search"
+        ShowCloseButton="@ShowCloseButton"
+        OnCloseClick="@CloseSearchPanel">
+        <RightPanelSearchTabs ChatContext="@ChatContext"/>
+    </SearchPanel>
+}
 
 @code {
+    private SearchPanel? _searchPanelRef;
+    private PanelsUI PanelsUI => ChatContext.PanelsUI;
+
+    [Inject] private FocusUI FocusUI { get; init; } = null!;
+
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
-    [Parameter] public bool IsShown { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; }
 
-    private void CloseSearchPanel()
-        => ChatContext.PanelsUI.Right.SearchToggle();
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_searchPanelRef != null && State.Value.IsVisible)
+            await _searchPanelRef.Focus();
+    }
 
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isVisible = await PanelsUI.RightSearch.IsVisible.Use(cancellationToken);
+        return new () {
+            IsVisible = isVisible,
+        };
+    }
+
+    private void CloseSearchPanel()
+        => ChatContext.PanelsUI.RightSearch.Toggle();
+
+    public sealed record Model {
+        public static readonly Model Loading = new();
+
+        public bool IsVisible { get; init; }
+    }
 }
