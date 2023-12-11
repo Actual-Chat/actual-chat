@@ -71,19 +71,6 @@ public partial class History
                 // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
                 $"LocationChange: transition #{lastItem.Id} -> #{CurrentItem.Id}, {transition}");
             Transition(transition);
-
-            // Checking whether we shou
-            var mustInvokeExitHandler = !lastItem.HasBackSteps // We were in the "zero" state before the transition
-                && !currentItem.HasBackSteps // And still in the zero state
-                && hasValidHistoryEntryState // existingItemId is valid, i.e. it was a history navigation
-                && existingItemId < lastItem.Id // And it was a backward history navigation
-                && _locationChangeRegion.ExitAction == Delegates.Noop // There is no exit action
-                && NavigationQueue.IsEmpty; // And no pending navigations
-            if (mustInvokeExitHandler) {
-                // Navigating back + both states don't have "back" states
-                DebugLog?.LogDebug("LocationChange: invoking history exit handler");
-                Services.GetService<IHistoryExitHandler>()?.Exit();
-            }
         }
         finally {
             try {
