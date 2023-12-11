@@ -5,7 +5,7 @@
 }
 
 @switch (chat.Kind) {
-case ChatKind.Group:
+case ChatKind.Group or ChatKind.Place:
     <Pic
         Title="@chat.Title"
         Picture="@chat.Picture.ToPicture()"
