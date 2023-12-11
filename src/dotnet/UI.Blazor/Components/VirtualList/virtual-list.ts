@@ -200,15 +200,6 @@ export class VirtualList {
 
         if (this._containerRef.classList.contains('hide')) {
             this._containerRef.classList.remove('hide');
-            const rs = this.parseRenderState();
-            if (rs?.hasVeryFirstItem) {
-                this._spacerRef.style.height = '0px';
-            }
-            else if (rs.keyRange.start) {
-                this._spacerRef.style.height = '200px';
-            }
-            if (rs?.hasVeryLastItem)
-                this._endSpacerRef.style.height = '0px';
         }
         this.onItemSetChange([], this._itemSetChangeObserver);
     };
@@ -575,6 +566,16 @@ export class VirtualList {
             this._whenRequestDataCompleted?.resolve(undefined);
             return;
         }
+
+        // Adjust spacer size
+        if (rs.hasVeryFirstItem) {
+            this._spacerRef.style.height = '0px';
+        }
+        else if (rs.keyRange?.start) {
+            this._spacerRef.style.height = '200px';
+        }
+        if (rs.hasVeryLastItem)
+            this._endSpacerRef.style.height = '0px';
 
         const startedAt = this._renderStartedAt;
         const now = Date.now();
