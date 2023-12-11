@@ -1,4 +1,5 @@
 using ActualChat.Security;
+using ActualChat.Web;
 using Microsoft.AspNetCore.Mvc;
 using Stl.Fusion.Server.Authentication;
 
@@ -26,6 +27,8 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         string scheme, [FromQuery(Name = "s")] string sessionToken, string? returnUrl = null,
         CancellationToken cancellationToken = default)
     {
+        var session = SecureTokensBackend.ParseSessionToken(sessionToken);
+        HttpContext.AddSessionCookie(session);
         if (returnUrl.IsNullOrEmpty())
             returnUrl = UrlMapper.ToAbsolute(Links.AutoClose("Sign-in"));
         var syncUrl = UrlMapper.ToAbsolute(
@@ -38,6 +41,8 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         [FromQuery(Name = "s")] string sessionToken, string? returnUrl = null,
         CancellationToken cancellationToken = default)
     {
+        var session = SecureTokensBackend.ParseSessionToken(sessionToken);
+        HttpContext.AddSessionCookie(session);
         if (returnUrl.IsNullOrEmpty())
             returnUrl = UrlMapper.ToAbsolute(Links.AutoClose("Sign-out"));
         var syncUrl = UrlMapper.ToAbsolute(

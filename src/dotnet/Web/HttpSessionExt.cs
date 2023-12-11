@@ -76,8 +76,7 @@ public static class HttpSessionExt
     public static Session AddSessionCookie(this HttpContext httpContext, Session session)
     {
         session.RequireValid();
-        var cookieBuilder = Cookie;
-        var cookie = cookieBuilder.Build(httpContext);
+        var cookie = Cookie.Build(httpContext);
         httpContext.Response.Cookies.Append(Constants.Session.CookieName, session.Id.Value, cookie);
         return session;
     }
