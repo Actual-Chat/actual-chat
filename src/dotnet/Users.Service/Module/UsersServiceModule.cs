@@ -151,7 +151,7 @@ public sealed class UsersServiceModule : HostModule<UsersSettings>
         var fusionWebServer = fusion.AddWebServer();
         services.AddScoped<ServerAuthHelper, AppServerAuthHelper>(); // Replacing the default one w/ own
         fusionWebServer.ConfigureAuthEndpoint(_ => new() {
-            DefaultScheme = GoogleDefaults.AuthenticationScheme,
+            DefaultSignInScheme = GoogleDefaults.AuthenticationScheme,
             SignInPropertiesBuilder = (_, properties) => {
                 properties.IsPersistent = true;
             },

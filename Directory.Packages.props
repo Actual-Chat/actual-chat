@@ -16,7 +16,7 @@
     <NpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</NpgsqlVersion>
     <RedisVersion>2.7.4</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>6.8.2</StlFusionVersion>
+    <StlFusionVersion>6.8.11</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.6.0</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.5.1-beta.1</OpenTelemetryAspNetCoreVersion>
