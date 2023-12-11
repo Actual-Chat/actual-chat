@@ -105,7 +105,8 @@ swiper-slide img {
     width: 100%;
 }
 .media-swiper video {
-    max-height: 100%;
+    height: calc(100vh - 7rem);
+    height: calc(100dvh - 7rem);
 }
 .media-preview-swiper {
     height: 10%;
