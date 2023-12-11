@@ -27,14 +27,13 @@
         if (peerAccountId.IsNone)
             return "";
 
-        var ownAuthor = await Authors.GetOwn(Session, peerChatId, CancellationToken.None);
+        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken);
         var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
-        var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, CancellationToken.None);
+        var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken);
 
         if (anotherAuthor == null)
             return "";
-        var presenceTask = Authors.GetPresence(Session, Chat.Id, anotherAuthor.Id, CancellationToken.None);
-        var presence = await presenceTask.ConfigureAwait(false);
+        var presence = await Authors.GetPresence(Session, Chat.Id, anotherAuthor.Id, cancellationToken);
 
         var status = presence switch {
             Presence.Offline => "Offline",
