@@ -1,6 +1,8 @@
 Near term:
 
 Urgent fixes:
+- Logout doesn't work on Android & Windows apps; maybe iOS as well.
+- Swipe from the very right edge of the screen to remove the left panel doesn't work consistently
 - Theme should set text color + make sure all the issues w/ black on black in Dark theme are gone
 - Web splash should be the same as MAUI splash
 - Portrait/landscape mode switch should work in MAUI apps (mainly for images & videos)
