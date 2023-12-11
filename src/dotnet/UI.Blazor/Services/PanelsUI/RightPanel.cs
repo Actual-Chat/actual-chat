@@ -5,7 +5,8 @@ namespace ActualChat.UI.Blazor.Services;
 public class RightPanel
 {
     private const string StatePrefix = nameof(RightPanel) + "UI";
-    private readonly IStoredState<bool> _isVisible;
+    private readonly IMutableState<bool> _isVisible;
+    private readonly IStoredState<bool> _isVisibleStored;
 
     private IServiceProvider Services => Owner.Services;
     private History History => Owner.History;
@@ -19,27 +20,24 @@ public class RightPanel
     {
         Owner = owner;
         var stateFactory = Owner.Scope.StateFactory();
-        var localSettings = Services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
-        _isVisible = stateFactory.NewKvasStored<bool>(
-            new (localSettings, nameof(IsVisible)) {
-                InitialValue = false,
-                Corrector = (isVisible, _) => new ValueTask<bool>(isVisible && Owner.IsWide()),
-                Category = StateCategories.Get(GetType(), nameof(IsVisible)),
-            });
+        _isVisible = stateFactory.NewMutable(false);
         var initialState = new OwnHistoryState(this, false);
         History.Register(initialState);
-        _ = _isVisible.WhenRead.ContinueWith(_1 => {
-            var isVisible = _isVisible.Value;
-            if (initialState.IsVisible != isVisible)
-                // Handles special case:
-                // Right panel is open in wide view after loading.
-                // Open modal.
-                // Close modal.
-                // Closing modal should invoke GoBack navigation but adds a new state instead.
-                // To workaround this issue we should correct default state for right panel.
-                _ = History.Dispatcher.InvokeAsync(
-                    () => History.FixDefaultState(initialState, new OwnHistoryState(this, isVisible)));
-        }, TaskScheduler.Default);
+
+        var localSettings = Services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
+        _isVisibleStored = stateFactory.NewKvasStored<bool>(
+            new (localSettings, nameof(IsVisible)) {
+                InitialValue = false,
+                Category = StateCategories.Get(GetType(), nameof(IsVisible) + "Stored"),
+            });
+
+        // Automatically open right panel on wide screen if it was open during last session.
+        _ = Task.WhenAll(_isVisibleStored.WhenRead, Owner.History.WhenReady)
+            .ContinueWith(_1 => {
+                    if (Owner.IsWide() && _isVisibleStored.Value)
+                        SetIsVisible(true);
+                },
+                TaskScheduler.Default);
     }
 
     public void Toggle()
@@ -51,6 +49,8 @@ public class RightPanel
                 return;
 
             _isVisible.Value = value;
+            if (Owner.IsWide())
+                _isVisibleStored.Value = value;
             History.Save<OwnHistoryState>();
         });
 

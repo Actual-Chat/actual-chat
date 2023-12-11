@@ -70,6 +70,9 @@ public class AppScopedServiceStarter
 
             // Finishing with auto-navigation & History init
             var url = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);
+            // Instantiate PanelsUI to register correspondent history states for left and right panels.
+            // It's needed to make first history step always has BackStepCount == 0.
+            _ = Services.GetRequiredService<PanelsUI>();
             if (url.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
                 // We have to open chat root first - to make sure "Back" leads to it
                 await History.Initialize(Links.Chats).ConfigureAwait(false);

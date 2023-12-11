@@ -18,9 +18,8 @@ public class LeftPanel
     public LeftPanel(PanelsUI owner)
     {
         Owner = owner;
-        var initialIsVisible = GetIsVisibleOverride() ?? false;
-        _isVisible = Owner.Scope.StateFactory().NewMutable(initialIsVisible);
-        History.Register(new OwnHistoryState(this, initialIsVisible));
+        _isVisible = Owner.Scope.StateFactory().NewMutable(true);
+        History.Register(new OwnHistoryState(this, true));
         // Log.LogInformation("InitialIsVisible: {InitialIsVisible} @ {Url}", initialIsVisible, History.LocalUrl);
     }
 
