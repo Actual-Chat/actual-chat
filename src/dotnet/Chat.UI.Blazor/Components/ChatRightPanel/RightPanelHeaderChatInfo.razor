@@ -1,0 +1,15 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<div class="c-status">
+    @if (Chat.Kind == ChatKind.Group) {
+        @(Chat.IsPublic ? "Public" : "Private")
+    } else {
+        <PeerAccountStatus ChatContext="@ChatContext" />
+    }
+</div>
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+}
