@@ -200,15 +200,6 @@ export class VirtualList {
 
         if (this._containerRef.classList.contains('hide')) {
             this._containerRef.classList.remove('hide');
-            const rs = this.parseRenderState();
-            if (rs?.hasVeryFirstItem) {
-                this._spacerRef.style.height = '0px';
-            }
-            else if (rs.keyRange.start) {
-                this._spacerRef.style.height = '200px';
-            }
-            if (rs?.hasVeryLastItem)
-                this._endSpacerRef.style.height = '0px';
         }
         this.onItemSetChange([], this._itemSetChangeObserver);
     };
@@ -386,12 +377,20 @@ export class VirtualList {
                 this.scrollToEnd(false);
 
             if (DeviceInfo.isIos) {
+                const htmlElement = document.getElementsByTagName('html')[0];
+                const bodyElement = document.body;
                 if (this.windowScrollTop == 0) {
-                    document.body.style.position = 'static';
+                    htmlElement.style.position = 'static';
+                    htmlElement.style.overflowX = null;
+                    bodyElement.style.position = 'static';
+                    bodyElement.style.overflowX = null;
                 }
                 else {
                     // Hack for iOS to keep text editor visible when virtual keyboard appears or new message is submitted
-                    document.body.style.position = 'fixed';
+                    htmlElement.style.position = 'fixed';
+                    htmlElement.style.overflowX = 'hidden';
+                    bodyElement.style.position = 'fixed';
+                    bodyElement.style.overflowX = 'hidden';
                 }
             }
         }
@@ -567,6 +566,16 @@ export class VirtualList {
             this._whenRequestDataCompleted?.resolve(undefined);
             return;
         }
+
+        // Adjust spacer size
+        if (rs.hasVeryFirstItem) {
+            this._spacerRef.style.height = '0px';
+        }
+        else if (rs.keyRange?.start) {
+            this._spacerRef.style.height = '200px';
+        }
+        if (rs.hasVeryLastItem)
+            this._endSpacerRef.style.height = '0px';
 
         const startedAt = this._renderStartedAt;
         const now = Date.now();

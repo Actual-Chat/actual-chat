@@ -13,6 +13,7 @@ body {
     @apply text-01 bg-01;
     -webkit-touch-callout: none;
     overscroll-behavior-x: none; /* Disables navigate back/forward w/ swipe, doesn't work on Safari */
+    width: 100%;
 }
 
 /* prevent pull-to-refresh for Safari 16+ */
