@@ -38,6 +38,7 @@
 }
 .search-input input:focus {
     @apply pl-4;
+    @apply bg-transparent;
 }
 .search-input input:focus + .search-icon {
     @apply hidden;

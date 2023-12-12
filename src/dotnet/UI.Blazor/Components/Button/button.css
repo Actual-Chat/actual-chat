@@ -324,6 +324,7 @@ body.hoverable .btn.btn-round:hover > .btn-content {
     @apply hover:text-primary;
 }
 body.hoverable .btn.blackout:hover .btn-content,
+body.hoverable .btn-h.blackout:hover,
 .btn.blackout:focus .btn-content,
 .btn.blackout:active .btn-content {
     @apply text-02;

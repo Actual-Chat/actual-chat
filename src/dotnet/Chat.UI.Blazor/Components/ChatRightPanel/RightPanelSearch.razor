@@ -21,7 +21,7 @@
 
 @code {
     private SearchPanel? _searchPanelRef;
-    private PanelsUI PanelsUI => ChatContext.PanelsUI;
+    private PanelsUI PanelsUI => ChatContext.Hub.PanelsUI;
 
     [Inject] private FocusUI FocusUI { get; init; } = null!;
 
@@ -48,7 +48,7 @@
     }
 
     private void CloseSearchPanel()
-        => ChatContext.PanelsUI.RightSearch.Toggle();
+        => ChatContext.Hub.PanelsUI.RightSearch.Toggle();
 
     public sealed record Model {
         public static readonly Model Loading = new();
