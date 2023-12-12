@@ -5,7 +5,8 @@ namespace ActualChat.UI.Blazor.Services;
 public class RightSearchPanel
 {
     private const string StatePrefix = nameof(RightSearchPanel) + "UI";
-    private readonly IStoredState<bool> _isVisible;
+    private readonly IMutableState<bool> _isVisible;
+    private readonly IStoredState<bool> _isVisibleStored;
 
     private IServiceProvider Services => Owner.Services;
     private History History => Owner.History;
@@ -19,20 +20,23 @@ public class RightSearchPanel
     {
         Owner = owner;
         var stateFactory = Owner.Scope.StateFactory();
-        var localSettings = Services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
-        _isVisible = stateFactory.NewKvasStored<bool>(
-            new (localSettings, nameof(IsVisible)) {
-                InitialValue = false,
-                Category = StateCategories.Get(GetType(), nameof(IsVisible)),
-            });
+        _isVisible = stateFactory.NewMutable(false);
         var initialState = new OwnHistoryState(this, false);
         History.Register(initialState);
-        _ = _isVisible.WhenRead.ContinueWith(_1 => {
-            var isVisible = _isVisible.Value;
-            if (initialState.IsVisible != isVisible)
-                _ = History.Dispatcher.InvokeAsync(
-                    () => History.FixDefaultState(initialState, new OwnHistoryState(this, isVisible)));
-        }, TaskScheduler.Default);
+
+        var localSettings = Services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
+        _isVisibleStored = stateFactory.NewKvasStored<bool>(
+            new (localSettings, nameof(IsVisible)) {
+                InitialValue = false,
+                Category = StateCategories.Get(GetType(), nameof(IsVisible) + "Stored"),
+            });
+
+        // Automatically open right panel on wide screen if it was open during last session.
+        _ = Task.WhenAll(_isVisibleStored.WhenRead, Owner.History.WhenReady)
+            .ContinueWith(_1 => {
+                    SetIsVisible(false);
+                },
+                TaskScheduler.Default);
     }
 
     public void Toggle()
