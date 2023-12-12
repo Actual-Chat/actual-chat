@@ -1,11 +1,12 @@
 ﻿using ActualChat.Hosting;
 using ActualChat.Permissions;
+using ActualChat.UI.Blazor;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace ActualChat.App.Maui;
 
-public class AddPhotoPermissionHandler(IServiceProvider services, bool mustStart = true)
-    : PermissionHandler(services, mustStart)
+public class AddPhotoPermissionHandler(UIHub hub, bool mustStart = true)
+    : PermissionHandler(hub, mustStart)
 {
     protected override async Task<bool?> Get(CancellationToken cancellationToken)
     {

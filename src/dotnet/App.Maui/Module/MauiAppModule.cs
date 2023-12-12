@@ -27,17 +27,17 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Session & authentication
         services.AddSingleton(c => new MauiSession(c));
-        services.AddScoped<IClientAuth>(c => new MauiClientAuth(c));
+        services.AddScoped<IClientAuth>(c => new MauiClientAuth(c.UIHub()));
 
         // UI
         services.Replace(ServiceDescriptor.Singleton<ReloadUI>(c => new MauiReloadUI(c))); // Replaces scoped ReloadUI
-        services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c));
+        services.AddScoped<BrowserInfo>(c => new MauiBrowserInfo(c.UIHub()));
         services.AddScoped<KeepAwakeUI>(c => new MauiKeepAwakeUI(c));
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
 
         // Permissions
-        services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c));
+        services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
 
         // ClientComputedCache
         var appCacheDir = new FilePath(FileSystem.CacheDirectory);
@@ -68,6 +68,6 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Contacts
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
-        services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c));
+        services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));
     }
 }

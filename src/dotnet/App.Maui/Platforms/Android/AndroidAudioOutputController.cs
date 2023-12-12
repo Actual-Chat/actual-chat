@@ -25,14 +25,14 @@ public sealed class AndroidAudioOutputController : ScopedServiceBase<UIHub>, IAu
     public IState<bool> IsAudioOn => _isAudioOn;
     public IState<bool> IsSpeakerphoneOn => _isSpeakerphoneOn;
 
-    public AndroidAudioOutputController(IServiceProvider services) : base(services)
+    public AndroidAudioOutputController(UIHub hub) : base(hub)
     {
         _audioManager = (AudioManager)Platform.AppContext.GetSystemService(Context.AudioService)!;
         if (Build.VERSION.SdkInt >= BuildVersionCodes.S) {
             try {
                 _audioManager.AddOnModeChangedListener(
                     Platform.AppContext.MainExecutor!,
-                    new ModeChangedListener(services.LogFor<ModeChangedListener>()));
+                    new ModeChangedListener(hub.LogFor<ModeChangedListener>()));
             }
             catch(Exception e) {
                 Log.LogWarning(e, "Failed to add ModeChangedListener");
@@ -40,11 +40,11 @@ public sealed class AndroidAudioOutputController : ScopedServiceBase<UIHub>, IAu
         }
         _audioSwitch = new AudioSwitch(
             Platform.AppContext, true,
-            new FocusChangeListener(services.LogFor<FocusChangeListener>()));
+            new FocusChangeListener(hub.LogFor<FocusChangeListener>()));
         _audioSwitch.Start(new StartupCallback());
 
         var stateFactory = StateFactory;
-        var localSettings = services.GetRequiredService<LocalSettings>().WithPrefix(nameof(AndroidAudioOutput));
+        var localSettings = hub.LocalSettings().WithPrefix(nameof(AndroidAudioOutput));
         var type = GetType();
         _isAudioOn = stateFactory.NewMutable(
             false,

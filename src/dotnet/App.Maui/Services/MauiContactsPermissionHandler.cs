@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Permissions;
+using ActualChat.UI.Blazor;
 using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace ActualChat.App.Maui.Services;
@@ -8,8 +9,8 @@ namespace ActualChat.App.Maui.Services;
 public class MauiContactsPermissionHandler : ContactsPermissionHandler
 {
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiContactsPermissionHandler))]
-    public MauiContactsPermissionHandler(IServiceProvider services, bool mustStart = true)
-        : base(services, false)
+    public MauiContactsPermissionHandler(UIHub hub, bool mustStart = true)
+        : base(hub, false)
     {
         ExpirationPeriod = TimeSpan.FromMinutes(30); // No need to check this frequently
         if (mustStart)

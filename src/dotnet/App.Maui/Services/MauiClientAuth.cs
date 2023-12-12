@@ -1,22 +1,20 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.App.Maui.Services;
 
 [method: DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiClientAuth))]
-internal sealed class MauiClientAuth(IServiceProvider services) : IClientAuth
+internal sealed class MauiClientAuth(UIHub hub) : IClientAuth
 {
     private SessionTokens? _sessionTokens;
-    private HostInfo? _hostInfo;
-    private History? _history;
     private ILogger? _log;
 
-    private IServiceProvider Services { get; } = services;
-    private SessionTokens SessionTokens => _sessionTokens ??= Services.GetRequiredService<SessionTokens>();
-    private HostInfo HostInfo => _hostInfo ??= Services.HostInfo();
-    private History History => _history ??= Services.GetRequiredService<History>();
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private UIHub Hub { get; } = hub;
+    private SessionTokens SessionTokens => _sessionTokens ??= Hub.GetRequiredService<SessionTokens>();
+    private HostInfo HostInfo => Hub.HostInfo();
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     public async Task SignIn(string schema)
     {
@@ -25,7 +23,7 @@ internal sealed class MauiClientAuth(IServiceProvider services) : IClientAuth
 
 #if ANDROID
         if (OrdinalEquals(IClientAuth.GoogleSchemeName, schema)) {
-            var googleAuth = Services.GetRequiredService<NativeGoogleAuth>();
+            var googleAuth = Hub.GetRequiredService<NativeGoogleAuth>();
             if (googleAuth.IsAvailable()) {
                 await googleAuth.SignIn().ConfigureAwait(false);
                 return;
@@ -37,7 +35,7 @@ internal sealed class MauiClientAuth(IServiceProvider services) : IClientAuth
             && DeviceInfo.Platform == DevicePlatform.iOS
             && DeviceInfo.Version.Major >= 13)
         {
-            var appleAuth = Services.GetRequiredService<NativeAppleAuth>();
+            var appleAuth = Hub.GetRequiredService<NativeAppleAuth>();
             await appleAuth.SignIn().ConfigureAwait(false);
             return;
         }
@@ -49,7 +47,7 @@ internal sealed class MauiClientAuth(IServiceProvider services) : IClientAuth
     public async Task SignOut()
     {
 #if ANDROID
-        var googleAuth = Services.GetRequiredService<NativeGoogleAuth>();
+        var googleAuth = Hub.GetRequiredService<NativeGoogleAuth>();
         if (googleAuth.IsSignedIn())
             await googleAuth.SignOut().ConfigureAwait(true);
 #endif
@@ -84,11 +82,11 @@ internal sealed class MauiClientAuth(IServiceProvider services) : IClientAuth
             }
 
             // WebView-based authentication
-            var returnUrl = History.UrlMapper.ToAbsolute( isSignIn ? Links.Chats : Links.Home);
+            var returnUrl = Hub.UrlMapper().ToAbsolute( isSignIn ? Links.Chats : Links.Home);
             // NOTE(AY): returnUrl here points to https://[xxx.]actual.chat/xxx ,
             // but MauiNavigationInterceptor will correct it to the local one anyway.
             url = $"{url}&returnUrl={returnUrl.UrlEncode()}";
-            History.Nav.NavigateTo(url);
+            Hub.Nav.NavigateTo(url);
         }
         catch (Exception ex) {
             Log.LogError(ex, "WebSignInOrSignOut failed (endpoint: {Endpoint})", endpoint);

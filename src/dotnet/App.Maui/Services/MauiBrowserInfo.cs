@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
 
@@ -8,8 +9,8 @@ namespace ActualChat.App.Maui.Services;
 public class MauiBrowserInfo : BrowserInfo
 {
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(MauiBrowserInfo))]
-    public MauiBrowserInfo(IServiceProvider services)
-        : base(services)
+    public MauiBrowserInfo(UIHub hub)
+        : base(hub)
     {
         var clientKind = HostInfo.ClientKind;
         var isWindowsOrMacOS = clientKind is ClientKind.Windows or ClientKind.MacOS;

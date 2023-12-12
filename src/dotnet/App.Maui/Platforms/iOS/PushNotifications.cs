@@ -1,5 +1,5 @@
 using ActualChat.Notification.UI.Blazor;
-using ActualChat.UI.Blazor.Services;
+using ActualChat.UI.Blazor;
 using Foundation;
 using Microsoft.AspNetCore.Components;
 using Plugin.Firebase.CloudMessaging;
@@ -13,23 +13,20 @@ namespace ActualChat.App.Maui;
 public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission, IDisposable
 {
     private NotificationUI? _notificationUI;
-    private History? _history;
-    private NavigationManager? _nav;
     private ILogger? _log;
 
-    private IServiceProvider Services { get; }
+    private UIHub Hub { get; }
     private IFirebaseCloudMessaging Messaging { get; }
-    private History History  => _history ??= Services.GetRequiredService<History>();
-    private UrlMapper UrlMapper => History.UrlMapper;
-    private NavigationManager Nav => _nav ??= Services.GetRequiredService<NavigationManager>();
-    private NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private NavigationManager Nav => Hub.Nav;
+    private NotificationUI NotificationUI => _notificationUI ??= Hub.GetRequiredService<NotificationUI>();
     private static UNUserNotificationCenter NotificationCenter => UNUserNotificationCenter.Current;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
-    public PushNotifications(IServiceProvider services)
+    public PushNotifications(UIHub hub)
     {
-        Services = services;
-        Messaging = services.GetRequiredService<IFirebaseCloudMessaging>();
+        Hub = hub;
+        Messaging = hub.GetRequiredService<IFirebaseCloudMessaging>();
         Messaging.NotificationTapped += OnNotificationTapped;
     }
 
