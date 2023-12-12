@@ -5,8 +5,8 @@ using Android.Content;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidVisualMediaViewerFileDownloader(IServiceProvider services)
-    : IVisualMediaViewerFileDownloader
+public class AndroidMediaSaver(IServiceProvider services)
+    : IMediaSaver
 {
     private readonly object _lock = new();
     private ToastUI? _toastUI;
@@ -17,7 +17,7 @@ public class AndroidVisualMediaViewerFileDownloader(IServiceProvider services)
     private ToastUI ToastUI => _toastUI ??= services.GetRequiredService<ToastUI>();
     private ILogger Log => _log ??= services.LogFor(GetType());
 
-    public Task Download(string sUri, string contentType)
+    public Task Save(string sUri, string contentType)
     {
         var uri = Android.Net.Uri.Parse(sUri);
         if (uri == null) {

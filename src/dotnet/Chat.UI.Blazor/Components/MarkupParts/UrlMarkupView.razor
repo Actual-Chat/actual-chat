@@ -30,8 +30,10 @@
     private string _hrefUrl = "";
     private ChatMessage _message = null!;
 
-    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private NavigationManager Nav => Hub.Nav;
+    private History History => Hub.History;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
 
     protected override void OnParametersSet() {
         _message = new ChatMessage(Entry);
@@ -41,10 +43,10 @@
         switch (Markup.Kind) {
         case UrlMarkupKind.Www:
             var url2 = url.EnsureSuffix("/");
-            if (url2.OrdinalStartsWith(History.Nav.BaseUri))
-                _localUrl = new LocalUrl(History.Nav.ToBaseRelativePath(url2));
-            else if (url2.OrdinalStartsWith(History.UrlMapper.BaseUrl))
-                _localUrl = new LocalUrl(History.UrlMapper.ToBaseRelativePath(url2));
+            if (url2.OrdinalStartsWith(Nav.BaseUri))
+                _localUrl = new LocalUrl(Nav.ToBaseRelativePath(url2));
+            else if (url2.OrdinalStartsWith(UrlMapper.BaseUrl))
+                _localUrl = new LocalUrl(UrlMapper.ToBaseRelativePath(url2));
             break;
         case UrlMarkupKind.Email:
             _hrefUrl = url.OrdinalStartsWith("mailto:") ? url : "mailto:" + url;

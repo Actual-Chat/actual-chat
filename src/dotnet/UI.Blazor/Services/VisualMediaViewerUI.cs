@@ -1,9 +1,9 @@
 using ActualChat.Chat;
 namespace ActualChat.UI.Blazor.Services;
 
-public class VisualMediaViewerUI(IServiceProvider services)
+public class VisualMediaViewerUI(UIHub hub)
 {
-    private ModalUI ModalUI { get; } = services.GetRequiredService<ModalUI>();
+    private ModalUI ModalUI => hub.ModalUI;
 
     public async Task Show(string url, ChatEntry? chatEntry = null)
     {

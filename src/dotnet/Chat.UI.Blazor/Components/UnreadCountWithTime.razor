@@ -34,8 +34,9 @@
     private Moment _lastRenderTime;
     private CancellationTokenSource? _cancelRenderDelayCts;
 
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private MomentClockSet Clocks => Hub.Clocks();
+    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
 
     [Parameter, EditorRequired] public Trimmed<int> Value { get; set; }
     [Parameter] public ChatEntry? LastEntry { get; set; }

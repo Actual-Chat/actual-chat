@@ -10,11 +10,10 @@ namespace ActualChat.Audio.UI.Blazor.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class AudioBlazorUIModule : HostModule, IBlazorUIModule
+public sealed class AudioBlazorUIModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IBlazorUIModule
 {
     public static string ImportName => "audio";
-
-    public AudioBlazorUIModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {
@@ -24,10 +23,10 @@ public class AudioBlazorUIModule : HostModule, IBlazorUIModule
         services.AddFusion();
 
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
-        services.AddScoped<AudioInitializer>(c => new AudioInitializer(c));
+        services.AddScoped<AudioInitializer>(c => new AudioInitializer(c.UIHub()));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
         if (HostInfo.AppKind != AppKind.MauiApp) {
-            services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c));
+            services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
         }
 

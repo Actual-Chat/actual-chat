@@ -23,8 +23,9 @@
 }
 
 @code {
-    [Inject] AccountUI AccountUI { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] ChatUIHub Hub { get; init; } = null!;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private UIEventHub UIEventHub => Hub.UIEventHub();
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {

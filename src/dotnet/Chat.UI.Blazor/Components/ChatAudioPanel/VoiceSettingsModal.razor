@@ -28,12 +28,10 @@
 @code {
     private ChatVoiceSettings? _chatVoiceSettings;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
-
-    private Session Session => ChatHub.Session;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
     private ChatId ChatId => ModalModel.ChatId;
-    private ChatVoiceSettings ChatVoiceSettings
-        => _chatVoiceSettings ??= new(ChatHub.Services, ChatHub.AccountSettings());
+    private ChatVoiceSettings ChatVoiceSettings => _chatVoiceSettings ??= new(Hub.Services, Hub.AccountSettings());
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
 

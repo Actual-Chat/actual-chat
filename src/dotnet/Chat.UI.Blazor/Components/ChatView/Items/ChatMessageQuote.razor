@@ -28,9 +28,9 @@
     private IChatMarkupHub _chatMarkupHub = null!;
     private string _text = "";
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
-    private ChatUI ChatUI => ChatHub.ChatUI;
-    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => ChatHub.ChatMarkupHubFactory;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }

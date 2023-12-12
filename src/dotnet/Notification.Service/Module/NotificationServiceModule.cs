@@ -11,10 +11,9 @@ using Stl.Fusion.EntityFramework.Operations;
 namespace ActualChat.Notification.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class NotificationServiceModule : HostModule<NotificationSettings>
+public sealed class NotificationServiceModule(IServiceProvider moduleServices)
+    : HostModule<NotificationSettings>(moduleServices)
 {
-    public NotificationServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);

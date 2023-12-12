@@ -3,7 +3,7 @@ using Stl.Locking;
 
 namespace ActualChat.Permissions;
 
-public abstract class PermissionHandler : ScopedWorkerBase
+public abstract class PermissionHandler : ScopedWorkerBase<Hub>
 {
     private readonly IMutableState<bool?> _cached;
     private SystemSettingsUI? _systemSettingsUI;
@@ -21,7 +21,7 @@ public abstract class PermissionHandler : ScopedWorkerBase
 
     public IState<bool?> Cached => _cached;
 
-    protected PermissionHandler(IServiceProvider services, bool mustStart = true) : base(services)
+    protected PermissionHandler(Hub hub, bool mustStart = true) : base(hub)
     {
         _cached = StateFactory.NewMutable(
             (bool?)null,

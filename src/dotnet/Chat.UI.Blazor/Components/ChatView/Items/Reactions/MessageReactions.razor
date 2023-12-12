@@ -21,11 +21,12 @@
 </ul>
 
 @code {
-    [Inject] private IReactions Reactions { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private TuneUI TuneUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
+    private IReactions Reactions => Hub.Reactions;
+    private TuneUI TuneUI => Hub.TuneUI;
+    private UICommander UICommander => Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";

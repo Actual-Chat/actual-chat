@@ -42,12 +42,13 @@
 @code {
     private Model _rendered = Model.Loading;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IAudioOutputController AudioOutputController { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private IAuthors Authors => Hub.Authors;
+    private IAudioOutputController AudioOutputController => Hub.AudioOutputController;
 
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsListening => !IsUpdating && State is { Value.AudioState.IsListening: true };

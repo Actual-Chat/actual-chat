@@ -6,29 +6,28 @@ using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public partial class ChatAudioUI : ScopedWorkerBase, IComputeService, INotifyInitialized
+public partial class ChatAudioUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
     private readonly IMutableState<Moment?> _stopRecordingAt;
     private readonly IMutableState<Moment?> _audioStoppedAt;
     private readonly IMutableState<NextBeepState?> _nextBeep;
     private readonly TaskCompletionSource _whenEnabledSource = TaskCompletionSourceExt.New();
 
-    private ChatHub ChatHub { get; }
-    private IChats Chats => ChatHub.Chats;
-    private ChatActivity ChatActivity => ChatHub.ChatActivity;
-    private ActiveChatsUI ActiveChatsUI => ChatHub.ActiveChatsUI;
-    private AudioInitializer AudioInitializer => ChatHub.AudioInitializer;
-    private AudioSettings AudioSettings => ChatHub.AudioSettings;
-    private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
-    private ChatPlayers ChatPlayers => ChatHub.ChatPlayers;
-    private ChatEditorUI ChatEditorUI => ChatHub.ChatEditorUI;
-    private LanguageUI LanguageUI => ChatHub.LanguageUI;
-    private ModalUI ModalUI => ChatHub.ModalUI;
-    private UserActivityUI UserActivityUI => ChatHub.UserActivityUI;
-    private InteractiveUI InteractiveUI => ChatHub.InteractiveUI;
-    private DeviceAwakeUI DeviceAwakeUI => ChatHub.DeviceAwakeUI;
-    private TuneUI TuneUI => ChatHub.TuneUI;
-    private Dispatcher Dispatcher => ChatHub.Dispatcher;
+    private IChats Chats => Hub.Chats;
+    private ChatActivity ChatActivity => Hub.ChatActivity;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private AudioInitializer AudioInitializer => Hub.AudioInitializer;
+    private AudioSettings AudioSettings => Hub.AudioSettings;
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
+    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private UserActivityUI UserActivityUI => Hub.UserActivityUI;
+    private InteractiveUI InteractiveUI => Hub.InteractiveUI;
+    private DeviceAwakeUI DeviceAwakeUI => Hub.DeviceAwakeUI;
+    private TuneUI TuneUI => Hub.TuneUI;
+    private Dispatcher Dispatcher => Hub.Dispatcher;
 
     private Moment CpuNow => Clocks.CpuClock.Now;
     private Moment ServerNow => Clocks.ServerClock.Now;
@@ -38,10 +37,8 @@ public partial class ChatAudioUI : ScopedWorkerBase, IComputeService, INotifyIni
     public IState<NextBeepState?> NextBeep => _nextBeep;
     public Task WhenEnabled => _whenEnabledSource.Task;
 
-    public ChatAudioUI(ChatHub chatHub) : base(chatHub.Scope())
+    public ChatAudioUI(ChatUIHub hub) : base(hub)
     {
-        ChatHub = chatHub;
-
         // Read entry states from other windows / devices are delayed by 1s
         var type = GetType();
         var stateFactory = StateFactory;

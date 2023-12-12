@@ -8,10 +8,9 @@ using Stl.Fusion.EntityFramework.Operations;
 namespace ActualChat.Feedback.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class FeedbackServiceModule : HostModule<FeedbackSettings>
+public sealed class FeedbackServiceModule(IServiceProvider moduleServices)
+    : HostModule<FeedbackSettings>(moduleServices)
 {
-    public FeedbackServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);

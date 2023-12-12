@@ -1,27 +1,41 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public class LeftPanel
+public class LeftPanel : IDisposable
 {
     private readonly IMutableState<bool> _isVisible;
+    private readonly IComputedState<bool> _canBeHidden;
     private ILogger? _log;
 
-    private IServiceProvider Services => Owner.Services;
-    private History History => Owner.History;
-    private Dispatcher Dispatcher => Owner.Dispatcher;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private UIHub Hub { get; }
+    private History History => Hub.History;
+    private Dispatcher Dispatcher => Hub.Dispatcher;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
+    public IState<bool> CanBeHidden => _canBeHidden;
     public event Action? VisibilityChanged;
 
     public LeftPanel(PanelsUI owner)
     {
         Owner = owner;
-        _isVisible = Owner.Scope.StateFactory().NewMutable(true);
+        Hub = owner.Hub;
+
+        var stateFactory = Hub.StateFactory();
+        _isVisible = stateFactory.NewMutable(true, StateCategories.Get(GetType(), nameof(IsVisible)));
+        _canBeHidden = stateFactory.NewComputed(
+            new ComputedState<bool>.Options() {
+                UpdateDelayer = FixedDelayer.Instant,
+                Category = StateCategories.Get(GetType(), nameof(CanBeHidden)),
+            },
+            ComputeCanBeHidden);
         History.Register(new OwnHistoryState(this, true));
         // Log.LogInformation("InitialIsVisible: {InitialIsVisible} @ {Url}", initialIsVisible, History.LocalUrl);
     }
+
+    public void Dispose()
+        => _canBeHidden.Dispose();
 
     public void SetIsVisible(bool value)
         => _ = Dispatcher.InvokeAsync(() => {
@@ -50,6 +64,20 @@ public class LeftPanel
             return true;
 
         return null;
+    }
+
+    private async Task<bool> ComputeCanBeHidden(IComputedState<bool> state, CancellationToken cancellationToken)
+    {
+        var screenSize = await Owner.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
+        if (screenSize.IsWide())
+            return false;
+
+        var currentItem = await History.State.Use(cancellationToken).ConfigureAwait(false);
+        var localUrl = new LocalUrl(currentItem.Uri);
+        if (localUrl.IsDocsOrDocsRoot())
+            return true; // This panel isn't used in narrow mode in /docs
+
+        return !localUrl.IsChatRoot();
     }
 
     // Nested types

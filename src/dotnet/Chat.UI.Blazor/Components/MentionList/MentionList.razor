@@ -36,8 +36,9 @@
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private IJSRuntime JS => Hub.JSRuntime();
 
     [CascadingParameter] public MentionListManager Manager { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";

@@ -6,7 +6,8 @@ using ActualChat.Transcription.Google;
 namespace ActualChat.Transcription.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class TranscriptionServiceModule(IServiceProvider moduleServices) : HostModule<TranscriptSettings>(moduleServices)
+public sealed class TranscriptionServiceModule(IServiceProvider moduleServices)
+    : HostModule<TranscriptSettings>(moduleServices)
 {
     protected override TranscriptSettings ReadSettings()
         => Cfg.GetSettings<TranscriptSettings>(nameof(TranscriptSettings));

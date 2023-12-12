@@ -28,8 +28,10 @@
 @code {
     private bool _isCurrent;
 
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private History History => Hub.History;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
+    private TuneUI TuneUI => Hub.TuneUI;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public bool IsSelected { get; set; }
@@ -57,10 +59,8 @@
     private void OnCurrentClick() {
         // Navigation doesn't happen when we click on the current URL,
         // but we still need to pretend it is happening.
-        var panelsUI = Services.GetRequiredService<PanelsUI>();
-        panelsUI.HidePanels();
-        var tuneUI = Services.GetRequiredService<TuneUI>();
-        _ = tuneUI.Play(Tune.SelectNavbarItem);
+        PanelsUI.HidePanels();
+        _ = TuneUI.Play(Tune.SelectNavbarItem);
     }
 
     private bool CalculateIsCurrent()

@@ -4,10 +4,10 @@ public sealed class RealtimeChatPlayer : ChatPlayer
 {
     private ChatAudioUI ChatAudioUI { get; }
 
-    public RealtimeChatPlayer(ChatHub chatHub, ChatId chatId)
-        : base(chatHub, chatId)
+    public RealtimeChatPlayer(ChatUIHub hub, ChatId chatId)
+        : base(hub, chatId)
     {
-        ChatAudioUI = ChatHub.ChatAudioUI;
+        ChatAudioUI = Hub.ChatAudioUI;
         PlayerKind = ChatPlayerKind.Realtime;
     }
 
@@ -26,7 +26,7 @@ public sealed class RealtimeChatPlayer : ChatPlayer
         // We always override startAt here
         DebugLog?.LogDebug("Play: {ChatId}, {StartedAt}", ChatId, minPlayAt);
 
-        var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
+        var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader

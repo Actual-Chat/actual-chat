@@ -48,12 +48,12 @@
 </SideNav>
 
 @code {
-    private Session Session => ChatContext.Session;
+    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IChats Chats => ChatContext.Chats;
-    private PanelsUI PanelsUI => ChatContext.PanelsUI;
-    private Features Features => ChatContext.Features;
-    private ShareUI ShareUI => ChatContext.ShareUI;
+    private IChats Chats => ChatContext.Hub.Chats;
+    private Features Features => ChatContext.Hub.Features();
+    private PanelsUI PanelsUI => ChatContext.Hub.PanelsUI;
+    private ShareUI ShareUI => ChatContext.Hub.ShareUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

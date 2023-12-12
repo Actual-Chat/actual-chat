@@ -50,11 +50,11 @@
 @code {
     private EventCallback<AuthorId> _onClickCallback;
 
-    private Session Session => ChatContext.Session;
+    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IRoles Roles => ChatContext.Roles;
-    private IAuthors Authors => ChatContext.Authors;
-    private AuthorUI AuthorUI => ChatContext.AuthorUI;
+    private IRoles Roles => ChatContext.Hub.Roles;
+    private IAuthors Authors => ChatContext.Hub.Authors;
+    private AuthorUI AuthorUI => ChatContext.Hub.AuthorUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 

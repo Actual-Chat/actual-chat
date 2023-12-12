@@ -7,7 +7,7 @@ public class StaticImportsInitializer : IHostedService
 {
     public StaticImportsInitializer(IServiceProvider services)
     {
-        var hostInfo = services.GetRequiredService<HostInfo>();
+        var hostInfo = services.HostInfo();
         var isTestServer = hostInfo.AppKind.IsServer() && hostInfo.IsTested;
         if (isTestServer)
             return; // Don't set DefaultLog for tests

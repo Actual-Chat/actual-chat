@@ -3,30 +3,27 @@ using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class BubbleUI : ScopedServiceBase, IHasAcceptor<BubbleHost>
+public sealed class BubbleUI : ScopedServiceBase<UIHub>, IHasAcceptor<BubbleHost>
 {
     private readonly Acceptor<BubbleHost> _hostAcceptor = new(true);
     private readonly ISyncedState<UserBubbleSettings> _settings;
-    private AccountUI? _accountUI;
 
-    private AccountUI AccountUI => _accountUI ??= Services.GetRequiredService<AccountUI>();
-    private AccountSettings AccountSettings { get; }
+    private AccountUI AccountUI => Hub.AccountUI;
     Acceptor<BubbleHost> IHasAcceptor<BubbleHost>.Acceptor => _hostAcceptor;
 
     public IState<UserBubbleSettings> Settings => _settings;
     public Task WhenReady => _hostAcceptor.WhenAccepted();
     public BubbleHost Host => _hostAcceptor.Value;
 
-    public BubbleUI(IServiceProvider services) : base(services)
+    public BubbleUI(UIHub hub) : base(hub)
     {
-        AccountSettings = services.GetRequiredService<AccountSettings>();
         _settings = StateFactory.NewKvasSynced<UserBubbleSettings>(
             new (AccountSettings, UserBubbleSettings.KvasKey) {
                 InitialValue = new UserBubbleSettings(),
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
-        Scope.RegisterDisposable(_settings);
+        Hub.RegisterDisposable(_settings);
     }
 
     public async Task WhenReadyToShowBubbles()

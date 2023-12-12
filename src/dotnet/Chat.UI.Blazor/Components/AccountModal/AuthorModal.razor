@@ -60,7 +60,7 @@
 </DialogFrame>
 
 @code {
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     private AuthorId AuthorId => ModalModel.AuthorId;  // Shortcut
     private ChatId ChatId => AuthorId.ChatId; // Shortcut
@@ -79,22 +79,22 @@
             return ComputedModel.None;
 
         var chatId = AuthorId.ChatId;
-        var session = ChatHub.Session;
-        var author = await ChatHub.Authors.Get(session, chatId, AuthorId, cancellationToken);
+        var session = Hub.Session();
+        var author = await Hub.Authors.Get(session, chatId, AuthorId, cancellationToken);
         if (author == null)
             return ComputedModel.None;
 
-        var chat = await ChatHub.Chats.Get(session, chatId, cancellationToken);
+        var chat = await Hub.Chats.Get(session, chatId, cancellationToken);
 
-        var ownAccount = await ChatHub.Accounts.GetOwn(session, cancellationToken);
-        var account = await ChatHub.Authors.GetAccount(session, ChatId, AuthorId, cancellationToken);
-        var canStartPeerChat = await ChatHub.AuthorUI.CanStartPeerChat(AuthorId, cancellationToken);
-        var enableIncompleteUI = await ChatHub.Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var ownAccount = await Hub.Accounts.GetOwn(session, cancellationToken);
+        var account = await Hub.Authors.GetAccount(session, ChatId, AuthorId, cancellationToken);
+        var canStartPeerChat = await Hub.AuthorUI.CanStartPeerChat(AuthorId, cancellationToken);
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
         EditMemberModel? editMemberModel = null;
         var canEditMembers = chat != null && chat.Rules.CanEditMembers();
         if (canEditMembers)
-            editMemberModel = await EditMemberCommands.ComputeState(ChatHub, AuthorId, cancellationToken);
+            editMemberModel = await EditMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
 
         return new ComputedModel() {
             Author = author,
@@ -111,42 +111,42 @@
 
     private async Task OnRevealClicked() {
         var revealed = false;
-        var modelRef = await ChatHub.ModalUI.Show(new AvatarSelectModal.RevealModel(ChatId, SetAvatar));
+        var modelRef = await Hub.ModalUI.Show(new AvatarSelectModal.RevealModel(ChatId, SetAvatar));
         await modelRef.WhenClosed;
         if (revealed)
             Modal.Close();
 
         async Task SetAvatar(AvatarFull avatar) {
-            var command = new Authors_SetAvatar(ChatHub.Session, ChatId, avatar.Id);
-            await ChatHub.UICommander().Run(command);
+            var command = new Authors_SetAvatar(Hub.Session(), ChatId, avatar.Id);
+            await Hub.UICommander().Run(command);
             revealed = true;
         }
     }
 
     private async Task OnChangeAvatarClicked() {
         Modal.Close();
-        await ChatHub.ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, false, OnAvatarSelected));
+        await Hub.ModalUI.Show(new AvatarSelectModal.Model(AuthorId.ChatId, false, OnAvatarSelected));
     }
 
-    private async Task OnStartPeerChat()
-        => await ChatHub.AuthorUI.StartPeerChat(AuthorId);
+    private Task OnStartPeerChat()
+        => Hub.AuthorUI.StartPeerChat(AuthorId);
 
-    private async Task OnStartAnonymousPeerChat()
-        => await ChatHub.AuthorUI.StartAnonymousPeerChat(AuthorId);
+    private Task OnStartAnonymousPeerChat()
+        => Hub.AuthorUI.StartAnonymousPeerChat(AuthorId);
 
     private async Task OnAvatarSelected(AvatarFull avatar) {
-        var command = new Authors_SetAvatar(ChatHub.Session, AuthorId.ChatId, avatar.Id);
-        await ChatHub.UICommander().Run(command);
+        var command = new Authors_SetAvatar(Hub.Session(), AuthorId.ChatId, avatar.Id);
+        await Hub.UICommander().Run(command);
     }
 
     private void OnSettingsClick() {
         Modal.Close();
-        _ = ChatHub.UIEventHub().Publish(new ShowSettingsEvent());
+        _ = Hub.UIEventHub().Publish(new ShowSettingsEvent());
     }
 
     private void OnEditAvatarClicked(Author author) {
         Modal.Close();
-        _ = ChatHub.ModalUI.Show(new OwnAvatarEditorModal.Model(author.Avatar.Id, author.ChatId, "Edit avatar"));
+        _ = Hub.ModalUI.Show(new OwnAvatarEditorModal.Model(author.Avatar.Id, author.ChatId, "Edit avatar"));
     }
 
     public sealed record ComputedModel {

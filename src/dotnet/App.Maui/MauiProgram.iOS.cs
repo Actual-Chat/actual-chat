@@ -19,7 +19,7 @@ public static partial class MauiProgram
         services.AddScoped(c => new NativeAppleAuth(c));
         services.AddScoped<TuneUI>(c => new IosTuneUI(c));
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
-        services.AddScoped<IVisualMediaViewerFileDownloader, IosVisualMediaViewerFileDownloader>();
+        services.AddScoped<IMediaSaver, IosMediaSaver>();
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c));
     }
 

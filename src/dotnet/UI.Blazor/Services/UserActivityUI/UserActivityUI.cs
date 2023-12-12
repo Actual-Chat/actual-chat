@@ -3,35 +3,33 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class UserActivityUI : ScopedServiceBase, IUserActivityUIBackend
+public class UserActivityUI : ScopedServiceBase<UIHub>, IUserActivityUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.UserActivityUI.init";
 
     private readonly IMutableState<Moment> _activeUntil;
-    private DotNetObjectReference<IUserActivityUIBackend> _blazorRef;
 
-    private IJSRuntime JS { get; }
-    private IMomentClock Clock { get; }
-    private Moment Now => Clock.Now;
+    private IJSRuntime JS => Hub.JSRuntime();
+    private IMomentClock CpuClock { get; }
+    private Moment CpuNow => CpuClock.Now;
 
     public IState<Moment> ActiveUntil => _activeUntil; // CPU time
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(UserActivityUI))]
-    public UserActivityUI(IServiceProvider services) : base(services)
+    public UserActivityUI(UIHub hub) : base(hub)
     {
-        JS = services.JSRuntime();
-        Clock = Clocks.CpuClock;
+        CpuClock = Clocks.CpuClock;
         _activeUntil = StateFactory.NewMutable(
-            Now + Constants.Presence.CheckPeriod,
+            CpuNow + Constants.Presence.CheckPeriod,
             nameof(ActiveUntil));
-        _blazorRef = DotNetObjectReference.Create<IUserActivityUIBackend>(this);
-        Scope.RegisterDisposable(_blazorRef);
-        _ = JS.InvokeVoidAsync(JSInitMethod, _blazorRef,
+        var blazorRef = DotNetObjectReference.Create<IUserActivityUIBackend>(this);
+        Hub.RegisterDisposable(blazorRef);
+        _ = JS.InvokeVoidAsync(JSInitMethod, blazorRef,
             Constants.Presence.ActivityPeriod.TotalMilliseconds,
             Constants.Presence.CheckPeriod.TotalMilliseconds);
     }
 
     [JSInvokable]
     public void OnInteraction(double willBeActiveForMs)
-        => _activeUntil.Value = Now + TimeSpan.FromMilliseconds(willBeActiveForMs);
+        => _activeUntil.Value = CpuNow + TimeSpan.FromMilliseconds(willBeActiveForMs);
 }

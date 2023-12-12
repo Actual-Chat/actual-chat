@@ -20,7 +20,7 @@ public partial class ChatsUpgradeBackend
 
         var chatId = Constants.Chat.AnnouncementsChatId;
         var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
-        var hostInfo = Services.GetRequiredService<HostInfo>();
+        var hostInfo = Services.HostInfo();
         var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
 
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)
@@ -368,7 +368,7 @@ public partial class ChatsUpgradeBackend
 
         var chatId = Constants.Chat.FeedbackTemplateChatId;
         var usersTempBackend = Services.GetRequiredService<IUsersUpgradeBackend>();
-        var hostInfo = Services.GetRequiredService<HostInfo>();
+        var hostInfo = Services.HostInfo();
         var userIds = await usersTempBackend.ListAllUserIds(cancellationToken).ConfigureAwait(false);
 
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken)

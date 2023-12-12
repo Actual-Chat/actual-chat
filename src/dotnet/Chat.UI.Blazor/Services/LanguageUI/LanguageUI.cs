@@ -5,30 +5,24 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class LanguageUI : ScopedServiceBase, IDisposable
+public class LanguageUI : ScopedServiceBase<ChatUIHub>, IDisposable
 {
     private static readonly string JSGetLanguagesMethod = $"{ChatBlazorUIModule.ImportName}.LanguageUI.getLanguages";
     private readonly ISyncedState<UserLanguageSettings> _settings;
-    private TuneUI? _tuneUI;
-    private IJSRuntime? _js;
 
-    private AccountSettings AccountSettings { get; }
-    private TuneUI TuneUI => _tuneUI ??= Services.GetRequiredService<TuneUI>();
-    private IJSRuntime JS => _js ??= Services.JSRuntime();
+    private TuneUI TuneUI => Hub.TuneUI;
+    private IJSRuntime JS => Hub.JSRuntime();
 
     public IState<UserLanguageSettings> Settings => _settings;
 
-    public LanguageUI(IServiceProvider services) : base(services)
-    {
-        AccountSettings = services.GetRequiredService<AccountSettings>();
-        _settings = StateFactory.NewKvasSynced<UserLanguageSettings>(
+    public LanguageUI(ChatUIHub hub) : base(hub)
+        => _settings = StateFactory.NewKvasSynced<UserLanguageSettings>(
             new (AccountSettings, UserLanguageSettings.KvasKey) {
                 InitialValue = new UserLanguageSettings(),
                 MissingValueFactory = CreateLanguageSettings,
                 UpdateDelayer = FixedDelayer.Instant,
                 Category = StateCategories.Get(GetType(), nameof(Settings)),
             });
-    }
 
     public void Dispose()
         => _settings.Dispose();

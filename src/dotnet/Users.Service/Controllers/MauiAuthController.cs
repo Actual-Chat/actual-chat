@@ -19,7 +19,7 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
     private IServiceProvider Services { get; } = services;
     private ISecureTokensBackend SecureTokensBackend => _secureTokensBackend ??= Services.GetRequiredService<ISecureTokensBackend>();
     private ServerAuthHelper ServerAuthHelper => _serverAuthHelper ??= Services.GetRequiredService<ServerAuthHelper>();
-    private UrlMapper UrlMapper => _urlMapper ??= Services.GetRequiredService<UrlMapper>();
+    private UrlMapper UrlMapper => _urlMapper ??= Services.UrlMapper();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     [HttpGet("sign-in/{scheme}")]

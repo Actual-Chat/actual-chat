@@ -17,15 +17,15 @@ public static class ShareUIExt
     public static async ValueTask<ShareModalModel?> GetModel(
         this ShareUI shareUI, ChatId chatId, CancellationToken cancellationToken = default)
     {
-        var services = shareUI.Services;
-        var session = services.Session();
-        var chats = services.GetRequiredService<IChats>();
+        var hub = shareUI.Hub;
+        var session = hub.Session();
+        var chats = hub.GetRequiredService<IChats>();
         var chat = await chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat?.HasSingleAuthor != false)
             return null;
 
         if (chat.Id.IsPeerChat(out var peerChatId)) {
-            var accountUI = services.GetRequiredService<AccountUI>();
+            var accountUI = hub.GetRequiredService<AccountUI>();
             await accountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
             var ownAccount = accountUI.OwnAccount.Value;
             if (ownAccount.IsGuestOrNone)
@@ -43,7 +43,7 @@ public static class ShareUIExt
                 ShareKind.Chat, title, chat.Title,
                 new(text, Links.Chat(chat.Id)));
 
-        var invites = services.GetRequiredService<IInvites>();
+        var invites = hub.GetRequiredService<IInvites>();
         var invite = await invites.GetOrGenerateChatInvite(session, chat.Id, cancellationToken).ConfigureAwait(false);
         if (invite == null)
             return null;

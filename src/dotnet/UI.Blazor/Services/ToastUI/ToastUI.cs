@@ -29,6 +29,6 @@ public class ToastUI
     private static double? GetDelay(ToastDismissDelay autoDismissDelay)
         => autoDismissDelay switch {
             ToastDismissDelay.Short => 3,
-            _ => 5
+            _ => 5,
         };
 }

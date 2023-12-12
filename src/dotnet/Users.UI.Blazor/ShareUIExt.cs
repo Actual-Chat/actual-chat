@@ -23,8 +23,7 @@ public static class ShareUIExt
     public static async ValueTask<ShareModalModel?> GetOwnAccountModel(
         this ShareUI shareUI, CancellationToken cancellationToken = default)
     {
-        var services = shareUI.Services;
-        var accountUI = services.GetRequiredService<AccountUI>();
+        var accountUI = shareUI.Hub.AccountUI;
         await accountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         var ownAccount = accountUI.OwnAccount.Value;
         if (ownAccount.IsGuestOrNone)
@@ -44,15 +43,15 @@ public static class ShareUIExt
         if (userId.IsGuestOrNone)
             return null;
 
-        var services = shareUI.Services;
-        var accountUI = services.GetRequiredService<AccountUI>();
+        var hub = shareUI.Hub;
+        var accountUI = hub.GetRequiredService<AccountUI>();
         await accountUI.WhenLoaded.WaitAsync(cancellationToken).ConfigureAwait(false);
         var ownAccount = accountUI.OwnAccount.Value;
         if (userId == ownAccount.Id)
             return await shareUI.GetOwnAccountModel(cancellationToken).ConfigureAwait(false);
 
-        var session = accountUI.Session;
-        var accounts = services.GetRequiredService<IAccounts>();
+        var session = hub.Session();
+        var accounts = hub.GetRequiredService<IAccounts>();
         var account = await accounts.Get(session, userId, cancellationToken).ConfigureAwait(false);
         if (account == null)
             return null;

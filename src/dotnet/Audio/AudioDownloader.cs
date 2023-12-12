@@ -12,7 +12,7 @@ public class AudioDownloader
     {
         Services = services;
         Log = services.LogFor(GetType());
-        HttpClientFactory = services.GetRequiredService<IHttpClientFactory>();
+        HttpClientFactory = services.HttpClientFactory();
     }
 
     public virtual async Task<AudioSource> Download(

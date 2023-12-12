@@ -8,7 +8,7 @@ public sealed class MauiShare(IServiceProvider services) : IMauiShare
 {
     public Task Share(ShareRequest request)
     {
-        var urlMapper = services.GetRequiredService<UrlMapper>();
+        var urlMapper = services.UrlMapper();
         var textAndLink = request.GetShareTextAndLink(urlMapper);
         if (textAndLink.IsNullOrEmpty())
             return Task.CompletedTask;

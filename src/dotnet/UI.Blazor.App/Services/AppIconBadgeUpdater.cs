@@ -7,7 +7,7 @@ public interface IAppIconBadge
     void SetUnreadChatCount(int count);
 }
 
-public class AppIconBadgeUpdater(IServiceProvider services) : ScopedWorkerBase(services)
+public class AppIconBadgeUpdater(ChatUIHub hub) : ScopedWorkerBase<ChatUIHub>(hub)
 {
     protected override Task OnRun(CancellationToken cancellationToken)
         => Task.WhenAll(
@@ -20,7 +20,7 @@ public class AppIconBadgeUpdater(IServiceProvider services) : ScopedWorkerBase(s
         if (badge is null)
             return;
 
-        var chatListUI = Services.GetRequiredService<ChatListUI>();
+        var chatListUI = Hub.ChatListUI;
         var cChatsCount0 = await Computed
             .Capture(() => chatListUI.UnreadChatCount.Use(cancellationToken), cancellationToken)
             .ConfigureAwait(false);

@@ -65,7 +65,7 @@
 </div>
 
 @code {
-    [Inject] protected BlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
     [Inject] private ILogger<MicPermissionTestPage> Log { get; init; } = null!;
     [Inject] private ModalUI ModalUI { get; init; } = null!;
 

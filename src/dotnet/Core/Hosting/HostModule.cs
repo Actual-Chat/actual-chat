@@ -9,7 +9,7 @@ public abstract class HostModule(IServiceProvider moduleServices)
     private ILogger? _log;
 
     protected IServiceProvider ModuleServices { get; } = moduleServices;
-    protected HostInfo HostInfo => _hostInfo ??= ModuleServices.GetRequiredService<HostInfo>();
+    protected HostInfo HostInfo => _hostInfo ??= ModuleServices.HostInfo();
     protected bool IsDevelopmentInstance => HostInfo.IsDevelopmentInstance;
     protected IConfiguration Cfg => _cfg ??= ModuleServices.GetRequiredService<IConfiguration>();
     protected ILogger Log => _log ??= ModuleServices.LogFor(GetType());

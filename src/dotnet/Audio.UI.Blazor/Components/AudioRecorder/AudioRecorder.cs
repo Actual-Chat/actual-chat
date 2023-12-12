@@ -28,7 +28,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
     private Activity? _recordingActivity;
 
     private IServiceProvider Services { get; }
-    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    private HostInfo HostInfo => _hostInfo ??= Services.HostInfo();
     private IJSRuntime JS => _js ??= Services.JSRuntime();
     private ILogger Log => _log ??= Services.LogFor(GetType());
     private ILogger? DebugLog => DebugMode ? Log : null;

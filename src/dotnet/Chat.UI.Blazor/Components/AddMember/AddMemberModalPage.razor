@@ -40,10 +40,11 @@
     private SearchBox _searchBoxRef = null!;
     private DialogButtonInfo _submitButtonInfo = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IContacts Contacts { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IContacts Contacts => Hub.Contacts;
+    private IAuthors Authors => Hub.Authors;
+    private UICommander UICommander => Hub.UICommander();
 
     private ChatId ChatId { get; set; } // Shortcut
     private string Filter { get; set; } = "";

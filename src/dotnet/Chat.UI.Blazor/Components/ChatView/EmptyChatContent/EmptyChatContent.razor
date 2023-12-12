@@ -20,10 +20,10 @@
 </div>
 
 @code {
-    private Session Session => ChatContext.Session;
+    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IAccounts Accounts => ChatContext.Accounts;
-    private ChatUI ChatUI => ChatContext.ChatUI;
+    private IAccounts Accounts => ChatContext.Hub.Accounts;
+    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 

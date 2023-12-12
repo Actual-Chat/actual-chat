@@ -2,10 +2,8 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AppAutoNavigationUI : AutoNavigationUI
+public class AppAutoNavigationUI(UIHub hub) : AutoNavigationUI(hub)
 {
-    public AppAutoNavigationUI(IServiceProvider services) : base(services) { }
-
     protected override async ValueTask<LocalUrl> GetDefaultAutoNavigationUrl()
     {
         var currentUrl = History.LocalUrl;
@@ -14,7 +12,7 @@ public class AppAutoNavigationUI : AutoNavigationUI
 
         // You're at "/" or "/chat" URL
         try {
-            var accountUI = Services.GetRequiredService<AccountUI>();
+            var accountUI = Hub.AccountUI;
             await accountUI.WhenLoaded.WaitAsync(TimeSpan.FromMilliseconds(2000)).ConfigureAwait(false);
             var ownAccount = accountUI.OwnAccount.Value;
             return ownAccount.IsGuestOrNone

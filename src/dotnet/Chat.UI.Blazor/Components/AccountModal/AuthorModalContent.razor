@@ -70,10 +70,10 @@
 
 @code {
 
-    [Inject] private ChatHub ChatHub { get; set; } = null!;
-    private Session Session => ChatHub.Session;
-    private IAuthors Authors => ChatHub.Authors;
-    private ShareUI ShareUI => ChatHub.ShareUI;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
+    private ShareUI ShareUI => Hub.ShareUI;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
@@ -92,8 +92,8 @@
     }
 
     private Task OnPromoteToOwner()
-        => EditMemberCommands.OnPromoteToOwnerClick(ChatHub, Author);
+        => EditMemberCommands.OnPromoteToOwnerClick(Hub, Author);
 
     private Task OnRemoveFromGroupClick()
-        => EditMemberCommands.OnRemoveFromGroupClick(ChatHub, Author);
+        => EditMemberCommands.OnRemoveFromGroupClick(Hub, Author);
 }

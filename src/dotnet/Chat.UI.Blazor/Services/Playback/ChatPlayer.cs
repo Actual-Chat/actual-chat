@@ -22,13 +22,13 @@ public abstract class ChatPlayer : ProcessorBase
     protected ILogger? DebugLog => DebugMode ? Log : null;
     protected static bool DebugMode => Constants.DebugMode.AudioPlayback;
 
-    protected ChatHub ChatHub { get; }
-    protected Session Session => ChatHub.Session;
-    protected IChats Chats => ChatHub.Chats;
-    protected IAuthors Authors => ChatHub.Authors;
-    protected InteractiveUI InteractiveUI => ChatHub.InteractiveUI;
-    protected MomentClockSet Clocks => ChatHub.Clocks();
-    protected HostInfo HostInfo => ChatHub.HostInfo;
+    protected ChatUIHub Hub { get; }
+    protected Session Session => Hub.Session();
+    protected IChats Chats => Hub.Chats;
+    protected IAuthors Authors => Hub.Authors;
+    protected InteractiveUI InteractiveUI => Hub.InteractiveUI;
+    protected MomentClockSet Clocks => Hub.Clocks();
+    protected HostInfo HostInfo => Hub.HostInfo();
 
     protected IState<TimeSpan> SleepDuration { get; }
     protected IState<TimeSpan> PauseDuration { get; }
@@ -40,14 +40,14 @@ public abstract class ChatPlayer : ProcessorBase
     public string Operation { get; protected set; } = "";
     public Task? WhenPlaying => _whenPlaying;
 
-    protected ChatPlayer(ChatHub chatHub, ChatId chatId)
+    protected ChatPlayer(ChatUIHub hub, ChatId chatId)
     {
-        ChatHub = chatHub;
+        Hub = hub;
         ChatId = chatId;
-        Log = ChatHub.LogFor(GetType());
+        Log = Hub.LogFor(GetType());
 
-        Playback = ChatHub.PlaybackFactory.Create();
-        SleepDuration = ChatHub.DeviceAwakeUI.TotalSleepDuration;
+        Playback = Hub.PlaybackFactory.Create();
+        SleepDuration = Hub.DeviceAwakeUI.TotalSleepDuration;
         PauseDuration = Playback.TotalPauseDuration;
     }
 
@@ -84,7 +84,7 @@ public abstract class ChatPlayer : ProcessorBase
         }
 
         _ = BackgroundTask.Run(async () => {
-            var chatEntryPlayer = new ChatEntryPlayer(ChatHub, ChatId, Playback, playToken);
+            var chatEntryPlayer = new ChatEntryPlayer(Hub, ChatId, Playback, playToken);
             try {
                 await Play(chatEntryPlayer, startAt, playToken).ConfigureAwait(false);
                 await chatEntryPlayer.WhenDonePlaying().WaitAsync(playToken).ConfigureAwait(false);

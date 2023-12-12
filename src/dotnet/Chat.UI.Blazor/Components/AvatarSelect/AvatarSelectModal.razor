@@ -86,11 +86,12 @@
     private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
     private Avatar? _anonymous;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
+    private IAuthors Authors => Hub.Authors;
+    private IAvatars Avatars => Hub.Avatars;
+    private UICommander UICommander => Hub.UICommander();
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;

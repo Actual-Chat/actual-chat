@@ -6,7 +6,7 @@
         return;
     }
 
-    _stack = RenderVars.RenderStack(Name);
+    _stack = Hub.RenderVars.RenderStack(Name);
     if (MustPrepend)
         _stack.Value.Insert(0, this);
     else
@@ -16,8 +16,7 @@
 @code {
     private RenderVar<List<RenderIntoStack>>? _stack = null!;
 
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private RenderVars RenderVars { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter, EditorRequired] public string Key { get; set; } = "";
@@ -30,7 +29,7 @@
             return;
 
         if (!_stack.Value.Remove(this)) {
-            var log = Services.LogFor(GetType());
+            var log = Hub.LogFor(GetType());
             log.LogWarning("Couldn't remove RenderIntoStack with Name = '{Name}'", Name);
             return;
         }

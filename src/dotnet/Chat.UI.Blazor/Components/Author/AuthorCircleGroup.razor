@@ -31,8 +31,9 @@
 </div>
 
 @code {
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private ChatActivity ChatActivity { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private IAuthors Authors => Hub.Authors;
+    private ChatActivity ChatActivity => Hub.ChatActivity;
 
     private IChatStreamingActivity? ChatRecordingActivity { get; set; }
 

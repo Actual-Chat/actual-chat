@@ -21,8 +21,9 @@
     private IJSObjectReference? JSRef { get; set; } = null!;
     private DotNetObjectReference<TextInput> BlazorRef { get; set; } = null!;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private FocusUI FocusUI { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private IJSRuntime JS => Hub.JSRuntime();
+    private FocusUI FocusUI => Hub.FocusUI;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public int? MaxLength { get; set; }

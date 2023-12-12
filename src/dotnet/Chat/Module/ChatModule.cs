@@ -6,10 +6,8 @@ namespace ActualChat.Chat.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class ChatModule : HostModule
+public sealed class ChatModule(IServiceProvider moduleServices) : HostModule(moduleServices)
 {
-    public ChatModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         var rawParser = new MarkupParser();

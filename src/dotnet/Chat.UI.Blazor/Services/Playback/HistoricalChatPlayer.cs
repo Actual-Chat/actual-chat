@@ -2,8 +2,8 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class HistoricalChatPlayer : ChatPlayer
 {
-    public HistoricalChatPlayer(ChatHub chatHub, ChatId chatId)
-        : base(chatHub, chatId)
+    public HistoricalChatPlayer(ChatUIHub hub, ChatId chatId)
+        : base(hub, chatId)
         => PlayerKind = ChatPlayerKind.Historical;
 
     protected override async Task Play(
@@ -14,7 +14,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
             return;
 
         Operation = $"historical playback in \"{chat.Title}\"";
-        var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
+        var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
@@ -88,7 +88,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(shift, TimeSpan.Zero, nameof(shift));
 
-        var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
+        var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var idRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader
@@ -128,7 +128,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(shift, TimeSpan.Zero, nameof(shift));
 
-        var audioEntryReader = ChatHub.NewEntryReader(ChatId, ChatEntryKind.Audio);
+        var audioEntryReader = Hub.NewEntryReader(ChatId, ChatEntryKind.Audio);
         var fullIdRange = await Chats.GetIdRange(Session, ChatId, ChatEntryKind.Audio, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await audioEntryReader

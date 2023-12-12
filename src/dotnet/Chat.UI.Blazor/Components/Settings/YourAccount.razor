@@ -82,11 +82,12 @@
 <OwnAvatarList Account="@account"/>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
-    [Inject] private IAvatars Avatars { get; init; } = null!;
-    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
-    private ModalUI ModalUI => ShareUI.ModalUI;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private AccountUI AccountUI => Hub.AccountUI;
+    private IAvatars Avatars => Hub.Avatars;
+    private ShareUI ShareUI => Hub.ShareUI;
+    private ModalUI ModalUI => Hub.ModalUI;
 
     protected override ComputedState<AccountFull>.Options GetStateOptions()
         => new() {

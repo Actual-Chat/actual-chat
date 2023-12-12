@@ -1,11 +1,8 @@
 ﻿namespace ActualChat.UI.Blazor.Services;
 
-public sealed class ShareUI(IServiceProvider services) : IHasServices
+public sealed class ShareUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
 {
-    private ModalUI? _modalUI;
-
-    public IServiceProvider Services { get; } = services;
-    public ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
+    private ModalUI ModalUI => Hub.ModalUI;
 
     public Task<ModalRef> Share(ShareModalModel model)
         => ModalUI.Show(model);

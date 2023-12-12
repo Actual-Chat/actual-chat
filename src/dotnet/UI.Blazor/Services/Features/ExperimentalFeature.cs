@@ -9,7 +9,7 @@ public abstract class ExperimentalFeature : FeatureDef<bool>, IClientFeatureDef
 
     public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var hostInfo = services.GetRequiredService<HostInfo>();
+        var hostInfo = services.HostInfo();
         if (hostInfo.IsDevelopmentInstance)
             return true;
 

@@ -5,7 +5,7 @@ using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public partial class ChatListUI : ScopedWorkerBase, IComputeService, INotifyInitialized
+public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
     public static readonly int ActiveItemCountWhenLoading = 0;
     public static readonly int AllItemCountWhenLoading = 14;
@@ -21,16 +21,15 @@ public partial class ChatListUI : ScopedWorkerBase, IComputeService, INotifyInit
     private bool _isFirstLoad = true;
     private IComputedState<Trimmed<int>>? _unreadChatCount;
 
-    private ChatHub ChatHub { get; }
-    private IContacts Contacts => ChatHub.Contacts;
-    private IAuthors Authors => ChatHub.Authors;
-    private ActiveChatsUI ActiveChatsUI => ChatHub.ActiveChatsUI;
-    private ChatUI ChatUI => ChatHub.ChatUI;
-    private SearchUI SearchUI => ChatHub.SearchUI;
-    private TuneUI TuneUI => ChatHub.TuneUI;
-    private LoadingUI LoadingUI => ChatHub.LoadingUI;
-    private AccountSettings AccountSettings => ChatHub.AccountSettings();
-    private UICommander UICommander => ChatHub.UICommander();
+    private IContacts Contacts => Hub.Contacts;
+    private IAuthors Authors => Hub.Authors;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private TuneUI TuneUI => Hub.TuneUI;
+    private LoadingUI LoadingUI => Hub.LoadingUI;
+    private AccountSettings AccountSettings => Hub.AccountSettings();
+    private UICommander UICommander => Hub.UICommander();
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
     public IMutableState<ChatListSettings> Settings => _settings;
@@ -39,12 +38,10 @@ public partial class ChatListUI : ScopedWorkerBase, IComputeService, INotifyInit
 #pragma warning restore CA1721
     public Task WhenLoaded => _settings.WhenRead;
 
-    private Moment Now => Clocks.SystemClock.Now;
+    private Moment CpuNow => Clocks.CpuClock.Now;
 
-    public ChatListUI(ChatHub chatHub) : base(chatHub.Scope())
+    public ChatListUI(ChatUIHub hub) : base(hub)
     {
-        ChatHub = chatHub;
-
         var type = GetType();
         // var isClient = HostInfo.AppKind.IsClient();
         _loadLimit = StateFactory.NewMutable(Constants.Contacts.MinLoadLimit,
@@ -67,7 +64,7 @@ public partial class ChatListUI : ScopedWorkerBase, IComputeService, INotifyInit
                 Category = StateCategories.Get(GetType(), nameof(UnreadChatCount)),
             },
             ComputeUnreadChatCount);
-        Scope.RegisterDisposable(_unreadChatCount);
+        Hub.RegisterDisposable(_unreadChatCount);
         this.Start();
     }
 

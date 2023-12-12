@@ -24,8 +24,9 @@
 }
 
 @code {
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
-    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 

@@ -8,7 +8,7 @@ public interface IAudioOutputController
     ValueTask<bool> ToggleSpeakerphone(bool mustEnable);
 }
 
-public sealed class AudioOutputController : ScopedServiceBase, IAudioOutputController
+public sealed class AudioOutputController : ScopedServiceBase<UIHub>, IAudioOutputController
 {
     private readonly IMutableState<bool> _isAudioOn;
     private readonly IMutableState<bool> _isSpeakerphoneOn;
@@ -16,7 +16,7 @@ public sealed class AudioOutputController : ScopedServiceBase, IAudioOutputContr
     public IState<bool> IsAudioOn => _isAudioOn;
     public IState<bool> IsSpeakerphoneOn => _isSpeakerphoneOn;
 
-    public AudioOutputController(IServiceProvider services) : base(services)
+    public AudioOutputController(UIHub hub) : base(hub)
     {
         var stateFactory = StateFactory;
         var type = GetType();

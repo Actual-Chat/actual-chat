@@ -1,4 +1,4 @@
 ﻿namespace ActualChat.Permissions;
 
-public abstract class MicrophonePermissionHandler(IServiceProvider services, bool mustStart = true)
-    : PermissionHandler(services, mustStart);
+public abstract class MicrophonePermissionHandler(Hub hub, bool mustStart = true)
+    : PermissionHandler(hub, mustStart);

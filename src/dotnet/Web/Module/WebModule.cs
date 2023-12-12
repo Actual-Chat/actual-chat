@@ -5,10 +5,8 @@ using Microsoft.AspNetCore.Builder;
 namespace ActualChat.Web.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class WebModule : HostModule, IWebModule
+public sealed class WebModule(IServiceProvider moduleServices) : HostModule(moduleServices), IWebModule
 {
-    public WebModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         // Use AppServerModule instead

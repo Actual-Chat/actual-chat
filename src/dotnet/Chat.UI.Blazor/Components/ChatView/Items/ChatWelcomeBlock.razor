@@ -54,14 +54,14 @@
 
 @code {
     // Shortcuts
-    private Session Session => ChatContext.Session;
+    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IInvites Invites => ChatContext.Invites;
-    private IAuthors Authors => ChatContext.Authors;
-    private ChatUI ChatUI => ChatContext.ChatUI;
-    private ShareUI ShareUI => ChatContext.ShareUI;
-    private UrlMapper UrlMapper => ChatContext.UrlMapper();
-    private History History => ChatContext.History;
+    private IInvites Invites => ChatContext.Hub.Invites;
+    private IAuthors Authors => ChatContext.Hub.Authors;
+    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
+    private ShareUI ShareUI => ChatContext.Hub.ShareUI;
+    private UrlMapper UrlMapper => ChatContext.Hub.UrlMapper();
+    private History History => ChatContext.Hub.History;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 

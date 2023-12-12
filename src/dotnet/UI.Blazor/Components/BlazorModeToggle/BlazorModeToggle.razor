@@ -1,6 +1,4 @@
 @namespace ActualChat.UI.Blazor.Components
-@inject BlazorModeHelper BlazorModeHelper
-@inject BlazorCircuitContext CircuitContext
 @{
     string GetButtonClass(bool isActive)
         => isActive ? "is-active" : "";
@@ -19,4 +17,7 @@
 
 @code {
     private bool IsServerSideBlazor { get; set; } = BlazorModeHelper.IsBlazorServer;
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private BlazorModeHelper BlazorModeHelper => Hub.GetRequiredService<BlazorModeHelper>();
 }

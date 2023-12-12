@@ -8,7 +8,7 @@ using Stl.Fusion.UI;
 
 namespace ActualChat.App.Maui;
 
-public class IosVisualMediaViewerFileDownloader(IServiceProvider services) : IVisualMediaViewerFileDownloader
+public class IosMediaSaver(IServiceProvider services) : IMediaSaver
 {
     private HttpClient? _httpClient;
     private AddPhotoPermissionHandler? _permissionHandler;
@@ -22,7 +22,7 @@ public class IosVisualMediaViewerFileDownloader(IServiceProvider services) : IVi
     private UICommander UICommander => _uiCommander ??= services.UICommander();
     private ILogger Log => _log ??= services.LogFor(GetType());
 
-    public async Task Download(string uri, string contentType)
+    public async Task Save(string uri, string contentType)
     {
         try {
             var granted = await PermissionHandler.CheckOrRequest(CancellationToken.None).ConfigureAwait(false);

@@ -127,14 +127,14 @@ public partial class ChatListUI
 
     private async Task PlayTuneOnNewMessages(CancellationToken cancellationToken)
     {
-        if (ChatHub.HostInfo.ClientKind.IsMobile())
+        if (Hub.HostInfo().ClientKind.IsMobile())
             return; // skip tune notifications for mobile MAUI
 
         var cChatInfoMap = await Computed
             .Capture(() => ListAllUnorderedRaw(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var previous = await cChatInfoMap.Use(cancellationToken).ConfigureAwait(false);
-        var lastPlayedAt = Clocks.SystemClock.Now; // Skip tune after loading
+        var lastPlayedAt = CpuNow; // Skip tune after loading
         await foreach (var change in cChatInfoMap.Changes(cancellationToken).ConfigureAwait(false))
             await OnChange(change.Value).ConfigureAwait(false);
         return;
@@ -143,13 +143,13 @@ public partial class ChatListUI
         {
             var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
             var otherChatInfoItems = chatInfoMap.Where(x => x.Key != selectedChatId);
-            if (lastPlayedAt + MinNotificationInterval <= Now)
+            if (lastPlayedAt + MinNotificationInterval <= CpuNow)
                 foreach (var (chatId, chatInfo) in otherChatInfoItems) {
                     var isAlreadyExists = previous.TryGetValue(chatId, out var prevChatInfo);
                     if (!isAlreadyExists) {
                         // notify on new chat
                         _ = TuneUI.Play(Tune.NotifyOnNewMessageInApp);
-                        lastPlayedAt = Now;
+                        lastPlayedAt = CpuNow;
                         break;
                     }
 
@@ -161,7 +161,7 @@ public partial class ChatListUI
 
                     // notify on new message from other authors
                     _ = TuneUI.Play(Tune.NotifyOnNewMessageInApp);
-                    lastPlayedAt = Now;
+                    lastPlayedAt = CpuNow;
                     break;
                 }
             previous = chatInfoMap;

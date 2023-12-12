@@ -1,44 +1,67 @@
 using ActualChat.Hosting;
+using ActualChat.Kvas;
 using Stl.Diagnostics;
 
 namespace ActualChat.DependencyInjection;
 
-public abstract class ScopedServiceBase(Scope scope) : IHasIsDisposed
+public abstract class ScopedServiceBase<THub>(THub hub) : IHasIsDisposed
+    where THub : Hub
 {
     private ILogger? _log;
 
-    public bool IsDisposed => Scope.IsDisposed;
-
-    protected Scope Scope { get; } = scope;
+    public THub Hub { get; } = hub;
+    public bool IsDisposed => Hub.IsDisposed;
 
     protected IServiceProvider Services {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Scope.Services;
+        get => Hub.Services;
     }
 
     protected HostInfo HostInfo {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Scope.HostInfo;
-    }
-
-    protected MomentClockSet Clocks {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Scope.Clocks();
+        get => Hub.HostInfo();
     }
 
     protected Session Session {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Scope.Session;
+        get => Hub.Session();
     }
 
     protected IStateFactory StateFactory {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => Scope.StateFactory();
+        get => Hub.StateFactory();
     }
 
-    protected ILogger Log => _log ??= Scope.LoggerFactory().CreateLogger(GetType());
-    protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
+    protected AccountSettings AccountSettings {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Hub.AccountSettings();
+    }
 
-    protected ScopedServiceBase(IServiceProvider services)
-        : this(services.Scope()) { }
+    protected LocalSettings LocalSettings {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Hub.LocalSettings();
+    }
+
+    protected Features Features {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Hub.Features();
+    }
+
+    protected UrlMapper UrlMapper {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Hub.UrlMapper();
+    }
+
+    protected ICommander Commander {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Hub.Commander();
+    }
+
+    protected MomentClockSet Clocks {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => Hub.Clocks();
+    }
+
+    protected ILogger Log => _log ??= Hub.Logs().CreateLogger(GetType());
+    protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 }

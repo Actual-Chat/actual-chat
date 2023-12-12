@@ -8,11 +8,10 @@ namespace ActualChat.Contacts.UI.Blazor.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public partial class ContactsBlazorUIModule : HostModule, IBlazorUIModule
+public sealed class ContactsBlazorUIModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IBlazorUIModule
 {
     public static string ImportName => "contacts";
-
-    public ContactsBlazorUIModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {
@@ -24,6 +23,6 @@ public partial class ContactsBlazorUIModule : HostModule, IBlazorUIModule
         services.AddScoped<DeviceContacts>(c => new DeviceContacts());
 
         if (HostInfo.AppKind != AppKind.MauiApp)
-            services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c));
+            services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c.UIHub()));
     }
 }

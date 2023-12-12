@@ -5,23 +5,18 @@ using Stl.Rpc;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class AppPresenceReporter : ScopedWorkerBase, IComputeService
+public class AppPresenceReporter : ScopedWorkerBase<ChatUIHub>, IComputeService
 {
-    private UserActivityUI? _userActivityUI;
-    private ChatAudioUI? _chatAudioUI;
-    private ICommander? _commander;
-    private RpcHub? _rpcHub;
     private IMutableState<Moment> _lastCheckInAt;
 
-    private UserActivityUI UserActivityUI => _userActivityUI ??= Services.GetRequiredService<UserActivityUI>();
-    private ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
-    private ICommander Commander => _commander ??= Services.Commander();
-    private RpcHub RpcHub => _rpcHub ??= Services.RpcHub();
-    private Moment Now => Clocks.CpuClock.Now;
+    private UserActivityUI UserActivityUI => Hub.UserActivityUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private RpcHub RpcHub => Hub.RpcHub();
+    private Moment CpuNow => Clocks.CpuClock.Now;
 
-    public AppPresenceReporter(IServiceProvider services) : base(services)
+    public AppPresenceReporter(ChatUIHub hub) : base(hub)
         => _lastCheckInAt = StateFactory.NewMutable(
-            Now - Constants.Presence.OfflineTimeout,
+            CpuNow - Constants.Presence.OfflineTimeout,
             StateCategories.Get(GetType(), nameof(_lastCheckInAt)));
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -33,7 +28,7 @@ public class AppPresenceReporter : ScopedWorkerBase, IComputeService
         await foreach (var change in cIsActive.Changes(cancellationToken).ConfigureAwait(false)) {
             var isActive = change.Value;
             // throttle since IsActive depends on LastCheckInAt
-            if (isActive == prevIsActive && Now - _lastCheckInAt.Value < Constants.Presence.CheckInPeriod * 0.7)
+            if (isActive == prevIsActive && CpuNow - _lastCheckInAt.Value < Constants.Presence.CheckInPeriod * 0.7)
                 continue;
 
             await CheckIn(isActive, cancellationToken).ConfigureAwait(false);
@@ -44,7 +39,7 @@ public class AppPresenceReporter : ScopedWorkerBase, IComputeService
     [ComputeMethod]
     protected virtual async Task<bool> IsActive(CancellationToken cancellationToken)
     {
-        var now = Now;
+        var now = CpuNow;
         var lastCheckInAt = await _lastCheckInAt.Use(cancellationToken).ConfigureAwait(false);
         var activeUntil = await GetActiveUntil(cancellationToken).ConfigureAwait(false);
 
@@ -61,9 +56,9 @@ public class AppPresenceReporter : ScopedWorkerBase, IComputeService
     [ComputeMethod]
     protected virtual async Task<Moment> GetActiveUntil(CancellationToken cancellationToken)
     {
-        var now = Now;
+        var now = CpuNow;
         if (await ChatAudioUI.IsAudioOn().ConfigureAwait(false))
-            return WithAutoInvalidation(Now + Constants.Presence.ActivityPeriod);
+            return WithAutoInvalidation(CpuNow + Constants.Presence.ActivityPeriod);
 
         var activeUntil = await UserActivityUI.ActiveUntil.Use(cancellationToken).ConfigureAwait(false);
         var audioStoppedAt = await ChatAudioUI.AudioStoppedAt.Use(cancellationToken).ConfigureAwait(false);
@@ -91,7 +86,7 @@ public class AppPresenceReporter : ScopedWorkerBase, IComputeService
                 .WaitAsync(Constants.Presence.CheckInClientConnectTimeout, cancellationToken)
                 .ConfigureAwait(false);
             await Commander.Call(new UserPresences_CheckIn(Session, isActive), cancellationToken).ConfigureAwait(false);
-            _lastCheckInAt.Value = Now;
+            _lastCheckInAt.Value = CpuNow;
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             var failureKind = e switch {

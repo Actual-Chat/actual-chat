@@ -58,17 +58,16 @@
     protected Model? Rendered;
     protected ChatView ChatViewRef = null!;
 
-    [Inject] protected ChatHub ChatHub { get; init; } = null!;
-    protected Scope Scope => ChatHub.Scope();
-    protected Session Session => Scope.Session;
-    protected IChats Chats => ChatHub.Chats;
-    protected IAccounts Accounts => ChatHub.Accounts;
-    protected IAvatars Avatars => ChatHub.Avatars;
-    protected ChatUI ChatUI => ChatHub.ChatUI;
-    protected AccountUI AccountUI => ChatHub.AccountUI;
-    protected PanelsUI PanelsUI => ChatHub.PanelsUI;
-    protected BrowserInfo BrowserInfo => ChatHub.BrowserInfo;
-    protected UICommander UICommander => ChatHub.UICommander();
+    [Inject] protected ChatUIHub Hub { get; init; } = null!;
+    protected Session Session => Hub.Session();
+    protected IChats Chats => Hub.Chats;
+    protected IAccounts Accounts => Hub.Accounts;
+    protected IAvatars Avatars => Hub.Avatars;
+    protected ChatUI ChatUI => Hub.ChatUI;
+    protected AccountUI AccountUI => Hub.AccountUI;
+    protected PanelsUI PanelsUI => Hub.PanelsUI;
+    protected BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    protected UICommander UICommander => Hub.UICommander();
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
     [Parameter] public string? ChatSid { get; set; }
@@ -88,7 +87,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.Loading(Scope),
+            InitialValue = Model.Loading(Hub),
             Category = GetStateCategory(),
         };
 
@@ -107,7 +106,7 @@
 
         if (_isVeryFirstLoad) {
             _isVeryFirstLoad = false;
-            var hostInfo = Services.GetRequiredService<HostInfo>();
+            var hostInfo = Services.HostInfo();
             var mustDelayVeryFirstLoad =
                 hostInfo.AppKind.IsClient()
                 && ChatSid.IsNullOrEmpty()
@@ -127,12 +126,14 @@
             account = await AccountUI.OwnAccount.Use(cancellationToken);
             var chat = SpecialChat.NoChatSelected;
             if (!chatId.IsNone) {
+#if false // NOTE(AY): Let's try to disable this for now, maybe it works better after rendering changes
                 if (OSInfo.IsAndroid) {
                     // Postponing chat change to let left panel slide smoothly - don't change this delay!
                     var isChatChange = !lastChatId.IsNone && chatId != lastChatId;
                     if (isChatChange && PanelsUI.ScreenSize.Value.IsNarrow())
                         await Task.Delay(TimeSpan.FromSeconds(0.2), cancellationToken).ConfigureAwait(false);
                 }
+#endif
 
                 chat = await Chats
                     .Get(Session, chatId, cancellationToken)
@@ -140,7 +141,7 @@
                 chat ??= SpecialChat.Unavailable;
             }
             var footerModel = await GetFooterModel(chat, account, cancellationToken);
-            var chatContext = ChatContext.New(Scope, chat, account, lastContext);
+            var chatContext = new ChatContext(Hub, chat, account);
             return new Model(chatContext, footerModel);
         }
         catch (TimeoutException) {
@@ -148,12 +149,12 @@
             this.NotifyStateHasChanged();
             return lastState != null && chatId == lastChatId
                 ? lastState
-                : Model.Loading(Scope, lastContext);
+                : Model.Loading(Hub);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
             this.NotifyStateHasChanged();
-            return Model.Unavailable(Scope, account, lastContext);
+            return Model.Unavailable(Hub, account);
         }
     }
 
@@ -214,13 +215,13 @@
         ChatContext ChatContext,
         FooterModel FooterModel
     ) {
-        public static Model Loading(Scope scope, ChatContext? lastContext = null) {
-            var chatContext = ChatContext.New(scope, SpecialChat.Loading, AccountFull.Loading, lastContext);
+        public static Model Loading(ChatUIHub hub) {
+            var chatContext = new ChatContext(hub, SpecialChat.Loading, AccountFull.Loading);
             return new(chatContext, FooterModel.None);
         }
 
-        public static Model Unavailable(Scope scope, AccountFull account, ChatContext? lastContext = null) {
-            var chatContext = ChatContext.New(scope, SpecialChat.Unavailable, account, lastContext);
+        public static Model Unavailable(ChatUIHub hub, AccountFull account) {
+            var chatContext = new ChatContext(hub, SpecialChat.Unavailable, account);
             return new(chatContext, new FooterModel());
         }
     }

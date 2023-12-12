@@ -35,7 +35,7 @@ internal static class Program
             Console.ResetColor();
         }
 
-        Constants.HostInfo = appHost.Services.GetRequiredService<HostInfo>();
+        Constants.HostInfo = appHost.Services.HostInfo();
         if (Constants.DebugMode.WebMReader)
             WebMReader.DebugLog = appHost.Services.LogFor(typeof(WebMReader));
 

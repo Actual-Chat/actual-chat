@@ -40,7 +40,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
-    private HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
+    private HostInfo HostInfo { get; } = services.HostInfo();
     private OtelMetrics Metrics { get; } = services.GetRequiredService<OtelMetrics>();
 
     // [ComputeMethod]

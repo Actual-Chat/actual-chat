@@ -47,8 +47,9 @@
     private string _pictureUrl = "";
     private string _avatarKey = "";
 
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Title { get; set; } = "";

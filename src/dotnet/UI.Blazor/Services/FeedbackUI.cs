@@ -2,12 +2,12 @@
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class FeedbackUI(IServiceProvider services)
+public class FeedbackUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
 {
-    private readonly Session _session = services.Session();
-    private readonly ModalUI _modalUI = services.GetRequiredService<ModalUI>();
-    private readonly UICommander _uiCommander = services.GetRequiredService<UICommander>();
     private ModalRef? _modal;
+
+    private ModalUI ModalUI => hub.ModalUI;
+    private UICommander UICommander => hub.UICommander();
 
     public async Task AskFeatureRequestFeedback(string feature, string? featureTitle = null)
     {
@@ -15,17 +15,17 @@ public class FeedbackUI(IServiceProvider services)
             return;
 
         var model = new FeatureRequestModal.Model { FeatureTitle = featureTitle };
-        _modal = await _modalUI.Show(model).ConfigureAwait(true);
+        _modal = await ModalUI.Show(model).ConfigureAwait(true);
         await _modal.WhenClosed.ConfigureAwait(false);
         var hasSubmitted = model.HasSubmitted;
         _modal = null;
         if (!hasSubmitted)
             return;
 
-        var command = new Feedbacks_FeatureRequest(_session, feature) {
+        var command = new Feedbacks_FeatureRequest(Session, feature) {
             Rating = model.Rating,
             Comment = model.Comment,
         };
-        await _uiCommander.Run(command, CancellationToken.None).ConfigureAwait(false);
+        await UICommander.Run(command, CancellationToken.None).ConfigureAwait(false);
     }
 }

@@ -32,7 +32,7 @@ public class NotificationsBackend(IServiceProvider services)
         = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private FirebaseMessagingClient FirebaseMessagingClient { get; }
         = services.GetRequiredService<FirebaseMessagingClient>();
-    private UrlMapper UrlMapper { get; } = services.GetRequiredService<UrlMapper>();
+    private UrlMapper UrlMapper { get; } = services.UrlMapper();
 
     // [ComputeMethod]
     public virtual async Task<Notification?> Get(

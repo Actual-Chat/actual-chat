@@ -30,12 +30,12 @@
 </div>
 
 @code {
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
-    private Session Session => ChatHub.Session;
-    private IChats Chats => ChatHub.Chats;
-    private ChatEditorUI ChatEditorUI => ChatHub.ChatEditorUI;
-    private UICommander UICommander => ChatHub.UICommander();
-    private UIEventHub UIEventHub => ChatHub.UIEventHub();
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private UICommander UICommander => Hub.UICommander();
+    private UIEventHub UIEventHub => Hub.UIEventHub();
 
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
     [Parameter] public bool IsSystem { get; set; }

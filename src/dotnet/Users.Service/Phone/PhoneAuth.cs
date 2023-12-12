@@ -16,7 +16,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
     private IDbEntityConverter<DbUser, User>? _userConverter;
 
     private UsersSettings Settings { get; } = services.GetRequiredService<UsersSettings>();
-    private HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
+    private HostInfo HostInfo { get; } = services.HostInfo();
     private ITextMessageGateway TextMessage { get; } = services.GetRequiredService<ITextMessageGateway>();
     private Rfc6238AuthenticationService Totps { get; } = services.GetRequiredService<Rfc6238AuthenticationService>();
     private TotpRandomSecrets RandomSecrets { get; } = services.GetRequiredService<TotpRandomSecrets>();

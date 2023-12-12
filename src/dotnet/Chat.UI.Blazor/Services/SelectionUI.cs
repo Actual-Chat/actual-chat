@@ -3,26 +3,23 @@ using Cysharp.Text;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class SelectionUI : ScopedServiceBase
+public class SelectionUI : ScopedServiceBase<ChatUIHub>
 {
     private readonly IMutableState<ImmutableHashSet<ChatEntryId>> _selection;
     private readonly IMutableState<bool> _hasSelection;
 
-    private ChatHub ChatHub { get; }
-    private IChats Chats => ChatHub.Chats;
-    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => ChatHub.ChatMarkupHubFactory;
-    private ModalUI ModalUI => ChatHub.ModalUI;
-    private ToastUI ToastUI => ChatHub.ToastUI;
-    private ClipboardUI ClipboardUI => ChatHub.ClipboardUI;
-    private UICommander UICommander => ChatHub.UICommander();
+    private IChats Chats => Hub.Chats;
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private ToastUI ToastUI => Hub.ToastUI;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+    private UICommander UICommander => Hub.UICommander();
 
     public IState<bool> HasSelection => _hasSelection;
     public IState<ImmutableHashSet<ChatEntryId>> Selection => _selection;
 
-    public SelectionUI(ChatHub chatHub) : base(chatHub.Scope())
+    public SelectionUI(ChatUIHub hub) : base(hub)
     {
-        ChatHub = chatHub;
-
         var type = GetType();
         _selection = StateFactory.NewMutable(
             ImmutableHashSet<ChatEntryId>.Empty,

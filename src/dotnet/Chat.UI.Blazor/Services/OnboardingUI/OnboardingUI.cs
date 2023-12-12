@@ -4,27 +4,25 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class OnboardingUI : ScopedServiceBase, IOnboardingUI
+public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
 {
     private readonly ISyncedState<UserOnboardingSettings> _userSettings;
     private readonly IStoredState<LocalOnboardingSettings> _localSettings;
     private CancellationTokenSource? _lastTryShowCts;
     private ModalRef? _lastModalRef;
 
-    private ChatHub ChatHub { get; }
-    private AccountUI AccountUI => ChatHub.AccountUI;
-    private ModalUI ModalUI => ChatHub.ModalUI;
-    private LoadingUI LoadingUI => ChatHub.LoadingUI;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private LoadingUI LoadingUI => Hub.LoadingUI;
 
     public IState<UserOnboardingSettings> UserSettings => _userSettings;
     public IState<LocalOnboardingSettings> LocalSettings => _localSettings;
 
-    public OnboardingUI(ChatHub chatHub) : base(chatHub.Scope())
+    public OnboardingUI(ChatUIHub hub) : base(hub)
     {
-        ChatHub = chatHub;
-        var stateFactory = ChatHub.StateFactory();
-        var accountSettings = ChatHub.AccountSettings();
-        var localSettings = ChatHub.LocalSettings();
+        var stateFactory = hub.StateFactory();
+        var accountSettings = hub.AccountSettings();
+        var localSettings = hub.LocalSettings();
         var type = GetType();
         _userSettings = stateFactory.NewKvasSynced<UserOnboardingSettings>(
             new (accountSettings, UserOnboardingSettings.KvasKey) {
@@ -37,7 +35,7 @@ public class OnboardingUI : ScopedServiceBase, IOnboardingUI
                 InitialValue = new LocalOnboardingSettings(),
                 Category = StateCategories.Get(type, nameof(LocalSettings)),
             });
-        Scope.RegisterDisposable(() => {
+        Hub.RegisterDisposable(() => {
             _lastTryShowCts.CancelAndDisposeSilently();
             _userSettings.Dispose();
         });

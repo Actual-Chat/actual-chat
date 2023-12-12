@@ -9,7 +9,7 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public sealed class PermissionStepModel(IServiceProvider services)
 {
-    public readonly HostInfo HostInfo = services.GetRequiredService<HostInfo>();
+    public readonly HostInfo HostInfo = services.HostInfo();
     public readonly MicrophonePermissionHandler MicrophonePermission
         = services.GetRequiredService<AudioRecorder>().MicrophonePermission;
     public readonly INotificationsPermission NotificationsPermission

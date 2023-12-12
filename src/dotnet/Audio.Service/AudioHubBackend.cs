@@ -1,6 +1,7 @@
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
+using Hub = Microsoft.AspNetCore.SignalR.Hub;
 
 namespace ActualChat.Audio;
 
@@ -16,6 +17,7 @@ public class AudioHubBackend(IServiceProvider services) : Hub
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var stream = await AudioStreamServer.Read(streamId, skipTo, cancellationToken).ConfigureAwait(false);
+        // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
         await foreach (var chunk in stream.ConfigureAwait(false))
             yield return chunk;
     }
@@ -25,7 +27,8 @@ public class AudioHubBackend(IServiceProvider services) : Hub
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var stream = await TranscriptStreamServer.Read(streamId, cancellationToken).ConfigureAwait(false);
-        await foreach (var chunk in stream!.ConfigureAwait(false))
+        // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
+        await foreach (var chunk in stream.ConfigureAwait(false))
             yield return chunk;
     }
 

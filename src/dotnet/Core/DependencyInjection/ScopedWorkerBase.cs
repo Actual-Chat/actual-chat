@@ -2,17 +2,19 @@ namespace ActualChat.DependencyInjection;
 
 #pragma warning disable MA0064
 
-public abstract class ScopedWorkerBase(Scope scope)
-    : ScopedServiceBase(scope)
+public interface IScopedWorker
+{
+    Task Run();
+}
+
+public abstract class ScopedWorkerBase<TScope>(TScope hub) : ScopedServiceBase<TScope>(hub), IScopedWorker
+    where TScope : Hub
 {
     private volatile Task? _whenRunning;
 
     protected readonly object Lock = new();
-    protected CancellationToken StopToken => Scope.StopToken;
+    protected CancellationToken StopToken => Hub.StopToken;
     public Task? WhenRunning => _whenRunning;
-
-    protected ScopedWorkerBase(IServiceProvider services)
-        : this(services.Scope()) { }
 
     public virtual Task Run()
     {
@@ -22,7 +24,7 @@ public abstract class ScopedWorkerBase(Scope scope)
 
             _whenRunning = Task.Run(() => OnRun(StopToken), StopToken);
         }
-        Scope.RegisterAwaitable(_whenRunning);
+        Hub.RegisterAwaitable(_whenRunning);
         return _whenRunning;
     }
 

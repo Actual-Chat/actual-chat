@@ -9,10 +9,8 @@ using Stl.Fusion.EntityFramework.Operations;
 namespace ActualChat.Invite.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class InviteServiceModule : HostModule<InviteSettings>
+public sealed class InviteServiceModule(IServiceProvider moduleServices) : HostModule<InviteSettings>(moduleServices)
 {
-    public InviteServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);

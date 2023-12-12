@@ -49,11 +49,13 @@
 </div>
 
 @code {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatAudioUI ChatAudioUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
+    private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {

@@ -2,16 +2,18 @@
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatAppActivity(ChatHub chatHub) : AppActivity(chatHub.Services)
+public class ChatAppActivity(ChatUIHub hub) : AppActivity(hub)
 {
     // [ComputeMethod]
     protected override async Task<bool> MustBeBackgroundActive(CancellationToken cancellationToken)
     {
-        var playbackState = await chatHub.ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
+        // ReSharper disable once LocalVariableHidesPrimaryConstructorParameter
+        var hub = (ChatUIHub)Hub;
+        var playbackState = await hub.ChatPlayers.PlaybackState.Use(cancellationToken).ConfigureAwait(false);
         if (!ReferenceEquals(playbackState, null))
             return true;
 
-        var activeChats = await chatHub.ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
+        var activeChats = await hub.ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         foreach (var c in activeChats)
             if (c.IsListening || c.IsRecording)
                 return true;

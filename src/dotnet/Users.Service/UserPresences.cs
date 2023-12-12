@@ -6,7 +6,7 @@ public class UserPresences(IServiceProvider services) : IUserPresences
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks { get; } = services.Clocks();
-    private Moment Now => Clocks.SystemClock.Now;
+    private Moment SystemNow => Clocks.SystemClock.Now;
 
     // [ComputeMethod]
     public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
@@ -24,7 +24,7 @@ public class UserPresences(IServiceProvider services) : IUserPresences
         if (!account.IsActive())
             return;
 
-        var backendCommand = new UserPresencesBackend_CheckIn(account.Id, Now, isActive);
+        var backendCommand = new UserPresencesBackend_CheckIn(account.Id, SystemNow, isActive);
         _ = Commander.Run(backendCommand, true, CancellationToken.None);
     }
 }

@@ -20,7 +20,7 @@ public static partial class MauiProgram
         services.AddSingleton<IHistoryExitHandler>(_ => new AndroidHistoryExitHandler());
         services.AddSingleton<AndroidContentDownloader>();
         services.AddAlias<IIncomingShareFileDownloader, AndroidContentDownloader>();
-        services.AddScoped<IVisualMediaViewerFileDownloader, AndroidVisualMediaViewerFileDownloader>();
+        services.AddScoped<IMediaSaver, AndroidMediaSaver>();
 
         services.AddTransient<IDeviceTokenRetriever>(c => new AndroidDeviceTokenRetriever(c));
         // Temporarily disabled switch between loud speaker and earpiece

@@ -19,31 +19,29 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
     private readonly IMutableState<bool?> _permissionState;
     private readonly TaskCompletionSource _whenPermissionStateReady = TaskCompletionSourceExt.New();
     private volatile Task<string?>? _registerDeviceTask;
-    private History? _history;
-    private AutoNavigationUI? _autoNavigationUI;
     private IDeviceTokenRetriever? _deviceTokenRetriever;
     private ILogger? _log;
 
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
-    private IServiceProvider Services { get; }
-    private History History => _history ??= Services.GetRequiredService<History>();
-    private AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
-    private IDeviceTokenRetriever DeviceTokenRetriever => _deviceTokenRetriever ??= Services.GetRequiredService<IDeviceTokenRetriever>();
-    private Session Session => History.Session;
-    private HostInfo HostInfo => History.HostInfo;
-    private UrlMapper UrlMapper => History.UrlMapper;
-    private IJSRuntime JS => History.JS;
+    private UIHub Hub { get; }
+    private HostInfo HostInfo => Hub.HostInfo();
+    private Session Session => Hub.Session();
+    private History History => Hub.History;
+    private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
+    private IDeviceTokenRetriever DeviceTokenRetriever => _deviceTokenRetriever ??= Hub.GetRequiredService<IDeviceTokenRetriever>();
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private IJSRuntime JS => Hub.JSRuntime();
 
     public IState<bool?> PermissionState => _permissionState;
     public Task WhenReady { get; }
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(NotificationUI))]
-    public NotificationUI(IServiceProvider services)
+    public NotificationUI(UIHub hub)
     {
-        Services = services;
+        Hub = hub;
 
-        var stateFactory = services.StateFactory();
+        var stateFactory = hub.StateFactory();
         _permissionState = stateFactory.NewMutable((bool?)null, nameof(PermissionState));
         WhenReady = Initialize();
 
@@ -54,7 +52,7 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
             }
             else if (HostInfo.AppKind == AppKind.MauiApp) {
                 // There should be no cycle reference as we implement INotificationPermissions for MAUI platform separately
-                var notificationsPermission = services.GetRequiredService<INotificationsPermission>();
+                var notificationsPermission = hub.GetRequiredService<INotificationsPermission>();
                 var isGranted = await notificationsPermission.IsGranted().ConfigureAwait(false);
                 SetIsGranted(isGranted);
             }
@@ -141,10 +139,10 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
                     var cancellationToken = cts.Token;
                     try {
                         deviceId ??= await DeviceTokenRetriever.GetDeviceToken(cancellationToken).ConfigureAwait(false);
-                        await Services.RpcHub().WhenClientPeerConnected(cancellationToken).ConfigureAwait(false);
+                        await Hub.RpcHub().WhenClientPeerConnected(cancellationToken).ConfigureAwait(false);
                         if (deviceId != null) {
                             var command = new Notifications_RegisterDevice(Session, deviceId, DeviceType.WebBrowser);
-                            await Services.Commander().Call(command, cancellationToken).ConfigureAwait(false);
+                            await Hub.Commander().Call(command, cancellationToken).ConfigureAwait(false);
                         }
                         return deviceId;
                     }

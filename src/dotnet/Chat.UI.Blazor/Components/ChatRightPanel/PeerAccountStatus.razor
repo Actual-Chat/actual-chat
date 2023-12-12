@@ -8,8 +8,8 @@
 
 @code {
     private Chat Chat => ChatContext.Chat;
-    private Session Session => ChatContext.Session;
-    private IAuthors Authors => ChatContext.Authors;
+    private Session Session => ChatContext.Hub.Session();
+    private IAuthors Authors => ChatContext.Hub.Authors;
 
     [Parameter] public ChatContext ChatContext { get; set; } = null!;
 

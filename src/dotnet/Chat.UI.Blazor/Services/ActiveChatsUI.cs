@@ -3,7 +3,7 @@ using Stl.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ActiveChatsUI : ScopedServiceBase
+public class ActiveChatsUI : ScopedServiceBase<ChatUIHub>
 {
     public const int MaxActiveChatCount = 3;
     public static readonly TimeSpan MaxContinueListeningRecency = TimeSpan.FromMinutes(5);
@@ -11,24 +11,19 @@ public class ActiveChatsUI : ScopedServiceBase
     private readonly AsyncLock _updateLock = new(LockReentryMode.CheckedFail);
     private readonly IStoredState<ApiArray<ActiveChat>> _activeChats;
 
-    private ChatHub ChatHub { get; }
-    private IChats Chats => ChatHub.Chats;
-    private LocalSettings LocalSettings => ChatHub.LocalSettings();
-    private UICommander UICommander => ChatHub.UICommander();
+    private IChats Chats => Hub.Chats;
+    private UICommander UICommander => Hub.UICommander();
     private Moment CpuNow => Clocks.CpuClock.Now;
 
     public IMutableState<ApiArray<ActiveChat>> ActiveChats => _activeChats;
     public Task WhenLoaded => _activeChats.WhenRead;
 
-    public ActiveChatsUI(ChatHub chatHub) : base(chatHub.Scope())
-    {
-        ChatHub = chatHub;
-        _activeChats = StateFactory.NewKvasStored<ApiArray<ActiveChat>>(
+    public ActiveChatsUI(ChatUIHub hub) : base(hub)
+        => _activeChats = StateFactory.NewKvasStored<ApiArray<ActiveChat>>(
             new (LocalSettings, nameof(ActiveChats)) {
                 Corrector = FixStoredActiveChats,
                 Category = StateCategories.Get(GetType(), nameof(ActiveChats)),
             });
-    }
 
     public async ValueTask UpdateActiveChats(
         Func<ApiArray<ActiveChat>, ApiArray<ActiveChat>> updater,

@@ -51,11 +51,11 @@
         };
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await ChatContext.SelectionUI.HasSelection.Use(cancellationToken);
+        => await ChatContext.Hub.SelectionUI.HasSelection.Use(cancellationToken);
 
     private void OnToggleRightPanelClick()
-        => ChatContext.PanelsUI.Right.Toggle();
+        => ChatContext.Hub.PanelsUI.Right.Toggle();
 
     private void OnOpenLeftPanelClick()
-        => ChatContext.PanelsUI.Left.SetIsVisible(true);
+        => ChatContext.Hub.PanelsUI.Left.SetIsVisible(true);
 }

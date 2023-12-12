@@ -2,31 +2,22 @@ using ActualChat.UI.Blazor.Services.Internal;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class PanelsUI : ScopedWorkerBase, IHasServices
+public class PanelsUI : ScopedWorkerBase<UIHub>
 {
-    private Dispatcher? _dispatcher;
+    private History History => Hub.History;
+    private Dispatcher Dispatcher => Hub.Dispatcher;
 
-    public new IServiceProvider Services => Scope.Services;
-    public new Scope Scope => base.Scope;
-    public History History { get; }
-    public Dispatcher Dispatcher => _dispatcher ??= History.Dispatcher;
     public IState<ScreenSize> ScreenSize { get; }
-
     public LeftPanel Left { get; }
     public MiddlePanel Middle { get; }
     public RightPanel Right { get; }
 
-    public PanelsUI(IServiceProvider services) : base(services)
+    public PanelsUI(UIHub hub) : base(hub)
     {
-        History = services.GetRequiredService<History>();
-
-        var browserInfo = services.GetRequiredService<BrowserInfo>();
-        if (!browserInfo.WhenReady.IsCompleted) {
-            var isPrerendering = services.GetRequiredService<RenderModeSelector>().IsPrerendering;
-            if (!isPrerendering)
-                throw StandardError.Internal(
-                    $"{nameof(PanelsUI)} is resolved too early: {nameof(BrowserInfo)} is not ready yet.");
-        }
+        var browserInfo = hub.BrowserInfo;
+        if (!browserInfo.WhenReady.IsCompleted && !hub.RenderModeSelector.IsPrerendering)
+            throw StandardError.Internal(
+                $"{nameof(PanelsUI)} is resolved too early: {nameof(BrowserInfo)} is not ready yet.");
 
         ScreenSize = browserInfo.ScreenSize;
         Left = new LeftPanel(this);

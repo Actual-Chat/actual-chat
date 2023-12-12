@@ -40,16 +40,16 @@
     private IStoredState<Moment> _dismissedAt = null!;
     private ILogger? _log = null;
 
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
     [Inject] private INotificationsPermission NotificationsPermission { get; init; } = null!;
-    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
-    [Inject] private NotificationUI NotificationUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private Session Session => Hub.Session();
+    private LocalSettings LocalSettings => Hub.LocalSettings();
+    private MomentClockSet Clocks => Hub.Clocks();
+    private NotificationUI NotificationUI => Hub.NotificationUI;
+    private UICommander UICommander => Hub.UICommander();
+    private IJSRuntime JS => Hub.JSRuntime();
+    private ILogger Log => _log ??= Services.LogFor(GetType());
 
     protected override void OnInitialized() {
         _dismissedAt = StateFactory.NewKvasStored<Moment>(new (LocalSettings, "Permissions.Notifications.DismissedAt"));

@@ -5,13 +5,13 @@
 <ErrorBoundary @ref="_errorBoundary">
     <ChildContent>
         @{
-            _childContentRenderedAt = Now;
+            _childContentRenderedAt = CpuNow;
         }
         @ChildContent
     </ChildContent>
     <ErrorContent>
         @{
-            var now = Now;
+            var now = CpuNow;
             if (now - _childContentRenderedAt < SameFailurePeriod)
                 _errorCount++;
             else
@@ -34,12 +34,12 @@
     private Moment _childContentRenderedAt;
     private int _errorCount;
 
-    private ILogger Log => _log ??= Services.LogFor(GetType());
-    private Moment Now => Clocks.CpuClock.Now;
+    private Moment CpuNow => Clocks.CpuClock.Now;
 
-    [Inject] IServiceProvider Services { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    [Inject] UIHub Hub { get; init; } = null!;
+    private MomentClockSet Clocks => Hub.Clocks();
+    private History History => Hub.History;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public ErrorBarrierKind Kind { get; set; } = ErrorBarrierKind.Full;

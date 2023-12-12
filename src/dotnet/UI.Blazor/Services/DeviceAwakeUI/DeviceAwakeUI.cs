@@ -5,26 +5,25 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class DeviceAwakeUI : ScopedServiceBase, ISleepDurationProvider, IDeviceAwakeUIBackend
+public class DeviceAwakeUI : ScopedServiceBase<UIHub>, ISleepDurationProvider, IDeviceAwakeUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.DeviceAwakeUI.init";
 
     private readonly DotNetObjectReference<IDeviceAwakeUIBackend> _backendRef;
     private readonly IMutableState<TimeSpan> _totalSleepDuration;
 
-    private IJSRuntime JS { get; }
+    private IJSRuntime JS => Hub.JSRuntime();
 
     public IState<TimeSpan> TotalSleepDuration => _totalSleepDuration;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(DeviceAwakeUI))]
-    public DeviceAwakeUI(IServiceProvider services) : base(services)
+    public DeviceAwakeUI(UIHub hub) : base(hub)
     {
-        JS = services.JSRuntime();
         _totalSleepDuration = StateFactory.NewMutable(
             TimeSpan.Zero,
             StateCategories.Get(GetType(), nameof(TotalSleepDuration)));
         _backendRef = DotNetObjectReference.Create<IDeviceAwakeUIBackend>(this);
-        Scope.RegisterDisposable(_backendRef);
+        Hub.RegisterDisposable(_backendRef);
         _ = Initialize();
     }
 

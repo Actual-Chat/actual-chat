@@ -7,11 +7,10 @@ namespace ActualChat.Users.UI.Blazor.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public partial class UsersBlazorUIModule : HostModule, IBlazorUIModule
+public sealed class UsersBlazorUIModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IBlazorUIModule
 {
     public static string ImportName => "users";
-
-    public UsersBlazorUIModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

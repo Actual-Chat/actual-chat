@@ -82,7 +82,7 @@
 @code {
     private FormModel _formModel = null!;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     protected override void OnInitialized() {
@@ -97,15 +97,15 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var languages = await ChatHub.LanguageUI.Settings.Use(cancellationToken);
-        var enableIncompleteUI = await ChatHub.Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var languages = await Hub.LanguageUI.Settings.Use(cancellationToken);
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         return new(languages, enableIncompleteUI);
     }
 
     private void OnLanguageChanged(int index, string languageId) {
         var language = Language.ParseOrNone(languageId);
         var languages = State.Value.Languages;
-        ChatHub.LanguageUI.UpdateSettings(languages.With(index, language));
+        Hub.LanguageUI.UpdateSettings(languages.With(index, language));
         State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
 

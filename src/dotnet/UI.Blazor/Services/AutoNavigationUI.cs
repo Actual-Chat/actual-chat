@@ -13,26 +13,13 @@ public enum AutoNavigationReason
     SignOut = 100,
 }
 
-public abstract class AutoNavigationUI : IHasServices
+public abstract class AutoNavigationUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
 {
-    private AppBlazorCircuitContext? _blazorCircuitContext;
     private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
 
-    protected ILogger Log { get; }
-    protected ILogger? DebugLog { get; }
-
-    public IServiceProvider Services { get; }
-    public History History { get; }
-    public AppBlazorCircuitContext BlazorCircuitContext => _blazorCircuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
-    public Dispatcher Dispatcher => BlazorCircuitContext.Dispatcher;
-
-    protected AutoNavigationUI(IServiceProvider services)
-    {
-        Services = services;
-        Log = services.LogFor(GetType());
-        History = services.GetRequiredService<History>();
-        DebugLog = Log.IfEnabled(LogLevel.Debug);
-    }
+    protected History History => Hub.History;
+    protected AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
+    protected Dispatcher Dispatcher => Hub.Dispatcher;
 
     public Task<LocalUrl> GetAutoNavigationUrl(CancellationToken cancellationToken = default)
         => Dispatcher.InvokeAsync(async () => {
@@ -57,13 +44,13 @@ public abstract class AutoNavigationUI : IHasServices
 
     public Task DispatchNavigateTo(LocalUrl url, AutoNavigationReason reason)
     {
-        if (BlazorCircuitContext.WhenReady.IsCompleted)
+        if (CircuitContext.WhenReady.IsCompleted)
             return Dispatcher.CheckAccess()
                 ? NavigateTo(url, reason)
                 : Dispatcher.InvokeAsync(() => NavigateTo(url, reason));
 
         return Task.Run(async () => {
-            await BlazorCircuitContext.WhenReady.ConfigureAwait(false);
+            await CircuitContext.WhenReady.ConfigureAwait(false);
             await Dispatcher.InvokeAsync(() => NavigateTo(url, reason)).ConfigureAwait(false);
         });
     }

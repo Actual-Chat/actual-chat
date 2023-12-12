@@ -9,10 +9,8 @@ using Stl.Fusion.EntityFramework.Operations;
 namespace ActualChat.Media.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class MediaServiceModule : HostModule<MediaSettings>
+public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostModule<MediaSettings>(moduleServices)
 {
-    public MediaServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);

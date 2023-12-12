@@ -43,9 +43,10 @@
     private int _lastFailureOrder;
     private bool _suppressOnFailuresChanged;
 
+    [Inject] private UIHub Hub { get; init; } = null!;
     [Inject] private UIActionFailureTracker Failures { get; init; } = null!;
-    [Inject] private ToastUI ToastUI { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    private ToastUI ToastUI => Hub.ToastUI;
+    private History History => Hub.History;
 
     protected override void OnInitialized() {
         History.LocationChanged += OnLocationChanged;

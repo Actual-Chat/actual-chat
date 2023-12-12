@@ -4,7 +4,7 @@
     var m = State.Value;
     var tooltip = "";
     if (Moment.HasValue) {
-        var localTime = TimeZoneConverter.ToLocalTime(Moment.GetValueOrDefault());
+        var localTime = Hub.TimeZoneConverter.ToLocalTime(Moment.GetValueOrDefault());
         tooltip = $"{localTime.ToLongDateString()} at {localTime.ToShortTimeString()}";
     }
 }
@@ -12,15 +12,14 @@
 <span class="@Class live-time-text" title="@tooltip">@m</span>
 
 @code {
-    [Inject] private LiveTime LiveTime { get; init; } = null!;
-    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public Moment? Moment { get; set; }
     [Parameter] public string NullText { get; set; } = "n/a";
 
     protected override ComputedState<string>.Options GetStateOptions() {
-        var initialValue = Moment.HasValue ? LiveTime.GetDeltaText(Moment.Value) : NullText;
+        var initialValue = Moment.HasValue ? Hub.LiveTime.GetDeltaText(Moment.Value) : NullText;
         return new () {
             InitialValue = initialValue,
             Category = GetStateCategory(),
@@ -29,6 +28,6 @@
 
     protected override Task<string> ComputeState(CancellationToken cancellationToken)
         => Moment.HasValue
-            ? LiveTime.GetDeltaText(Moment.Value, cancellationToken)
+            ? Hub.LiveTime.GetDeltaText(Moment.Value, cancellationToken)
             : Task.FromResult(NullText);
 }

@@ -4,7 +4,7 @@ using Stl.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public sealed class SessionTokens(IServiceProvider services) : ScopedWorkerBase(services), IComputeService
+public sealed class SessionTokens(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeService
 {
     public const string HeaderName = "Session";
 

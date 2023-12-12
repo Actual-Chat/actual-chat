@@ -36,13 +36,14 @@
     private IStoredState<Moment> _dismissedAt = null!;
     private bool _permissionStateWasDefined;
     private bool _checkIsRequired;
+    private ILogger? _log;
 
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
-    [Inject] private DeviceContacts DeviceContacts { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
     [Inject] private ContactsPermissionHandler ContactsPermission { get; init; } = null!;
-    [Inject] private LocalSettings LocalSettings { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private ILogger<ContactsPermissionBanner> Log { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private LocalSettings LocalSettings => Hub.LocalSettings();
+    private MomentClockSet Clocks => Hub.Clocks();
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     protected override void OnInitialized() {
         _dismissedAt = StateFactory.NewKvasStored<Moment>(new(LocalSettings, "Permissions.Contacts.DismissedAt"));

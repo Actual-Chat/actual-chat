@@ -6,10 +6,8 @@ namespace ActualChat.MediaPlayback.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class MediaPlaybackModule : HostModule
+public sealed class MediaPlaybackModule(IServiceProvider moduleServices) : HostModule(moduleServices)
 {
-    public MediaPlaybackModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.HasBlazorUI())

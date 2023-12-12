@@ -15,11 +15,9 @@ using Stl.Fusion.Operations.Internal;
 namespace ActualChat.Db.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class DbModule : HostModule<DbSettings>
+public sealed class DbModule(IServiceProvider moduleServices) : HostModule<DbSettings>(moduleServices)
 {
     private const int CommandTimeout = 3;
-
-    public DbModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     public void AddDbContextServices<TDbContext>(
         IServiceCollection services,

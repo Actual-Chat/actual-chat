@@ -196,18 +196,18 @@
     private string? _avatarKey;
     private bool _isAdmin;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
 
-    private Session Session => ChatHub.Session; // Shortcut
+    private Session Session => Hub.Session(); // Shortcut
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     private ChatId ChatId { get; set; }
 
     protected override void OnInitialized() {
-        _isAdmin = ChatHub.AccountUI.OwnAccount.Value.IsAdmin;
+        _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
         ChatId = Context.GetTypedModel<ChatId>();
         Context.SetTitle("Edit chat settings");
         if (ChatId.IsPeerChat(out _)) {
@@ -228,7 +228,7 @@
         if (_form != null)
             return;
 
-        var chat = await ChatHub.Chats.Get(Session, ChatId, default).Require();
+        var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             Title = chat.Title,
             Picture = chat.Picture?.ToPicture(),
@@ -249,27 +249,27 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chat = await ChatHub.Chats.Get(Session, ChatId, cancellationToken);
+        var chat = await Hub.Chats.Get(Session, ChatId, cancellationToken);
         if (chat == null || !chat.Rules.CanEditProperties())
             return new ComputedModel { Chat = chat };
 
-        var ownerIds = await ChatHub.Roles.ListOwnerIds(Session, ChatId, cancellationToken);
+        var ownerIds = await Hub.Roles.ListOwnerIds(Session, ChatId, cancellationToken);
         var allOwnersAreAnonymous = false;
         if (ownerIds.Count > 0) {
             var owners = await ownerIds
-                .Select(authorId => ChatHub.Authors.Get(Session, authorId.ChatId, authorId, cancellationToken))
+                .Select(authorId => Hub.Authors.Get(Session, authorId.ChatId, authorId, cancellationToken))
                 .Collect();
             allOwnersAreAnonymous = owners.All(c => c != null && c.IsAnonymous);
         }
-        var allAuthorIds = await ChatHub.Authors.ListAuthorIds(Session, ChatId, cancellationToken);
-        var invites = await ChatHub.Invites.ListChatInvites(Session, ChatId, cancellationToken);
-        var threshold = ChatHub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
+        var allAuthorIds = await Hub.Authors.ListAuthorIds(Session, ChatId, cancellationToken);
+        var invites = await Hub.Invites.ListChatInvites(Session, ChatId, cancellationToken);
+        var threshold = Hub.Clocks().SystemClock.Now - TimeSpan.FromDays(3);
         invites = invites
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToApiArray();
-        var link = Links.Chat(ChatId).ToDisplayUrl(ChatHub.UrlMapper());
-        var allowEditIsTemplate = await ChatHub.Features.Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
+        var link = Links.Chat(ChatId).ToDisplayUrl(Hub.UrlMapper());
+        var allowEditIsTemplate = await Hub.Features().Get<Features_EnableTemplateChatUI, bool>(cancellationToken);
         return new() {
             Chat = chat,
             Link = link,
@@ -290,7 +290,7 @@
     private async Task OnNewInviteClick() {
         // TODO: make it configurable
         var invite = Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(ChatId));
-        invite = await ChatHub.UICommander().Run(new Invites_Generate(Session, invite));
+        invite = await Hub.UICommander().Run(new Invites_Generate(Session, invite));
         _newInviteId = invite.Id;
     }
 
@@ -302,8 +302,8 @@
             return;
 
         if (m.CanDelete) {
-            var chat = await ChatHub.Chats.Get(Session, ChatId, default);
-            _ = ChatHub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!) { IsDelete = true });
+            var chat = await Hub.Chats.Get(Session, ChatId, default);
+            _ = Hub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!) { IsDelete = true });
         } else {
             var hasAnotherOwner = m is { IsOwner: true, OwnersCount: > 1 };
             var hasMembers = m.MembersCount > 1;
@@ -311,8 +311,8 @@
                 const string message = "You can't leave this chat because you are its only owner. Please add another chat owner first.";
                 Services.UICommander().ShowError(StandardError.Constraint(message));
             } else {
-                var chat = await ChatHub.Chats.Get(Session, ChatId, default);
-                _ = ChatHub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!));
+                var chat = await Hub.Chats.Get(Session, ChatId, default);
+                _ = Hub.ModalUI.Show(new LeaveChatConfirmationModal.Model(chat!));
             }
         }
     }
@@ -327,7 +327,7 @@
     }
 
     private async Task Save() {
-        var chat = await ChatHub.Chats.Get(Session, ChatId, default).Require();
+        var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
         var newChat = chat with {
             Title = _form!.Title,
             IsPublic = _form.IsPublic,
@@ -339,7 +339,7 @@
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {
             Update = DiffEngine.Diff<Chat, ChatDiff>(chat, newChat),
         });
-        await ChatHub.UICommander().Run(command);
+        await Hub.UICommander().Run(command);
     }
 
     public sealed class FormModel {

@@ -9,10 +9,9 @@ using Microsoft.AspNetCore.Builder;
 
 namespace ActualChat.Audio.Module;
 
-public sealed class AudioServiceModule : HostModule<AudioSettings>, IWebModule
+public sealed class AudioServiceModule(IServiceProvider moduleServices)
+    : HostModule<AudioSettings>(moduleServices), IWebModule
 {
-    public AudioServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     public void ConfigureApp(IApplicationBuilder app)
         => app.UseEndpoints(endpoints => {
             endpoints.MapHub<AudioHub>("/api/hub/audio");

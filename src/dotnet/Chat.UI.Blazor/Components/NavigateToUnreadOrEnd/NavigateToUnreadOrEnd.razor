@@ -29,12 +29,12 @@
     private Moment _hideUntil;
     private Moment _lastClickAt;
 
-    private Session Session => ChatContext.Session;
+    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IChats Chats => ChatContext.Chats;
-    private ChatUI ChatUI => ChatContext.ChatUI;
-    private UIEventHub UIEventHub => ChatContext.UIEventHub();
-    private Moment Now => ChatContext.Clocks().CpuClock.Now;
+    private IChats Chats => ChatContext.Hub.Chats;
+    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
+    private UIEventHub UIEventHub => ChatContext.Hub.UIEventHub();
+    private Moment CpuNow => ChatContext.Hub.Clocks().CpuClock.Now;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatView ChatView { get; set; } = null!;
@@ -72,7 +72,7 @@
             return Model.Invisible;
 
         // Delay showing the button for the first time
-        var now = Now;
+        var now = CpuNow;
         if (_hideUntil == default)
             _hideUntil = now + TimeSpan.FromSeconds(1.35);
         if (_hideUntil > now)
@@ -91,8 +91,8 @@
 
         // Item visibility updates with a delay, so we want to make sure
         // the second click always brings you to the bottom of the list
-        var isJustClicked = Now - _lastClickAt < TimeSpan.FromSeconds(5);
-        _lastClickAt = Now;
+        var isJustClicked = CpuNow - _lastClickAt < TimeSpan.FromSeconds(5);
+        _lastClickAt = CpuNow;
         var mustNavigateToUnread = !isJustClicked
             && m.ReadEntryLid > ChatView.ItemVisibility.Value.MaxEntryLid;
         _ = mustNavigateToUnread

@@ -8,10 +8,8 @@ using Stl.Redis;
 namespace ActualChat.Redis.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class RedisModule : HostModule<RedisSettings>
+public sealed class RedisModule(IServiceProvider moduleServices) : HostModule<RedisSettings>(moduleServices)
 {
-     public RedisModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     public void AddRedisDb<TContext>(
         IServiceCollection services,
         string? connectionString)

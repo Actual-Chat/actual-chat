@@ -12,7 +12,7 @@ public class LiveTime : SafeAsyncDisposableBase, IComputeService
 
     public LiveTime(IServiceProvider services)
     {
-        HostInfo = services.GetRequiredService<HostInfo>();
+        HostInfo = services.HostInfo();
         TimeZoneConverter = services.GetRequiredService<TimeZoneConverter>();
         Clocks = services.Clocks();
         _maxInvalidationDelay = HostInfo.IsDevelopmentInstance

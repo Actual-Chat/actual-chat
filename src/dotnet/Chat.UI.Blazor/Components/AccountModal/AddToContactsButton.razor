@@ -18,12 +18,12 @@
 }
 
 @code {
-    private Session Session => ChatHub.Session;
-    private IContacts Contacts => ChatHub.Contacts;
-    private UICommander UICommander => ChatHub.UICommander();
-    private AuthorUI AuthorUI => ChatHub.AuthorUI;
+    private Session Session => Hub.Session();
+    private IContacts Contacts => Hub.Contacts;
+    private UICommander UICommander => Hub.UICommander();
+    private AuthorUI AuthorUI => Hub.AuthorUI;
 
-    [Inject] private ChatHub ChatHub { get; set; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
 
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
 

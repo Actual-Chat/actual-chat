@@ -18,10 +18,10 @@
 @code {
     private ILogger? _log;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ITranscriptStreamer TranscriptStreamer { get; init; } = null!;
-    private Dispatcher Dispatcher => ChatHub.Dispatcher;
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
+    private Dispatcher Dispatcher => Hub.Dispatcher;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
     [Parameter] public string Class { get; set; } = "";

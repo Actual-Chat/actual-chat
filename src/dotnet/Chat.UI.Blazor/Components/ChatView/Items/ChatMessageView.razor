@@ -194,17 +194,17 @@
     // Shortcuts
     private ChatEntry Entry => Message.Entry;
     private ChatId ChatId => Message.Entry.ChatId;
-    private Session Session => ChatContext.Session;
-    private History History => ChatContext.History;
-    private IAuthors Authors => ChatContext.Authors;
-    private IChats Chats => ChatContext.Chats;
-    private ChatUI ChatUI => ChatContext.ChatUI;
-    private AuthorUI AuthorUI => ChatContext.AuthorUI;
-    private ShareUI ShareUI => ChatContext.ShareUI;
-    private ModalUI ModalUI => ChatContext.ModalUI;
-    private TimeZoneConverter TimeZoneConverter => ChatContext.TimeZoneConverter;
+    private Session Session => ChatContext.Hub.Session();
+    private History History => ChatContext.Hub.History;
+    private IAuthors Authors => ChatContext.Hub.Authors;
+    private IChats Chats => ChatContext.Hub.Chats;
+    private ChatUI ChatUI => ChatContext.Hub.ChatUI;
+    private AuthorUI AuthorUI => ChatContext.Hub.AuthorUI;
+    private ShareUI ShareUI => ChatContext.Hub.ShareUI;
+    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
+    private TimeZoneConverter TimeZoneConverter => ChatContext.Hub.TimeZoneConverter;
     private IChatMarkupHub ChatMarkupHub => ChatContext.ChatMarkupHub;
-    private ILogger Log => _log ??= ChatContext.Services.LogFor(GetType());
+    private ILogger Log => _log ??= ChatContext.Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatMessage Message { get; set; } = null!;
@@ -260,7 +260,7 @@
         var repliedEntry = await GetRepliedEntry(cancellationToken);
         var hasAnyMentions = HasAnyMentions(markup);
         var isOwnAuthorMentioned = IsMentioned(markup, repliedEntry, ownAuthorId, hasAnyMentions);
-        var relatedChatEntry = await ChatContext.ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
+        var relatedChatEntry = await ChatContext.Hub.ChatEditorUI.RelatedChatEntry.Use(cancellationToken);
         var isReplyTarget = relatedChatEntry is { Kind: RelatedEntryKind.Reply, Id: var repliedEntryId } && repliedEntryId == entry.Id;
         var isHighlighted = entry.Id == await ChatUI.HighlightedEntryId.Use(cancellationToken);
         var forwardedChat = !entry.ForwardedChatEntryId.IsNone
@@ -268,7 +268,7 @@
             : null;
         var forwardedAuthor = await GetForwardedAuthor(entry, ownAuthor, cancellationToken);
         var forwardedPeerAuthor = await GetForwardedPeerAuthor(entry, ownAuthor, cancellationToken);
-        var selectedChatEntries = await ChatContext.SelectionUI.Selection.Use(cancellationToken);
+        var selectedChatEntries = await ChatContext.Hub.SelectionUI.Selection.Use(cancellationToken);
         var result = new Model {
             OwnAuthorId = ownAuthorId,
             RepliedEntry = repliedEntry,

@@ -26,22 +26,23 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     private IMutableState<long> _shownReadEntryLid = null!;
     private IMutableState<Navigation?> _nextNavigation = null!;
     private Range<long> _lastIdRangeToLoad;
+    private ChatUIHub? _hub;
     private ILogger? _log;
 
-    private IServiceProvider Services => ChatContext.Services;
-    private Session Session => ChatContext.Session;
+    private ChatUIHub Hub => _hub ??= ChatContext.Hub;
+    private Session Session => Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private ChatUI ChatUI => ChatContext.ChatUI;
-    private IChats Chats => ChatContext.Chats;
-    private Media.IMediaLinkPreviews MediaLinkPreviews => ChatContext.MediaLinkPreviews;
-    private IAuthors Authors => ChatContext.Authors;
-    private NavigationManager Nav => ChatContext.Nav;
-    private History History => ChatContext.History;
-    private TimeZoneConverter TimeZoneConverter => ChatContext.TimeZoneConverter;
-    private IStateFactory StateFactory => ChatContext.StateFactory();
-    private Dispatcher Dispatcher => ChatContext.Dispatcher;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private IChats Chats => Hub.Chats;
+    private Media.IMediaLinkPreviews MediaLinkPreviews => Hub.MediaLinkPreviews;
+    private IAuthors Authors => Hub.Authors;
+    private NavigationManager Nav => Hub.Nav;
+    private History History => Hub.History;
+    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
+    private IStateFactory StateFactory => Hub.StateFactory();
+    private Dispatcher Dispatcher => Hub.Dispatcher;
     private CancellationToken DisposeToken { get; }
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug);
 
     public IState<ReadPosition> ReadPosition => _readPosition;
@@ -137,7 +138,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             return;
 
         var uri = History.Uri;
-        var fragment = new LocalUrl(uri).ToAbsolute(History.UrlMapper).ToUri().Fragment.TrimStart('#');
+        var fragment = new LocalUrl(uri).ToAbsolute(Hub.UrlMapper()).ToUri().Fragment.TrimStart('#');
         if (!NumberExt.TryParsePositiveLong(fragment, out var entryId) || entryId <= 0)
             return;
 

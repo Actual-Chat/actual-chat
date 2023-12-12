@@ -14,7 +14,7 @@
 @code {
     private PeerChatId _peerChatId;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 
@@ -22,7 +22,7 @@
         => ChatState.Id.IsPeerChat(out _peerChatId);
 
     private void OnStartChatClick() {
-        var otherUserId = _peerChatId.UserIds.OtherThanOrDefault(ChatHub.AccountUI.OwnAccount.Value.Id);
-        _ = ChatHub.AuthorUI.StartAnonymousPeerChat(otherUserId);
+        var otherUserId = _peerChatId.UserIds.OtherThanOrDefault(Hub.AccountUI.OwnAccount.Value.Id);
+        _ = Hub.AuthorUI.StartAnonymousPeerChat(otherUserId);
     }
 }

@@ -14,7 +14,7 @@ internal sealed class MauiClientAuth(IServiceProvider services) : IClientAuth
 
     private IServiceProvider Services { get; } = services;
     private SessionTokens SessionTokens => _sessionTokens ??= Services.GetRequiredService<SessionTokens>();
-    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    private HostInfo HostInfo => _hostInfo ??= Services.HostInfo();
     private History History => _history ??= Services.GetRequiredService<History>();
     private ILogger Log => _log ??= Services.LogFor(GetType());
 

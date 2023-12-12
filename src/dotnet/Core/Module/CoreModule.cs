@@ -15,7 +15,7 @@ namespace ActualChat.Module;
 #pragma warning disable CA1822 // Method can be static
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class CoreModule : HostModule<CoreSettings>
+public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<CoreSettings>(moduleServices)
 {
     static CoreModule()
     {
@@ -38,8 +38,6 @@ public sealed class CoreModule : HostModule<CoreSettings>
 #endif
     }
 
-    public CoreModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected internal override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
@@ -50,7 +48,6 @@ public sealed class CoreModule : HostModule<CoreSettings>
         // Common services
         services.AddTracer();
         services.AddSingleton(c => new StaticImportsInitializer(c));
-        services.AddScoped(c => new Scope(c));
         services.AddHostedService(c => c.GetRequiredService<StaticImportsInitializer>());
         services.AddSingleton(c => new UrlMapper(c.GetRequiredService<HostInfo>()));
         services.AddSingleton(c => new HealthEventListener(c));

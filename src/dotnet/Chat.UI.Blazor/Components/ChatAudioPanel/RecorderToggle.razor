@@ -72,10 +72,10 @@
     private static readonly string JSInitMethod = $"{ChatBlazorUIModule.ImportName}.RecorderToggle.init";
     private OnOffAnimator _animator = null!;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
-    private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
-    private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
-    private IJSRuntime JS => ChatHub.JS;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private IJSRuntime JS => Hub.JSRuntime();
 
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsForcePushed { get; set; } = false;

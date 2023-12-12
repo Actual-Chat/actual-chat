@@ -3,14 +3,14 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public sealed class AuthorUI(ChatHub chatHub) : ScopedServiceBase(chatHub.Scope())
+public sealed class AuthorUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub)
 {
-    private ChatHub ChatHub { get; } = chatHub;
-    private IAccounts Accounts => ChatHub.Accounts;
-    private IAuthors Authors => ChatHub.Authors;
-    private ModalUI ModalUI => ChatHub.ModalUI;
-    private History History => ChatHub.History;
-    private UICommander UICommander => ChatHub.UICommander();
+    private ChatUIHub Hub { get; } = hub;
+    private IAccounts Accounts => Hub.Accounts;
+    private IAuthors Authors => Hub.Authors;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private History History => Hub.History;
+    private UICommander UICommander => Hub.UICommander();
 
     public async Task Show(AuthorId authorId, CancellationToken cancellationToken = default)
     {

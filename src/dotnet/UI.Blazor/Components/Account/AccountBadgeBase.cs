@@ -4,8 +4,9 @@ namespace ActualChat.UI.Blazor.Components;
 
 public abstract class AccountBadgeBase : ComputedStateComponent<AccountBadgeBase.Model>
 {
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAccounts Accounts { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
 
     protected UserId UserId { get; private set; }
 

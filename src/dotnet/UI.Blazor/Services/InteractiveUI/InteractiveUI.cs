@@ -3,36 +3,32 @@ using ActualChat.UI.Blazor.Module;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class InteractiveUI : ScopedServiceBase, IInteractiveUIBackend
+public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.InteractiveUI.init";
 
     private readonly object _lock = new();
     private readonly IMutableState<bool> _isInteractive;
     private readonly IMutableState<ActiveDemandModel?> _activeDemand;
-    private DotNetObjectReference<IInteractiveUIBackend>? _blazorRef;
-    private Dispatcher? _dispatcher;
 
     // Services
-    private ModalUI ModalUI { get; }
-    private Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
-    private IJSRuntime JS { get; }
+    private ModalUI ModalUI => Hub.ModalUI;
+    private Dispatcher Dispatcher => Hub.Dispatcher;
+    private IJSRuntime JS => Hub.JSRuntime();
 
     public IState<bool> IsInteractive => _isInteractive;
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<ActiveDemandModel?> ActiveDemand => _activeDemand;
     public Task WhenReady { get; }
 
-    public InteractiveUI(IServiceProvider services) : base(services)
+    public InteractiveUI(UIHub hub) : base(hub)
     {
-        ModalUI = services.GetRequiredService<ModalUI>();
-        JS = services.JSRuntime();
-        _blazorRef = DotNetObjectReference.Create<IInteractiveUIBackend>(this);
-        Scope.RegisterDisposable(_blazorRef);
+        var blazorRef = DotNetObjectReference.Create<IInteractiveUIBackend>(this);
+        Hub.RegisterDisposable(blazorRef);
 
         _isInteractive = StateFactory.NewMutable(false);
         _activeDemand = StateFactory.NewMutable((ActiveDemandModel?)null);
-        WhenReady = JS.InvokeVoidAsync(JSInitMethod, _blazorRef).AsTask();
+        WhenReady = JS.InvokeVoidAsync(JSInitMethod, blazorRef).AsTask();
     }
 
     [JSInvokable]

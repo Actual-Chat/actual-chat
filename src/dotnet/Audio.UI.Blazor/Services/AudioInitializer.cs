@@ -6,7 +6,8 @@ using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.Audio.UI.Blazor.Services;
 
-public sealed partial class AudioInitializer(IServiceProvider services) : ScopedWorkerBase(services), IAudioInfoBackend
+public sealed partial class AudioInitializer(UIHub hub)
+    : ScopedWorkerBase<UIHub>(hub), IAudioInfoBackend
 {
     private static readonly string JSInitMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.init";
     private static readonly string JSUpdateBackgroundStateMethod = $"{AudioBlazorUIModule.ImportName}.AudioInitializer.setBackgroundState";

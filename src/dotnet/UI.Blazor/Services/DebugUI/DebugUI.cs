@@ -25,7 +25,7 @@ public sealed class DebugUI : IDisposable
         Services = services;
         Log = services.LogFor(GetType());
         JS = services.JSRuntime();
-        HostInfo = services.GetRequiredService<HostInfo>();
+        HostInfo = services.HostInfo();
         WhenReady = Initialize();
     }
 

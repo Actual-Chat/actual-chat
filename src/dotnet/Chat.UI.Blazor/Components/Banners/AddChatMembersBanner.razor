@@ -21,13 +21,13 @@
     private IStoredState<bool> _dismissed = null!;
     private ILogger? _log;
 
-    private Session Session => ChatContext.Session;
+    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IRoles Roles => ChatContext.Roles;
-    private IAuthors Authors => ChatContext.Authors;
-    private AccountSettings AccountSettings => ChatContext.AccountSettings();
-    private ChatListUI ChatListUI => ChatContext.ChatListUI;
-    private ModalUI ModalUI => ChatContext.ModalUI;
+    private IRoles Roles => ChatContext.Hub.Roles;
+    private IAuthors Authors => ChatContext.Hub.Authors;
+    private AccountSettings AccountSettings => ChatContext.Hub.AccountSettings();
+    private ChatListUI ChatListUI => ChatContext.Hub.ChatListUI;
+    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
     private ILogger Log => _log ??= Services.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;

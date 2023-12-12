@@ -80,17 +80,18 @@
 @code {
     private Task<IAsyncDisposable>? _escapistSubscriptionTask;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private ToastUI ToastUI { get; init; } = null!;
-    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
-    [Inject] private ChatEditorUI ChatEditorUI { get; init; } = null!;
-    [Inject] private ClipboardUI ClipboardUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private Escapist Escapist { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private ToastUI ToastUI => Hub.ToastUI;
+    private SelectionUI SelectionUI => Hub.SelectionUI;
+    private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private ClipboardUI ClipboardUI => Hub.ClipboardUI;
+    private Escapist Escapist => Hub.Escapist;
+    private History History => Hub.History;
+    private UICommander UICommander => Hub.UICommander();
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 

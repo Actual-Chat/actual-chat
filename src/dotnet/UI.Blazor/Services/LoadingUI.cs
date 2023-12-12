@@ -34,7 +34,7 @@ public class LoadingUI
     public LoadingUI(IServiceProvider services)
     {
         Services = services;
-        HostInfo = Services.GetRequiredService<HostInfo>();
+        HostInfo = Services.HostInfo();
         if (HostInfo.AppKind.IsMauiApp() && StaticTracer.Elapsed < TimeSpan.FromSeconds(10)) {
             // This is to make sure first scope's timings in MAUI are relative to app start
             Tracer = StaticTracer[GetType()];

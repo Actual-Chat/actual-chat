@@ -16,7 +16,7 @@ public class AppScopedServiceStarter
 
     private IServiceProvider Services { get; }
     private Tracer Tracer { get; }
-    private HostInfo HostInfo => _hostInfo ??= Services.GetRequiredService<HostInfo>();
+    private HostInfo HostInfo => _hostInfo ??= Services.HostInfo();
     private History History => _history ??= Services.GetRequiredService<History>();
     private AutoNavigationUI AutoNavigationUI => _autoNavigationUI ??= Services.GetRequiredService<AutoNavigationUI>();
     private LoadingUI LoadingUI => _loadingUI ??= Services.GetRequiredService<LoadingUI>();

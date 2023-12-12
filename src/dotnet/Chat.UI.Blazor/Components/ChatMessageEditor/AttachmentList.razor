@@ -74,8 +74,9 @@
     private DotNetObjectReference<IAttachmentListBackend> BlazorRef { get; set; } = null!;
     private ElementReference FilePickerRef { get; set; }
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private UICommander UICommander => Hub.UICommander();
+    private IJSRuntime JS => Hub.JSRuntime();
 
     [Parameter] public EventCallback OnSendClick { get; set; }
 
@@ -111,7 +112,7 @@
     }
 
     public async Task SetSentAttachments(string[] urls) {
-        var downloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
+        var downloader = Hub.GetRequiredService<IIncomingShareFileDownloader>();
         var fileNames = urls
             .Select(c => {
                 downloader.TryExtractFileName(c, out var fileName);
@@ -152,7 +153,7 @@
     public bool OnAttachmentAdded(int id, string url, string? fileName, string? fileType, int length) {
         var error = TryAdd();
         if (error != null) {
-            Services.UICommander().ShowError(error);
+            UICommander.ShowError(error);
             return false;
         }
 

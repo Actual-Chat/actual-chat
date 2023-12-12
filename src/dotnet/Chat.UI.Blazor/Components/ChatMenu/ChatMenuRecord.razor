@@ -22,9 +22,9 @@
 }
 
 @code {
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
-    private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
-    private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
     [CascadingParameter] public ChatState ChatState { get; set; } = null!;
 

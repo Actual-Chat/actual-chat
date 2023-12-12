@@ -1,5 +1,6 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
+using ActualChat.UI.Blazor;
 using Android.Content;
 using Android.Media;
 using Android.OS;
@@ -11,7 +12,7 @@ using static Android.Media.AudioManager;
 
 namespace ActualChat.App.Maui;
 
-public sealed class AndroidAudioOutputController : ScopedServiceBase, IAudioOutputController
+public sealed class AndroidAudioOutputController : ScopedServiceBase<UIHub>, IAudioOutputController
 {
     private const string AndroidAudioOutput = nameof(AndroidAudioOutput);
     private readonly AudioSwitch _audioSwitch;
@@ -62,7 +63,7 @@ public sealed class AndroidAudioOutputController : ScopedServiceBase, IAudioOutp
                 Category = StateCategories.Get(type, nameof(IsSpeakerphoneOn)),
             },
             (_, _) => Task.FromResult(IsSpeakerphoneActuallyOn(true)));
-        Scope.RegisterDisposable(_isSpeakerphoneOn);
+        Hub.RegisterDisposable(_isSpeakerphoneOn);
     }
 
     // TODO(DF):

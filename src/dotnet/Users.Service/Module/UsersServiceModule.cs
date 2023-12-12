@@ -23,10 +23,8 @@ using Twilio.Clients;
 namespace ActualChat.Users.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class UsersServiceModule : HostModule<UsersSettings>
+public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostModule<UsersSettings>(moduleServices)
 {
-    public UsersServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);

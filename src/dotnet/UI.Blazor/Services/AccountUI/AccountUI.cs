@@ -4,38 +4,33 @@ using Stl.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class AccountUI : ScopedWorkerBase, IComputeService, INotifyInitialized
+public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INotifyInitialized
 {
     private readonly TaskCompletionSource _whenLoadedSource = TaskCompletionSourceExt.New();
     private readonly IMutableState<AccountFull> _ownAccount;
     private readonly IMutableState<Moment> _lastChangedAt;
     private readonly TimeSpan _maxInvalidationDelay;
-    private AppBlazorCircuitContext? _blazorCircuitContext;
     private IClientAuth? _clientAuth;
     private SignInRequesterUI? _signInRequesterUI;
 
-    private AppBlazorCircuitContext BlazorCircuitContext =>
-        _blazorCircuitContext ??= Services.GetRequiredService<AppBlazorCircuitContext>();
-    private SignInRequesterUI SignInRequesterUI =>
-        _signInRequesterUI ??= Services.GetRequiredService<SignInRequesterUI>();
+    private IAccounts Accounts => Hub.Accounts;
+    private AppBlazorCircuitContext CircuitContext => Hub.CircuitContext;
+    private SignInRequesterUI SignInRequesterUI => _signInRequesterUI ??= Services.GetRequiredService<SignInRequesterUI>();
     private IClientAuth ClientAuth => _clientAuth ??= Services.GetRequiredService<IClientAuth>();
+    private History History => Hub.History;
+    private IMomentClock CpuClock { get; }
 
-    public IAccounts Accounts { get; }
-    public IMomentClock Clock { get; }
-
-    public new Session Session => Scope.Session;
     public Task WhenLoaded => _whenLoadedSource.Task;
     public IState<AccountFull> OwnAccount => _ownAccount;
     public IState<Moment> LastChangedAt => _lastChangedAt;
     public Moment StartedAt { get; }
     public event Action<AccountFull>? Changed;
 
-    public AccountUI(IServiceProvider services) : base(services)
+    public AccountUI(UIHub hub) : base(hub)
     {
-        Accounts = services.GetRequiredService<IAccounts>();
-        Clock = services.Clocks().CpuClock;
+        CpuClock = Services.Clocks().CpuClock;
 
-        StartedAt = Clock.Now;
+        StartedAt = CpuClock.Now;
         _maxInvalidationDelay = TimeSpan.FromSeconds(HostInfo.AppKind.IsServer() ? 0.5 : 2);
         var ownAccountComputed = Computed.GetExisting(() => Accounts.GetOwn(Session, default));
         var ownAccount = ownAccountComputed?.IsConsistent() == true &&  ownAccountComputed.HasValue ? ownAccountComputed.Value : null;
@@ -63,7 +58,7 @@ public partial class AccountUI : ScopedWorkerBase, IComputeService, INotifyIniti
     {
         maxInvalidationDelay = maxInvalidationDelay.Clamp(default, _maxInvalidationDelay);
         var changedAt = Moment.Max(LastChangedAt.Value, StartedAt + TimeSpan.FromSeconds(1));
-        return (changedAt + maxInvalidationDelay - Clock.Now).Positive();
+        return (changedAt + maxInvalidationDelay - CpuClock.Now).Positive();
     }
 
     public Task SignOut()

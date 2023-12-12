@@ -9,8 +9,9 @@
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<SelectionHost> _blazorRef = null!;
 
-    [Inject] private IJSRuntime JS { get; init; } = null!;
-    [Inject] private SelectionUI SelectionUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private IJSRuntime JS => Hub.JSRuntime();
+    private SelectionUI SelectionUI => Hub.SelectionUI;
 
     [Parameter, EditorRequired] public string Selected { get; set; } = ChatEntryId.None;
 

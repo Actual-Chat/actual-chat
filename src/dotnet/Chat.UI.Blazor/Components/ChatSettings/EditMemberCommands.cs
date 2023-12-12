@@ -5,16 +5,16 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 
 public static class EditMemberCommands
 {
-    public static async Task<EditMemberModel?> ComputeState(ChatHub chatHub, AuthorId authorId, CancellationToken cancellationToken)
+    public static async Task<EditMemberModel?> ComputeState(ChatUIHub hub, AuthorId authorId, CancellationToken cancellationToken)
     {
         var chatId = authorId.ChatId;
-        var session = chatHub.Session;
-        var author = await chatHub.Authors.Get(session, chatId, authorId, cancellationToken);
+        var session = hub.Session();
+        var author = await hub.Authors.Get(session, chatId, authorId, cancellationToken);
         if (author == null || author.HasLeft)
             return null;
-        var chat = await chatHub.Chats.Get(session, chatId, cancellationToken);
-        var ownerIds = await chatHub.Roles.ListOwnerIds(session, chatId, cancellationToken);
-        var ownAuthor = await chatHub.Authors.GetOwn(session, chatId, cancellationToken);
+        var chat = await hub.Chats.Get(session, chatId, cancellationToken);
+        var ownerIds = await hub.Roles.ListOwnerIds(session, chatId, cancellationToken);
+        var ownAuthor = await hub.Authors.GetOwn(session, chatId, cancellationToken);
         var isOwn = ownAuthor != null && ownAuthor.Id == author.Id;
         var isOwner = ownerIds.Contains(author.Id);
         var canPromoteToOwner = !isOwner && chat != null && chat.Rules.IsOwner();
@@ -22,37 +22,37 @@ public static class EditMemberCommands
         return new EditMemberModel(author, isOwner, isOwn, canPromoteToOwner, canRemoveFromGroup);
     }
 
-    public static async Task OnRemoveFromGroupClick(ChatHub chatHub, Author author)
+    public static async Task OnRemoveFromGroupClick(ChatUIHub hub, Author author)
     {
-        var result = await chatHub.UICommander().Run(new Authors_Exclude(chatHub.Session, author.Id));
+        var result = await hub.UICommander().Run(new Authors_Exclude(hub.Session(), author.Id));
         if (result.HasError)
             return;
         var authorName = author.Avatar.Name;
-        chatHub.ToastUI.Show($"{authorName} removed", "icon-minus-circle", Undo, "Undo", ToastDismissDelay.Long);
+        hub.ToastUI.Show($"{authorName} removed", "icon-minus-circle", Undo, "Undo", ToastDismissDelay.Long);
 
         void Undo() {
-            var undoCommand = new Authors_Restore(chatHub.Session, author.Id);
-            _ = chatHub.UICommander().Run(undoCommand);
+            var undoCommand = new Authors_Restore(hub.Session(), author.Id);
+            _ = hub.UICommander().Run(undoCommand);
         }
     }
 
-    public static async Task OnPromoteToOwnerClick(ChatHub chatHub, Author author)
+    public static async Task OnPromoteToOwnerClick(ChatUIHub hub, Author author)
     {
         var authorName = author.Avatar.Name;
-        _ = await chatHub.ModalUI.Show(new ConfirmModal.Model(
+        _ = await hub.ModalUI.Show(new ConfirmModal.Model(
             false,
             $"Are you sure you want to promote '{authorName}' to Owner? This action cannot be undone.",
-            () => _ = OnPromoteToOwnerConfirmed(chatHub, author.Id, authorName)) {
+            () => _ = OnPromoteToOwnerConfirmed(hub, author.Id, authorName)) {
             Title = "Promote to Owner"
         });
     }
 
-    private static async Task OnPromoteToOwnerConfirmed(ChatHub chatHub, AuthorId authorId, string authorName)
+    private static async Task OnPromoteToOwnerConfirmed(ChatUIHub hub, AuthorId authorId, string authorName)
     {
-        var result = await chatHub.UICommander().Run(new Authors_PromoteToOwner(chatHub.Session, authorId));
+        var result = await hub.UICommander().Run(new Authors_PromoteToOwner(hub.Session(), authorId));
         if (result.HasError)
             return;
 
-        chatHub.ToastUI.Show($"{authorName} is promoted to Owner", "icon-star", ToastDismissDelay.Short);
+        hub.ToastUI.Show($"{authorName} is promoted to Owner", "icon-star", ToastDismissDelay.Short);
     }
 }

@@ -22,9 +22,9 @@
 </li>
 
 @code {
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
-    private Session Session => ChatHub.Session;
-    private UICommander UICommander => ChatHub.UICommander();
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private UICommander UICommander => Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public Reaction? OwnReaction { get; set; }
@@ -32,7 +32,7 @@
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     private Task ToggleReaction(Symbol emojiId) {
-        _ = ChatHub.TuneUI.Play(Tune.React);
+        _ = Hub.TuneUI.Play(Tune.React);
         return UICommander.Run(new Reactions_React(Session, new Reaction {
             EntryId = Entry.Id.ToTextEntryId(),
             EmojiId = emojiId,

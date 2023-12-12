@@ -2,29 +2,12 @@ using ActualChat.Pooling;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatActivity
+public class ChatActivity : ScopedServiceBase<ChatUIHub>
 {
     private readonly SharedResourcePool<ChatId, ChatStreamingActivity> _activityPool;
 
-    internal IServiceProvider Services { get; }
-    internal ILogger Log { get; }
-
-    internal Session Session { get; }
-    internal IChats Chats { get; }
-    internal IStateFactory StateFactory { get; }
-    internal MomentClockSet Clocks { get; }
-
-    public ChatActivity(IServiceProvider services)
-    {
-        Services = services;
-        var scope = Services.Scope();
-        Log = scope.LoggerFactory().CreateLogger(GetType());
-        Session = scope.Session;
-        Clocks = scope.Clocks();
-        StateFactory = scope.StateFactory();
-        Chats = services.GetRequiredService<IChats>();
-        _activityPool = new SharedResourcePool<ChatId, ChatStreamingActivity>(NewChatStreamingActivity);
-    }
+    public ChatActivity(ChatUIHub hub) : base(hub)
+        => _activityPool = new SharedResourcePool<ChatId, ChatStreamingActivity>(NewChatStreamingActivity);
 
     public async Task<IChatStreamingActivity> GetStreamingActivity(ChatId chatId, CancellationToken cancellationToken)
     {

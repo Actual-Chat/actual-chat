@@ -1,8 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@implements IDisposable
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat.UI.Blazor.Events
 @using ActualChat.Hosting
+@inherits StatefulComponentBase<IState<bool>>
+@{
+    var canBeHidden = State.Value;
+}
 
 <OnUIEvent TEvent="@SelectedChatChangedEvent" Handler="@OnSelectedChatChangedEvent" />
 <div class="left-panel-content">
@@ -18,11 +21,13 @@
         <div class="c-title">
             <div class="text-02 text-title-1">@NavbarUI.SelectedGroupTitle</div>
             <div class="flex grow"></div>
-            <div class="flex">
-                <HeaderButton Click="OnHideLeftPanelClick">
-                    <i class="icon-arrow-right text-2xl"></i>
-                </HeaderButton>
-            </div>
+            @if (canBeHidden) {
+                <div class="flex">
+                    <HeaderButton Click="OnHideLeftPanelClick">
+                        <i class="icon-arrow-right text-2xl"></i>
+                    </HeaderButton>
+                </div>
+            }
         </div>
     }
 </div>
@@ -30,18 +35,25 @@
 @code {
     SearchBox? _searchBoxRef = null;
 
-    [Inject] private NavbarUI NavbarUI { get; init; } = null!;
-    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ModalUI ModalUI => Hub.ModalUI;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
-    protected override void OnInitialized()
-        => NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
+    protected override void OnInitialized() {
+        State = PanelsUI.Left.CanBeHidden;
+        base.OnInitialized();
+        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
+    }
 
-    public void Dispose()
-        => NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
+    public override ValueTask DisposeAsync() {
+        NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
+        // Shouldn't dispose State!
+        return default;
+    }
 
     private void OnHideLeftPanelClick()
         => PanelsUI.Left.SetIsVisible(false);

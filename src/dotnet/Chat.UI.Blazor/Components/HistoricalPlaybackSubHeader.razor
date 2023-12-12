@@ -78,14 +78,15 @@
 @code {
     private RewindController? _rewindController;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IChats Chats { get; init; } = null!;
-    [Inject] private ChatPlayers ChatPlayers { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
     [Inject] private ActivePlaybackInfo ActivePlaybackInfo { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
     [Inject] private LiveTime LiveTime { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
-    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatPlayers ChatPlayers => Hub.ChatPlayers;
+    private MomentClockSet Clocks => Hub.Clocks();
+    private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 

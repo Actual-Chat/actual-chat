@@ -26,14 +26,14 @@
 </div>
 
 @code {
-    private Session Session => ChatContext.Session;
+    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IChats Chats => ChatContext.Chats;
-    private IInvites Invites => ChatContext.Invites;
-    private IAccounts Accounts => ChatContext.Accounts;
-    private AccountSettings AccountSettings => ChatContext.AccountSettings();
-    private ModalUI ModalUI => ChatContext.ModalUI;
-    private UICommander UICommander => ChatContext.UICommander();
+    private IChats Chats => ChatContext.Hub.Chats;
+    private IInvites Invites => ChatContext.Hub.Invites;
+    private IAccounts Accounts => ChatContext.Hub.Accounts;
+    private AccountSettings AccountSettings => ChatContext.Hub.AccountSettings();
+    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
+    private UICommander UICommander => ChatContext.Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }

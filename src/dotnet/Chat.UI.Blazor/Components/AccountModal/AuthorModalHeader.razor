@@ -59,11 +59,11 @@
 </div>
 
 @code {
-    [Inject] private ChatHub ChatHub { get; set; } = null!;
-    private Session Session => ChatHub.Session;
-    private IAuthors Authors => ChatHub.Authors;
-    private ShareUI ShareUI => ChatHub.ShareUI;
-    private Chat? Chat => ChatHub.Chats.Get(Session, Author.ChatId, CancellationToken.None).Result;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
+    private ShareUI ShareUI => Hub.ShareUI;
+    private Chat? Chat => Hub.Chats.Get(Session, Author.ChatId, CancellationToken.None).Result;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;

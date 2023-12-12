@@ -7,9 +7,7 @@
 <span class="@Class live-time-text">@m</span>
 
 @code {
-    [Inject] private IFusionTime FusionTime { get; init; } = null!;
-    [Inject] private TimeZoneConverter TimeZoneConverter { get; init; } = null!;
-    [Inject] private MomentClockSet Clocks { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public Moment Moment { get; set; }
@@ -17,13 +15,13 @@
 
     protected override ComputedState<string>.Options GetStateOptions() {
         return new () {
-            InitialValue = GetText(Clocks.SystemClock.Now),
+            InitialValue = GetText(Hub.Clocks().SystemClock.Now),
             Category = GetStateCategory(),
         };
     }
 
     protected override async Task<string> ComputeState(CancellationToken cancellationToken) {
-        var now = await FusionTime.Now(UpdatePeriod);
+        var now = await Hub.FusionTime.Now(UpdatePeriod);
         return GetText(now);
     }
 

@@ -6,11 +6,10 @@ namespace ActualChat.Notification.UI.Blazor.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class NotificationBlazorUIModule: HostModule, IBlazorUIModule
+public sealed class NotificationBlazorUIModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IBlazorUIModule
 {
     public static string ImportName => "notification";
-
-    public NotificationBlazorUIModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {

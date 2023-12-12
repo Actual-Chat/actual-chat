@@ -10,7 +10,7 @@
         : "Something went wrong...";
     var buttonText = "Reload";
     if (_reloadAt is { } reloadAt) {
-        var remaining = (int)(reloadAt - Now).TotalSeconds;
+        var remaining = (int)(reloadAt - CpuNow).TotalSeconds;
         buttonText += $" in {remaining}s";
     }
     var cls = Kind switch {
@@ -41,7 +41,7 @@
     private int _retryIndex;
     private Moment? _reloadAt;
 
-    private Moment Now => Clocks.CpuClock.Now;
+    private Moment CpuNow => Clocks.CpuClock.Now;
     private bool MustReloadSilently => _retryIndex == 0;
     private TimeSpan TickPeriod => MustReloadSilently
         ? FastTickPeriod
@@ -59,12 +59,12 @@
     protected override void OnParametersSet() {
         _retryIndex = Math.Max(0, ErrorCount - SilentReloadLimit);
         _reloadAt = MustAutoReload
-            ? Now + AutoReloadDelays[_retryIndex]
+            ? CpuNow + AutoReloadDelays[_retryIndex]
             : null;
     }
 
     private void OnTick() {
-        if (MustReloadSilently || Now >= (_reloadAt ?? Moment.MaxValue))
+        if (MustReloadSilently || CpuNow >= (_reloadAt ?? Moment.MaxValue))
             Barrier.Reload();
     }
 

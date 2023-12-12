@@ -16,7 +16,8 @@ public class AppActivityTest: TestBase
                 Environment = HostInfo.DevelopmentEnvironment,
                 IsTested = true,
             })
-            .AddSingleton<Scope>()
+            .AddSingleton<UIHub>()
+            .AddAlias<Hub, UIHub>()
             .AddSingleton<BackgroundStateTracker, MauiBackgroundStateTracker>()
             .AddFusion()
             .AddService<AppActivity, TestAppActivity>()
@@ -89,10 +90,10 @@ public class AppActivityTest: TestBase
 }
 
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Local
-public class TestAppActivity(IServiceProvider services) : AppActivity(services)
+public class TestAppActivity(UIHub hub) : AppActivity(hub)
 {
     private readonly IMutableState<bool> _mustBeBackgroundActive
-        = services.StateFactory().NewMutable<bool>();
+        = hub.StateFactory().NewMutable<bool>();
 
     [ComputeMethod]
     protected override async Task<bool> MustBeBackgroundActive(CancellationToken cancellationToken)

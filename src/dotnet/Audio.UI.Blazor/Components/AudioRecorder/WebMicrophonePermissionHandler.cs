@@ -11,8 +11,7 @@ public class WebMicrophonePermissionHandler : MicrophonePermissionHandler
     protected AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
     protected ModalUI ModalUI => _modalUI ??= Services.GetRequiredService<ModalUI>();
 
-    public WebMicrophonePermissionHandler(IServiceProvider services, bool mustStart = true)
-        : base(services, false)
+    public WebMicrophonePermissionHandler(UIHub hub, bool mustStart = true) : base(hub, false)
     {
         // We don't need expiration period - AudioRecorder is able to reset cached permission in case of recording failure
         ExpirationPeriod = null;

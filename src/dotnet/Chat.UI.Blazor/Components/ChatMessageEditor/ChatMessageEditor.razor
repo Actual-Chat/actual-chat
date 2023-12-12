@@ -95,21 +95,21 @@
     private SyncedStateLease<ReadPosition>? ReadPositionState { get; set; } = null!;
     private SentAttachmentsStorage? AttachmentsStorage { get; set; } = null!;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
-    private Session Session => ChatHub.Session;
-    private IChats Chats => ChatHub.Chats;
-    private IAuthors Authors => ChatHub.Authors;
-    private IContacts Contacts => ChatHub.Contacts;
-    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => ChatHub.ChatMarkupHubFactory;
-    private ChatUI ChatUI => ChatHub.ChatUI;
-    private ChatEditorUI ChatEditorUI => ChatHub.ChatEditorUI;
-    private ActiveChatsUI ActiveChatsUI => ChatHub.ActiveChatsUI;
-    private PanelsUI PanelsUI => ChatHub.PanelsUI;
-    private TuneUI TuneUI => ChatHub.TuneUI;
-    private UICommander UICommander => ChatHub.UICommander();
-    private MomentClockSet Clocks => ChatHub.Clocks();
-    private HostInfo HostInfo => ChatHub.HostInfo;
-    private IJSRuntime JS => ChatHub.JS;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
+    private IContacts Contacts => Hub.Contacts;
+    private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
+    private PanelsUI PanelsUI => Hub.PanelsUI;
+    private TuneUI TuneUI => Hub.TuneUI;
+    private UICommander UICommander => Hub.UICommander();
+    private MomentClockSet Clocks => Hub.Clocks();
+    private HostInfo HostInfo => Hub.HostInfo();
+    private IJSRuntime JS => Hub.JSRuntime();
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -155,7 +155,7 @@
             await JSRef.InvokeVoidAsync("onNestedControlsReady", MarkupEditorRef.JSRef, AttachmentListRef.JSRef);
             await UpdateChatId();
             await ChatEditorUI.RestoreRelatedEntry(Chat.Id);
-            AttachmentsStorage = ChatHub.GetRequiredService<SentAttachmentsStorage>();
+            AttachmentsStorage = Hub.GetRequiredService<SentAttachmentsStorage>();
             if (AttachmentsStorage.ChatId == Chat.Id && AttachmentsStorage.Urls.Length > 0)
                 await SetAttachments(AttachmentsStorage);
             AttachmentsStorage.AttachmentsStored += OnAttachmentsStored;

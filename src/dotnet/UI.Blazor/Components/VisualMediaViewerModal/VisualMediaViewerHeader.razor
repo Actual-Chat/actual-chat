@@ -30,8 +30,8 @@
             </HeaderButton>
         }
         @if (!DownloadUrl.IsNullOrEmpty()) {
-            if (_saver != null && canSave) {
-                <a href="#" download class="c-link" @onclick="@(_ => _saver.Download(DownloadUrl, ContentType))" @onclick:preventDefault>
+            if (Saver != null && canSave) {
+                <a href="#" download class="c-link" @onclick="@(_ => Saver.Save(DownloadUrl, ContentType))" @onclick:preventDefault>
                     <HeaderButton Class="inverted">
                         <i class="icon-download"></i>
                     </HeaderButton>
@@ -53,13 +53,15 @@
 @code {
     private Author? _author;
     private bool _enableIncompleteUI;
-    private IVisualMediaViewerFileDownloader? _saver;
+    private IAuthors? _authors;
 
-    [Inject] private Features Features { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private HostInfo HostInfo => Hub.HostInfo();
+    private Session Session => Hub.Session();
+    private IAuthors Authors => _authors ??= Hub.GetRequiredService<IAuthors>();
+    private IMediaSaver? Saver { get; set; }
+
+    private Features Features => Hub.Features();
 
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public EventCallback CloseClick { set; get; }
@@ -67,7 +69,7 @@
     [Parameter] public string ContentType { set; get; } = "";
 
     protected override async Task OnInitializedAsync() {
-        _saver = Services.GetService<IVisualMediaViewerFileDownloader>();
+        Saver = Hub.GetService<IMediaSaver>();
         _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
     }
 

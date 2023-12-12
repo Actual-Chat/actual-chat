@@ -7,7 +7,7 @@ public class HistoryStepper
     private ImmutableList<HistoryStepRef> _refs = ImmutableList<HistoryStepRef>.Empty;
 
     private History History { get; }
-    public Dispatcher Dispatcher => History.Dispatcher;
+    public Dispatcher Dispatcher => History.Hub.Dispatcher;
     public IReadOnlyCollection<HistoryStepRef> Refs => _refs;
 
     public HistoryStepper(IServiceProvider services)

@@ -6,15 +6,14 @@
         return;
     }
 
-    _slot = RenderVars.RenderSlot(Name);
+    _slot = Hub.RenderVars.RenderSlot(Name);
     _slot.Value.Add(this);
     _slot.NotifyChanged();
 }
 @code {
     private RenderVar<List<RenderIntoSlot>>? _slot;
 
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private RenderVars RenderVars { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Name { get; set; } = "";
     [Parameter] public RenderFragment? ChildContent { get; set; }
@@ -24,7 +23,7 @@
             return;
 
         if (!_slot.Value.Remove(this)) {
-            var log = Services.LogFor(GetType());
+            var log = Hub.LogFor(GetType());
             log.LogWarning("Couldn't remove RenderIntoSlot with Name = '{Name}'", Name);
             return;
         }

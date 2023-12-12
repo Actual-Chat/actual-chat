@@ -11,7 +11,7 @@ public sealed class NavigationQueue
 
     internal ILogger Log { get; }
     internal ILogger? DebugLog { get; }
-    internal Dispatcher Dispatcher => _dispatcher ??= History.Dispatcher;
+    internal Dispatcher Dispatcher => _dispatcher ??= History.Hub.Dispatcher;
 
     // ReSharper disable once InconsistentlySynchronizedField
     public History History { get; }
@@ -21,8 +21,7 @@ public sealed class NavigationQueue
     public NavigationQueue(History history)
     {
         History = history;
-        var services = History.Services;
-        Log = services.LogFor(GetType());
+        Log = History.Hub.LogFor(GetType());
         DebugLog = Log.IfEnabled(LogLevel.Debug);
     }
 

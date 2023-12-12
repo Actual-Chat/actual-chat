@@ -6,10 +6,8 @@ namespace ActualChat.Media.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class MediaClientModule : HostModule
+public sealed class MediaClientModule(IServiceProvider moduleServices) : HostModule(moduleServices)
 {
-    public MediaClientModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsClient())

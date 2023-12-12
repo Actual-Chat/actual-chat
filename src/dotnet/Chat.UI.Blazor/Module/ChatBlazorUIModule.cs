@@ -14,11 +14,10 @@ namespace ActualChat.Chat.UI.Blazor.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class ChatBlazorUIModule : HostModule, IBlazorUIModule
+public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IBlazorUIModule
 {
     public static string ImportName => "chat";
-
-    public ChatBlazorUIModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {
@@ -31,12 +30,12 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddService<VirtualListTestService>();
 
         // Scoped / Blazor Circuit services
+        services.AddScoped(c => new ChatUIHub(c));
         services.AddScoped(_ => new NavbarUI());
-        services.AddScoped(c => new PanelsUI(c));
-        services.AddScoped(c => new AuthorUI(c.ChatHub()));
-        services.AddScoped<IAudioOutputController>(c => new AudioOutputController(c));
+        services.AddScoped(c => new PanelsUI(c.UIHub()));
+        services.AddScoped(c => new AuthorUI(c.ChatUIHub()));
+        services.AddScoped<IAudioOutputController>(c => new AudioOutputController(c.UIHub()));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
-        services.AddScoped(c => new ChatHub(c));
 
         // Chat UI
         fusion.AddService<ChatUI>(ServiceLifetime.Scoped);
@@ -45,23 +44,23 @@ public class ChatBlazorUIModule : HostModule, IBlazorUIModule
         fusion.AddService<ChatEditorUI>(ServiceLifetime.Scoped);
         fusion.AddService<ChatPlayers>(ServiceLifetime.Scoped);
         fusion.AddService<AppActivity, ChatAppActivity>(ServiceLifetime.Scoped);
-        services.AddScoped(c => new SelectionUI(c.ChatHub()));
-        services.AddScoped(c => new ActiveChatsUI(c.ChatHub()));
+        services.AddScoped(c => new SelectionUI(c.ChatUIHub()));
+        services.AddScoped(c => new ActiveChatsUI(c.ChatUIHub()));
         services.AddScoped(c => new IncomingShareUI(c.GetRequiredService<ModalUI>()));
-        services.AddScoped(c => new FileUploader(c));
+        services.AddScoped(c => new FileUploader(c.UIHub()));
         services.AddScoped(_ => new SentAttachmentsStorage());
         services.AddScoped(_ => new PlayableTextPaletteProvider());
 
         // Chat activity
-        services.AddScoped(c => new ChatActivity(c));
+        services.AddScoped(c => new ChatActivity(c.ChatUIHub()));
         fusion.AddService<ChatStreamingActivity>(ServiceLifetime.Transient);
 
         // Settings
         services.AddSingleton(_ => new AudioSettings());
-        services.AddScoped(c => new LanguageUI(c));
+        services.AddScoped(c => new LanguageUI(c.ChatUIHub()));
 
         // OnboardingUI
-        services.AddScoped(c => new OnboardingUI(c.ChatHub()));
+        services.AddScoped(c => new OnboardingUI(c.ChatUIHub()));
         services.AddAlias<IOnboardingUI, OnboardingUI>(ServiceLifetime.Scoped);
 
         // IMarkupViews

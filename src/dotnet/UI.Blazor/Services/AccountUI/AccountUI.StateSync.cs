@@ -34,9 +34,10 @@ public partial class AccountUI
             if (oldAccount.Id == newAccount.Id)
                 continue; // Only account properties have changed
 
-            _lastChangedAt.Value = Clock.Now;
-            await BlazorCircuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-            await BlazorCircuitContext.Dispatcher
+            _lastChangedAt.Value = CpuClock.Now;
+            var circuitContext = CircuitContext;
+            await circuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await circuitContext.Dispatcher
                 .InvokeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount))
                 .ConfigureAwait(false);
         }
@@ -80,7 +81,7 @@ public partial class AccountUI
         if (signInRequest != null) {
             SignInRequesterUI.Clear();
             if (!signInRequest.RedirectTo.IsNullOrEmpty())
-                _ = autoNavigationUI.History.NavigateTo(signInRequest.RedirectTo, true);
+                _ = History.NavigateTo(signInRequest.RedirectTo, true);
         }
         else if (!history.LocalUrl.IsChatOrChatRoot() && !history.LocalUrl.IsSettings() )
             _ = autoNavigationUI.NavigateTo(Links.Chats, AutoNavigationReason.SignIn);

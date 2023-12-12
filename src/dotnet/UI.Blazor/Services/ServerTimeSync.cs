@@ -23,7 +23,7 @@ public class ServerTimeSync : WorkerBase
     {
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
-        HostInfo = services.GetRequiredService<HostInfo>();
+        HostInfo = services.HostInfo();
         SystemProperties = services.GetRequiredService<ISystemProperties>();
         LastUpdatedAt = Clocks.CpuClock.Now - TimeSpan.FromDays(1);
     }

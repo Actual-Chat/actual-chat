@@ -6,10 +6,8 @@ namespace ActualChat.Chat.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class ChatClientModule : HostModule
+public sealed class ChatClientModule(IServiceProvider moduleServices) : HostModule(moduleServices)
 {
-    public ChatClientModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         if (!HostInfo.AppKind.IsClient())

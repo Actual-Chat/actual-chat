@@ -19,8 +19,9 @@
     private static readonly object BodyKey = new();
     private static readonly object ToastHostKey = new();
 
-    [Inject] private RenderModeSelector RenderModeSelector { get; init; } = null!;
-    [Inject] private IJSRuntime JS { get; init; } = null!;
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private RenderModeSelector RenderModeSelector => Hub.RenderModeSelector;
+    private IJSRuntime JS => Hub.JSRuntime();
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 

@@ -8,7 +8,7 @@ internal class UserPresenceTracker : IAsyncDisposable
     private readonly Action<UserId> _onPresenceChanged;
 
     private MomentClockSet Clocks { get; }
-    private Moment Now => Clocks.SystemClock.Now;
+    private Moment SystemNow => Clocks.SystemClock.Now;
 
     public UserPresenceTracker(Action<UserId> onPresenceChanged, MomentClockSet clocks)
     {
@@ -27,11 +27,11 @@ internal class UserPresenceTracker : IAsyncDisposable
     }
 
     public Presence GetPresence(UserId userId)
-        => ToPresence(_checkIns.Get(userId), Now);
+        => ToPresence(_checkIns.Get(userId), SystemNow);
 
     public void CheckIn(UserId userId, Moment at, bool isActive)
     {
-        var now = Now;
+        var now = SystemNow;
         var lastCheckIn = _checkIns.Get(userId);
         var oldPresence = ToPresence(lastCheckIn, now);
         var newPresence = ToPresence(new (at, isActive, lastCheckIn), now);

@@ -7,7 +7,7 @@ public class Features_EnableIncompleteUI : FeatureDef<bool>, IClientFeatureDef
 {
     public override async Task<bool> Compute(IServiceProvider services, CancellationToken cancellationToken)
     {
-        var urlMapper = services.GetRequiredService<UrlMapper>();
+        var urlMapper = services.UrlMapper();
         if (urlMapper.IsActualChat)
             return false;
 

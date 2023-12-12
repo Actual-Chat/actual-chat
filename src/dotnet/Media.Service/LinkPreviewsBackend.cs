@@ -26,7 +26,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
     private Crawler Crawler => _crawler ??= Services.GetRequiredService<Crawler>();
     private RedisDb<MediaDbContext> RedisDb { get; } = services.GetRequiredService<RedisDb<MediaDbContext>>();
-    private Moment Now => Clocks.SystemClock.Now;
+    private Moment SystemNow => Clocks.SystemClock.Now;
 
     // [ComputeMethod]
     public virtual Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
@@ -79,7 +79,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
                 .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (dbLinkPreview != null && Now - dbLinkPreview.ModifiedAt.ToMoment() < TimeSpan.FromDays(1))
+            if (dbLinkPreview != null && SystemNow - dbLinkPreview.ModifiedAt.ToMoment() < TimeSpan.FromDays(1))
                 return dbLinkPreview.ToModel();
 
             var linkMeta = await Crawler.Crawl(url, cancellationToken).ConfigureAwait(false);
@@ -91,8 +91,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
                     Title = linkMeta.Title,
                     Description = linkMeta.Description,
                     PreviewMediaId = linkMeta.PreviewMediaId,
-                    CreatedAt = Now,
-                    ModifiedAt = Now,
+                    CreatedAt = SystemNow,
+                    ModifiedAt = SystemNow,
                 };
                 if (!linkMeta.VideoMetadata.IsNone)
                     linkPreview = linkPreview with {
@@ -114,7 +114,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
                     PreviewMediaId = linkMeta.PreviewMediaId,
                     Title = linkMeta.Title,
                     Description = linkMeta.Description,
-                    ModifiedAt = Now,
+                    ModifiedAt = SystemNow,
                     Version = VersionGenerator.NextVersion(linkPreview.Version),
                 };
                 if (!linkMeta.VideoMetadata.IsNone)
@@ -196,7 +196,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         var linkPreview = dbLinkPreview?.ToModel();
         url ??= linkPreview?.Url;
         var mustRefresh = !url.IsNullOrEmpty()
-            && (linkPreview == null || linkPreview.ModifiedAt + Settings.LinkPreviewUpdatePeriod < Now);
+            && (linkPreview == null || linkPreview.ModifiedAt + Settings.LinkPreviewUpdatePeriod < SystemNow);
         if (mustRefresh) {
             if (await IsAlreadyCrawling(id).ConfigureAwait(false))
                 return linkPreview;
@@ -231,7 +231,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         => $"{RedisKeyPrefix}{id.Value}";
 
     private Task<bool> MarkCrawling(Symbol id)
-        => RedisDb.Database.StringSetAsync(ToRedisKey(id), Now.ToString(), Settings.CrawlingTimeout, When.NotExists);
+        => RedisDb.Database.StringSetAsync(ToRedisKey(id), SystemNow.ToString(), Settings.CrawlingTimeout, When.NotExists);
 
     private Task<bool> MarkNotCrawling(Symbol id)
         => RedisDb.Database.KeyDeleteAsync(ToRedisKey(id));

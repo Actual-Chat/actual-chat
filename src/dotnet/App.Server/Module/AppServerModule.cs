@@ -40,7 +40,8 @@ using Stl.Rpc.Server;
 
 namespace ActualChat.App.Server.Module;
 
-public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
+public sealed class AppServerModule(IServiceProvider moduleServices)
+    : HostModule<HostSettings>(moduleServices), IWebModule
 {
     public static readonly string AppVersion =
         typeof(AppServerModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
@@ -48,8 +49,6 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
     private IWebHostEnvironment? _env;
 
     public IWebHostEnvironment Env => _env ??= ModuleServices.GetRequiredService<IWebHostEnvironment>();
-
-    public AppServerModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     public void ConfigureApp(IApplicationBuilder app)
     {

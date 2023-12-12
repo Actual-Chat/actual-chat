@@ -152,7 +152,7 @@ public static class MauiDiagnostics
     private static async Task CreateClientSentryTraceProvider()
     {
         // Initialize client trace provider only in development environment or for admin users.
-        var urlMapper = AppServices.GetRequiredService<UrlMapper>();
+        var urlMapper = AppServices.UrlMapper();
         if (urlMapper.IsActualChat) {
             var scopedServices = await WhenScopedServicesReady().ConfigureAwait(false);
             var accountUI = scopedServices.GetRequiredService<AccountUI>();

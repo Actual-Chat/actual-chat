@@ -16,10 +16,11 @@
     private const int MaxReactionCount = 7;
     private Emoji[] _emojis = null!;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private TuneUI TuneUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private Features Features { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private TuneUI TuneUI => Hub.TuneUI;
+    private UICommander UICommander => Hub.UICommander();
+    private Features Features => Hub.Features();
 
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter] public bool ShowDefaultReaction { get; set; } = true;

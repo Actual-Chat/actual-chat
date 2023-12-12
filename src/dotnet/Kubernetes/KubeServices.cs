@@ -203,7 +203,7 @@ public class KubeServices : IKubeInfo
 
         private async Task UpdateEmulatedState(CancellationToken cancellationToken)
         {
-            var urlMapper = Services.GetRequiredService<UrlMapper>();
+            var urlMapper = Services.UrlMapper();
             var port = urlMapper.BaseUri.Port;
             if (port == 0)
                 port = 80;

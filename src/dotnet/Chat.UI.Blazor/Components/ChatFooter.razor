@@ -45,10 +45,10 @@
 </div>
 
 @code {
-    private Session Session => ChatContext.Session;
+    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private ModalUI ModalUI => ChatContext.ModalUI;
-    private UICommander UICommander => ChatContext.UICommander();
+    private ModalUI ModalUI => ChatContext.Hub.ModalUI;
+    private UICommander UICommander => ChatContext.Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter, EditorRequired] public ChatPage.FooterModel Model { get; set; } = null!;

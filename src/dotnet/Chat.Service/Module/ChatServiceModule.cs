@@ -11,10 +11,8 @@ using Stl.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Chat.Module;
 
-public sealed class ChatServiceModule : HostModule<ChatSettings>
+public sealed class ChatServiceModule(IServiceProvider moduleServices) : HostModule<ChatSettings>(moduleServices)
 {
-    public ChatServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);

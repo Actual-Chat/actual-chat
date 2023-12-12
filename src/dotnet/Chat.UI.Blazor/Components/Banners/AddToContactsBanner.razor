@@ -17,10 +17,10 @@
 </Banner>
 
 @code {
-    private Session Session => ChatContext.Session;
+    private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
-    private IContacts Contacts => ChatContext.Contacts;
-    private UICommander UICommander => ChatContext.UICommander();
+    private IContacts Contacts => ChatContext.Hub.Contacts;
+    private UICommander UICommander => ChatContext.Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 

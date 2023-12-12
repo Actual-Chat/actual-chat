@@ -8,7 +8,7 @@ public static class RpcHubExt
 {
     public static Task WhenClientPeerConnected(this RpcHub rpcHub, CancellationToken cancellationToken = default)
     {
-        var hostInfo = rpcHub.Services.GetRequiredService<HostInfo>();
+        var hostInfo = rpcHub.Services.HostInfo();
         if (!hostInfo.AppKind.IsClient())
             return Task.CompletedTask;
 

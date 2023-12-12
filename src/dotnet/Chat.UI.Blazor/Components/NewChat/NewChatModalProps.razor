@@ -114,7 +114,7 @@
     private FormModel _form = null!;
     private bool _isAdmin;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -124,7 +124,7 @@
 
     protected override void OnInitialized() {
         _form = new(ComponentIdGenerator);
-        _isAdmin = ChatHub.AccountUI.OwnAccount.Value.IsAdmin;
+        _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
     }
 
     private void OnImagePicked(MediaContent mediaContent) {
@@ -136,7 +136,7 @@
         if (!_formRef.IsValid)
             return;
         try {
-            var command = new Chats_Change(ChatHub.Session, default, null, new() {
+            var command = new Chats_Change(Hub.Session(), default, null, new() {
                 Create = new ChatDiff {
                     Title = _form.Title,
                     Kind = ChatKind.Group,
@@ -146,7 +146,7 @@
                     AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
                 },
             });
-            var (chat, createChatError) = await ChatHub.UICommander().Run(command, CancellationToken.None);
+            var (chat, createChatError) = await Hub.UICommander().Run(command, CancellationToken.None);
             if (createChatError != null)
                 return;
 

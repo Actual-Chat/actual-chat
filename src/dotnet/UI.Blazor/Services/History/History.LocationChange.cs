@@ -73,6 +73,7 @@ public partial class History
             Transition(transition);
         }
         finally {
+            _state.Value = _currentItem;
             try {
                 LocationChanged?.Invoke(this, eventArgs);
             }

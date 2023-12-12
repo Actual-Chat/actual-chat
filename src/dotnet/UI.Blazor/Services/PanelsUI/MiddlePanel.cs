@@ -4,15 +4,13 @@ public class MiddlePanel : IDisposable
 {
     private readonly IComputedState<bool> _isVisible;
 
-    private IServiceProvider Services => Owner.Services;
-
     public PanelsUI Owner { get; }
     public IState<bool> IsVisible => _isVisible;
 
     public MiddlePanel(PanelsUI owner)
     {
         Owner = owner;
-        _isVisible = Owner.Scope.StateFactory().NewComputed(
+        _isVisible = Owner.Hub.StateFactory().NewComputed(
             new ComputedState<bool>.Options {
                 UpdateDelayer = FixedDelayer.ZeroUnsafe,
                 InitialValue = ComputeInitialIsVisible(),

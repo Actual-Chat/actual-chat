@@ -61,7 +61,7 @@ public static class ApplicationBuilderExt
             OnPrepareResponse = ctx => {
                 var mustDisable = false;
                 if (Constants.DebugMode.DisableStaticFileCaching) {
-                    var hostInfo = ctx.Context.RequestServices.GetRequiredService<HostInfo>();
+                    var hostInfo = ctx.Context.RequestServices.HostInfo();
                     mustDisable = hostInfo.IsDevelopmentInstance;
                 }
 

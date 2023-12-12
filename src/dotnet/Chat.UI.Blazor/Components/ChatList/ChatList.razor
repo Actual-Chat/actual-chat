@@ -47,10 +47,11 @@
 @code {
     private Model _rendered;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private Session Session => Hub.Session();
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private SearchUI SearchUI => Hub.SearchUI;
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
 

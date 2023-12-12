@@ -49,7 +49,7 @@ public static class Program
             var host = builder.Build();
             region.Close();
 
-            Constants.HostInfo = host.Services.GetRequiredService<HostInfo>();
+            Constants.HostInfo = host.Services.HostInfo();
             if (Constants.DebugMode.WebMReader)
                 WebMReader.DebugLog = host.Services.LogFor(typeof(WebMReader));
             if (sentrySdkDisposable != null)
@@ -99,7 +99,7 @@ public static class Program
 
     private static void CreateClientSentryTraceProvider(IServiceProvider services, Action<TracerProvider?> saveTracerProvider)
     {
-        var urlMapper = services.GetRequiredService<UrlMapper>();
+        var urlMapper = services.UrlMapper();
         if (!urlMapper.IsActualChat) {
             CreateAndSaveTracerProvider();
             return;

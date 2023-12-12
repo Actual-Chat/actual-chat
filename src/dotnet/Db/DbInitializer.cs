@@ -17,7 +17,7 @@ public abstract class DbInitializer<
     private new DbHub<TDbContext> DbHub => base.DbHub;
     public new IServiceProvider Services => base.Services;
     public DbInfo<TDbContext> DbInfo { get; } = services.GetRequiredService<DbInfo<TDbContext>>();
-    public HostInfo HostInfo { get; } = services.GetRequiredService<HostInfo>();
+    public HostInfo HostInfo { get; } = services.HostInfo();
     public Dictionary<IDbInitializer, Task> RunningTasks { get; set; } = null!;
 
     public bool ShouldRepairData => DbInfo.ShouldRepairDb;

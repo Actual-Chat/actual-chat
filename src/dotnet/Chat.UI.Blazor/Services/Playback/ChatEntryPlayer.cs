@@ -8,13 +8,13 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatEntryPlayer : ProcessorBase
 {
-    private ChatHub ChatHub { get; }
-    private AudioRecorder AudioRecorder => ChatHub.AudioRecorder;
-    private IAudioStreamer AudioStreamer => ChatHub.AudioStreamer;
-    private AudioDownloader AudioDownloader => ChatHub.AudioDownloader;
-    private AudioInitializer AudioInitializer => ChatHub.AudioInitializer;
-    private MomentClockSet Clocks => ChatHub.Clocks();
-    private UrlMapper UrlMapper => ChatHub.UrlMapper();
+    private ChatUIHub Hub { get; }
+    private AudioRecorder AudioRecorder => Hub.AudioRecorder;
+    private IAudioStreamer AudioStreamer => Hub.AudioStreamer;
+    private AudioDownloader AudioDownloader => Hub.AudioDownloader;
+    private AudioInitializer AudioInitializer => Hub.AudioInitializer;
+    private MomentClockSet Clocks => Hub.Clocks();
+    private UrlMapper UrlMapper => Hub.UrlMapper();
     private ILogger Log { get; }
 
     private HashSet<Task> EntryPlaybackTasks { get; } = new();
@@ -23,16 +23,16 @@ public sealed class ChatEntryPlayer : ProcessorBase
     public Playback Playback { get; }
 
     public ChatEntryPlayer(
-        ChatHub chatHub,
+        ChatUIHub hub,
         ChatId chatId,
         Playback playback,
         CancellationToken cancellationToken)
         : base(cancellationToken.CreateLinkedTokenSource())
     {
-        ChatHub = chatHub;
+        Hub = hub;
         ChatId = chatId;
         Playback = playback;
-        Log = ChatHub.LogFor(GetType());
+        Log = Hub.LogFor(GetType());
     }
 
     protected override Task DisposeAsyncCore()

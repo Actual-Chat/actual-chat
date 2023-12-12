@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public class BrowserInfo : ScopedServiceBase, IBrowserInfoBackend
+public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
 {
     private readonly IMutableState<ScreenSize> _screenSize;
     private readonly IMutableState<bool> _isHoverable;
@@ -11,9 +11,8 @@ public class BrowserInfo : ScopedServiceBase, IBrowserInfoBackend
 
     protected readonly TaskCompletionSource WhenReadySource = TaskCompletionSourceExt.New();
     protected readonly object Lock = new();
-    private UICommander? _uiCommander;
 
-    protected UICommander UICommander => _uiCommander ??= Services.GetRequiredService<UICommander>();
+    protected UICommander UICommander => Hub.UICommander();
 
     public DotNetObjectReference<IBrowserInfoBackend> BlazorRef { get; private set; }
     // ReSharper disable once InconsistentlySynchronizedField
@@ -33,7 +32,7 @@ public class BrowserInfo : ScopedServiceBase, IBrowserInfoBackend
     public Task WhenReady => WhenReadySource.Task;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BrowserInfo))]
-    public BrowserInfo(IServiceProvider services) : base(services)
+    public BrowserInfo(UIHub hub) : base(hub)
     {
         BlazorRef = DotNetObjectReference.Create<IBrowserInfoBackend>(this);
         var stateFactory = StateFactory;
@@ -41,7 +40,7 @@ public class BrowserInfo : ScopedServiceBase, IBrowserInfoBackend
         _isHoverable = stateFactory.NewMutable(false);
         _isVisible = stateFactory.NewMutable(true);
         _themeInfo = stateFactory.NewMutable(Blazor.Services.ThemeInfo.Default);
-        Scope.RegisterDisposable(BlazorRef);
+        Hub.RegisterDisposable(BlazorRef);
     }
 
     [JSInvokable]

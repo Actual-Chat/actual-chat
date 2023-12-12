@@ -34,8 +34,9 @@
 @code {
     private ChatId _chatId;
 
-    [Inject] private LanguageUI LanguageUI { get; init; } = null!;
-    [Inject] private UIEventHub UIEventHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+    private UIEventHub UIEventHub => Hub.UIEventHub();
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = null!;
     [Parameter] public EventCallback Click { get; set; }

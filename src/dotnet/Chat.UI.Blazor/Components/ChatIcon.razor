@@ -34,9 +34,9 @@ default:
 @code {
     private UserId _peerChatUserId;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
-    private Session Session => ChatHub.Session;
-    private IAccounts Accounts => ChatHub.Accounts;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IAccounts Accounts => Hub.Accounts;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool ShowPresence { get; set; }

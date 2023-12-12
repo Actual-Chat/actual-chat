@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Hosting;
 
-namespace ActualChat.UI.Blazor.Services;
+namespace ActualChat.UI.Blazor.Services.Internal;
 
-public record BlazorHostApplicationLifetime : IHostApplicationLifetime
+public class FakeHostApplicationLifetime : IHostApplicationLifetime
 {
-    public CancellationToken ApplicationStarted { get; } = new CancellationToken(true);
+    public CancellationToken ApplicationStarted { get; } = new(true);
     public CancellationToken ApplicationStopping => CancellationToken.None;
     public CancellationToken ApplicationStopped => CancellationToken.None;
 

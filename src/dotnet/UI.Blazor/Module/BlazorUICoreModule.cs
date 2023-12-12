@@ -12,18 +12,16 @@ using Microsoft.Extensions.Hosting;
 using Stl.Fusion.Client.Caching;
 using Stl.Fusion.Client.Interception;
 using Stl.Fusion.Diagnostics;
-using Stl.Rpc;
 
 namespace ActualChat.UI.Blazor.Module;
 
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
+public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
+    : HostModule<BlazorUISettings>(moduleServices), IBlazorUIModule
 {
     public static string ImportName => "ui";
-
-    public BlazorUICoreModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected override void InjectServices(IServiceCollection services)
     {
@@ -55,14 +53,17 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
         services.AddTransient(c => c.GetRequiredService<AppBlazorCircuitContext>().Dispatcher);
 
         // Core UI-related services
-        services.TryAddSingleton<IHostApplicationLifetime>(_ => new BlazorHostApplicationLifetime());
+        services.AddScoped(c => new UIHub(c));
+        services.AddAlias<Hub, UIHub>(ServiceLifetime.Scoped); // Required for PermissionHandler descendants
+        if (!appKind.IsServer())
+            services.TryAddSingleton<IHostApplicationLifetime>(_ => new FakeHostApplicationLifetime());
         services.AddSingleton(_ => new AutoNavigationTasks(appKind));
         if (appKind.IsClient())
             services.AddSingleton(_ => new RenderModeSelector()); // Kinda no-op on the client
         else
             services.AddScoped(_ => new RenderModeSelector()); // Should be scoped on server
         services.AddScoped(c => new BrowserInit(c));
-        services.AddScoped(c => new BrowserInfo(c));
+        services.AddScoped(c => new BrowserInfo(c.UIHub()));
         services.AddScoped(c => new WebShareInfo(c));
         services.AddScoped(_ => new ComponentIdGenerator());
         services.AddScoped(_ => new RenderVars());
@@ -87,42 +88,42 @@ public class BlazorUICoreModule : HostModule<BlazorUISettings>, IBlazorUIModule
 
         // UI services
         services.AddScoped(c => new LoadingUI(c));
-        services.AddScoped(c => new ReconnectUI(c.Scope()));
+        services.AddScoped(c => new ReconnectUI(c.UIHub()));
         services.AddScoped(c => new ReloadUI(c));
         if (appKind.IsMauiApp())
             services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c));
         else
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
         services.AddScoped(c => new ClipboardUI(c.GetRequiredService<IJSRuntime>()));
-        services.AddScoped(c => new InteractiveUI(c));
-        services.AddScoped(c => new History(c));
+        services.AddScoped(c => new InteractiveUI(c.UIHub()));
+        services.AddScoped(c => new History(c.UIHub()));
         services.AddScoped(c => new HistoryStepper(c));
         services.AddScoped(_ => new HistoryItemIdFormatter());
         services.AddScoped(c => new ModalUI(c));
-        services.AddScoped(c => new BannerUI(c));
+        services.AddScoped(c => new BannerUI(c.UIHub()));
         services.AddScoped(c => new FocusUI(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new KeepAwakeUI(c));
-        services.AddScoped(c => new DeviceAwakeUI(c));
+        services.AddScoped(c => new DeviceAwakeUI(c.UIHub()));
         services.AddScoped(c => (ISleepDurationProvider)c.GetRequiredService<DeviceAwakeUI>());
-        services.AddScoped(c => new UserActivityUI(c));
+        services.AddScoped(c => new UserActivityUI(c.UIHub()));
         services.AddScoped(c => new Escapist(c.GetRequiredService<IJSRuntime>()));
         services.AddScoped(c => new TuneUI(c));
-        services.AddScoped(c => new BubbleUI(c));
-        services.AddScoped(c => new ShareUI(c));
+        services.AddScoped(c => new BubbleUI(c.UIHub()));
+        services.AddScoped(c => new ShareUI(c.UIHub()));
         services.AddScoped(c => new SignInRequesterUI(c));
         services.AddScoped(_ => new ToastUI());
         fusion.AddService<LiveTime>(ServiceLifetime.Scoped);
 
         // Actual Chat-specific UI services
-        services.AddScoped(c => new ThemeUI(c));
-        services.AddScoped(c => new FeedbackUI(c));
-        services.AddScoped(c => new VisualMediaViewerUI(c));
+        services.AddScoped(c => new ThemeUI(c.UIHub()));
+        services.AddScoped(c => new FeedbackUI(c.UIHub()));
+        services.AddScoped(c => new VisualMediaViewerUI(c.UIHub()));
         fusion.AddService<AccountUI>(ServiceLifetime.Scoped);
         fusion.AddService<SearchUI>(ServiceLifetime.Scoped);
 
         // Host-specific services
         services.AddScoped<IClientAuth>(c => new WebClientAuth(c));
-        services.AddScoped<SessionTokens>(c => new SessionTokens(c));
+        services.AddScoped<SessionTokens>(c => new SessionTokens(c.UIHub()));
 
         InjectDiagnosticsServices(services);
 

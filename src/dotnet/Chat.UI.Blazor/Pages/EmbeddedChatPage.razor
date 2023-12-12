@@ -71,9 +71,6 @@
 
         await ChatUI.WhenLoaded.WaitAsync(cancellationToken);
         var chatId = await ChatUI.SelectedChatId.Use(cancellationToken);
-        var lastState = State.ValueOrDefault;
-        var lastContext = lastState?.ChatContext;
-        var lastChatId = lastContext?.Chat.Id ?? ChatId.None;
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         var account = await Accounts.GetOwn(Session, cancellationToken);
@@ -85,7 +82,7 @@
             }
             if (chat is not { IsTemplate: true }) {
                 var footerModel = await GetFooterModel(chat, account, cancellationToken);
-                var chatContext = ChatContext.New(Scope, chat, account, lastContext);
+                var chatContext = new ChatContext(Hub, chat, account);
                 return new Model(chatContext, footerModel);
             }
 
@@ -106,14 +103,14 @@
                 // Subscribe to chat changes
                 chat = await Chats.Get(Session, newChat.Id, cancellationToken).Require();
                 var footerModel = await GetFooterModel(chat, account, cancellationToken);
-                var chatContext = ChatContext.New(Scope, chat, account, lastContext);
+                var chatContext = new ChatContext(Hub, chat, account);
                 return new Model(chatContext, footerModel);
             }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
             this.NotifyStateHasChanged();
-            return Model.Unavailable(Scope, account, lastContext);
+            return Model.Unavailable(Hub, account);
         }
     }
 }

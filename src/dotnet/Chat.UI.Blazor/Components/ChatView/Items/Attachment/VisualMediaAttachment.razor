@@ -29,9 +29,10 @@
 </div>
 
 @code {
-    [Inject] private VisualMediaViewerUI VisualMediaViewerUI { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private VisualMediaViewerUI VisualMediaViewerUI => Hub.VisualMediaViewerUI;
+    private NavigationManager Nav => Hub.Nav;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 

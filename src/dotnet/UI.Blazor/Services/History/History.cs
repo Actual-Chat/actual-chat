@@ -7,33 +7,26 @@ using Stl.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
 
-public partial class History : IHasServices, IDisposable
+public partial class History : ScopedServiceBase<UIHub>, IDisposable
 {
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.History.init";
 
     public const int MaxItemCount = 200;
 
-    private Session? _session;
-    private Dispatcher? _dispatcher;
     private DotNetObjectReference<History>? _blazorRef;
     private readonly TaskCompletionSource _whenReadySource = TaskCompletionSourceExt.New();
+    private readonly IMutableState<HistoryItem> _state;
 
-    private ILogger Log { get; }
-    private ILogger? DebugLog { get; }
+    private new ILogger? DebugLog { get; }
 
     internal object Lock { get; } = new();
     internal HistoryItemIdFormatter ItemIdFormatter { get; }
 
-    // We intentionally expose a number of services here, coz it's convenient to access them via History
-    public IServiceProvider Services { get; }
-    public Session Session => _session ??= Services.Session();
-    public HostInfo HostInfo { get; }
-    public UrlMapper UrlMapper { get; }
-    public Dispatcher Dispatcher => _dispatcher ??= Services.GetRequiredService<Dispatcher>();
-    public NavigationManager Nav { get; }
-    public IJSRuntime JS { get; }
-    public NavigationQueue NavigationQueue { get; }
+    private NavigationManager Nav => Hub.Nav;
+    private Dispatcher Dispatcher => Hub.Dispatcher;
+    private IJSRuntime JS => Hub.JSRuntime();
 
+    public NavigationQueue NavigationQueue { get; }
     public Task WhenReady => _whenReadySource.Task;
 
     public HistoryItem? this[long itemId] {
@@ -48,21 +41,17 @@ public partial class History : IHasServices, IDisposable
         get { lock (Lock) return _defaultItem; }
     }
 
+    public IState<HistoryItem> State => _state;
+
     public string Uri => LocalUrl.Value;
     public LocalUrl LocalUrl => new(_uri, ParseOrNone.Option);
     public event EventHandler<LocationChangedEventArgs>? LocationChanged;
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(History))]
-    public History(IServiceProvider services)
+    public History(UIHub hub) : base(hub)
     {
-        Services = services;
-        Log = services.LogFor(GetType());
         DebugLog = Constants.DebugMode.History ? Log.IfEnabled(LogLevel.Debug) : null;
-        ItemIdFormatter = services.GetRequiredService<HistoryItemIdFormatter>();
-        HostInfo = services.GetRequiredService<HostInfo>();
-        UrlMapper = services.GetRequiredService<UrlMapper>();
-        Nav = services.GetRequiredService<NavigationManager>();
-        JS = services.JSRuntime();
+        ItemIdFormatter = Services.GetRequiredService<HistoryItemIdFormatter>();
         NavigationQueue = new NavigationQueue(this); // Services must be initialized before this call
 
         _isSaveSuppressed = new RegionalValue<bool>(false);
@@ -75,6 +64,7 @@ public partial class History : IHasServices, IDisposable
             _uri = Nav.GetLocalUrl().Value;
         _defaultItem = new HistoryItem(this, 0, _uri, ImmutableDictionary<Type, HistoryState>.Empty);
         _currentItem = RegisterItem(_defaultItem with { Id = NewItemId() });
+        _state = StateFactory.NewMutable(_currentItem, StateCategories.Get(GetType(), nameof(State)));
 
         if (!isTestServer)
             Nav.LocationChanged += (_, eventArgs) => LocationChange(eventArgs);

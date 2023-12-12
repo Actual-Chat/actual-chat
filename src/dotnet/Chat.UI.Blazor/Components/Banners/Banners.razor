@@ -15,7 +15,7 @@
 @code {
     private const int MaxCount = 2;
 
-    private BannerUI BannerUI => ChatContext.BannerUI;
+    private BannerUI BannerUI => ChatContext.Hub.BannerUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 

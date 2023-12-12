@@ -17,10 +17,9 @@ namespace ActualChat.App.Maui.Module;
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class MauiAppModule : HostModule, IBlazorUIModule
+public sealed class MauiAppModule(IServiceProvider moduleServices)
+    : HostModule(moduleServices), IBlazorUIModule
 {
-    public MauiAppModule(IServiceProvider moduleServices) : base(moduleServices) { }
-
     protected override void InjectServices(IServiceCollection services)
     {
         // System

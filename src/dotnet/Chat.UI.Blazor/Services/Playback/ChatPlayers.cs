@@ -4,7 +4,7 @@ using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class ChatPlayers : ScopedWorkerBase, IComputeService, INotifyInitialized
+public class ChatPlayers : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
     private static TimeSpan RestorePreviousPlaybackStateDelay { get; } = TimeSpan.FromMilliseconds(250);
 
@@ -13,21 +13,17 @@ public class ChatPlayers : ScopedWorkerBase, IComputeService, INotifyInitialized
 
     private readonly IMutableState<PlaybackState?> _playbackState;
 
-    private ChatHub ChatHub { get; }
-    private AudioInitializer AudioInitializer => ChatHub.AudioInitializer;
-    private IAudioOutputController AudioOutputController => ChatHub.AudioOutputController;
-    private ChatAudioUI ChatAudioUI => ChatHub.ChatAudioUI;
-    private TuneUI TuneUI => ChatHub.TuneUI;
+    private AudioInitializer AudioInitializer => Hub.AudioInitializer;
+    private IAudioOutputController AudioOutputController => Hub.AudioOutputController;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private TuneUI TuneUI => Hub.TuneUI;
 
     public IState<PlaybackState?> PlaybackState => _playbackState;
 
-    public ChatPlayers(ChatHub chatHub) : base(chatHub.Scope())
-    {
-        ChatHub = chatHub;
-        _playbackState = ChatHub.StateFactory().NewMutable(
+    public ChatPlayers(ChatUIHub hub) : base(hub)
+        => _playbackState = hub.StateFactory().NewMutable(
             (PlaybackState?)null,
             StateCategories.Get(GetType(), nameof(PlaybackState)));
-    }
 
     void INotifyInitialized.Initialized()
         => this.Start();
@@ -170,8 +166,8 @@ public class ChatPlayers : ScopedWorkerBase, IComputeService, INotifyInitialized
             if (player != null)
                 return player;
             newPlayer = playerKind switch {
-                ChatPlayerKind.Realtime => new RealtimeChatPlayer(ChatHub, chatId),
-                ChatPlayerKind.Historical => new HistoricalChatPlayer(ChatHub, chatId),
+                ChatPlayerKind.Realtime => new RealtimeChatPlayer(Hub, chatId),
+                ChatPlayerKind.Historical => new HistoricalChatPlayer(Hub, chatId),
                 _ => throw new ArgumentOutOfRangeException(nameof(playerKind), playerKind, null),
             };
             _players = _players.Add((chatId, playerKind), newPlayer);

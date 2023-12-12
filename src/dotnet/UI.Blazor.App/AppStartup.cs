@@ -72,7 +72,7 @@ public static class AppStartup
         var fusion = services.AddFusion();
         var restEase = services.AddRestEase();
         restEase.ConfigureHttpClient((c, name, o) => {
-            var urlMapper = c.GetRequiredService<UrlMapper>();
+            var urlMapper = c.UrlMapper();
             var clientBaseUrl = urlMapper.ApiBaseUrl.ToUri();
             o.HttpClientActions.Add(client => {
                 client.BaseAddress = clientBaseUrl;
@@ -103,7 +103,7 @@ public static class AppStartup
             var options = new RpcWebSocketClient.Options() {
                 ConnectionUriResolver = (client, peer) => {
                     var settings = client.Settings;
-                    var urlMapper = client.Services.GetRequiredService<UrlMapper>();
+                    var urlMapper = client.Services.UrlMapper();
 
                     var sb = StringBuilderExt.Acquire();
                     if (peer.Ref == RpcPeerRef.Default)

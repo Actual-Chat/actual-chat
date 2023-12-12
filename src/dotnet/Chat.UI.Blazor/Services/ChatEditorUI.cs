@@ -5,31 +5,24 @@ using Stl.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
-public partial class ChatEditorUI : ScopedWorkerBase, IComputeService, INotifyInitialized
+public partial class ChatEditorUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INotifyInitialized
 {
     private readonly object _lock = new();
     private readonly IMutableState<RelatedChatEntry?> _relatedChatEntry;
 
-    private ChatHub ChatHub { get; }
-    private IChats Chats => ChatHub.Chats;
-    private IAuthors Authors => ChatHub.Authors;
-    private TuneUI TuneUI => ChatHub.TuneUI;
-    private LocalSettings LocalSettings => ChatHub.LocalSettings();
-    private UICommander UICommander => ChatHub.UICommander();
-    private UIEventHub UIEventHub => ChatHub.UIEventHub();
+    private IChats Chats => Hub.Chats;
+    private IAuthors Authors => Hub.Authors;
+    private TuneUI TuneUI => Hub.TuneUI;
+    private UICommander UICommander => Hub.UICommander();
+    private UIEventHub UIEventHub => Hub.UIEventHub();
 
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<RelatedChatEntry?> RelatedChatEntry => _relatedChatEntry;
 
-    public ChatEditorUI(ChatHub chatHub) : base(chatHub.Scope())
-    {
-        ChatHub = chatHub;
-
-        var type = GetType();
-        _relatedChatEntry = StateFactory.NewMutable(
+    public ChatEditorUI(ChatUIHub hub) : base(hub)
+        => _relatedChatEntry = StateFactory.NewMutable(
             (RelatedChatEntry?)null,
-            StateCategories.Get(type, nameof(RelatedChatEntry)));
-    }
+            StateCategories.Get(GetType(), nameof(RelatedChatEntry)));
 
     void INotifyInitialized.Initialized()
         => this.Start();
@@ -99,7 +92,7 @@ public partial class ChatEditorUI : ScopedWorkerBase, IComputeService, INotifyIn
             .GetIdRange(Session, chatId, ChatEntryKind.Text, CancellationToken.None)
             .ConfigureAwait(false);
         var idTileLayer = ChatEntryReader.IdTileStack.Layers[1]; // 5*4 = scan by 20 entries
-        var chatEntryReader = ChatHub.NewEntryReader(chatId, ChatEntryKind.Text, idTileLayer);
+        var chatEntryReader = Hub.NewEntryReader(chatId, ChatEntryKind.Text, idTileLayer);
         var lastEditableEntry = await chatEntryReader.GetLast(
                 chatIdRange,
                 x => x.AuthorId == author.Id && x is { HasMediaEntry: false, IsStreaming: false },

@@ -20,8 +20,8 @@
 
 @code {
 
-    [Inject] private IServiceProvider Services { get; init; } = null!;
+    [Inject] private ReloadUI ReloadUI { get; init; } = null!;
 
     private void OnReloadClick()
-        => Services.GetRequiredService<ReloadUI>().Reload();
+        => ReloadUI.Reload();
 }

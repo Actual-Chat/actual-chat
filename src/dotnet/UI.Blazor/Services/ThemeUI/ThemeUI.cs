@@ -1,6 +1,6 @@
 namespace ActualChat.UI.Blazor.Services;
 
-public class ThemeUI(IServiceProvider services) : ScopedWorkerBase(services)
+public class ThemeUI(UIHub hub) : ScopedWorkerBase<UIHub>(hub)
 {
     private static readonly string JSThemeClassName = "window.Theme";
     private static readonly string JSSetMethod = $"{JSThemeClassName}.set";

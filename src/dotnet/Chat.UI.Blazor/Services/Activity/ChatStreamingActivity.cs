@@ -33,18 +33,20 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<Moment?> LastTranscribedAt => _lastTranscribedAt;
 
-    private IMomentClock ServerClock => _serverClock ??= Owner.Services.Clocks().ServerClock;
-    private ILogger Log => _log ??= Owner.Services.LogFor(GetType());
+    private ChatUIHub Hub { get; }
+    private IMomentClock ServerClock => _serverClock ??= Hub.Clocks().ServerClock;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     public ChatEntryReader TextEntryReader
-        => _textEntryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryKind.Text);
+        => _textEntryReader ??= Hub.Chats.NewEntryReader(Hub.Session(), ChatId, ChatEntryKind.Text);
     public ChatEntryReader AudioEntryReader
-        => _audioEntryReader ??= Owner.Chats.NewEntryReader(Owner.Session, ChatId, ChatEntryKind.Audio);
+        => _audioEntryReader ??= Hub.Chats.NewEntryReader(Hub.Session(), ChatId, ChatEntryKind.Audio);
 
     public ChatStreamingActivity(ChatActivity owner)
     {
         Owner = owner;
-         _lastTranscribedAt = owner.StateFactory.NewMutable(
+        Hub = owner.Hub;
+         _lastTranscribedAt = Hub.StateFactory().NewMutable(
              (Moment?)Moment.MinValue,
              StateCategories.Get(GetType(), nameof(LastTranscribedAt)));
     }
@@ -80,10 +82,10 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
 
     private async Task PushStreamingEntries(ChatEntryKind entryKind, CancellationToken cancellationToken)
     {
-        var startAt = Owner.Clocks.SystemClock.Now;
+        var startAt = Hub.Clocks().ServerClock.Now;
         var entryReader = GetEntryReader(entryKind);
-        var idRange = await Owner.Chats
-            .GetIdRange(Owner.Session, ChatId, entryKind, cancellationToken)
+        var idRange = await Hub.Chats
+            .GetIdRange(Hub.Session(), ChatId, entryKind, cancellationToken)
             .ConfigureAwait(false);
         var startEntry = await entryReader
             .FindByMinBeginsAt(startAt - Constants.Chat.MaxEntryDuration, idRange, cancellationToken)
@@ -105,7 +107,7 @@ public class ChatStreamingActivity : WorkerBase, IChatStreamingActivity, IComput
                         e => e is not { IsStreaming: true },
                         commonTokenSource.Token
                     ).ConfigureAwait(false);
-                    await Owner.Clocks.CpuClock.Delay(ExtraActivityDuration, cancellationToken).ConfigureAwait(false);
+                    await Task.Delay(ExtraActivityDuration, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception e) {
                     if (e is not OperationCanceledException)
