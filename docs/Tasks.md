@@ -11,6 +11,8 @@ Urgent fixes:
 - [?] SharedResourcePool must be IAsyncDisposable
 
 General:
+- Web hook for posts
+- Historical playback speedup
 - New "Modal with tabs" - Andrey, you can start working on this somewhere in /test/
 - Email digest (once per day):
   - The updates you've missed
