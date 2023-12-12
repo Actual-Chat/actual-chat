@@ -15,6 +15,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
+    private ChatId _searchEnabledChatId;
 
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private IUserPresences UserPresences => Hub.UserPresences;
@@ -167,6 +168,22 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     [ComputeMethod] // Synced
     public virtual Task<bool> IsSelected(ChatId chatId)
         => Task.FromResult(!chatId.IsNone && SelectedChatId.Value == chatId);
+
+    [ComputeMethod] // Synced
+    public virtual Task<bool> IsSearchEnabled(ChatId chatId)
+        => Task.FromResult(!chatId.IsNone && _searchEnabledChatId == chatId);
+
+    public void EnableSearch(ChatId chatId)
+    {
+        var old = _searchEnabledChatId;
+        _searchEnabledChatId = chatId;
+        using (Computed.Invalidate()) {
+            if (!old.IsNone)
+                _ = IsSearchEnabled(old);
+            if (!chatId.IsNone)
+                _ = IsSearchEnabled(chatId);
+        }
+    }
 
     [ComputeMethod]
     public virtual async Task<Trimmed<int>> GetUnreadCount(ChatId chatId, CancellationToken cancellationToken)

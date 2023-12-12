@@ -11,7 +11,6 @@ public class PanelsUI : ScopedWorkerBase<UIHub>
     public LeftPanel Left { get; }
     public MiddlePanel Middle { get; }
     public RightPanel Right { get; }
-    public RightSearchPanel RightSearch { get; }
 
     public PanelsUI(UIHub hub) : base(hub)
     {
@@ -24,7 +23,6 @@ public class PanelsUI : ScopedWorkerBase<UIHub>
         Left = new LeftPanel(this);
         Right = new RightPanel(this);
         Middle = new MiddlePanel(this);
-        RightSearch = new RightSearchPanel(this);
         this.Start();
     }
 

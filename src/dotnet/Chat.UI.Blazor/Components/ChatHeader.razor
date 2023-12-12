@@ -55,7 +55,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSelection = await ChatContext.Hub.SelectionUI.HasSelection.Use(cancellationToken);
-        var isSearchMode = await ChatContext.Hub.PanelsUI.RightSearch.IsVisible.Use(cancellationToken);
+        var isSearchMode = await ChatContext.Hub.ChatUI.IsSearchEnabled(ChatContext.Chat.Id);
         return new() {
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
@@ -68,8 +68,11 @@
     private void OnOpenLeftPanelClick()
         => ChatContext.Hub.PanelsUI.Left.SetIsVisible(true);
 
-    private void OnSearchClick()
-        => ChatContext.Hub.PanelsUI.RightSearch.Toggle();
+    private void OnSearchClick() {
+        ChatContext.Hub.PanelsUI.Right.SetIsVisible(true);
+        ChatContext.Hub.ChatUI.EnableSearch(ChatContext.Chat.Id);
+    }
+        // => ChatContext.Hub.PanelsUI.RightSearch.Toggle();
 
     public sealed record Model {
         public bool HasSelection { get; init; }

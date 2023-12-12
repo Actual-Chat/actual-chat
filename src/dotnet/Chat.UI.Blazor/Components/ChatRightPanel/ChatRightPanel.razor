@@ -13,9 +13,10 @@
     VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
     <div class="right-chat-panel">
         @if (m.RenderContent) {
-            <RightPanelSearch
-                ChatContext="@ChatContext"
-                ShowCloseButton="true"/>
+            @if (m.ShowSearchPanel) {
+                <RightPanelSearch ChatContext="@ChatContext"/>
+            }
+
             <RightPanelHeader ChatContext="@ChatContext" ShareModel="@m.ShareModel"/>
             <div class="c-panel-content">
                 <RightPanelChatInfo ChatContext="@ChatContext"/>
@@ -74,12 +75,14 @@
         var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
         var showMemberTab = rules.CanSeeMembers();
         var shareModel = await ShareUI.GetModel(Chat.Id, cancellationToken);
+        var showSearchPanel = await ChatContext.Hub.ChatUI.IsSearchEnabled(Chat.Id);
         return new () {
             IsVisible = isVisible,
             RenderContent = true,
             EnableIncompleteUI = enableIncompleteUI,
             ShowMembersTab = showMemberTab,
             ShareModel = shareModel,
+            ShowSearchPanel = showSearchPanel && enableIncompleteUI,
         };
     }
 
@@ -93,6 +96,7 @@
         public bool EnableIncompleteUI { get; init; }
         public bool ShowTabs => ShowMembersTab || EnableIncompleteUI;
         public bool ShowMembersTab { get; init; }
+        public bool ShowSearchPanel { get; init; }
         public ShareModalModel? ShareModel { get; init; }
     }
 }
