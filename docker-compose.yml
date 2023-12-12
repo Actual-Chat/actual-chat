@@ -48,6 +48,11 @@ services:
       - "53:53/tcp"
     expose:
       - 53
+  smtp4dev:
+    image: rnwood/smtp4dev:linux-amd64-v3
+    ports:
+      - "5000:80"
+      - "25:25"
   elasticsearch:
     image: elasticsearch:8.11.3
     volumes:
