@@ -16,6 +16,12 @@ public sealed class UsersSettings
     public string? AppleKeyId { get; set; } = "";
     public string AppleTeamId { get; set; } = "";
     public string ApplePrivateKeyPath { get; set; } = "";
+    public string SmtpFrom { get; set; } = "";
+    public string SmtpHost { get; set; } = "";
+    public int SmtpPort { get; set; } = 25;
+    public string SmtpLogin { get; set; } = "";
+    public string SmtpPassword { get; set; } = "";
+    public bool SmtpUseSsl { get; set; } = false;
     public string TwilioAccountSid { get; set; } = "";
     public string TwilioApiKey { get; set; } = "";
     public string TwilioApiSecret { get; set; } = "";
