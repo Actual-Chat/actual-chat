@@ -1,11 +1,12 @@
 @using ActualChat.Contacts
-@inherits ComputedStateComponent<bool>
+@inherits ComputedStateComponent<ChatHeader.Model>
 @{
+    var m = State.Value;
     var chat = ChatContext.Chat;
-    var hasSelection = State.Value;
+    var searchCls = m.IsSearchMode ? "blackout on" : "blackout";
 }
 
-@if (hasSelection) {
+@if (m.HasSelection) {
     <div class="c-content">
         <SelectionHeader />
     </div>
@@ -31,7 +32,7 @@
     </div>
     @if (!chat.Id.IsNone) {
         <div class="chat-header-control-panel">
-            <HeaderButton Click="@OnSearchClick">
+            <HeaderButton Click="@OnSearchClick" Class="@searchCls">
                 <i class="icon-search text-2xl"></i>
             </HeaderButton>
             @if (IsRightNavigateButtonVisible) {
@@ -46,14 +47,20 @@
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
 
-    protected override ComputedState<bool>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
 
-    protected override async Task<bool> ComputeState(CancellationToken cancellationToken)
-        => await ChatContext.Hub.SelectionUI.HasSelection.Use(cancellationToken);
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var hasSelection = await ChatContext.Hub.SelectionUI.HasSelection.Use(cancellationToken);
+        var isSearchMode = await ChatContext.Hub.PanelsUI.RightSearch.IsVisible.Use(cancellationToken);
+        return new() {
+            HasSelection = hasSelection,
+            IsSearchMode = isSearchMode,
+        };
+    }
 
     private void OnToggleRightPanelClick()
         => ChatContext.Hub.PanelsUI.Right.Toggle();
@@ -63,4 +70,9 @@
 
     private void OnSearchClick()
         => ChatContext.Hub.PanelsUI.RightSearch.Toggle();
+
+    public sealed record Model {
+        public bool HasSelection { get; init; }
+        public bool IsSearchMode { get; init; }
+    }
 }

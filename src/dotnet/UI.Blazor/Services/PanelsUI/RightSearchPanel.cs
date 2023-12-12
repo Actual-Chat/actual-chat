@@ -8,9 +8,9 @@ public class RightSearchPanel
     private readonly IMutableState<bool> _isVisible;
     private readonly IStoredState<bool> _isVisibleStored;
 
-    private IServiceProvider Services => Owner.Services;
-    private History History => Owner.History;
-    private Dispatcher Dispatcher => Owner.Dispatcher;
+    private UIHub Hub { get; }
+    private History History => Hub.History;
+    private Dispatcher Dispatcher => Hub.Dispatcher;
 
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
@@ -19,20 +19,21 @@ public class RightSearchPanel
     public RightSearchPanel(PanelsUI owner)
     {
         Owner = owner;
-        var stateFactory = Owner.Scope.StateFactory();
-        _isVisible = stateFactory.NewMutable(false);
+        Hub = owner.Hub;
+
+        var stateFactory = Hub.StateFactory();
+        _isVisible = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsVisible)));
         var initialState = new OwnHistoryState(this, false);
         History.Register(initialState);
 
-        var localSettings = Services.GetRequiredService<LocalSettings>().WithPrefix(StatePrefix);
+        var localSettings = Hub.LocalSettings().WithPrefix(StatePrefix);
         _isVisibleStored = stateFactory.NewKvasStored<bool>(
             new (localSettings, nameof(IsVisible)) {
                 InitialValue = false,
                 Category = StateCategories.Get(GetType(), nameof(IsVisible) + "Stored"),
             });
 
-        // Automatically open right panel on wide screen if it was open during last session.
-        _ = Task.WhenAll(_isVisibleStored.WhenRead, Owner.History.WhenReady)
+        _ = Task.WhenAll(_isVisibleStored.WhenRead, Hub.History.WhenReady)
             .ContinueWith(_1 => {
                     SetIsVisible(false);
                 },
