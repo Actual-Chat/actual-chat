@@ -3,7 +3,8 @@ using WebView = Android.Webkit.WebView;
 
 namespace ActualChat.App.Maui;
 
-public class AndroidWebViewClientOverride(
+// Extends https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Android/WebKitWebViewClient.cs
+public class AndroidWebViewClient(
     WebViewClient original,
     AndroidContentDownloader contentDownloader,
     ILogger log

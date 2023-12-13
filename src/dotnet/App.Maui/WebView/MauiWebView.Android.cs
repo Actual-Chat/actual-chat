@@ -18,15 +18,6 @@ public partial class MauiWebView
 
         PlatformWebView = platformWebView;
         AndroidWebView = (WebView)platformWebView;
-        AndroidWebView.Settings.JavaScriptEnabled = true;
-        var jsInterface = new AndroidJSInterface(AndroidWebView);
-        // JavascriptToAndroidInterface methods will be available for invocation in js via 'window.Android' object.
-        AndroidWebView.AddJavascriptInterface(jsInterface, "Android");
-        AndroidWebView.SetWebViewClient(
-            new AndroidWebViewClientOverride(
-                AndroidWebView.WebViewClient,
-                AppServices.GetRequiredService<AndroidContentDownloader>(),
-                AppServices.LogFor<AndroidWebViewClientOverride>()));
     }
 
     public partial void HardNavigateTo(string url)
@@ -62,14 +53,23 @@ public partial class MauiWebView
 #pragma warning disable CS0618
         settings.EnableSmoothTransition();
 #pragma warning restore CS0618
-
-        // settings.SetGeolocationEnabled(true);
-        // settings.SetGeolocationDatabasePath(webView.Context?.FilesDir?.Path);
-        webView.SetWebChromeClient(new AndroidWebChromeClient(
-            webView.WebChromeClient!,
-            activity,
-            new AndroidFileChooser(AppServices.LogFor<AndroidFileChooser>())));
         webView.SetRendererPriorityPolicy(RendererPriority.Important, true);
+
+        // AndroidJSInterface methods will be available for invocation in js via 'window.Android' object.
+        var jsInterface = new AndroidJSInterface(webView);
+        webView.AddJavascriptInterface(jsInterface, "Android");
+
+        webView.SetWebViewClient(
+            new AndroidWebViewClient(
+                webView.WebViewClient,
+                AppServices.GetRequiredService<AndroidContentDownloader>(),
+                AppServices.LogFor<AndroidWebViewClient>()));
+
+        webView.SetWebChromeClient(
+            new AndroidWebChromeClient(
+                webView.WebChromeClient!,
+                activity,
+                new AndroidFileChooser(AppServices.LogFor<AndroidFileChooser>())));
     }
 
     private partial void OnLoaded(object? sender, EventArgs eventArgs) { }
