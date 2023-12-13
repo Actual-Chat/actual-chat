@@ -141,8 +141,6 @@ internal class AndroidWebChromeClient : WebChromeClient
         => _client.OnCloseWindow(window);
     public override void OnGeolocationPermissionsHidePrompt()
         => _client.OnGeolocationPermissionsHidePrompt();
-    public override void OnHideCustomView()
-        => _client.OnHideCustomView();
     public override bool OnJsAlert(WebView? view, string? url, string? message, JsResult? result)
         => _client.OnJsAlert(view, url, message, result);
     public override bool OnJsBeforeUnload(WebView? view, string? url, string? message, JsResult? result)
@@ -163,8 +161,16 @@ internal class AndroidWebChromeClient : WebChromeClient
         => _client.OnReceivedTouchIconUrl(view, url, precomposed);
     public override void OnRequestFocus(WebView? view)
         => _client.OnRequestFocus(view);
-    public override void OnShowCustomView(View? view, ICustomViewCallback? callback)
-        => _client.OnShowCustomView(view, callback);
+    #endregion
+
+    #region Excluded Unremarkable overrides
+    // Do not override OnShowCustomView and OnHideCustomView.
+    // When they are overriden WebView suppose that it supports fullscreen video playback
+    // but in fact it can not do it.
+    // public override void OnShowCustomView(View? view, ICustomViewCallback? callback)
+    //     => _client.OnShowCustomView(view, callback);
+    // public override void OnHideCustomView()
+    //     => _client.OnHideCustomView();
     #endregion
 
     // Private methods
