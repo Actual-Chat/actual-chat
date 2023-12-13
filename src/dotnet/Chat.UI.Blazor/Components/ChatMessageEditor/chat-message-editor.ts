@@ -39,12 +39,15 @@ export class ChatMessageEditor {
     private hasContent: boolean = null; // Intended: updateHasContent needs this on the first run
     private isNotifyPanelOpen: boolean = false;
     private chatId: string;
+    private smooth: boolean = false;
 
     static create(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject): ChatMessageEditor {
         return new ChatMessageEditor(editorDiv, blazorRef);
     }
 
     constructor(editorDiv: HTMLDivElement, blazorRef: DotNet.DotNetObject) {
+        let domClassList = document.documentElement.classList;
+        this.smooth = !domClassList.contains('device-ios');
         this.editorDiv = editorDiv;
         this.blazorRef = blazorRef;
         this.postPanelDiv = this.editorDiv.querySelector(':scope .post-panel');
@@ -52,6 +55,9 @@ export class ChatMessageEditor {
         this.attachButton = this.postPanelDiv.querySelector(':scope .attach-btn');
         this.notifyPanel = this.postPanelDiv.querySelector(':scope .notify-call-panel');
         this.input = this.postPanelDiv.querySelector(':scope .message-input');
+
+        if (this.smooth)
+            editorDiv.classList.add('smooth');
 
         this.updateLayout();
         this.updateHasContent();
