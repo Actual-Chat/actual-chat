@@ -51,6 +51,7 @@
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
+            InitialValue = Model.None
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
@@ -75,6 +76,8 @@
         // => ChatContext.Hub.PanelsUI.RightSearch.Toggle();
 
     public sealed record Model {
+        public static readonly Model None = new ();
+
         public bool HasSelection { get; init; }
         public bool IsSearchMode { get; init; }
     }
