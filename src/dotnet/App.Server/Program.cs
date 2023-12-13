@@ -27,7 +27,7 @@ internal static class Program
 
         using var appHost = new AppHost();
         try {
-            await appHost.Build().ConfigureAwait(false);
+            await appHost.Build(args).ConfigureAwait(false);
         }
         catch (Exception ex) {
             Console.ForegroundColor = ConsoleColor.Red;

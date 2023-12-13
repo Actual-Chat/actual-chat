@@ -1,7 +1,36 @@
+using ActualChat.App.Server.Module;
+using ActualChat.Audio.Module;
+using ActualChat.Audio.UI.Blazor.Module;
+using ActualChat.Chat.Module;
+using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Contacts.Module;
+using ActualChat.Contacts.UI.Blazor.Module;
+using ActualChat.Db.Module;
+using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
+using ActualChat.Invite.Module;
+using ActualChat.Kubernetes.Module;
+using ActualChat.Media.Module;
+using ActualChat.MediaPlayback.Module;
+using ActualChat.Module;
+using ActualChat.Notification.Module;
+using ActualChat.Notification.UI.Blazor.Module;
+using ActualChat.Redis.Module;
+using ActualChat.Transcription.Module;
+using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.Module;
+using ActualChat.Users.Module;
+using ActualChat.Users.UI.Blazor.Module;
+using ActualChat.Web.Module;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
+using Microsoft.Extensions.Logging.Console;
+using Serilog;
+using Serilog.Events;
 
 namespace ActualChat.App.Server;
 
@@ -15,6 +44,7 @@ public class AppHost : IDisposable
     public Action<IConfigurationBuilder>? AppConfigurationBuilder { get; set; }
 
     public IHost Host { get; protected set; } = null!;
+    public ModuleHost ModuleHost { get; set; } = null!;
     public IServiceProvider Services => Host.Services;
 
     public void Dispose()
@@ -32,25 +62,47 @@ public class AppHost : IDisposable
             Host.DisposeSilently();
     }
 
-    public virtual Task Build(CancellationToken cancellationToken = default)
+    public Task Build(string[] args, CancellationToken cancellationToken = default)
     {
-        var webBuilder = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
-            .ConfigureHostConfiguration(ConfigureHostConfiguration)
-            .ConfigureWebHostDefaults(builder => builder
-                .UseDefaultServiceProvider((ctx, options) => {
-                    if (ctx.HostingEnvironment.IsDevelopment()) {
-                        options.ValidateScopes = true;
-                        options.ValidateOnBuild = true;
-                    }
-                })
-                .UseKestrel(ConfigureKestrel)
-                .ConfigureAppConfiguration(ConfigureAppConfiguration)
-                .UseStartup<Startup>()
-                .ConfigureServices(ConfigureAppServices)
-                .ConfigureServices(ValidateContainerRegistrations)
-            );
+        var webBuilder = WebApplication.CreateBuilder(args);
 
-        Host = webBuilder.Build();
+        webBuilder.Host
+            .ConfigureHostConfiguration(ConfigureHostConfiguration);
+            // .ConfigureWebHostDefaults(builder => builder
+            //     .UseDefaultServiceProvider((ctx, options) => {
+            //         if (ctx.HostingEnvironment.IsDevelopment()) {
+            //             options.ValidateScopes = true;
+            //             options.ValidateOnBuild = true;
+            //         }
+            //     })
+            //     .UseKestrel(ConfigureKestrel)
+            //     .ConfigureAppConfiguration(ConfigureAppConfiguration)
+            //     .UseStartup<Startup>()
+            //     .ConfigureServices(ConfigureAppServices)
+            //     .ConfigureServices(ValidateContainerRegistrations)
+            // );
+        webBuilder.WebHost
+            .UseDefaultServiceProvider((ctx, options) => {
+                if (!ctx.HostingEnvironment.IsDevelopment())
+                    return;
+
+                options.ValidateScopes = true;
+                options.ValidateOnBuild = true;
+            })
+            .UseKestrel(ConfigureKestrel)
+            .ConfigureAppConfiguration(ConfigureAppConfiguration)
+            .ConfigureServices(ConfigureHost)
+            .ConfigureServices(ConfigureAppServices)
+            .ConfigureServices(ValidateContainerRegistrations);
+
+        webBuilder.Services.AddRazorComponents()
+            .AddInteractiveServerComponents()
+            .AddInteractiveWebAssemblyComponents();
+
+        var webApplication = webBuilder.Build();
+        ConfigureApp(webApplication);
+
+        Host = webApplication;
         return Task.CompletedTask;
     }
 
@@ -130,7 +182,7 @@ public class AppHost : IDisposable
         HostConfigurationBuilder?.Invoke(cfg);
     }
 
-    private void ConfigureKestrel(WebHostBuilderContext ctx, KestrelServerOptions options)
+    protected void ConfigureKestrel(WebHostBuilderContext ctx, KestrelServerOptions options)
     { }
 
     protected virtual void ConfigureAppConfiguration(IConfigurationBuilder appBuilder)
@@ -147,10 +199,122 @@ public class AppHost : IDisposable
         AppConfigurationBuilder?.Invoke(appBuilder);
     }
 
+    protected virtual void ConfigureHost(WebHostBuilderContext webHost, IServiceCollection services)
+    {
+        var env = webHost.HostingEnvironment;
+        var cfg = webHost.Configuration;
+        var hostSettings = cfg.GetSettings<HostSettings>();
+        var appKind = hostSettings.AppKind ?? AppKind.WebServer;
+        var isTested = hostSettings.IsTested ?? false;
+
+        // Logging
+        services.AddLogging(logging => {
+            logging.ClearProviders();
+            logging.ConfigureServerFilters(env.EnvironmentName);
+            logging.AddConsole();
+            logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
+            if (AppLogging.IsDevLogRequested && appKind.IsServer() && !isTested) { // This excludes TestServer
+                var serilog = new LoggerConfiguration()
+                    .MinimumLevel.Is(LogEventLevel.Verbose)
+                    .Enrich.FromLogContext()
+                    .Enrich.With(new ThreadIdEnricher())
+                    .WriteTo.File(AppLogging.DevLogPath,
+                        outputTemplate: AppLogging.OutputTemplate,
+                        fileSizeLimitBytes: AppLogging.FileSizeLimit)
+                    .CreateLogger();
+                logging.AddFilteringSerilog(serilog, true);
+            }
+        });
+
+        // HostInfo
+        services.AddSingleton(c => {
+            var baseUrl = hostSettings.BaseUri;
+            BaseUrlProvider? baseUrlProvider = null;
+            if (baseUrl.IsNullOrEmpty()) {
+                var server = c.GetRequiredService<IServer>();
+                var serverAddressesFeature =
+                    server.Features.Get<IServerAddressesFeature>()
+                    ?? throw StandardError.NotFound<IServerAddressesFeature>("Can't get server address.");
+                baseUrl = serverAddressesFeature.Addresses.FirstOrDefault();
+                if (baseUrl.IsNullOrEmpty()) {
+                    // If we can't figure out base url at the moment,
+                    // lets define a base url provider to resolve base url later on demand.
+                    string? resolvedBaseUrl = null;
+                    baseUrlProvider = () => {
+                        if (resolvedBaseUrl.IsNullOrEmpty()) {
+                            resolvedBaseUrl = serverAddressesFeature.Addresses.FirstOrDefault()
+                                ?? throw StandardError.NotFound<IServerAddressesFeature>(
+                                    "No server addresses found. Most likely you trying to use UrlMapper before the server has started.");
+                        }
+                        return resolvedBaseUrl;
+                    };
+                }
+            }
+
+            return new HostInfo() {
+                AppKind = appKind,
+                IsTested = isTested,
+                ClientKind = ClientKind.Unknown,
+                Environment = env.EnvironmentName,
+                Configuration = cfg,
+                BaseUrl = baseUrl ?? "",
+                BaseUrlProvider = baseUrlProvider,
+            };
+        });
+
+        var moduleServices = new DefaultServiceProviderFactory().CreateServiceProvider(services);
+        ModuleHost = new ModuleHostBuilder()
+            // From less dependent to more dependent!
+            .WithModules(
+                // Core modules
+                new CoreModule(moduleServices),
+                new CoreServerModule(moduleServices),
+                new KubernetesModule(moduleServices),
+                new RedisModule(moduleServices),
+                new DbModule(moduleServices),
+                new WebModule(moduleServices),
+                // Generic modules
+                new MediaPlaybackModule(moduleServices),
+                // Service-specific & service modules
+                new AudioServiceModule(moduleServices),
+                new FeedbackServiceModule(moduleServices),
+                new MediaServiceModule(moduleServices),
+                new ContactsServiceModule(moduleServices),
+                new InviteServiceModule(moduleServices),
+                new UsersContractsModule(moduleServices),
+                new UsersServiceModule(moduleServices),
+                new ChatModule(moduleServices),
+                new ChatServiceModule(moduleServices),
+                new TranscriptionServiceModule(moduleServices),
+                new NotificationServiceModule(moduleServices),
+                // UI modules
+                new BlazorUICoreModule(moduleServices),
+                new AudioBlazorUIModule(moduleServices),
+                new UsersBlazorUIModule(moduleServices),
+                new ContactsBlazorUIModule(moduleServices),
+                new ChatBlazorUIModule(moduleServices),
+                new NotificationBlazorUIModule(moduleServices),
+                new BlazorUIAppModule(moduleServices), // Should be the last one in UI section
+                // This module should be the last one
+                new AppServerModule(moduleServices)
+            ).Build(services);
+    }
+
     protected virtual void ConfigureAppServices(
         WebHostBuilderContext webHost,
         IServiceCollection services)
         => AppServicesBuilder?.Invoke(webHost, services);
+
+    private void ConfigureApp(WebApplication app)
+    {
+        var appHostModule = ModuleHost.GetModule<AppServerModule>();
+        appHostModule.ConfigureApp(app); // This module must be the first one in ConfigureApp call sequence
+
+        ModuleHost.Modules
+            .OfType<IWebModule>()
+            .Where(m => !ReferenceEquals(m, appHostModule))
+            .Apply(m => m.ConfigureApp(app));
+    }
 
     private Task InvokeDbInitializers(
         string name,

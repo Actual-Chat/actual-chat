@@ -74,7 +74,7 @@ public static class TestHostFactory
                 configureAppSettings?.Invoke(builder);
             },
         };
-        await appHost.Build();
+        await appHost.Build(Array.Empty<string>());
         if (Constants.DebugMode.Npgsql)
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(),true);
         await appHost.InvokeDbInitializers();

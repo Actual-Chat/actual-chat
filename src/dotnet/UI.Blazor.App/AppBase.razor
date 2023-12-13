@@ -55,9 +55,6 @@
     protected TrueSessionResolver? TrueSessionResolver { get; set; } // Set in MauiBlazorApp.OnInitializedAsync
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    [Parameter] public string SessionHash { get; set; } = "";
-    [Parameter] public string SessionToken { get; set; } = "";
-
     public AppBase()
         => LoadingUI.MarkAppCreated();
 
@@ -74,20 +71,20 @@
         using var _1 = Tracer.Region();
 
         var appKind = HostInfo.AppKind;
-        var sessionHash = SessionHash; // It's passed directly only in WASM app
+        // var sessionHash = SessionHash; // It's passed directly only in WASM app
         if (appKind.IsServer()) {
-            var secureTokensBackend = Services.GetRequiredService<ISecureTokensBackend>();
-            var session = secureTokensBackend.ParseSessionToken(SessionToken);
-            SessionResolver.Session = session; // All clients use DefaultSessionResolver
-            sessionHash = session.Hash;
+            // var secureTokensBackend = Services.GetRequiredService<ISecureTokensBackend>();
+            // var session = secureTokensBackend.ParseSessionToken(SessionToken);
+            // SessionResolver.Session = session; // All clients use DefaultSessionResolver
+            // sessionHash = session.Hash;
         }
         else if (appKind.IsMauiApp()) {
-            sessionHash = TrueSessionResolver!.Session.Hash;
+            // sessionHash = TrueSessionResolver!.Session.Hash;
         }
         if (_isPrerendering)
             return;
 
-        var prepareFirstRenderTask = AppServiceStarter.PrepareFirstRender(sessionHash);
+        var prepareFirstRenderTask = AppServiceStarter.PrepareFirstRender("sessionHash");
         if (ReferenceEquals(UIModuleAssemblies, null)) {
             // Evaluate UIModuleAssemblies (just once - it's a static member)
             var uiModuleAssemblies = new HashSet<Assembly>();

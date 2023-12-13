@@ -14,7 +14,7 @@ public sealed class WebModule : HostModule, IWebModule
         // Use AppServerModule instead
     }
 
-    public void ConfigureApp(IApplicationBuilder app)
+    public void ConfigureApp(WebApplication app)
     {
         // Use AppServerModule instead
     }

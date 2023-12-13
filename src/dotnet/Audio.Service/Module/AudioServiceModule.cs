@@ -13,7 +13,7 @@ public sealed class AudioServiceModule : HostModule<AudioSettings>, IWebModule
 {
     public AudioServiceModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
-    public void ConfigureApp(IApplicationBuilder app)
+    public void ConfigureApp(WebApplication app)
         => app.UseEndpoints(endpoints => {
             endpoints.MapHub<AudioHub>("/api/hub/audio");
             endpoints.MapHub<AudioHubBackend>("/backend/hub/audio");

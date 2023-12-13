@@ -38,14 +38,14 @@ public class AppScopedServiceStarter
             var baseUri = HostInfo.BaseUrl;
 
             // Creating core services - this should be done as early as possible
-            var browserInfo = Services.GetRequiredService<BrowserInfo>();
-            var browserInit = Services.GetRequiredService<BrowserInit>();
-            _ = browserInit.Initialize(
-                HostInfo.AppKind,
-                Constants.Api.Version,
-                baseUri,
-                sessionHash,
-                browserInfo.BlazorRef);
+            // var browserInfo = Services.GetRequiredService<BrowserInfo>();
+            // var browserInit = Services.GetRequiredService<BrowserInit>();
+            // _ = browserInit.Initialize(
+            //     HostInfo.AppKind,
+            //     Constants.Api.Version,
+            //     baseUri,
+            //     sessionHash,
+            //     browserInfo.BlazorRef);
 
             // Start AccountUI & UIEventHub
             Services.GetRequiredService<AccountUI>();
@@ -56,31 +56,31 @@ public class AppScopedServiceStarter
             //           coz tasks were started on Dispatcher thread already.
 
             // Finishing w/ BrowserInfo
-            await browserInfo.WhenReady.ConfigureAwait(false);
-            Tracer.Point("BrowserInfo is ready");
+            // await browserInfo.WhenReady.ConfigureAwait(false);
+            // Tracer.Point("BrowserInfo is ready");
 
             Services.GetRequiredService<ThemeUI>().Start();
             var timeZoneConverter = Services.GetRequiredService<TimeZoneConverter>();
-            if (timeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
-                serverSideTimeZoneConverter.Initialize(browserInfo.UtcOffset);
+            // if (timeZoneConverter is ServerSideTimeZoneConverter serverSideTimeZoneConverter)
+            //     serverSideTimeZoneConverter.Initialize(browserInfo.UtcOffset);
 
             // Finishing with BrowserInit
-            await browserInit.WhenInitialized.ConfigureAwait(false); // Must be completed before the next call
-            Tracer.Point("BrowserInit completed");
+            // await browserInit.WhenInitialized.ConfigureAwait(false); // Must be completed before the next call
+            // Tracer.Point("BrowserInit completed");
 
             // Finishing with auto-navigation & History init
             var url = await AutoNavigationUI.GetAutoNavigationUrl().ConfigureAwait(false);
             // Instantiate PanelsUI to register correspondent history states for left and right panels.
             // It's needed to make first history step always has BackStepCount == 0.
             _ = Services.GetRequiredService<PanelsUI>();
-            if (url.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
-                // We have to open chat root first - to make sure "Back" leads to it
-                await History.Initialize(Links.Chats).ConfigureAwait(false);
-                await AutoNavigationUI
-                    .DispatchNavigateTo(url, AutoNavigationReason.SecondAutoNavigation)
-                    .ConfigureAwait(false);
-            }
-            else
+            // if (url.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
+            //     // We have to open chat root first - to make sure "Back" leads to it
+            //     await History.Initialize(Links.Chats).ConfigureAwait(false);
+            //     await AutoNavigationUI
+            //         .DispatchNavigateTo(url, AutoNavigationReason.SecondAutoNavigation)
+            //         .ConfigureAwait(false);
+            // }
+            // else
                 await History.Initialize(url).ConfigureAwait(false);
         }
         catch (Exception e) {

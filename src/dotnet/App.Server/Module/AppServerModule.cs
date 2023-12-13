@@ -1,17 +1,25 @@
-using System.Diagnostics.CodeAnalysis;
+using Microsoft.AspNetCore.Builder;
 using System.IO.Compression;
 using ActualChat.App.Server.Health;
+using ActualChat.App.Server.Pages;
 using ActualChat.Audio;
+using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat;
+using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Commands;
 using ActualChat.Contacts;
+using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Feedback;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kubernetes;
 using ActualChat.Notification;
+using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Transcription;
+using ActualChat.UI.Blazor.App.Module;
+using ActualChat.UI.Blazor.Module;
 using ActualChat.Users;
+using ActualChat.Users.UI.Blazor.Module;
 using ActualChat.Web.Internal;
 using ActualChat.Web.Module;
 using ActualChat.Web.Services;
@@ -37,6 +45,7 @@ using Stl.IO;
 using Stl.Rpc;
 using Stl.Rpc.Diagnostics;
 using Stl.Rpc.Server;
+using Host = ActualChat.App.Server.Pages.Host;
 
 namespace ActualChat.App.Server.Module;
 
@@ -51,7 +60,7 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
 
     public AppServerModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
-    public void ConfigureApp(IApplicationBuilder app)
+    public void ConfigureApp(WebApplication app)
     {
         if (Settings.AssumeHttps) {
             Log.LogWarning("AssumeHttps is on");
@@ -122,15 +131,28 @@ public sealed class AppServerModule : HostModule<HostSettings>, IWebModule
         app.UseCors("Default");
         app.UseResponseCaching();
         app.UseAuthentication();
+        app.UseAntiforgery();
         app.UseEndpoints(endpoints => {
             endpoints.MapAppHealth();
             endpoints.MapAppMetrics();
             endpoints.MapBlazorHub();
             endpoints.MapRpcWebSocketServer();
             endpoints.MapControllers();
-            endpoints.MapFallbackToPage("/_Host");
+            // endpoints.MapFallbackToPage("/_Host");
         });
         app.UseOpenTelemetryPrometheusScrapingEndpoint();
+
+        app.MapRazorComponents<Host>()
+            .AddInteractiveServerRenderMode()
+            .AddInteractiveWebAssemblyRenderMode()
+            .AddAdditionalAssemblies(
+                typeof(AudioBlazorUIModule).Assembly,
+                typeof(ChatBlazorUIModule).Assembly,
+                typeof(ContactsBlazorUIModule).Assembly,
+                typeof(NotificationBlazorUIModule).Assembly,
+                typeof(BlazorUIAppModule).Assembly,
+                typeof(BlazorUICoreModule).Assembly,
+                typeof(UsersBlazorUIModule).Assembly);
     }
 
     protected override void InjectServices(IServiceCollection services)
