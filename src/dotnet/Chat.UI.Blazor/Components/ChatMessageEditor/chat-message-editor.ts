@@ -65,7 +65,7 @@ export class ChatMessageEditor {
         // Wiring up event listeners
         ScreenSize.event$
             .pipe(takeUntil(this.disposed$))
-            .subscribe(this.updateLayoutThrottled);
+            .subscribe(this.updateLayout);
 
         fromEvent(this.input, 'paste')
             .pipe(takeUntil(this.disposed$))
@@ -238,7 +238,6 @@ export class ChatMessageEditor {
 
     // Private methods
 
-    private updateLayoutThrottled = throttle(() => this.updateLayout(), 250, 'delayHead');
     private updateLayout = () => {
         const width = window.visualViewport.width;
         const height = window.visualViewport.height;
@@ -269,10 +268,14 @@ export class ChatMessageEditor {
                     : 'Normal';
                 if (this.panelModel !== panelMode) {
                     this.panelModel = panelMode;
-                    if (panelMode === 'Narrow')
-                        this.editorDiv.classList.add('narrow-panel');
-                    else
-                        this.editorDiv.classList.remove('narrow-panel');
+                    if (panelMode === 'Narrow') {
+                        this.editorDiv.classList.remove('to-thick');
+                        this.editorDiv.classList.add('narrow-panel', 'to-thin');
+                    }
+                    else {
+                        this.editorDiv.classList.remove('narrow-panel', 'to-thin');
+                        this.editorDiv.classList.add('to-thick');
+                    }
                 }
             }
             this.lastHeight = height;
