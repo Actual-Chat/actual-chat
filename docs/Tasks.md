@@ -2,10 +2,10 @@ Near term:
 
 Urgent fixes:
 - Dark theme: fix Apple icon color on sign-in modal
-- Logout doesn't work on Android & Windows apps; maybe iOS as well.
+- ~~Logout doesn't work on Android & Windows apps; maybe iOS as well.~~ (Working on Dev, Prod update is required)
 - Theme should set text color + make sure all the issues w/ black on black in Dark theme are gone
 - Web splash should be the same as MAUI splash
-- Portrait/landscape mode switch should work in MAUI apps (mainly for images & videos)
+- ~~Portrait/landscape mode switch should work in MAUI apps (mainly for images & videos)~~ (Disabled fullscreen video mode support on Android. Custom full screen implementation have issues with history if user exits from fullscreen mode with back button.)
 - There are still some weird UI restarts on Android - prob. MauiLivenessProbe is too aggressive
 - Virtual list: AK, please list the remaining issues here
 - [?] SharedResourcePool must be IAsyncDisposable
