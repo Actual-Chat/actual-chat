@@ -15,6 +15,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     [Column(TypeName = "smallint")]
     public AccountStatus Status { get; set; }
     public string Email { get; set; } = "";
+    public bool IsEmailVerified { get; set; }
     public string Phone { get; set; } = "";
     public bool SyncContacts { get; set; }
     public string Name { get; set; } = "";
@@ -31,6 +32,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         return new(user, Version) {
             Status = Status,
             Email = Email,
+            IsEmailVerified = IsEmailVerified,
             Phone = new Phone(Phone),
             SyncContacts = SyncContacts,
             Name = Name,
@@ -52,6 +54,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         Phone = model.Phone;
         SyncContacts = model.SyncContacts;
         Email = model.Email;
+        IsEmailVerified = model.IsEmailVerified;
         Name = model.Name;
         LastName = model.LastName;
         Username = model.Username;
