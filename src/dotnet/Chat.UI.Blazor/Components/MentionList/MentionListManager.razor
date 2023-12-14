@@ -14,7 +14,7 @@
 @code {
     [Inject] protected IStateFactory StateFactory { get; init; } = null!;
 
-    [Parameter] public ISearchProvider<MentionSearchResult> SearchProvider { get; set; } = TestMentionSearchProvider.Instance;
+    [Parameter, EditorRequired] public ISearchProvider<MentionSearchResult> SearchProvider { get; set; } = null!;
     [Parameter] public int Limit { get; set; } = 100;
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
