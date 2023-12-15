@@ -9,7 +9,6 @@
 
 @if (m.IsActive()) {
     <NavbarButton
-        Tooltip="Create"
         data-bubble="@(BubbleRef.New<CreateChatBubble>())"
         data-bubble-priority="201"
         data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
