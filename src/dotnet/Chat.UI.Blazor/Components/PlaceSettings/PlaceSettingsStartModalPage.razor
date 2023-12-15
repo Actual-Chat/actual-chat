@@ -127,11 +127,11 @@
     private PlaceId PlaceId { get; set; }
 
     protected override void OnInitialized() {
-        base.OnInitialized();
         PlaceId = Context.GetTypedModel<PlaceId>();
         Context.SetTitle("Edit place settings");
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
         Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+        base.OnInitialized();
     }
 
     protected override async Task OnInitializedAsync() {

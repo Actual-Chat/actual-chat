@@ -57,9 +57,6 @@
 .left-panel-content-header .c-ending {
     @apply flex-x items-center;
 }
-.left-panel-content-header .menu .btn {
-    @apply w-8;
-}
 .left-panel-content > .download-app-banner {
     @apply px-2 pt-2;
 }
