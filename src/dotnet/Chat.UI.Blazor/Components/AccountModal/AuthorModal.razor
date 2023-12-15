@@ -92,7 +92,7 @@
         var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
         EditChatMemberModel? editMemberModel = null;
-        var canEditMembers = chat != null && chat.Rules.CanEditMembers();
+        var canEditMembers = chat != null && Hub.EditMembersUI.CanEditMembers(chat);
         if (canEditMembers)
             editMemberModel = await EditChatMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
 
