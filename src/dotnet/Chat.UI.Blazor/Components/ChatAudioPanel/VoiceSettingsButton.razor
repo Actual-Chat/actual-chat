@@ -2,10 +2,12 @@
 @using ActualChat.Audio.UI.Blazor.Components
 @using Stl.CommandR.Internal
 
-<ButtonRound
-    Class="transcription-options-btn" Click="@OnClick">
-    <i class="icon-options-2"></i>
-</ButtonRound>
+<div class="language-wrapper">
+    <ButtonRound
+        Class="transcription-options-btn" Click="@OnClick">
+        <i class="icon-options-2"></i>
+    </ButtonRound>
+</div>
 
 @code {
     [Inject] private ModalUI ModalUI { get; init; } = null!;
