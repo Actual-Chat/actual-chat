@@ -2,21 +2,33 @@
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Users
 @namespace ActualChat.Chat.UI.Blazor.Components
-@inherits OwnAccountComponentBase
+@inherits ComputedStateComponent<NavbarButtons.Model>
 @{
     var m = State.Value;
+    var ownAccount = m.OwnAccount;
 }
 
-@if (m.IsActive()) {
-    <NavbarButton
-        data-bubble="@(BubbleRef.New<CreateChatBubble>())"
-        data-bubble-priority="201"
-        data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
-        data-menu="@(MenuRef.New<CreateMenu>().ToString())"
-        data-menu-trigger="@MenuTrigger.Primary"
-        data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
-        <i class="icon-plus text-2xl font-medium"></i>
-    </NavbarButton>
+@if (ownAccount.IsActive()) {
+    @if (m.EnablePlacesUI) {
+        <NavbarButton
+            data-bubble="@(BubbleRef.New<CreateChatBubble>())"
+            data-bubble-priority="201"
+            data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
+            data-menu="@(MenuRef.New<CreateMenu>().ToString())"
+            data-menu-trigger="@MenuTrigger.Primary"
+            data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+            <i class="icon-plus text-2xl font-medium"></i>
+        </NavbarButton>
+    } else {
+        <NavbarButton
+            Tooltip="Create"
+            data-bubble="@(BubbleRef.New<CreateChatBubble>())"
+            data-bubble-priority="201"
+            data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
+            Click="OnCreateChatClick">
+            <i class="icon-plus text-2xl font-medium"></i>
+        </NavbarButton>
+    }
 }
 
 <NavbarGroupSelectionButton
@@ -31,9 +43,11 @@
     </BadgeContent>
 </NavbarGroupSelectionButton>
 
-<NavbarPlaceButtons />
+@if (m.EnablePlacesUI) {
+    <NavbarPlaceButtons/>
+}
 
-@if (m.IsAdmin) {
+@if (ownAccount.IsAdmin) {
     <NavbarGroupSelectionButton
         Title="Administration"
         Id="@NavbarGroupIds.Administration"
@@ -49,7 +63,7 @@
         <i class="icon-alert-triangle text-2xl font-medium"></i>
     </NavbarGroupSelectionButton>
 
-    @if (m.IsAdmin) {
+    @if (ownAccount.IsAdmin) {
         <NavbarButton
             Class="mt-auto"
             Tooltip="Reload UI"
@@ -60,6 +74,29 @@
 }
 
 @code {
+    [Inject] protected UIHub Hub { get; init; } = null!;
+    protected AccountUI AccountUI => Hub.AccountUI;
+    protected HostInfo HostInfo => Hub.HostInfo();
+    protected Features Features => Hub.Features();
+    protected ModalUI ModalUI => Hub.ModalUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new (AccountUI.OwnAccount.Value, false),
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        return new Model(ownAccount, enableIncompleteUI);
+    }
+
+    private Task OnCreateChatClick()
+        => ModalUI.Show(new NewChatModal.Model(PlaceId.None));
+
     private void OnReloadUIClick()
         => Services.GetRequiredService<ReloadUI>().Reload();
+
+    public record Model(AccountFull OwnAccount, bool EnablePlacesUI);
 }
