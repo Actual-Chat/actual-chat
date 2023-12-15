@@ -1,10 +1,11 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
 @using ActualChat.Search
-@inherits ComputedStateComponent<EditMembersModalPage.ComputedModel>
+@inherits ComputedStateComponent<EditPlaceMembersModalPage.ComputedModel>
+
 @{
     var m = State.Value;
     Context.SetTitle($"{m.MembersCount} members");
-    Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
+    Context.ModalDataBag.Set(nameof(PlaceSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
 }
 
 <TileItem Click="@OnInviteClick">
@@ -25,7 +26,7 @@
         var statusText = FormatStatusText(isOwner, isOwn);
         /* At the moment there is no available actions for owners and own membership hence do not show menu  */
         var showMenu = !(isOwn || isOwner);
-        var dataMenuAttr = showMenu ? MenuRef.New<EditMemberMenu>(authorId).ToString() : null;
+        var dataMenuAttr = showMenu ? MenuRef.New<EditPlaceMemberMenu>(authorId).ToString() : null;
         <li data-menu="@dataMenuAttr"
             data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
             <div class="grow">
@@ -53,18 +54,16 @@
 
 @code {
     private SearchPhrase _searchPhrase = SearchPhrase.None;
-    private ChatId ChatId { get; set; }
+    private PlaceId PlaceId { get; set; }
 
-    [Inject] private IAuthors Authors { get; init; } = null!;
-    [Inject] private IRoles Roles { get; init; } = null!;
-    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private IPlaces Places => Hub.Places;
+    private Session Session => Hub.Session();
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
     protected override void OnInitialized() {
-        ChatId = Context.GetTypedModel<ChatId>();
-        if (ChatId.IsPeerChat(out _))
-            throw StandardError.NotSupported("Peer chat id should not be provided.");
+        PlaceId = Context.GetTypedModel<PlaceId>();
         Context.SetClass("edit-members");
         Context.RegisterButtons(DialogButtonInfo.BackButton);
         base.OnInitialized();
@@ -79,18 +78,18 @@
         => new() {
             InitialValue = new ComputedModel {
                 // Try to use stored members count to avoid header title blinking.
-                MembersCount = Context.ModalDataBag.Get(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), 1)
+                MembersCount = Context.ModalDataBag.Get(nameof(PlaceSettingsStartModalPage.ComputedModel.MembersCount), 1)
             },
             Category = GetStateCategory(),
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var allAuthorIds = await Authors.ListAuthorIds(Session, ChatId, cancellationToken);
-        var ownerIds = await Roles.ListOwnerIds(Session, ChatId, cancellationToken);
-        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken);
+        var allAuthorIds = await Places.ListAuthorIds(Session, PlaceId, cancellationToken);
+        var ownerIds = await Places.ListOwnerIds(Session, PlaceId, cancellationToken);
+        var ownAuthor = await Places.GetOwn(Session, PlaceId, cancellationToken);
         var authors = (await allAuthorIds
             .Select(async authorId => {
-                var authorTask = Authors.Get(Session, ChatId, authorId, cancellationToken);
+                var authorTask = Places.Get(Session, PlaceId, authorId, cancellationToken);
                 var author = await authorTask.ConfigureAwait(false);
                 var authorName = author?.Avatar.Name ?? "";
                 return (authorId, authorName);
@@ -120,7 +119,7 @@
     }
 
     private void OnInviteClick()
-        => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(ChatId));
+        => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(PlaceId));
 
     private static string? FormatStatusText(bool isOwner, bool isOwn) {
         var statusText = isOwner ? "Owner" : null;

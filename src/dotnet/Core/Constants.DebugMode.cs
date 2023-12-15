@@ -23,6 +23,9 @@ public static partial class Constants
         public static readonly bool ChatUI = false;
         public static readonly bool ContactsUI = false;
 
+        // UI components
+        public static readonly bool ChatListComponents = false;
+
         // Audio
         public static readonly bool WebMReader = false;
         public static readonly bool AudioSource = false;

@@ -31,9 +31,10 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
 
         // Scoped / Blazor Circuit services
         services.AddScoped(c => new ChatUIHub(c));
-        services.AddScoped(_ => new NavbarUI());
+        services.AddScoped(c => new NavbarUI(c));
         services.AddScoped(c => new PanelsUI(c.UIHub()));
         services.AddScoped(c => new AuthorUI(c.ChatUIHub()));
+        services.AddScoped(c => new EditMembersUI(c.ChatUIHub()));
         services.AddScoped<IAudioOutputController>(c => new AudioOutputController(c.UIHub()));
         services.AddScoped(c => new CachingKeyedFactory<IChatMarkupHub, ChatId, ChatMarkupHub>(c, 256).ToGeneric());
 
@@ -82,8 +83,10 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
             .Add<AvatarSelectModal.Model, AvatarSelectModal>()
             .Add<VoiceSettingsModal.Model, VoiceSettingsModal>()
             .Add<ChatSettingsModal.Model, ChatSettingsModal>()
+            .Add<PlaceSettingsModal.Model, PlaceSettingsModal>()
             .Add<AddMemberModal.Model, AddMemberModal>()
             .Add<NewChatModal.Model, NewChatModal>()
+            .Add<NewPlaceModal.Model, NewPlaceModal>()
             .Add<OnboardingModal.Model, OnboardingModal>()
             .Add<PhoneVerificationModal.Model, PhoneVerificationModal>()
             .Add<SettingsModal.Model, SettingsModal>()

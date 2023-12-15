@@ -15,6 +15,7 @@ public partial class ChatUI
             AsyncChainExt.From(NavigateToFixedSelectedChat),
             AsyncChainExt.From(ResetHighlightedEntry),
             AsyncChainExt.From(PushKeepAwakeState),
+            AsyncChainExt.From(SynchronizeSelectedChatIdAndActivePlaceId),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -118,6 +119,102 @@ public partial class ChatUI
         }
         finally {
             cts.CancelAndDisposeSilently();
+        }
+    }
+
+    private async Task SynchronizeSelectedChatIdAndActivePlaceId(CancellationToken cancellationToken)
+    {
+        await WhenLoaded.ConfigureAwait(false);
+        var restoreTask = RestoreSelectedPlace(cancellationToken);
+        var synchronizeSelectedChatIdsTask = SynchronizeSelectedChatIds();
+        await Task.WhenAll(restoreTask, synchronizeSelectedChatIdsTask).ConfigureAwait(false);
+        await UpdateSelectedChatWhenPlaceChanged(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task SynchronizeSelectedChatIds()
+    {
+        await _selectedChatIds.WhenRead.ConfigureAwait(false);
+        lock(_lock) {
+            var value = _selectedChatIds.Value;
+            if (_pendingSelectedChatIdChanges != null) {
+                // Selected chat ids are not loaded yet.
+                foreach (var chatId in _pendingSelectedChatIdChanges)
+                    value = SetItem(value, chatId);
+            }
+            _pendingSelectedChatIdChanges = null;
+            if (!Equals(_selectedChatIds.Value, value))
+                _selectedChatIds.Value = value;
+        }
+    }
+
+    private async Task RestoreSelectedPlace(CancellationToken cancellationToken)
+    {
+        try {
+            var selectedChatId = await SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+            if (selectedChatId.IsNone)
+                return;
+
+            if (!selectedChatId.IsPlaceChat)
+                return;
+
+            var placeId = selectedChatId.PlaceId;
+            var chat = await Chats.Get(Session, selectedChatId, cancellationToken).ConfigureAwait(false);
+            if (chat == null)
+                placeId = PlaceId.None;
+            Place? place = null;
+            if (!placeId.IsNone)
+                place = await Hub.Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+
+            await Hub.Dispatcher.InvokeAsync(() => {
+                    if (place == null)
+                        SelectChat(ChatId.None);
+                    else
+                        Hub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), place.Title);
+                })
+                .ConfigureAwait(false);
+        }
+        finally {
+            _whenActivePlaceRestored.TrySetResult();
+        }
+    }
+
+    private async Task UpdateSelectedChatWhenPlaceChanged(CancellationToken cancellationToken)
+    {
+        var cValueBase = await Computed
+            .Capture(() => SelectedPlaceId.Use(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var changes = cValueBase.Changes(cancellationToken);
+        await foreach (var cValue in changes.ConfigureAwait(false)) {
+            var placeId = cValue.Value;
+            var selectedChatId = SelectedChatId.Value;
+            if (placeId == selectedChatId.PlaceId)
+                continue;
+
+            var selectedChatIds = SelectedChatIds.Value;
+            if (selectedChatIds.TryGetValue(placeId, out var lastSelectedChatId)) {
+                Chat? readChat = null;
+                if (!lastSelectedChatId.IsNone)
+                    readChat = await Chats.Get(Session, lastSelectedChatId, cancellationToken).ConfigureAwait(false);
+                if (readChat == null)
+                    lastSelectedChatId = ChatId.None;
+            }
+
+            if (lastSelectedChatId == ChatId.None)
+                DebugLog?.LogDebug("ResetSelectedChatOnPlaceChange");
+            else
+                DebugLog?.LogDebug("Restoring SelectedChatOnPlace. ChatId: '{ChatId}'", lastSelectedChatId);
+
+            await Hub.Dispatcher.InvokeAsync(async () => {
+                    SelectChat(lastSelectedChatId);
+                    if (!lastSelectedChatId.IsNone && Hub.PanelsUI.IsWide()) {
+                        // Do not navigate on narrow screen to prevent hiding panels
+                        // Navigate to selected chat only after delay to make ChatLists update smoother.
+                        await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
+                        if (SelectedChatId.Value == lastSelectedChatId)
+                            await Hub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
+                    }
+                })
+                .ConfigureAwait(false);
         }
     }
 }

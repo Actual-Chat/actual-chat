@@ -1,0 +1,23 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits MenuBase
+
+<MenuEntry
+    Icon="icon-conversation"
+    Text="New chat"
+    Click="OnCreateChatClick">
+</MenuEntry>
+<MenuEntry
+    Icon="icon-people"
+    Text="New Place"
+    Click="OnCreatePlaceClick">
+</MenuEntry>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private void OnCreateChatClick()
+        => Hub.ModalUI.Show(new NewChatModal.Model(Hub.ChatUI.SelectedPlaceId.Value));
+
+    private void OnCreatePlaceClick()
+        => Hub.ModalUI.Show(new NewPlaceModal.Model());
+}

@@ -1,0 +1,241 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using System.ComponentModel.DataAnnotations
+@using ActualChat.Media
+@inherits ComputedStateComponent<PlaceSettingsStartModalPage.ComputedModel>
+
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, ComputedModel.Loading))
+        return;
+
+    if (m.Place == null || !m.Place.Rules.CanEditProperties()) {
+        Context.Close();
+        return;
+    }
+    if (_form == null)
+        return;
+    Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
+}
+
+<Form Class="h-full" @ref="@_formRef" Model="@_form">
+    @{
+        _submitButtonInfo.CanExecute = _formRef?.IsValid ?? false;
+    }
+    <FormBlock>
+        <DataAnnotationsValidator/>
+
+        <PicUpload
+            UploadUrl="@_form.ImageUploadUrl"
+            Size="@SquareSize.Size24"
+            Title="@_form.Title"
+            Picture="@_form.Picture"
+            AvatarKind="@AvatarKind.Marble"
+            AvatarKey="@PlaceId.Value"
+            Picked="@OnImagePicked"/>
+
+        <FormSection Class="field-chat-title" For="() => _form.Title" InputId="@_form.TitleId" IsLabelInsideInput="true">
+            <TextBox
+                @bind-Value="@_form.Title"
+                Id="@_form.TitleId"
+                Placeholder="Place title*"
+                ClearButton="true"/>
+        </FormSection>
+    </FormBlock>
+
+    <FormBlock Title="Place type">
+        <InputRadioGroup Name="chat_type" DisplayName="Place type" @bind-Value="_form.IsPublic">
+            <TileItem>
+                <Icon>
+                    <FormRadio id="@_form.IsPublicTrueFormId" Value="@true" />
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public place"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this chat by navigating to its URL"></Label>
+                </Caption>
+            </TileItem>
+            <TileItem>
+                <Icon>
+                    <FormRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private place"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
+                </Caption>
+            </TileItem>
+        </InputRadioGroup>
+    </FormBlock>
+
+
+    @if (_form.IsPublic) {
+        @if (m.Link is { } publicUrl) {
+            _form.PublicUrl = publicUrl.ShortLocalUrl;
+            <FormBlock>
+                <TileItem Class="field-chat-public-url">
+                    <Icon>
+                        <i class="icon-link-2"></i>
+                    </Icon>
+                    <Content>
+                        <FormSection For="() => _form.PublicUrl" InputId="@_form.PublicUrlFormId"
+                                     Label="Public link" IsLabelInsideInput="true">
+                            <TextBox @bind-Value="@_form.PublicUrl" Id="@_form.PublicUrlFormId" readonly/>
+                        </FormSection>
+                    </Content>
+                    <Right>
+                        <CopyToClipboard Text="@publicUrl.AbsoluteUrl"/>
+                    </Right>
+                </TileItem>
+            </FormBlock>
+        }
+    }
+
+    @if (m.Place.Rules.CanEditMembers()) {
+        <FormBlock>
+            <TileItem Class="item-manage-members" Click="OnManageMembersClick">
+                    <Icon>
+                        <i class="icon-people"></i>
+                    </Icon>
+                    <Content>
+                        @m.MembersCount Members
+                    </Content>
+                    <Right>
+                        <i class="icon-chevron-right text-3xl"></i>
+                    </Right>
+                </TileItem>
+        </FormBlock>
+    }
+</Form>
+
+
+
+@code {
+    private Form?_formRef;
+    private FormModel? _form;
+    private DialogButtonInfo _submitButtonInfo = null!;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+    [Inject] private DiffEngine DiffEngine { get; init; } = null!;
+
+    private Session Session => Hub.Session(); // Shortcut
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    private PlaceId PlaceId { get; set; }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        PlaceId = Context.GetTypedModel<PlaceId>();
+        Context.SetTitle("Edit place settings");
+        _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Save", OnSubmit);
+        Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
+    }
+
+    protected override async Task OnInitializedAsync() {
+        const string formBagKey = "form";
+        _form = Context.PageDataBag.Get<FormModel>(formBagKey);
+        if (_form != null)
+            return;
+
+        var place = await Hub.Places.Get(Session, PlaceId, default).Require();
+        _form = new FormModel(ComponentIdGenerator) {
+            Title = place.Title,
+            Picture = place.Picture?.ToPicture(),
+            IsPublic = place.IsPublic,
+            ImageUploadUrl = $"/api/chat-media/{place.Id.ToRootChatId()}/upload",
+        };
+        Context.PageDataBag.Set(formBagKey, _form);
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = ComputedModel.Loading,
+            UpdateDelayer = FixedDelayer.Instant,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var place = await Hub.Places.Get(Session, PlaceId, cancellationToken);
+        if (place == null || !place.Rules.CanEditProperties())
+            return new ComputedModel { Place = place };
+
+        var allAuthorIds = await Hub.Places.ListAuthorIds(Session, place.Id, cancellationToken);
+        var link = Links.Chat(place.Id.ToRootChatId()).ToDisplayUrl(Hub.UrlMapper());
+        return new() {
+            Place = place,
+            Link = link,
+            MembersCount = allAuthorIds.Count,
+            IsOwner = place.Rules.IsOwner(),
+        };
+    }
+
+    private void OnImagePicked(MediaContent mediaContent) {
+        _form!.Picture = new (mediaContent);
+        StateHasChanged();
+    }
+
+    private void OnManageMembersClick()
+        => Context.StepIn(DiveInDialogPage.New<EditPlaceMembersModalPage>(PlaceId));
+
+    private async Task OnSubmit() {
+        if (_formRef == null)
+            return;
+        if (!_formRef.IsValid)
+            return;
+        await Save();
+        Context.Close();
+    }
+
+    private async Task Save() {
+        var place = await Hub.Places.Get(Session, PlaceId, default).Require();
+        var newPlace = place with {
+            Title = _form!.Title,
+            IsPublic = _form.IsPublic,
+            MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
+            };
+        var command = new Places_Change(Session, place.Id, place.Version, new() {
+            Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
+        });
+        await Hub.UICommander().Run(command);
+    }
+
+    public sealed class FormModel {
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+
+        public string PublicUrl { get; set; } = "";
+        public Picture? Picture { get; set; }
+        public bool IsPublic { get; set; }
+        public string ImageUploadUrl { get; init; } = "";
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string PictureFormId { get; }
+        public string PublicUrlFormId { get; }
+        public string IsPublicFormId { get; }
+        public string IsPublicTrueFormId { get; }
+        public string IsPublicFalseFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("edit-place-form");
+            TitleId = $"{FormId}-title";
+            PictureFormId = $"{FormId}-picture";
+            PublicUrlFormId = $"{FormId}-public-url";
+            IsPublicFormId = $"{FormId}-is-public";
+            IsPublicTrueFormId = IsPublicFormId + "-true";
+            IsPublicFalseFormId = IsPublicFormId + "-false";
+        }
+    }
+
+    public sealed record ComputedModel {
+        public static readonly ComputedModel Loading = new();
+
+        public Place? Place { get; init; }
+        public int MembersCount { get; init; }
+        public DisplayUrl? Link { get; init; }
+        public bool IsOwner { get; init; }
+    }
+}

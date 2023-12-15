@@ -16,7 +16,7 @@
     <p class="my-2">Parsed: <code>@_parsedMarkup</code></p>
 
     <div class="relative">
-        <MentionListManager Limit="5">
+        <MentionListManager Limit="5" SearchProvider="@TestMentionSearchProvider.Instance">
             <MarkupEditor
                 @ref="_editorRef"
                 MentionNamer="@_chatMarkupHub.MentionNamer"

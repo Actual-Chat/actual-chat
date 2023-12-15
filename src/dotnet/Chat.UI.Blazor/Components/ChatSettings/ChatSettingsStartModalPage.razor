@@ -17,6 +17,7 @@
         return;
 
     Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
+    var isPlaceChat = m.Chat.Id.IsPlaceChat;
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -108,70 +109,86 @@
         </FormBlock>
     }
 
-    <FormBlock>
-        @if (_isAdmin && _form.IsPublic) {
-            <TileItem Class="field-allow-guest">
-                <Icon>
-                    <i class="icon-guest"></i>
-                </Icon>
-                <Content>
-                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
-                </Content>
-                <Caption>
-                    <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
-                </Caption>
-                <Right>
-                    <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
-                </Right>
-            </TileItem>
-        }
-        <TileItem Class="field-allow-anonym">
-            <Icon>
-                <i class="icon-question-mark-bubble"></i>
-            </Icon>
-            <Content>
-                <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
-            </Content>
-            <Caption>
-                <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
-            </Caption>
-            <Right>
-                <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
-            </Right>
-        </TileItem>
-    </FormBlock>
-    @if (m.AllowEditIsTemplate && _form.IsPublic) {
+    @if (!isPlaceChat) {
         <FormBlock>
-            <TileItem Class="field-is-template">
+            @if (_isAdmin && _form.IsPublic) {
+                <TileItem Class="field-allow-guest">
+                    <Icon>
+                        <i class="icon-guest"></i>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Visitors can join without signing in"></Label>
+                    </Content>
+                    <Caption>
+                        <Label InputId="@_form.AllowGuestAuthorsFormId" Text="Spam messages are more likely if this option is enabled"></Label>
+                    </Caption>
+                    <Right>
+                        <ToggleEdit Id="@_form.AllowGuestAuthorsFormId" @bind-Value="_form.AllowGuestAuthors"/>
+                    </Right>
+                </TileItem>
+            }
+            <TileItem Class="field-allow-anonym">
                 <Icon>
-                    <i class="icon-file-text"></i>
+                    <i class="icon-question-mark-bubble"></i>
                 </Icon>
                 <Content>
-                    <Label InputId="@_form.IsTemplateFormId" Text="Use chat as a template"></Label>
+                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Allow to join anonymously"></Label>
                 </Content>
                 <Caption>
-                    <Label InputId="@_form.IsTemplateFormId" Text="Template for embedded chats"></Label>
+                    <Label InputId="@_form.AllowAnonymousAuthorsFormId" Text="Signed-in users can join this chat without revealing their identity"></Label>
                 </Caption>
                 <Right>
-                    <ToggleEdit Id="@_form.IsTemplateFormId" @bind-Value="_form.IsTemplate"/>
+                    <ToggleEdit Id="@_form.AllowAnonymousAuthorsFormId" @bind-Value="_form.AllowAnonymousAuthors"/>
                 </Right>
             </TileItem>
         </FormBlock>
+        @if (m.AllowEditIsTemplate && _form.IsPublic) {
+            <FormBlock>
+                <TileItem Class="field-is-template">
+                    <Icon>
+                        <i class="icon-file-text"></i>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_form.IsTemplateFormId" Text="Use chat as a template"></Label>
+                    </Content>
+                    <Caption>
+                        <Label InputId="@_form.IsTemplateFormId" Text="Template for embedded chats"></Label>
+                    </Caption>
+                    <Right>
+                        <ToggleEdit Id="@_form.IsTemplateFormId" @bind-Value="_form.IsTemplate"/>
+                    </Right>
+                </TileItem>
+            </FormBlock>
+        }
     }
 
     @if (m.Chat.Rules.CanEditMembers()) {
         <FormBlock>
-            <TileItem Class="item-manage-members" Click="OnManageMembersClick">
-                <Icon>
-                    <i class="icon-people"></i>
-                </Icon>
-                <Content>
-                    @m.MembersCount Members
-                </Content>
-                <Right>
-                    <i class="icon-chevron-right text-3xl"></i>
-                </Right>
-            </TileItem>
+            @if (!m.Chat.IsPublicPlaceChat()) {
+                <TileItem Class="item-manage-members" Click="OnManageMembersClick">
+                    <Icon>
+                        <i class="icon-people"></i>
+                    </Icon>
+                    <Content>
+                        @m.MembersCount Members
+                    </Content>
+                    <Right>
+                        <i class="icon-chevron-right text-3xl"></i>
+                    </Right>
+                </TileItem>
+            } else {
+                <TileItem Class="item-manage-members">
+                    <Icon>
+                        <i class="icon-people"></i>
+                    </Icon>
+                    <Content>
+                        @m.MembersCount Members
+                    </Content>
+                    <Caption>
+                        Use place settings to edit members
+                    </Caption>
+                </TileItem>
+            }
 
             @if (m.IsOwner) {
                 var leaveTitle = m.CanDelete ? "Delete chat" : "Leave chat";
@@ -295,7 +312,7 @@
     }
 
     private void OnManageMembersClick()
-        => Context.StepIn(DiveInDialogPage.New<EditMembersModalPage>(ChatId));
+        => Context.StepIn(DiveInDialogPage.New<EditChatMembersModalPage>(ChatId));
 
     private async void OnLeaveGroupClick(ComputedModel m) {
         if (m.Chat == null)
@@ -328,12 +345,13 @@
 
     private async Task Save() {
         var chat = await Hub.Chats.Get(Session, ChatId, default).Require();
+        var isPlaceChat = chat.Id.IsPlaceChat;
         var newChat = chat with {
             Title = _form!.Title,
             IsPublic = _form.IsPublic,
-            IsTemplate = _form.IsTemplate,
-            AllowGuestAuthors = _form.AllowGuestAuthors,
-            AllowAnonymousAuthors = _form.AllowAnonymousAuthors,
+            IsTemplate = !isPlaceChat && _form.IsTemplate,
+            AllowGuestAuthors = !isPlaceChat && _form.AllowGuestAuthors,
+            AllowAnonymousAuthors = !isPlaceChat && _form.AllowAnonymousAuthors,
             MediaId = _form.Picture?.MediaContent?.MediaId ?? MediaId.None,
             };
         var command = new Chats_Change(Session, chat.Id, chat.Version, new() {

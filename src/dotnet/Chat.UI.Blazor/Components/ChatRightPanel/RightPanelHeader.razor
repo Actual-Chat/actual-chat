@@ -28,7 +28,7 @@
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
             }
-            @if (Chat.CanInvite()) {
+            @if (ChatContext.Hub.EditMembersUI.CanAddMembers(Chat)) {
                 <ButtonRound Class="btn-md" Click="@OnInviteClick">
                     <i class="icon-person-add text-2xl"></i>
                 </ButtonRound>

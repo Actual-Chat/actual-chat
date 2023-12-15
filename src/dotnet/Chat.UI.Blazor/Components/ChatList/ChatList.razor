@@ -2,8 +2,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatList.Model>
 @{
-    // ChatUI.Services.LogFor(GetType()).LogDebug("Rendered: {List}", Kind);
     var m = _rendered = State.Value;
+    DebugLog?.LogDebug("Rendered: {List}, ChatCount={ChatCount}", Kind, m.ChatCount);
     if (m is { ChatCount: 0, IsSearchModeOn: false })
         return;
 }
@@ -29,31 +29,34 @@
     @* ChatListKind.All *@
     <div class="chat-list chat-list-all">
         @for (var i = 0; i < m.ChatCount; i++) {
-            if (i == 0) {
-                <ChatListItem
-                    ListKind="@Kind"
-                    Index="@i"
-                    data-bubble="@(BubbleRef.New<ChatListItemBubble>())"
-                    data-bubble-priority="204"
-                    data-bubble-placement="@(FloatingPosition.Bottom.ToPositionString())"/>
-
-            } else {
-                <ChatListItem ListKind="@Kind" Index="@i"/>
-            }
+            <ChatListItem ListKind="@Kind" Index="@i"/>
         }
     </div>
 }
 
 @code {
     private Model _rendered;
+    private ILogger? _log;
 
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private SearchUI SearchUI => Hub.SearchUI;
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }
+
+    protected override void OnInitialized() {
+        DebugLog?.LogDebug("Initialized: {List}", Kind);
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet() {
+        DebugLog?.LogDebug("OnParametersSet: {List}", Kind);
+        base.OnParametersSet();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -62,11 +65,15 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        DebugLog?.LogDebug("-> ComputeState: {List}", Kind);
         var chatCount = await ChatListUI.GetCount(Kind);
-        if (Kind != ChatListKind.Active)
+        if (Kind != ChatListKind.Active) {
+            DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}", Kind, chatCount);
             return new Model(chatCount);
+        }
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        DebugLog?.LogDebug("<- ComputeState: {List}. Count={Count}", Kind, chatCount);
         return new Model(chatCount, !searchPhrase.IsEmpty);
     }
 

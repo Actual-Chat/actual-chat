@@ -1,8 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<ChatListItem.Model>
 @{
-    // ChatUI.Services.LogFor(GetType()).LogDebug("Rendered: {ListKind} #{Index}", ListKind, Index);
     var m = State.Value;
+    DebugLog?.LogDebug("Rendered: {ListKind} #{Index}, ChatId='{ChatId}'", ListKind, Index, m.ChatState.Id);
     if (m == Model.None)
         return;
 
@@ -17,13 +17,14 @@
     <ChatListItemSkeleton />
 }
 else {
+    var attributes = ListKind == ChatListKind.All && Index == 0 ? FirstItemAttributes : NoneAttributes;
     <NavbarItem
         Url="@($"/chat/{chat.Id}")"
         ReplaceOnPrefix="/chat/"
         IsSelected="@(chatState.IsSelected && ListKind != ChatListKind.Active)"
         data-menu="@(MenuRef.New<ChatMenu>(chat.Id, ListKind.Format()).ToString())"
         data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())"
-        @attributes="@Attributes">
+        @attributes="@attributes">
         <ChildContent>
             <div class="c-container">
                 <ChatIcon Chat="chatState.Chat"/>
@@ -96,16 +97,44 @@ else {
 }
 
 @code {
-    [Inject] private ChatUI ChatUI { get; init; } = null!;
-    [Inject] private ChatListUI ChatListUI { get; init; } = null!;
-    [Inject] private SearchUI SearchUI { get; init; } = null!;
+    // Settings data-bubble attributes inside a component instead providing them from ChatList as additional attributes,
+    // allows to avoid unnecessary OnParametersSet call during rendering ChatList and correspondingly
+    // it allows to avoid extra ComputeState call and Rendering.
+    private static readonly Dictionary<string, object> FirstItemAttributes = new() {
+        { "data-bubble", BubbleRef.New<ChatListItemBubble>() },
+        { "data-bubble-priority", 204 },
+        { "data-bubble-placement", FloatingPosition.Bottom.ToPositionString() },
+    };
+    private static readonly Dictionary<string, object> NoneAttributes = new();
 
-    [CascadingParameter] public ScreenSize ScreenSize { get; init; }
+    private ILogger? _log;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
+
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
+    private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
     [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;
     [Parameter, EditorRequired] public int Index { get; init; }
-    [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> Attributes { get; set; } = new();
+
+    // public ChatListItem() {
+    //     Options = ComputedStateComponentOptions.RecomputeOnParametersSet;
+    // }
+
+    protected override void OnInitialized() {
+
+        DebugLog?.LogDebug("Initialized: {ListKind} #{Index}", ListKind, Index);
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet() {
+        DebugLog?.LogDebug("OnParametersSet: {ListKind} #{Index}", ListKind, Index);
+        base.OnParametersSet();
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -115,32 +144,44 @@ else {
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
     {
+        DebugLog?.LogDebug("-> ComputeState: {ListKind} #{Index}", ListKind, Index);
         // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
         // Properties are copied to local vars because of this.
         var listKind = ListKind;
         var index = Index;
 
-        var chatId = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
-        if (chatId.IsNone)
-            return Model.Loading;
+        var (indexIsValid, chatId) = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
+        if (chatId.IsNone) {
+            if (indexIsValid) {
+                DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, Loading", ListKind, Index);
+                return Model.Loading;
+            }
+            DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, ChatId is None", ListKind, Index);
+            return Model.None;
+        }
 
         var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chatInfo == null)
+        if (chatInfo == null) {
+            DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, No ChatInfo", ListKind, Index);
             return Model.None;
+        }
 
         var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
-        if (chatState == null)
+        if (chatState == null) {
+            DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, No ChatState", ListKind, Index);
             return Model.None;
+        }
 
         var isLastItemInBlock = false;
         if (chatState.Contact.IsPinned && listKind == ChatListKind.All) {
-            var nextChatId = await ChatListUI.GetItem(listKind, index + 1).ConfigureAwait(false);
+            var (_, nextChatId) = await ChatListUI.GetItem(listKind, index + 1).ConfigureAwait(false);
             var nextChatInfo = nextChatId.IsNone ? null
                 : await ChatUI.Get(nextChatId, cancellationToken).ConfigureAwait(false);
             if (nextChatInfo != null)
                 isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
         }
 
+        DebugLog?.LogDebug("<- ComputeState: {ListKind} #{Index}, OK, ChatId={ChatId}", ListKind, Index, chatId);
         return new Model {
             ChatState = chatState,
             IsLastItemInBlock = isLastItemInBlock,

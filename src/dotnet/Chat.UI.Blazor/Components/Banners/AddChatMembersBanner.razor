@@ -28,13 +28,15 @@
     private AccountSettings AccountSettings => ChatContext.Hub.AccountSettings();
     private ChatListUI ChatListUI => ChatContext.Hub.ChatListUI;
     private ModalUI ModalUI => ChatContext.Hub.ModalUI;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private EditMembersUI EditMembersUI => ChatContext.Hub.EditMembersUI;
+    private ILogger Log => _log ??= ChatContext.Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override void OnInitialized() {
         var chatId = Chat.Id;
-        var key = $"AddChatMembersBanner_Dismissed_{chatId.Value}";
+        var dismissChatId = Chat is { Kind: ChatKind.Place,IsPublic: true } ? Chat.Id.PlaceId.ToRootChatId() :  chatId;
+        var key = $"AddChatMembersBanner_Dismissed_{dismissChatId.Value}";
         _dismissed = StateFactory.NewKvasStored<bool>(new(AccountSettings, key));
         base.OnInitialized();
     }
@@ -49,7 +51,7 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         if (!_dismissed.WhenRead.IsCompleted)
             await _dismissed.WhenRead;
-        if (!Chat.CanInvite())
+        if (!EditMembersUI.CanAddMembers(Chat))
             return false;
 
         var dismissed = await _dismissed.Use(cancellationToken);
@@ -63,8 +65,8 @@
         var hasRegularMembers = allAuthorIds.Except(ownerIds).Any();
         if (hasRegularMembers)
             return false;
-        var peopleContacts = await ChatListUI.ListAllUnordered(ChatListFilter.People, cancellationToken);
-        return peopleContacts.Count > 0;
+
+        return await EditMembersUI.HaveMembersToAdd(Chat);
     }
 
     // Event handlers

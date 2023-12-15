@@ -10,6 +10,10 @@ public interface IContacts : IComputeService
     Task<Contact?> GetForChat(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod(MinCacheDuration = 300)]
     Task<ApiArray<ContactId>> ListIds(Session session, CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 300)]
+    Task<ApiArray<PlaceId>> ListPlaceIds(Session session, CancellationToken cancellationToken);
+    [ComputeMethod(MinCacheDuration = 300)]
+    Task<ApiArray<ContactId>> ListIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken);

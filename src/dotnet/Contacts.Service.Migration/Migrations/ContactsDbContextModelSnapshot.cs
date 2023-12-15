@@ -17,7 +17,7 @@ namespace ActualChat.Contacts.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "7.0.12")
+                .HasAnnotation("ProductVersion", "8.0.0")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -40,6 +40,10 @@ namespace ActualChat.Contacts.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("owner_id");
+
+                    b.Property<string>("PlaceId")
+                        .HasColumnType("text")
+                        .HasColumnName("place_id");
 
                     b.Property<DateTime>("TouchedAt")
                         .HasColumnType("timestamp with time zone")
@@ -142,6 +146,36 @@ namespace ActualChat.Contacts.Migrations
                         .HasDatabaseName("ix_external_contact_links_value");
 
                     b.ToTable("external_contact_links");
+                });
+
+            modelBuilder.Entity("ActualChat.Contacts.Db.DbPlaceContact", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("PlaceId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("place_id");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_place_contacts");
+
+                    b.HasIndex("OwnerId")
+                        .HasDatabaseName("ix_place_contacts_owner_id");
+
+                    b.ToTable("place_contacts");
                 });
 
             modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>

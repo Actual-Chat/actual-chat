@@ -1,0 +1,147 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Search
+@inherits ComputedStateComponent<EditChatMembersModalPage.ComputedModel>
+@{
+    var m = State.Value;
+    Context.SetTitle($"{m.MembersCount} members");
+    Context.ModalDataBag.Set(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), m.MembersCount);
+}
+
+<TileItem Click="@OnInviteClick">
+    <Icon><i class="text-2xl icon-person-add text-primary"></i></Icon>
+    <Content><span class="text-primary">Add members</span></Content>
+</TileItem>
+
+<SearchBox
+    Class="icon-alight-right"
+    Placeholder="Search"
+    MaxLength="@Constants.Chat.MaxSearchFilterLength"
+    TextChanged="@OnFilter"/>
+
+<div class="list">
+    @foreach (var authorId in m.AuthorIds) {
+        var isOwn = m.IsOwn(authorId);
+        var isOwner = m.IsOwner(authorId);
+        var statusText = FormatStatusText(isOwner, isOwn);
+        /* At the moment there is no available actions for owners and own membership hence do not show menu  */
+        var showMenu = !(isOwn || isOwner);
+        var dataMenuAttr = showMenu ? MenuRef.New<EditChatMemberMenu>(authorId).ToString() : null;
+        <li data-menu="@dataMenuAttr"
+            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+            <div class="grow">
+                <AuthorBadge
+                    @key="@authorId"
+                    AuthorSid="@authorId"
+                    ShowPresence="true"
+                    ShowStatusText="@(statusText != null)"
+                    StatusText="@statusText" />
+            </div>
+            @if (dataMenuAttr != null) {
+                <div class="menu"
+                     data-menu="@dataMenuAttr"
+                     data-menu-trigger="@MenuTrigger.Primary"
+                     data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
+
+                    <ButtonRound Class="blackout" ContentClass="!bg-transparent">
+                        <i class="icon-more-vertical text-2xl"></i>
+                    </ButtonRound>
+                </div>
+            }
+        </li>
+    }
+</div>
+
+@code {
+    private SearchPhrase _searchPhrase = SearchPhrase.None;
+    private ChatId ChatId { get; set; }
+
+    [Inject] private IAuthors Authors { get; init; } = null!;
+    [Inject] private IRoles Roles { get; init; } = null!;
+    [Inject] private Session Session { get; init; } = null!;
+
+    [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        ChatId = Context.GetTypedModel<ChatId>();
+        if (ChatId.IsPeerChat(out _))
+            throw StandardError.NotSupported("Peer chat id should not be provided.");
+        Context.SetClass("edit-members");
+        Context.RegisterButtons(DialogButtonInfo.BackButton);
+        base.OnInitialized();
+    }
+
+    private void OnFilter(string filter) {
+        _searchPhrase = filter.ToSearchPhrase(true, false);
+        _ = State.Recompute();
+    }
+
+    protected override ComputedState<ComputedModel>.Options GetStateOptions()
+        => new() {
+            InitialValue = new ComputedModel {
+                // Try to use stored members count to avoid header title blinking.
+                MembersCount = Context.ModalDataBag.Get(nameof(ChatSettingsStartModalPage.ComputedModel.MembersCount), 1)
+            },
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
+        var allAuthorIds = await Authors.ListAuthorIds(Session, ChatId, cancellationToken);
+        var ownerIds = await Roles.ListOwnerIds(Session, ChatId, cancellationToken);
+        var ownAuthor = await Authors.GetOwn(Session, ChatId, cancellationToken);
+        var authors = (await allAuthorIds
+            .Select(async authorId => {
+                var authorTask = Authors.Get(Session, ChatId, authorId, cancellationToken);
+                var author = await authorTask.ConfigureAwait(false);
+                var authorName = author?.Avatar.Name ?? "";
+                return (authorId, authorName);
+            })
+            .Collect()) // Add concurrency
+            .ToList();
+
+        if (_searchPhrase.IsEmpty) {
+            Comparison<(AuthorId, string)> comparison = (info1, info2)
+                => OrdinalCompare(info1.Item2, info2.Item2);
+            authors.Sort(comparison);
+        } else {
+            authors = authors
+                .WithSearchMatchRank(_searchPhrase, c => c.authorName)
+                .FilterBySearchMatchRank()
+                .OrderBySearchMatchRank()
+                .WithoutSearchMatchRank()
+                .ToList();
+        }
+
+        return new() {
+            MembersCount = allAuthorIds.Count,
+            AuthorIds = authors.Select(c => c.Item1).ToApiArray(),
+            OwnerIds = ownerIds,
+            OwnAuthorId = ownAuthor!.Id,
+        };
+    }
+
+    private void OnInviteClick()
+        => Context.StepIn(DiveInDialogPage.New<AddMemberModalPage>(ChatId));
+
+    private static string? FormatStatusText(bool isOwner, bool isOwn) {
+        var statusText = isOwner ? "Owner" : null;
+        if (isOwn) {
+            if (statusText != null)
+                statusText += ", your profile";
+            else
+                statusText = "Your profile";
+        }
+        return statusText;
+    }
+
+    public sealed record ComputedModel {
+        public int MembersCount { get; init; }
+        public ApiArray<AuthorId> AuthorIds { get; init; }
+        public ApiArray<AuthorId> OwnerIds { get; init; }
+        public AuthorId OwnAuthorId { get; init; }
+
+        public bool IsOwner(AuthorId authorId)
+            => OwnerIds.Contains(authorId);
+        public bool IsOwn(AuthorId authorId)
+            => OwnAuthorId.Equals(authorId);
+    }
+}

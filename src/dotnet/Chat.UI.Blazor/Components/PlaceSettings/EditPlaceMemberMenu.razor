@@ -1,5 +1,5 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedMenuBase<EditMemberModel?>
+@inherits ComputedMenuBase<EditPlaceMemberModel?>
 
 @{
     var m = State.Value;
@@ -8,7 +8,7 @@
     var statusText = m.IsOwner ? "Owner" : null;
 }
 
-<div class="edit-member-menu">
+<div class="edit-member-menu edit-place-member-menu">
 
     <AuthorBadge
         AuthorSid="@AuthorId"
@@ -24,27 +24,27 @@
                 <div class="flex-y">
                     <div>Promote to Owner</div>
                     <div class="ac-menu-hint">
-                        Owners can do anything with this chat, including deleting it. This action cannot be undone.
+                        Owners can do anything with this place, including deleting it. This action cannot be undone.
                     </div>
                 </div>
             </TextContent>
         </MenuEntry>
     }
 
-    @if (!m.CanRemoveFromGroup) {
+    @if (m.CanRemoveFromGroup) {
         <MenuEntrySeparator/>
         <MenuEntry
             Class="warning-item"
             Icon="icon-minus-circle"
-            Text="Remove from group"
-            Click="@(() => OnRemoveFromGroupClick(m.Author))">
+            Text="Remove from place"
+            Click="@(() => OnRemoveFromPlaceClick(m.Author))">
         </MenuEntry>
     }
 
 </div>
 
 @code {
-    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ChatUIHub Chat { get; init; } = null!;
 
     private AuthorId AuthorId { get; set; }
 
@@ -56,14 +56,14 @@
         await base.OnParametersSetAsync();
     }
 
-    protected override Task<EditMemberModel?> ComputeState(CancellationToken cancellationToken)
-        => EditMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
+    protected override Task<EditPlaceMemberModel?> ComputeState(CancellationToken cancellationToken)
+        => EditPlaceMemberCommands.ComputeState(Chat, AuthorId, cancellationToken);
 
-    private Task OnRemoveFromGroupClick(Author author)
-        => EditMemberCommands.OnRemoveFromGroupClick(Hub, author);
+    private Task OnRemoveFromPlaceClick(Author author)
+        => EditPlaceMemberCommands.OnRemoveFromPlaceClick(Chat, author);
 
     private async Task OnPromoteToOwnerClick(Author author) {
         await WhenClosed;
-        await EditMemberCommands.OnPromoteToOwnerClick(Hub, author);
+        await EditPlaceMemberCommands.OnPromoteToOwnerClick(Chat, author);
     }
 }

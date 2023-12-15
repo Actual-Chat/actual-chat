@@ -1,0 +1,69 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedMenuBase<EditChatMemberModel?>
+
+@{
+    var m = State.Value;
+    if (m == null)
+        return;
+    var statusText = m.IsOwner ? "Owner" : null;
+}
+
+<div class="edit-member-menu edit-chat-member-menu">
+
+    <AuthorBadge
+        AuthorSid="@AuthorId"
+        ShowPresence="true"
+        ShowStatusText="@(statusText != null)"
+        StatusText="@statusText"/>
+
+    @if (m.CanPromoteToOwner) {
+        <MenuEntry
+            Icon="icon-star"
+            Click="@(() => OnPromoteToOwnerClick(m.Author))">
+            <TextContent>
+                <div class="flex-y">
+                    <div>Promote to Owner</div>
+                    <div class="ac-menu-hint">
+                        Owners can do anything with this chat, including deleting it. This action cannot be undone.
+                    </div>
+                </div>
+            </TextContent>
+        </MenuEntry>
+    }
+
+    @if (m.CanRemoveFromGroup) {
+        <MenuEntrySeparator/>
+        <MenuEntry
+            Class="warning-item"
+            Icon="icon-minus-circle"
+            Text="Remove from group"
+            Click="@(() => OnRemoveFromGroupClick(m.Author))">
+        </MenuEntry>
+    }
+
+</div>
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private AuthorId AuthorId { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var sAuthorId ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        AuthorId = new AuthorId(sAuthorId);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override Task<EditChatMemberModel?> ComputeState(CancellationToken cancellationToken)
+        => EditChatMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
+
+    private Task OnRemoveFromGroupClick(Author author)
+        => EditChatMemberCommands.OnRemoveFromGroupClick(Hub, author);
+
+    private async Task OnPromoteToOwnerClick(Author author) {
+        await WhenClosed;
+        await EditChatMemberCommands.OnPromoteToOwnerClick(Hub, author);
+    }
+}

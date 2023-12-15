@@ -8,7 +8,7 @@
 <FormBlock>
     <ContactSelector
         @ref="@_contactSelectorRef"
-        Filter="ChatListFilter.People"
+        Filter="@_filter"
         Changed="StateHasChanged"
         SearchPhrase="_searchPhrase">
         <SearchBox
@@ -40,20 +40,45 @@
 @code {
     private ContactSelector? _contactSelectorRef;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
-
+    private ChatListFilter _filter = ChatListFilter.People;
+    private ChatId _chatId;
 
     private IReadOnlyDictionary<ChatId, ChatInfo> AllChats
         => _contactSelectorRef?.AllChats.Value ?? ImmutableDictionary<ChatId, ChatInfo>.Empty;
     private IReadOnlySet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public EventCallback<bool> Skipped { get; set; }
     [Parameter, EditorRequired] public EventCallback<bool> Completed { get; set; }
+
+    protected override void OnInitialized() {
+        _chatId = ChatId.Parse(ChatSid);
+        if (_chatId.IsPlaceChat) {
+            // This filter is applicable only to private chat of a place.
+            // For public chats of a place this step should be skipped.
+            var placeId = _chatId.PlaceId;
+            var membersState = Hub.StateFactory().NewMutable<ApiArray<UserId>>();
+            _filter = new ChatListFilter(Guid.NewGuid().ToString(), "Place contacts", PlaceMembersFilter);
+            _ = FillInMembersState();
+
+            bool PlaceMembersFilter(ChatInfo info) {
+                if (info.Chat.Kind is not ChatKind.Peer)
+                    return false;
+                var userId = info.Contact.UserId;
+                var members = membersState.Use().Result;
+                return members.Contains(userId);
+            }
+
+            async Task FillInMembersState() {
+                var userIds = await Hub.Authors.ListUserIds(Hub.Session(), placeId.ToRootChatId(), default).ConfigureAwait(false);
+                membersState.Value = userIds;
+            }
+        }
+    }
 
     private void OnFilter(string filter) {
         _searchPhrase = filter.ToSearchPhrase(true, false);
@@ -68,8 +93,8 @@
             .Select(c => c.Id)
             .ToArray();
         if (userIds.Length != 0) {
-            var createAuthorsCommand = new Authors_Invite(Session, new ChatId(ChatSid), userIds);
-            var (_, error) = await UICommander.Run(createAuthorsCommand);
+            var createAuthorsCommand = new Authors_Invite(Hub.Session(), new ChatId(ChatSid), userIds);
+            var (_, error) = await Hub.UICommander().Run(createAuthorsCommand);
             if (error != null)
                 return;
         }

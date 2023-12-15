@@ -1,0 +1,75 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits MenuBase
+
+<MenuEntry
+    Class="important-item"
+    Icon="icon-plus"
+    Text="New chat"
+    Click="OnCreateChatClick">
+</MenuEntry>
+<MenuEntry
+    Class="important-item"
+    Icon="icon-person-add"
+    Text="Invite members"
+    Click="OnInviteMembersClick">
+</MenuEntry>
+<MenuEntry
+    Icon="icon-edit"
+    Text="Settings"
+    Click="OnPlaceSettingsClick">
+</MenuEntry>
+@if (!_isOwner) {
+    return;
+}
+<MenuEntrySeparator />
+<MenuEntry
+    Class="warning-item"
+    Icon="icon-log-out"
+    Text="Leave place & delete"
+    Click="OnPlaceDeleteClick">
+</MenuEntry>
+
+@code {
+    private PlaceId _placeId;
+    private bool _isOwner;
+
+    [Inject] private ChatUIHub Chat { get; init; } = null!;
+
+    protected override async Task OnParametersSetAsync() {
+        if (Arguments is not [ var placeSid ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _placeId = new PlaceId(placeSid);
+        var place = await Chat.Places.Get(Chat.Session(), _placeId, default).ConfigureAwait(false);
+        _isOwner = place?.Rules.IsOwner() ?? false;
+    }
+
+    private void OnCreateChatClick()
+        => Chat.ModalUI.Show(new NewChatModal.Model(_placeId));
+
+    private void OnInviteMembersClick()
+        => _ = Chat.ModalUI.Show(new AddMemberModal.Model(_placeId));
+
+    private void OnPlaceSettingsClick()
+        => _ = Chat.ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
+
+    private async Task OnPlaceDeleteClick() {
+        var (_, error) = await Chat.UICommander().Run(new Places_Delete(Chat.Session(), _placeId));
+        if (error != null)
+            return;
+        Chat.NavbarUI.SelectGroup(NavbarGroupIds.Chats, NavbarGroupIds.ChatsTitle);
+
+        // TODO(DF): Dummy code. Foreseen something better to synchronize selected Nav group and Url.
+        await Task.Delay(500);
+        await Chat.Dispatcher.InvokeAsync(
+            async () => {
+                var selectedChatId = Chat.ChatUI.SelectedChatId.Value;
+                if (selectedChatId.PlaceId == _placeId) {
+                    // Force selected chat and url change if they still refer to the removed place.
+                    Chat.ChatUI.SelectChat(ChatId.None);
+                    await Chat.History.NavigateTo(Links.Chats);
+                }
+            })
+            .ConfigureAwait(false);
+    }
+}

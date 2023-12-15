@@ -7,7 +7,9 @@ public interface IContactsBackend : IComputeService
     [ComputeMethod]
     Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<ContactId>> ListIds(UserId ownerId, CancellationToken cancellationToken);
+    Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -15,7 +17,11 @@ public interface IContactsBackend : IComputeService
     [CommandHandler]
     Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken);
     [CommandHandler]
+    Task OnRemoveChatContacts(ContactsBackend_RemoveChatContacts command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnGreet(ContactsBackend_Greet command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnChangePlaceMembership(ContactsBackend_ChangePlaceMembership command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -40,6 +46,20 @@ public sealed partial record ContactsBackend_RemoveAccount(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_RemoveChatContacts(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId
+) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
 public sealed partial record ContactsBackend_Greet(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
+) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_ChangePlaceMembership(
+    [property: DataMember, MemoryPackOrder(0)] UserId OwnerId,
+    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
+    [property: DataMember, MemoryPackOrder(2)] bool HasLeft
 ) : ICommand<Unit>, IBackendCommand;

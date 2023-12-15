@@ -72,6 +72,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices) : HostMod
         fusion.AddService<IChatsBackend, ChatsBackend>();
         commander.AddService<IChatsUpgradeBackend, ChatsUpgradeBackend>();
 
+        // Places
+        fusion.AddService<IPlaces, Places>();
+
         // Authors
         fusion.AddService<IAuthors, Authors>();
         fusion.AddService<IAuthorsBackend, AuthorsBackend>();

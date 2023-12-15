@@ -39,6 +39,7 @@
 @code {
     private SearchBox _searchBoxRef = null!;
     private DialogButtonInfo _submitButtonInfo = null!;
+    private IBackend _backend = null!;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
@@ -46,7 +47,6 @@
     private IAuthors Authors => Hub.Authors;
     private UICommander UICommander => Hub.UICommander();
 
-    private ChatId ChatId { get; set; } // Shortcut
     private string Filter { get; set; } = "";
     private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
     private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
@@ -62,13 +62,18 @@
     protected override async Task OnInitializedAsync() {
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Add", OnAdd);
         _submitButtonInfo.CanExecute = false;
-        ChatId = Context.GetTypedModel<ChatId>();
+        if (Context.Model is ChatId chatId)
+            _backend = new ChatBackend(Hub, chatId);
+        else if (Context.Model is PlaceId placeId)
+            _backend = new PlaceBackend(Hub, placeId);
+        else
+            throw StandardError.NotSupported("Not supported model type");
         Context.SetTitle("Add members");
         Context.SetClass("add-member-modal-content");
         Context.RegisterButtons(DialogButtonInfo.CancelButton, _submitButtonInfo);
 
         var existingUserIds = new HashSet<UserId>(
-            await Authors.ListUserIds(Session, ChatId, DisposeToken));
+            await _backend.ListUserIds(Session, DisposeToken));
 
         var userContacts = await Contacts.ListUserContacts(Session, DisposeToken);
         var contacts = userContacts
@@ -122,8 +127,7 @@
             .Where(x => !x.IsExisting && x.IsChecked)
             .Select(x => x.Account.Id)
             .ToArray();
-        var createAuthorsCommand = new Authors_Invite(Session, ChatId, userIds);
-        var (_, error) = await UICommander.Run(createAuthorsCommand, DisposeToken);
+        var error = await _backend.Invite(Session, userIds, DisposeToken);
         if (error != null)
             return;
 
@@ -139,5 +143,32 @@
         public Account Account { get; init; } = null!;
         public bool IsExisting { get; init; }
         public bool IsChecked { get; set; }
+    }
+
+    private interface IBackend {
+        Task<ApiArray<UserId>> ListUserIds(Session session, CancellationToken cancellationToken);
+        Task<Exception?> Invite(Session session, UserId[] userIds, CancellationToken cancellationToken);
+    }
+
+    private class ChatBackend(ChatUIHub hub, ChatId chatId) : IBackend {
+        public async Task<ApiArray<UserId>> ListUserIds(Session session, CancellationToken cancellationToken)
+            => await hub.Authors.ListUserIds(session, chatId, cancellationToken);
+
+        public async Task<Exception?> Invite(Session session, UserId[] userIds, CancellationToken cancellationToken) {
+            var command = new Authors_Invite(session, chatId, userIds);
+            var (_, error) = await hub.UICommander().Run(command, cancellationToken);
+            return error;
+        }
+    }
+
+    private class PlaceBackend(ChatUIHub hub, PlaceId placeId) : IBackend {
+        public async Task<ApiArray<UserId>> ListUserIds(Session session, CancellationToken cancellationToken)
+            => await hub.Places.ListUserIds(session, placeId, cancellationToken);
+
+        public async Task<Exception?> Invite(Session session, UserId[] userIds, CancellationToken cancellationToken) {
+            var command = new Places_Invite(session, placeId, userIds);
+            var (_, error) = await hub.UICommander().Run(command, cancellationToken);
+            return error;
+        }
     }
 }

@@ -24,6 +24,8 @@
 @import './Components/Navbar/navbar.css';
 @import './Components/NavigateToUnreadOrEnd/navigate-to-unread-or-end.css';
 @import './Components/NewChat/new-chat-modal.css';
+@import './Components/NewPlace/new-place-modal.css';
+@import './Components/PlaceSettings/place-settings-modal.css';
 @import './Components/Notifications/notifications.css';
 @import './Components/LeftPanel/left-panel.css';
 @import './Components/MentionList/mention-list.css';

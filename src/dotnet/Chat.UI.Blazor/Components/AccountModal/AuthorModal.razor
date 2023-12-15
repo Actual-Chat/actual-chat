@@ -91,10 +91,10 @@
         var canStartPeerChat = await Hub.AuthorUI.CanStartPeerChat(AuthorId, cancellationToken);
         var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
-        EditMemberModel? editMemberModel = null;
+        EditChatMemberModel? editMemberModel = null;
         var canEditMembers = chat != null && chat.Rules.CanEditMembers();
         if (canEditMembers)
-            editMemberModel = await EditMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
+            editMemberModel = await EditChatMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
 
         return new ComputedModel() {
             Author = author,
@@ -158,7 +158,7 @@
         public Account OwnAccount { get; init; } = null!;
         public bool IsOwn => Account?.Id == OwnAccount.Id;
         public bool CanStartPeerChat { get; init; }
-        public EditMemberModel? EditMemberModel { get; init; }
+        public EditChatMemberModel? EditMemberModel { get; init; }
         public bool EnableIncompleteUI { get; init; }
     }
 

@@ -14,8 +14,13 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private readonly SharedResourcePool<Symbol, ISyncedState<ReadPosition>> _readPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
     private readonly IStoredState<ChatId> _selectedChatId;
+    private readonly IMutableState<PlaceId> _selectedPlaceId;
+    private readonly IStoredState<IImmutableDictionary<PlaceId, ChatId>> _selectedChatIds;
     private readonly IMutableState<ChatEntryId> _highlightedEntryId;
     private ChatId _searchEnabledChatId;
+    private readonly object _lock = new();
+    private readonly TaskCompletionSource _whenActivePlaceRestored = TaskCompletionSourceExt.New();
+    private List<ChatId>? _pendingSelectedChatIdChanges = new ();
 
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
     private IUserPresences UserPresences => Hub.UserPresences;
@@ -34,16 +39,29 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private UICommander UICommander => Hub.UICommander();
     private UIEventHub UIEventHub => Hub.UIEventHub();
+    private NavbarUI NavbarUI { get; }
 
     public IState<ChatId> SelectedChatId => _selectedChatId;
+    public IState<PlaceId> SelectedPlaceId => _selectedPlaceId;
+    public IState<IImmutableDictionary<PlaceId, ChatId>> SelectedChatIds => _selectedChatIds;
     public IState<ChatEntryId> HighlightedEntryId => _highlightedEntryId;
     public Task WhenLoaded => _selectedChatId.WhenRead;
+    public Task WhenActivePlaceRestored => _whenActivePlaceRestored.Task;
 
     public ChatUI(ChatUIHub hub) : base(hub)
     {
+        NavbarUI = Hub.Services.GetRequiredService<NavbarUI>();
+        NavbarUI.SelectedGroupChanged += NavbarUIOnSelectedGroupChanged;
+
         var type = GetType();
         _selectedChatId = StateFactory.NewKvasStored<ChatId>(new(LocalSettings, nameof(SelectedChatId)) {
             Corrector = FixSelectedChatId,
+        });
+        _selectedPlaceId = StateFactory.NewMutable(
+            PlaceId.None,
+            StateCategories.Get(type, nameof(SelectedPlaceId)));
+        _selectedChatIds = StateFactory.NewKvasStored<IImmutableDictionary<PlaceId, ChatId>>(new (LocalSettings, nameof(SelectedChatIds)) {
+            InitialValue = ImmutableDictionary<PlaceId, ChatId>.Empty
         });
         _highlightedEntryId = StateFactory.NewMutable(
             ChatEntryId.None,
@@ -262,8 +280,21 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                 return false;
 
             _selectedChatId.Value = chatId;
+            SaveSelectedChatIds(chatId);
         }
         // The rest is done by InvalidateSelectedChatDependencies
+        return true;
+    }
+
+    public bool SelectPlace(PlaceId placeId)
+    {
+        lock (_lock) {
+            if (_selectedPlaceId.Value == placeId)
+                return false;
+
+            _selectedPlaceId.Value = placeId;
+        }
+        // The rest is done by SynchronizeSelectedChatIdAndActivePlaceId
         return true;
     }
 
@@ -365,5 +396,61 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                 Category = StateCategories.Get(GetType(), nameof(ChatPositions), "[*]"),
             }
         ));
+    }
+
+    private void SaveSelectedChatIds(ChatId chatId)
+    {
+        // Is executing under _lock;
+        if (_pendingSelectedChatIdChanges != null) {
+            // Postpone _selectedChatIds update till _selectedChatIds is read.
+            _pendingSelectedChatIdChanges.Add(chatId);
+            return;
+        }
+        _selectedChatIds.Value = SetItem(_selectedChatIds.Value, chatId);
+    }
+
+    private static IImmutableDictionary<PlaceId, ChatId> SetItem(IImmutableDictionary<PlaceId, ChatId> selectedChatIds, ChatId chatId)
+        => selectedChatIds.SetItem(chatId.PlaceId, chatId);
+
+    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
+    {
+        var placeId = PlaceId.None;
+        var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || NavbarUI.IsPlaceSelected(out placeId);
+        if (!isChats)
+            return;
+        if (SelectPlace(placeId))
+            return;
+        // It's the same place, lets ensure that selected chat is displayed.
+        _ = EnsureSelectedChatIsDisplayed();
+
+        async Task EnsureSelectedChatIsDisplayed(CancellationToken cancellationToken = default)
+        {
+            try {
+                var lastSelectedChatId = SelectedChatId.Value;
+                if (lastSelectedChatId.IsNone)
+                    return;
+
+                var chat = await Chats.Get(Session, lastSelectedChatId, cancellationToken)
+                    .ConfigureAwait(true); // Continue on the Blazor Dispatcher
+                if (SelectedChatId.Value != lastSelectedChatId)
+                    return;
+
+                if (chat == null) {
+                    SelectChat(ChatId.None);
+                    return;
+                }
+
+                if (!lastSelectedChatId.IsNone && Hub.PanelsUI.IsWide()) {
+                    // Do not navigate on narrow screen to prevent hiding panels
+                    // Navigate to selected chat only after delay to make ChatLists update smoother.
+                    await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
+                    if (SelectedChatId.Value == lastSelectedChatId)
+                        await Hub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
+                }
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Failed to navigate to selected chat");
+            }
+        }
     }
 }

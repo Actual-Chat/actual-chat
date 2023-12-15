@@ -13,22 +13,26 @@
         data-bubble="@(BubbleRef.New<CreateChatBubble>())"
         data-bubble-priority="201"
         data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
-        Click="OnCreateChatClick">
+        data-menu="@(MenuRef.New<CreateMenu>().ToString())"
+        data-menu-trigger="@MenuTrigger.Primary"
+        data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
         <i class="icon-plus text-2xl font-medium"></i>
     </NavbarButton>
 }
 
 <NavbarGroupSelectionButton
     Id="@NavbarGroupIds.Chats"
-    Title="Chats"
+    Title="@NavbarGroupIds.ChatsTitle"
     Tooltip="Chats">
     <ChildContent>
         <i class="icon-message-ellipse text-2xl font-medium"></i>
     </ChildContent>
     <BadgeContent>
-        <ChatsNavbarButtonBadge />
+        <ChatsNavbarButtonBadge PlaceSid="@PlaceId.None" />
     </BadgeContent>
 </NavbarGroupSelectionButton>
+
+<NavbarPlaceButtons />
 
 @if (m.IsAdmin) {
     <NavbarGroupSelectionButton
@@ -57,11 +61,6 @@
 }
 
 @code {
-    [Inject] private ModalUI ModalUI { get; init; } = null!;
-
-    private Task OnCreateChatClick()
-        => ModalUI.Show(new NewChatModal.Model());
-
     private void OnReloadUIClick()
         => Services.GetRequiredService<ReloadUI>().Reload();
 }

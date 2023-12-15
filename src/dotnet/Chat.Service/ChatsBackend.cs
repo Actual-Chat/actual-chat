@@ -80,6 +80,30 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiArray<ChatId>> GetPublicChatIdsFor(PlaceId placeId, CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var idPrefix = PlaceChatId.IdPrefix + placeId.Value;
+        var sChatIds = await dbContext.Chats
+            .Where(c => c.Id.StartsWith(idPrefix))
+            .Where(c => c.IsPublic)
+            .Select(c => c.Id)
+            .OrderBy(c => c)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        var placeChatIds = sChatIds
+            .Select(c => new PlaceChatId(c))
+            .Where(c => !c.IsRoot)
+            .ToArray();
+        return placeChatIds
+            .ToApiArray(c => (ChatId)c);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<AuthorRules> GetRules(
         ChatId chatId,
         PrincipalId principalId,
@@ -88,58 +112,11 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (chatId.IsPeerChat(out var peerChatId)) // We don't use actual roles to determine rules in this case
             return await GetPeerChatRules(peerChatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        // Group chat
-        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return AuthorRules.None(chatId);
+        if (chatId.IsPlaceChat && !chatId.PlaceChatId.IsRoot)
+            return await GetPlaceChatRules(chatId.PlaceChatId, principalId, cancellationToken).ConfigureAwait(false);
 
-        AuthorFull? author;
-        AccountFull? account;
-        if (principalId.IsUser(out var userId)) {
-            account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-                return AuthorRules.None(chatId);
-
-            author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
-        }
-        else if (principalId.IsAuthor(out var authorId)) {
-            author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
-            if (author == null)
-                return AuthorRules.None(chatId);
-
-            account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
-            if (account == null)
-                return AuthorRules.None(chatId);
-        }
-        else
-            return AuthorRules.None(chatId);
-
-        var roles = ApiArray<Role>.Empty;
-        var isJoined = author is { HasLeft: false };
-        if (isJoined) {
-            var isGuest = account.IsGuestOrNone;
-            var isAnonymous = author is { IsAnonymous: true };
-            roles = await RolesBackend
-                .List(chatId, author!.Id, isGuest, isAnonymous, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        var permissions = roles.ToPermissions();
-        if (chat.IsPublic) {
-            if (chatId != Constants.Chat.AnnouncementsChatId)
-                permissions |= ChatPermissions.Join;
-            if (!isJoined) {
-                var anyoneSystemRole = await RolesBackend.GetSystem(chatId, SystemRole.Anyone, cancellationToken).ConfigureAwait(false);
-                if (anyoneSystemRole != null) {
-                    // Full permissions of Anyone role are granted after you join,
-                    // but until you joined, we grant only a subset of these permissions.
-                    permissions |= anyoneSystemRole.Permissions & (ChatPermissions.Read | ChatPermissions.SeeMembers | ChatPermissions.Join);
-                }
-            }
-        }
-        permissions = permissions.AddImplied();
-
-        var rules = new AuthorRules(chatId, author, account, permissions);
-        return rules;
+        // Group chat or Root place chat
+        return await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -372,6 +349,8 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 _ = Get(invChat.Id, default);
                 if (invChat is { TemplateId: not null, TemplatedForUserId: not null })
                     _ = GetTemplatedChatFor(invChat.TemplateId.Value, invChat.TemplatedForUserId.Value, default);
+                if (invChat.Id.IsPlaceChat)
+                    _ = GetPublicChatIdsFor(invChat.Id.PlaceId, default);
             }
             return null!;
         }
@@ -389,12 +368,23 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         Chat chat;
         if (change.IsCreate(out var update)) {
             oldChat.RequireNull();
-            var chatKind = update.Kind ?? chatId.Kind;
+            var placeId = update.PlaceId ?? PlaceId.None;
+            var chatKind = update.Kind ?? (chatId.IsNone && !placeId.IsNone ? ChatKind.Place : chatId.Kind);
             if (chatKind == ChatKind.Group) {
                 if (chatId.IsNone)
                     chatId = new ChatId(Generate.Option);
                 else if (!Constants.Chat.SystemChatIds.Contains(chatId))
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+            }
+            else if (chatKind == ChatKind.Place) {
+                if (chatId.IsNone) {
+                    chatId = placeId.IsNone
+                        ? PlaceChatId.GetForRoot(new PlaceId(Generate.Option))
+                        : new PlaceChatId(placeId, Generate.Option);
+                }
+                else
+                    throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
+                update.ValidateForPlaceChat();
             }
             else if (chatKind != ChatKind.Peer)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.Kind.");
@@ -432,7 +422,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     .Collect()
                     .ConfigureAwait(false);
             }
-            else if (chatId.Kind == ChatKind.Group) {
+            else if (chatId.Kind == ChatKind.Group || chatId.Kind == ChatKind.Place) {
                 // Group chat
                 ownerId.Require("Command.OwnerId");
                 // If chat is created with possibility to join anonymous authors, then join owner as anonymous author.
@@ -491,6 +481,10 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         }
         else if (change.IsUpdate(out update)) {
             ownerId.RequireNone();
+            if (update.PlaceId.HasValue)
+                throw new ArgumentOutOfRangeException(nameof(command), "ChatDiff.PlaceId should be null.");
+            if (chatId.IsPlaceChat)
+                update.ValidateForPlaceChat();
             dbChat.RequireVersion(expectedVersion);
 
             chat = ApplyDiff(dbChat.ToModel(), update);
@@ -583,6 +577,10 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             case ChatKind.Peer:
                 if (!newChat.Title.IsNullOrEmpty())
                     throw StandardError.Constraint("Peer chat title must be empty.");
+                break;
+            case ChatKind.Place:
+                if (newChat.Title.IsNullOrEmpty())
+                    throw StandardError.Constraint("Place chat title must be empty.");
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat kind.");
@@ -924,6 +922,10 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (chat is { SystemTag.IsEmpty: false })
             return;
 
+        // and place public chats
+        if (chat != null && chat.Kind == ChatKind.Place && chat.IsPublic && !chat.Id.PlaceChatId.IsRoot)
+            return;
+
         // Let's delay fetching an author a bit
         Author? readAuthor = null;
         var retrier = new Retrier(5, RetryDelaySeq.Exp(0.25, 1));
@@ -1050,6 +1052,100 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return dbEntry;
+    }
+
+    protected virtual async Task<AuthorRules> GetRulesRaw(
+        ChatId chatId,
+        PrincipalId principalId,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return AuthorRules.None(chatId);
+
+        AuthorFull? author;
+        AccountFull? account;
+        if (principalId.IsUser(out var userId)) {
+            account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return AuthorRules.None(chatId);
+
+            author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+        }
+        else if (principalId.IsAuthor(out var authorId)) {
+            author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            if (author == null)
+                return AuthorRules.None(chatId);
+
+            account = await AccountsBackend.Get(author.UserId, cancellationToken).ConfigureAwait(false);
+            if (account == null)
+                return AuthorRules.None(chatId);
+        }
+        else
+            return AuthorRules.None(chatId);
+
+        var roles = ApiArray<Role>.Empty;
+        var isJoined = author is { HasLeft: false };
+        if (isJoined) {
+            var isGuest = account.IsGuestOrNone;
+            var isAnonymous = author is { IsAnonymous: true };
+            roles = await RolesBackend
+                .List(chatId, author!.Id, isGuest, isAnonymous, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        var permissions = roles.ToPermissions();
+        if (chat.IsPublic) {
+            if (chatId != Constants.Chat.AnnouncementsChatId)
+                permissions |= ChatPermissions.Join;
+            if (!isJoined) {
+                var anyoneSystemRole = await RolesBackend.GetSystem(chatId, SystemRole.Anyone, cancellationToken).ConfigureAwait(false);
+                if (anyoneSystemRole != null) {
+                    // Full permissions of Anyone role are granted after you join,
+                    // but until you joined, we grant only a subset of these permissions.
+                    permissions |= anyoneSystemRole.Permissions & (ChatPermissions.Read | ChatPermissions.SeeMembers | ChatPermissions.Join);
+                }
+            }
+        }
+        permissions = permissions.AddImplied();
+
+        var rules = new AuthorRules(chatId, author, account, permissions);
+        return rules;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<AuthorRules> GetPlaceChatRules(
+        PlaceChatId placeChatId,
+        PrincipalId principalId,
+        CancellationToken cancellationToken)
+    {
+        var chatId = (ChatId)placeChatId;
+        var chat = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return AuthorRules.None(chatId);
+
+        var rootChatId = placeChatId.PlaceId.ToRootChatId();
+        if (!principalId.IsUser(out var userId) && principalId.IsAuthor(out var authorId)) {
+            var rootAuthorId = new AuthorId(rootChatId, authorId.LocalId, AssumeValid.Option);
+            var rootAuthor = await AuthorsBackend.Get(rootChatId, rootAuthorId, cancellationToken).ConfigureAwait(false);
+            userId = rootAuthor?.UserId ?? default;
+        }
+
+        if (userId.IsNone)
+            return AuthorRules.None(chatId);
+
+        var account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
+        if (account == null)
+            return AuthorRules.None(chatId);
+
+        var rootChatPrincipalId = new PrincipalId(account.Id, AssumeValid.Option);
+        var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
+        if (chat.IsPublic)
+            return rootChatRules;
+
+        if (!rootChatRules.CanRead())
+            return AuthorRules.None(chatId);
+
+        return await GetRulesRaw(chatId, principalId, cancellationToken).ConfigureAwait(false);
     }
 
     // Private / internal methods

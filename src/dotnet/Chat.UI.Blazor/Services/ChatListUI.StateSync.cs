@@ -63,16 +63,26 @@ public partial class ChatListUI
         bool isCountChanged;
         var changedIndexes = new List<int>();
         var oldItems = GetItems(listKind);
+        int oldCount;
+        int newCount;
+
         lock (oldItems) {
+            oldCount = oldItems.Count;
+            newCount = newItems.Length;
             isCountChanged = oldItems.Count != newItems.Length;
             var commonLength = Math.Min(oldItems.Count, newItems.Length);
             for (int i = 0; i < commonLength; i++)
                 if (oldItems[i] != newItems[i])
                     changedIndexes.Add(i);
 
-            var maxLength = Math.Max(oldItems.Count, newItems.Length);
-            for (int i = commonLength; i < maxLength; i++)
-                changedIndexes.Add(i);
+            // If list is shrinking, do not invalidate items with index greater than new list length.
+            // It will prevent recalculating correspondent ChatListItem`s. They will anyway will
+            // be removed on ChatList re-render.
+            // If list is expanding, do invalidate items with index greater than old list length.
+            if (newItems.Length > oldItems.Count) {
+                for (int i = commonLength; i < newItems.Length; i++)
+                    changedIndexes.Add(i);
+            }
 
             oldItems.Clear();
             oldItems.AddRange(newItems);
@@ -82,9 +92,11 @@ public partial class ChatListUI
             return;
 
         using (Computed.Invalidate()) {
-            DebugLog?.LogDebug("PushItems({ListKind}): invalidating GetCount", listKind);
-            if (isCountChanged)
+            if (isCountChanged) {
+                DebugLog?.LogDebug("PushItems({ListKind}, {OldCount}->{NewCount}): invalidating GetCount",
+                    listKind, oldCount, newCount);
                 _ = GetCount(listKind);
+            }
 
             DebugLog?.LogDebug("PushItems({ListKind}): invalidating {Count} indexes: {Indexes}",
                 listKind, changedIndexes.Count, changedIndexes.ToDelimitedString());
@@ -100,7 +112,7 @@ public partial class ChatListUI
             .ConfigureAwait(false);
         var delaySeq = RetryDelaySeq.Exp(5, 120, 0, 2);
         while (true) {
-            if (!cItem0.ValueOrDefault.IsNone) {
+            if (!cItem0.ValueOrDefault.Item2.IsNone) {
                 // We're fine
                 await cItem0.WhenInvalidated(cancellationToken).ConfigureAwait(false);
                 await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
@@ -113,14 +125,14 @@ public partial class ChatListUI
             while (true) {
                 await Task.Delay(delaySeq[tryIndex], cancellationToken).ConfigureAwait(false);
                 cItem0 = await cItem0.Update(cancellationToken).ConfigureAwait(false);
-                if (!cItem0.ValueOrDefault.IsNone)
+                if (!cItem0.ValueOrDefault.Item2.IsNone)
                     break; // We're fine
 
                 // And it's still None after delay
                 Log.LogWarning($"{nameof(ResetPushIfStuck)}: chat list stuck in the loading state, invalidating...");
                 tryIndex++;
                 using (Computed.Invalidate())
-                    _ = ListAllUnorderedRaw(CancellationToken.None);
+                    _ = PseudoListAllUnorderedRawDependency();
             }
         }
     }
@@ -131,7 +143,7 @@ public partial class ChatListUI
             return; // skip tune notifications for mobile MAUI
 
         var cChatInfoMap = await Computed
-            .Capture(() => ListAllUnorderedRaw(cancellationToken), cancellationToken)
+            .Capture(() => ListOverallUnorderedRaw(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var previous = await cChatInfoMap.Use(cancellationToken).ConfigureAwait(false);
         var lastPlayedAt = CpuNow; // Skip tune after loading

@@ -13,6 +13,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
 {
     private IChats? _chats;
     private IChatPositions? _chatPositions;
+    private IPlaces? _places;
     private IMentions? _mentions;
     private IRoles? _roles;
     private IAuthors? _authors;
@@ -30,6 +31,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private ChatAudioUI? _chatAudioUI;
     private NotificationUI? _notificationUI;
     private LanguageUI? _languageUI;
+    private EditMembersUI? _editMembersUI;
     private ChatPlayers? _chatPlayers;
     private AudioSettings? _audioSettings;
     private AudioRecorder? _audioRecorder;
@@ -42,6 +44,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
 
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     public IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
+    public IPlaces Places => _places ??= Services.GetRequiredService<IPlaces>();
     public IMentions Mentions => _mentions ??= Services.GetRequiredService<IMentions>();
     public IAuthors Authors => _authors ??= Services.GetRequiredService<IAuthors>();
     public IReactions Reactions => _reactions ??= Services.GetRequiredService<IReactions>();
@@ -59,6 +62,7 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public ChatAudioUI ChatAudioUI => _chatAudioUI ??= Services.GetRequiredService<ChatAudioUI>();
     public NotificationUI NotificationUI => _notificationUI ??= Services.GetRequiredService<NotificationUI>();
     public LanguageUI LanguageUI => _languageUI ??= Services.GetRequiredService<LanguageUI>();
+    public EditMembersUI EditMembersUI => _editMembersUI ??= Services.GetRequiredService<EditMembersUI>();
     public ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     public AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     public AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();

@@ -1,0 +1,82 @@
+@using ActualChat.Search
+@using ActualChat.Chat
+@inherits FusionComponentBase
+@namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var selectedChatIds = SelectedChatIds;
+}
+
+<FormBlock>
+    <ContactSelector
+        @ref="@_contactSelectorRef"
+        Filter="ChatListFilter.People"
+        Changed="StateHasChanged"
+        SearchPhrase="_searchPhrase">
+        <SearchBox
+            Placeholder="Whom would you like to add?"
+            Class="icon-alight-right"
+            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+            TextChanged="@OnFilter"/>
+        <ContactSelectorBadges />
+        <ContactSelectorList/>
+    </ContactSelector>
+</FormBlock>
+
+<RenderIntoSlot Name="@ButtonsSlotName">
+    @if (selectedChatIds.Count > 0) {
+        <Button
+            Class="btn-modal btn-primary"
+            Click="@OnAdd">
+            Add @(selectedChatIds.Count) @("member".Pluralize(selectedChatIds.Count))
+        </Button>
+    } else {
+        <Button
+            Class="btn-modal btn-primary"
+            Click="@(() => Skipped.InvokeAsync(false))">
+            Skip
+        </Button>
+    }
+</RenderIntoSlot>
+
+@code {
+    private ContactSelector? _contactSelectorRef;
+    private SearchPhrase _searchPhrase = SearchPhrase.None;
+    private PlaceId _placeId;
+
+    private IReadOnlyDictionary<ChatId, ChatInfo> AllChats
+        => _contactSelectorRef?.AllChats.Value ?? ImmutableDictionary<ChatId, ChatInfo>.Empty;
+    private IReadOnlySet<ChatId> SelectedChatIds
+        => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
+
+    [Inject] private Session Session { get; init; } = null!;
+    [Inject] private UICommander UICommander { get; init; } = null!;
+
+    [Parameter, EditorRequired] public string PlaceSid { get; set; } = "";
+    [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
+    [Parameter, EditorRequired] public EventCallback<bool> Skipped { get; set; }
+    [Parameter, EditorRequired] public EventCallback<bool> Completed { get; set; }
+
+    protected override void OnInitialized()
+        => _placeId = PlaceId.Parse(PlaceSid);
+
+    private void OnFilter(string filter) {
+        _searchPhrase = filter.ToSearchPhrase(true, false);
+        StateHasChanged();
+    }
+
+    private async Task OnAdd() {
+        var allChats = AllChats;
+        var userIds = SelectedChatIds
+            .Select(chatId => allChats.GetValueOrDefault(chatId)?.Contact.Account)
+            .SkipNullItems()
+            .Select(c => c.Id)
+            .ToArray();
+        if (userIds.Length != 0) {
+            var createAuthorsCommand = new Places_Invite(Session, _placeId, userIds);
+            var (_, error) = await UICommander.Run(createAuthorsCommand);
+            if (error != null)
+                return;
+        }
+        await Completed.InvokeAsync(true);
+    }
+}

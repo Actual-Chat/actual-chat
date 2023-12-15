@@ -1,0 +1,160 @@
+﻿@using System.ComponentModel.DataAnnotations
+@inherits FusionComponentBase
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
+    <FormBlock>
+        <DataAnnotationsValidator/>
+
+        <PicUpload
+            UploadUrl="@UploadUrl"
+            Size="@SquareSize.Size24"
+            Title="@_form.Title"
+            Picture="@_form.Picture"
+            AvatarKind="@AvatarKind"
+            AvatarKey="@AvatarKey"
+            Picked="@OnImagePicked"/>
+
+        <FormSection
+            For="() => _form.Title"
+            Label="Name"
+            InputId="@_form.TitleId"
+            IsLabelInsideInput="true"
+            Class="!mt-0 grow"
+            IsRequired="true">
+            <TextBox
+                @bind-Value="@_form.Title"
+                Id="@_form.TitleId"
+                Autofocus="false"
+                Autocomplete="false"/>
+        </FormSection>
+    </FormBlock>
+    <FormBlock Title="Place type">
+        <InputRadioGroup Name="place_type" DisplayName="Place type" @bind-Value="_form.IsPublic">
+            <TileItem>
+                <Icon>
+                    <FormRadio Id="@_form.IsPublicTrueFormId" Value="@true"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Public place"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.IsPublicTrueFormId" Text="Anyone can join this place by navigating to its URL"></Label>
+                </Caption>
+            </TileItem>
+            <TileItem>
+                <Icon>
+                    <FormRadio Id="@_form.IsPublicFalseFormId" Value="@false"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Private place"></Label>
+                </Content>
+                <Caption>
+                    <Label InputId="@_form.IsPublicFalseFormId" Text="Can be joined only if you are invited / have an invite link"></Label>
+                </Caption>
+            </TileItem>
+        </InputRadioGroup>
+    </FormBlock>
+
+    <RenderIntoSlot Name="@ButtonsSlotName">
+        @if (ScreenSize.IsWide()) {
+            <Button
+                Click="@(() => Cancelled())"
+                Class="btn-modal">
+                Cancel
+            </Button>
+        }
+        <Button
+            Click="@OnCreate"
+            Type="@ButtonType.Button"
+            IsDisabled="@(!context.Validate())"
+            Class="btn-modal btn-primary">
+            Create
+        </Button>
+    </RenderIntoSlot>
+</Form>
+
+@code {
+    private static readonly string UploadUrl = "/api/avatars/upload-picture";
+    private static readonly AvatarKind AvatarKind = AvatarKind.Marble;
+    private static readonly string AvatarKey = "a-random-string";
+    private Form _formRef = null!;
+    private FormModel _form = null!;
+    private bool _isAdmin;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
+    [Parameter, EditorRequired] public Action<Place, Chat?> PlaceCreated { get; set; } = null!;
+    [Parameter, EditorRequired] public Action Cancelled { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _form = new(ComponentIdGenerator);
+        _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
+    }
+
+    private void OnImagePicked(MediaContent mediaContent) {
+        _form.Picture = new(mediaContent);
+        StateHasChanged();
+    }
+
+    private async Task OnCreate() {
+        if (!_formRef.IsValid)
+            return;
+        try {
+            var session = Hub.Session();
+            var createPlaceCommand = new Places_Change(session, default, default, new Change<PlaceDiff>() {
+                Create = new PlaceDiff {
+                    Title = _form.Title,
+                    IsPublic = _form.IsPublic,
+                    MediaId = _form.Picture?.MediaContent?.MediaId,
+                }
+            });
+
+            var (place, createPlaceError) = await Hub.UICommander().Run(createPlaceCommand, CancellationToken.None);
+            if (createPlaceError != null)
+                return;
+
+            place.Require();
+
+            // Create default chat. Later we should add place templates.
+            var createChatCommand = new Chats_Change(session, default, null, new() {
+                Create = new ChatDiff {
+                    Title = "General",
+                    Kind = null,
+                    IsPublic = true,
+                    MediaId = _form.Picture?.MediaContent?.MediaId,
+                    PlaceId = place.Id
+                },
+            });
+            var (chat, _) = await Hub.UICommander().Run(createChatCommand, CancellationToken.None);
+
+            PlaceCreated(place, chat);
+        }
+        catch { // Intended: command errors are shown in the UI anyway
+        }
+    }
+
+    public sealed class FormModel {
+        [Required, MinLength(1)]
+        public string Title { get; set; } = "";
+
+        public Picture? Picture { get; set; }
+        public bool IsPublic { get; set; }
+
+        public string FormId { get; }
+        public string TitleId { get; }
+        public string IsPublicTrueFormId { get; }
+        public string IsPublicFalseFormId { get; }
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("new-chat-form");
+            TitleId = $"{FormId}-title";
+            var isPublicFormId = $"{FormId}-is-public";
+            IsPublicTrueFormId = isPublicFormId + "-true";
+            IsPublicFalseFormId = isPublicFormId + "-false";
+        }
+    }
+}

@@ -1,7 +1,5 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
-@using ActualChat.UI.Blazor.Services
 @using ActualChat.Chat.UI.Blazor.Events
-@using ActualChat.Hosting
 @inherits StatefulComponentBase<IState<bool>>
 @{
     var canBeHidden = State.Value;
@@ -33,13 +31,12 @@
 </div>
 
 @code {
-    SearchBox? _searchBoxRef = null;
+    SearchBox? _searchBoxRef;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private PanelsUI PanelsUI => Hub.PanelsUI;
     private SearchUI SearchUI => Hub.SearchUI;
-    private ModalUI ModalUI => Hub.ModalUI;
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
