@@ -1,6 +1,7 @@
 Near term:
 
 Urgent fixes:
+- No notif / unread on a message from someone who's not in your contact list
 - Dark theme: fix Apple icon color on sign-in modal
 - ~~Logout doesn't work on Android & Windows apps; maybe iOS as well.~~ (Working on Dev, Prod update is required)
 - Theme should set text color + make sure all the issues w/ black on black in Dark theme are gone
@@ -11,6 +12,9 @@ Urgent fixes:
 - [?] SharedResourcePool must be IAsyncDisposable
 
 General:
+- iOS: render correct unread message counter on app icon
+  - See https://stackoverflow.com/questions/77007133/how-to-make-firebase-push-notification-increase-badge-count-when-receive-notific
+- Add open graph tags for /chat/xxx & u/xxx URLs
 - Web hook for posts
 - Historical playback speedup
 - New "Modal with tabs" - Andrey, you can start working on this somewhere in /test/
@@ -19,7 +23,6 @@ General:
   - Summary on your chat updates (list of chats & authors who posted there)
   - Summary on your activities (chats you wrote to, messages sent, the amount of time saved by talking, etc.)
 - Custom chat & account IDs (actual.chat/u/xxx URLs, + similar ones for chats - should be aliases requiring no redirect)
-- Add open graph tags for /chat/xxx & u/xxx URLs
 - Application tab: move Server/WASM mode there
 - Add "Auto" rendering mode (from .NET 8)
 - Add "Disable file system cache" option (+ explain it means it stores nearly nothing on the device)
