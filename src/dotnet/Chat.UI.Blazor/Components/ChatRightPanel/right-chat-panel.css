@@ -27,8 +27,8 @@
 }
 .right-panel-chat-info-item > .c-icon {
     @apply flex items-center justify-center;
-    @apply min-w-12 min-h-12;
-    @apply mr-3;
+    @apply min-h-12;
+    @apply ml-2 mr-4;
 }
 .right-panel-chat-info-item > .c-content {
     @apply flex-y self-center grow;
@@ -39,7 +39,7 @@
     @apply text-headline-1;
 }
 .right-panel-chat-info-item > .c-content > .c-hint {
-    @apply text-03 text-caption-2;
+    @apply text-03 text-caption-6;
 }
 .right-panel-chat-info-item > .c-right {
     @apply flex-x self-center;
@@ -73,7 +73,7 @@
     @apply absolute bottom-0 z-10;
     @apply flex-y items-start justify-end;
     @apply h-1/2 w-full;
-    @apply px-4;
+    @apply pr-4 pl-6;
     @apply bg-transparent;
 }
 .right-chat-panel > .c-header > .c-bottom  > .c-title {
