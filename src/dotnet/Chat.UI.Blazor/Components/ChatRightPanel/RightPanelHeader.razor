@@ -28,7 +28,7 @@
                     <i class="icon-edit text-2xl"></i>
                 </ButtonRound>
             }
-            @if (ChatContext.Hub.EditMembersUI.CanAddMembers(Chat)) {
+            @if (EditMembersUI.CanAddMembers(Chat)) {
                 <ButtonRound Class="btn-md" Click="@OnInviteClick">
                     <i class="icon-person-add text-2xl"></i>
                 </ButtonRound>
@@ -57,6 +57,7 @@
     private PanelsUI PanelsUI => ChatContext.Hub.PanelsUI;
     private ModalUI ModalUI => ChatContext.Hub.ModalUI;
     private ShareUI ShareUI => ChatContext.Hub.ShareUI;
+    private EditMembersUI EditMembersUI => ChatContext.Hub.EditMembersUI;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter] public ShareModalModel? ShareModel { get; set; }

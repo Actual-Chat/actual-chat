@@ -122,7 +122,13 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (chat == null)
             return null;
 
-        var author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        AuthorFull? author;
+        if (!chat.Id.IsPlaceChat)
+            author = await Backend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        else {
+            var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
+            author = await Backend.Get(rootChatId, Remap(authorId, rootChatId), cancellationToken).ConfigureAwait(false);
+        }
         if (author == null)
             return null;
 
