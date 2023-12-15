@@ -1,0 +1,81 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<TileTopic Topic="Blazor Mode"/>
+<Tile Class="blazor-mode-tile">
+    <Form Model="@_formModel">
+        <DataAnnotationsValidator/>
+        <ValidationSummary/>
+
+        <FormBlock>
+            <InputRadioGroup
+                Name="blazor-mode"
+                DisplayName="Blazor Mode"
+                @bind-Value="_formModel.IsServerMode">
+
+                <TileItem>
+                    <Icon>
+                        <FormRadio Id="@_formModel.ServerModeFormId" Value="@true"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_formModel.ServerModeFormId" Text="Server"></Label>
+                    </Content>
+                </TileItem>
+
+                <TileItem>
+                    <Icon>
+                        <FormRadio Id="@_formModel.WasmModeFormId" Value="@false"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@_formModel.WasmModeFormId" Text="WASM"></Label>
+                    </Content>
+                </TileItem>
+
+            </InputRadioGroup>
+        </FormBlock>
+    </Form>
+</Tile>
+
+@code {
+    private FormModel _formModel = null!;
+
+    [Inject] private UIHub Hub { get; init; } = null!;
+    private BlazorModeHelper BlazorModeHelper => Hub.GetRequiredService<BlazorModeHelper>();
+
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        _formModel = new (ComponentIdGenerator) {
+            IsServerMode = BlazorModeHelper.IsBlazorServer,
+        };
+        _formModel.ModeChanged += OnBlazorModeChanged;
+    }
+
+    private void OnBlazorModeChanged(bool isServerMode)
+        => BlazorModeHelper.ChangeMode(isServerMode);
+
+    public sealed class FormModel {
+        private bool _isServerMode;
+
+        private string FormId { get; }
+        public string ServerModeFormId { get; }
+        public string WasmModeFormId { get; }
+
+        public bool IsServerMode {
+            get => _isServerMode;
+            set {
+                if (_isServerMode == value)
+                    return;
+                _isServerMode = value;
+                ModeChanged?.Invoke(value);
+            }
+        }
+
+        public event Action<bool>? ModeChanged;
+
+        public FormModel(ComponentIdGenerator componentIdGenerator) {
+            FormId = componentIdGenerator.Next("blazor-mode-form");
+            ServerModeFormId = $"{FormId}-server-mode";
+            WasmModeFormId = $"{FormId}-wasm-mode";
+        }
+    }
+}
