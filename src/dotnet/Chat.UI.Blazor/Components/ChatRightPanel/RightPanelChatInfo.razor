@@ -10,6 +10,15 @@
 }
 
 <div class="c-chat-info">
+    @if (m.PeerAuthor != null && !(m.PeerAuthor?.Avatar.Bio).IsNullOrEmpty()) {
+        <RightPanelChatInfoItem
+            Content="@m.PeerAuthor.Avatar.Bio"
+            Hint="Bio">
+            <Icon>
+                <i class="text-2xl text-03 icon-info"></i>
+            </Icon>
+        </RightPanelChatInfoItem>
+    }
     @if (!m.HideNotificationsToggle) {
         <RightPanelChatInfoItem
             Click="@(_ => OnValueChanged(m.NotificationMode != ChatNotificationMode.Muted))"
@@ -34,6 +43,7 @@
     private AccountSettings AccountSettings => ChatContext.Hub.AccountSettings();
     private ModalUI ModalUI => ChatContext.Hub.ModalUI;
     private UICommander UICommander => ChatContext.Hub.UICommander();
+    private IAuthors Authors => ChatContext.Hub.Authors;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -46,10 +56,25 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var userChatSettings = await AccountSettings.GetUserChatSettings(Chat.Id, cancellationToken);
+        var anotherAuthor = await GetPeerAuthor(cancellationToken);
         return new() {
             NotificationMode = userChatSettings.NotificationMode,
             HideNotificationsToggle = Chat.HasSingleAuthor,
+            PeerAuthor = anotherAuthor,
         };
+    }
+
+    private async Task<Author?> GetPeerAuthor(CancellationToken cancellationToken) {
+        var ownAccount = ChatContext.OwnAccount;
+        if (!Chat.Id.IsPeerChat(out var peerChatId))
+            return null;
+        var peerAccountId = peerChatId.UserIds.OtherThanOrDefault(ownAccount.Id);
+        if (peerAccountId.IsNone)
+            return null;
+        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken);
+        var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
+        var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken);
+        return anotherAuthor;
     }
 
     private Task OnValueChanged(bool isMuted)
@@ -69,5 +94,6 @@
 
         public ChatNotificationMode NotificationMode { get; init; }
         public bool HideNotificationsToggle { get; init; }
+        public Author? PeerAuthor { get; init; }
     }
 }

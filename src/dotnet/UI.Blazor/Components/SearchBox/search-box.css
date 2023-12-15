@@ -46,5 +46,8 @@
 }
 
 .search-box.icon-alight-right input {
-    @apply pr-10 pl-4;
+    @apply px-10;
+}
+.search-box:has(input:focus) input {
+    @apply pl-4;
 }
