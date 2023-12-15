@@ -116,11 +116,11 @@
     private FormModel? _form;
     private DialogButtonInfo _submitButtonInfo = null!;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
     [Inject] private DiffEngine DiffEngine { get; init; } = null!;
 
-    private Session Session => ChatHub.Session; // Shortcut
+    private Session Session => Hub.Session(); // Shortcut
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -140,7 +140,7 @@
         if (_form != null)
             return;
 
-        var place = await ChatHub.Places.Get(Session, PlaceId, default).Require();
+        var place = await Hub.Places.Get(Session, PlaceId, default).Require();
         _form = new FormModel(ComponentIdGenerator) {
             Title = place.Title,
             Picture = place.Picture?.ToPicture(),
@@ -158,12 +158,12 @@
         };
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var place = await ChatHub.Places.Get(Session, PlaceId, cancellationToken);
+        var place = await Hub.Places.Get(Session, PlaceId, cancellationToken);
         if (place == null || !place.Rules.CanEditProperties())
             return new ComputedModel { Place = place };
 
-        var allAuthorIds = await ChatHub.Places.ListAuthorIds(Session, place.Id, cancellationToken);
-        var link = Links.Chat(place.Id.ToRootChatId()).ToDisplayUrl(ChatHub.UrlMapper());
+        var allAuthorIds = await Hub.Places.ListAuthorIds(Session, place.Id, cancellationToken);
+        var link = Links.Chat(place.Id.ToRootChatId()).ToDisplayUrl(Hub.UrlMapper());
         return new() {
             Place = place,
             Link = link,
@@ -190,7 +190,7 @@
     }
 
     private async Task Save() {
-        var place = await ChatHub.Places.Get(Session, PlaceId, default).Require();
+        var place = await Hub.Places.Get(Session, PlaceId, default).Require();
         var newPlace = place with {
             Title = _form!.Title,
             IsPublic = _form.IsPublic,
@@ -199,7 +199,7 @@
         var command = new Places_Change(Session, place.Id, place.Version, new() {
             Update = DiffEngine.Diff<Place, PlaceDiff>(place, newPlace),
         });
-        await ChatHub.UICommander().Run(command);
+        await Hub.UICommander().Run(command);
     }
 
     public sealed class FormModel {

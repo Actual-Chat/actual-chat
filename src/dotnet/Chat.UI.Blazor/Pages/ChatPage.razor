@@ -171,7 +171,7 @@
         Place? place = null;
         if (!canPost && chat.Id.IsPlaceChat) {
             shouldJoinPlaceFirst = chat.IsPublic;
-            place = await ChatHub.Places.Get(Session, chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
+            place = await Hub.Places.Get(Session, chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
             if (place == null) {
                 Log.LogWarning("Can't read Place #Id='{PlaceId}' while it should be possible to join to it", chat.Id.PlaceId);
                 canJoin = false;

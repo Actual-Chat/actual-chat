@@ -82,7 +82,7 @@
     private FormModel _form = null!;
     private bool _isAdmin;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
@@ -92,7 +92,7 @@
 
     protected override void OnInitialized() {
         _form = new(ComponentIdGenerator);
-        _isAdmin = ChatHub.AccountUI.OwnAccount.Value.IsAdmin;
+        _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
     }
 
     private void OnImagePicked(MediaContent mediaContent) {
@@ -104,7 +104,8 @@
         if (!_formRef.IsValid)
             return;
         try {
-            var createPlaceCommand = new Places_Change(ChatHub.Session, default, default, new Change<PlaceDiff>() {
+            var session = Hub.Session();
+            var createPlaceCommand = new Places_Change(session, default, default, new Change<PlaceDiff>() {
                 Create = new PlaceDiff {
                     Title = _form.Title,
                     IsPublic = _form.IsPublic,
@@ -112,14 +113,14 @@
                 }
             });
 
-            var (place, createPlaceError) = await ChatHub.UICommander().Run(createPlaceCommand, CancellationToken.None);
+            var (place, createPlaceError) = await Hub.UICommander().Run(createPlaceCommand, CancellationToken.None);
             if (createPlaceError != null)
                 return;
 
             place.Require();
 
             // Create default chat. Later we should add place templates.
-            var createChatCommand = new Chats_Change(ChatHub.Session, default, null, new() {
+            var createChatCommand = new Chats_Change(session, default, null, new() {
                 Create = new ChatDiff {
                     Title = "General",
                     Kind = null,
@@ -128,7 +129,7 @@
                     PlaceId = place.Id
                 },
             });
-            var (chat, _) = await ChatHub.UICommander().Run(createChatCommand, CancellationToken.None);
+            var (chat, _) = await Hub.UICommander().Run(createChatCommand, CancellationToken.None);
 
             PlaceCreated(place, chat);
         }

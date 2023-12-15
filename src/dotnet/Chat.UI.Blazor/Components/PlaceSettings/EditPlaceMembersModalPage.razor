@@ -56,10 +56,9 @@
     private SearchPhrase _searchPhrase = SearchPhrase.None;
     private PlaceId PlaceId { get; set; }
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
-
-    private IPlaces Places => ChatHub.Places;
-    private Session Session => ChatHub.Session;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private IPlaces Places => Hub.Places;
+    private Session Session => Hub.Session();
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 

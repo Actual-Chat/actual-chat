@@ -48,7 +48,7 @@
     private IReadOnlySet<ChatId> SelectedChatIds
         => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
@@ -61,7 +61,7 @@
             // This filter is applicable only to private chat of a place.
             // For public chats of a place this step should be skipped.
             var placeId = _chatId.PlaceId;
-            var membersState = ChatHub.StateFactory().NewMutable<ApiArray<UserId>>();
+            var membersState = Hub.StateFactory().NewMutable<ApiArray<UserId>>();
             _filter = new ChatListFilter(Guid.NewGuid().ToString(), "Place contacts", PlaceMembersFilter);
             _ = FillInMembersState();
 
@@ -74,7 +74,7 @@
             }
 
             async Task FillInMembersState() {
-                var userIds = await ChatHub.Authors.ListUserIds(ChatHub.Session, placeId.ToRootChatId(), default).ConfigureAwait(false);
+                var userIds = await Hub.Authors.ListUserIds(Hub.Session(), placeId.ToRootChatId(), default).ConfigureAwait(false);
                 membersState.Value = userIds;
             }
         }
@@ -93,8 +93,8 @@
             .Select(c => c.Id)
             .ToArray();
         if (userIds.Length != 0) {
-            var createAuthorsCommand = new Authors_Invite(ChatHub.Session, new ChatId(ChatSid), userIds);
-            var (_, error) = await ChatHub.UICommander().Run(createAuthorsCommand);
+            var createAuthorsCommand = new Authors_Invite(Hub.Session(), new ChatId(ChatSid), userIds);
+            var (_, error) = await Hub.UICommander().Run(createAuthorsCommand);
             if (error != null)
                 return;
         }

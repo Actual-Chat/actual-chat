@@ -28,7 +28,8 @@
     private AccountSettings AccountSettings => ChatContext.Hub.AccountSettings();
     private ChatListUI ChatListUI => ChatContext.Hub.ChatListUI;
     private ModalUI ModalUI => ChatContext.Hub.ModalUI;
-    private ILogger Log => _log ??= Services.LogFor(GetType());
+    private EditMembersUI EditMembersUI => ChatContext.Hub.EditMembersUI;
+    private ILogger Log => _log ??= ChatContext.Hub.LogFor(GetType());
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
@@ -50,7 +51,7 @@
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         if (!_dismissed.WhenRead.IsCompleted)
             await _dismissed.WhenRead;
-        if (!ChatContext.EditMembersUI.CanAddMembers(Chat))
+        if (!EditMembersUI.CanAddMembers(Chat))
             return false;
 
         var dismissed = await _dismissed.Use(cancellationToken);
@@ -65,7 +66,7 @@
         if (hasRegularMembers)
             return false;
 
-        return await ChatContext.EditMembersUI.HaveMembersToAdd(Chat);
+        return await EditMembersUI.HaveMembersToAdd(Chat);
     }
 
     // Event handlers

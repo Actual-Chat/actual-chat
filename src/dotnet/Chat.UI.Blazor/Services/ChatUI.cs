@@ -415,7 +415,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
     {
         var placeId = PlaceId.None;
-        var isChats = OrdinalEquals(ChatHub.NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || ChatHub.NavbarUI.IsPlaceSelected(out placeId);
+        var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || NavbarUI.IsPlaceSelected(out placeId);
         if (!isChats)
             return;
         if (SelectPlace(placeId))
@@ -440,12 +440,12 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
                     return;
                 }
 
-                if (!lastSelectedChatId.IsNone && ChatHub.PanelsUI.IsWide()) {
+                if (!lastSelectedChatId.IsNone && Hub.PanelsUI.IsWide()) {
                     // Do not navigate on narrow screen to prevent hiding panels
                     // Navigate to selected chat only after delay to make ChatLists update smoother.
                     await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
                     if (SelectedChatId.Value == lastSelectedChatId)
-                        await ChatHub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
+                        await Hub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
                 }
             }
             catch (Exception e) {

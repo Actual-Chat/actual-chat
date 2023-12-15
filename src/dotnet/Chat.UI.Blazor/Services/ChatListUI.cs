@@ -28,7 +28,6 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private SearchUI SearchUI => Hub.SearchUI;
     private TuneUI TuneUI => Hub.TuneUI;
     private LoadingUI LoadingUI => Hub.LoadingUI;
-    private AccountSettings AccountSettings => Hub.AccountSettings();
     private UICommander UICommander => Hub.UICommander();
     private new ILogger? DebugLog => Constants.DebugMode.ChatUI ? Log : null;
 
@@ -220,7 +219,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         CancellationToken cancellationToken)
     {
         var result = new Dictionary<ChatId, ChatInfo>();
-        var placeIds = await ChatHub.Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
+        var placeIds = await Contacts.ListPlaceIds(Session, cancellationToken).ConfigureAwait(false);
         var extendedPlaceIds = new List<PlaceId> { PlaceId.None };
         extendedPlaceIds.AddRange(placeIds);
         foreach (var placeId in extendedPlaceIds) {
@@ -278,7 +277,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     [ComputeMethod]
     protected virtual async Task<bool> IsSelectedChatUnlistedInternal(CancellationToken cancellationToken)
     {
-        var placeId = await ChatHub.ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
+        var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
         if (!placeId.IsNone)
             return false;
 

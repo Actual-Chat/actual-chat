@@ -38,11 +38,11 @@
     private ChatSearchBox? _searchBoxRef = null;
     private EventCallback<string> _onSearchBoxTextChanged;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
-    private NavbarUI NavbarUI => ChatHub.NavbarUI;
-    private SearchUI SearchUI => ChatHub.SearchUI;
-    private ScreenSize ScreenSize => ChatHub.BrowserInfo.ScreenSize.Value;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
 
     protected override void OnInitialized() {
         _onSearchBoxTextChanged = NoStateHasChanged.EventCallback<string>(OnSearchBoxTextChanged);

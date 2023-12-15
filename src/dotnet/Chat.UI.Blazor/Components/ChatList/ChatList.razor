@@ -43,7 +43,7 @@
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private SearchUI SearchUI => Hub.SearchUI;
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
     [Parameter, EditorRequired] public ChatListKind Kind { get; set; }

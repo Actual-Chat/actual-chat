@@ -12,7 +12,7 @@
     <div class="navbar-place-buttons">
         @foreach (var place in places) {
             var groupId = place.Id.GetNavbarGroupId();
-            ChatHub.NavbarUI.UpdateTitle(groupId, place.Title);
+            Hub.NavbarUI.UpdateTitle(groupId, place.Title);
             <NavbarGroupSelectionButton
                 Title="@place.Title"
                 Id="@groupId"
@@ -34,9 +34,8 @@
 }
 
 @code {
-    [Inject] protected ChatHub ChatHub { get; init; } = null!;
-
-    private Session Session => ChatHub.Session;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -45,16 +44,16 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var enableIncompleteUI = await ChatHub.Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         if (!enableIncompleteUI)
             return new Model();
 
-        var placeIds = await ChatHub.Contacts.ListPlaceIds(Session, cancellationToken);
-        var selectedChatId = await ChatHub.ChatUI.SelectedChatId.Use(cancellationToken);
+        var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken);
+        var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
         if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
             placeIds = placeIds.Add(selectedChatId.PlaceId, true);
         var places = (await placeIds
-            .Select(id => ChatHub.Places.Get(Session, id, cancellationToken))
+            .Select(id => Hub.Places.Get(Session, id, cancellationToken))
             .Collect())
             .SkipNullItems()
             .OrderBy(c => c.CreatedAt)

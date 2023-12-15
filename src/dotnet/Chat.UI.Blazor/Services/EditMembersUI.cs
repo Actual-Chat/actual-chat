@@ -1,21 +1,24 @@
 ﻿namespace ActualChat.Chat.UI.Blazor.Services;
 
-public class EditMembersUI(ChatHub chatHub)
+public class EditMembersUI(ChatUIHub hub)
 {
-    public ChatHub ChatHub { get; } = chatHub;
+    public ChatUIHub Hub { get; } = hub;
+    private Session Session => Hub.Session();
+    private IAuthors Authors => Hub.Authors;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
 
     public async Task<bool> HaveMembersToAdd(Chat chat)
     {
         bool canAddContacts;
         if (!chat.Id.IsPlaceChat) {
-            var peopleContacts = await ChatHub.ChatListUI.ListPeopleContacts().ConfigureAwait(false);
+            var peopleContacts = await ChatListUI.ListPeopleContacts().ConfigureAwait(false);
             canAddContacts = peopleContacts.Count > 0;
         } else {
             if (chat.IsPublic)
                 canAddContacts = false;
             else {
-                var chatMembers = await ChatHub.Authors.ListUserIds(ChatHub.Session, chat.Id, default).ConfigureAwait(false);
-                var placeMembers = await ChatHub.Authors.ListUserIds(ChatHub.Session, chat.Id.PlaceId.ToRootChatId(), default).ConfigureAwait(false);
+                var chatMembers = await Authors.ListUserIds(Session, chat.Id, default).ConfigureAwait(false);
+                var placeMembers = await Authors.ListUserIds(Session, chat.Id.PlaceId.ToRootChatId(), default).ConfigureAwait(false);
                 canAddContacts = placeMembers.Except(chatMembers).Any();
             }
         }

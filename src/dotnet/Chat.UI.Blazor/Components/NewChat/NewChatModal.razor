@@ -41,7 +41,7 @@
     private Chat? _chat;
     private Page _page = Page.Props;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -51,7 +51,7 @@
 
     private async void OnChatCreated(Chat chat) {
         _chat = chat;
-        var canAddMembers = await ChatHub.EditMembersUI.HaveMembersToAdd(chat);
+        var canAddMembers = await Hub.EditMembersUI.HaveMembersToAdd(chat);
         if (!canAddMembers) {
             // If there is no people to add, close the dialog.
             Close();
@@ -68,7 +68,7 @@
         if (_chat == null)
             return;
 
-        _ = ChatHub.History.NavigateTo(Links.Chat(_chat.Id));
+        _ = Hub.History.NavigateTo(Links.Chat(_chat.Id));
     }
 
     private void Close()

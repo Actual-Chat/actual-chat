@@ -63,9 +63,9 @@
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Add", OnAdd);
         _submitButtonInfo.CanExecute = false;
         if (Context.Model is ChatId chatId)
-            _backend = new ChatBackend(ChatHub, chatId);
+            _backend = new ChatBackend(Hub, chatId);
         else if (Context.Model is PlaceId placeId)
-            _backend = new PlaceBackend(ChatHub, placeId);
+            _backend = new PlaceBackend(Hub, placeId);
         else
             throw StandardError.NotSupported("Not supported model type");
         Context.SetTitle("Add members");
@@ -150,24 +150,24 @@
         Task<Exception?> Invite(Session session, UserId[] userIds, CancellationToken cancellationToken);
     }
 
-    private class ChatBackend(ChatHub chatHub, ChatId chatId) : IBackend {
+    private class ChatBackend(ChatUIHub hub, ChatId chatId) : IBackend {
         public async Task<ApiArray<UserId>> ListUserIds(Session session, CancellationToken cancellationToken)
-            => await chatHub.Authors.ListUserIds(session, chatId, cancellationToken);
+            => await hub.Authors.ListUserIds(session, chatId, cancellationToken);
 
         public async Task<Exception?> Invite(Session session, UserId[] userIds, CancellationToken cancellationToken) {
             var command = new Authors_Invite(session, chatId, userIds);
-            var (_, error) = await chatHub.UICommander().Run(command, cancellationToken);
+            var (_, error) = await hub.UICommander().Run(command, cancellationToken);
             return error;
         }
     }
 
-    private class PlaceBackend(ChatHub chatHub, PlaceId placeId) : IBackend {
+    private class PlaceBackend(ChatUIHub hub, PlaceId placeId) : IBackend {
         public async Task<ApiArray<UserId>> ListUserIds(Session session, CancellationToken cancellationToken)
-            => await chatHub.Places.ListUserIds(session, placeId, cancellationToken);
+            => await hub.Places.ListUserIds(session, placeId, cancellationToken);
 
         public async Task<Exception?> Invite(Session session, UserId[] userIds, CancellationToken cancellationToken) {
             var command = new Places_Invite(session, placeId, userIds);
-            var (_, error) = await chatHub.UICommander().Run(command, cancellationToken);
+            var (_, error) = await hub.UICommander().Run(command, cancellationToken);
             return error;
         }
     }

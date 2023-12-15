@@ -163,13 +163,13 @@ public partial class ChatUI
                 placeId = PlaceId.None;
             Place? place = null;
             if (!placeId.IsNone)
-                place = await ChatHub.Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
+                place = await Hub.Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
 
-            await ChatHub.Dispatcher.InvokeAsync(() => {
+            await Hub.Dispatcher.InvokeAsync(() => {
                     if (place == null)
                         SelectChat(ChatId.None);
                     else
-                        ChatHub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), place.Title);
+                        Hub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), place.Title);
                 })
                 .ConfigureAwait(false);
         }
@@ -204,14 +204,14 @@ public partial class ChatUI
             else
                 DebugLog?.LogDebug("Restoring SelectedChatOnPlace. ChatId: '{ChatId}'", lastSelectedChatId);
 
-            await ChatHub.Dispatcher.InvokeAsync(async () => {
+            await Hub.Dispatcher.InvokeAsync(async () => {
                     SelectChat(lastSelectedChatId);
-                    if (!lastSelectedChatId.IsNone && ChatHub.PanelsUI.IsWide()) {
+                    if (!lastSelectedChatId.IsNone && Hub.PanelsUI.IsWide()) {
                         // Do not navigate on narrow screen to prevent hiding panels
                         // Navigate to selected chat only after delay to make ChatLists update smoother.
                         await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
                         if (SelectedChatId.Value == lastSelectedChatId)
-                            await ChatHub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
+                            await Hub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
                     }
                 })
                 .ConfigureAwait(false);

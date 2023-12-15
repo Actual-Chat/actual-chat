@@ -13,11 +13,11 @@
 </MenuEntry>
 
 @code {
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     private void OnCreateChatClick()
-        => ChatHub.ModalUI.Show(new NewChatModal.Model(ChatHub.ChatUI.SelectedPlaceId.Value));
+        => Hub.ModalUI.Show(new NewChatModal.Model(Hub.ChatUI.SelectedPlaceId.Value));
 
     private void OnCreatePlaceClick()
-        => ChatHub.ModalUI.Show(new NewPlaceModal.Model());
+        => Hub.ModalUI.Show(new NewPlaceModal.Model());
 }

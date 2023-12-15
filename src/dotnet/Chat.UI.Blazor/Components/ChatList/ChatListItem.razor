@@ -109,14 +109,13 @@ else {
 
     private ILogger? _log;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
 
-    private ChatUI ChatUI => ChatHub.ChatUI;
-    private ChatListUI ChatListUI => ChatHub.ChatListUI;
-    private SearchUI SearchUI => ChatHub.SearchUI;
-    private ScreenSize ScreenSize => ChatHub.BrowserInfo.ScreenSize.Value;
-
-    private ILogger Log => _log ??= ChatHub.LogFor(GetType());
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Constants.DebugMode.ChatListComponents ? Log : null;
 
     [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;

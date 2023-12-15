@@ -41,7 +41,7 @@
     private Chat? _defaultChat;
     private Page _page = Page.Props;
 
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
@@ -52,7 +52,7 @@
     private async void OnPlaceCreated(Place place, Chat? defaultChat) {
         _place = place;
         _defaultChat = defaultChat;
-        var peopleContacts = await ChatHub.ChatListUI.ListPeopleContacts();
+        var peopleContacts = await Hub.ChatListUI.ListPeopleContacts();
         if (peopleContacts.Count == 0) {
             // If there is no people to add, close the dialog.
             Close();
@@ -69,8 +69,8 @@
             return;
 
         if (_defaultChat != null)
-            await ChatHub.History.NavigateTo(Links.Chat(_defaultChat.Id));
-        ChatHub.NavbarUI.SelectGroup(_place.Id.GetNavbarGroupId(), _place.Title);
+            await Hub.History.NavigateTo(Links.Chat(_defaultChat.Id));
+        Hub.NavbarUI.SelectGroup(_place.Id.GetNavbarGroupId(), _place.Title);
     }
 
     private void Close()

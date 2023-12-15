@@ -44,7 +44,7 @@
 </div>
 
 @code {
-    [Inject] private ChatHub ChatHub { get; init; } = null!;
+    [Inject] private ChatUIHub Chat { get; init; } = null!;
 
     private AuthorId AuthorId { get; set; }
 
@@ -57,13 +57,13 @@
     }
 
     protected override Task<EditPlaceMemberModel?> ComputeState(CancellationToken cancellationToken)
-        => EditPlaceMemberCommands.ComputeState(ChatHub, AuthorId, cancellationToken);
+        => EditPlaceMemberCommands.ComputeState(Chat, AuthorId, cancellationToken);
 
     private Task OnRemoveFromPlaceClick(Author author)
-        => EditPlaceMemberCommands.OnRemoveFromPlaceClick(ChatHub, author);
+        => EditPlaceMemberCommands.OnRemoveFromPlaceClick(Chat, author);
 
     private async Task OnPromoteToOwnerClick(Author author) {
         await WhenClosed;
-        await EditPlaceMemberCommands.OnPromoteToOwnerClick(ChatHub, author);
+        await EditPlaceMemberCommands.OnPromoteToOwnerClick(Chat, author);
     }
 }
