@@ -12,7 +12,8 @@
     @apply cursor-pointer;
 }
 
-.settings-tab .theme-tile .tile-item:hover {
+.settings-tab .theme-tile .tile-item:hover,
+.settings-tab .blazor-mode-tile .tile-item:hover {
     @apply bg-transparent;
 }
 
