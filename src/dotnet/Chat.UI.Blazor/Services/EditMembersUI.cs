@@ -38,7 +38,7 @@ public class EditMembersUI(ChatUIHub hub)
 
     public bool CanEditMembers(Chat chat)
     {
-        if (chat.Rules.CanEditMembers())
+        if (!chat.Rules.CanEditMembers())
             return false;
 
         if (chat.IsPublicPlaceChat())

@@ -21,7 +21,11 @@
         IsOwn="m.IsOwn"
         OnEditClick="@OnSettingsClick"/>
     <FormBlock>
-        <AuthorModalContent Author="@m.Author" IsOwn="@m.IsOwn" EditMemberModel="@m.EditMemberModel"/>
+        <AuthorModalContent
+            Author="@m.Author"
+            IsOwn="@m.IsOwn"
+            UsePlaceSettingsToEditMember="@m.UsePlaceSettingsToEditMember"
+            EditMemberModel="@m.EditMemberModel"/>
     </FormBlock>
     </Body>
     <Buttons>
@@ -92,15 +96,20 @@
         var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
 
         EditChatMemberModel? editMemberModel = null;
-        var canEditMembers = chat != null && Hub.EditMembersUI.CanEditMembers(chat);
-        if (canEditMembers)
-            editMemberModel = await EditChatMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
+        bool usePlaceSettingsToEditMember = false;
+        if (chat != null && chat.Rules.CanEditMembers()) {
+            if (chat.IsPublicPlaceChat())
+                usePlaceSettingsToEditMember = true;
+            else
+                editMemberModel = await EditChatMemberCommands.ComputeState(Hub, AuthorId, cancellationToken);
+        }
 
         return new ComputedModel() {
             Author = author,
             Account = account,
             OwnAccount = ownAccount,
             CanStartPeerChat = canStartPeerChat,
+            UsePlaceSettingsToEditMember = usePlaceSettingsToEditMember,
             EditMemberModel = editMemberModel,
             EnableIncompleteUI = enableIncompleteUI,
         };
@@ -159,6 +168,7 @@
         public bool IsOwn => Account?.Id == OwnAccount.Id;
         public bool CanStartPeerChat { get; init; }
         public EditChatMemberModel? EditMemberModel { get; init; }
+        public bool UsePlaceSettingsToEditMember { get; init; }
         public bool EnableIncompleteUI { get; init; }
     }
 

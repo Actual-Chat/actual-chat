@@ -38,33 +38,45 @@
 
     @{ var m = EditMemberModel; }
 
-    @if (m != null && (m.CanPromoteToOwner|| m.CanRemoveFromGroup)) {
+    @if (m != null && (m.CanPromoteToOwner || m.CanRemoveFromGroup)  || UsePlaceSettingsToEditMember) {
         <div class="separator"></div>
     }
 
-    @if (m is { CanPromoteToOwner: true }) {
-        <TileItem Class="tile-promote-to-owner" Click="@OnPromoteToOwner">
+    @if (UsePlaceSettingsToEditMember) {
+        <TileItem Class="tile-edit-membership">
             <Icon>
-                <i class="icon-admin02 text-2xl text-03"></i>
+                <i class="icon-people text-2xl"></i>
             </Icon>
             <Content>
-                Promote to Owner
+                Use place settings to edit membership
             </Content>
-            <Caption>
-                Owners can do anything with this chat, including deleting it. This action cannot be undone.
-            </Caption>
         </TileItem>
-    }
+    } else {
 
-    @if (m is { CanRemoveFromGroup: true }) {
-        <TileItem Class="tile-remove-from-group" Click="@OnRemoveFromGroupClick">
-            <Icon>
-                <i class="icon-minus-circle text-2xl"></i>
-            </Icon>
-            <Content>
-                Remove from group
-            </Content>
-        </TileItem>
+        @if (m is { CanPromoteToOwner: true }) {
+            <TileItem Class="tile-promote-to-owner" Click="@OnPromoteToOwner">
+                <Icon>
+                    <i class="icon-admin02 text-2xl text-03"></i>
+                </Icon>
+                <Content>
+                    Promote to Owner
+                </Content>
+                <Caption>
+                    Owners can do anything with this chat, including deleting it. This action cannot be undone.
+                </Caption>
+            </TileItem>
+        }
+
+        @if (m is { CanRemoveFromGroup: true }) {
+            <TileItem Class="tile-remove-from-group" Click="@OnRemoveFromGroupClick">
+                <Icon>
+                    <i class="icon-minus-circle text-2xl"></i>
+                </Icon>
+                <Content>
+                    Remove from group
+                </Content>
+            </TileItem>
+        }
     }
 </Tile>
 
@@ -75,9 +87,9 @@
     private IAuthors Authors => Hub.Authors;
     private ShareUI ShareUI => Hub.ShareUI;
 
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
+    [Parameter, EditorRequired] public bool UsePlaceSettingsToEditMember { get; set; }
     [Parameter, EditorRequired] public EditChatMemberModel? EditMemberModel { get; set; }
 
     private async Task OnShareClick() {
