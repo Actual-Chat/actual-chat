@@ -97,13 +97,13 @@ public readonly partial struct ContactId : ISymbolIdentifier<ContactId>
         if (s.IsNullOrEmpty())
             return true; // None
 
-        var userIdLength = s.OrdinalIndexOf(' ');
-        if (userIdLength <= 0)
+        var ownerIdLength = s.OrdinalIndexOf(' ');
+        if (ownerIdLength <= 0)
             return false;
 
-        if (!UserId.TryParse(s[..userIdLength], out var ownerId))
+        if (!UserId.TryParse(s[..ownerIdLength], out var ownerId))
             return false;
-        if (!ChatId.TryParse(s[(userIdLength + 1)..], out var chatId))
+        if (!ChatId.TryParse(s[(ownerIdLength + 1)..], out var chatId))
             return false;
         if (chatId.IsPeerChat(out var peerChatId) && peerChatId.UserId1 != ownerId && peerChatId.UserId2 != ownerId)
             return false;
