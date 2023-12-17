@@ -109,9 +109,9 @@ swiper-slide img {
     height: calc(100dvh - 7rem);
 }
 .media-preview-swiper {
-    height: 10%;
+    height: 3.5rem;
     box-sizing: border-box;
-    padding: 10px 0;
+    padding: 0.25rem;
 }
 .media-preview-swiper swiper-slide {
     height: 100%;
