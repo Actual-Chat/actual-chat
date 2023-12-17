@@ -16,7 +16,7 @@
         <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged">
             <Steps>
                 <PhoneStep Account="account"/>
-                @* <EmailStep Account="account"/> *@
+                <EmailStep Account="account"/>
                 <AvatarStep/>
                 <PermissionsStep NextButtonRef="@_nextButtonRef" />
                 <CreateChatsStep/>

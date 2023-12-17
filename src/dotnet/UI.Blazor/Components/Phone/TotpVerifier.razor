@@ -6,10 +6,8 @@
 <div class="totp-verifier @Class" @onclick="@(() => Focus())">
     <span class="c-description">
         Enter the code we've sent to <span class="whitespace-nowrap">@(new Phone(Phone).ToReadable())</span>
-        @PurposeText
     </span>
     <TotpInput @ref="_totpInput" Completed="OnInputCompleted" IsVerifying="@_isVerifying"/>
-
     @if (_totpExpiresAt is { } totpExpiresAt) {
         @if (Clocks.SystemClock.Now < totpExpiresAt) {
             <div class="c-resend-code">
@@ -33,10 +31,10 @@
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private MomentClockSet Clocks { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string Phone { get; set; } = "";
+    [Parameter] public string Phone { get; set; } = "";
+    [Parameter] public string Email { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
     [Parameter, EditorRequired] public TotpPurpose Purpose { get; set; }
-    [Parameter] public string PurposeText { get; set; } = "to verify you own this phone number.";
     [Parameter] public EventCallback Verified { get; set; }
     [Parameter] public EventCallback Error { get; set; }
     [Parameter] public EventCallback IncorrectCodeEntered { get; set; }
@@ -59,6 +57,7 @@
         ICommand<bool> cmd = Purpose switch {
             TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, new Phone(Phone), totp),
             TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, new Phone(Phone), totp),
+            TotpPurpose.VerifyEmail => new Emails_VerifyEmail(Session, totp),
             _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
         };
 
@@ -84,9 +83,13 @@
         await Verified.InvokeAsync();
     }
 
-    private async Task SendTotp()
-    {
-        var (totpExpiresAt, error) = await UICommander.Run(new PhoneAuth_SendTotp(Session, new Phone(Phone), Purpose));
+    private async Task SendTotp() {
+        ICommand<Moment> cmd = Purpose switch {
+            TotpPurpose.SignIn or TotpPurpose.VerifyPhone => new PhoneAuth_SendTotp(Session, new Phone(Phone), Purpose),
+            TotpPurpose.VerifyEmail => new Emails_SendTotp(Session),
+            _ => throw new ArgumentOutOfRangeException(nameof(Purpose)),
+        };
+        var (totpExpiresAt, error) = await UICommander.Run(cmd);
         _totpExpiresAt = error == null ? totpExpiresAt : null;
         _timerKey = new(); // To make sure the timer is renewed
         StateHasChanged();
