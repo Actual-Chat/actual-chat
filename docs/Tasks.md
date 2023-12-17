@@ -2,11 +2,11 @@ Near term:
 
 Urgent fixes:
 - [!] No notif / unread on a message from someone who's not in your contact list
-- [!] iOS: screen lock seem to be always on when the chat is open (i.e. when nothing is playing) -> huge battery drain
 - [!] Android: sometimes theme change doesn't work / blue status bar color
 - iOS: "Scroll down" sometimes doesn't disappear even when you're at the very bottom
 - iOS: investigate weird "Back" click behavior (sometimes it does not work when you touch it, maybe related to Safari click event propagation or nearby clickalbe header)
 - iOS: reconnect banner may take two lines on iPhone (not enough horizontal space)
+- Mobile: Maybe we should pause AudioContext when nothing is playing, otherwise it drains the battery
 - Anonymous chats: @ typing produces a list with missing avatars (+ we must use skeletons there)
 - Anonymous chats: let's hide the list of participants until there are at least 5 of them (for the beginning) and add the option to control how many later
 - Dark theme: fix Apple icon color on sign-in modal
