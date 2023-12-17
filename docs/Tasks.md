@@ -1,15 +1,21 @@
 Near term:
 
 Urgent fixes:
-- No notif / unread on a message from someone who's not in your contact list
+- [!] No notif / unread on a message from someone who's not in your contact list
+- [!] Android: sometimes theme change doesn't work / blue status bar color
+- iOS: investigate weird "Back" click behavior (sometimes it does not work when you touch it, maybe related to Safari click event propagation or nearby clickalbe header)
+- iOS: reconnect banner may take two lines on iPhone (not enough horizontal space)
+- Anonymous chats: @ typing produces a list with missing avatars (+ we must use skeletons there)
+- Anonymous chats: let's hide the list of participants until there are at least 5 of them (for the beginning) and add the option to control how many later
 - Dark theme: fix Apple icon color on sign-in modal
-- ~~Logout doesn't work on Android & Windows apps; maybe iOS as well.~~ (Working on Dev, Prod update is required)
-- Theme should set text color + make sure all the issues w/ black on black in Dark theme are gone
-- Web splash should be the same as MAUI splash
-- ~~Portrait/landscape mode switch should work in MAUI apps (mainly for images & videos)~~ (Disabled fullscreen video mode support on Android. Custom full screen implementation have issues with history if user exits from fullscreen mode with back button.)
+- Portrait/landscape mode switch should work in MAUI apps. That's mainly for images & videos; maybe disable fullscreen video mode support on Android. Custom full screen implementation have issues with history if user exits from fullscreen mode with back button.
+- [Done?] Theme should set text color + make sure all the issues w/ black on black in Dark theme are gone
+- [Done?] Web splash should be the same as MAUI splash
+- [Done?] Logout doesn't work on Android & Windows apps; maybe iOS as well.~~ (Working on Dev, Prod update is required)
+
+Less urgent fixes:
 - There are still some weird UI restarts on Android - prob. MauiLivenessProbe is too aggressive
-- Virtual list: AK, please list the remaining issues here
-- [?] SharedResourcePool must be IAsyncDisposable
+- SharedResourcePool must be IAsyncDisposable
 
 General:
 - iOS: render correct unread message counter on app icon
