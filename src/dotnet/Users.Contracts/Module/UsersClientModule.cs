@@ -31,5 +31,6 @@ public sealed class UsersClientModule(IServiceProvider moduleServices) : HostMod
         fusion.AddClient<IUserPresences>();
         fusion.AddClient<IChatPositions>();
         fusion.AddClient<IPhoneAuth>();
+        fusion.AddClient<IEmails>();
     }
 }

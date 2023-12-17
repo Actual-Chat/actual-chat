@@ -138,6 +138,7 @@ public static partial class Constants
         {
             public const string SchemeName = "email"; // for now used only as identity name
             public const string HashedSchemeName = "email-hash"; // used only as identity name
+            public const int TotpLength = 6;
         }
         public static class Google
         {

@@ -184,6 +184,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
         fusion.AddService<IServerKvas, ServerKvas>();
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddService<IPhoneAuth, PhoneAuth>();
+        fusion.AddService<IEmails, Emails>();
         commander.AddService<IUsersUpgradeBackend, UsersUpgradeBackend>();
         services.AddSingleton<GreetingDispatcher>().AddHostedService(c => c.GetRequiredService<GreetingDispatcher>());
         services.AddTransient<Rfc6238AuthenticationService>();
