@@ -23,7 +23,7 @@ const PivotSyncEpsilon: number = 16;
 const VisibilityEpsilon: number = 4;
 const EdgeEpsilon: number = 4;
 const MaxExpandBy: number = 120;
-const ScrollDebounce: number = 320;
+const ScrollDebounce: number = 200;
 const SkeletonDetectionBoundary: number = 200;
 const MinViewPortSize: number = 400;
 const RequestDataTimeout: number = 800;
@@ -762,7 +762,7 @@ export class VirtualList {
 
     private readonly updateVisibleKeysThrottled = throttle(() => this.updateVisibleKeys(), UpdateItemVisibilityInterval, 'delayHead', 'updateVisibleKeys');
     private readonly updateVisibleKeys = serialize(async () => {
-        if (this._isDisposed)
+        if (this._isDisposed || !this._renderState.keyRange.start)
             return;
 
         await fastReadRaf();

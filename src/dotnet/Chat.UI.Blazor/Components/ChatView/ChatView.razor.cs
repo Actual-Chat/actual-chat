@@ -174,7 +174,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
 
         var lastItemVisibility = ItemVisibility.Value;
         var itemVisibility = new ChatViewItemVisibility(virtualListItemVisibility);
-        if (itemVisibility.IsIdenticalTo(lastItemVisibility))
+        if (itemVisibility.IsIdenticalTo(lastItemVisibility) && !ReferenceEquals(lastItemVisibility, ChatViewItemVisibility.Empty))
             return;
 
         _itemVisibility.Value = itemVisibility;

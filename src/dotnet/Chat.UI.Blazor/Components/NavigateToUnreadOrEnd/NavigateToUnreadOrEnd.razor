@@ -26,7 +26,6 @@
 
 @code {
     private ShowHideAnimator _animator = null!;
-    private Moment _hideUntil;
     private Moment _lastClickAt;
 
     private Session Session => ChatContext.Hub.Session();
@@ -53,7 +52,7 @@
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
-            InitialValue = Model.Invisible,
+            InitialValue = Model.None,
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
         };
@@ -72,11 +71,11 @@
             return Model.Invisible;
 
         // Delay showing the button for the first time
-        var now = CpuNow;
-        if (_hideUntil == default)
-            _hideUntil = now + TimeSpan.FromSeconds(1.35);
-        if (_hideUntil > now)
-            await Task.Delay(_hideUntil - now + TimeSpan.FromMilliseconds(50), cancellationToken);
+        if (ReferenceEquals(State.Value, Model.None)) {
+            await ChatView.ReadPosition.WhenSynchronized(cancellationToken);
+            await ChatView.ItemVisibility.When(item => !ReferenceEquals(item, ChatViewItemVisibility.Empty), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(1.3), cancellationToken);
+        }
 
         var readEntryLid = await ChatView.ShownReadEntryLid.Use(cancellationToken);
         var canScrollToUnread = readEntryLid < lastEntryId && readEntryLid > itemVisibility.MaxEntryLid;
