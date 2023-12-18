@@ -17,7 +17,9 @@
 <div class="author-list-tab">
     <div class="c-content">
         @if (hideMembers) {
-            <div class="note-hidden-members">Members are hidden</div>
+            <div class="note-hidden-members">
+                There are <b>@m.AllAuthorIds.Count</b> members now. Anonymous chat members are hidden unless there are at least 5 of them.
+            </div>
         }
         else if (isPeerChat) {
             var authorIds = m.AllAuthorIds.OrderBy(c => c.Equals(m.OwnAuthorId) ? 0 : 1);
