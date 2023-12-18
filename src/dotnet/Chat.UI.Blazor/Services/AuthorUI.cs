@@ -21,26 +21,16 @@ public sealed class AuthorUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub)
 
     public async Task<bool> CanStartPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
     {
-        if (authorId.IsNone)
-            return false;
-
-        var ownAccountTask = Accounts.GetOwn(Session, cancellationToken);
-        var accountTask = Authors.GetAccount(Session, authorId.ChatId, authorId, cancellationToken);
-        var ownAccount = await ownAccountTask.ConfigureAwait(false);
-        var account = await accountTask.ConfigureAwait(false);
-        var canStartPeerChat = account != null
-            && !account.IsGuestOrNone
-            && !ownAccount.IsGuestOrNone
-            && account.Id != ownAccount.Id;
-        return canStartPeerChat;
+        var peerChatId = await GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
+        return !peerChatId.IsNone;
     }
 
     public async Task StartPeerChat(AuthorId authorId, CancellationToken cancellationToken = default)
     {
-        if (authorId.IsNone)
+        var peerChatId = await GetPeerChatId(authorId, cancellationToken).ConfigureAwait(true);
+        if (peerChatId.IsNone)
             return;
 
-        var peerChatId = await GetPeerChatId(authorId, cancellationToken).ConfigureAwait(true);
         var localUrl = Links.Chat(peerChatId);
         _ = History.NavigateTo(localUrl);
     }
@@ -54,6 +44,13 @@ public sealed class AuthorUI(ChatUIHub hub) : ScopedServiceBase<ChatUIHub>(hub)
         var accountTask = Authors.GetAccount(Session, authorId.ChatId, authorId, cancellationToken);
         var ownAccount = await ownAccountTask.ConfigureAwait(false);
         var account = await accountTask.ConfigureAwait(false);
+        var canStartPeerChat = account != null
+            && !account.IsGuestOrNone
+            && !ownAccount.IsGuestOrNone
+            && account.Id != ownAccount.Id;
+        if (!canStartPeerChat)
+            return PeerChatId.None;
+
         return new PeerChatId(ownAccount.Id, account!.Id);
     }
 
