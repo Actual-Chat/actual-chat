@@ -116,7 +116,7 @@ body.hoverable .navbar-item:hover {
 }
 
 .navbar-place-buttons {
-    @apply flex-y grow items-center gap-y-3 md:gap-y-2;
+    @apply flex-y items-center gap-y-3 md:gap-y-2;
     @apply w-full overflow-y-auto;
 }
 
