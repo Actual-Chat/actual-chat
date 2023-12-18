@@ -5,7 +5,7 @@ Urgent fixes:
 - [EK] Dark theme: fix Apple icon color on sign-in modal
 - [DF] Android: sometimes theme change doesn't work / blue status bar color
 - [DF] See if it's possible to disable native splash & use the web version
-- [DF] Anonymous chats: let's hide the list of participants until there are at least 5 of them (for the beginning) and add the option to control how many later
+- [DF] ~~Anonymous chats: let's hide the list of participants until there are at least 5 of them (for the beginning)~~ and add the option to control how many later
 - [DF] Check share behavior + get rid of activity state persistance on Android
 - [AK] iOS: "Scroll down" sometimes doesn't disappear even when you're at the very bottom
 - [Andrey] Mobile: fix chat header icon position

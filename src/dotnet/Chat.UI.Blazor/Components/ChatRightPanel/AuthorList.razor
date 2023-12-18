@@ -5,11 +5,21 @@
 @{
     var m = State.Value;
     var isPeerChat = Chat.Id.IsPeerChat(out _);
+    var hideMembers = false;
+    if (!isPeerChat && m.AllAreAnonymous) {
+        // Hide members in anonymous chat if there are less than 5 members.
+        // Do not hide members for Owners since they anyway can see joined people in 'Add members' dialog.
+        if (!m.IsOwner && m.AllAuthorIds.Count < 5)
+            hideMembers = true;
+    }
 }
 
 <div class="author-list-tab">
     <div class="c-content">
-        @if (isPeerChat) {
+        @if (hideMembers) {
+            <div class="note-hidden-members">Members are hidden</div>
+        }
+        else if (isPeerChat) {
             var authorIds = m.AllAuthorIds.OrderBy(c => c.Equals(m.OwnAuthorId) ? 0 : 1);
             @foreach (var authorId in authorIds) {
                 <AuthorBadge
@@ -19,7 +29,7 @@
                     Click="@_onClickCallback"/>
             }
         } else {
-            var groups = new List<(string,IReadOnlyCollection<AuthorId>, bool)>();
+            var groups = new List<(string, IReadOnlyCollection<AuthorId>, bool)>();
             if (m.OwnerAuthorIds.Count > 0)
                 groups.Add(("Owners", m.OwnerAuthorIds, false));
             if (m.AllAreAnonymous) {
@@ -31,6 +41,7 @@
                     groups.Add(("Unreported", m.UnreportedAuthorIds, false));
                 groups.Add(("Offline", m.OfflineAuthorIds, true));
             }
+
             foreach (var group in groups) {
                 var title = $"{group.Item1} — {group.Item2.Count}";
                 <Collapsed Title="@title" IsCollapsed="@group.Item3">
@@ -133,5 +144,6 @@
         public ApiArray<AuthorId> OfflineAuthorIds { get; init; }
         public ApiArray<AuthorId> UnreportedAuthorIds { get; init; }
         public bool AllAreAnonymous { get; init; }
+        public bool IsOwner => !OwnAuthorId.IsNone && OwnerAuthorIds.Contains(OwnAuthorId);
     }
 }
