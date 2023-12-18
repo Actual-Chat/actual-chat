@@ -36,6 +36,10 @@
     @apply text-02;
 }
 
+.theme-dark .sign-in-with .logo-apple {
+    filter: invert(100%);
+}
+
 /* Sign-in step */
 
 .sign-in-step {

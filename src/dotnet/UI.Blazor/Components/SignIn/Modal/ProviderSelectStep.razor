@@ -19,7 +19,7 @@
                 Class="btn-modal sign-in sign-in-with"
                 Click="@(_ => OnSignInWith(schema.Name))">
                 @if (schema.Icon != null) {
-                    <img draggable="false" src="@schema.Icon" alt="@schema.DisplayName">
+                    <img draggable="false" src="@schema.Icon" class="@schema.Class" alt="@schema.DisplayName">
                 }
                 @("Sign in with " + schema.DisplayName)
             </Button>
@@ -95,7 +95,12 @@
                     IClientAuth.GoogleSchemeName => "/dist/images/landing/google-icon-color.svg",
                     IClientAuth.AppleIdSchemeName => "/dist/images/landing/apple-icon-black.svg",
                     _ => null,
-                    },
+                },
+                Class = schema.Name switch
+                {
+                    IClientAuth.AppleIdSchemeName => "logo-apple",
+                    _ => "",
+                },
             })
             .ToList();
     }
@@ -128,6 +133,7 @@
         public string Name { get; init; } = null!;
         public string DisplayName { get; init; } = null!;
         public string? Icon { get; init; }
+        public string Class { get; init; } = null!;
     }
 
     public sealed class StepModel(ComponentIdGenerator? componentIdGenerator = null)
