@@ -1,21 +1,21 @@
 Near term:
 
 Urgent fixes:
-- [!] No notif / unread on a message from someone who's not in your contact list
-- [!] Android: sometimes theme change doesn't work / blue status bar color
-- iOS: "Scroll down" sometimes doesn't disappear even when you're at the very bottom
-- iOS: investigate weird "Back" click behavior (sometimes it does not work when you touch it, maybe related to Safari click event propagation or nearby clickalbe header)
+- [EK] No notif / unread on a message from someone who's not in your contact list
+- [EK] Dark theme: fix Apple icon color on sign-in modal
+- [DF] Android: sometimes theme change doesn't work / blue status bar color
+- [DF] See if it's possible to disable native splash & use the web version
+- [DF] Anonymous chats: let's hide the list of participants until there are at least 5 of them (for the beginning) and add the option to control how many later
+- [DF] Check share behavior + get rid of activity state persistance on Android
+- [AK] iOS: "Scroll down" sometimes doesn't disappear even when you're at the very bottom
+- [Andrey] Mobile: fix chat header icon position
 - iOS: reconnect banner may take two lines on iPhone (not enough horizontal space)
 - Mobile: Maybe we should pause AudioContext when nothing is playing, otherwise it drains the battery
-- Anonymous chats: @ typing produces a list with missing avatars (+ we must use skeletons there)
-- Anonymous chats: let's hide the list of participants until there are at least 5 of them (for the beginning) and add the option to control how many later
-- Dark theme: fix Apple icon color on sign-in modal
 - Portrait/landscape mode switch should work in MAUI apps. That's mainly for images & videos; maybe disable fullscreen video mode support on Android. Custom full screen implementation have issues with history if user exits from fullscreen mode with back button.
-- [Done?] Theme should set text color + make sure all the issues w/ black on black in Dark theme are gone
-- [Done?] Web splash should be the same as MAUI splash
-- [Done?] Logout doesn't work on Android & Windows apps; maybe iOS as well.~~ (Working on Dev, Prod update is required)
+- [AY] Fix auto-nav on mobile apps - it shouldn't bring you back to the same chat.
 
 Less urgent fixes:
+- iOS: investigate weird "Back" click behavior (sometimes it does not work when you touch it, maybe related to Safari click event propagation or nearby clickalbe header)
 - There are still some weird UI restarts on Android - prob. MauiLivenessProbe is too aggressive
 - SharedResourcePool must be IAsyncDisposable
 
