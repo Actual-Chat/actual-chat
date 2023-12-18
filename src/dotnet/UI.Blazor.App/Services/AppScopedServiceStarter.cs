@@ -32,8 +32,6 @@ public class AppScopedServiceStarter
     {
         // Starts in Blazor dispatcher
         using var _1 = Tracer.Region();
-        // Force LoadingUI instantiation to trigger ShowLoadingOverlay
-        _ = LoadingUI;
         try {
             var baseUri = HostInfo.BaseUrl;
 

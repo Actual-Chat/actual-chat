@@ -56,8 +56,14 @@
 </head>
 
 <body class="app-mobile app-maui" style="background-color: #0036A3">
-    <div id="until-ui-is-ready" class="loading-overlay"></div>
-    <script src="_overlay.js"></script>
+    <div id="until-ui-is-ready" class="loading-overlay">
+        <div class="c-content">
+            <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="Loading...">
+            <div class="progress">
+                <div class="progress-value"></div>
+            </div>
+        </div>
+    </div>
 
     <div id="app" class="flex flex-col h-full"></div>
 
