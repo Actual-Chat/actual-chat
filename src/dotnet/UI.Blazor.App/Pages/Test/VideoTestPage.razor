@@ -1,0 +1,24 @@
+﻿@page "/test/video"
+@using ActualChat.UI.Blazor.App.Module
+<RequireAccount MustBeAdmin="true"/>
+<h2>Video Test Page</h2>
+
+<div>
+    <video id="video" style="display: none;"></video>
+    <canvas id="canvas"></canvas>
+</div>
+
+<Button Click="@StartVideo">Start</Button>
+<Button Click="@StopVideo">Stop</Button>
+
+@code {
+    [Inject] IJSRuntime JS { get; init; } = null!;
+
+    private async Task StartVideo() {
+        await JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.VideoTestPage.startVideoCapture");
+    }
+
+    private async Task StopVideo() {
+        await JS.InvokeVoidAsync($"{BlazorUIAppModule.ImportName}.VideoTestPage.stopVideoCapture");
+    }
+}
