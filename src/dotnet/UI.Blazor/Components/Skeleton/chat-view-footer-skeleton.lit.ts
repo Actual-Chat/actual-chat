@@ -20,7 +20,7 @@ class ChatViewFooterSkeleton extends LitElement {
         flex-direction: column;
         column-gap: 0.625rem;
         align-items: center;
-        background-color: var(--background-07);
+        background-color: var(--post-panel);
     }
     .panel-buttons {
         position: relative;
