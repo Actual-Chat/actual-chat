@@ -16,9 +16,9 @@
     private string GetRowHeightCls() {
         return Row.Narrowest.Proportions switch {
             ImageProportions.Narrow =>  "h-64 md:h-120",
-            ImageProportions.Square => "h-48 md:-h80",
-            ImageProportions.Wide => "h-36 md:-h60",
-            _ => "h-24 md:-h40",
+            ImageProportions.Square => "h-48 md:h-80",
+            ImageProportions.Wide => "h-36 md:h-60",
+            _ => "h-24 md:h-40",
             };
     }
 }
