@@ -143,7 +143,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply truncate;
 }
 .chat-header-center > .chat-header-title {
-    @apply flex-1 flex-x;
+    @apply flex-1 flex-y items-start justify-center;
     @apply select-none truncate;
     @apply no-highlight;
 }
@@ -151,6 +151,10 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply flex-1;
     @apply text-01 font-medium;
     @apply truncate;
+}
+.chat-header-center > .chat-header-title > .status-badge {
+    @apply p-0;
+    @apply text-caption-6 text-03;
 }
 .chat-header-center > .chat-header-title > .c-activities-container {
     @apply flex-none flex-x items-center gap-x-3;
@@ -186,4 +190,11 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply flex items-center justify-center;
     @apply h-full;
     @apply text-02;
+}
+
+.status-badge {
+    @apply flex items-center gap-x-0.5;
+    @apply px-2;
+    @apply rounded-full;
+    @apply text-caption-2;
 }

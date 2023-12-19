@@ -18,7 +18,7 @@ case ChatKind.Group or ChatKind.Place:
     break;
 case ChatKind.Peer when !_peerChatUserId.IsNone:
     <AccountCircle
-        ShowPresence="@(!IsBlurred)"
+        ShowPresence="@false"
         UserSid="@_peerChatUserId"
         Size="@Size"
         IsBlurred="@IsBlurred"/>

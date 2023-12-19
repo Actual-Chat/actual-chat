@@ -24,6 +24,7 @@
             <ChatIcon Chat="@chat"/>
             <div class="chat-header-title">
                 <div class="c-title">@chat.Title</div>
+                <StatusBadge ChatContext="@ChatContext" Colorful="@false"/>
             </div>
             <div class="c-activities-container">
                 <ChatActivities @key="@chat.Id.Value" Chat="@chat"/>

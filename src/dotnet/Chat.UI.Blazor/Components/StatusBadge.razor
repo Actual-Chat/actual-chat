@@ -1,0 +1,97 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<StatusBadge.Model>
+
+@{
+    var m = State.Value;
+}
+<span class="status-badge @m.BadgeColor @m.TextColor">
+    @if (Chat is { Kind: ChatKind.Group, IsPublic: false } && ShowLockIcon) {
+        <i class="icon-lock text-sm"></i>
+    }
+    @m.Status
+</span>
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+    private Session Session => ChatContext.Hub.Session();
+    private IAuthors Authors => ChatContext.Hub.Authors;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter] public bool Colorful { get; set; } = true;
+    [Parameter] public bool ShowLockIcon { get; set; } = true;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var status = "";
+        var textColor = "text-[var(--status)]";
+        var badgeColor = "bg-transparent";
+        if (Chat.Kind == ChatKind.Group) {
+            status = Chat.IsPublic ? "Public" : "Private";
+            if (Colorful) {
+                badgeColor = "bg-[var(--status-badge)]";
+            }
+            return new() {
+                Status = status,
+                TextColor = textColor,
+                BadgeColor = badgeColor,
+            };
+        }
+        var ownAccount = ChatContext.OwnAccount;
+        if (!Chat.Id.IsPeerChat(out var peerChatId))
+            return Model.Loading;
+        var peerAccountId = peerChatId.UserIds.OtherThanOrDefault(ownAccount.Id);
+        if (peerAccountId.IsNone)
+            return Model.Loading;
+
+        var ownAuthor = await Authors.GetOwn(Session, peerChatId, cancellationToken);
+        var anotherAuthorId = new AuthorId(peerChatId, ownAuthor != null && peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
+        var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken);
+
+        if (anotherAuthor == null)
+            return Model.Loading;
+        var presence = await Authors.GetPresence(Session, Chat.Id, anotherAuthor.Id, cancellationToken);
+
+        status = presence switch {
+            Presence.Offline => "Offline",
+            Presence.Away => "Away",
+            Presence.Online => "Online",
+            Presence.Recording => "Online",
+            _ => "",
+        };
+        if (Colorful) {
+            badgeColor = presence switch {
+                Presence.Offline => "bg-[var(--status-offline-badge)]",
+                Presence.Away => "bg-[var(--status-away-badge)]",
+                Presence.Online => "bg-[var(--status-online-badge)]",
+                Presence.Recording => "bg-[var(--status-online-badge)]",
+                _ => "",
+            };
+            textColor = presence switch {
+                Presence.Offline => "text-[var(--status-offline)]",
+                Presence.Away => "text-[var(--status-away)]",
+                Presence.Online => "text-[var(--status-online)]",
+                Presence.Recording => "text-[var(--status-online)]",
+                _ => "",
+            };
+        }
+
+        return new Model() {
+            Status = status,
+            TextColor = textColor,
+            BadgeColor = badgeColor,
+        };
+    }
+
+    public sealed record Model {
+        public static readonly Model Loading = new();
+
+        public string Status { get; init; } = "";
+        public string TextColor { get; init; } = "";
+        public string BadgeColor { get; init; } = "";
+    }
+}
