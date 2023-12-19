@@ -95,7 +95,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         var userSettings = await userSettingsTask.ConfigureAwait(false);
         var lastMention = await lastMentionTask.ConfigureAwait(false);
         var readEntryLid = await readEntryLidTask.ConfigureAwait(false);
-        var unreadCount = ComputeUnreadCount(news, readEntryLid);
+        var unreadCount = ComputeUnreadCount(chatId, news, readEntryLid);
 
         var hasUnreadMentions = false;
         if (userSettings.NotificationMode is not ChatNotificationMode.Muted) {
@@ -335,10 +335,10 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     }
 
     // Not compute method!
-    private static Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)
+    private static Trimmed<int> ComputeUnreadCount(ChatId chatId, ChatNews chatNews, long readEntryLid)
     {
         var unreadCount = 0;
-        if (readEntryLid >= 0 && !chatNews.IsNone) {
+        if ((readEntryLid > 0 || (chatId.IsPeerChat(out _) && readEntryLid == 0)) && !chatNews.IsNone) {
             // Otherwise the chat wasn't ever opened
             var lastId = chatNews.TextEntryIdRange.End - 1;
             unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
