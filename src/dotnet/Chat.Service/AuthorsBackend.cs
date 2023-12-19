@@ -266,6 +266,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
                     .EnqueueOnCompletion();
             }
 
+            if (chatId.IsPeerChat(out _))
+                new ChatPositionsBackend_Set(author.UserId, command.ChatId, ChatPositionKind.Read, new ChatPosition())
+                    .EnqueueOnCompletion();
+
             if (!doNotNotify)
                 // Raise events
                 new AuthorChangedEvent(author, existingAuthor)

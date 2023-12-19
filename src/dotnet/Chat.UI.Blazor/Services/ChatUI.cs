@@ -338,7 +338,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private static Trimmed<int> ComputeUnreadCount(ChatNews chatNews, long readEntryLid)
     {
         var unreadCount = 0;
-        if (readEntryLid > 0 && !chatNews.IsNone) {
+        if (readEntryLid >= 0 && !chatNews.IsNone) {
             // Otherwise the chat wasn't ever opened
             var lastId = chatNews.TextEntryIdRange.End - 1;
             unreadCount = (int)(lastId - readEntryLid).Clamp(0, ChatInfo.MaxUnreadCount);
