@@ -4,19 +4,16 @@
 @{
     var m = State.Value;
 }
-<div class="c-bio">
+<span class="c-bio">
     @m.Bio
-</div>
-<div class="c-status">
-    @m.Status
-</div>
+</span>
 
 @code {
     private Chat Chat => ChatContext.Chat;
     private Session Session => ChatContext.Hub.Session();
     private IAuthors Authors => ChatContext.Hub.Authors;
 
-    [Parameter] public ChatContext ChatContext { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -38,18 +35,9 @@
 
         if (anotherAuthor == null)
             return Model.Loading;
-        var presence = await Authors.GetPresence(Session, Chat.Id, anotherAuthor.Id, cancellationToken);
 
-        var status = presence switch {
-            Presence.Offline => "Offline",
-            Presence.Away => "Away",
-            Presence.Online => "Online",
-            Presence.Recording => "Online",
-            _ => "",
-        };
         var bio = anotherAuthor.Avatar.Bio;
         return new Model() {
-            Status = status,
             Bio = bio,
         };
     }
@@ -58,6 +46,5 @@
         public static readonly Model Loading = new();
 
         public string Bio { get; init; } = "";
-        public string Status { get; init; } = "";
     }
 }

@@ -14,6 +14,8 @@
     --gray-05: #1C1C1C;
 
     --gray-10-20: #28282833;
+    --gray-40-10: #2828281A;
+    --gray-40-20: #28282833;
     --gray-80-20: #D3D3D333;
 
     --ash-99: #F5F5FC;
@@ -92,6 +94,8 @@
     --magenta-20: #5D0626;
     --magenta-10: #350013;
 
+    --magenta-40-10: #C80E511A;
+    --magenta-40-20: #C80E5133;
     --magenta-50-10: #FF005C1A;
 
     --red-99: #FFECEC;
@@ -176,6 +180,9 @@
     --green-10: #005F15;
     --green-05: #00320B;
 
+    --green-40-10: #00D12E1A;
+    --green-40-20: #00D12E33;
+    --green-50-10: #00FF381A;
     --green-50-20: #00FF3833;
     --green-80-20: #9CFFB233;
 
@@ -189,6 +196,9 @@
     --sienna-20: #6A4C00;
     --sienna-10: #352600;
 
+    --sienna-40-10: #DC9E001A;
+    --sienna-40-20: #DC9E0033;
+    --sienna-50-10: #FFB8001A;
     --sienna-50-20: #FFB80033;
     --sienna-80-20: #FFE6A533;
 
@@ -305,6 +315,16 @@
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
     --download-banner-right: var(--blue-50);
+
+    /* Status badge */
+    --status: var(--gray-50);
+    --status-badge: var(--gray-40-20);
+    --status-online: var(--green-30);
+    --status-online-badge: var(--green-40-20);
+    --status-away: var(--sienna-50);
+    --status-away-badge: var(--sienna-40-20);
+    --status-offline: var(--magenta-50);
+    --status-offline-badge: var(--magenta-40-20);
 
     /* Utils */
     --transparent: rgba(0, 0, 0, 0);
@@ -484,6 +504,16 @@
     --download-banner-left: var(--magenta-40);
     --download-banner-right: var(--blue-50);
 
+    /* Status badge */
+    --status: var(--gray-40);
+    --status-badge: var(--white-04);
+    --status-online: var(--green-40);
+    --status-online-badge: var(--green-40-10);
+    --status-away: var(--sienna-40);
+    --status-away-badge: var(--sienna-40-10);
+    --status-offline: var(--magenta-40);
+    --status-offline-badge: var(--magenta-40-10);
+
     /* Utils */
     --online: var(--green-40);
     --input: var(--ash-99-05);
@@ -661,6 +691,16 @@
     /* Download Banner */
     --download-banner-left: var(--magenta-40);
     --download-banner-right: var(--blue-50);
+
+    /* Status badge */
+    --status: var(--gray-40);
+    --status-badge: var(--gray-40-10);
+    --status-online: var(--green-40);
+    --status-online-badge: var(--green-40-10);
+    --status-away: var(--sienna-40);
+    --status-away-badge: var(--sienna-40-10);
+    --status-offline: var(--magenta-40);
+    --status-offline-badge: var(--magenta-40-10);
 
     /* Utils */
     --transparent: rgba(0, 0, 0, 0);

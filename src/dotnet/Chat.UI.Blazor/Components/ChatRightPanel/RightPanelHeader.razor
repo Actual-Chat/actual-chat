@@ -42,8 +42,11 @@
     </div>
 
     <div class="c-bottom">
-        <div class="c-title">
-            @Chat.Title
+        <div class="c-content">
+            <div class="c-title">
+                @Chat.Title
+            </div>
+            <StatusBadge ChatContext="@ChatContext"/>
         </div>
         <RightPanelHeaderChatInfo ChatContext="@ChatContext"/>
     </div>
