@@ -1,8 +1,8 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 
-<div class="image-line @Class @GetRowHeightCls()">
+<div class="image-line @Class @Row.HeightCls">
     @foreach (var tile in Row.Tiles) {
-        <div class="image-item" style="width: @Row.GetTileWidthPercent(tile)%">
+        <div class="image-item" style="max-width: @Row.GetTileDesiredWidthRem(tile, ScreenSize)rem; width: @Row.GetTileWidthPercent(tile)%">
             <VisualMediaAttachment Attachment="@tile.Attachment" ChatEntry="@ChatEntry" />
         </div>
     }
@@ -12,13 +12,5 @@
     [Parameter, EditorRequired] public ImageRow Row { get; set; } = null!;
     [Parameter] public ChatEntry? ChatEntry { get; set; }
     [Parameter] public string Class { get; set; } = "";
-
-    private string GetRowHeightCls() {
-        return Row.Narrowest.Proportions switch {
-            ImageProportions.Narrow =>  "h-64 md:h-120",
-            ImageProportions.Square => "h-48 md:h-80",
-            ImageProportions.Wide => "h-36 md:h-60",
-            _ => "h-24 md:h-40",
-            };
-    }
+    [CascadingParameter] private ScreenSize ScreenSize { get; set; }
 }
