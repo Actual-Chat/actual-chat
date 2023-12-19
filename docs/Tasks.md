@@ -1,8 +1,8 @@
 Near term:
 
 Urgent fixes:
-- [EK] No notif / unread on a message from someone who's not in your contact list
-- [EK] Dark theme: fix Apple icon color on sign-in modal
+- [EK] ~~No notif / unread on a message from someone who's not in your contact list~~
+- [EK] ~~Dark theme: fix Apple icon color on sign-in modal~~
 - [DF] Android: sometimes theme change doesn't work / blue status bar color
 - [DF] See if it's possible to disable native splash & use the web version
 - [DF] ~~Anonymous chats: let's hide the list of participants until there are at least 5 of them (for the beginning)~~ and add the option to control how many later
