@@ -76,6 +76,12 @@ export class BrowserInfo {
         this.backendRef.invokeMethodAsync('OnThemeChanged', themeInfo);
     };
 
+    public static async onWebSplashRemoved(): Promise<void> {
+        infoLog?.log(`onWebSplashRemoved`);
+        await this.whenReady;
+        this.backendRef.invokeMethodAsync('OnWebSplashRemoved');
+    };
+
     private static initBodyClasses() {
         const classList = document.body.classList;
         switch (this.appKind) {

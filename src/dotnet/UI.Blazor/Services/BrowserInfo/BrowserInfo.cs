@@ -79,6 +79,9 @@ public class BrowserInfo : ScopedServiceBase<UIHub>, IBrowserInfoBackend
     public void OnThemeChanged(IBrowserInfoBackend.ThemeInfo themeInfo)
         => UpdateThemeInfo(themeInfo);
 
+    [JSInvokable]
+    public virtual void OnWebSplashRemoved() { }
+
     // Protected & private methods
 
     protected void Update(ScreenSize? screenSize = null, bool? isHoverable = null, bool? isVisible = null)

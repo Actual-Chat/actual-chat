@@ -46,14 +46,10 @@ public class MauiThemeHandler
         Apply();
     }
 
-    public void Apply(bool assumeNoSplash = false)
+    public void Apply()
     {
-        if (assumeNoSplash || MauiLoadingUI.WhenFirstSplashRemoved.IsCompleted)
+        if (MauiLoadingUI.WhenFirstSplashRemoved.IsCompleted)
             Apply(_theme, _colors);
-#if false // Happens with a significant delay on Android, so it's better to apply the change just once
-        else
-            Apply(null, MauiSettings.SplashBackgroundColor.ToArgbHex(true));
-#endif
     }
 
     // Protected methods

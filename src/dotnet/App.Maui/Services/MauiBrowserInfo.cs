@@ -47,4 +47,11 @@ public class MauiBrowserInfo : BrowserInfo
         // We don't want to change any other properties here
         WhenReadySource.TrySetResult();
     }
+
+    [JSInvokable]
+    public override void OnWebSplashRemoved()
+    {
+        MauiLoadingUI.MarkSplashRemoved();
+        MauiThemeHandler.Instance.Apply();
+    }
 }

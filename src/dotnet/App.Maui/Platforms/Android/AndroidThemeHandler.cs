@@ -31,4 +31,13 @@ public class AndroidThemeHandler : MauiThemeHandler
             return darkness >= 0.5;
         }
     }
+
+    public static void SetNavigationBarColor(Color color)
+    {
+        var window = Window;
+        if (window == null)
+            return;
+        var androidColor = Android.Graphics.Color.ParseColor(color.ToArgbHex());
+        window.SetNavigationBarColor(androidColor);
+    }
 }

@@ -5,6 +5,7 @@ public interface IBrowserInfoBackend
     void OnScreenSizeChanged(string screenSizeText, bool isHoverable);
     void OnIsVisibleChanged(bool isVisible);
     void OnThemeChanged(ThemeInfo themeInfo);
+    void OnWebSplashRemoved();
 
     // Nested types
 

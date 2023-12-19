@@ -17,13 +17,6 @@ public class MainPage : ContentPage
         BackgroundColor = MauiSettings.SplashBackgroundColor;
         MauiLoadingUI.MarkFirstWebViewCreated();
         RecreateWebView();
-        _ = AwaitAndApplyTheme();
-
-        async Task AwaitAndApplyTheme()
-        {
-            await Task.Delay(500).ConfigureAwait(true);
-            MauiThemeHandler.Instance.Apply(true);
-        }
     }
 
     public void RecreateWebView()

@@ -7,11 +7,8 @@ using Android.Content;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using Android.Views;
-using Android.Views.Animations;
-using Android.Window;
 using AndroidX.Activity.Result;
 using AndroidX.Activity.Result.Contract;
-using Microsoft.Maui.Controls.Platform;
 using AView = Android.Views.View;
 using JObject = Java.Lang.Object;
 
@@ -84,6 +81,10 @@ public partial class MainActivity : MauiAppCompatActivity
 
         base.OnCreate(savedInstanceState);
         _tracer.Point("OnCreate, base.OnCreate completed");
+
+        // base.OnCreate call hides native splash screen. Set NavigationBar color the same as web splash screen
+        // background color to make it looks like web splash screen covers entire screen.
+        AndroidThemeHandler.SetNavigationBarColor(MauiSettings.SplashBackgroundColor);
 
         // Attempt to have notification reception even after app is swiped out.
         // https://github.com/firebase/quickstart-android/issues/368#issuecomment-683151061

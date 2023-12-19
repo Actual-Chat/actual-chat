@@ -132,12 +132,18 @@ export class BrowserInit {
         if (!overlay)
             return;
 
-        if (instantly)
+        if (instantly) {
             overlay.remove();
+            void BrowserInfo.onWebSplashRemoved();
+        }
         else {
             overlay.style.opacity = '0';
             setTimeout(function () {
-                overlay.remove();
+                const isInDom = document.contains(overlay);
+                if (isInDom) {
+                    overlay.remove();
+                    void BrowserInfo.onWebSplashRemoved();
+                }
             }, 500);
         }
     }
