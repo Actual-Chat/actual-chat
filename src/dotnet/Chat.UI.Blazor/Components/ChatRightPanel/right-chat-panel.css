@@ -81,8 +81,18 @@
     @apply text-headline-7 text-02;
     @apply truncate;
 }
-.right-chat-panel > .c-header > .c-bottom > .c-status {
+.right-chat-panel > .c-header > .c-bottom > .c-info {
+    @apply flex-y;
     @apply text-caption-6 text-03;
+}
+.right-chat-panel > .c-header > .c-bottom > .c-info > .c-bio {
+    @apply text-caption-3 font-semibold;
+}
+.right-chat-panel > .c-header > .c-bottom > .c-info > .c-status {
+    @apply text-caption-6;
+}
+body.narrow .right-chat-panel > .c-header > .c-bottom > .c-info > .c-status {
+    @apply hidden;
 }
 .right-chat-panel > .c-header > .c-center {
     @apply absolute top-12 z-20;
