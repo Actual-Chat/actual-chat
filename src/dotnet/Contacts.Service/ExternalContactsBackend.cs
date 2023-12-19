@@ -26,11 +26,12 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         var dbExternalContacts = await dbContext.ExternalContacts
             .Include(x => x.ExternalContactLinks)
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
-            .OrderBy(a => a.DisplayName)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return dbExternalContacts.Select(x => x.ToModel()).ToApiArray();
+        return dbExternalContacts.OrderBy(x => x.DisplayName, StringComparer.Ordinal)
+            .Select(x => x.ToModel())
+            .ToApiArray();
     }
 
     // Not compute method!
