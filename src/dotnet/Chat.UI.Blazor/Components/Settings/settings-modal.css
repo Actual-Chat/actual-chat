@@ -25,3 +25,12 @@
 .phone-verification-status > i {
     @apply text-base mr-2;
 }
+
+.blazor-mode-tile .form label {
+    @apply whitespace-normal;
+    @apply text-headline-1 text-02;
+}
+.blazor-mode-tile .c-comment {
+    @apply whitespace-normal;
+    @apply text-caption-6 text-03;
+}

@@ -17,7 +17,10 @@
                         <FormRadio Id="@_formModel.ServerModeFormId" Value="@true"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.ServerModeFormId" Text="Server"></Label>
+                        <Label InputId="@_formModel.ServerModeFormId" Text="Server-Side Rendering"></Label>
+                        <div class="c-comment">
+                            Works best for less powerful devices; less responsive if you're outside of the U.S.
+                        </div>
                     </Content>
                 </TileItem>
 
@@ -26,7 +29,11 @@
                         <FormRadio Id="@_formModel.WasmModeFormId" Value="@false"/>
                     </Icon>
                     <Content>
-                        <Label InputId="@_formModel.WasmModeFormId" Text="WASM"></Label>
+                        <Label InputId="@_formModel.WasmModeFormId" Text="Full-Featured WebAssembly Client"></Label>
+                        <div class="c-comment">
+                            Works best on more powerful devices; more responsive, requires less bandwidth,
+                            but downloads ~10MB once you enable this mode.
+                        </div>
                     </Content>
                 </TileItem>
 
