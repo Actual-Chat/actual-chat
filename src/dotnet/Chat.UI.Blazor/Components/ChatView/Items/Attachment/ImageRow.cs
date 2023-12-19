@@ -1,3 +1,5 @@
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.Chat.UI.Blazor.Components;
 
 public class ImageRow
@@ -8,6 +10,34 @@ public class ImageRow
 
     public float GetTileWidthPercent(ImageTile tile)
         => tile.Ratio / _ratioSum * 100;
+
+    public float GetTileDesiredWidthRem(ImageTile tile, ScreenSize screenSize)
+    {
+        var heightRem = GetHeightRem(screenSize);
+        return heightRem * tile.Ratio;
+    }
+
+    // keep in sync with GetHeight
+    public string HeightCls => Narrowest.Proportions switch
+    {
+        ImageProportions.Narrow => "h-64 md:h-120",
+        ImageProportions.Square => "h-48 md:h-80",
+        ImageProportions.Wide => "h-36 md:h-60",
+        _ => "h-24 md:h-40",
+    };
+
+    // keep in sync with HeightCls
+    public float GetHeightRem(ScreenSize screenSize)
+    {
+        var isNarrow = screenSize.IsNarrow();
+        return Narrowest.Proportions switch {
+                ImageProportions.Narrow => isNarrow ? 64 : 120,
+                ImageProportions.Square => isNarrow ? 48 : 80,
+                ImageProportions.Wide => isNarrow ? 36 : 60,
+                _ => isNarrow ? 24 : 40,
+            }
+            / 4F;
+    }
 
     public ImageRow(IReadOnlyList<ImageTile> tiles)
     {
