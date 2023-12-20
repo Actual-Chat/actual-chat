@@ -22,20 +22,6 @@
         </TileItem>
     }
 
-    @if (!Author.Avatar.Bio.IsNullOrEmpty()) {
-        <TileItem Class="tile-promote-to-owner not-hover">
-            <Icon>
-                <i class="icon-person text-2xl text-03"></i>
-            </Icon>
-            <Content>
-                @Author.Avatar.Bio
-            </Content>
-            <Caption>
-                Bio
-            </Caption>
-        </TileItem>
-    }
-
     @{ var m = EditMemberModel; }
 
     @if (m != null && (m.CanPromoteToOwner || m.CanRemoveFromGroup)  || UsePlaceSettingsToEditMember) {
