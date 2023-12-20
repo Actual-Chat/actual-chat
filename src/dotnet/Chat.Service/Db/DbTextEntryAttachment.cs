@@ -7,7 +7,7 @@ namespace ActualChat.Chat.Db;
 [Table("TextEntryAttachments")]
 public class DbTextEntryAttachment : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
-    private const int IdSeparator = ':';
+    private const char IdSeparator = ':';
     public DbTextEntryAttachment() { }
     public DbTextEntryAttachment(TextEntryAttachment model) => UpdateFrom(model);
 
