@@ -55,7 +55,7 @@
         <i class="icon-adminx-1 text-2xl font-medium"></i>
     </NavbarGroupSelectionButton>
 }
-@if (HostInfo.IsDevelopmentInstance) {
+@if (ownAccount.IsAdmin) {
     <NavbarGroupSelectionButton
         Title="Test Pages"
         Id="@NavbarGroupIds.TestPages"
@@ -63,14 +63,12 @@
         <i class="icon-alert-triangle text-2xl font-medium"></i>
     </NavbarGroupSelectionButton>
 
-    @if (ownAccount.IsAdmin) {
-        <NavbarButton
-            Class="mt-auto"
-            Tooltip="Reload UI"
-            Click="@OnReloadUIClick">
-            <i class="icon-refresh text-2xl font-medium"></i>
-        </NavbarButton>
-    }
+    <NavbarButton
+        Class="mt-auto"
+        Tooltip="Reload UI"
+        Click="@OnReloadUIClick">
+        <i class="icon-refresh text-2xl font-medium"></i>
+    </NavbarButton>
 }
 
 @code {
