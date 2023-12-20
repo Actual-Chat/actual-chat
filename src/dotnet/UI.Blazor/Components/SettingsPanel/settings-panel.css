@@ -176,7 +176,7 @@ body.hoverable .tile-btn:hover {
 }
 .settings-tab-header {
     @apply ordinary-header;
-    @apply px-2 md:px-0;
+    @apply px-4 md:px-0;
     @apply w-full md:w-80;
     @apply text-title-1;
     @apply bg-02 md:bg-transparent;

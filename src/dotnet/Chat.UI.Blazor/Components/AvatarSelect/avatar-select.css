@@ -13,8 +13,17 @@
     @apply w-full md:w-80;
 }
 .avatar-select .c-hint {
-    @apply text-sm font-normal;
+    @apply text-02 text-sm font-normal;
 }
-.avatar-select-item, .avatar-select-item *   {
+.avatar-select .c-hint.danger {
+    @apply text-danger font-medium;
+}
+.avatar-select-item:hover {
+    @apply bg-hover;
+}
+.avatar-select-item:hover .tile-item {
+    @apply bg-transparent;
+}
+.avatar-select-item, .avatar-select-item * {
     @apply cursor-pointer;
 }

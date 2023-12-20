@@ -32,16 +32,19 @@
         @if (m.IsOwn) {
             if (!m.Author.IsAnonymous) {
                 <Button Class="btn-modal btn-primary" Click="OnChangeAvatarClicked">
-                    <i class="icon-sync text-xl text-primary-title"></i>
+                    <i class="icon-sync text-lg"></i>
                     Change avatar
                 </Button>
             } else {
                 <Button Class="btn-modal" Click="@(_ => OnEditAvatarClicked(m.Author))">
-                    <i class="icon-sync text-xl text-primary-title"></i>
-                    Change avatar
+                    <i class="icon-sync text-lg md:hidden"></i>
+                    Edit avatar
                 </Button>
                 @if (m.EnableIncompleteUI) {
-                    <Button Class="btn-modal danger" Click="OnRevealClicked">Reveal</Button>
+                    <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
+                        <i class="icon-eye text-xl md:hidden"></i>
+                        Reveal
+                    </Button>
                 }
             }
         } else if (m.Author.IsAnonymous) {

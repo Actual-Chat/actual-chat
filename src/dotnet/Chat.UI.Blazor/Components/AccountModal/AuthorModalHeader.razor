@@ -3,7 +3,7 @@
 
 <div class="c-header">
     <ButtonRound Click="@OnClose" Class="author-modal-close-btn btn-md">
-        <i class="icon-close text-2xl"></i>
+        <i class="icon-close text-2xl text-toast-text"></i>
     </ButtonRound>
 
     <div class="c-top">
@@ -25,7 +25,7 @@
             </BadgeContent>
         </AuthorCircle>
         <div class="c-buttons">
-            @if (IsOwn) {
+            @if (IsOwn && !Author.IsAnonymous) {
                 <ButtonRound
                     Class="btn-md"
                     Tooltip="Edit"
@@ -54,6 +54,9 @@
             <AuthorName AuthorSid="@Author.Id" Class="text-02 text-headline-7" ShowDetailsOnClick="false"/>
         </div>
         <div class="c-public">
+            @if (!Author.Avatar.Bio.IsNullOrEmpty()) {
+                @Author.Avatar.Bio
+            }
         </div>
     </div>
 </div>

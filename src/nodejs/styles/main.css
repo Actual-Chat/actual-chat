@@ -147,7 +147,6 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply overflow-hidden;
 }
 .list-view-layout > .layout-header > .c-content {
-    @apply gap-x-2;
     @apply md:p-2.5;
 }
 .list-view-layout .layout-body {
