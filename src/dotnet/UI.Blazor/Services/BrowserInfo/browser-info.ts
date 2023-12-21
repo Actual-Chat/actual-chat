@@ -14,7 +14,11 @@ export type AppKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
 export class BrowserInfo {
     private static backendRef: DotNet.DotNetObject = null;
 
-    public static appKind: AppKind;
+    public static appKind: AppKind = window.location.host === '0.0.0.0'
+        ? 'MauiApp'
+        : ('MONO' in window)
+            ? 'WasmApp'
+            : "WebServer";
     public static utcOffset: number;
     public static windowId = "";
     public static whenReady: PromiseSource<void> = new PromiseSource<void>();

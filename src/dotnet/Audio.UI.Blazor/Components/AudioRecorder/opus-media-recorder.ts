@@ -74,6 +74,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     private isVoiceActive: boolean = false;
     private sessionToken: string | null;
     private encoderWorkerSessionToken: string | null;
+    private pauseContextRef: () => void | null = null;
 
     public origin: string = new URL('opus-media-recorder.ts', import.meta.url).origin;
     public source?: MediaStreamAudioSourceNode = null;
@@ -389,6 +390,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             detach: _ => retry(2, () => detach()),
         }
         const contextRef = audioContextSource.getRef('recording', options);
+        this.pauseContextRef = contextRef.use();
         try {
             debugLog?.log(`start(): awaiting whenFirstTimeReady...`);
             await contextRef.whenFirstTimeReady();
@@ -443,6 +445,8 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
     public async terminate(): Promise<void> {
         await this.encoderWorker?.stop();
         await this.vadWorker?.reset();
+        this.pauseContextRef?.();
+        this.pauseContextRef = null;
         this.encoderWorkerInstance.terminate();
         this.vadWorkerInstance.terminate();
         this.whenInitialized = new PromiseSource<void>();

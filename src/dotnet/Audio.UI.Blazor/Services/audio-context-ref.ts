@@ -19,10 +19,10 @@ export interface AudioContextRefOptions {
     attach?: (context: AudioContext, destination: AudioNode) => Promise<void> | void,
     detach?: (context: AudioContext) => Promise<void> | void,
     dispose?: () => Promise<void> | void,
-    ready?: (context: AudioContext) => Promise<void> | void,
-    unready?: (context: AudioContext) => Promise<void> | void,
     retryCount?: number,
 }
+
+export type AudioContextRefState = 'running' | 'paused';
 
 export class AudioContextRef implements AsyncDisposable {
     private readonly name: string;
@@ -30,6 +30,9 @@ export class AudioContextRef implements AsyncDisposable {
     private readonly whenRunning: Promise<void>;
     private readonly whenDisposeRequested = new PromiseSource<Cancelled>;
     private context: AudioContext;
+    private _state: AudioContextRefState = 'paused';
+
+    public get state(): AudioContextRefState { return this._state; }
 
     constructor(
         public readonly source: AudioContextSource,
@@ -42,9 +45,12 @@ export class AudioContextRef implements AsyncDisposable {
 
     async disposeAsync() : Promise<void> {
         debugLog?.log(`${this.name}.disposeAsync`);
+        this._state = 'paused';
         if (!this.whenDisposeRequested.isCompleted())
             this.whenDisposeRequested.resolve(cancelled)
 
+        this._state = 'paused';
+        this.source.pauseRef();
         await this.whenRunning;
     }
 
@@ -54,6 +60,15 @@ export class AudioContextRef implements AsyncDisposable {
 
     public async whenDisposed() {
         await this.whenRunning;
+    }
+
+    public use(): () => void {
+        this._state = 'running';
+        this.source.useRef();
+        return () => {
+            this._state = 'paused';
+            this.source.pauseRef();
+        };
     }
 
     private async maintain(): Promise<void> {
@@ -79,11 +94,7 @@ export class AudioContextRef implements AsyncDisposable {
                 }
 
                 this.context = context;
-                if (lastContext === this.context) {
-                    debugLog?.log(`${this.name}: ready, context:`, Log.ref(this.context));
-                    await this.options.ready?.(this.context);
-                }
-                else {
+                if (lastContext !== this.context) {
                     if (lastContext) {
                         debugLog?.log(`${this.name}: detach, context:`, Log.ref(lastContext));
                         await this.options.detach?.(lastContext);
@@ -97,8 +108,6 @@ export class AudioContextRef implements AsyncDisposable {
 
                 debugLog?.log(`${this.name}: awaiting whenNotReady`);
                 await this.source.whenNotReady(this.context, this.whenDisposeRequested);
-                debugLog?.log(`${this.name}: unready, context:`, Log.ref(this.context));
-                await this.options.unready?.(this.context);
                 if (!this.source.isActive || this.context.state === 'closed')
                     await this.options.detach?.(this.context);
             }

@@ -32,6 +32,7 @@ export class AudioPlayer implements Resettable {
     private whenEnded?: PromiseSource<void>;
 
     private contextRef: AudioContextRef | null = null;
+    private pauseContextRef: () => void | null = null;
     private isAttached: boolean;
     private playbackState: PlaybackState = 'paused';
     private decoderToFeederWorkletChannel: MessageChannel = null;
@@ -165,6 +166,7 @@ export class AudioPlayer implements Resettable {
     public async startPlayback(blazorRef: DotNet.DotNetObject): Promise<void> {
         debugLog?.log(`#${this.internalId} -> startPlayback()`);
         this.blazorRef = blazorRef;
+        this.pauseContextRef = this.contextRef.use();
         if (this.playbackState === 'ended') {
             await decoderWorker.resume(this.internalId, rpcNoWait);
             await this.feederNode.resume();
@@ -178,6 +180,8 @@ export class AudioPlayer implements Resettable {
         debugLog?.log(`#${this.internalId} reset()`);
         this.blazorRef = null;
         this.playbackState = 'ended';
+        this.pauseContextRef?.();
+        this.pauseContextRef = null;
     }
 
     /** Called by Blazor without awaiting the result, so a call can be in the middle of appendAudio  */
@@ -207,6 +211,8 @@ export class AudioPlayer implements Resettable {
         // This ensures 'end' hit the feeder processor
         await decoderWorker.end(this.internalId, mustAbort);
         await this.whenEnded;
+        this.pauseContextRef?.();
+        this.pauseContextRef = null;
     }
 
     /** Called by Blazor */
@@ -214,6 +220,9 @@ export class AudioPlayer implements Resettable {
         await this.whenReady;
         if (this.playbackState === 'ended')
             return;
+
+        this.pauseContextRef?.();
+        this.pauseContextRef = null;
 
         debugLog?.log(`#${this.internalId}.pause`);
         await this.feederNode.pause(rpcNoWait);
@@ -224,6 +233,8 @@ export class AudioPlayer implements Resettable {
         await this.whenReady;
         if (this.playbackState === 'ended')
             return;
+
+        this.pauseContextRef = this.contextRef.use();
 
         debugLog?.log(`#${this.internalId}.resume`);
         await this.feederNode.resume();
@@ -243,10 +254,10 @@ export class AudioPlayer implements Resettable {
         this.playbackState = state.playbackState;
         if (this.playbackState === 'ended') {
             try {
-                this.whenEnded.resolve(undefined);
-                void this.reportEnded();
+                await this.reportEnded();
             }
             finally {
+                this.whenEnded.resolve(undefined);
                 AudioPlayer.pool.release(this);
             }
         }

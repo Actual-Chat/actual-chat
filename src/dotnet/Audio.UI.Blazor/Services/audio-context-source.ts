@@ -1,6 +1,6 @@
 import { BrowserInfo } from '../../UI.Blazor/Services/BrowserInfo/browser-info';
 import {
-    Cancelled,
+    Cancelled, debounce,
     delayAsync,
     PromiseSource,
     PromiseSourceWithTimeout, ResolvedPromise,
@@ -14,8 +14,7 @@ import { Versioning } from 'versioning';
 import { AudioContextRef, AudioContextRefOptions } from './audio-context-ref';
 import { Subject, Observable, firstValueFrom } from 'rxjs';
 import { AudioContextDestinationFallback } from "./audio-context-destination-fallback";
-
-const { logScope, debugLog, warnLog } = Log.get('AudioContextSource');
+const { logScope, infoLog, debugLog, warnLog } = Log.get('AudioContextSource');
 
 const MaintainCyclePeriodMs = 2000;
 const FixCyclePeriodMs = 300;
@@ -29,30 +28,52 @@ const ShortTestIntervalMs = 60;
 const LongTestIntervalMs = 1000;
 const SilencePlaybackDuration = 0.280;
 const WakeUpDetectionIntervalMs = 5000;
+const SuspendDebounceTimeMs: number = 2000;
 
 const Debug = {
     brokenKey: 'debugging_isBroken',
 }
 
-export class AudioContextSource {
-    private readonly refCounts: Map<string, number> = new Map<string, number>();
-    private readonly fallbackDestination?: AudioContextDestinationFallback;
-    private readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
-    private readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
+export interface AudioContextSource {
+    get context(): AudioContext;
 
-    private _isActive = false;
-    private _context: AudioContext | null = null;
-    private onDeviceAwakeHandler: EventHandler<number>;
-    private deviceWokeUpAt = 0;
-    private isInteractiveWasReset = false;
-    private resumeCount = 0;
-    private interactiveResumeCount = 0;
-    private whenInitializedInteractively: Promise<void> | null = null;
-    private _refCount = 0;
-    private _whenReady = new PromiseSource<AudioContext | null>();
-    // private _whenClosed = new PromiseSource<AudioContext | null>();
-    private _whenNotReady = new PromiseSource<void>();
-    private isTerminated = false;
+    get destination(): AudioNode;
+
+    get refCount(): number;
+
+    get isActive(): boolean;
+
+    contextCreated$: Observable<AudioContext>;
+    contextClosed$: Observable<AudioContext>;
+
+    getRef(operationName: string, options: AudioContextRefOptions): AudioContextRef;
+
+    whenReady(cancel?: Promise<Cancelled>): Promise<AudioContext>;
+
+    whenNotReady(context: AudioContext, cancel?: Promise<Cancelled>): Promise<void>;
+
+    initContextInteractively(): Promise<void>;
+
+    terminate(): Promise<void>;
+
+    resumeAudio(): Promise<void>;
+
+    suspendAudio(): Promise<void>;
+
+    useRef(): void;
+
+    pauseRef(): void;
+}
+
+abstract class AudioContextSourceBase implements AudioContextSource {
+    protected readonly refs: Map<string, AudioContextRef[]> = new Map<string, AudioContextRef[]>();
+    protected readonly fallbackDestination?: AudioContextDestinationFallback;
+    protected readonly _contextCreated$: Subject<AudioContext> = new Subject<AudioContext>();
+    protected readonly _contextClosed$: Subject<AudioContext> = new Subject<AudioContext>();
+
+    protected onDeviceAwakeHandler: EventHandler<number>;
+    protected _context: AudioContext | null = null;
+    protected _refCount = 0;
 
     public readonly contextCreated$: Observable<AudioContext> = this._contextCreated$.asObservable();
     public readonly contextClosed$: Observable<AudioContext> = this._contextClosed$.asObservable();
@@ -61,9 +82,9 @@ export class AudioContextSource {
     public get context(): AudioContext { return this._context; }
     public get destination(): AudioNode { return this.fallbackDestination?.destination ?? this._context.destination; }
     public get refCount(): number { return this._refCount }
-    public get isActive(): boolean { return this._isActive }
+    public abstract get isActive(): boolean;
 
-    constructor() {
+    protected constructor() {
         this.onDeviceAwakeHandler = OnDeviceAwake.events.add(() => this.onDeviceAwake());
         if (AudioContextDestinationFallback.isRequired) {
             this.fallbackDestination = new AudioContextDestinationFallback();
@@ -79,14 +100,131 @@ export class AudioContextSource {
         if ('audioSession' in navigator) {
             navigator.audioSession['type'] = 'play-and-record'; // 'playback'
         }
-        void this.maintain();
     }
 
     public getRef(operationName: string, options: AudioContextRefOptions): AudioContextRef {
-        this.incrementRefCount(operationName);
         const result = new AudioContextRef(this, operationName, options);
-        void result.whenDisposed().then(() => this.decrementRefCount(operationName));
+        this.registerRef(operationName, result);
+
+        void result.whenDisposed().then(() => this.unregisterRef(operationName, result));
         return result;
+    }
+
+    public abstract whenReady(cancel?: Promise<symbol>): Promise<AudioContext>;
+
+    public abstract whenNotReady(context: AudioContext, cancel?: Promise<symbol>): Promise<void>;
+
+    public abstract initContextInteractively(): Promise<void>;
+
+    public abstract terminate(): Promise<void>;
+
+    public abstract resumeAudio(): Promise<void>;
+
+    public abstract suspendAudio(): Promise<void>;
+
+    public abstract useRef(): void;
+
+    public abstract pauseRef(): void;
+
+    protected async loadContextWorklets(context: AudioContext): Promise<void> {
+        try {
+
+            if (this.fallbackDestination) {
+                await this.fallbackDestination.attach(context);
+                if (Interactive.isAlwaysInteractive)
+                    await this.fallbackDestination.play();
+            }
+            debugLog?.log(`create: loading modules`);
+            const feederWorkletPath = Versioning.mapPath('/dist/feederWorklet.js');
+            const encoderWorkletPath = Versioning.mapPath('/dist/opusEncoderWorklet.js');
+            const vadWorkerPath = Versioning.mapPath('/dist/vadWorklet.js');
+            const whenModule1 = context.audioWorklet.addModule(feederWorkletPath);
+            const whenModule2 = context.audioWorklet.addModule(encoderWorkletPath);
+            const whenModule3 = context.audioWorklet.addModule(vadWorkerPath);
+            await Promise.all([whenModule1, whenModule2, whenModule3]);
+        }
+        catch (e) {
+            await this.closeSilently(context);
+            throw e;
+        }
+    }
+
+    protected async closeSilently(context?: AudioContext): Promise<void> {
+        debugLog?.log(`close:`, Log.ref(context));
+        if (!context)
+            return;
+        if (context.state === 'closed')
+            return;
+        if (this.fallbackDestination)
+            this.fallbackDestination.detach();
+        try {
+            await context.close();
+        }
+        catch (e) {
+            warnLog?.log(`close: failed to close AudioContext:`, e)
+        }
+        finally {
+            this._contextClosed$.next(context);
+        }
+    }
+
+    // Event handlers
+
+    protected abstract onDeviceAwake(): Promise<void>;
+
+    private registerRef(operationName: string, ref: AudioContextRef) {
+        const { refs } = this;
+        const opRefs = refs.get(operationName);
+        if (opRefs)
+            opRefs.push(ref);
+        else
+            refs.set(operationName, [ref]);
+        const count = (opRefs?.length ?? 0) + 1;
+        this._refCount++;
+        if (this._refCount > 100)
+            warnLog?.log(`getRef(${operationName}): high refCount:`, this._refCount);
+        debugLog?.log(`+ AudioContextRef(${operationName}), refCount: ${operationName} =`, count,  ', total =', this._refCount);
+    }
+
+    private unregisterRef(operationName: string, ref: AudioContextRef) {
+        const { refs } = this;
+        const opRefs = refs.get(operationName);
+        const count = (opRefs?.length ?? 0) - 1;
+        if (count == 0)
+            this.refs.delete(operationName);
+        else if (opRefs) {
+            const index = opRefs.indexOf(ref);
+            if (index > -1) {
+                opRefs.splice(index, 1);
+            }
+        }
+        if (count < 0)
+            warnLog?.log(`getRef(${operationName}): negative refCount for ${operationName}:`, count);
+        this._refCount--;
+        if (this._refCount < 0)
+            warnLog?.log(`getRef(${operationName}): negative refCount:`, this._refCount);
+        debugLog?.log(`- AudioContextRef(${operationName}), refCount: ${operationName} =`, count, ', total =', this._refCount);
+    }
+}
+
+class WebAudioContextSource extends AudioContextSourceBase implements AudioContextSource {
+    private _isActive = false;
+    private deviceWokeUpAt = 0;
+    private isInteractiveWasReset = false;
+    private resumeCount = 0;
+    private interactiveResumeCount = 0;
+    private whenInitializedInteractively: Promise<void> | null = null;
+    private _whenReady = new PromiseSource<AudioContext | null>();
+    // private _whenClosed = new PromiseSource<AudioContext | null>();
+    private _whenNotReady = new PromiseSource<void>();
+    private isTerminated = false;
+
+    // Key properties
+    public get isActive(): boolean { return this._isActive }
+
+    public constructor() {
+        super();
+        void this.maintain();
     }
 
     public whenReady(cancel?: Promise<Cancelled>): Promise<AudioContext> {
@@ -139,6 +277,10 @@ export class AudioContextSource {
         this._isActive = false;
         this.markNotReady();
     }
+
+    public pauseRef(): void { }
+
+    public useRef(): void { }
 
     // Must be private, but good to keep it near markNotReady
     private markReady(context: AudioContext | null) {
@@ -304,7 +446,7 @@ export class AudioContextSource {
             await this.closeSilently(this._context);
     }
 
-    protected async create(isAlreadyInteractiveToResume = false): Promise<AudioContext> {
+    private async create(isAlreadyInteractiveToResume = false): Promise<AudioContext> {
         debugLog?.log(`create`, isAlreadyInteractiveToResume);
 
         this.resumeCount = 0;
@@ -348,7 +490,7 @@ export class AudioContextSource {
         }
     }
 
-    protected async warmup(context: AudioContext): Promise<void> {
+    private async warmup(context: AudioContext): Promise<void> {
         debugLog?.log(`warmup, AudioContext:`, Log.ref(context));
         if (!this._isActive)
             return;
@@ -386,7 +528,7 @@ export class AudioContextSource {
         }
     }
 
-    protected async test(context: AudioContext, isLongTest = false): Promise<void> {
+    private async test(context: AudioContext, isLongTest = false): Promise<void> {
         if (!this._isActive)
             return;
 
@@ -413,7 +555,7 @@ export class AudioContextSource {
             throw new Error(`${logScope}.test: AudioContext is running, but didn't pass currentTime test.`);
     }
 
-    protected async fix(context: AudioContext): Promise<void> {
+    private async fix(context: AudioContext): Promise<void> {
         debugLog?.log(`fix:`, Log.ref(context));
 
         try {
@@ -431,7 +573,7 @@ export class AudioContextSource {
         }
     }
 
-    protected async interactiveResume(context: AudioContext): Promise<void> {
+    private async interactiveResume(context: AudioContext): Promise<void> {
         debugLog?.log(`interactiveResume:`, Log.ref(context));
         if (context && this.isRunning(context)) {
             debugLog?.log(`interactiveResume: succeeded (AudioContext is already in running state)`);
@@ -506,7 +648,7 @@ export class AudioContextSource {
         debugLog?.log(`resume: resumed, AudioContext:`, Log.ref(context));
     }
 
-    protected async trySuspend(context: AudioContext): Promise<boolean> {
+    private async trySuspend(context: AudioContext): Promise<boolean> {
         if (context.state === 'suspended') {
             debugLog?.log(`trySuspend: already suspended, AudioContext:`, Log.ref(context));
             return true;
@@ -536,7 +678,7 @@ export class AudioContextSource {
     }
 
 
-    protected isRunning(context: AudioContext): boolean {
+    private isRunning(context: AudioContext): boolean {
         // This method addresses some weird issues in how AudioContext behaves in different browsers:
         // - Chromium 110 AudioContext can be in 'running' even after
         //   calling constructor, and even without user interaction.
@@ -559,25 +701,6 @@ export class AudioContextSource {
         // NOTE(AK): Somehow - sporadically - currentTime starts ticking only when you log the context!
         console.log(`AudioContext is:`, Log.ref(context), `, its currentTime:`, context.currentTime);
         return context.state === 'running';
-    }
-
-    protected async closeSilently(context?: AudioContext): Promise<void> {
-        debugLog?.log(`close:`, Log.ref(context));
-        if (!context)
-            return;
-        if (context.state === 'closed')
-            return;
-        if (this.fallbackDestination)
-            this.fallbackDestination.detach();
-        try {
-            await context.close();
-        }
-        catch (e) {
-            warnLog?.log(`close: failed to close AudioContext:`, e)
-        }
-        finally {
-            this._contextClosed$.next(context);
-        }
     }
 
     private createSilenceBuffer(context: AudioContext): AudioBuffer {
@@ -607,40 +730,110 @@ export class AudioContextSource {
 
     // Event handlers
 
-    private onDeviceAwake() {
+    protected async onDeviceAwake(): Promise<void> {
         debugLog?.log(`onDeviceAwake`);
         this.deviceWokeUpAt = Date.now();
         this.isInteractiveWasReset = false;
         // Close current AudioContext as it might be corrupted and can produce clicking sound
-        void this.closeSilently(this._context);
+        await this.closeSilently(this._context);
         this.markNotReady();
-    }
-
-    private incrementRefCount(operationName: string) {
-        const count = (this.refCounts.get(operationName) ?? 0) + 1;
-        this.refCounts.set(operationName, count);
-        this._refCount++;
-        if (this._refCount > 100)
-            warnLog?.log(`getRef(${operationName}): high refCount:`, this._refCount);
-        debugLog?.log(`+ AudioContextRef(${operationName}), refCount: ${operationName} =`, count,  ', total =', this._refCount);
-    }
-
-    private decrementRefCount(operationName: string) {
-        const count = (this.refCounts.get(operationName) ?? 0) - 1;
-        if (count == 0)
-            this.refCounts.delete(operationName);
-        if (count < 0)
-            warnLog?.log(`getRef(${operationName}): negative refCount for ${operationName}:`, count);
-        this.refCounts.set(operationName, count);
-        this._refCount--;
-        if (this._refCount < 0)
-            warnLog?.log(`getRef(${operationName}): negative refCount:`, this._refCount);
-        debugLog?.log(`- AudioContextRef(${operationName}), refCount: ${operationName} =`, count, ', total =', this._refCount);
     }
 }
 
+class MauiAudioContextSource extends AudioContextSourceBase implements AudioContextSource {
+    get isActive(): boolean { return true; }
+
+    public constructor() {
+        super();
+    }
+
+    public async whenReady(cancel?: Promise<symbol>): Promise<AudioContext> {
+        if (this._context == null || this._context.state === 'closed') {
+            this._context = await this.create();
+        }
+        return this._context;
+    }
+
+    public async whenNotReady(context: AudioContext, cancel?: Promise<symbol>): Promise<void> {
+        const whenContextClosed = firstValueFrom(this.contextClosed$);
+        await waitAsync(whenContextClosed, cancel);
+    }
+
+    public initContextInteractively(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    public async terminate(): Promise<void> {
+        await this.closeSilently(this._context);
+        this._context = null;
+    }
+
+    public async resumeAudio(): Promise<void> {
+        const context = this._context;
+        if (context && context.state !== 'closed' && this._refCount > 0)
+            await context.resume();
+    }
+
+    public async suspendAudio(): Promise<void> {
+        const context = this._context;
+        if (context && context.state !== 'closed')
+            await context.suspend();
+    }
+
+    public pauseRef(): void {
+        const hasActiveRefs = [...this.refs.values()]
+            .reduce((prev, current) =>
+                prev || current
+                    .map(value => value.state === 'running')
+                    .reduce((p, v) => p || v), false);
+
+        if (!hasActiveRefs)
+            this.suspendContextDebounced();
+    }
+
+    public useRef(): void {
+        this.suspendContextDebounced.reset();
+        if (!this._context || this._context.state === 'closed')
+            void this.whenReady();
+        else if (this._context.state === 'suspended')
+            void this._context.resume().then(() => {
+                infoLog?.log('useRef: resume context');
+            });
+    }
+
+    private suspendContextDebounced = debounce(this.suspendContext, SuspendDebounceTimeMs);
+    private async suspendContext(): Promise<void> {
+        infoLog?.log('suspendContext()');
+        return this._context.suspend();
+    }
+
+    private async create(): Promise<AudioContext> {
+        debugLog?.log(`create`);
+
+        const context = new AudioContext({
+            latencyHint: 'interactive',
+            sampleRate: 48000,
+        });
+        Interactive.isInteractive = true;
+        await context.resume();
+        await this.loadContextWorklets(context);
+
+        this._contextCreated$.next(context);
+        return context;
+    }
+
+    protected async onDeviceAwake(): Promise<void> {
+        debugLog?.log(`onDeviceAwake`);
+        // Close current AudioContext as it might be corrupted and can produce clicking sound
+        await this.closeSilently(this._context);
+    }
+}
+
+
 // Init
 
-export const audioContextSource = new AudioContextSource();
+export const audioContextSource: AudioContextSource = BrowserInfo.appKind === "MauiApp"
+    ? new MauiAudioContextSource()
+    : new WebAudioContextSource();
 globalThis['audioContextSource'] = audioContextSource;
 

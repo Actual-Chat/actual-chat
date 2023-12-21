@@ -6,28 +6,19 @@ import {delayAsync, PromiseSourceWithTimeout} from 'promises';
 
 const { debugLog, warnLog } = Log.get('SoundsPlayer');
 
-export class SoundPlayer implements AsyncDisposable {
+export class SoundPlayer {
     private readonly buffers = new Map<string, AudioBuffer>();
-    private context?: AudioContext = null;
-    private ref?: AudioContextRef = null;
+    private context?: AudioContext;
 
-    constructor() {
-        this.ref = audioContextSource.getRef('play-tunes', {
+    public async play(url: string): Promise<void>{
+        debugLog?.log('-> play', url);
+        const audioContextRef = audioContextSource.getRef('play-tunes', {
             attach: context => this.onAttach(context),
             detach: context => this.onDetach(context),
-            dispose: () => this.disposeAsync(),
         });
-    }
-
-    public async disposeAsync(): Promise<void> {
-        this.context = null;
-        await this.ref.disposeAsync()
-    }
-
-    public async play(url: string){
-        debugLog?.log('-> play', url);
-        const { context} = this;
-        const buffer = await this.getSound(url);
+        const context = await audioContextRef.whenFirstTimeReady();
+        const pause = audioContextRef.use();
+        const buffer = await this.getSound(context, url);
         if (!context) {
             warnLog?.log('play: failed to play sound: audioContext became unavailable')
             return;
@@ -36,7 +27,7 @@ export class SoundPlayer implements AsyncDisposable {
         const source = context.createBufferSource();
         try {
             source.buffer = buffer;
-            source.connect(this.context.destination);
+            source.connect(context.destination);
             source.start();
             const playTask = new PromiseSourceWithTimeout();
             playTask.setTimeout(5000);
@@ -48,6 +39,8 @@ export class SoundPlayer implements AsyncDisposable {
         } finally {
             source.stop();
             source.disconnect();
+            pause();
+            await audioContextRef.disposeAsync();
         }
         debugLog?.log('<- play', url);
     }
@@ -64,7 +57,7 @@ export class SoundPlayer implements AsyncDisposable {
         this.buffers.clear();
     }
 
-    private async getSound(url: string) {
+    private async getSound(context: AudioContext, url: string) {
         debugLog?.log('-> getSound', url);
         try {
             if (this.buffers.has(url))
@@ -72,12 +65,12 @@ export class SoundPlayer implements AsyncDisposable {
 
             const resp = await fetch(url);
             const soundBytes = await resp.arrayBuffer();
-            if (!this.context) {
+            if (!context) {
                 warnLog?.log('getSound: failed to prepare sound: audioContext became unavailable')
                 return;
             }
 
-            const buffer = await this.context.decodeAudioData(soundBytes);
+            const buffer = await context.decodeAudioData(soundBytes);
             this.buffers.set(url, buffer);
             debugLog?.log('<- getSound', url);
             return buffer;
