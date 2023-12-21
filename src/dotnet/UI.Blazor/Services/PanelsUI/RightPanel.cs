@@ -46,7 +46,7 @@ public class RightPanel
         => SetIsVisible(!IsVisible.Value);
 
     public void SetIsVisible(bool value)
-        => _ = Dispatcher.InvokeAsync(() => {
+        => _ = Dispatcher.InvokeSafeAsync(() => {
             if (_isVisible.Value == value)
                 return;
 
@@ -54,7 +54,7 @@ public class RightPanel
             if (Owner.IsWide())
                 _isVisibleStored.Value = value;
             History.Save<OwnHistoryState>();
-        });
+        }, DefaultLog);
 
     // Nested types
 

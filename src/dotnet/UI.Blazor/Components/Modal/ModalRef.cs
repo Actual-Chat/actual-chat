@@ -1,4 +1,5 @@
 ﻿using ActualChat.UI.Blazor.Components.Internal;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.Components;
 
@@ -84,9 +85,9 @@ public sealed class ModalRef : IHasId<Symbol>, IModalRefImpl
     private async Task WaitWhenStepClosed(ModalStepRefImpl modalStepRef)
     {
         await modalStepRef.RawStepRef.WhenClosed.ConfigureAwait(false);
-        await Host.HistoryStepper.Dispatcher.InvokeAsync(() => {
+        await Host.HistoryStepper.Dispatcher.InvokeSafeAsync(() => {
             _modalStepRef = modalStepRef.ParentStepRef;
             modalStepRef.MarkClosed(modalStepRef.IsModalClosing.GetValueOrDefault(false));
-        });
+        }, DefaultLog);
     }
 }

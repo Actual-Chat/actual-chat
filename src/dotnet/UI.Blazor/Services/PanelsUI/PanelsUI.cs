@@ -71,7 +71,7 @@ public class PanelsUI : ScopedWorkerBase<UIHub>
                 if (lastIsWide != isWide) {
                     lastIsWide = isWide;
                     await Dispatcher
-                        .InvokeAsync(() => Left.SetIsVisible(Left.IsVisible.Value)) // Changes it to the right one
+                        .InvokeSafeAsync(() => Left.SetIsVisible(Left.IsVisible.Value), Log) // Changes it to the right one
                         .ConfigureAwait(false);
                 }
             }

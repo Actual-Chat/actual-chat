@@ -117,7 +117,7 @@ public class AppServicesAccessor
     {
         var scopedServices = await WhenScopedServicesReady(whenRendered).ConfigureAwait(false);
         var dispatcher = scopedServices.GetRequiredService<Microsoft.AspNetCore.Components.Dispatcher>();
-        await dispatcher.InvokeAsync(() => workItem.Invoke(scopedServices)).ConfigureAwait(false);
+        await dispatcher.InvokeSafeAsync(() => workItem.Invoke(scopedServices), AppServicesAccessorLog).ConfigureAwait(false);
     }
 
     public static async Task DispatchToBlazor(Func<IServiceProvider, Task> workItem, bool whenRendered = false)

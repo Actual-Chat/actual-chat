@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.Services;
 using Microsoft.AspNetCore.Components.WebView;
 
 namespace ActualChat.App.Maui;
@@ -22,7 +23,7 @@ public partial class MauiWebView
             // Soft navigation
             try {
                 var hub = scopedServices.GetRequiredService<UIHub>();
-                await hub.Dispatcher.InvokeAsync(() => hub.Nav.NavigateTo(uri)).ConfigureAwait(false);
+                await hub.Dispatcher.InvokeSafeAsync(() => hub.Nav.NavigateTo(uri), Log).ConfigureAwait(false);
                 return;
             }
             catch (Exception e) {

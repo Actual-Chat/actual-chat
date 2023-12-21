@@ -56,12 +56,12 @@
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
                 var text = transcript.Text;
                 var commonPrefixLength = lastText.GetCommonPrefixLength(text);
-                await Dispatcher.InvokeAsync(() => {
+                await Dispatcher.InvokeSafeAsync(() => {
                     Transcript = transcript;
                     RetainedPart = text[..commonPrefixLength];
                     ChangedPart = text[commonPrefixLength..];
                     StateHasChanged();
-                }).ConfigureAwait(false); // Ok here
+                }, Log).ConfigureAwait(false); // Ok here
                 lastText = text;
             }
         }

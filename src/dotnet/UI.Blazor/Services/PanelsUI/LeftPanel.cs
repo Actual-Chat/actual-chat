@@ -38,7 +38,7 @@ public class LeftPanel : IDisposable
         => _canBeHidden.Dispose();
 
     public void SetIsVisible(bool value)
-        => _ = Dispatcher.InvokeAsync(() => {
+        => _ = Dispatcher.InvokeSafeAsync(() => {
             if (GetIsVisibleOverride() is { } valueOverride)
                 value = valueOverride;
             if (_isVisible.Value == value)
@@ -48,7 +48,7 @@ public class LeftPanel : IDisposable
             _isVisible.Value = value;
             History.Save<OwnHistoryState>();
             VisibilityChanged?.Invoke();
-        });
+        }, Log);
 
     // Private methods
 

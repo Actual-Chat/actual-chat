@@ -38,7 +38,7 @@ public partial class AccountUI
             var circuitContext = CircuitContext;
             await circuitContext.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             await circuitContext.Dispatcher
-                .InvokeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount))
+                .InvokeSafeAsync(() => ProcessOwnAccountChange(newAccount, oldAccount), Log)
                 .ConfigureAwait(false);
         }
     }
