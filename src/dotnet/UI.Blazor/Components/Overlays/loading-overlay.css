@@ -22,10 +22,10 @@
 
 .loading-overlay .c-content {
     @apply flex-y gap-y-8 items-center justify-center;
-    min-height: 288px;
-    min-width: 288px;
-    max-height: 288px;
-    max-width: 288px;
+    min-height: 220px;
+    min-width: 220px;
+    max-height: 220px;
+    max-width: 220px;
 }
 .loading-overlay .c-content > img {
     @apply min-h-32 min-w-32;
