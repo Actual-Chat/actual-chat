@@ -86,8 +86,8 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var ownAccount = await AccountUI.OwnAccount.Use(cancellationToken);
-        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
-        return new Model(ownAccount, enableIncompleteUI);
+        var enablePlacesUI = await Features.Get<Features_EnablePlacesUI, bool>(cancellationToken);
+        return new Model(ownAccount, enablePlacesUI);
     }
 
     private Task OnCreateChatClick()
