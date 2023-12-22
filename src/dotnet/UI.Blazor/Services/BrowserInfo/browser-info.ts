@@ -65,25 +65,25 @@ export class BrowserInfo {
     private static async onScreenSizeChanged(screenSize: string, isHoverable: boolean): Promise<void> {
         infoLog?.log(`onScreenSizeChanged, screenSize:`, screenSize);
         await this.whenReady;
-        this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable);
+        await this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable);
     };
 
     private static async onVisibilityChanged(): Promise<void> {
         infoLog?.log(`onVisibilityChanged, visible:`, !document.hidden);
         await this.whenReady;
-        this.backendRef.invokeMethodAsync('OnIsVisibleChanged', !document.hidden);
+        await this.backendRef.invokeMethodAsync('OnIsVisibleChanged', !document.hidden);
     };
 
     public static async onThemeChanged(themeInfo: ThemeInfo): Promise<void> {
         infoLog?.log(`onThemeChanged:`, themeInfo);
         await this.whenReady;
-        this.backendRef.invokeMethodAsync('OnThemeChanged', themeInfo);
+        await this.backendRef.invokeMethodAsync('OnThemeChanged', themeInfo);
     };
 
     public static async onWebSplashRemoved(): Promise<void> {
         infoLog?.log(`onWebSplashRemoved`);
         await this.whenReady;
-        this.backendRef.invokeMethodAsync('OnWebSplashRemoved');
+        await this.backendRef.invokeMethodAsync('OnWebSplashRemoved');
     };
 
     private static initBodyClasses() {

@@ -35,6 +35,15 @@ public class AppDelegate : MauiUIApplicationDelegate
         base.DidEnterBackground(application);
     }
 
+    public override bool FinishedLaunching(UIApplication application, NSDictionary launchOptions)
+    {
+        base.FinishedLaunching(application, launchOptions);
+
+        // Delay splashscreen until web view renders content
+        Thread.Sleep(100);
+        return true;
+    }
+
     // Private methods
 
     private static void CheckForAppLink(NSUserActivity userActivity)

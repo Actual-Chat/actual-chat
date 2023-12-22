@@ -46,9 +46,9 @@ public class MauiThemeHandler
         Apply();
     }
 
-    public void Apply()
+    public void Apply(bool force = false)
     {
-        if (MauiLoadingUI.WhenFirstSplashRemoved.IsCompleted)
+        if (force || MauiLoadingUI.WhenFirstSplashRemoved.IsCompleted)
             Apply(_theme, _colors);
     }
 

@@ -126,23 +126,24 @@ export class BrowserInit {
         }
     }
 
-    public static removeLoadingOverlay(instantly = false) {
+    public static async removeLoadingOverlay(instantly = false): Promise<void> {
         document.body.style.backgroundColor = null;
         const overlay = document.getElementById('until-ui-is-ready');
         if (!overlay)
             return;
 
         if (instantly) {
+            await BrowserInfo.onWebSplashRemoved();
             overlay.remove();
-            void BrowserInfo.onWebSplashRemoved();
         }
         else {
             overlay.style.opacity = '0';
-            setTimeout(function () {
+
+            setTimeout(async function () {
                 const isInDom = document.contains(overlay);
                 if (isInDom) {
+                    await BrowserInfo.onWebSplashRemoved();
                     overlay.remove();
-                    void BrowserInfo.onWebSplashRemoved();
                 }
             }, 500);
         }
@@ -150,7 +151,7 @@ export class BrowserInit {
 
     public static async startLoadingOverlayRemoval(delayMs: number): Promise<void> {
         await delayAsync(delayMs);
-        this.removeLoadingOverlay();
+        await this.removeLoadingOverlay();
     }
 
     public static async reload(): Promise<void> {
