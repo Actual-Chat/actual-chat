@@ -86,6 +86,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             result = sContactIds.ToApiArray(c => new ContactId(c));
         }
         else {
+            await PseudoPlaceContact(placeId).ConfigureAwait(false);
             var chatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
             var contactIds = sContactIds.Select(c => new ContactId(c)).ToList();
             var addedChatIds = contactIds.Select(c => c.ChatId).ToList();
@@ -497,11 +498,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     // protected methods
 
     [ComputeMethod]
-    protected virtual Task<Unit> PseudoPlaceContact(PlaceId placeId)
+    protected internal virtual Task<Unit> PseudoPlaceContact(PlaceId placeId)
         => Stl.Async.TaskExt.UnitTask;
 
     [ComputeMethod]
-    protected virtual Task<Unit> PseudoChatContact(ChatId chatId)
+    protected internal virtual Task<Unit> PseudoChatContact(ChatId chatId)
         => Stl.Async.TaskExt.UnitTask;
 
     // private methods

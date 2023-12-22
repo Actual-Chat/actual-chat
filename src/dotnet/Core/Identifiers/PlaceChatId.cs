@@ -74,7 +74,7 @@ public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
 
     // Parsing
 
-    private static string Format(PlaceId placeId, Symbol localChatId)
+    public static string Format(PlaceId placeId, Symbol localChatId)
         => placeId.IsNone ? "" : $"{IdPrefix}{placeId}-{localChatId}";
 
     public static PlaceChatId Parse(string? s)

@@ -83,7 +83,7 @@ public readonly partial struct ContactId : ISymbolIdentifier<ContactId>
 
     // Parsing
 
-    private static string Format(UserId ownerId, ChatId chatId)
+    public static string Format(UserId ownerId, ChatId chatId)
         => ownerId.IsNone || chatId.IsNone ? "" : $"{ownerId} {chatId}";
 
     public static ContactId Parse(string? s)

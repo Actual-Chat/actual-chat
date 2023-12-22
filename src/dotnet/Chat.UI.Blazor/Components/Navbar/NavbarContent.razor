@@ -19,6 +19,7 @@
         }
         else if (isAdministration && m.IsAdmin) {
             <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/user-invites">Invite Users</NavbarItem>
+            <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/move-chat2place">Move chat to place</NavbarItem>
         }
         else if (isTestPages && HostInfo.IsDevelopmentInstance) {
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>

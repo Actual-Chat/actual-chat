@@ -55,6 +55,7 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices) : Hos
         fusion.AddService<IContactsBackend, ContactsBackend>();
         fusion.AddService<IExternalContacts, ExternalContacts>();
         fusion.AddService<IExternalContactsBackend, ExternalContactsBackend>();
+        fusion.AddService<IContactsMigrationBackend, ContactsMigrationBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
