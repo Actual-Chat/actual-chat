@@ -993,6 +993,8 @@ export class VirtualList {
         else {
             this._ref.scrollTop = this._ref.scrollHeight;
         }
+        void this.turnOnIsEndAnchorVisible();
+        this.turnOffIsEndAnchorVisibleDebounced.reset();
         fastRaf({
             write: () => {
                 this._inertialScroll.unfreeze();

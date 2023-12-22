@@ -74,7 +74,10 @@
         if (ReferenceEquals(State.Value, Model.None)) {
             await ChatView.ReadPosition.WhenSynchronized(cancellationToken);
             await ChatView.ItemVisibility.When(item => !ReferenceEquals(item, ChatViewItemVisibility.Empty), cancellationToken);
-            await Task.Delay(TimeSpan.FromSeconds(1.3), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken);
+            itemVisibility = ChatView.ItemVisibility.Value;
+            if (itemVisibility.IsEndAnchorVisible)
+                return Model.Invisible;
         }
 
         var readEntryLid = await ChatView.ShownReadEntryLid.Use(cancellationToken);
