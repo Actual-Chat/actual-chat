@@ -116,6 +116,12 @@ body.hoverable .tile:hover {
 .tile-item.unselected {
     @apply hover:bg-transparent;
 }
+.tile-item.active {
+    @apply cursor-default;
+}
+.tile-item.inactive {
+    @apply cursor-pointer;
+}
 .tile-item-icon {
     @apply flex-none flex justify-center;
     @apply min-w-10 max-w-10;

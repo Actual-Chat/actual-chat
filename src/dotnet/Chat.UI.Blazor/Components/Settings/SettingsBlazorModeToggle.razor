@@ -12,7 +12,7 @@
                 DisplayName="Blazor Mode"
                 @bind-Value="_formModel.IsServerMode">
 
-                <TileItem>
+                <TileItem Click="@(() => ChangeMode(true))" IsActive="@(BlazorModeHelper.IsBlazorServer)">
                     <Icon>
                         <FormRadio Id="@_formModel.ServerModeFormId" Value="@true"/>
                     </Icon>
@@ -24,7 +24,7 @@
                     </Content>
                 </TileItem>
 
-                <TileItem>
+                <TileItem Click="@(() => ChangeMode(false))" IsActive="@(!BlazorModeHelper.IsBlazorServer)">
                     <Icon>
                         <FormRadio Id="@_formModel.WasmModeFormId" Value="@false"/>
                     </Icon>
@@ -59,6 +59,12 @@
 
     private void OnBlazorModeChanged(bool isServerMode)
         => BlazorModeHelper.ChangeMode(isServerMode);
+
+    private void ChangeMode(bool serverMode) {
+        if (BlazorModeHelper.IsBlazorServer == serverMode)
+            return;
+        OnBlazorModeChanged(serverMode);
+    }
 
     public sealed class FormModel {
         private bool _isServerMode;

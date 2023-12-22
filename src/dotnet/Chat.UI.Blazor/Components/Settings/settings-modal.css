@@ -34,3 +34,9 @@
     @apply whitespace-normal;
     @apply text-caption-6 text-03;
 }
+.blazor-mode-tile .form .tile-item.inactive:hover label {
+    @apply text-01;
+}
+.blazor-mode-tile .form .tile-item.inactive:hover .c-comment {
+    @apply text-02;
+}
