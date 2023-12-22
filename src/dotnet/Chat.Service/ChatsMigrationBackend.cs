@@ -226,6 +226,29 @@ public class ChatsMigrationBackend(IServiceProvider services): DbServiceBase<Cha
 
             Log.LogInformation("Updated Id and ChatId for {Count} '{Kind}' chat entry records", updateCount, entryKind.ToString());
         }
+
+        // NOTE: I expect that we have not many entries with forward fields filled in so far
+        // hence it's ok to fetch them all at once.
+        var chatEntriesToUpdateForwardFields = await dbContext.ChatEntries
+            .Where(c => c.ForwardedAuthorId != null && c.ForwardedAuthorId.StartsWith(chatSid))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        updateCount = 0;
+        foreach (var dbChatEntry in chatEntriesToUpdateForwardFields) {
+            var forwardedAuthorId = dbChatEntry.ForwardedAuthorId.RequireNonEmpty("ForwardedAuthorId");
+            var newAuthorId = migratedAuthors.First(c => OrdinalEquals(c.OriginalAuthor.Id.Value, forwardedAuthorId)).NewId;
+            dbChatEntry.ForwardedAuthorId = newAuthorId.Value;
+            var forwardedChatEntryId = dbChatEntry.ForwardedChatEntryId.RequireNonEmpty("ForwardedChatEntryId");
+            var chatEntryId = new ChatEntryId(forwardedChatEntryId);
+            var newChatEntrySid = ChatEntryId.Format(newChatId, chatEntryId.Kind, chatEntryId.LocalId);
+            dbChatEntry.ForwardedChatEntryId = newChatEntrySid;
+            updateCount++;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        Log.LogInformation("Updated ForwardedAuthorId and ForwardedChatEntryId for {Count} chat entry records", updateCount);
     }
 
     private async Task UpdateTextEntryAttachments(
