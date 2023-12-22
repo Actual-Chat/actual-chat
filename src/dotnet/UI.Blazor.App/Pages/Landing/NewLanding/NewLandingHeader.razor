@@ -15,18 +15,30 @@
             <i class="icon-menu text-2xl"></i>
         </ButtonRound>
         <div class="c-content">
-            <div class="c-icon">
-                <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="" class="light-icon">
-                <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="" class="dark-icon">
-            </div>
-            <div class="c-title-wrapper">
-                <div class="c-title">
-                    <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="" class="light-title">
-                    <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="" class="dark-title">
+            <div class="light-header">
+                <div class="c-icon">
+                    <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="" class="light-icon">
                 </div>
-                <div class="c-version">
-                    <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="" class="light-alpha">
-                    <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="" class="dark-alpha">
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="" class="light-title">
+                    </div>
+                    <div class="c-version">
+                        <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="" class="light-alpha">
+                    </div>
+                </div>
+            </div>
+            <div class="dark-header">
+                <div class="c-icon">
+                    <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="" class="dark-icon">
+                </div>
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="" class="dark-title">
+                    </div>
+                    <div class="c-version">
+                        <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="" class="dark-alpha">
+                    </div>
                 </div>
             </div>
         </div>
@@ -49,33 +61,61 @@
         </div>
     } else {
         <div class="c-content">
-            <div class="c-icon">
-                <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="" class="light-icon">
-                <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="" class="dark-icon">
+            <div class="light-header">
+                <div class="c-icon">
+                    <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="" class="light-icon">
+                </div>
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="" class="light-title">
+                    </div>
+                    <div class="c-version">
+                        <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="" class="light-alpha">
+                    </div>
+                    <div class="c-btn-group">
+                        <div class="w-4"></div>
+                        <Button
+                            Click="@WhyUsClick"
+                            Class="btn-text btn-transparent why-us">Why us
+                        </Button>
+                        <Button
+                            Click="@PricingClick"
+                            Class="btn-text btn-transparent">Why now
+                        </Button>
+                        <Button
+                            Click="@(_ => History.NavigateTo(Links.Docs))"
+                            Class="btn-text btn-transparent">Docs
+                        </Button>
+                    </div>
+                </div>
             </div>
-            <div class="c-title-wrapper">
-                <div class="c-title">
-                    <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="" class="light-title">
-                    <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="" class="dark-title">
+
+            <div class="dark-header">
+                <div class="c-icon">
+                    <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="" class="dark-icon">
                 </div>
-                <div class="c-version">
-                    <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="" class="light-alpha">
-                    <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="" class="dark-alpha">
-                </div>
-                <div class="c-btn-group">
-                    <div class="w-4"></div>
-                    <Button
-                        Click="@WhyUsClick"
-                        Class="btn-text btn-transparent why-us">Why us
-                    </Button>
-                    <Button
-                        Click="@PricingClick"
-                        Class="btn-text btn-transparent">Why now
-                    </Button>
-                    <Button
-                        Click="@(_ => History.NavigateTo(Links.Docs))"
-                        Class="btn-text btn-transparent">Docs
-                    </Button>
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="" class="dark-title">
+                    </div>
+                    <div class="c-version">
+                        <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="" class="dark-alpha">
+                    </div>
+                    <div class="c-btn-group">
+                        <div class="w-4"></div>
+                        <Button
+                            Click="@WhyUsClick"
+                            Class="btn-text btn-transparent why-us">Why us
+                        </Button>
+                        <Button
+                            Click="@PricingClick"
+                            Class="btn-text btn-transparent">Why now
+                        </Button>
+                        <Button
+                            Click="@(_ => History.NavigateTo(Links.Docs))"
+                            Class="btn-text btn-transparent">Docs
+                        </Button>
+                    </div>
                 </div>
             </div>
             <div class="c-btn-group">

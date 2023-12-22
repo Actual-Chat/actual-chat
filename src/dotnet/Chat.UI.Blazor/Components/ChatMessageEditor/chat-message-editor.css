@@ -47,6 +47,9 @@
     @apply cursor-text;
     word-break: break-word;
 }
+.ac-bubble-host:has(.ac-bubble) + .base-layout .post-panel .message-input {
+    @apply pointer-events-none;
+}
 .post-panel .message-input-label {
     @apply flex-auto flex-x justify-items-stretch items-center;
     @apply truncate;

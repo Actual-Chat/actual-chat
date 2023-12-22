@@ -1,6 +1,9 @@
 .ac-bubble-host {
-    @apply fixed z-bubble inset-0 overflow-hidden;
+    @apply fixed z-bubble overflow-hidden;
     @apply pointer-events-none select-none;
+}
+.ac-bubble-host:has(.ac-bubble) {
+    @apply inset-0;
 }
 .ac-bubble {
     @apply hidden absolute top-0 left-0 z-bubble;
