@@ -1,9 +1,10 @@
 /* Host & overlay */
 .ac-menu-host {
-    @apply fixed z-menu-container inset-0 overflow-hidden;
+    @apply fixed z-menu-container overflow-hidden;
     @apply pointer-events-none select-none;
 }
 .ac-menu-host.has-overlay {
+    @apply inset-0;
     @apply pointer-events-auto;
 }
 .ac-menu-overlay {

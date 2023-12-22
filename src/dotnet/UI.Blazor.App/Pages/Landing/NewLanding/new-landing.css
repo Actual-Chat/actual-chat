@@ -144,60 +144,47 @@ body.wide.app-maui .landing.new .landing-header {
 .landing.new .landing-header .dark-icon {
     @apply min-w-10 min-h-10 max-h-10;
 }
-.landing.new .landing-header .dark-icon {
-    @apply absolute;
-    @apply top-3;
-}
-body.narrow .landing-header .light-icon,
-body.narrow .landing-header .dark-icon,
-body.narrow .landing-menu .dark-icon {
-    @apply min-w-8 min-h-8 max-h-8;
-}
-.landing.new .landing-header .light-title,
-.landing.new .landing-header .dark-title {
-    @apply min-h-6 max-h-6;
-}
-.landing.new .landing-header .dark-title {
-    @apply absolute;
-    @apply top-4;
-}
-.landing.new .landing-header .dark-alpha {
-    @apply absolute;
-    @apply max-w-9;
-    @apply top-2.5;
-}
-body.narrow .landing.new .landing-header .light-title,
-body.narrow .landing.new .landing-header .dark-title,
-body.narrow .landing.new .landing-menu.open .dark-title {
-    @apply min-h-8 max-h-8 max-w-32;
-    @apply top-2;
-}
-body.narrow .landing-menu.open .dark-title {
-    @apply -mt-2;
-}
-body.narrow .landing.new .landing-header .light-alpha,
-body.narrow .landing.new .landing-header .dark-alpha {
-    @apply min-h-8 max-h-8;
-}
-body.narrow .landing.new .landing-header .dark-alpha {
-    @apply max-w-9;
-    @apply top-0.5;
-}
-body.narrow .landing.new .landing-header .light-alpha {
-    @apply -mt-2;
-}
-.landing.new .landing-header .light-icon,
-.landing.new .landing-header .light-title,
-.landing.new .landing-header .light-alpha {
-    @apply opacity-100;
-    @apply transition-all ease-in-out duration-200;
-}
 
-.landing.new .landing-header .dark-icon,
-.landing.new .landing-header .dark-title,
-.landing.new .landing-header .dark-alpha {
-    @apply opacity-0;
-    @apply transition-all ease-in-out duration-200;
+/* Light & Dark headers */
+.landing.new .landing-header .light-header,
+.landing.new .landing-header .dark-header {
+    @apply flex-1 flex-x items-center gap-x-2;
+}
+.landing.new .landing-header .dark-header {
+    @apply absolute opacity-0;
+}
+.landing.new .landing-header.filled .dark-header {
+    @apply relative opacity-100;
+}
+.landing.new .landing-header .light-header {
+    @apply relative opacity-100;
+}
+.landing.new .landing-header.filled .light-header {
+    @apply absolute opacity-0;
+}
+.landing.new .landing-header .light-header .c-title-wrapper,
+.landing.new .landing-header .dark-header .c-title-wrapper {
+    @apply flex-x items-center;
+    @apply h-full;
+}
+.landing.new .landing-header .light-header .c-version,
+.landing.new .landing-header .dark-header .c-version {
+    @apply relative;
+    @apply w-10 h-full;
+    @apply pb-2;
+}
+.landing.new .landing-header .light-header .c-title,
+.landing.new .landing-header .dark-header .c-title {
+    @apply pb-2;
+}
+.landing.new .landing-header .light-header .light-alpha,
+.landing.new .landing-header .dark-header .dark-alpha {
+    @apply absolute top-0.25 right-0;
+    @apply max-w-9;
+}
+.landing.new .landing-header .light-header .light-title,
+.landing.new .landing-header .dark-header .dark-title {
+    @apply max-w-32 md:max-w-none;
 }
 .landing.new .landing-header .c-btn-group {
     @apply flex-x items-center justify-center gap-x-2;
