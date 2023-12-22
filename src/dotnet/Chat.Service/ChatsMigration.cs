@@ -42,7 +42,7 @@ public class ChatsMigration(IServiceProvider services) : IChatsMigration
         var newChatId = (ChatId)placeChatId;
         var contact = await Contacts.GetForChat(session, newChatId, cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Contact for chat id '{ChatId}' is {Contact}", newChatId, contact);
-        if (contact == null || contact.PlaceId.IsNone) {
+        if (contact == null || contact.PlaceId.IsNone || !contact.IsStored()) {
             Log.LogInformation("About to perform ContactsMigrationBackend_MoveChatToPlace");
             var backCommand2 = new ContactsMigrationBackend_MoveChatToPlace(chatId, placeId);
             await Commander.Call(backCommand2, true, cancellationToken).ConfigureAwait(false);

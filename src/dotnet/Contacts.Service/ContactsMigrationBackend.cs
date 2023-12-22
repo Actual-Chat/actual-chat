@@ -12,10 +12,13 @@ public class ContactsMigrationBackend(IServiceProvider services) : DbServiceBase
     public virtual async Task OnMoveChatToPlace(ContactsMigrationBackend_MoveChatToPlace command, CancellationToken cancellationToken)
     {
         var (chatId, placeId) = command;
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
+        var newChatId = (ChatId)placeChatId;
 
         if (Computed.IsInvalidating()) {
             if (ContactsBackend is ContactsBackend contactsBackend) {
                 _ = contactsBackend.PseudoChatContact(chatId);
+                _ = contactsBackend.PseudoChatContact(newChatId);
                 _ = contactsBackend.PseudoPlaceContact(placeId);
             }
             return;
@@ -23,8 +26,6 @@ public class ContactsMigrationBackend(IServiceProvider services) : DbServiceBase
 
         var chatSid = chatId.Value;
         var placeSid = placeId.Value;
-        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
-        var newChatId = (ChatId)placeChatId;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -39,12 +40,13 @@ public class ContactsMigrationBackend(IServiceProvider services) : DbServiceBase
             var contactSid = dbContact.Id;
             var ownerId = new UserId(dbContact.OwnerId);
             var newContactSid = ContactId.Format(ownerId, newChatId);
+            var newChatSid = newChatId.Value;
 
             var updateCount = await dbContext.Contacts
                 .Where(c => c.Id == contactSid)
                 .ExecuteUpdateAsync(setters => setters
                         .SetProperty(c => c.Id, c => newContactSid)
-                        .SetProperty(c => c.ChatId, c => chatSid)
+                        .SetProperty(c => c.ChatId, c => newChatSid)
                         .SetProperty(c => c.PlaceId, c => placeSid),
                     cancellationToken)
                 .ConfigureAwait(false);
