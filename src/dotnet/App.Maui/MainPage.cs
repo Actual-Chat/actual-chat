@@ -15,7 +15,6 @@ public class MainPage : ContentPage
         Interlocked.Exchange(ref _current, this);
         On<iOS>().SetUseSafeArea(true);
         BackgroundColor = MauiSettings.SplashBackgroundColor;
-        MauiLoadingUI.MarkFirstWebViewCreated();
         RecreateWebView();
     }
 

@@ -32,7 +32,6 @@ public class MauiBrowserInfo : BrowserInfo
         var isWide = !isMobile || display.Orientation == DisplayOrientation.Landscape;
         var screenSize = isWide ? UI.Blazor.Services.ScreenSize.Medium : UI.Blazor.Services.ScreenSize.Small;
         Update(screenSize, !isMobile, false);
-        WhenReadySource.TrySetResult();
     }
 
     [JSInvokable]
@@ -45,7 +44,10 @@ public class MauiBrowserInfo : BrowserInfo
         Update(screenSize, initResult.IsHoverable, initResult.IsVisible);
         WindowId = initResult.WindowId;
         // We don't want to change any other properties here
+
+        MauiThemeHandler.Instance.Apply();
         WhenReadySource.TrySetResult();
+        MauiLoadingUI.MarkFirstWebViewCreated();
     }
 
     [JSInvokable]

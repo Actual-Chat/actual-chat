@@ -235,7 +235,7 @@ public partial class MainActivity : MauiAppCompatActivity
 
     private class SplashDelayer(AView contentView) : JObject, ViewTreeObserver.IOnPreDrawListener
     {
-        private static readonly Task WhenRemoved = MauiLoadingUI.WhenFirstWebViewCreated;
+        private static readonly Task WhenRemoved = MauiLoadingUI.WhenFirstWebViewCreated.WithDelay(TimeSpan.FromSeconds(0.1));
 
         public bool OnPreDraw()
         {

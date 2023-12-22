@@ -16,19 +16,22 @@
     @apply absolute inset-0 z-[1900] overflow-hidden;
     @apply flex items-center justify-center;
     background-color: var(--loading-overlay-bg-color);
-    @apply transition-opacity ease-in duration-250;
     will-change: custom;
 }
 
 .loading-overlay .c-content {
-    @apply flex-y gap-y-8 items-center justify-center;
+    @apply flex-y items-center justify-center;
     min-height: 220px;
     min-width: 220px;
     max-height: 220px;
     max-width: 220px;
 }
 .loading-overlay .c-content > img {
-    @apply min-h-32 min-w-32;
+    @apply mb-4;
+    min-height: 200px;
+    min-width: 200px;
+    max-height: 200px;
+    max-width: 200px;
 }
 .loading-overlay .progress {
     @apply relative;
