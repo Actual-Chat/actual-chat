@@ -404,7 +404,7 @@ public class ChatsMigrationBackend(IServiceProvider services): DbServiceBase<Cha
         Log.LogInformation("Updated EntryId and Id for {Count} reaction summary records", updateCount);
 
         updateCount = 0;
-        foreach (var dbSummary in dbContext.ReactionSummaries) {
+        foreach (var dbSummary in dbContext.ReactionSummaries.Where(c => c.Id.StartsWith(chatSid))) {
             var summary = dbSummary.ToModel();
             var authorIds = summary.FirstAuthorIds;
             var newAuthorIds = ImmutableList<AuthorId>.Empty;
