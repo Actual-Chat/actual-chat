@@ -143,6 +143,7 @@ export class AudioRecorder {
                         navigator.audioSession['type'] = 'play-and-record'; // 'playback'
                     }
                     stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    await OpusMediaRecorder.stopStreamTracks(stream);
 
                     // update DetectRTC with new microphone permission if granted
                     AudioRecorder.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));

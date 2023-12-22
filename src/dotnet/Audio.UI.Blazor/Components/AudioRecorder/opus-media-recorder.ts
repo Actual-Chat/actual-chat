@@ -85,10 +85,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             return;
 
         infoLog?.log('-> stopStreamTracks()');
-        const tracks = new Array<MediaStreamTrack>()
-        tracks.push(...stream.getAudioTracks());
-        tracks.push(...stream.getVideoTracks());
-        for (let track of tracks) {
+        [...stream.getTracks()].forEach(track => {
             try {
                 track.stop();
                 stream.removeTrack(track);
@@ -96,7 +93,7 @@ export class OpusMediaRecorder implements RecorderStateEventHandler {
             catch (e) {
                 warnLog?.log('stopStreamTracks(): track.stop() error:', e);
             }
-        }
+        });
 
         // better integration with native mobile audio pipeline
         if ('audioSession' in navigator) {
