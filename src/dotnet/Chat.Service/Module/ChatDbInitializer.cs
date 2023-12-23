@@ -14,14 +14,14 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
         await chatDbInitializer.WaitForOtherInitializers(_ => true).ConfigureAwait(false);
         var options = Services.GetService<InitializeDataOptions>() ?? new InitializeDataOptions();
 
-        if (options.AddAnnouncementsChat)
-            await EnsureAnnouncementsChatExists(cancellationToken).ConfigureAwait(false);
-        if (options.AddFeedbackTemplateChat)
-            await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
+        // if (options.AddAnnouncementsChat)
+        //     await EnsureAnnouncementsChatExists(cancellationToken).ConfigureAwait(false);
+        // if (options.AddFeedbackTemplateChat)
+        //     await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
         if (options.AddDefaultChat && HostInfo.IsDevelopmentInstance)
             await EnsureDefaultChatExists(cancellationToken).ConfigureAwait(false);
-        if (options.AddNotesChat)
-            await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
+        // if (options.AddNotesChat)
+        //     await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task RepairData(CancellationToken cancellationToken)
