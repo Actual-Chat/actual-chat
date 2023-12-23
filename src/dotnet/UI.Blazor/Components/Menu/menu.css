@@ -3,7 +3,8 @@
     @apply fixed z-menu-container overflow-hidden;
     @apply pointer-events-none select-none;
 }
-.ac-menu-host:has(.ac-menu) {
+.ac-menu-host:has(.ac-menu),
+.ac-menu-host:has(.ac-menu-hover) {
     @apply inset-0;
 }
 .ac-menu-host.has-overlay {
