@@ -120,42 +120,54 @@
                 .NavigateTo(Links.Chat(chatId));
         } else {
             Modal.Close(true);
+            try {
+                var fileDownloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
+                var uploader = Services.GetRequiredService<FileUploader>();
+                var postTasks = new List<Task<ChatEntry?>>();
+                foreach (var chatId in selectedChatIds) {
+                    var comment = _comment;
+                    foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
+                        var fileUploads = UploadFiles(fileDownloader, uploader, chatId, filesChunk);
+                        var postTask = PostMessage(chatId, comment, fileUploads);
+                        comment = "";
+                        postTasks.Add(postTask);
+                    }
+                }
 
-            var fileDownloader = Services.GetRequiredService<IIncomingShareFileDownloader>();
-            var uploader = Services.GetRequiredService<FileUploader>();
-            var postTasks = new List<Task<ChatEntry?>>();
-            foreach (var chatId in selectedChatIds) {
-                var comment = _comment;
-                foreach (var filesChunk in ModalModel.Files.Chunk(Constants.Attachments.FileCountLimit)) {
-                    var fileUploads = UploadFiles(fileDownloader, uploader, chatId, filesChunk);
-                    var postTask = PostMessage(chatId, comment, fileUploads);
-                    comment = "";
-                    postTasks.Add(postTask);
+                try {
+                    await Task.WhenAll(postTasks);
+                }
+                catch (Exception e) {
+                    Log.LogError(e, "Failed to post message for sharing");
+                }
+                var expectedUploadedFilesNumber = ModalModel.Files.Length * selectedChatIds.Count;
+                var attachments = postTasks
+                    .Where(c => c.IsCompletedSuccessfully)
+                    .Select(c => c.Result)
+                    .SkipNullItems()
+                    .SelectMany(c => c.Attachments)
+                    .ToArray();
+                var toastUI = Services.GetRequiredService<ToastUI>();
+                if (attachments.Length == 0) {
+                    var info = $"Failed to share {expectedUploadedFilesNumber} files";
+                    toastUI.Show(info, "icon-alert-circle", ToastDismissDelay.Long);
+                } else {
+                    var info = expectedUploadedFilesNumber == attachments.Length
+                        ? attachments.Length.ToString()
+                        : $"{attachments.Length} of {expectedUploadedFilesNumber}";
+                    var isImage = attachments.All(c => c.IsSupportedImage());
+                    var isVideo = attachments.All(c => c.IsSupportedVideo());
+                    var fileText = isImage ? "image" : isVideo ? "video" : "file";
+                    if (expectedUploadedFilesNumber > 1)
+                        fileText += "s";
+                    info = info + " " + fileText + " shared";
+                    toastUI.Show(info, "icon-checkmark-circle", ToastDismissDelay.Short);
                 }
             }
-            await Task.WhenAll(postTasks);
-            var expectedUploadedFilesNumber = ModalModel.Files.Length * selectedChatIds.Count;
-            var attachments = postTasks
-                .Where(c => c.IsCompletedSuccessfully)
-                .Select(c => c.Result)
-                .SkipNullItems()
-                .SelectMany(c => c.Attachments)
-                .ToArray();
-            var toastUI = Services.GetRequiredService<ToastUI>();
-            if (attachments.Length == 0) {
-                var info = $"Failed to share {expectedUploadedFilesNumber} files";
-                toastUI.Show(info, "icon-alert-circle", ToastDismissDelay.Short);
-            } else {
-                var info = expectedUploadedFilesNumber == attachments.Length
-                    ? attachments.Length.ToString()
-                    : $"{attachments.Length} of {expectedUploadedFilesNumber}";
-                var isImage = attachments.All(c => c.IsSupportedImage());
-                var isVideo = attachments.All(c => c.IsSupportedVideo());
-                var fileText = isImage ? "image" : isVideo ? "video" : "file";
-                if (expectedUploadedFilesNumber > 1)
-                    fileText += "s";
-                info = info + " " + fileText + " shared";
-                toastUI.Show(info, "icon-checkmark-circle", ToastDismissDelay.Short);
+            catch (Exception e) {
+                Log.LogError(e, "Failed to share files");
+                var toastUI = Services.GetRequiredService<ToastUI>();
+                toastUI.Show("Failed to share files", "icon-alert-circle", ToastDismissDelay.Long);
             }
         }
     }
@@ -185,7 +197,12 @@
 
     private async Task<ChatEntry?> PostMessage(ChatId chatId, string comment, IReadOnlyCollection<(Task<MediaContent> UploadTask, string? ContentType)> fileUploads)
     {
-        await Task.WhenAll(fileUploads.Select(c => c.UploadTask));
+        try {
+            await Task.WhenAll(fileUploads.Select(c => c.UploadTask));
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to upload files for sharing");
+        }
         var media = fileUploads
             .Where(c => c.UploadTask.IsCompletedSuccessfully)
             .Select(c => new { MediaContent = c.UploadTask.Result, ContentType = c.ContentType ?? ""})
