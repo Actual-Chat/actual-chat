@@ -2,6 +2,7 @@ using ActualChat.Permissions;
 using AVFoundation;
 using Foundation;
 using Microsoft.AspNetCore.Components.WebView;
+using UIKit;
 using WebKit;
 
 namespace ActualChat.App.Maui;
@@ -18,6 +19,11 @@ public partial class MauiWebView
 
         PlatformWebView = platformWebView;
         WKWebView = (WKWebView)platformWebView;
+        WKWebView.Opaque = false;
+        WKWebView.Appearance.BackgroundColor = UIColor.FromRGB(
+            MauiSettings.SplashBackgroundColor.Red,
+            MauiSettings.SplashBackgroundColor.Green,
+            MauiSettings.SplashBackgroundColor.Blue);
         WKWebView.ScrollView.Bounces = false;
         WKWebView.AllowsBackForwardNavigationGestures = false;
     }
