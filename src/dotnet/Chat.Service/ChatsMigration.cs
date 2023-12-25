@@ -1,4 +1,5 @@
 using ActualChat.Contacts;
+using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
@@ -48,6 +49,14 @@ public class ChatsMigration(IServiceProvider services) : IChatsMigration
             await Commander.Call(backCommand2, true, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Completed ContactsMigrationBackend_MoveChatToPlace");
             executed = true;
+        }
+
+        {
+            Log.LogInformation("About to perform UserChatSettingsMigrationBackend_MoveChatToPlace");
+            var backCommand3 = new UserChatSettingsMigrationBackend_MoveChatToPlace(chatId, placeId);
+            var hasChanges = await Commander.Call(backCommand3, true, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("Completed UserChatSettingsMigrationBackend_MoveChatToPlace");
+            executed |= hasChanges;
         }
 
         Log.LogInformation("Completed ChatsMigration_MoveToPlace");
