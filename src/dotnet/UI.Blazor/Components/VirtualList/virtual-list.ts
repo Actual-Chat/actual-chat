@@ -30,6 +30,7 @@ const RequestDataTimeout: number = 800;
 
 export class VirtualList {
     /** ref to div.virtual-list */
+    private readonly createdAt: number;
     private readonly _ref: HTMLElement;
     private readonly _containerRef: HTMLElement;
     private readonly _renderStateRef: HTMLElement;
@@ -98,6 +99,7 @@ export class VirtualList {
             globalThis['virtualList'] = this;
         }
 
+        this.createdAt = Date.now();
         this._ref = ref;
         this._blazorRef = backendRef;
         this._identity = identity;
@@ -976,7 +978,9 @@ export class VirtualList {
     }
 
     private scrollToEnd(useSmoothScroll: boolean = false) {
-        if (this._renderState.renderIndex <= 1)
+        const now = Date.now();
+        const isInitialRender = now - this.createdAt < 1500; // first 1.5 seconds after creating the virtual list
+        if (this._renderState.renderIndex <= 1 || isInitialRender)
             useSmoothScroll = false; // fix for scroll to the end on chat switch
         if (DeviceInfo.isIos) // on devices with virtual keyboard editor can be scrolled out below the keyboard with smooth scroll
             useSmoothScroll = false;
