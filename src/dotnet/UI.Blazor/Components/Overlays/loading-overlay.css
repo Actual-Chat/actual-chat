@@ -19,6 +19,10 @@
     will-change: custom;
 }
 
+.loading-overlay.removing {
+    @apply transition-opacity ease-out duration-500 opacity-0;
+}
+
 .loading-overlay .c-content {
     @apply flex-y items-center justify-center;
     min-height: 220px;

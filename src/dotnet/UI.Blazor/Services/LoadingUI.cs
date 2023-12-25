@@ -83,7 +83,6 @@ public class LoadingUI
         RenderTime = Tracer.Elapsed;
         Tracer.Point();
         _whenAppRenderedSource.TrySetResult();
-        RemoveLoadingOverlay();
     }
 
     public void MarkChatListLoaded()
@@ -93,6 +92,7 @@ public class LoadingUI
 
         ChatListLoadTime = Tracer.Elapsed;
         Tracer.Point();
+        RemoveLoadingOverlay();
     }
 
     public void RemoveLoadingOverlay(bool instantly = false)

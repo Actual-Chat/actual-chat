@@ -137,12 +137,12 @@ export class BrowserInit {
             overlay.remove();
         }
         else {
-            overlay.style.opacity = '0';
+            overlay.classList.add('removing');
+            await BrowserInfo.onWebSplashRemoved();
 
             setTimeout(async function () {
                 const isInDom = document.contains(overlay);
                 if (isInDom) {
-                    await BrowserInfo.onWebSplashRemoved();
                     overlay.remove();
                 }
             }, 500);
