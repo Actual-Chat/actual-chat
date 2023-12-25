@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.Contacts.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -17,9 +16,9 @@ public class ContactsMigrationBackend(IServiceProvider services) : DbServiceBase
 
         if (Computed.IsInvalidating()) {
             if (ContactsBackend is ContactsBackend contactsBackend) {
-                _ = contactsBackend.PseudoChatContact(chatId);
-                _ = contactsBackend.PseudoChatContact(newChatId);
-                _ = contactsBackend.PseudoPlaceContact(placeId);
+                _ = contactsBackend.Internals.PseudoChatContact(chatId);
+                _ = contactsBackend.Internals.PseudoChatContact(newChatId);
+                _ = contactsBackend.Internals.PseudoPlaceContact(placeId);
             }
             return;
         }

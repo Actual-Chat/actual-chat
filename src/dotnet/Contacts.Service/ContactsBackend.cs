@@ -20,6 +20,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private IExternalContactsBackend? _externalContactsBackend;
     private IDbEntityResolver<string, DbContact>? _dbContactResolver;
     private RedisDb<ContactsDbContext>? _redisDb;
+    private InternalsAccessor? _internals;
 
     private ContactsSettings Settings => _settings ??= Services.GetRequiredService<ContactsSettings>();
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
@@ -28,6 +29,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private IExternalContactsBackend ExternalContactsBackend => _externalContactsBackend ??= Services.GetRequiredService<IExternalContactsBackend>();
 
     private IDbEntityResolver<string, DbContact> DbContactResolver => _dbContactResolver ??= Services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
+
+    internal InternalsAccessor Internals => _internals ??= new InternalsAccessor(this);
 
     public RedisDb<ContactsDbContext> RedisDb => _redisDb ??= Services.GetRequiredService<RedisDb<ContactsDbContext>>();
 
@@ -498,15 +501,26 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     // protected methods
 
     [ComputeMethod]
-    protected internal virtual Task<Unit> PseudoPlaceContact(PlaceId placeId)
+    protected virtual Task<Unit> PseudoPlaceContact(PlaceId placeId)
         => Stl.Async.TaskExt.UnitTask;
 
     [ComputeMethod]
-    protected internal virtual Task<Unit> PseudoChatContact(ChatId chatId)
+    protected virtual Task<Unit> PseudoChatContact(ChatId chatId)
         => Stl.Async.TaskExt.UnitTask;
 
     // private methods
 
     private static string ToRedisKey(UserId userId)
         => $"{RedisKeyPrefix}{userId.Value}";
+
+    // Workaround for issue that I can't make protected internal computed methods.
+    // Proxy does not intercept such methods.
+    internal class InternalsAccessor(ContactsBackend contactsBackend)
+    {
+        public Task<Unit> PseudoPlaceContact(PlaceId placeId)
+            => contactsBackend.PseudoPlaceContact(placeId);
+
+        public Task<Unit> PseudoChatContact(ChatId chatId)
+            => contactsBackend.PseudoChatContact(chatId);
+    }
 }
