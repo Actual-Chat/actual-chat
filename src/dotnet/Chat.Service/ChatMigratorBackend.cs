@@ -1,3 +1,4 @@
+using ActualChat.Db;
 using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
@@ -19,6 +20,8 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
             return;
         }
 
+        Log.LogInformation("ChatMigratorBackend_MoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatId.Value, placeId);
+
         var chatSid = chatId.Value;
         var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
         var newChatId = (ChatId)placeChatId;
@@ -26,8 +29,6 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
 
         var migratedRoles = new List<MigratedRole>();
         var migratedAuthors = new List<MigratedAuthor>();
-
-        Log.LogInformation("About to move chat '{ChatId}' to place '{PlaceId}'", chatSid, placeId);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -47,16 +48,18 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
         await UpdateReactions(dbContext, chatSid, newChatSid, migratedAuthors, cancellationToken).ConfigureAwait(false);
 
         await UpdateReactionSummaries(dbContext, chatSid, newChatSid, migratedAuthors, cancellationToken).ConfigureAwait(false);
+
+        Log.LogInformation("ChatMigratorBackend_MoveChatToPlace: completed");
     }
 
     private async Task UpdateChat(ChatDbContext dbContext, string chatSid, string newChatSid,
         CancellationToken cancellationToken)
     {
-        var updateCount = await dbContext.Chats
+        _ = await dbContext.Chats
             .Where(c => c.Id == chatSid)
             .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.Id, c => newChatSid), cancellationToken)
+            .RequireOneUpdated()
             .ConfigureAwait(false);
-        AssertOneUpdated(updateCount);
 
         Log.LogInformation("Updated chat record");
     }
@@ -78,14 +81,14 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
             var originalRole = dbRole.ToModel();
             var newRoleId = new RoleId(RoleId.Format(newChatId, dbRole.LocalId));
 
-            var updateCount = await dbContext.Roles
+            _ = await dbContext.Roles
                 .Where(c => c.Id == dbRole.Id)
                 .ExecuteUpdateAsync(setters => setters
                         .SetProperty(c => c.Id, c => newRoleId)
                         .SetProperty(c => c.ChatId, c => newChatId),
                     cancellationToken)
+                .RequireOneUpdated()
                 .ConfigureAwait(false);
-            AssertOneUpdated(updateCount);
 
             var newRole = originalRole with { Id = newRoleId };
             migratedRoles.Add(new MigratedRole(originalRole, newRole));
@@ -103,7 +106,6 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
         CancellationToken cancellationToken)
     {
         var placeRootChatId = newChatId.PlaceChatId.PlaceId.ToRootChatId();
-        int updateCount;
 
         // Create place members and update chat authors.
         var dbAuthors = await dbContext.Authors
@@ -117,9 +119,9 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
             var originalAuthor = dbAuthor.ToModel();
             var userId = originalAuthor.UserId;
             if (userId.IsNone)
-                throw StandardError.NotSupported($"Migration for author with empty user id is not supported. AuthorId is '{dbAuthor.Id}'.");
+                throw StandardError.Internal($"Can't proceed with the migration: found an author with no associated user. AuthorId is '{dbAuthor.Id}'.");
             if (dbAuthor.IsAnonymous)
-                throw StandardError.NotSupported($"Migration for anonymous author is not supported. AuthorId is '{dbAuthor.Id}'.");
+                throw StandardError.Internal($"Can't proceed with the migration: anonymous author migration isn't supported yet. AuthorId is '{dbAuthor.Id}'.");
 
             // Ensure there is matching place member
             var placeMember = await AuthorsBackend.GetByUserId(placeRootChatId, userId, cancellationToken).ConfigureAwait(false);
@@ -151,7 +153,7 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
                 foreach (var roleId in roleIds) {
                     var migratedRole = migratedRoles.First(c => OrdinalEquals(roleId, c.OriginalRole.Id.Value));
 
-                    updateCount = await dbContext.AuthorRoles
+                    _ = await dbContext.AuthorRoles
                         .Where(c => c.DbRoleId == roleId && c.DbAuthorId == originalAuthor.Id)
                         .ExecuteUpdateAsync(setters => setters
                                 .SetProperty(c => c.DbRoleId, c => migratedRole.NewId)
@@ -165,13 +167,13 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
         }
 
         if (dbAuthors.Count > 0) {
-            updateCount = await dbContext.Authors
+            var updateCount = await dbContext.Authors
                 .Where(c => c.ChatId == chatSid)
                 .ExecuteDeleteAsync(cancellationToken)
+                .RequireUpdated(dbAuthors.Count)
                 .ConfigureAwait(false);
-            AssertXUpdated(updateCount, dbAuthors.Count);
 
-            Log.LogInformation("Updated {Count} author records", dbAuthors.Count);
+            Log.LogInformation("Updated {Count} author records", updateCount);
         }
     }
 
@@ -198,15 +200,14 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
             else if (authorId.LocalId == Constants.User.Walle.AuthorLocalId)
                 newAuthorId = new AuthorId(newChatId, authorId.LocalId, AssumeValid.Option);
             else
-                throw StandardError.Constraint($"Unexpected author local id. Local id is '{authorId.LocalId}'.");
+                throw StandardError.Internal($"Unexpected author local id. Local id is '{authorId.LocalId}'.");
 
             var newAuthorSid = newAuthorId.Value;
             updateCount = await dbContext.ChatEntries
-                .Where(c => c.ChatId == chatSid)
-                .Where(c => c.AuthorId == authorId)
+                .Where(c => c.ChatId == chatSid && c.AuthorId == authorId)
                 .ExecuteUpdateAsync(s => s.SetProperty(c => c.AuthorId, newAuthorSid), cancellationToken)
+                .RequireAtLeastOneUpdated()
                 .ConfigureAwait(false);
-            AssertAtLeastOneUpdated(updateCount);
 
             Log.LogInformation("Updated AuthorId for {Count} chat entry records with author id '{AuthorId}'." +
                 " New author id is '{NewAuthorId}'", updateCount, authorSid, newAuthorSid);
@@ -216,8 +217,7 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
             var entryKind = (ChatEntryKind)i;
             var prefix = newChatId + ":" + i + ":";
             updateCount = await dbContext.ChatEntries
-                .Where(c => c.ChatId == chatSid)
-                .Where(c => c.Kind == entryKind)
+                .Where(c => c.ChatId == chatSid && c.Kind == entryKind)
                 .ExecuteUpdateAsync(setters => setters
                         .SetProperty(c => c.Id, c => prefix + c.LocalId)
                         .SetProperty(c => c.ChatId, newChatId),
@@ -227,7 +227,7 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
             Log.LogInformation("Updated Id and ChatId for {Count} '{Kind}' chat entry records", updateCount, entryKind.ToString());
         }
 
-        // NOTE: I expect that we have not many entries with forward fields filled in so far
+        // NOTE: I expect that we don't have many entries with forward fields filled in so far
         // hence it's ok to fetch them all at once.
         var chatEntriesToUpdateForwardFields = await dbContext.ChatEntries
             .Where(c => c.ForwardedAuthorId != null && c.ForwardedAuthorId.StartsWith(chatSid))
@@ -236,10 +236,10 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
 
         updateCount = 0;
         foreach (var dbChatEntry in chatEntriesToUpdateForwardFields) {
-            var forwardedAuthorId = dbChatEntry.ForwardedAuthorId.RequireNonEmpty("ForwardedAuthorId");
+            var forwardedAuthorId = dbChatEntry.ForwardedAuthorId.RequireNonEmpty(nameof(DbChatEntry.ForwardedAuthorId));
             var newAuthorId = migratedAuthors.First(c => OrdinalEquals(c.OriginalAuthor.Id.Value, forwardedAuthorId)).NewId;
             dbChatEntry.ForwardedAuthorId = newAuthorId.Value;
-            var forwardedChatEntryId = dbChatEntry.ForwardedChatEntryId.RequireNonEmpty("ForwardedChatEntryId");
+            var forwardedChatEntryId = dbChatEntry.ForwardedChatEntryId.RequireNonEmpty(nameof(DbChatEntry.ForwardedChatEntryId));
             var chatEntryId = new ChatEntryId(forwardedChatEntryId);
             var newChatEntrySid = ChatEntryId.Format(newChatId, chatEntryId.Kind, chatEntryId.LocalId);
             dbChatEntry.ForwardedChatEntryId = newChatEntrySid;
@@ -420,21 +420,6 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         Log.LogInformation("Updated AuthorIds for {Count} reaction summary records", updateCount);
-    }
-
-    private static void AssertOneUpdated(int updateCount)
-        => AssertXUpdated(updateCount, 1);
-
-    private static void AssertXUpdated(int updateCount, int expectedUpdateCount)
-    {
-        if (updateCount != expectedUpdateCount)
-            throw new InvalidOperationException($"Expected {expectedUpdateCount} row should be update, but {updateCount} rows were updated.");
-    }
-
-    private static void AssertAtLeastOneUpdated(int updateCount)
-    {
-        if (updateCount < 1)
-            throw new InvalidOperationException("Expected at least 1 row should be update.");
     }
 
     private record MigratedRole(Role OriginalRole, Role NewRole)

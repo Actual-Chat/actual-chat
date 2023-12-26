@@ -1,4 +1,5 @@
 using ActualChat.Contacts.Db;
+using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
 using Stl.Fusion.EntityFramework;
 
@@ -23,6 +24,8 @@ public class ContactMigratorBackend(IServiceProvider services) : DbServiceBase<C
             return;
         }
 
+        Log.LogInformation("ContactMigratorBackend_MoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatId.Value, placeId);
+
         var chatSid = chatId.Value;
         var placeSid = placeId.Value;
 
@@ -41,28 +44,21 @@ public class ContactMigratorBackend(IServiceProvider services) : DbServiceBase<C
             var newContactSid = ContactId.Format(ownerId, newChatId);
             var newChatSid = newChatId.Value;
 
-            var updateCount = await dbContext.Contacts
+            _ = await dbContext.Contacts
                 .Where(c => c.Id == contactSid)
                 .ExecuteUpdateAsync(setters => setters
-                        .SetProperty(c => c.Id, c => newContactSid)
-                        .SetProperty(c => c.ChatId, c => newChatSid)
-                        .SetProperty(c => c.PlaceId, c => placeSid),
+                        .SetProperty(c => c.Id, _ => newContactSid)
+                        .SetProperty(c => c.ChatId, _ => newChatSid)
+                        .SetProperty(c => c.PlaceId, _ => placeSid),
                     cancellationToken)
+                .RequireOneUpdated()
                 .ConfigureAwait(false);
-            AssertOneUpdated(updateCount);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         // Place contacts should be added on adding authors to place root chat during processing ChatsMigrationBackend_MoveToPlace.
-    }
 
-    private static void AssertOneUpdated(int updateCount)
-        => AssertXUpdated(updateCount, 1);
-
-    private static void AssertXUpdated(int updateCount, int expectedUpdateCount)
-    {
-        if (updateCount != expectedUpdateCount)
-            throw new InvalidOperationException($"Expected {expectedUpdateCount} row should be update, but {updateCount} rows were updated.");
+        Log.LogInformation("ContactMigratorBackend_MoveChatToPlace: completed");
     }
 }

@@ -19,23 +19,21 @@ public class ChatMigrator(IServiceProvider services) : IChatMigrator
 
         var (session, chatId, placeId) = command;
         var executed = false;
-        Log.LogInformation("About to perform ChatsMigration_MoveToPlace");
+        Log.LogInformation("ChatMigrator_MoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatId.Value, placeId);
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Chat for chat id '{ChatId}' is {Chat}", chatId, chat);
         if (chat != null) {
             if (chat.Id.Kind != ChatKind.Group)
-                throw StandardError.Constraint("You may perform 'move to place' operation only on a group chat.");
+                throw StandardError.Constraint("Only group chats can be moved to a Place.");
             if (!chat.Rules.IsOwner())
-                throw StandardError.Constraint("You should be a chat owner to perform 'move to place' operation.");
+                throw StandardError.Constraint("You must be the Owner of this chat to perform the migration.");
 
             var place = await Places.Get(session, placeId, cancellationToken).Require().ConfigureAwait(false);
             if (!place.Rules.IsOwner())
                 throw StandardError.Constraint("You should be a place owner to perform 'move to place' operation.");
 
-            Log.LogInformation("About to perform ChatsMigrationBackend_MoveToPlace");
-            var backCommand = new ChatMigratorBackend_MoveChatToPlace(chatId, placeId);
-            await Commander.Call(backCommand, true, cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("Completed ChatsMigrationBackend_MoveToPlace");
+            var backendCmd = new ChatMigratorBackend_MoveChatToPlace(chatId, placeId);
+            await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
             executed = true;
         }
 
@@ -44,22 +42,19 @@ public class ChatMigrator(IServiceProvider services) : IChatMigrator
         var contact = await Contacts.GetForChat(session, newChatId, cancellationToken).ConfigureAwait(false);
         Log.LogInformation("Contact for chat id '{ChatId}' is {Contact}", newChatId, contact);
         if (contact == null || contact.PlaceId.IsNone || !contact.IsStored()) {
-            Log.LogInformation("About to perform ContactsMigrationBackend_MoveChatToPlace");
-            var backCommand2 = new ContactMigratorBackend_MoveChatToPlace(chatId, placeId);
-            await Commander.Call(backCommand2, true, cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("Completed ContactsMigrationBackend_MoveChatToPlace");
+            var backendCmd2 = new ContactMigratorBackend_MoveChatToPlace(chatId, placeId);
+            await Commander.Call(backendCmd2, true, cancellationToken).ConfigureAwait(false);
             executed = true;
         }
 
         {
-            Log.LogInformation("About to perform UserChatSettingsMigrationBackend_MoveChatToPlace");
-            var backCommand3 = new UserMigratorBackend_MoveChatToPlace(chatId, placeId);
-            var hasChanges = await Commander.Call(backCommand3, true, cancellationToken).ConfigureAwait(false);
-            Log.LogInformation("Completed UserChatSettingsMigrationBackend_MoveChatToPlace");
+            var backendCmd3 = new UserMigratorBackend_MoveChatToPlace(chatId, placeId);
+            var hasChanges = await Commander.Call(backendCmd3, true, cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("UserMigratorBackend_MoveChatToPlace: completed");
             executed |= hasChanges;
         }
 
-        Log.LogInformation("Completed ChatsMigration_MoveToPlace");
+        Log.LogInformation("ChatMigrator_MoveChatToPlace: completed");
         return executed;
     }
 }

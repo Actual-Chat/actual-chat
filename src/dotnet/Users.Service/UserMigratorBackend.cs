@@ -13,16 +13,16 @@ public class UserMigratorBackend(IServiceProvider services): DbServiceBase<Users
         var (chatId, placeId) = command;
         var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
         var newChatId = (ChatId)placeChatId;
+        var chatSid = chatId.Value;
 
         if (Computed.IsInvalidating()) {
             // Skip invalidation. Value for old chat should no longer be requested.
             return default;
         }
 
-        var chatSid = chatId.Value;
-        var hasChanges = false;
+        Log.LogInformation("UserMigratorBackend_MoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatSid, placeId);
 
-        Log.LogInformation("About to move chat '{ChatId}' to place '{PlaceId}'", chatSid, placeId);
+        var hasChanges = false;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -32,6 +32,8 @@ public class UserMigratorBackend(IServiceProvider services): DbServiceBase<Users
         hasChanges |= await UpdateChatPositions(dbContext, chatId, newChatId, cancellationToken).ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        Log.LogInformation("UserMigratorBackend_MoveChatToPlace: completed");
 
         return hasChanges;
     }
