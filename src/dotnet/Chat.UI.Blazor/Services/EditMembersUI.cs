@@ -25,7 +25,7 @@ public class EditMembersUI(ChatUIHub hub)
         return canAddContacts;
     }
 
-    public bool CanAddMembers(Chat chat)
+    public static bool CanAddMembers(Chat chat)
     {
         if (!chat.CanInvite())
             return false;
@@ -36,7 +36,7 @@ public class EditMembersUI(ChatUIHub hub)
         return true;
     }
 
-    public bool CanEditMembers(Chat chat)
+    public static bool CanEditMembers(Chat chat)
     {
         if (!chat.Rules.CanEditMembers())
             return false;

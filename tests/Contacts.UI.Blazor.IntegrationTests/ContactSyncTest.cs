@@ -69,7 +69,7 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         DeviceContacts.Add(NewExternalContact(bob).WithPhone(JackPhone).WithEmail(JackEmail));
 
         // act
-        var scope = new Scope(_tester.ClientServices);
+        var scope = new UIHub(_tester.ClientServices);
         var sut = new ContactSync(scope);
         sut.Start();
 
@@ -83,7 +83,7 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         DeviceContacts.Add(NewExternalContact(bob).WithPhone(JanePhone).WithEmail(JaneEmail));
 
         // act
-        scope = new Scope(_tester.ClientServices);
+        scope = new UIHub(_tester.ClientServices);
         sut = new ContactSync(scope);
         sut.Start();
 

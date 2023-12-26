@@ -173,7 +173,7 @@ public class PlaceOperationsTest : AppHostTestBase
 
         if (!isPublicPlace) {
             // TODO(DF): Somehow active possibility to join. Invite code?
-            throw new NotImplementedException();
+            throw new NotSupportedException("We may review this later.");
         }
 
         await commander.Call(new Places_Join(anotherSession, place.Id));
