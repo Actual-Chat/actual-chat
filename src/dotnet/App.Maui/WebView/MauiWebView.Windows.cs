@@ -18,6 +18,8 @@ public partial class MauiWebView
 
         PlatformWebView = platformWebView;
         WindowsWebView = (WebView2Control)platformWebView;
+        // Fixes a brief "flash" w/ white background on Windows
+        WindowsWebView.DefaultBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0); // Transparent
         WindowsWebView.CoreWebView2Initialized += static (sender, _) => {
             var webView = sender.CoreWebView2;
             webView.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
