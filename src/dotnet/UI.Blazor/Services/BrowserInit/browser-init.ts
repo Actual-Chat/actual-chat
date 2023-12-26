@@ -126,32 +126,29 @@ export class BrowserInit {
         }
     }
 
-    public static async removeLoadingOverlay(instantly = false): Promise<void> {
+    public static removeWebSplash(instantly = false) {
         document.body.style.backgroundColor = null;
-        const overlay = document.getElementById('until-ui-is-ready');
+        const overlay = document.getElementById('web-splash');
         if (!overlay)
             return;
 
         if (instantly) {
-            await BrowserInfo.onWebSplashRemoved();
             overlay.remove();
+            void BrowserInfo.onWebSplashRemoved();
         }
         else {
             overlay.classList.add('removing');
-            await BrowserInfo.onWebSplashRemoved();
-
-            setTimeout(async function () {
-                const isInDom = document.contains(overlay);
-                if (isInDom) {
-                    overlay.remove();
-                }
-            }, 500);
+            // Total transition duration: 500ms, see loading-overlay.css
+            setTimeout(function () {
+                void BrowserInfo.onWebSplashRemoved();
+                setTimeout(function () { overlay.remove(); }, 200);
+            }, 300);
         }
     }
 
-    public static async startLoadingOverlayRemoval(delayMs: number): Promise<void> {
+    public static async startWebSplashRemoval(delayMs: number): Promise<void> {
         await delayAsync(delayMs);
-        await this.removeLoadingOverlay();
+        this.removeWebSplash();
     }
 
     public static async reload(): Promise<void> {
@@ -273,4 +270,4 @@ export class BrowserInit {
 
 // This call must be done as soon as possible
 BrowserInit.startReloadWatchers();
-void BrowserInit.startLoadingOverlayRemoval(5_000);
+void BrowserInit.startWebSplashRemoval(5_000);

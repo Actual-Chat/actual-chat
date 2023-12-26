@@ -47,12 +47,13 @@ public class MauiBrowserInfo : BrowserInfo
 
         WhenReadySource.TrySetResult();
         MauiLoadingUI.MarkFirstWebViewCreated();
+        MauiThemeHandler.Instance.Apply();
     }
 
     [JSInvokable]
     public override void OnWebSplashRemoved()
     {
-        MauiLoadingUI.MarkSplashRemoved();
-        MauiThemeHandler.Instance.Apply(true);
+        MauiLoadingUI.MarkFirstSplashRemoved();
+        MauiThemeHandler.Instance.Apply();
     }
 }

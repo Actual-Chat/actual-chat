@@ -6,10 +6,10 @@ public static class MauiLoadingUI
 {
     private static readonly Tracer StaticTracer = Tracer.Default[nameof(LoadingUI)];
     private static readonly TaskCompletionSource _whenFirstWebViewCreatedSource = new();
-    private static readonly TaskCompletionSource _whenSplashRemovedSource = new();
+    private static readonly TaskCompletionSource _whenFirstSplashRemovedSource = new();
 
     public static Task WhenFirstWebViewCreated => _whenFirstWebViewCreatedSource.Task;
-    public static readonly Task WhenFirstSplashRemoved = _whenSplashRemovedSource.Task;
+    public static readonly Task WhenFirstSplashRemoved = _whenFirstSplashRemovedSource.Task;
 
     public static void MarkFirstWebViewCreated()
     {
@@ -19,9 +19,9 @@ public static class MauiLoadingUI
         StaticTracer.Point();
     }
 
-    public static void MarkSplashRemoved()
+    public static void MarkFirstSplashRemoved()
     {
-        if (!_whenSplashRemovedSource.TrySetResult())
+        if (!_whenFirstSplashRemovedSource.TrySetResult())
             return;
 
         StaticTracer.Point();

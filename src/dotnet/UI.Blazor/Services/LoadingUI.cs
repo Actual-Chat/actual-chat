@@ -18,7 +18,7 @@ public class LoadingUI
     private readonly TaskCompletionSource _whenLoadedSource = new();
     private readonly TaskCompletionSource _whenRenderedSource = new();
     private readonly TaskCompletionSource _whenChatListLoadedSource = new();
-    private volatile int _isLoadingOverlayRemoved;
+    private volatile int _isWebSplashRemoved;
 
     private IServiceProvider Services { get; }
     private HostInfo HostInfo { get; }
@@ -83,6 +83,7 @@ public class LoadingUI
         RenderTime = Tracer.Elapsed;
         Tracer.Point();
         _whenAppRenderedSource.TrySetResult();
+        RemoveWebSplash();
     }
 
     public void MarkChatListLoaded()
@@ -92,22 +93,21 @@ public class LoadingUI
 
         ChatListLoadTime = Tracer.Elapsed;
         Tracer.Point();
-        RemoveLoadingOverlay();
     }
 
-    public void RemoveLoadingOverlay(bool instantly = false)
+    public void RemoveWebSplash(bool instantly = false)
     {
-        if (_isLoadingOverlayRemoved != 0)
+        if (_isWebSplashRemoved != 0)
             return;
 
         _ = ForegroundTask.Run(async () => {
                 await Services.JSRuntime()
                     .InvokeVoidAsync(
-                        $"{BlazorUICoreModule.ImportName}.BrowserInit.removeLoadingOverlay",
+                        $"{BlazorUICoreModule.ImportName}.BrowserInit.removeWebSplash",
                         instantly
                     ).ConfigureAwait(false);
-                Interlocked.Exchange(ref _isLoadingOverlayRemoved, 1);
+                Interlocked.Exchange(ref _isWebSplashRemoved, 1);
             },
-            e => Services.LogFor<LoadingUI>().LogError(e, "An error occurred during RemoveLoadingOverlay call"));
+            e => Services.LogFor<LoadingUI>().LogError(e, "RemoveWebSplash failed"));
     }
 }
