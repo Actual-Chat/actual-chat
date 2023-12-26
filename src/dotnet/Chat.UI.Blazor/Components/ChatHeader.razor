@@ -71,10 +71,18 @@
         => ChatContext.Hub.PanelsUI.Left.SetIsVisible(true);
 
     private void OnSearchClick() {
+        var isRightPanelOpened = ChatContext.Hub.PanelsUI.Right.IsVisible.Value;
+        if (isRightPanelOpened && ChatContext.Hub.ChatUI.IsSearchEnabled(ChatContext.Chat.Id).Result) {
+            ChatContext.Hub.ChatUI.EnableSearch(ChatId.None);
+            return;
+        }
+
+        if (!isRightPanelOpened)
+            ChatContext.Hub.PanelsUI.Right.OpenBySearch = true;
+
         ChatContext.Hub.PanelsUI.Right.SetIsVisible(true);
         ChatContext.Hub.ChatUI.EnableSearch(ChatContext.Chat.Id);
     }
-        // => ChatContext.Hub.PanelsUI.RightSearch.Toggle();
 
     public sealed record Model {
         public static readonly Model None = new ();

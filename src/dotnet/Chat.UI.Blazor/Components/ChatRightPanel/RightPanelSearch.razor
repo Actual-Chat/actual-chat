@@ -6,20 +6,27 @@
     @ref="_searchPanelRef"
     Class="right-panel-search"
     ShowCloseButton="@true"
+    IsSmooth="@_smooth"
     OnCloseClick="@CloseSearchPanel">
     <RightPanelSearchTabs ChatContext="@ChatContext"/>
 </SearchPanel>
 
 @code {
     private SearchPanel? _searchPanelRef;
+    private bool _smooth;
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override void OnInitialized()
+        => _smooth = !ChatContext.Hub.PanelsUI.Right.OpenBySearch;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_searchPanelRef != null)
             await _searchPanelRef.Focus();
     }
 
-    private void CloseSearchPanel()
-        => ChatContext.Hub.ChatUI.EnableSearch(ChatId.None);
+    private void CloseSearchPanel() {
+        ChatContext.Hub.PanelsUI.Right.OpenBySearch = false;
+        ChatContext.Hub.ChatUI.EnableSearch(ChatId.None);
+    }
 }

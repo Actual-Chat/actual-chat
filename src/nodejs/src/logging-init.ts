@@ -77,6 +77,7 @@ export type LogScope =
     | 'LandingLeftMenu'
     | 'MarkupEditor'
     | 'MessageEditor'
+    | 'SearchPanel'
     | 'SideNav'
     | 'SelectionHost'
     | 'TextBox'

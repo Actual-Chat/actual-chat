@@ -4,6 +4,7 @@
     @apply lg:w-80 h-full;
     @apply border-l border-transparent;
     @apply bg-03;
+    @apply overflow-hidden;
 }
 .right-chat-panel .tab-panel > .divider {
     @apply mx-6;
