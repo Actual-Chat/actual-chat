@@ -4,10 +4,10 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
-public class UserChatSettingsMigrationBackend(IServiceProvider services): DbServiceBase<UsersDbContext>(services), IUserChatSettingsMigrationBackend
+public class UserMigratorBackend(IServiceProvider services): DbServiceBase<UsersDbContext>(services), IUserMigratorBackend
 {
     public virtual async Task<bool> OnMoveChatToPlace(
-        UserChatSettingsMigrationBackend_MoveChatToPlace command,
+        UserMigratorBackend_MoveChatToPlace command,
         CancellationToken cancellationToken)
     {
         var (chatId, placeId) = command;

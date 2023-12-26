@@ -1,16 +1,16 @@
 using MemoryPack;
 
-namespace ActualChat.Chat;
+namespace ActualChat.Contacts;
 
-public interface IChatsMigrationBackend : IComputeService
+public interface IContactMigratorBackend : IComputeService
 {
     [CommandHandler]
-    Task OnMoveToPlace(ChatsMigrationBackend_MoveToPlace command, CancellationToken cancellationToken);
+    Task OnMoveChatToPlace(ContactMigratorBackend_MoveChatToPlace command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatsMigrationBackend_MoveToPlace(
+public sealed partial record ContactMigratorBackend_MoveChatToPlace(
     [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
 ) : ICommand<Unit>, IBackendCommand;

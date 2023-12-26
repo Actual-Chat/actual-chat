@@ -4,12 +4,12 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class ChatsMigrationBackend(IServiceProvider services): DbServiceBase<ChatDbContext>(services), IChatsMigrationBackend
+public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatDbContext>(services), IChatMigratorBackend
 {
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
 
-    public virtual async Task OnMoveToPlace(ChatsMigrationBackend_MoveToPlace command, CancellationToken cancellationToken)
+    public virtual async Task OnMoveToPlace(ChatMigratorBackend_MoveChatToPlace command, CancellationToken cancellationToken)
     {
         var (chatId, placeId) = command;
 

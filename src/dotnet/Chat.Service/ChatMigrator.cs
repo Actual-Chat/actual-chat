@@ -3,16 +3,16 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-public class ChatsMigration(IServiceProvider services) : IChatsMigration
+public class ChatMigrator(IServiceProvider services) : IChatMigrator
 {
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IPlaces Places { get; } = services.GetRequiredService<IPlaces>();
     private IContacts Contacts { get; } = services.GetRequiredService<IContacts>();
     private ICommander Commander { get; } = services.GetRequiredService<ICommander>();
-    private ILogger Log { get; } = services.LogFor<ChatsMigration>();
+    private ILogger Log { get; } = services.LogFor<ChatMigrator>();
 
     // [CommandHandler]
-    public virtual async Task<bool> OnMoveToPlace(ChatsMigration_MoveToPlace command, CancellationToken cancellationToken)
+    public virtual async Task<bool> OnMoveToPlace(ChatMigrator_MoveChatToPlace command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())
             return default; // It just spawns other commands, so nothing to do here
@@ -33,7 +33,7 @@ public class ChatsMigration(IServiceProvider services) : IChatsMigration
                 throw StandardError.Constraint("You should be a place owner to perform 'move to place' operation.");
 
             Log.LogInformation("About to perform ChatsMigrationBackend_MoveToPlace");
-            var backCommand = new ChatsMigrationBackend_MoveToPlace(chatId, placeId);
+            var backCommand = new ChatMigratorBackend_MoveChatToPlace(chatId, placeId);
             await Commander.Call(backCommand, true, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Completed ChatsMigrationBackend_MoveToPlace");
             executed = true;
@@ -45,7 +45,7 @@ public class ChatsMigration(IServiceProvider services) : IChatsMigration
         Log.LogInformation("Contact for chat id '{ChatId}' is {Contact}", newChatId, contact);
         if (contact == null || contact.PlaceId.IsNone || !contact.IsStored()) {
             Log.LogInformation("About to perform ContactsMigrationBackend_MoveChatToPlace");
-            var backCommand2 = new ContactsMigrationBackend_MoveChatToPlace(chatId, placeId);
+            var backCommand2 = new ContactMigratorBackend_MoveChatToPlace(chatId, placeId);
             await Commander.Call(backCommand2, true, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Completed ContactsMigrationBackend_MoveChatToPlace");
             executed = true;
@@ -53,7 +53,7 @@ public class ChatsMigration(IServiceProvider services) : IChatsMigration
 
         {
             Log.LogInformation("About to perform UserChatSettingsMigrationBackend_MoveChatToPlace");
-            var backCommand3 = new UserChatSettingsMigrationBackend_MoveChatToPlace(chatId, placeId);
+            var backCommand3 = new UserMigratorBackend_MoveChatToPlace(chatId, placeId);
             var hasChanges = await Commander.Call(backCommand3, true, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("Completed UserChatSettingsMigrationBackend_MoveChatToPlace");
             executed |= hasChanges;

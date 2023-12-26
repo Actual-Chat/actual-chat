@@ -2,15 +2,15 @@ using MemoryPack;
 
 namespace ActualChat.Chat;
 
-public interface IChatsMigration : IComputeService
+public interface IChatMigrator : IComputeService
 {
     [CommandHandler]
-    Task<bool> OnMoveToPlace(ChatsMigration_MoveToPlace command, CancellationToken cancellationToken);
+    Task<bool> OnMoveToPlace(ChatMigrator_MoveChatToPlace command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record ChatsMigration_MoveToPlace(
+public sealed partial record ChatMigrator_MoveChatToPlace(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
     [property: DataMember, MemoryPackOrder(2)] PlaceId PlaceId

@@ -179,7 +179,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
         fusion.AddService<IAvatarsBackend, AvatarsBackend>();
         fusion.AddService<IChatPositions, ChatPositions>();
         fusion.AddService<IChatPositionsBackend, ChatPositionsBackend>();
-        fusion.AddService<IUserChatSettingsMigrationBackend, UserChatSettingsMigrationBackend>();
+        fusion.AddService<IUserMigratorBackend, UserMigratorBackend>();
         fusion.AddService<IServerKvas, ServerKvas>();
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddService<IPhoneAuth, PhoneAuth>();

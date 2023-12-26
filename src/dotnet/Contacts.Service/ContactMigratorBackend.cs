@@ -4,11 +4,11 @@ using Stl.Fusion.EntityFramework;
 
 namespace ActualChat.Contacts;
 
-public class ContactsMigrationBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services), IContactsMigrationBackend
+public class ContactMigratorBackend(IServiceProvider services) : DbServiceBase<ContactsDbContext>(services), IContactMigratorBackend
 {
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
 
-    public virtual async Task OnMoveChatToPlace(ContactsMigrationBackend_MoveChatToPlace command, CancellationToken cancellationToken)
+    public virtual async Task OnMoveChatToPlace(ContactMigratorBackend_MoveChatToPlace command, CancellationToken cancellationToken)
     {
         var (chatId, placeId) = command;
         var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
