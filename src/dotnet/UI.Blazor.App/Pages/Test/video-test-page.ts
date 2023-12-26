@@ -6,16 +6,32 @@ export class VideoTestPage {
     private static codec?: VideoCodec = null;
     private static coder?: VideoEncoder = null;
     private static offscreenCanvas: OffscreenCanvas = null;
+    private static outputOffscreenCanvas: OffscreenCanvas = null;
 
 
     public static async startVideoCapture(): Promise<void> {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                height: {
+                    ideal: 720
+                },
+                width: {
+                    ideal: 1280
+                },
+                frameRate: {
+                    ideal: 15
+                }
+            }
+        });
         const videoElement = document.getElementById('video') as HTMLVideoElement;
         const canvasElement = document.getElementById('canvas') as HTMLCanvasElement;
+        const outputCanvasElement = document.getElementById('output') as HTMLCanvasElement;
         videoElement.srcObject = stream;
         await videoElement.play();
         canvasElement.width = videoElement.videoWidth;
         canvasElement.height = videoElement.videoHeight;
+        outputCanvasElement.width = videoElement.videoWidth;
+        outputCanvasElement.height = videoElement.videoHeight;
 
         VideoTestPage.currentStream = stream;
 
@@ -27,28 +43,67 @@ export class VideoTestPage {
         // const frame = new VideoFrame(VideoTestPage.offscreenCanvas);
         // const canvas = VideoTestPage.offscreenCanvas = new OffscreenCanvas(videoElement.videoWidth, videoElement.videoHeight);
         const canvas = VideoTestPage.offscreenCanvas ?? ( VideoTestPage.offscreenCanvas = canvasElement.transferControlToOffscreen());
+        const output = VideoTestPage.outputOffscreenCanvas ?? ( VideoTestPage.outputOffscreenCanvas = outputCanvasElement.transferControlToOffscreen());
         const renderer = new WebGLRenderer(canvas);
+        const renderer2 = new WebGLRenderer(output);
         const coder = VideoTestPage.coder = new VideoEncoder({
             output: (chunk: EncodedVideoChunk, metadata: EncodedVideoChunkMetadata) => {
+                decoder.decode(chunk);
                 console.log('CHUNK', chunk.byteLength, chunk, metadata);
             },
             error:(error: DOMException) => {
                 console.warn('Error encoding', error);
             }
         });
-        const coderConfig = {
-            codec: 'av01.0.15M.10',
+        const decoder = new VideoDecoder({
+            output: (frame: VideoFrame) => {
+                renderer2.draw(frame);
+                console.log('FRAME', frame.timestamp);
+            },
+            error:(error: DOMException) => {
+                console.warn('Error decoding', error);
+            }
+        });
+        let coderConfig = {
+            // codec: 'vp09.00.10.08',
+            // codec: 'vp8',
+            // codec: 'av01.0.15M.10',
+            codec: 'vp09.00.10.08',
             height: canvas.height,
             width: canvas.width,
+            framerate: 15,
             hardwareAcceleration: 'prefer-hardware',
         } as VideoEncoderConfig;
-        const encoderSupported = await VideoEncoder.isConfigSupported(coderConfig);
+        let encoderSupported = await VideoEncoder.isConfigSupported(coderConfig);
         if (!encoderSupported.supported) {
             console.warn('NOT SUPPORTED CODEC', coderConfig);
-            coderConfig.codec = 'avc1.4d401f';
+            coderConfig = {
+                codec: 'vp09.00.10.08',
+                height: canvas.height,
+                width: canvas.width,
+                framerate: 15,
+            } as VideoEncoderConfig;
+            encoderSupported = await VideoEncoder.isConfigSupported(coderConfig);
+            if (!encoderSupported.supported) {
+                console.warn('NOT SUPPORTED CODEC', coderConfig);
+                coderConfig = {
+                    // codec: 'vp09.00.10.08',
+                    codec: 'vp8',
+                    height: canvas.height,
+                    width: canvas.width,
+                    framerate: 15,
+                    hardwareAcceleration: 'prefer-hardware',
+                } as VideoEncoderConfig;
+            }
         }
 
         coder.configure(coderConfig);
+        const decoderConfig = {
+            codec: coderConfig.codec,
+            hardwareAcceleration: 'prefer-hardware',
+        } as VideoDecoderConfig;
+        decoder.configure(decoderConfig);
+
 
         // const ctx: WebGL2RenderingContext  = VideoTestPage.offscreenCanvas.getContext('webgl2') as WebGL2RenderingContext;
 
@@ -172,7 +227,7 @@ class WebGLRenderer {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
 
-    draw(frame: TexImageSource) {
+    draw(frame: TexImageSource | VideoFrame) {
         // this.canvas.width = frame.displayWidth;
         // this.canvas.height = frame.displayHeight;
 
@@ -180,7 +235,8 @@ class WebGLRenderer {
 
         // Upload the frame.
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, frame);
-        // frame.close();
+        if ('close' in frame)
+            frame.close();
 
         // Configure and clear the drawing area.
         gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
