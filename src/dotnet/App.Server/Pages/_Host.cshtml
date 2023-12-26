@@ -183,10 +183,10 @@
 <body class="app-web @(isBlazorServer ? "app-server" : "app-wasm")" style="background-color: #0036A3">
 
 @if (!isBlazorServer && !isCloseWindowRequest) {
-    <div id="until-ui-is-ready" class="loading-overlay"></div>
+    <div id="web-splash" class="loading-overlay"></div>
     <script nonce="@showOverlayNonce">
         @* We use script here to make sure this overlay isn't used as content image by crawlers *@
-        const overlay = document.getElementById('until-ui-is-ready');
+        const overlay = document.getElementById('web-splash');
         if (overlay) {
           overlay.innerHTML = `
             <div class="c-content">

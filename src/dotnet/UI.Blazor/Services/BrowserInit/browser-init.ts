@@ -126,9 +126,9 @@ export class BrowserInit {
         }
     }
 
-    public static removeLoadingOverlay(instantly = false) {
+    public static removeWebSplash(instantly = false) {
         document.body.style.backgroundColor = null;
-        const overlay = document.getElementById('until-ui-is-ready');
+        const overlay = document.getElementById('web-splash');
         if (!overlay)
             return;
 
@@ -138,19 +138,17 @@ export class BrowserInit {
         }
         else {
             overlay.style.opacity = '0';
+            // Total transition duration: 300ms, see loading-overlay.css
             setTimeout(function () {
-                const isInDom = document.contains(overlay);
-                if (isInDom) {
-                    overlay.remove();
-                    void BrowserInfo.onWebSplashRemoved();
-                }
-            }, 500);
+                void BrowserInfo.onWebSplashRemoved();
+                setTimeout(function () { overlay.remove(); }, 100);
+            }, 200);
         }
     }
 
-    public static async startLoadingOverlayRemoval(delayMs: number): Promise<void> {
+    public static async startWebSplashRemoval(delayMs: number): Promise<void> {
         await delayAsync(delayMs);
-        this.removeLoadingOverlay();
+        this.removeWebSplash();
     }
 
     public static async reload(): Promise<void> {
@@ -272,4 +270,4 @@ export class BrowserInit {
 
 // This call must be done as soon as possible
 BrowserInit.startReloadWatchers();
-void BrowserInit.startLoadingOverlayRemoval(5_000);
+void BrowserInit.startWebSplashRemoval(5_000);

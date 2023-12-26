@@ -13,6 +13,7 @@ export type AppKind = 'Unknown' | 'WebServer' | 'WasmApp' | 'MauiApp';
 
 export class BrowserInfo {
     private static backendRef: DotNet.DotNetObject = null;
+    private static isWebSplashRemoved: boolean;
 
     public static appKind: AppKind = window.location.host === '0.0.0.0'
         ? 'MauiApp'
@@ -65,25 +66,29 @@ export class BrowserInfo {
     private static async onScreenSizeChanged(screenSize: string, isHoverable: boolean): Promise<void> {
         infoLog?.log(`onScreenSizeChanged, screenSize:`, screenSize);
         await this.whenReady;
-        this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable);
+        void this.backendRef.invokeMethodAsync('OnScreenSizeChanged', screenSize, isHoverable);
     };
 
     private static async onVisibilityChanged(): Promise<void> {
         infoLog?.log(`onVisibilityChanged, visible:`, !document.hidden);
         await this.whenReady;
-        this.backendRef.invokeMethodAsync('OnIsVisibleChanged', !document.hidden);
+        void this.backendRef.invokeMethodAsync('OnIsVisibleChanged', !document.hidden);
     };
 
     public static async onThemeChanged(themeInfo: ThemeInfo): Promise<void> {
         infoLog?.log(`onThemeChanged:`, themeInfo);
         await this.whenReady;
-        this.backendRef.invokeMethodAsync('OnThemeChanged', themeInfo);
+        void this.backendRef.invokeMethodAsync('OnThemeChanged', themeInfo);
     };
 
     public static async onWebSplashRemoved(): Promise<void> {
+        if (this.isWebSplashRemoved)
+            return;
+
+        this.isWebSplashRemoved = true;
         infoLog?.log(`onWebSplashRemoved`);
         await this.whenReady;
-        this.backendRef.invokeMethodAsync('OnWebSplashRemoved');
+        void this.backendRef.invokeMethodAsync('OnWebSplashRemoved');
     };
 
     private static initBodyClasses() {
@@ -102,27 +107,6 @@ export class BrowserInfo {
             classList.add('app-unknown');
             break;
         }
-
-        if (DeviceInfo.isMobile)
-            classList.add('device-mobile');
-        else
-            classList.add('device-desktop');
-
-        if (DeviceInfo.isAndroid)
-            classList.add('device-android');
-        if (DeviceInfo.isIos)
-            classList.add('device-ios');
-        if (DeviceInfo.isChromium)
-            classList.add('device-chrome');
-        if (DeviceInfo.isEdge)
-            classList.add('device-edge');
-        if (DeviceInfo.isWebKit)
-            classList.add('device-webkit');
-
-        if (DeviceInfo.isTouchCapable)
-            classList.add('touch-capable');
-        else
-            classList.add('touch-incapable');
     }
 }
 

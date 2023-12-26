@@ -45,15 +45,15 @@ public class MauiBrowserInfo : BrowserInfo
         WindowId = initResult.WindowId;
         // We don't want to change any other properties here
 
-        MauiThemeHandler.Instance.Apply();
         WhenReadySource.TrySetResult();
         MauiLoadingUI.MarkFirstWebViewCreated();
+        MauiThemeHandler.Instance.Apply();
     }
 
     [JSInvokable]
     public override void OnWebSplashRemoved()
     {
-        MauiLoadingUI.MarkSplashRemoved();
+        MauiLoadingUI.MarkFirstSplashRemoved();
         MauiThemeHandler.Instance.Apply();
     }
 }

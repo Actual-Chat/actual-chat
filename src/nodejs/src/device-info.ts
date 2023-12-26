@@ -16,4 +16,32 @@ export const DeviceInfo = {
     isTouchCapable: (('ontouchstart' in window)
         || (navigator['MaxTouchPoints'] as number > 0)
         || (navigator['msMaxTouchPoints'] as number > 0)),
+
+    init: function (): void {
+        const body = document?.body;
+        if (!body)
+            return;
+
+        const classList = body.classList;
+        if (DeviceInfo.isMobile)
+            classList.add('device-mobile');
+        else
+            classList.add('device-desktop');
+
+        if (DeviceInfo.isAndroid)
+            classList.add('device-android');
+        if (DeviceInfo.isIos)
+            classList.add('device-ios');
+        if (DeviceInfo.isChromium)
+            classList.add('device-chrome');
+        if (DeviceInfo.isEdge)
+            classList.add('device-edge');
+        if (DeviceInfo.isWebKit)
+            classList.add('device-webkit');
+
+        if (DeviceInfo.isTouchCapable)
+            classList.add('touch-capable');
+        else
+            classList.add('touch-incapable');
+    }
 };
