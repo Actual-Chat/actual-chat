@@ -137,11 +137,11 @@ export class BrowserInit {
             void BrowserInfo.onWebSplashRemoved();
         }
         else {
-            overlay.style.opacity = '0';
-            // Total transition duration: 300ms, see loading-overlay.css
+            overlay.classList.add('removing');
+            // Total transition duration: 350ms, see loading-overlay.css
             setTimeout(function () {
                 void BrowserInfo.onWebSplashRemoved();
-                setTimeout(function () { overlay.remove(); }, 100);
+                setTimeout(function () { overlay.remove(); }, 150);
             }, 200);
         }
     }

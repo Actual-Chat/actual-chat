@@ -142,8 +142,14 @@ export class AudioRecorder {
                     if ('audioSession' in navigator) {
                         navigator.audioSession['type'] = 'play-and-record'; // 'playback'
                     }
-                    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    await OpusMediaRecorder.stopStreamTracks(stream);
+                    if (BrowserInfo.appKind === 'MauiApp' && DeviceInfo.isIos ) {
+                        // iOS MAUI keeps microphone acquired, so let's return true there to avoid user complains
+                        return true;
+                    }
+                    else {
+                        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                        await OpusMediaRecorder.stopStreamTracks(stream);
+                    }
 
                     // update DetectRTC with new microphone permission if granted
                     AudioRecorder.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
