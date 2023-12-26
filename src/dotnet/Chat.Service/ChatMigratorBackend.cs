@@ -9,6 +9,7 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
 {
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
 
     public virtual async Task OnMoveToPlace(ChatMigratorBackend_MoveChatToPlace command, CancellationToken cancellationToken)
     {
@@ -283,7 +284,69 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
         IReadOnlyCollection<MigratedAuthor> migratedAuthors,
         CancellationToken cancellationToken)
     {
-        int updateCount;
+        int updateCount = 0;
+
+        // Update author mentions inside DbChatEntry.Content
+        var chatEntryWithMentionIds = await dbContext.Mentions
+            .Where(c => c.ChatId == chatSid)
+            .Select(c => c.EntryId)
+            .Distinct()
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var mentionExtractor = new MentionExtractor();
+        foreach (var entryLocalIdsChunk in chatEntryWithMentionIds.Chunk(20)) {
+            var chatEntries = await dbContext.ChatEntries
+                .Where(c => c.ChatId == newChatSid && c.Kind == ChatEntryKind.Text)
+                .Where(c => entryLocalIdsChunk.Contains(c.LocalId))
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var dbChatEntry in chatEntries) {
+                var content = dbChatEntry.Content;
+                var markup = MarkupParser.Parse(content);
+                var mentionIds = mentionExtractor.GetMentionIds(markup);
+                foreach (var mentionId in mentionIds) {
+                    if (!mentionId.IsAuthor(out var authorId))
+                        continue;
+
+                    var newAuthorId = migratedAuthors.First(c => OrdinalEquals(c.OriginalAuthor.Id.Value, authorId.Value)).NewId;
+                    var newMentionId = new MentionId(newAuthorId, AssumeValid.Option);
+                    content = content.Replace(mentionId.Id.Value, newMentionId.Id.Value, StringComparison.Ordinal);
+                }
+                if (OrdinalEquals(content, dbChatEntry.Content))
+                    continue;
+
+                dbChatEntry.Content = content;
+                updateCount++;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        Log.LogInformation("Updated author mentions inside DbChatEntry.Content. {Count} records are affected", updateCount);
+
+        // Update MembersChangedOption inside system chat entries
+        updateCount = 0;
+        var systemChatEntries = await dbContext.ChatEntries
+            .Where(c => c.ChatId == newChatSid && c.Kind == ChatEntryKind.Text && c.IsSystemEntry)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var dbChatEntry in systemChatEntries) {
+            var chatEntry = dbChatEntry.ToModel();
+            var membersChangedOption = chatEntry.SystemEntry?.MembersChanged;
+            if (membersChangedOption != null) {
+                var authorId = membersChangedOption.AuthorId;
+                var newAuthorId = migratedAuthors.First(c => OrdinalEquals(c.OriginalAuthor.Id.Value, authorId.Value)).NewId;
+                var newMembersChangedOption = new MembersChangedOption(newAuthorId,
+                    membersChangedOption.AuthorName,
+                    membersChangedOption.HasLeft);
+                chatEntry = chatEntry with { SystemEntry = newMembersChangedOption };
+                dbChatEntry.UpdateFrom(chatEntry);
+                updateCount++;
+            }
+        }
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Updated MembersChangedOption inside system chat entries. {Count} records are affected", updateCount);
 
         var mentionSids = await dbContext.Mentions
             .Where(c => c.ChatId == chatSid)
