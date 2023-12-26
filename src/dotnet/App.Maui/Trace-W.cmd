@@ -1,0 +1,1 @@
+dotnet trace collect -o "_Profiling/windows.nettrace" --providers Microsoft-Windows-DotNETRuntime:0x1F000080018:5 -- ..\..\..\artifacts\publish\App.Maui\debug_net8.0-windows10.0.22000.0\ActualChat.exe

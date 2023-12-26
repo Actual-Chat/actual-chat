@@ -259,7 +259,7 @@
     // And this causes crash on startup:
     <AndroidAotProfile Include="$(MSBuildThisFileDirectory)/_Profiling/maui-blazor.aotprofile" />
     -->
-    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/android-v1.mibc" />
+    <AndroidMibcProfile Include="$(MSBuildThisFileDirectory)/_Profiling/merged.mibc" />
   </ItemGroup>
 
   <!-- Android: AOT profiling mode -->
@@ -279,6 +279,7 @@
     <AndroidEnablePreloadAssemblies>false</AndroidEnablePreloadAssemblies>
   </PropertyGroup>
   <ItemGroup Condition="$(IsProfilingEnabled) and $(TargetFramework.Contains('-android'))">
+    <PackageReference Include="Mono.Profiler.Android" />
     <PackageReference Include="Mono.AotProfiler.Android" />
   </ItemGroup>
   <!-- Android: Tracing mode -->
