@@ -21,10 +21,8 @@ public sealed partial class AudioInitializer(UIHub hub)
     private DotNetObjectReference<IAudioInfoBackend>? _backendRef;
     private AppActivity? _appActivity;
     private IJSRuntime? _js;
-    private UrlMapper? _urlMapper;
 
     private IJSRuntime JS => _js ??= Services.JSRuntime();
-    private UrlMapper UrlMapper => _urlMapper ??= Services.UrlMapper();
     private AppActivity AppActivity => _appActivity ??= Services.GetRequiredService<AppActivity>();
 
     public Task WhenInitialized => _whenInitializedSource.Task;

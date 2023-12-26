@@ -6,8 +6,8 @@ public class FeedbackUI(UIHub hub) : ScopedServiceBase<UIHub>(hub)
 {
     private ModalRef? _modal;
 
-    private ModalUI ModalUI => hub.ModalUI;
-    private UICommander UICommander => hub.UICommander();
+    private ModalUI ModalUI => Hub.ModalUI;
+    private UICommander UICommander => Hub.UICommander();
 
     public async Task AskFeatureRequestFeedback(string feature, string? featureTitle = null)
     {

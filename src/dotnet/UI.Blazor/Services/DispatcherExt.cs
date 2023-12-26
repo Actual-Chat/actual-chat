@@ -7,7 +7,7 @@ public static class DispatcherExt
     public static async Task InvokeSafeAsync(this Dispatcher dispatcher, Action workItem, ILogger log)
     {
         try {
-            await dispatcher.InvokeAsync(workItem);
+            await dispatcher.InvokeAsync(workItem).ConfigureAwait(false);
         }
         catch (Exception e) {
             log.LogError(e, "Error invoking action using Dispatcher");

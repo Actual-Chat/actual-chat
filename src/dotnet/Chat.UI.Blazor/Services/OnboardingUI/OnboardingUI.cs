@@ -16,7 +16,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
     private LoadingUI LoadingUI => Hub.LoadingUI;
 
     public IState<UserOnboardingSettings> UserSettings => _userSettings;
-    public IState<LocalOnboardingSettings> LocalSettings => _localSettings;
+    public new IState<LocalOnboardingSettings> LocalSettings => _localSettings;
 
     public OnboardingUI(ChatUIHub hub) : base(hub)
     {

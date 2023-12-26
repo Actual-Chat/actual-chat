@@ -203,6 +203,6 @@ public class Places(IServiceProvider services) : IPlaces
     private static void ThrowIfNonPlaceRootChatAuthor(AuthorId authorId)
     {
         if (!authorId.ChatId.PlaceChatId.IsRoot)
-            throw new ArgumentOutOfRangeException("AuthorId");
+            throw new ArgumentOutOfRangeException(nameof(authorId));
     }
 }
