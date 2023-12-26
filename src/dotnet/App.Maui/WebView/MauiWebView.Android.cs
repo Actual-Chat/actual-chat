@@ -2,6 +2,7 @@ using Android.Webkit;
 using AndroidX.Activity;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.Maui.Platform;
+using Color = Android.Graphics.Color;
 using WebView = Android.Webkit.WebView;
 using MixedContentHandling = Android.Webkit.MixedContentHandling;
 
@@ -18,6 +19,7 @@ public partial class MauiWebView
 
         PlatformWebView = platformWebView;
         AndroidWebView = (WebView)platformWebView;
+        AndroidWebView.SetBackgroundColor(Color.Transparent);
     }
 
     public partial void HardNavigateTo(string url)
