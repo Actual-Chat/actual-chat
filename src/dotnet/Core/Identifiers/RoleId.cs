@@ -76,7 +76,7 @@ public readonly partial struct RoleId : ISymbolIdentifier<RoleId>
 
     // Parsing
 
-    private static string Format(ChatId chatId, long localId)
+    public static string Format(ChatId chatId, long localId)
         => chatId.IsNone ? "" : $"{chatId.Value}:{localId.Format()}";
 
     public static RoleId Parse(string? s)

@@ -96,7 +96,7 @@ public readonly partial struct ChatEntryId : ISymbolIdentifier<ChatEntryId>
 
     // Parsing
 
-    private static string Format(ChatId chatId, ChatEntryKind kind, long localId)
+    public static string Format(ChatId chatId, ChatEntryKind kind, long localId)
         => chatId.IsNone ? "" : $"{chatId}:{kind.Format()}:{localId.Format()}";
 
     public static ChatEntryId Parse(string? s)
