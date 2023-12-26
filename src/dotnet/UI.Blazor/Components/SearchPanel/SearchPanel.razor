@@ -1,7 +1,11 @@
 @using ActualChat.UI.Blazor.Services
+@using ActualChat.UI.Blazor.Module
 @namespace ActualChat.UI.Blazor.Components
+@{
+    var cls = IsSmooth ? "smooth open" : "instant open";
+}
 
-<div class="search-panel @Class">
+<div @ref="ElementRef" class="search-panel @cls @Class">
     <div class="c-search">
         <div class="@Class search-input">
             <label>
@@ -14,7 +18,7 @@
                 </TextInput>
                 <i class="icon-search text-2xl search-icon"></i>
                 @if (ShowCloseButton) {
-                    <HeaderButton Click="OnCloseClick" Class="c-close-btn">
+                    <HeaderButton Click="SmoothCloseSearchPanel" Class="c-close-btn">
                         <i class="icon-close text-2xl"></i>
                     </HeaderButton>
                 }
@@ -26,17 +30,36 @@
 </div>
 
 @code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.SearchPanel.create";
+
     TextInput? _inputRef = null;
 
     [Inject] private SearchUI SearchUI { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
 
+    [Parameter] public SearchPanelSide Side { get; set; } = SearchPanelSide.Right;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "Search";
     [Parameter] public int? MaxLength { get; set; }
     [Parameter] public bool ShowCloseButton { get; set; }
     [Parameter] public bool ShouldFocus { get; set; }
+    [Parameter] public bool IsSmooth { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback OnCloseClick { get; set; }
+
+    private ElementReference ElementRef { get; set; }
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private DotNetObjectReference<SearchPanel> BlazorRef { get; set; } = null!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, ElementRef, BlazorRef, Side);
+        }
+    }
+
+    private async Task SmoothCloseSearchPanel()
+        => await JSRef.InvokeVoidAsync("smoothClosePanel");
 
     private void OnSearchInputTextChanged(string text)
         => SearchUI.Text.Value = text;
@@ -46,4 +69,8 @@
 
     public ValueTask Cancel()
         => _inputRef?.Clear() ?? default;
+
+    [JSInvokable]
+    public void ClosePanel()
+        => OnCloseClick.InvokeAsync();
 }

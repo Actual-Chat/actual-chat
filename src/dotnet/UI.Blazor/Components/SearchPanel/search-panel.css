@@ -1,10 +1,48 @@
 .search-panel {
-    @apply absolute inset-0 z-[100];
-    @apply flex-y gap-y-2;
+    @apply absolute z-[100];
+    @apply gap-y-2;
+    @apply w-full h-full;
     @apply overflow-hidden custom-scrollbar;
     @apply p-2;
     @apply bg-02;
+    @apply hidden;
 }
+.search-panel.instant.open {
+    @apply flex-y;
+    @apply visible;
+    @apply opacity-100;
+}
+.search-panel.smooth.open.right {
+    @apply flex-y;
+    animation: smooth-open 200ms ease-in-out;
+}
+.search-panel.instant.open.right.close,
+.search-panel.smooth.open.right.close {
+    animation: smooth-close 200ms ease-in-out;
+    opacity: 0;
+}
+
+@keyframes smooth-open {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+@keyframes smooth-close {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
 .side-nav.side-nav-right .search-panel .search-panel-tabs > .btn-group {
     @apply px-0;
 }

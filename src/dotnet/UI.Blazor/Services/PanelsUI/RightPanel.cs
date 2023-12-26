@@ -15,6 +15,7 @@ public class RightPanel
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
+    public bool OpenBySearch;
 
     public RightPanel(PanelsUI owner)
     {
@@ -53,6 +54,8 @@ public class RightPanel
             _isVisible.Value = value;
             if (Owner.IsWide())
                 _isVisibleStored.Value = value;
+            if (!value)
+                OpenBySearch = false;
             History.Save<OwnHistoryState>();
         }, DefaultLog);
 
