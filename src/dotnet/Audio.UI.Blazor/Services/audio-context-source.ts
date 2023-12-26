@@ -772,6 +772,7 @@ class MauiAudioContextSource extends AudioContextSourceBase implements AudioCont
         const context = this._context;
         if (context && context.state !== 'closed' && this._refCount > 0)
             await context.resume();
+        await this.fallbackDestination?.play();
     }
 
     public async suspendAudio(): Promise<void> {

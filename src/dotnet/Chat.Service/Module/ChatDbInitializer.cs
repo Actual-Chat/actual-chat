@@ -16,12 +16,12 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
 
         if (options.AddAnnouncementsChat)
             await EnsureAnnouncementsChatExists(cancellationToken).ConfigureAwait(false);
-        if (options.AddFeedbackTemplateChat)
-            await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
+        // if (options.AddFeedbackTemplateChat)
+        //     await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
         if (options.AddDefaultChat && HostInfo.IsDevelopmentInstance)
             await EnsureDefaultChatExists(cancellationToken).ConfigureAwait(false);
-        if (options.AddNotesChat)
-            await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
+        // if (options.AddNotesChat)
+        //     await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task RepairData(CancellationToken cancellationToken)

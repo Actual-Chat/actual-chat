@@ -79,7 +79,7 @@ public partial class MainActivity : MauiAppCompatActivity
         Log = AppServices.LogFor(GetType());
         _tracer.Point($"OnCreate, is loaded: {isLoaded}");
 
-        base.OnCreate(savedInstanceState);
+        base.OnCreate(Bundle.Empty);
         _tracer.Point("OnCreate, base.OnCreate completed");
 
         // base.OnCreate call hides native splash screen. Set NavigationBar color the same as web splash screen
