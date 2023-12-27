@@ -32,6 +32,7 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
         var migratedAuthors = new List<MigratedAuthor>();
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
+        dbContext.Database.SetCommandTimeout(TimeSpan.FromSeconds(30));
         await using var __ = dbContext.ConfigureAwait(false);
 
         await UpdateChat(dbContext, chatSid, newChatSid, cancellationToken).ConfigureAwait(false);
