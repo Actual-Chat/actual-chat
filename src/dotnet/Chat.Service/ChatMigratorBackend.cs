@@ -405,6 +405,8 @@ public class ChatMigratorBackend(IServiceProvider services)
             var membersChangedOption = chatEntry.SystemEntry?.MembersChanged;
             if (membersChangedOption != null) {
                 var authorId = membersChangedOption.AuthorId;
+                if (string.IsNullOrEmpty(authorId))
+                    continue; // Nothing to migrate.
                 var isRemoved = migratedAuthors.IsRemoved(authorId);
                 if (isRemoved) {
                     // It's a system chat entry for removed author. So let's remove entry as well.
