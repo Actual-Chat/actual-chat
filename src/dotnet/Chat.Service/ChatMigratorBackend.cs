@@ -138,12 +138,14 @@ public class ChatMigratorBackend(IServiceProvider services): DbServiceBase<ChatD
             }
             {
                 var newLocalId = placeMember.LocalId;
-                var newAuthorId = AuthorId.Format(newChatId, newLocalId);
-
                 var newAuthor = originalAuthor with {
-                    Id = new AuthorId(newAuthorId),
+                    Id = new AuthorId(newChatId, newLocalId, AssumeValid.Option),
                     RoleIds = new ApiArray<Symbol>()
                 };
+                if (newAuthor.Version <= 0) {
+                    Log.LogInformation("Invalid version on DbAuthor with Id={AuthorId}", newAuthor.Id);
+                    newAuthor = newAuthor with { Version = VersionGenerator.NextVersion() };
+                }
                 dbContext.Authors.Add(new DbAuthor(newAuthor));
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
