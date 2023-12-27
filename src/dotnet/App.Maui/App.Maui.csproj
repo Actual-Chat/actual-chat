@@ -238,8 +238,10 @@
        The default settings for release builds are also:
        - AndroidEnablePreloadAssemblies = False
        - AndroidAotEnableLazyLoad = True
+    5. We stick to (True, False) for now to address possible ANR case casued by mono_loader_lock
+       - this adds maybe 100-150ms or so to startup time.
     -->
-    <AndroidEnablePreloadAssemblies>False</AndroidEnablePreloadAssemblies>
+    <AndroidEnablePreloadAssemblies>True</AndroidEnablePreloadAssemblies>
     <AndroidAotEnableLazyLoad>False</AndroidAotEnableLazyLoad>
   </PropertyGroup>
 
