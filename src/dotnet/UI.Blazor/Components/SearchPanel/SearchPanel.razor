@@ -7,7 +7,10 @@
 
 <div @ref="ElementRef" class="search-panel @cls @Class">
     <div class="c-search">
-        <div class="@Class search-input">
+        <HeaderButton Click="@SmoothCloseSearchPanel" Class="md:hidden">
+            <i class="icon-arrow-left"></i>
+        </HeaderButton>
+        <div class="search-input">
             <label>
                 <TextInput
                     @ref="_inputRef"
@@ -24,7 +27,6 @@
                 }
             </label>
         </div>
-
     </div>
     @ChildContent
 </div>

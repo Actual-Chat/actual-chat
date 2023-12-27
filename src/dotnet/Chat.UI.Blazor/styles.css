@@ -35,6 +35,7 @@
 @import './Components/Reactions/reaction-select.css';
 @import './Components/RecordingSubHeader/recording-sub-header.css';
 @import './Components/ChatRightPanel/right-chat-panel.css';
+@import './Components/ChatSearchPanel/chat-search-panel.css';
 @import './Components/Settings/settings-modal.css';
 @import './Components/Selection/selection-header.css';
 @import './Components/Share/share-modal.css';

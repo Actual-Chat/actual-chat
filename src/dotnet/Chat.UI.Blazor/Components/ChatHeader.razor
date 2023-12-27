@@ -43,7 +43,14 @@
     }
 </div>
 
+@if (m.IsSearchMode && ScreenSize.IsNarrow()) {
+    <ChatSearchPanel ChatContext="@ChatContext" />
+}
+
+
 @code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
     [Parameter] public bool IsLeftNavigateButtonVisible { get; set; } = true;
     [Parameter] public bool IsRightNavigateButtonVisible { get; set; } = true;
@@ -71,17 +78,21 @@
         => ChatContext.Hub.PanelsUI.Left.SetIsVisible(true);
 
     private void OnSearchClick() {
-        var isRightPanelOpened = ChatContext.Hub.PanelsUI.Right.IsVisible.Value;
-        if (isRightPanelOpened && ChatContext.Hub.ChatUI.IsSearchEnabled(ChatContext.Chat.Id).Result) {
-            ChatContext.Hub.ChatUI.EnableSearch(ChatId.None);
-            return;
+        if (ScreenSize.IsWide()) {
+            var isRightPanelOpened = ChatContext.Hub.PanelsUI.Right.IsVisible.Value;
+            if (isRightPanelOpened && ChatContext.Hub.ChatUI.IsSearchEnabled(ChatContext.Chat.Id).Result) {
+                ChatContext.Hub.ChatUI.EnableSearch(ChatId.None);
+                return;
+            }
+
+            if (!isRightPanelOpened)
+                ChatContext.Hub.PanelsUI.Right.OpenBySearch = true;
+
+            ChatContext.Hub.PanelsUI.Right.SetIsVisible(true);
+            ChatContext.Hub.ChatUI.EnableSearch(ChatContext.Chat.Id);
+        } else {
+            ChatContext.Hub.ChatUI.EnableSearch(ChatContext.Chat.Id);
         }
-
-        if (!isRightPanelOpened)
-            ChatContext.Hub.PanelsUI.Right.OpenBySearch = true;
-
-        ChatContext.Hub.PanelsUI.Right.SetIsVisible(true);
-        ChatContext.Hub.ChatUI.EnableSearch(ChatContext.Chat.Id);
     }
 
     public sealed record Model {
