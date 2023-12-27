@@ -23,6 +23,9 @@ internal class SentryMauiOptionsSetup : ConfigureFromConfigurationOptions<Sentry
         // Global Mode makes sense for client apps
         options.IsGlobalModeEnabled = true;
 
+        // Do not report cached crashes on startup to speedup start - we may loose crash details!
+        options.InitCacheFlushTimeout = TimeSpan.Zero;
+
         // We'll use an event processor to set things like SDK name
         options.AddEventProcessor(new SentryMauiEventProcessor(options));
 

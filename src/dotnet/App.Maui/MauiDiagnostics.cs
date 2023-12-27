@@ -25,7 +25,7 @@ public static class MauiDiagnostics
     private const string LogFolder = "Logs";
     private const string LogFile = "ActualChat.log";
     private const string AndroidOutputTemplate = "({ThreadID}) [{SourceContext}] {Message:l}{NewLine:l}{Exception}";
-    private static readonly TimeSpan SentryStartDelay = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan SentryStartDelay = TimeSpan.FromSeconds(10);
 
 #if DEBUG
     public const string LogTag = "dev.actual.chat";
