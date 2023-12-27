@@ -140,6 +140,7 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
 }
 .chat-list .navbar-item-content .c-last-message .c-text {
     @apply truncate;
+    @apply pointer-events-none;
 }
 
 .chat-list .navbar-item .btn {
