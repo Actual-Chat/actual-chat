@@ -13,8 +13,8 @@
     VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
     <div class="right-chat-panel">
         @if (m.RenderContent) {
-            @if (m.ShowSearchPanel) {
-                <RightPanelSearch ChatContext="@ChatContext"/>
+            @if (m.ShowSearchPanel && ScreenSize.IsWide()) {
+                <ChatSearchPanel ChatContext="@ChatContext"/>
             }
 
             <RightPanelHeader ChatContext="@ChatContext" ShareModel="@m.ShareModel"/>

@@ -43,7 +43,14 @@
     }
 }
 
-.side-nav.side-nav-right .search-panel .search-panel-tabs > .btn-group {
+.search-panel .c-search {
+    @apply flex-x gap-x-2;
+}
+.search-panel .c-search .btn-h {
+    @apply px-2;
+}
+
+.search-panel .search-panel-tabs > .btn-group {
     @apply px-0;
 }
 
