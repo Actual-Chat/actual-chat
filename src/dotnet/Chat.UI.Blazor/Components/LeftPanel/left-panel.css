@@ -43,7 +43,8 @@
     @apply bg-03;
     @apply overflow-hidden;
 }
-.left-panel-content-header .c-content {
+.left-panel-content-header > .c-content {
+    @apply relative;
     @apply ordinary-header;
     @apply gap-x-1;
     @apply px-2;
@@ -55,7 +56,10 @@
     @apply pl-1;
 }
 .left-panel-content-header .c-ending {
-    @apply flex-x items-center;
+    @apply absolute right-0;
+    @apply flex-x items-center justify-end;
+    @apply w-full;
+    @apply px-2;
 }
 .left-panel-content > .download-app-banner {
     @apply px-2 pt-2;

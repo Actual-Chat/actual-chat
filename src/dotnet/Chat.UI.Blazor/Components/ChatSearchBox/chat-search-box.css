@@ -1,3 +1,6 @@
+.chat-search-box {
+    @apply w-full;
+}
 .chat-search-box input {
     @apply h-10 rounded-full pl-10 pr-10 text-left bg-04;
 }
