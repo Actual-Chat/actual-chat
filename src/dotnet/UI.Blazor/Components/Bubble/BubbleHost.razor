@@ -24,6 +24,7 @@
     private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.BubbleHost.create";
     private static RandomStringGenerator IdGenerator { get; } = new(3, Alphabet.AlphaNumeric);
 
+    private ILogger? _log;
     private BubbleModel? _bubble;
     private IJSObjectReference _jsRef = null!;
     private DotNetObjectReference<BubbleHost> _blazorRef = null!;
@@ -32,6 +33,8 @@
     [Inject] private BubbleUI BubbleUI { get; init; } = null!;
     [Inject] private BrowserInfo BrowserInfo { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private AppBlazorCircuitContext CircuitContext { get; init; } = null!;
+    private ILogger Log => _log ??= CircuitContext.Services.LogFor(GetType());
 
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(BubbleHost))]
     public BubbleHost() { }
@@ -110,13 +113,18 @@
     }
 
     private async void OnOwnAccountChanged(AccountFull account) {
-        _bubble = null;
-        await BubbleUI.WhenReadyToShowBubbles();
-        var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
-        if (ReferenceEquals(_jsRef, null))
-            return;
-        await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, readBubbles);
-        StateHasChanged();
+        try {
+            _bubble = null;
+            await BubbleUI.WhenReadyToShowBubbles();
+            var readBubbles = BubbleUI.Settings.Value.ReadBubbles;
+            if (ReferenceEquals(_jsRef, null))
+                return;
+            await _jsRef.InvokeVoidAsync("resetBubbles", CancellationToken.None, readBubbles);
+            StateHasChanged();
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Error handling OnOwnAccountChanged");
+        }
     }
 
     // Nested types
