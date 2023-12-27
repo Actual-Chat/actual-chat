@@ -31,7 +31,6 @@ public class AndroidWebViewClient(
         var didCrash = detail?.DidCrash() == true;
         var details = $"DidCrash: {didCrash}, RendererPriorityAtExit: {detail?.RendererPriorityAtExit()}, {detail}";
         log.LogWarning("OnRenderProcessGone: {Details}", details);
-#if false // This seems to cause unnecessary WebView recreations
         var markedDead = view.IsNotNull()
             && MauiWebView.Current is { } mauiWebView
             && mauiWebView.AndroidWebView.IfNotNull() is { } androidWebView
@@ -41,7 +40,6 @@ public class AndroidWebViewClient(
             MainThread.BeginInvokeOnMainThread(() => MainPage.Current.RecreateWebView());
             return true; // Indicates that we've handled this gracefully
         }
-#endif
         return base.OnRenderProcessGone(view, detail);
     }
 
