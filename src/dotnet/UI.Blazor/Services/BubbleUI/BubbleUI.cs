@@ -38,8 +38,8 @@ public sealed class BubbleUI : ScopedServiceBase<UIHub>, IHasAcceptor<BubbleHost
         await _settings.WhenFirstTimeRead.ConfigureAwait(false);
         await _settings.Synchronize().ConfigureAwait(false);
 
-        // If there was a recent account change, add a delay to let them hit the client
-        await Task.Delay(AccountUI.GetPostChangeInvalidationDelay()).ConfigureAwait(false);
+        // Delay first display to not to interfere with permissions
+        await Task.Delay(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
     }
 
     public void UpdateSettings(UserBubbleSettings value)
