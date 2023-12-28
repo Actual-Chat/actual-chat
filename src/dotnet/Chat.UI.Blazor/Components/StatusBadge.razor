@@ -5,7 +5,7 @@
     var m = State.Value;
 }
 <span class="status-badge @m.BadgeColor @m.TextColor">
-    @if (Chat is { Kind: ChatKind.Group, IsPublic: false } && ShowLockIcon) {
+    @if (Chat is { Kind: ChatKind.Group or ChatKind.Place, IsPublic: false } && ShowLockIcon) {
         <i class="icon-lock text-sm"></i>
     }
     @m.Status
@@ -30,7 +30,7 @@
         var status = "";
         var textColor = "text-[var(--status)]";
         var badgeColor = "bg-transparent";
-        if (Chat.Kind == ChatKind.Group) {
+        if (Chat.Kind is ChatKind.Group or ChatKind.Place) {
             status = Chat.IsPublic ? "Public" : "Private";
             if (Colorful) {
                 badgeColor = "bg-[var(--status-badge)]";
