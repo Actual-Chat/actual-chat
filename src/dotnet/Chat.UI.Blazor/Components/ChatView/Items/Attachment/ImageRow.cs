@@ -17,16 +17,8 @@ public class ImageRow
         return heightRem * tile.Ratio;
     }
 
-    // keep in sync with GetHeight
-    public string HeightCls => Narrowest.Proportions switch
-    {
-        ImageProportions.Narrow => "h-64 md:h-120",
-        ImageProportions.Square => "h-48 md:h-80",
-        ImageProportions.Wide => "h-36 md:h-60",
-        _ => "h-24 md:h-40",
-    };
+    public string HeightCls => $"h-{GetHeightRem(ScreenSize.Small) * 4} md:h-{GetHeightRem(ScreenSize.Medium) * 4}";
 
-    // keep in sync with HeightCls
     public float GetHeightRem(ScreenSize screenSize)
     {
         var isNarrow = screenSize.IsNarrow();
