@@ -1,7 +1,7 @@
 .search-panel {
     @apply absolute z-[100];
     @apply gap-y-2;
-    @apply w-full h-full;
+    @apply w-full h-screen;
     @apply overflow-hidden custom-scrollbar;
     @apply p-2;
     @apply bg-02;
@@ -48,6 +48,12 @@
 }
 .search-panel .c-search .btn-h {
     @apply px-2;
+}
+.search-panel .tab-panel {
+    @apply flex-none;
+}
+.search-panel .tab-panel .tab {
+    @apply grow-0;
 }
 
 .search-panel .search-panel-tabs > .btn-group {
@@ -97,11 +103,50 @@
 .search-input:has(input:focus) {
     @apply border-primary;
 }
-
 .search-input.icon-alight-right i {
     @apply right-0;
 }
-
 .search-input.icon-alight-right input {
     @apply pr-10 pl-4;
+}
+
+.search-panel-list {
+    @apply flex-y;
+}
+.search-panel-list-item {
+    @apply flex-x gap-x-2;
+    @apply p-1;
+    @apply rounded-md;
+}
+body.hoverable .search-panel-list-item:hover {
+    @apply bg-hover;
+}
+.search-panel-list-item .c-center {
+    @apply flex-1 flex-y gap-y-1;
+    @apply truncate;
+}
+
+.search-panel-list-item .c-center > .c-top {
+    @apply text-headline-1 text-02;
+}
+.search-panel-list-item .c-center > .c-bottom {
+    @apply flex-x gap-x-2;
+    @apply truncate;
+    @apply text-caption-4 text-04;
+}
+.search-panel-list-item .c-center > .c-bottom > .c-match {
+    @apply text-primary;
+}
+.search-panel-list-item .c-center > .c-bottom > .c-text {
+    @apply truncate;
+}
+
+.search-panel-list-item .c-right {
+    @apply flex-none flex-y gap-y-1 items-end justify-end;
+    @apply min-w-10;
+    @apply pr-2;
+}
+.search-panel-list-item .c-right > .c-top,
+.search-panel-list-item .c-right > .c-bottom {
+    @apply text-caption-4 text-04;
 }

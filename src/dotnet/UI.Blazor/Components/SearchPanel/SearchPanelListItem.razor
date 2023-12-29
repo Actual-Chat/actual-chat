@@ -1,0 +1,39 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="search-panel-list-item">
+    <div class="c-left">
+        @Left
+    </div>
+    <div class="c-center">
+        <div class="c-top">
+            @CenterTop
+        </div>
+        <div class="c-bottom">
+            @if (SearchMatch != null) {
+                <div class="c-match">
+                    @SearchMatch
+                </div>
+            }
+            <div class="c-text">
+                @CenterBottom
+            </div>
+        </div>
+    </div>
+    <div class="c-right">
+        <div class="c-top">
+            @RightTop
+        </div>
+        <div class="c-bottom">
+            @RightBottom
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Left { get; set; }
+    [Parameter] public RenderFragment? CenterTop { get; set; }
+    [Parameter] public RenderFragment? SearchMatch { get; set; }
+    [Parameter] public RenderFragment? CenterBottom { get; set; }
+    [Parameter] public RenderFragment? RightTop { get; set; }
+    [Parameter] public RenderFragment? RightBottom { get; set; }
+}

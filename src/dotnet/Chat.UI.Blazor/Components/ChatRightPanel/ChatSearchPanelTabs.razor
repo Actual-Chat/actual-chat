@@ -1,0 +1,255 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<TabPanel
+    @key="@Chat.Id.Value"
+    TabsClass="search-panel-tabs"
+    BottomHill="true">
+
+    <Tab @key="@("chat")" Id="chat" Order="0">
+        <TitleContent>
+            <i class="icon-message-ellipse"></i>
+            <span>Chat</span>
+        </TitleContent>
+        <ChildContent>
+            <ToBeDone/>
+        </ChildContent>
+    </Tab>
+
+    <Tab @key="@("tags")" Id="tags" Order="1">
+        <TitleContent>
+            <i class="icon-hash-fill"></i>
+            <span>Tags</span>
+        </TitleContent>
+        <ChildContent>
+            @if (_ownAuthor != null) {
+                <div class="search-panel-list">
+                    <SearchPanelListItem>
+                        <Left>
+                            <AuthorCircle
+                                @key="@_ownAuthor.Id"
+                                AuthorSid="@_ownAuthor.Id"
+                                Size="SquareSize.Size10"/>
+                        </Left>
+                        <CenterTop>
+                            <AuthorName
+                                AuthorSid="@_ownAuthor.Id"
+                                ShowDetailsOnClick="false"/>
+                        </CenterTop>
+                        <SearchMatch>#пушкин</SearchMatch>
+                        <CenterBottom>
+                            Бопре в отечестве своем был парикмахером, потом в Пруссии солдатом, потом приехал в Россию.
+                        </CenterBottom>
+                        <RightTop>
+                            03:27
+                        </RightTop>
+                        <RightBottom>
+                            <i class="icon-pin"></i>
+                        </RightBottom>
+                    </SearchPanelListItem>
+
+                    <SearchPanelListItem>
+                        <Left>
+                            <AuthorCircle
+                                @key="@_ownAuthor.Id"
+                                AuthorSid="@_ownAuthor.Id"
+                                Size="SquareSize.Size10"/>
+                        </Left>
+                        <CenterTop>
+                            <AuthorName
+                                AuthorSid="@_ownAuthor.Id"
+                                ShowDetailsOnClick="false"/>
+                        </CenterTop>
+                        <SearchMatch>#пушкин</SearchMatch>
+                        <CenterBottom>
+                            Главною его слабостию была страсть к прекрасному полу; нередко за свои нежности
+                        </CenterBottom>
+                        <RightTop>
+                            03:29
+                        </RightTop>
+                        <RightBottom>
+                            <i class="icon-pin"></i>
+                        </RightBottom>
+                    </SearchPanelListItem>
+
+                    <SearchPanelListItem>
+                        <Left>
+                            <AuthorCircle
+                                @key="@_ownAuthor.Id"
+                                AuthorSid="@_ownAuthor.Id"
+                                Size="SquareSize.Size10"/>
+                        </Left>
+                        <CenterTop>
+                            <AuthorName
+                                AuthorSid="@_ownAuthor.Id"
+                                ShowDetailsOnClick="false"/>
+                        </CenterTop>
+                        <SearchMatch>#пушкин</SearchMatch>
+                        <CenterBottom>
+                            Прачка Палашка, толстая и рябая девка, и кривая коровница
+                        </CenterBottom>
+                        <RightTop>
+                            12:22
+                        </RightTop>
+                        <RightBottom>
+                            <i class="icon-pin"></i>
+                        </RightBottom>
+                    </SearchPanelListItem>
+
+                    <SearchPanelListItem>
+                        <Left>
+                            <AuthorCircle
+                                @key="@_ownAuthor.Id"
+                                AuthorSid="@_ownAuthor.Id"
+                                Size="SquareSize.Size10"/>
+                        </Left>
+                        <CenterTop>
+                            <AuthorName
+                                AuthorSid="@_ownAuthor.Id"
+                                ShowDetailsOnClick="false"/>
+                        </CenterTop>
+                        <SearchMatch>#пушкин</SearchMatch>
+                        <CenterBottom>
+                            Я жил недорослем, гоняя голубей и играя в чехарду с дворовыми
+                        </CenterBottom>
+                        <RightTop>
+                            23:04
+                        </RightTop>
+                        <RightBottom>
+                            <i class="icon-pin"></i>
+                        </RightBottom>
+                    </SearchPanelListItem>
+
+                    <SearchPanelListItem>
+                        <Left>
+                            <AuthorCircle
+                                @key="@_ownAuthor.Id"
+                                AuthorSid="@_ownAuthor.Id"
+                                Size="SquareSize.Size10"/>
+                        </Left>
+                        <CenterTop>
+                            <AuthorName
+                                AuthorSid="@_ownAuthor.Id"
+                                ShowDetailsOnClick="false"/>
+                        </CenterTop>
+                        <SearchMatch>#пушкин</SearchMatch>
+                        <CenterBottom>
+                            Вдруг он обратился к матушке: «Авдотья Васильевна, а сколько лет Петруше?»
+                        </CenterBottom>
+                        <RightTop>
+                            23:04
+                        </RightTop>
+                        <RightBottom>
+                            <i class="icon-pin"></i>
+                        </RightBottom>
+                    </SearchPanelListItem>
+
+                    <SearchPanelListItem>
+                        <Left>
+                            <AuthorCircle
+                                @key="@_ownAuthor.Id"
+                                AuthorSid="@_ownAuthor.Id"
+                                Size="SquareSize.Size10"/>
+                        </Left>
+                        <CenterTop>
+                            <AuthorName
+                                AuthorSid="@_ownAuthor.Id"
+                                ShowDetailsOnClick="false"/>
+                        </CenterTop>
+                        <SearchMatch>#пушкин</SearchMatch>
+                        <CenterBottom>
+                            Мысль о скорой разлуке со мною так поразила матушку,
+                        </CenterBottom>
+                        <RightTop>
+                            23:04
+                        </RightTop>
+                        <RightBottom>
+                            <i class="icon-pin"></i>
+                        </RightBottom>
+                    </SearchPanelListItem>
+
+                    <SearchPanelListItem>
+                        <Left>
+                            <AuthorCircle
+                                @key="@_ownAuthor.Id"
+                                AuthorSid="@_ownAuthor.Id"
+                                Size="SquareSize.Size10"/>
+                        </Left>
+                        <CenterTop>
+                            <AuthorName
+                                AuthorSid="@_ownAuthor.Id"
+                                ShowDetailsOnClick="false"/>
+                        </CenterTop>
+                        <SearchMatch>#пушкин</SearchMatch>
+                        <CenterBottom>
+                            Батюшка не любил ни переменять свои намерения, ни откладывать
+                        </CenterBottom>
+                        <RightTop>
+                            23:04
+                        </RightTop>
+                        <RightBottom>
+                            <i class="icon-pin"></i>
+                        </RightBottom>
+                    </SearchPanelListItem>
+
+                    <SearchPanelListItem>
+                        <Left>
+                            <AuthorCircle
+                                @key="@_ownAuthor.Id"
+                                AuthorSid="@_ownAuthor.Id"
+                                Size="SquareSize.Size10"/>
+                        </Left>
+                        <CenterTop>
+                            <AuthorName
+                                AuthorSid="@_ownAuthor.Id"
+                                ShowDetailsOnClick="false"/>
+                        </CenterTop>
+                        <SearchMatch>#пушкин</SearchMatch>
+                        <CenterBottom>
+                            Матушка отыскала мой паспорт, хранившийся в ее шкатулке вместе
+                        </CenterBottom>
+                        <RightTop>
+                            23:04
+                        </RightTop>
+                        <RightBottom>
+                            <i class="icon-pin"></i>
+                        </RightBottom>
+                    </SearchPanelListItem>
+
+                </div>
+            }
+        </ChildContent>
+    </Tab>
+
+    <Tab @key="@("contacts")" Id="contacts" Order="2">
+        <TitleContent>
+            <i class="icon-person"></i>
+            <span>Contacts</span>
+        </TitleContent>
+        <ChildContent>
+            <ToBeDone/>
+        </ChildContent>
+    </Tab>
+
+    <Tab @key="@("date")" Id="date" Order="3">
+        <TitleContent>
+            <i class="icon-calendar"></i>
+            <span>Date</span>
+        </TitleContent>
+        <ChildContent>
+            <ToBeDone/>
+        </ChildContent>
+    </Tab>
+</TabPanel>
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+    private Session Session => ChatContext.Hub.Session();
+    private IAuthors Authors => ChatContext.Hub.Authors;
+
+    private Author? _ownAuthor;
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+        => _ownAuthor = await Authors.GetOwn(Session, Chat.Id, CancellationToken.None);
+}
