@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
+using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Commands;
@@ -881,12 +882,34 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        await JoinAnnouncementsChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
-        await CreateNotesChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
+        var skipJoinAnnouncementsChat = false;
+        var skipJoinDefaultChat = false;
+        var skipJoinFeedbackTemplateChat = false;
+        var skipNotesChatCreation = false;
+
+        if (HostInfo.IsTested) {
+            var options = Services.GetService<ChatDbInitializer.InitializeDataOptions>();
+            if (options != null) {
+                if (!options.AddAnnouncementsChat)
+                    skipJoinAnnouncementsChat = true;
+                if (!options.AddDefaultChat)
+                    skipJoinDefaultChat = true;
+                if (!options.AddFeedbackTemplateChat)
+                    skipJoinFeedbackTemplateChat = true;
+                if (!options.AddNotesChat)
+                    skipNotesChatCreation = true;
+            }
+        }
+        if (!skipJoinAnnouncementsChat)
+            await JoinAnnouncementsChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
+        if (!skipNotesChatCreation)
+            await CreateNotesChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
 
         if (HostInfo.IsDevelopmentInstance) {
-            await JoinDefaultChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
-            await JoinFeedbackTemplateChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
+            if (!skipJoinDefaultChat)
+                await JoinDefaultChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
+            if (!skipJoinFeedbackTemplateChat)
+                await JoinFeedbackTemplateChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
         }
     }
 
