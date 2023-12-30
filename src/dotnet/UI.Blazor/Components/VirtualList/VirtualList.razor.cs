@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Module;
+using Stl.Fusion.Internal;
 
 namespace ActualChat.UI.Blazor.Components;
 
@@ -110,8 +111,12 @@ public sealed partial class VirtualList<TItem> : ComputedStateComponent<VirtualL
     {
         var query = Query;
         VirtualListData<TItem> data;
+        var computed = Computed.GetCurrent();
         try {
             data = await DataSource.GetData(State, query, LastData, cancellationToken).ConfigureAwait(false);
+            if (computed is IComputedImpl impl)
+                if (impl.Used.Any(ci => ci.IsInvalidated()))
+                    return LastData; // current computed is already invalidated - so it will be recalculated shortly
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogError(e, "DataSource.Invoke(query) failed on query = {Query}", query);

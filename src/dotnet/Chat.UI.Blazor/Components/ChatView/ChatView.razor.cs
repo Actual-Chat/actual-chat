@@ -11,8 +11,8 @@ namespace ActualChat.Chat.UI.Blazor.Components;
 public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessage>, IDisposable
 {
     public static readonly TileStack<long> IdTileStack = Constants.Chat.ViewIdTileStack;
-    public static readonly long HalfLoadLimit = IdTileStack.Layers[1].TileSize; // 20
-    public static readonly long LoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
+    public static readonly long HalfLoadLimit = 2 * IdTileStack.Layers[1].TileSize; // 40
+    public static readonly long LoadLimit = 4 * IdTileStack.Layers[1].TileSize; // 80
     public static readonly TimeSpan FastUpdateRecency = TimeSpan.FromMilliseconds(100);
     public static readonly TimeSpan FastUpdateDelay = TimeSpan.FromMilliseconds(20);
     public static readonly TimeSpan SlowUpdateDelay = TimeSpan.FromMilliseconds(100);
