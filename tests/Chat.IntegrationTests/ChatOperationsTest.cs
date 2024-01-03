@@ -142,6 +142,7 @@ public class ChatOperationsTest : AppHostTestBase
         using var appHost = await NewAppHost(configureServices:c => c.AddChatDbDataInitialization(
             o => {
                 o.AddAnnouncementsChat = true;
+                o.AddNotesChat = true;
             }));
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
