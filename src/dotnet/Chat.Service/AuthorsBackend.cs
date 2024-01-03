@@ -31,6 +31,37 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> Get(
+        ChatId chatId,
+        AuthorId authorId,
+        AuthorsBackend_GetAuthorOption option,
+        CancellationToken cancellationToken)
+    {
+        if (chatId.IsNone || authorId.IsNone || authorId.ChatId != chatId)
+            return null;
+
+        if (option.IsRaw() || !chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
+            return await Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+
+        var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
+        var rootAuthor = await Get(rootChatId, Remap(authorId, rootChatId), cancellationToken)
+            .ConfigureAwait(false);
+        if (rootAuthor == null)
+            return null;
+
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+
+        if (chat.IsPublic)
+            return rootAuthor with { Id = Remap(rootAuthor.Id, chatId) };
+
+        // If it's a private Chat on the Place, then we should have explicit author on the Chat.
+        var author = await Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        return CreatePrivateChatAuthor(author, rootAuthor);
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<AuthorFull?> Get(
         ChatId chatId, AuthorId authorId,
         CancellationToken cancellationToken)
     {
@@ -60,6 +91,36 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
 
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> GetByUserId(
+        ChatId chatId, UserId userId,
+        AuthorsBackend_GetAuthorOption option,
+        CancellationToken cancellationToken)
+    {
+        if (chatId.IsNone || userId.IsNone)
+            return null;
+
+        if (option.IsRaw() || !chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
+            return await GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
+
+        var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
+        var rootAuthor = await GetByUserId(rootChatId, userId, cancellationToken)
+            .ConfigureAwait(false);
+        if (rootAuthor == null)
+            return null;
+
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+
+        if (chat.IsPublic)
+            return rootAuthor with { Id = Remap(rootAuthor.Id, chatId) };
+
+        // If it's a private Chat on the Place, then we should have explicit author on the Chat.
+        var author = await GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
+        return CreatePrivateChatAuthor(author, rootAuthor);
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<AuthorFull?> GetByUserId(
         ChatId chatId, UserId userId,
         CancellationToken cancellationToken)
     {
@@ -444,5 +505,22 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             HasLeft = false,
         };
         return author;
+    }
+
+    private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)
+        => new AuthorId(targetChatId, authorId.LocalId, AssumeValid.Option);
+
+    private static AuthorFull? CreatePrivateChatAuthor(AuthorFull? author2, AuthorFull rootAuthor)
+    {
+        if (author2 == null)
+            return null; // Requested Author is not a member of the Chat.
+
+        return author2 with
+        {
+            HasLeft = author2.HasLeft || rootAuthor.HasLeft,
+            AvatarId = rootAuthor.AvatarId, // Always use avatar for the Place.
+            Avatar = rootAuthor.Avatar, // Always use avatar for the Place.
+            // RoleIds = TODO(DF): should we alter roles?
+        };
     }
 }

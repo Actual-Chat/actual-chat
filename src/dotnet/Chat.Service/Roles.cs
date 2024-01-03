@@ -128,7 +128,7 @@ public class Roles(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     {
         List<AuthorId>? toExclude = null;
         foreach (var authorId in authorIds) {
-            var author = await AuthorsBackend.Get(authorId.ChatId, authorId, cancellationToken).ConfigureAwait(false);
+            var author = await AuthorsBackend.Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
             if (author != null && author.IsAnonymous) {
                 toExclude ??= new List<AuthorId>();
                 toExclude.Add(authorId);

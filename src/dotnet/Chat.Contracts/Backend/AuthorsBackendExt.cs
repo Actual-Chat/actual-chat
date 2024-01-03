@@ -8,7 +8,9 @@ public static class AuthorsBackendExt
         UserId userId,
         CancellationToken cancellationToken)
     {
-        var author = await authorsBackend.GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
+        if (chatId.IsPlaceChat)
+            throw StandardError.NotSupported("EnsureJoined method should not be used for place chats.");
+        var author = await authorsBackend.GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
         // Return found author if exists in the db and hasn't left
         if (author is { HasLeft: false } and not { Version: 0 } )
             return author;
