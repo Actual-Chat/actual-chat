@@ -40,10 +40,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return null;
 
         if (option.IsRaw() || !chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
-            return await Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            return await GetInternal(chatId, authorId, cancellationToken).ConfigureAwait(false);
 
         var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
-        var rootAuthor = await Get(rootChatId, Remap(authorId, rootChatId), cancellationToken)
+        var rootAuthor = await GetInternal(rootChatId, Remap(authorId, rootChatId), cancellationToken)
             .ConfigureAwait(false);
         if (rootAuthor == null)
             return null;
@@ -56,37 +56,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return rootAuthor with { Id = Remap(rootAuthor.Id, chatId) };
 
         // If it's a private Chat on the Place, then we should have explicit author on the Chat.
-        var author = await Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        var author = await GetInternal(chatId, authorId, cancellationToken).ConfigureAwait(false);
         return CreatePrivateChatAuthor(author, rootAuthor);
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<AuthorFull?> Get(
-        ChatId chatId, AuthorId authorId,
-        CancellationToken cancellationToken)
-    {
-        if (chatId.IsNone || authorId.IsNone || authorId.ChatId != chatId)
-            return null;
-
-        if (authorId == Bots.GetWalleId(chatId))
-            return Bots.GetWalle(chatId);
-
-        var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
-        AuthorFull? author;
-        if (dbAuthor == null) {
-            if (!chatId.IsPeerChat(out var peerChatId))
-                return null;
-
-            author = GetDefaultPeerChatAuthor(peerChatId, authorId);
-            if (author == null)
-                return null;
-        }
-        else
-            author = dbAuthor.ToModel();
-
-        if (!chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
-            author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
-        return author;
     }
 
     // [ComputeMethod]
@@ -99,11 +70,10 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return null;
 
         if (option.IsRaw() || !chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
-            return await GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
+            return await GetByUserIdInternal(chatId, userId, cancellationToken).ConfigureAwait(false);
 
         var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
-        var rootAuthor = await GetByUserId(rootChatId, userId, cancellationToken)
-            .ConfigureAwait(false);
+        var rootAuthor = await GetByUserIdInternal(rootChatId, userId, cancellationToken).ConfigureAwait(false);
         if (rootAuthor == null)
             return null;
 
@@ -115,44 +85,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             return rootAuthor with { Id = Remap(rootAuthor.Id, chatId) };
 
         // If it's a private Chat on the Place, then we should have explicit author on the Chat.
-        var author = await GetByUserId(chatId, userId, cancellationToken).ConfigureAwait(false);
+        var author = await GetByUserIdInternal(chatId, userId, cancellationToken).ConfigureAwait(false);
         return CreatePrivateChatAuthor(author, rootAuthor);
-    }
-
-    [ComputeMethod]
-    protected virtual async Task<AuthorFull?> GetByUserId(
-        ChatId chatId, UserId userId,
-        CancellationToken cancellationToken)
-    {
-        if (chatId.IsNone || userId.IsNone)
-            return null;
-
-        if (userId == Constants.User.Walle.UserId)
-            return Bots.GetWalle(chatId);
-
-        AuthorFull? author;
-        { // Closes "using" block earlier
-            var dbContext = CreateDbContext();
-            await using var _ = dbContext.ConfigureAwait(false);
-
-            var dbAuthor = await dbContext.Authors
-                .Include(a => a.Roles)
-                .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
-                .ConfigureAwait(false);
-            author = dbAuthor?.ToModel();
-        }
-        if (author == null) {
-            if (!chatId.IsPeerChat(out var peerChatId))
-                return null;
-
-            author = GetDefaultPeerChatAuthor(peerChatId, userId);
-            if (author == null)
-                return null;
-        }
-
-        if (!chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
-            author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
-        return author;
     }
 
     // [ComputeMethod]
@@ -210,8 +144,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (Computed.IsInvalidating()) {
             var (invAuthor, invOldAuthor) = context.Operation().Items.GetOrDefault<(AuthorFull, AuthorFull?)>();
             if (!invAuthor.Id.IsNone) {
-                _ = Get(chatId, invAuthor.Id, default);
-                _ = GetByUserId(chatId, invAuthor.UserId, default);
+                _ = GetInternal(chatId, invAuthor.Id, default);
+                _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
                 var invOldHadLeft = invOldAuthor?.HasLeft ?? true;
                 if (invAuthor.HasLeft != invOldHadLeft) {
                     _ = ListAuthorIds(chatId, default);
@@ -339,7 +273,7 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         }
     }
 
-        // [CommandHandler]
+    // [CommandHandler]
     public virtual async Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId) = command;
@@ -357,8 +291,8 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (Computed.IsInvalidating()) {
             var invAuthors = context.Operation().Items.GetOrDefault<AuthorFull[]>();
             foreach (var invAuthor in invAuthors) {
-                _ = Get(chatId, invAuthor.Id, default);
-                _ = GetByUserId(chatId, invAuthor.UserId, default);
+                _ = GetInternal(chatId, invAuthor.Id, default);
+                _ = GetByUserIdInternal(chatId, invAuthor.UserId, default);
                 _ = ListAuthorIds(chatId, default);
                 _ = ListUserIds(chatId, default);
             }
@@ -444,6 +378,73 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbAuthors.Select(x => x.ToModel()).ToImmutableList();
+    }
+
+    // Protected methods
+
+    [ComputeMethod]
+    protected virtual async Task<AuthorFull?> GetInternal(
+        ChatId chatId, AuthorId authorId,
+        CancellationToken cancellationToken)
+    {
+        if (chatId.IsNone || authorId.IsNone || authorId.ChatId != chatId)
+            return null;
+
+        if (authorId == Bots.GetWalleId(chatId))
+            return Bots.GetWalle(chatId);
+
+        var dbAuthor = await DbAuthorResolver.Get(authorId, cancellationToken).ConfigureAwait(false);
+        AuthorFull? author;
+        if (dbAuthor == null) {
+            if (!chatId.IsPeerChat(out var peerChatId))
+                return null;
+
+            author = GetDefaultPeerChatAuthor(peerChatId, authorId);
+            if (author == null)
+                return null;
+        }
+        else
+            author = dbAuthor.ToModel();
+
+        if (!chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
+            author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
+        return author;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<AuthorFull?> GetByUserIdInternal(
+        ChatId chatId, UserId userId,
+        CancellationToken cancellationToken)
+    {
+        if (chatId.IsNone || userId.IsNone)
+            return null;
+
+        if (userId == Constants.User.Walle.UserId)
+            return Bots.GetWalle(chatId);
+
+        AuthorFull? author;
+        { // Closes "using" block earlier
+            var dbContext = CreateDbContext();
+            await using var _ = dbContext.ConfigureAwait(false);
+
+            var dbAuthor = await dbContext.Authors
+                .Include(a => a.Roles)
+                .SingleOrDefaultAsync(a => a.ChatId == chatId && a.UserId == userId, cancellationToken)
+                .ConfigureAwait(false);
+            author = dbAuthor?.ToModel();
+        }
+        if (author == null) {
+            if (!chatId.IsPeerChat(out var peerChatId))
+                return null;
+
+            author = GetDefaultPeerChatAuthor(peerChatId, userId);
+            if (author == null)
+                return null;
+        }
+
+        if (!chatId.IsPlaceChat || chatId.PlaceChatId.IsRoot)
+            author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
+        return author;
     }
 
     // Private / internal methods

@@ -86,14 +86,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (chat == null)
             return null;
 
-        AuthorFull? author;
-        if (!chat.Id.IsPlaceChat)
-            author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
-        else {
-            var rootChatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
-            var rootChatAuthorId = Remap(authorId, rootChatId);
-            author = await Backend.Get(rootChatId, rootChatAuthorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
-        }
+        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return null;
 
@@ -121,6 +114,9 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (targetChatId != chatId)
             authorIds = Remap(authorIds, chatId);
         return authorIds;
+
+        static ApiArray<AuthorId> Remap(ApiArray<AuthorId> authorIds, ChatId chatId)
+            => authorIds.ToApiArray(c => new AuthorId(chatId, c.LocalId, AssumeValid.Option));
     }
 
     // [ComputeMethod]
@@ -148,15 +144,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (chat == null)
             return Presence.Unknown;
 
-        if (chatId.IsPlaceChat && chat.Id == authorId.ChatId) {
-            chatId = chatId.PlaceChatId.PlaceId.ToRootChatId();
-            authorId = new AuthorId(chatId, authorId.LocalId, AssumeValid.Option);
-        }
-        if (authorId == AuthorId.None)
-            return Presence.Unknown;
-
-        chatId = authorId.ChatId;
-        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
+        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
         if (author == null)
             return Presence.Offline;
 
@@ -287,6 +275,8 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         ValidatePlaceMembershipRules(chat);
 
         foreach (var userId in userIds) {
+            // TODO(DF): to think if we can switch here to AuthorsBackend_GetAuthorOption.Full?
+            // Can we use AuthorsBackendExt.EnsureJoined as before?
             var author = await Backend.GetByUserId(chatId, userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
             if (author != null) {
                 if (author.HasLeft)
@@ -456,10 +446,4 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (chat.Id.IsPlaceChat && !chat.Id.PlaceChatId.IsRoot && chat.IsPublic)
             throw StandardError.Constraint("You must manage place public chat membership via place settings.");
     }
-
-    private static ApiArray<AuthorId> Remap(ApiArray<AuthorId> authorIds, ChatId chatId)
-        => authorIds.ToApiArray(c => new AuthorId(chatId, c.LocalId, AssumeValid.Option));
-
-    private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)
-        => new AuthorId(targetChatId, authorId.LocalId, AssumeValid.Option);
 }

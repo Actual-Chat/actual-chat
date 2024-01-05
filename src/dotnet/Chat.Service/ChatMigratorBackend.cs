@@ -183,6 +183,7 @@ public class ChatMigratorBackend(IServiceProvider services)
             }
 
             // Ensure there is matching place member
+            // TODO(DF): Can we use AuthorsBackend_GetAuthorOption.Full? In fact, they are equivalents in this case.
             var placeMember = await AuthorsBackend.GetByUserId(placeRootChatId, userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
                 .ConfigureAwait(false);
             if (placeMember == null) {
