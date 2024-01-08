@@ -113,7 +113,6 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     {
         var (chatId, roleId, expectedVersion, change) = command;
         var context = CommandContext.GetCurrent();
-        Log.LogInformation("Weird change: {Command}", change);
 
         if (Computed.IsInvalidating()) {
             var invRole = context.Operation().Items.Get<Role>();
