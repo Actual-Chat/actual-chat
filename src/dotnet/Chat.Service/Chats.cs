@@ -358,7 +358,7 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
 
         var templateAuthorIds = await AuthorsBackend.ListAuthorIds(templateChatId, cancellationToken).ConfigureAwait(false);
         var templateAuthors = await templateAuthorIds
-            .Select(aId => AuthorsBackend.Get(templateChatId, aId, cancellationToken))
+            .Select(aId => AuthorsBackend.Get(templateChatId, aId, AuthorsBackend_GetAuthorOption.Full, cancellationToken))
             .Collect(4)
             .ConfigureAwait(false);
         var authorRoles = await templateAuthorIds
@@ -516,7 +516,7 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
                 string? forwardedAuthorName = chatEntry.ForwardedAuthorName;
                 if (forwardedAuthorName.IsNullOrEmpty()) {
                     var forwardedAuthor = await AuthorsBackend
-                        .Get(forwardedAuthorId.ChatId, forwardedAuthorId, cancellationToken)
+                        .Get(forwardedAuthorId.ChatId, forwardedAuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
                         .ConfigureAwait(false);
                     forwardedAuthorName = forwardedAuthor!.Avatar.Name;
                 }

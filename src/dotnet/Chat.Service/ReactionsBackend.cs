@@ -55,8 +55,8 @@ internal class ReactionsBackend(IServiceProvider services)
 
         var emoji = Emoji.Get(reaction.EmojiId).Require();
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).Require().ConfigureAwait(false);
-        var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, cancellationToken).Require().ConfigureAwait(false);
-        var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).Require().ConfigureAwait(false);
+        var entryAuthor = await AuthorsBackend.Get(chatId, entry.AuthorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
+        var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).Require().ConfigureAwait(false);
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);

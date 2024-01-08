@@ -167,7 +167,8 @@ public class ChatMigratorBackend(IServiceProvider services)
                 var authorSid = originalAuthor.Id.Value;
                 var hasChatEntries = await dbContext.ChatEntries
                     .Where(c => c.ChatId == chatSid && c.AuthorId == authorSid)
-                    .AnyAsync(cancellationToken);
+                    .AnyAsync(cancellationToken)
+                    .ConfigureAwait(false);
                 if (!hasChatEntries) {
                     migratedAuthors.RegisterRemoved(originalAuthor);
                     dbContext.Authors.Remove(dbAuthor);
@@ -182,7 +183,8 @@ public class ChatMigratorBackend(IServiceProvider services)
             }
 
             // Ensure there is matching place member
-            var placeMember = await AuthorsBackend.GetByUserId(placeRootChatId, userId, cancellationToken)
+            // TODO(DF): Can we use AuthorsBackend_GetAuthorOption.Full? In fact, they are equivalents in this case.
+            var placeMember = await AuthorsBackend.GetByUserId(placeRootChatId, userId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
                 .ConfigureAwait(false);
             if (placeMember == null) {
                 var authorDiff = new AuthorDiff { AvatarId = dbAuthor.AvatarId };

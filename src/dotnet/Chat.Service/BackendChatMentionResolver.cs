@@ -19,7 +19,7 @@ public class BackendChatMentionResolver : IChatMentionResolver
         if (!mention.Id.IsAuthor(out var authorId) || authorId.IsNone)
             return null;
 
-        return await AuthorsBackend.Get(ChatId, authorId, cancellationToken).ConfigureAwait(false);
+        return await AuthorsBackend.Get(ChatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
     }
 
     ValueTask<string?> IMentionResolver<string>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)

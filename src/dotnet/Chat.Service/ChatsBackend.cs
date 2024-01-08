@@ -647,7 +647,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         // Let's enqueue the TextEntryChangedEvent
         var authorId = entry.AuthorId;
-        var author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+        var author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
         // Raise events
         new TextEntryChangedEvent(entry, author!, changeKind)
             .EnqueueOnCompletion();
@@ -954,7 +954,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var retrier = new Retrier(5, RetryDelaySeq.Exp(0.25, 1));
         while (retrier.NextOrThrow()) {
             await Clocks.CoarseCpuClock.Delay(retrier.Delay, cancellationToken).ConfigureAwait(false);
-            readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, cancellationToken).ConfigureAwait(false);
+            readAuthor = await AuthorsBackend.Get(author.ChatId, author.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
             if (readAuthor?.Avatar != null)
                 break;
         }
@@ -1093,10 +1093,10 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             if (account == null)
                 return AuthorRules.None(chatId);
 
-            author = await AuthorsBackend.GetByUserId(chatId, account.Id, cancellationToken).ConfigureAwait(false);
+            author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
         }
         else if (principalId.IsAuthor(out var authorId)) {
-            author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
             if (author == null)
                 return AuthorRules.None(chatId);
 
@@ -1149,7 +1149,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var rootChatId = placeChatId.PlaceId.ToRootChatId();
         if (!principalId.IsUser(out var userId) && principalId.IsAuthor(out var authorId)) {
             var rootAuthorId = new AuthorId(rootChatId, authorId.LocalId, AssumeValid.Option);
-            var rootAuthor = await AuthorsBackend.Get(rootChatId, rootAuthorId, cancellationToken).ConfigureAwait(false);
+            var rootAuthor = await AuthorsBackend.Get(rootChatId, rootAuthorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
             userId = rootAuthor?.UserId ?? default;
         }
 
@@ -1260,7 +1260,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (principalId.IsUser(out var userId))
             account = await AccountsBackend.Get(userId, cancellationToken).ConfigureAwait(false);
         else if (principalId.IsAuthor(out var authorId)) {
-            author = await AuthorsBackend.Get(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            author = await AuthorsBackend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Raw, cancellationToken).ConfigureAwait(false);
             if (author == null)
                 return AuthorRules.None(chatId);
 

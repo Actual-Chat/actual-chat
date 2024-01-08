@@ -352,7 +352,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     private string GetIconUrl(Chat.Chat chat, AuthorFull author)
          => chat.Kind switch {
-             ChatKind.Group => chat.Picture?.ContentId.IsNullOrEmpty() == false
+             ChatKind.Group or ChatKind.Place => chat.Picture?.ContentId.IsNullOrEmpty() == false
                  ? UrlMapper.ContentUrl(chat.Picture.ContentId)
                  : "/favicon.ico",
              ChatKind.Peer => author.Avatar.Media?.ContentId.IsNullOrEmpty() == false
@@ -363,7 +363,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     private static string GetTitle(Chat.Chat chat, AuthorFull author)
         => chat.Kind switch {
-            ChatKind.Group => $"{author.Avatar.Name} @ {chat.Title}",
+            ChatKind.Group or ChatKind.Place => $"{author.Avatar.Name} @ {chat.Title}",
             ChatKind.Peer => $"{author.Avatar.Name}",
             _ => throw new ArgumentOutOfRangeException($"{nameof(chat)}.{nameof(chat.Kind)}", chat.Kind, null),
         };
