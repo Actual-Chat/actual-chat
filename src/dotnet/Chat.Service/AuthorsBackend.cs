@@ -98,15 +98,26 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (chatId.IsPeerChat(out var peerChatId))
             return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.Id).ToApiArray();
 
+        var targetChatId = await GetMembershipChatId(chatId, cancellationToken).ConfigureAwait(false);
+        if (targetChatId.IsNone)
+            return default!;
+
         var dbContext = CreateDbContext();
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var authorIds = await dbContext.Authors
-            .Where(a => a.ChatId == chatId && !a.HasLeft)
+        var authorSids = await dbContext.Authors
+            .Where(a => a.ChatId == targetChatId && !a.HasLeft)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return authorIds.Select(x => new AuthorId(x)).ToApiArray();
+        var authorIds = authorSids.Select(x => new AuthorId(x)).ToApiArray();
+
+        if (targetChatId != chatId && authorIds.Count > 0)
+            authorIds = RemapList(authorIds, chatId);
+        return authorIds;
+
+        static ApiArray<AuthorId> RemapList(ApiArray<AuthorId> authorIds, ChatId chatId)
+            => authorIds.ToApiArray(c => Remap(c, chatId));
     }
 
     // [ComputeMethod]
@@ -118,11 +129,15 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
         if (chatId.IsPeerChat(out var peerChatId))
             return GetDefaultPeerChatAuthors(peerChatId).Select(a => a.UserId).ToApiArray();
 
+        var targetChatId = await GetMembershipChatId(chatId, cancellationToken).ConfigureAwait(false);
+        if (targetChatId.IsNone)
+            return default!;
+
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
         var userIds = await dbContext.Authors
-            .Where(a => a.ChatId == chatId && !a.HasLeft && a.UserId != null)
+            .Where(a => a.ChatId == targetChatId && !a.HasLeft && a.UserId != null)
             .Select(a => a.UserId!)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -506,6 +521,25 @@ public class AuthorsBackend : DbServiceBase<ChatDbContext>, IAuthorsBackend
             HasLeft = false,
         };
         return author;
+    }
+
+    private async Task<ChatId> GetMembershipChatId(ChatId chatId, CancellationToken cancellationToken)
+    {
+        if (!chatId.IsPlaceChat)
+            return chatId;
+
+        var placeChatId = chatId.PlaceChatId;
+        if (placeChatId.IsRoot)
+            return chatId;
+
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return ChatId.None;
+
+        if (!chat.IsPublic)
+            return chatId;
+
+        return placeChatId.PlaceId.ToRootChatId();
     }
 
     private static AuthorId Remap(AuthorId authorId, ChatId targetChatId)

@@ -106,17 +106,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (!rules.CanSeeMembers())
             return default;
 
-        var targetChatId = await GetChatIdForAuthorList(chatId, cancellationToken).ConfigureAwait(false);
-        if (targetChatId.IsNone)
-            return default!;
-
-        var authorIds = await Backend.ListAuthorIds(targetChatId, cancellationToken).ConfigureAwait(false);
-        if (targetChatId != chatId)
-            authorIds = Remap(authorIds, chatId);
-        return authorIds;
-
-        static ApiArray<AuthorId> Remap(ApiArray<AuthorId> authorIds, ChatId chatId)
-            => authorIds.ToApiArray(c => new AuthorId(chatId, c.LocalId, AssumeValid.Option));
+        return await Backend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -126,11 +116,7 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         if (!rules.CanSeeMembers())
             return default;
 
-        var targetChatId = await GetChatIdForAuthorList(chatId, cancellationToken).ConfigureAwait(false);
-        if (targetChatId.IsNone)
-            return default!;
-
-        return await Backend.ListUserIds(targetChatId, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -420,25 +406,6 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
             author.Version,
             new AuthorDiff() { HasLeft = false });
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
-    }
-
-    private async Task<ChatId> GetChatIdForAuthorList(ChatId chatId, CancellationToken cancellationToken)
-    {
-        if (!chatId.IsPlaceChat)
-            return chatId;
-
-        var placeChatId = chatId.PlaceChatId;
-        if (placeChatId.IsRoot)
-            return chatId;
-
-        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat == null)
-            return ChatId.None;
-
-        if (!chat.IsPublic)
-            return chatId;
-
-        return placeChatId.PlaceId.ToRootChatId();
     }
 
     private static void ValidatePlaceMembershipRules(Chat chat)
