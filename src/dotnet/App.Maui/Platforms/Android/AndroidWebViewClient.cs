@@ -31,13 +31,27 @@ public class AndroidWebViewClient(
         var didCrash = detail?.DidCrash() == true;
         var details = $"DidCrash: {didCrash}, RendererPriorityAtExit: {detail?.RendererPriorityAtExit()}, {detail}";
         log.LogWarning("OnRenderProcessGone: {Details}", details);
-        var markedDead = view.IsNotNull()
+
+        if (view.IsNotNull()
             && MauiWebView.Current is { } mauiWebView
             && mauiWebView.AndroidWebView.IfNotNull() is { } androidWebView
-            && ReferenceEquals(androidWebView, view)
-            && mauiWebView.MarkDead();
-        if (didCrash && markedDead) {
-            MainThread.BeginInvokeOnMainThread(() => MainPage.Current.RecreateWebView());
+            && ReferenceEquals(androidWebView, view)) {
+            if (mauiWebView.MarkDead()) {
+                // mainPage.Unload();
+                androidWebView.ClearCache(false);
+                // androidWebView.RemoveAllViews();
+                androidWebView.OnPause();
+                androidWebView.ClearHistory();
+                // unable to call those methods otherwise recreate will fail with exception
+                //  ---> System.MissingMethodException: No constructor found for Microsoft.AspNetCore.Components.WebView.Maui.BlazorAndroidWebView::.ctor(System.IntPtr, Android.Runtime.JniHandleOwnership)
+                // java.lang.Error: Java callstack:
+                // at mono.android.view.View_OnFocusChangeListenerImplementor.n_onFocusChange(Native Method)
+                // androidWebView.Destroy();
+                // androidWebView.DisposeSilently();
+
+                if (didCrash)
+                    MainThread.BeginInvokeOnMainThread(() => MainPage.Current.RecreateWebView());
+            }
             return true; // Indicates that we've handled this gracefully
         }
         return base.OnRenderProcessGone(view, detail);

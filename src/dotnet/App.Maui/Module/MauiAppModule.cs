@@ -6,6 +6,7 @@ using ActualChat.Kvas;
 using ActualChat.Permissions;
 using ActualChat.UI;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -69,5 +70,11 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Contacts
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));
+
+        // Test Page
+#if ANDROID
+        services.RemoveAll<IWebViewCrasher>();
+        services.AddSingleton<IWebViewCrasher, AndroidWebViewCrasher>();
+#endif
     }
 }

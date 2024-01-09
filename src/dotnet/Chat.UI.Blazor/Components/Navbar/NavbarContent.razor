@@ -20,7 +20,7 @@
         else if (isAdministration && m.IsAdmin) {
             <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/user-invites">Invite Users</NavbarItem>
         }
-        else if (isTestPages && HostInfo.IsDevelopmentInstance) {
+        else if (isTestPages && m.IsAdmin) {
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/virtual-list">Virtual List</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-player">Audio Player</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/audio-recorder">Audio Recorder</NavbarItem>
