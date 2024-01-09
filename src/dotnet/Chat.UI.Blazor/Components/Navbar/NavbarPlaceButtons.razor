@@ -11,11 +11,9 @@
 @if (places.Count > 0) {
     <div class="navbar-place-buttons">
         @foreach (var place in places) {
-            var groupId = place.Id.GetNavbarGroupId();
-            Hub.NavbarUI.UpdateTitle(groupId, place.Title);
             <NavbarGroupSelectionButton
                 Title="@place.Title"
-                Id="@groupId"
+                Id="@place.Id.GetNavbarGroupId()"
                 Tooltip="@place.Title">
                 <ChildContent>
                     <Pic

@@ -57,7 +57,7 @@
         var (_, error) = await Chat.UICommander().Run(new Places_Delete(Chat.Session(), _placeId));
         if (error != null)
             return;
-        Chat.NavbarUI.SelectGroup(NavbarGroupIds.Chats, NavbarGroupIds.ChatsTitle);
+        Chat.NavbarUI.SelectGroup(NavbarGroupIds.Chats);
 
         // TODO(DF): Dummy code. Foreseen something better to synchronize selected Nav group and Url.
         await Task.Delay(500);

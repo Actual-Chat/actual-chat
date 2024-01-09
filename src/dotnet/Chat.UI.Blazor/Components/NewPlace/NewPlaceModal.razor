@@ -52,15 +52,17 @@
     private async void OnPlaceCreated(Place place, Chat? defaultChat) {
         _place = place;
         _defaultChat = defaultChat;
-        var peopleContacts = await Hub.ChatListUI.ListPeopleContacts();
-        if (peopleContacts.Count == 0) {
-            // If there is no people to add, close the dialog.
-            Close();
-        } else {
-            _page = Page.Members;
-            // Re-render component to show Add members page.
-            StateHasChanged();
+        if (defaultChat != null) {
+            var peopleContacts = await Hub.ChatListUI.ListPeopleContacts();
+            if (peopleContacts.Count > 0) {
+                _page = Page.Members;
+                // Re-render component to show Add members page.
+                StateHasChanged();
+                return;
+            }
         }
+        // Close modal because there is no default chat or no people to add.
+        Close();
     }
 
     private async Task NavigateToPlaceWhenClosed() {
@@ -70,7 +72,8 @@
 
         if (_defaultChat != null)
             await Hub.History.NavigateTo(Links.Chat(_defaultChat.Id));
-        Hub.NavbarUI.SelectGroup(_place.Id.GetNavbarGroupId(), _place.Title);
+        else
+            Hub.NavbarUI.SelectGroup(_place.Id.GetNavbarGroupId());
     }
 
     private void Close()

@@ -32,14 +32,19 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? BadgeContent { get; set; }
 
-    protected override void OnInitialized()
-        => NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
+    protected override void OnInitialized() =>
+        NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;
 
-    public void Dispose()
-        => NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
+    protected override void OnParametersSet() =>
+        NavbarUI.RegisterGroup(Id, Title);
+
+    public void Dispose() {
+        NavbarUI.SelectedGroupChanged -= OnNavbarSelectedGroupChanged;
+        NavbarUI.UnregisterGroup(Id);
+    }
 
     private void OnClick()
-        => NavbarUI.SelectGroup(Id, Title);
+        => NavbarUI.SelectGroup(Id);
 
     private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
         => StateHasChanged();

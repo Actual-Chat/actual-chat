@@ -400,6 +400,9 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
 
     private void SaveSelectedChatIds(ChatId chatId)
     {
+        if (chatId.IsNone)
+            return;
+
         // Is executing under _lock;
         if (_pendingSelectedChatIdChanges != null) {
             // Postpone _selectedChatIds update till _selectedChatIds is read.
