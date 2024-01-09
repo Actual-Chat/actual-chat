@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Stl.Versioning;
+using ActualLab.Versioning;
 
 namespace ActualChat.Contacts.Db;
 
@@ -64,5 +64,3 @@ public class DbContact : IHasId<string>, IHasVersion<long>, IRequirementTarget
         }
     }
 }
-
-

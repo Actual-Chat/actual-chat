@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Module;
-using Stl.Fusion.Diagnostics;
+using ActualLab.Fusion.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
 

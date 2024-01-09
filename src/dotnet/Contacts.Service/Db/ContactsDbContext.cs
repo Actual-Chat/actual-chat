@@ -1,7 +1,7 @@
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Contacts.Db;
 
@@ -12,7 +12,7 @@ public class ContactsDbContext : DbContextBase
     public DbSet<DbExternalContactLink> ExternalContactLinks { get; protected set; } = null!;
     public DbSet<DbPlaceContact> PlaceContacts { get; protected set; } = null!;
 
-    // Stl.Fusion.EntityFramework tables
+    // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
     public ContactsDbContext(DbContextOptions<ContactsDbContext> options) : base(options) { }

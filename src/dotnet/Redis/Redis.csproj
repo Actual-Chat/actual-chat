@@ -7,7 +7,7 @@
   <ItemGroup>
     <PackageReference Include="Pipelines.Sockets.Unofficial" />
     <PackageReference Include="StackExchange.Redis" />
-    <PackageReference Include="Stl.Redis" />
+    <PackageReference Include="ActualLab.Redis" />
   </ItemGroup>
 
 </Project>

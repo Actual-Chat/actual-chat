@@ -1,6 +1,6 @@
 using ActualChat.Hosting;
 using Microsoft.Extensions.Hosting;
-using Stl.IO;
+using ActualLab.IO;
 
 namespace ActualChat.UI.Blazor.App;
 

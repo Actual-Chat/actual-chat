@@ -7,7 +7,7 @@ using ActualChat.Users;
 using ActualChat.Users.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Stl.Reflection;
+using ActualLab.Reflection;
 
 #nullable disable
 #pragma warning disable MA0004

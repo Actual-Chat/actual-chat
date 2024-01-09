@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.StaticFiles;
-using Stl.IO;
+using ActualLab.IO;
 
 namespace ActualChat.Blobs.Internal;
 
@@ -27,11 +27,11 @@ internal class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, IS
 
         var fullPath = (BaseDirectory & path).Value;
         if (File.Exists(fullPath))
-            return Stl.Async.TaskExt.TrueTask;
+            return ActualLab.Async.TaskExt.TrueTask;
         if (Directory.Exists(fullPath))
-            return Stl.Async.TaskExt.TrueTask;
+            return ActualLab.Async.TaskExt.TrueTask;
 
-        return Stl.Async.TaskExt.FalseTask;
+        return ActualLab.Async.TaskExt.FalseTask;
     }
 
     public Task<Stream?> Read(string path, CancellationToken cancellationToken)

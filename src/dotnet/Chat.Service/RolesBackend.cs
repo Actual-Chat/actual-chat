@@ -1,7 +1,7 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
@@ -249,5 +249,5 @@ public class RolesBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
     [ComputeMethod]
     protected virtual Task<Unit> PseudoList(ChatId _)
-        => Stl.Async.TaskExt.UnitTask;
+        => ActualLab.Async.TaskExt.UnitTask;
 }

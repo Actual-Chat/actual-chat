@@ -1,8 +1,8 @@
 using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Testing.Host;
-using Stl.Fusion.EntityFramework;
-using Stl.Redis;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Redis;
 
 namespace ActualChat.Chat.IntegrationTests;
 

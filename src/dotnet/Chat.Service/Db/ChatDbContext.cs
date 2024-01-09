@@ -1,7 +1,7 @@
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Chat.Db;
 
@@ -17,7 +17,7 @@ public class ChatDbContext : DbContextBase
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
 
-    // Stl.Fusion.EntityFramework tables
+    // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
     public ChatDbContext(DbContextOptions<ChatDbContext> options) : base(options) { }

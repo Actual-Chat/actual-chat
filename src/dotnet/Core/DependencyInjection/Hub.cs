@@ -1,6 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.Kvas;
-using Stl.Rpc;
+using ActualLab.Rpc;
 
 namespace ActualChat.DependencyInjection;
 

@@ -1,5 +1,5 @@
 using ActualChat.UI;
-using Stl.Locking;
+using ActualLab.Locking;
 
 namespace ActualChat.Permissions;
 

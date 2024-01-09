@@ -5,7 +5,7 @@ using ActualChat.Commands;
 using ActualChat.Kvas;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Invite;
 
@@ -189,5 +189,5 @@ internal class InvitesBackend(IServiceProvider services)
 
     [ComputeMethod]
     protected virtual Task<Unit> PseudoGetAll(string searchKey)
-        => Stl.Async.TaskExt.UnitTask;
+        => ActualLab.Async.TaskExt.UnitTask;
 }

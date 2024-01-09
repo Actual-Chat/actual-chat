@@ -1,7 +1,7 @@
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Notification.Db;
 
@@ -10,7 +10,7 @@ public class NotificationDbContext : DbContextBase
     public DbSet<DbDevice> Devices { get; protected set; } = null!;
     public DbSet<DbNotification> Notifications { get; protected set; } = null!;
 
-    // Stl.Fusion.EntityFramework tables
+    // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
     public NotificationDbContext(DbContextOptions<NotificationDbContext> options) : base(options) { }

@@ -9,6 +9,6 @@ public class WindowsRecordingPermissionRequester : IRecordingPermissionRequester
     public Task<bool> TryRequest()
     {
         AppInfo.Current.ShowSettingsUI();
-        return Stl.Async.TaskExt.TrueTask;
+        return ActualLab.Async.TaskExt.TrueTask;
     }
 }

@@ -1,5 +1,5 @@
-using Stl.Fusion.Server.Rpc;
-using Stl.Rpc.Infrastructure;
+using ActualLab.Fusion.Server.Rpc;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Web;
 

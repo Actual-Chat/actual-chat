@@ -69,7 +69,7 @@ namespace ActualChat.Feedback.Migrations
                     b.ToTable("feature_requests");
                 });
 
-            modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
+            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")

@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework.Operations;
-using Stl.Multitenancy;
+using ActualLab.Fusion.EntityFramework.Operations;
+using ActualLab.Multitenancy;
 
 namespace ActualChat.Db;
 

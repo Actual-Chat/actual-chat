@@ -17,7 +17,7 @@ using Microsoft.JSInterop;
 using Sentry;
 using Sentry.Maui.Internal;
 using Serilog;
-using Stl.CommandR.Rpc;
+using ActualLab.CommandR.Rpc;
 #if IOS
 using Foundation;
 #endif

@@ -7,8 +7,8 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
-using Stl.Fusion.Server.Authentication;
-using Stl.IO;
+using ActualLab.Fusion.Server.Authentication;
+using ActualLab.IO;
 
 namespace ActualChat.Testing.Host;
 

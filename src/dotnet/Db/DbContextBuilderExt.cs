@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
-using Stl.Redis;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Redis;
 
 namespace ActualChat.Db;
 

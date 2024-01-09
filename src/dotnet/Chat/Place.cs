@@ -1,6 +1,6 @@
 ﻿using MemoryPack;
-using Stl.Fusion.Blazor;
-using Stl.Versioning;
+using ActualLab.Fusion.Blazor;
+using ActualLab.Versioning;
 
 #pragma warning disable MA0049 // Allows ActualChat.Chat.Chat
 

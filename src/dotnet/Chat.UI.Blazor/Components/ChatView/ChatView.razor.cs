@@ -4,7 +4,7 @@ using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
-using Stl.Diagnostics;
+using ActualLab.Diagnostics;
 
 namespace ActualChat.Chat.UI.Blazor.Components;
 

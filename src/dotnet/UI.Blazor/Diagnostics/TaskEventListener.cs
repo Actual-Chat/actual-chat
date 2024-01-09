@@ -1,5 +1,5 @@
 using System.Diagnostics.Tracing;
-using Stl.Diagnostics;
+using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Diagnostics;
 

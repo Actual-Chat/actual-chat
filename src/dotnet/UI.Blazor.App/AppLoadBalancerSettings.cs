@@ -1,4 +1,4 @@
-using Stl.Rpc.Infrastructure;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.UI.Blazor.App;
 

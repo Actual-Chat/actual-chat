@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Stl.Generators;
+using ActualLab.Generators;
 
 namespace ActualChat.Invite.Db;
 

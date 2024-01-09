@@ -1,11 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Kvas;
 using ActualChat.Users;
-using Stl.Fusion.Client.Caching;
-using Stl.Fusion.Interception;
-using Stl.Internal;
-using Stl.Rpc;
-using Stl.Rpc.Caching;
+using ActualLab.Fusion.Client.Caching;
+using ActualLab.Fusion.Interception;
+using ActualLab.Internal;
+using ActualLab.Rpc;
+using ActualLab.Rpc.Caching;
 
 namespace ActualChat.UI.Blazor.Services;
 

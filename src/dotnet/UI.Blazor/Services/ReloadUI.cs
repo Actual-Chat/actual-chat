@@ -1,5 +1,5 @@
 using ActualChat.Kvas;
-using Stl.Fusion.Client.Caching;
+using ActualLab.Fusion.Client.Caching;
 
 namespace ActualChat.UI.Blazor.Services;
 

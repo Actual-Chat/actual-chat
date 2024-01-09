@@ -21,11 +21,11 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
-using Stl.Interception.Interceptors;
-using Stl.RestEase;
-using Stl.Rpc;
-using Stl.Rpc.Clients;
-using Stl.Rpc.WebSockets;
+using ActualLab.Interception.Interceptors;
+using ActualLab.RestEase;
+using ActualLab.Rpc;
+using ActualLab.Rpc.Clients;
+using ActualLab.Rpc.WebSockets;
 
 namespace ActualChat.UI.Blazor.App;
 
@@ -33,7 +33,7 @@ namespace ActualChat.UI.Blazor.App;
 
 public static class AppStartup
 {
-    // Stl.Interception, Stl.Rpc, Stl.CommandR, Stl.Fusion dependencies are referenced
+    // ActualLab.Interception, ActualLab.Rpc, ActualLab.CommandR, ActualLab.Fusion dependencies are referenced
     // by [DynamicDependency] on FusionBuilder from v6.7.2.
     // Libraries
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(PriorityQueue<,>))] // MemoryPack uses it

@@ -6,7 +6,7 @@ using ActualChat.Notification.Backend;
 using ActualChat.Redis.Module;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Notification.Module;
 

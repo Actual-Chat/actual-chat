@@ -9,8 +9,8 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.Fusion.Client.Caching;
-using Stl.IO;
+using ActualLab.Fusion.Client.Caching;
+using ActualLab.IO;
 
 namespace ActualChat.App.Maui.Module;
 

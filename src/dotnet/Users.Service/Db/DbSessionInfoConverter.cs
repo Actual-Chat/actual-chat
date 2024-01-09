@@ -1,5 +1,5 @@
 using Newtonsoft.Json;
-using Stl.Fusion.Authentication.Services;
+using ActualLab.Fusion.Authentication.Services;
 
 namespace ActualChat.Users.Db;
 

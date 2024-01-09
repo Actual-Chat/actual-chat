@@ -3,7 +3,7 @@ using ActualChat.Db.Module;
 using ActualChat.Feedback.Db;
 using ActualChat.Hosting;
 using ActualChat.Redis.Module;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Feedback.Module;
 

@@ -4,7 +4,7 @@ using ActualChat.Hosting;
 using ActualChat.Mathematics.Internal;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
-using Stl.IO;
+using ActualLab.IO;
 
 namespace ActualChat.Chat;
 

@@ -1,6 +1,6 @@
 ﻿using ActualChat.Security;
 using ActualChat.UI.Blazor.Module;
-using Stl.Locking;
+using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.Services;
 

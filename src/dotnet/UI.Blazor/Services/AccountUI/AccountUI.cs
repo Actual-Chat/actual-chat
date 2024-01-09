@@ -1,6 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.Users;
-using Stl.Interception;
+using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Services;
 

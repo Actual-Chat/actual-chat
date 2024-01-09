@@ -9,9 +9,9 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Stl.Fusion.Server.Authentication;
+using ActualLab.Fusion.Server.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
-using Stl.Fusion.Server;
+using ActualLab.Fusion.Server;
 
 namespace ActualChat.Users.Controllers;
 

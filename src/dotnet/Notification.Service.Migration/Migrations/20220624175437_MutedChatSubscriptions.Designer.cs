@@ -127,7 +127,7 @@ namespace ActualChat.Notification.Migrations
                     b.ToTable("muted_chat_subscriptions");
                 });
 
-            modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
+            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")

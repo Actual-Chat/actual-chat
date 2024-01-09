@@ -12,7 +12,7 @@ public class AudioClient(IServiceProvider services)
         services
     ), IAudioStreamer, ITranscriptStreamer
 {
-    private ILogger AudioSourceLog { get; } = Stl.DependencyInjection.ServiceProviderExt.LogFor<AudioSource>(services);
+    private ILogger AudioSourceLog { get; } = services.LogFor<AudioSource>();
 
     public int StreamBufferSize { get; init; } = 64;
 

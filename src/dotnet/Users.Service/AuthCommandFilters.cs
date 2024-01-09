@@ -2,9 +2,9 @@ using ActualChat.Commands;
 using ActualChat.Kvas;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
-using Stl.Fusion.Authentication.Services;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Internal;
+using ActualLab.Fusion.Authentication.Services;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework.Internal;
 
 namespace ActualChat.Users;
 

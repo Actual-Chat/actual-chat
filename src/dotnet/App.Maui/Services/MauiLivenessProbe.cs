@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;
-using Stl.Diagnostics;
+using ActualLab.Diagnostics;
 
 namespace ActualChat.App.Maui.Services;
 

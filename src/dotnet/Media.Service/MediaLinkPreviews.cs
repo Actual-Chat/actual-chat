@@ -9,7 +9,7 @@ internal class MediaLinkPreviews(IServiceProvider services) : IMediaLinkPreviews
 
     // [ComputeMethod]
     public virtual Task<bool> IsEnabled()
-        => Stl.Async.TaskExt.TrueTask;
+        => ActualLab.Async.TaskExt.TrueTask;
 
     // [ComputeMethod]
     public virtual Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)

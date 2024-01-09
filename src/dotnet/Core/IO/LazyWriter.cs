@@ -1,4 +1,4 @@
-using Stl.Internal;
+using ActualLab.Internal;
 
 namespace ActualChat.IO;
 

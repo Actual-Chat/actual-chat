@@ -1,7 +1,7 @@
 using ActualChat.Chat.UI.Blazor.Events;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
-using Stl.Interception;
+using ActualLab.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 

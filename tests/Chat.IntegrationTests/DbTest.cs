@@ -2,8 +2,8 @@
 using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
-using Stl.Mathematics;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Mathematics;
 
 namespace ActualChat.Chat.IntegrationTests;
 

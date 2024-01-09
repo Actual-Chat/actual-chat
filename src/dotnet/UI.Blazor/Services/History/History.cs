@@ -3,7 +3,7 @@ using ActualChat.Concurrency;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services.Internal;
-using Stl.Diagnostics;
+using ActualLab.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Services;
 

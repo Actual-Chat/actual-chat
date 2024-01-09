@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Stl.Time.Testing;
+using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.UnitTests.Channels;
 

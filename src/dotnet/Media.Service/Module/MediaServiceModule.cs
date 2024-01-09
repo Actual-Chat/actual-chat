@@ -4,7 +4,7 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Redis.Module;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Media.Module;
 

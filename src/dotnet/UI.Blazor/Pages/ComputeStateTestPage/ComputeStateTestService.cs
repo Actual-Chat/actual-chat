@@ -1,4 +1,4 @@
-﻿using Stl.Interception;
+﻿using ActualLab.Interception;
 
 namespace ActualChat.UI.Blazor.Pages.ComputeStateTestPage;
 

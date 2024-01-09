@@ -6,7 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Stl.Generators" />
+    <PackageReference Include="ActualLab.Generators" />
   </ItemGroup>
 
 </Project>

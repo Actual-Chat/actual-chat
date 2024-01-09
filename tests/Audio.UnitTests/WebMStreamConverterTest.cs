@@ -1,7 +1,7 @@
 using ActualChat.Audio.WebM;
 using ActualChat.Audio.WebM.Models;
 using ActualChat.IO;
-using Stl.IO;
+using ActualLab.IO;
 
 namespace ActualChat.Audio.UnitTests;
 

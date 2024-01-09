@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 

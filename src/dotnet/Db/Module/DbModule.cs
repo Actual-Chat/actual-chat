@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Npgsql;
-using Stl.Fusion.EntityFramework.Operations;
-using Stl.Fusion.EntityFramework.Redis;
-using Stl.Fusion.Operations.Internal;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework.Npgsql;
+using ActualLab.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework.Redis;
+using ActualLab.Fusion.Operations.Internal;
 
 namespace ActualChat.Db.Module;
 

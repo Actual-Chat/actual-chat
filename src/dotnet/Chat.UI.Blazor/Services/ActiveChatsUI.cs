@@ -1,5 +1,5 @@
 using ActualChat.Kvas;
-using Stl.Locking;
+using ActualLab.Locking;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 

@@ -438,7 +438,7 @@ public static class AsyncEnumerableExt
         var enumeratorLeft = left.GetAsyncEnumerator(cancellationToken);
         var enumeratorRight = right.GetAsyncEnumerator(cancellationToken);
         var errors = null as List<Exception>;
-        var falseTask = Stl.Async.TaskExt.FalseTask;
+        var falseTask = ActualLab.Async.TaskExt.FalseTask;
         var moveNextLeftTask = falseTask;
         var moveNextRightTask = falseTask;
         try {
@@ -668,7 +668,7 @@ public static class AsyncEnumerableExt
 
     private record struct MoveNextResult(Task<bool> MOveNextTask, int Index);
 
-    /* This exists in Stl, though the impl. is different, so temp. keeping it here:
+    /* This exists in ActualLab.Core, though the impl. is different, so temp. keeping it here:
 
     public static IAsyncEnumerable<T> TrimOnCancellation<T>(this IAsyncEnumerable<T> source,
         CancellationToken cancellationToken = default)

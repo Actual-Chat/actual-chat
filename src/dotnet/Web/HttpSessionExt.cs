@@ -1,6 +1,6 @@
 ﻿using ActualChat.Security;
 using Microsoft.AspNetCore.Http;
-using Stl.Fusion.Server.Authentication;
+using ActualLab.Fusion.Server.Authentication;
 
 namespace ActualChat.Web;
 

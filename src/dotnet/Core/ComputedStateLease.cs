@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.Pooling;
-using Stl.Conversion;
+using ActualLab.Conversion;
 
 namespace ActualChat;
 

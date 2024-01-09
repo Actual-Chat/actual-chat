@@ -1,6 +1,6 @@
 using ActualChat.IO;
 using ActualChat.Testing.Collections;
-using Stl.Time.Testing;
+using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.UnitTests;
 

@@ -18,7 +18,7 @@
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Logging" />
     <PackageReference Include="Serilog.Sinks.File" />
-    <PackageReference Include="Stl.Fusion.Server" />
+    <PackageReference Include="ActualLab.Fusion.Server" />
     <!-- Only for adjust Grpc.Core thread pool, for google transcriber & oltp exporter -->
     <PackageReference Include="Grpc.Core" />
     <PackageReference Include="OpenTelemetry" />
@@ -67,10 +67,10 @@
     <Watch Remove="wwwroot\**\*.woff2" />
   </ItemGroup>
 
-  <!-- Copy Stl* pdb to the output folder -->
+  <!-- Copy ActualLab* pdb to the output folder -->
   <Target Name="_CopyNuGetPackagesPdbs" AfterTargets="ResolveReferences">
     <ItemGroup>
-      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths-&gt;'%(RootDir)%(Directory)%(Filename).pdb')" Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and $([System.String]::new('%(Filename)').StartsWith('Stl')) and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
+      <ReferenceCopyLocalPaths Include="@(ReferenceCopyLocalPaths-&gt;'%(RootDir)%(Directory)%(Filename).pdb')" Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' != '' and $([System.String]::new('%(Filename)').StartsWith('ActualLab')) and Exists('%(RootDir)%(Directory)%(Filename).pdb')" />
     </ItemGroup>
   </Target>
 </Project>

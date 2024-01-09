@@ -9,9 +9,9 @@ using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Stl.Fusion.Client.Caching;
-using Stl.Fusion.Client.Interception;
-using Stl.Fusion.Diagnostics;
+using ActualLab.Fusion.Client.Caching;
+using ActualLab.Fusion.Client.Interception;
+using ActualLab.Fusion.Diagnostics;
 
 namespace ActualChat.UI.Blazor.Module;
 

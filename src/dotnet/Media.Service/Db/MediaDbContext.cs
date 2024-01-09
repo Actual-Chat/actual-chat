@@ -1,7 +1,7 @@
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Media.Db;
 
@@ -10,7 +10,7 @@ public class MediaDbContext : DbContextBase
     public DbSet<DbMedia> Media { get; protected set; } = null!;
     public DbSet<DbLinkPreview> LinkPreviews { get; protected set; } = null!;
 
-    // Stl.Fusion.EntityFramework tables
+    // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
     public MediaDbContext(DbContextOptions<MediaDbContext> options) : base(options) { }

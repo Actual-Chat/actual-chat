@@ -220,7 +220,7 @@ public sealed class ChatEntryReader(
 
         while (true) {
             if (!(cTile.IsConsistent() && cIdRange.IsConsistent()))
-                (cTile, cIdRange) = await Stl.Fusion.ComputedExt
+                (cTile, cIdRange) = await ActualLab.Fusion.ComputedExt
                     .Update(cTile, cIdRange, cancellationToken)
                     .ConfigureAwait(false);
 

@@ -1,4 +1,4 @@
-using Stl.Pooling;
+using ActualLab.Pooling;
 
 namespace ActualChat.Pooling;
 

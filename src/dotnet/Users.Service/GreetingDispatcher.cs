@@ -1,14 +1,14 @@
 using ActualChat.Contacts;
 using ActualChat.Users.Db;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 
 public class GreetingDispatcher(IServiceProvider services) : WorkerBase, IHasServices
 {
     private static readonly TimeSpan MaxIdleInterval = TimeSpan.FromMinutes(5);
-    private readonly IMutableState<bool> _needsGreeting = Stl.Fusion.ServiceProviderExt.StateFactory(services).NewMutable<bool>();
+    private readonly IMutableState<bool> _needsGreeting = services.StateFactory().NewMutable<bool>();
     private const int SelectBatchSize = 100;
     private DbHub<UsersDbContext>? _dbHub;
     private ICommander? _commander;

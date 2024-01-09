@@ -2,8 +2,8 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Stl.Generators;
-using Stl.Versioning;
+using ActualLab.Generators;
+using ActualLab.Versioning;
 
 namespace ActualChat.Users.Db;
 

@@ -1,4 +1,4 @@
-using Stl.Generators;
+using ActualLab.Generators;
 
 namespace ActualChat;
 

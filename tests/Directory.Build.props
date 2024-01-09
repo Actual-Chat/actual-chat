@@ -48,9 +48,9 @@
     <PackageReference Include="Moq.Autocomplete" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="Stl.CommandR" />
-    <PackageReference Include="Stl.Fusion" />
-    <PackageReference Include="Stl.Testing" />
+    <PackageReference Include="ActualLab.CommandR" />
+    <PackageReference Include="ActualLab.Fusion" />
+    <PackageReference Include="ActualLab.Testing" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.analyzers" />
     <PackageReference Include="xunit.runner.visualstudio" />
@@ -76,29 +76,29 @@
     <Using Include="System.Text.Json" />
     <Using Include="System.Text.Json.Serialization" />
     <Using Include="System.Threading.Channels" />
-    <Using Include="Stl" />
-    <Using Include="Stl.Async" />
-    <Using Include="Stl.Channels" />
-    <Using Include="Stl.Collections" />
-    <Using Include="Stl.DependencyInjection" />
-    <Using Include="Stl.Serialization" />
-    <Using Include="Stl.OS" />
-    <Using Include="Stl.Reflection" />
-    <Using Include="Stl.Text" />
-    <Using Include="Stl.Time" />
-    <Using Include="Stl.Fusion" />
-    <Using Include="Stl.Fusion.Authentication" />
-    <Using Include="Stl.Fusion.Operations" />
-    <Using Include="Stl.CommandR" />
-    <Using Include="Stl.CommandR.Configuration" />
-    <Using Include="Stl.CommandR.Commands" />
+    <Using Include="ActualLab" />
+    <Using Include="ActualLab.Async" />
+    <Using Include="ActualLab.Channels" />
+    <Using Include="ActualLab.Collections" />
+    <Using Include="ActualLab.DependencyInjection" />
+    <Using Include="ActualLab.Serialization" />
+    <Using Include="ActualLab.OS" />
+    <Using Include="ActualLab.Reflection" />
+    <Using Include="ActualLab.Text" />
+    <Using Include="ActualLab.Time" />
+    <Using Include="ActualLab.Fusion" />
+    <Using Include="ActualLab.Fusion.Authentication" />
+    <Using Include="ActualLab.Fusion.Operations" />
+    <Using Include="ActualLab.CommandR" />
+    <Using Include="ActualLab.CommandR.Configuration" />
+    <Using Include="ActualLab.CommandR.Commands" />
     <Using Include="Microsoft.Extensions.Logging" />
     <Using Include="Microsoft.Extensions.DependencyInjection" />
 
     <!-- Testing-related global usings -->
     <Using Include="FluentAssertions" />
     <Using Include="Moq" />
-    <Using Include="Stl.Testing" />
+    <Using Include="ActualLab.Testing" />
     <Using Include="Xunit" />
     <Using Include="Xunit.Abstractions" />
 
@@ -116,10 +116,10 @@
     <Using Include="Microsoft.AspNetCore.Components.Web" />
     <Using Include="Microsoft.AspNetCore.Components.WebAssembly.Http" />
     <Using Include="Microsoft.JSInterop" />
-    <Using Include="Stl.Fusion.Blazor" />
-    <Using Include="Stl.Fusion.Blazor.Authentication" />
-    <Using Include="Stl.Fusion.Extensions" />
-    <Using Include="Stl.Fusion.UI" />
+    <Using Include="ActualLab.Fusion.Blazor" />
+    <Using Include="ActualLab.Fusion.Blazor.Authentication" />
+    <Using Include="ActualLab.Fusion.Extensions" />
+    <Using Include="ActualLab.Fusion.UI" />
     <Using Include="System.Net.Http" />
   </ItemGroup>
 

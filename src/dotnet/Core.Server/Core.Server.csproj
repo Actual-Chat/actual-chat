@@ -15,6 +15,6 @@
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="OpenGraph-Net" />
     <PackageReference Include="SixLabors.ImageSharp" />
-    <PackageReference Include="Stl" />
+    <PackageReference Include="ActualLab.Core" />
   </ItemGroup>
 </Project>

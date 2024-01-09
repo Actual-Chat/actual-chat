@@ -1,7 +1,7 @@
 using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Feedback.Db;
 
@@ -9,7 +9,7 @@ public class FeedbackDbContext : DbContextBase
 {
     public DbSet<DbFeatureRequest> FeatureRequests { get; protected set; } = null!;
 
-    // Stl.Fusion.EntityFramework tables
+    // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 
     public FeedbackDbContext(DbContextOptions<FeedbackDbContext> options) : base(options) { }

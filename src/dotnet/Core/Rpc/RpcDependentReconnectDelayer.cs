@@ -1,6 +1,6 @@
-using Stl.Net;
-using Stl.Rpc;
-using Stl.Rpc.Infrastructure;
+using ActualLab.Net;
+using ActualLab.Rpc;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Rpc;
 

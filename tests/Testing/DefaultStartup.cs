@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Stl.IO;
+using ActualLab.IO;
 using Xunit.DependencyInjection;
 using Xunit.DependencyInjection.Logging;
 

@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.Authentication.Services;
-using Stl.Multitenancy;
+using ActualLab.Fusion.Authentication.Services;
+using ActualLab.Multitenancy;
 
 namespace ActualChat.Users.Db;
 

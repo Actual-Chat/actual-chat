@@ -2,8 +2,8 @@ using System.Text;
 using ActualChat.Hosting;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
-using Stl.Fusion.Authentication.Services;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.Authentication.Services;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 

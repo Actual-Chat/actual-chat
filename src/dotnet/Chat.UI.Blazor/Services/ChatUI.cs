@@ -4,7 +4,7 @@ using ActualChat.Kvas;
 using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
-using Stl.Interception;
+using ActualLab.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 

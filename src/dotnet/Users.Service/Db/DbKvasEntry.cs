@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Stl.Versioning;
+using ActualLab.Versioning;
 
 namespace ActualChat.Users.Db;
 

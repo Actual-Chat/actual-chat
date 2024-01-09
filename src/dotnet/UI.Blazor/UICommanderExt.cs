@@ -1,4 +1,4 @@
-using Stl.CommandR.Internal;
+using ActualLab.CommandR.Internal;
 
 namespace ActualChat.UI.Blazor;
 

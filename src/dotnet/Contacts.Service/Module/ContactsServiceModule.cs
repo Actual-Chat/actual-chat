@@ -5,7 +5,7 @@ using ActualChat.Hosting;
 using ActualChat.Redis.Module;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Contacts.Module;
 
@@ -43,7 +43,7 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices) : Hos
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<ContactsDbContext>))
                 return true;
-            // 2. Make sure it's intact only for Stl.Fusion.Authentication + local commands
+            // 2. Make sure it's intact only for ActualLab.Fusion.Authentication + local commands
             var commandAssembly = commandType.Assembly;
             return commandAssembly == typeof(IContacts).Assembly // Contacts.Contracts assembly
                 || commandType == typeof(NewUserEvent); // NewUserEvent is handled by ExternalContacts service

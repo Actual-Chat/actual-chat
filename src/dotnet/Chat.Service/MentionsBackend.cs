@@ -2,7 +2,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 

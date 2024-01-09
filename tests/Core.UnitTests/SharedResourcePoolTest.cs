@@ -1,5 +1,5 @@
 using ActualChat.Pooling;
-using Stl.Time.Testing;
+using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.UnitTests;
 

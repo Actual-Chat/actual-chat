@@ -2,7 +2,7 @@ using ActualChat.Audio;
 using ActualChat.Audio.UI.Blazor.Components;
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
-using Stl.Interception;
+using ActualLab.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 

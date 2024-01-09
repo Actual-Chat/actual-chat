@@ -1,4 +1,4 @@
-using Stl.Versioning;
+using ActualLab.Versioning;
 
 namespace ActualChat.Comparison;
 

@@ -1,6 +1,6 @@
 using ActualChat.Users.Db;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.Internal;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.Internal;
 
 namespace ActualChat.Users;
 

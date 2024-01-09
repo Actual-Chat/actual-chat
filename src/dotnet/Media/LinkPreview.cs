@@ -1,6 +1,6 @@
 using MemoryPack;
-using Stl.Fusion.Blazor;
-using Stl.Versioning;
+using ActualLab.Fusion.Blazor;
+using ActualLab.Versioning;
 
 namespace ActualChat.Media;
 

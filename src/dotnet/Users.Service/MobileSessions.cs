@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
-using Stl.Fusion.Server.Authentication;
-using Stl.Rpc.Infrastructure;
+using ActualLab.Fusion.Server.Authentication;
+using ActualLab.Rpc.Infrastructure;
 
 namespace ActualChat.Users;
 

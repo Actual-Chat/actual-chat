@@ -17,7 +17,7 @@ public class WebContactsPermissionHandler : ContactsPermissionHandler
         => Task.FromResult<bool?>(true);
 
     protected override Task<bool> Request(CancellationToken cancellationToken)
-        => Stl.Async.TaskExt.TrueTask;
+        => ActualLab.Async.TaskExt.TrueTask;
 
     protected override Task Troubleshoot(CancellationToken cancellationToken)
         => Task.CompletedTask;

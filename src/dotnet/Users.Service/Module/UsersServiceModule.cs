@@ -13,10 +13,10 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders.Physical;
 using Newtonsoft.Json;
-using Stl.Fusion.Authentication.Services;
-using Stl.Fusion.EntityFramework.Operations;
-using Stl.Fusion.Server;
-using Stl.Fusion.Server.Authentication;
+using ActualLab.Fusion.Authentication.Services;
+using ActualLab.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.Server;
+using ActualLab.Fusion.Server.Authentication;
 using Twilio;
 using Twilio.Clients;
 
@@ -121,7 +121,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
             if (ich.ServiceType != typeof(DbOperationScopeProvider<UsersDbContext>))
                 return true;
 
-            // 2. Make sure it's intact only for Stl.Fusion.Ext.* + local commands
+            // 2. Make sure it's intact only for ActualLab.Fusion.Ext.* + local commands
             var commandAssembly = commandType.Assembly;
             if (commandAssembly == typeof(Auth_EditUser).Assembly)
                 return true;

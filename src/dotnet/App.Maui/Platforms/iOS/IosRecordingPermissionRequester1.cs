@@ -2,13 +2,13 @@
 
 namespace ActualChat.App.Maui;
 
-public class IOSRecordingPermissionRequester : IRecordingPermissionRequester
+public class IosRecordingPermissionRequester : IRecordingPermissionRequester
 {
     public bool CanRequest => true;
 
     public Task<bool> TryRequest()
     {
         AppInfo.Current.ShowSettingsUI();
-        return Stl.Async.TaskExt.TrueTask;
+        return ActualLab.Async.TaskExt.TrueTask;
     }
 }

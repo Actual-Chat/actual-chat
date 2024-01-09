@@ -1,6 +1,6 @@
 using ActualChat.App.Server;
 using ActualChat.Testing.Host;
-using Stl.Versioning;
+using ActualLab.Versioning;
 
 namespace ActualChat.Users.IntegrationTests;
 

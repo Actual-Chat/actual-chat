@@ -6,9 +6,9 @@
 @using ActualChat.Security
 @using ActualChat.UI.Blazor.Services
 @using ActualChat.Web
-@using Stl.Fusion.Server.Authentication
-@using Stl.Fusion.Server.Endpoints
-@using Stl.Generators
+@using ActualLab.Fusion.Server.Authentication
+@using ActualLab.Fusion.Server.Endpoints
+@using ActualLab.Generators
 
 @inject HostInfo HostInfo
 @inject ServerAuthHelper ServerAuthHelper
@@ -144,7 +144,7 @@
     <link rel="prefetch" href="/dist/wasm/ort-wasm-simd-threaded.wasm" as="fetch" asp-append-version="true" crossorigin />
     *@
     <link href="/dist/bundle.css" rel="stylesheet" asp-append-version="true"/>
-    <script src="_content/Stl.Fusion.Blazor.Authentication/scripts/fusionAuth.js" asp-append-version="true"></script>
+    <script src="_content/ActualLab.Fusion.Blazor.Authentication/scripts/fusionAuth.js" asp-append-version="true"></script>
     <script nonce="@startupNonce">
         history.scrollRestoration = "manual";
         window.FusionAuth.schemas = "@authSchemas";

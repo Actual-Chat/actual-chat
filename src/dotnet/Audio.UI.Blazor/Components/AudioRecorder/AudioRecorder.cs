@@ -4,7 +4,7 @@ using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Permissions;
 using ActualChat.UI.Blazor.Services;
-using Stl.Locking;
+using ActualLab.Locking;
 
 namespace ActualChat.Audio.UI.Blazor.Components;
 

@@ -107,7 +107,7 @@ namespace ActualChat.Media.Migrations
                     b.ToTable("media");
                 });
 
-            modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
+            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")

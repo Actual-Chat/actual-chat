@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.UI.Blazor.Components.Internal;
 using ActualChat.UI.Blazor.Module;
-using Stl.Fusion.Internal;
+using ActualLab.Fusion.Internal;
 
 namespace ActualChat.UI.Blazor.Components;
 

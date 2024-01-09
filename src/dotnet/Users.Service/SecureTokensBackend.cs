@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using ActualChat.Security;
 using Microsoft.AspNetCore.DataProtection;
-using Stl.Generators;
+using ActualLab.Generators;
 
 namespace ActualChat.Users;
 

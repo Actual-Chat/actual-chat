@@ -5,7 +5,7 @@ using ActualChat.Users.Db;
 using ActualChat.Users.Events;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 

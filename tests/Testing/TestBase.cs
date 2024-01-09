@@ -1,4 +1,4 @@
-using Stl.Testing.Output;
+using ActualLab.Testing.Output;
 
 namespace ActualChat.Testing;
 

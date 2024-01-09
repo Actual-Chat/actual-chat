@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Stl.Versioning;
+using ActualLab.Versioning;
 
 namespace ActualChat.Feedback.Db;
 

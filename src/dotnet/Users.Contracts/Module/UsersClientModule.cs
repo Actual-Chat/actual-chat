@@ -2,7 +2,7 @@
 using ActualChat.Hosting;
 using ActualChat.Kvas;
 using ActualChat.Security;
-using Stl.RestEase;
+using ActualLab.RestEase;
 
 namespace ActualChat.Users.Module;
 

@@ -12,9 +12,9 @@
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="Microsoft.Toolkit.HighPerformance" />
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
-    <PackageReference Include="Stl.Fusion" />
-    <PackageReference Include="Stl.Fusion.Ext.Contracts" />
-    <PackageReference Include="Stl.Rpc" />
+    <PackageReference Include="ActualLab.Fusion" />
+    <PackageReference Include="ActualLab.Fusion.Ext.Contracts" />
+    <PackageReference Include="ActualLab.Rpc" />
     <PackageReference Include="Ulid" />
   </ItemGroup>
 

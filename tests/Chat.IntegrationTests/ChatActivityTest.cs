@@ -1,6 +1,6 @@
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Testing.Host;
-using Stl.Time.Testing;
+using ActualLab.Time.Testing;
 
 namespace ActualChat.Chat.IntegrationTests;
 

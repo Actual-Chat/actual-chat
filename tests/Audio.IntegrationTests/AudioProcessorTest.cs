@@ -6,8 +6,8 @@ using ActualChat.Kvas;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using ActualChat.Users;
-using Stl.IO;
-using Stl.Mathematics;
+using ActualLab.IO;
+using ActualLab.Mathematics;
 
 namespace ActualChat.Audio.IntegrationTests;
 

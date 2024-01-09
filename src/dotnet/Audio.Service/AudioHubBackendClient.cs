@@ -1,7 +1,7 @@
 using ActualChat.SignalR;
 using ActualChat.Transcription;
 using Microsoft.AspNetCore.SignalR.Client;
-using Stl.Net;
+using ActualLab.Net;
 
 namespace ActualChat.Audio;
 

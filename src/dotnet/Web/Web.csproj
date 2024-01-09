@@ -6,7 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Stl.Fusion.Server" />
+    <PackageReference Include="ActualLab.Fusion.Server" />
   </ItemGroup>
 
 </Project>

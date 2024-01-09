@@ -2,7 +2,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Invite;
 using ActualChat.Kvas;
 using ActualChat.Users;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 

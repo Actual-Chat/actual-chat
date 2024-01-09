@@ -1,4 +1,4 @@
-using Stl.Testing.Output;
+using ActualLab.Testing.Output;
 using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Testing;
@@ -15,12 +15,12 @@ public static class ServiceCollectionExt
             // logging.AddFilter(DbLoggerCategory.Update.Name, LogLevel.Information);
             // logging.AddFilter(DbLoggerCategory.Database.Command.Name, LogLevel.Information);
             // logging.AddFilter(DbLoggerCategory.Database.Transaction.Name, LogLevel.Debug);
-            logging.AddFilter("Stl.CommandR", LogLevel.Information);
-            logging.AddFilter("Stl.Fusion", LogLevel.Information);
-            logging.AddFilter("Stl.Fusion.Diagnostics", LogLevel.Information);
-            logging.AddFilter("Stl.Fusion.Operations", LogLevel.Information);
-            // logging.AddFilter("Stl.Fusion.EntityFramework", LogLevel.Debug);
-            // logging.AddFilter("Stl.Fusion.EntityFramework.Operations", LogLevel.Debug);
+            logging.AddFilter("ActualLab.CommandR", LogLevel.Information);
+            logging.AddFilter("ActualLab.Fusion", LogLevel.Information);
+            logging.AddFilter("ActualLab.Fusion.Diagnostics", LogLevel.Information);
+            logging.AddFilter("ActualLab.Fusion.Operations", LogLevel.Information);
+            // logging.AddFilter("ActualLab.Fusion.EntityFramework", LogLevel.Debug);
+            // logging.AddFilter("ActualLab.Fusion.EntityFramework.Operations", LogLevel.Debug);
             // logging.AddFilter(LogFilter);
             logging.AddDebug();
             // XUnit logging requires weird setup b/c otherwise it filters out

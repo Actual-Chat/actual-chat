@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Commands.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Stl.CommandR.Internal;
+using ActualLab.CommandR.Internal;
 
 namespace ActualChat.Commands;
 

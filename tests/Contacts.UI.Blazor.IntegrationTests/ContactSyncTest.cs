@@ -6,7 +6,7 @@ using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
-using Stl.Generators;
+using ActualLab.Generators;
 
 namespace ActualChat.Contacts.UI.Blazor.IntegrationTests;
 

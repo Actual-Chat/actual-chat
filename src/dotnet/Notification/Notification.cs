@@ -1,5 +1,5 @@
 using MemoryPack;
-using Stl.Versioning;
+using ActualLab.Versioning;
 
 namespace ActualChat.Notification;
 

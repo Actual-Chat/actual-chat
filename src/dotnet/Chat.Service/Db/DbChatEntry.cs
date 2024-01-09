@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using ActualChat.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Stl.Versioning;
+using ActualLab.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]

@@ -154,7 +154,7 @@ namespace ActualChat.Notification.Migrations
                     b.ToTable("notifications");
                 });
 
-            modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
+            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")

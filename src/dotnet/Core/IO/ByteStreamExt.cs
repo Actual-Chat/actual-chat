@@ -1,6 +1,6 @@
 using System.Buffers;
 using Microsoft.AspNetCore.Components.WebAssembly.Http;
-using Stl.IO;
+using ActualLab.IO;
 
 namespace ActualChat.IO;
 

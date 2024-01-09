@@ -7,7 +7,7 @@ using ActualChat.Redis.Module;
 using ActualChat.Uploads;
 using ActualChat.Users.Events;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Chat.Module;
 

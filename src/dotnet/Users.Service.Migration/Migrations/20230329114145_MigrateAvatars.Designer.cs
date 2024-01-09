@@ -288,7 +288,7 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("presences");
                 });
 
-            modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
+            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")
@@ -316,7 +316,7 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("user_identities");
                 });
 
-            modelBuilder.Entity("Stl.Fusion.EntityFramework.Operations.DbOperation", b =>
+            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Operations.DbOperation", b =>
                 {
                     b.Property<string>("Id")
                         .HasColumnType("text")
@@ -357,7 +357,7 @@ namespace ActualChat.Users.Migrations
                     b.ToTable("_operations");
                 });
 
-            modelBuilder.Entity("Stl.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
+            modelBuilder.Entity("ActualLab.Fusion.EntityFramework.Authentication.DbUserIdentity<string>", b =>
                 {
                     b.HasOne("ActualChat.Users.Db.DbUser", null)
                         .WithMany("Identities")

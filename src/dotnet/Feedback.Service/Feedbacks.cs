@@ -1,5 +1,5 @@
 ﻿using ActualChat.Feedback.Db;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Feedback;
 

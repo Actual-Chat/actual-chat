@@ -1,6 +1,6 @@
 using Cysharp.Text;
 using Microsoft.Toolkit.HighPerformance;
-using Stl.Mathematics.Internal;
+using ActualLab.Mathematics.Internal;
 
 namespace ActualChat;
 

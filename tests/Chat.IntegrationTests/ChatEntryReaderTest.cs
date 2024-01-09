@@ -1,5 +1,5 @@
 using ActualChat.Testing.Host;
-using Stl.Mathematics;
+using ActualLab.Mathematics;
 
 namespace ActualChat.Chat.IntegrationTests;
 

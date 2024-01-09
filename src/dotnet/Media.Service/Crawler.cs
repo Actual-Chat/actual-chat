@@ -2,7 +2,7 @@ using ActualChat.Media.Module;
 using ActualChat.Uploads;
 using OpenGraphNet;
 using OpenGraphNet.Metadata;
-using Stl.IO;
+using ActualLab.IO;
 
 namespace ActualChat.Media;
 

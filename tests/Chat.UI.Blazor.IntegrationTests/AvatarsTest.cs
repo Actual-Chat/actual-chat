@@ -12,10 +12,10 @@ public class AvatarsTest : AppHostTestBase
     {
         // Tests that we can create an avatar via web api call (AvatarsController.Change).
         // There was a problem that model validation failed because framework
-        // tried to access ChangeCommand.Change.Update.Value while Stl.Option had no value
+        // tried to access ChangeCommand.Change.Update.Value while ActualLab.Option had no value
         // and this caused an exception.
         // The issue was solved by adding ActualChat.Web.Internal.OptionPropsValidationFilter
-        // which excludes accessing Stl.Option.Value property during model validation.
+        // which excludes accessing ActualLab.Option.Value property during model validation.
 
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewWebClientTester();

@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="MemoryPack" />
-    <PackageReference Include="Stl.RestEase" />
+    <PackageReference Include="ActualLab.RestEase" />
   </ItemGroup>
 
   <ItemGroup>

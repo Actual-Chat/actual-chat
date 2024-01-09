@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using ActualChat.Diagnostics;
-using Stl.Time.Testing;
-using Stl.Versioning.Providers;
+using ActualLab.Time.Testing;
+using ActualLab.Versioning.Providers;
 
 namespace ActualChat.Core.UnitTests;
 

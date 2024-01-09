@@ -1,6 +1,6 @@
 using Cysharp.Text;
-using Stl.Fusion.Internal;
-using Stl.Fusion.Operations.Internal;
+using ActualLab.Fusion.Internal;
+using ActualLab.Fusion.Operations.Internal;
 
 namespace ActualChat;
 

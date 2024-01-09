@@ -40,7 +40,7 @@ public sealed class StoredState<
             _ = ForegroundTask.Run(async () => {
                 var valueOpt = Option.None<T>();
                 try {
-                    using var _ = Stl.Fusion.Computed.SuspendDependencyCapture();
+                    using var _ = ActualLab.Fusion.Computed.SuspendDependencyCapture();
                     try {
                         valueOpt = await Settings.Read(CancellationToken.None).ConfigureAwait(false);
                     }
@@ -72,7 +72,7 @@ public sealed class StoredState<
         else {
             // Subsequent change
             if (computed.IsValue(out var value)) {
-                using var _1 = Stl.Fusion.Computed.SuspendDependencyCapture();
+                using var _1 = ActualLab.Fusion.Computed.SuspendDependencyCapture();
                 _ = Settings.Write(value, CancellationToken.None);
                 DebugLog?.LogDebug("{State}: Write = {Result}", this, value);
             }

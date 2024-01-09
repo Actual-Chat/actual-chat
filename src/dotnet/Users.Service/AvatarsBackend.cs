@@ -2,7 +2,7 @@
 using ActualChat.Media;
 using ActualChat.Users.Db;
 using ActualChat.Users.Events;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users;
 

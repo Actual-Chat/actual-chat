@@ -6,7 +6,7 @@ using ActualChat.Media.Resources;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 #nullable disable
 #pragma warning disable VSTHRD002

@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
-using Stl.Internal;
+using ActualLab.Internal;
 
 namespace ActualChat.App.Maui;
 

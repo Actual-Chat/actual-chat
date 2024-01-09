@@ -6,8 +6,8 @@ using ActualChat.Contacts.Module;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
-using Stl.Fusion.EntityFramework;
-using Stl.Redis;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Redis;
 
 namespace ActualChat.Contacts;
 
@@ -502,11 +502,11 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
     [ComputeMethod]
     protected virtual Task<Unit> PseudoPlaceContact(PlaceId placeId)
-        => Stl.Async.TaskExt.UnitTask;
+        => ActualLab.Async.TaskExt.UnitTask;
 
     [ComputeMethod]
     protected virtual Task<Unit> PseudoChatContact(ChatId chatId)
-        => Stl.Async.TaskExt.UnitTask;
+        => ActualLab.Async.TaskExt.UnitTask;
 
     // private methods
 

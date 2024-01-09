@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using ActualChat.Internal;
 using MemoryPack;
-using Stl.Fusion.Blazor;
+using ActualLab.Fusion.Blazor;
 
 namespace ActualChat;
 

@@ -1,5 +1,5 @@
 ﻿using ActualChat.Diff;
-using Stl.Generators;
+using ActualLab.Generators;
 
 namespace ActualChat.Contacts.UnitTests;
 

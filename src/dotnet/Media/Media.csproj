@@ -6,7 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="MemoryPack" />
-    <PackageReference Include="Stl.Fusion" />
+    <PackageReference Include="ActualLab.Fusion" />
   </ItemGroup>
 
 </Project>

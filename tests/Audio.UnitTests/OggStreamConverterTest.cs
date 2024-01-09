@@ -1,5 +1,5 @@
 ﻿using ActualChat.IO;
-using Stl.IO;
+using ActualLab.IO;
 
 namespace ActualChat.Audio.UnitTests;
 

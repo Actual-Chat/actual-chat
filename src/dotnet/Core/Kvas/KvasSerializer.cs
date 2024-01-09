@@ -1,6 +1,6 @@
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
-using Stl.Serialization.Internal;
+using ActualLab.Serialization.Internal;
 
 namespace ActualChat.Kvas;
 

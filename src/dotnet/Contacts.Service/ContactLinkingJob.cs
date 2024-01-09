@@ -1,8 +1,8 @@
 using ActualChat.Contacts.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
-using Stl.Fusion.EntityFramework;
-using Stl.Interception;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Interception;
 
 namespace ActualChat.Contacts;
 

@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Hosting;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.UI.Blazor.Services;
-using Stl.Rpc;
+using ActualLab.Rpc;
 
 namespace ActualChat.Notification.UI.Blazor;
 

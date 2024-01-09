@@ -28,15 +28,15 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Stl.Diagnostics;
-using Stl.Fusion.EntityFramework;
-using Stl.Fusion.Server;
-using Stl.Fusion.Server.Middlewares;
-using Stl.Fusion.Server.Rpc;
-using Stl.IO;
-using Stl.Rpc;
-using Stl.Rpc.Diagnostics;
-using Stl.Rpc.Server;
+using ActualLab.Diagnostics;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Fusion.Server;
+using ActualLab.Fusion.Server.Middlewares;
+using ActualLab.Fusion.Server.Rpc;
+using ActualLab.IO;
+using ActualLab.Rpc;
+using ActualLab.Rpc.Diagnostics;
+using ActualLab.Rpc.Server;
 
 namespace ActualChat.App.Server.Module;
 
@@ -280,9 +280,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 // gcloud exporter doesn't support some of metrics yet:
                 // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
                 .AddAspNetCoreInstrumentation()
-                .AddMeter(typeof(RpcHub).GetMeter().Name) // Stl.Rpc
-                .AddMeter(typeof(ICommand).GetMeter().Name) // Stl.Commander
-                .AddMeter(typeof(IComputed).GetMeter().Name) // Stl.Fusion
+                .AddMeter(typeof(RpcHub).GetMeter().Name) // ActualLab.Rpc
+                .AddMeter(typeof(ICommand).GetMeter().Name) // ActualLab.Commander
+                .AddMeter(typeof(IComputed).GetMeter().Name) // ActualLab.Fusion
                 // Our own meters (one per assembly)
                 .AddMeter(AppMeter.Name)
                 .AddMeter(MeterExt.Unknown.Name) // Unknown meter
@@ -298,11 +298,11 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             Log.LogInformation("OpenTelemetry endpoint: {OpenTelemetryEndpoint}", openTelemetryEndpointUri.ToString());
             otelBuilder = otelBuilder.WithTracing(builder => builder
                 .SetErrorStatusOnException()
-                .AddSource(typeof(RpcHub).GetActivitySource().Name) // Stl.Rpc
-                .AddSource(typeof(ICommand).GetActivitySource().Name) // Stl.Commander
-                .AddSource(typeof(IComputed).GetActivitySource().Name) // Stl.Fusion
-                .AddSource(typeof(IAuthBackend).GetActivitySource().Name) // Stl.Fusion.Ext.Services - auth, etc.
-                .AddSource(typeof(DbKey).GetActivitySource().Name) // Stl.Fusion.EntityFramework
+                .AddSource(typeof(RpcHub).GetActivitySource().Name) // ActualLab.Rpc
+                .AddSource(typeof(ICommand).GetActivitySource().Name) // ActualLab.Commander
+                .AddSource(typeof(IComputed).GetActivitySource().Name) // ActualLab.Fusion
+                .AddSource(typeof(IAuthBackend).GetActivitySource().Name) // ActualLab.Fusion.Ext.Services - auth, etc.
+                .AddSource(typeof(DbKey).GetActivitySource().Name) // ActualLab.Fusion.EntityFramework
                 // Our own activity sources (one per assembly)
                 .AddSource(AppTrace.Name)
                 .AddSource(typeof(IAudioStreamer).GetActivitySource().Name)

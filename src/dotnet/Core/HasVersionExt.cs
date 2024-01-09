@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using Stl.Versioning;
+using ActualLab.Versioning;
 
 namespace ActualChat;
 

@@ -7,7 +7,7 @@ internal class LinkPreviews(IServiceProvider services) : ILinkPreviews
 
     // [ComputeMethod]
     public virtual Task<bool> IsEnabled()
-        => Stl.Async.TaskExt.TrueTask;
+        => ActualLab.Async.TaskExt.TrueTask;
 
     // [ComputeMethod]
     public virtual async Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)

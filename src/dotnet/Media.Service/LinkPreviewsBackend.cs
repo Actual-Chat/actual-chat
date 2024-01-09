@@ -5,8 +5,8 @@ using ActualChat.Media.Db;
 using ActualChat.Media.Module;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
-using Stl.Fusion.EntityFramework;
-using Stl.Redis;
+using ActualLab.Fusion.EntityFramework;
+using ActualLab.Redis;
 
 namespace ActualChat.Media;
 

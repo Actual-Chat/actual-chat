@@ -11,9 +11,9 @@
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="Sentry.OpenTelemetry" />
-    <PackageReference Include="Stl.Fusion.Blazor" />
-    <PackageReference Include="Stl.Fusion.Blazor.Authentication" />
-    <PackageReference Include="Stl" />
+    <PackageReference Include="ActualLab.Core" />
+    <PackageReference Include="ActualLab.Fusion.Blazor" />
+    <PackageReference Include="ActualLab.Fusion.Blazor.Authentication" />
   </ItemGroup>
 
   <ItemGroup>

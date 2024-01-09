@@ -1,4 +1,4 @@
-using Stl.Fusion.Operations.Internal;
+using ActualLab.Fusion.Operations.Internal;
 
 namespace ActualChat.Commands.Internal;
 

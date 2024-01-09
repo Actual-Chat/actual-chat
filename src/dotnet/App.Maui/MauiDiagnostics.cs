@@ -12,7 +12,7 @@ using Sentry.Serilog;
 using Serilog;
 using Serilog.Events;
 using Serilog.Extensions.Logging;
-using Stl.IO;
+using ActualLab.IO;
 using ILogger = Serilog.ILogger;
 using Tracer = ActualChat.Performance.Tracer;
 

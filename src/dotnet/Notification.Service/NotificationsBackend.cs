@@ -6,7 +6,7 @@ using ActualChat.Commands;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Notification;
 
@@ -300,7 +300,7 @@ public class NotificationsBackend(IServiceProvider services)
 
     // [ComputeMethod]
     public virtual Task<Unit> PseudoListRecentNotificationIds(UserId userId)
-        => Stl.Async.TaskExt.UnitTask;
+        => ActualLab.Async.TaskExt.UnitTask;
 
     // Private methods
 

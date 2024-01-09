@@ -1,5 +1,5 @@
 using ActualChat.App.Server;
-using Stl.Fusion.EntityFramework.Operations;
+using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Testing.Host;
 
@@ -19,7 +19,7 @@ public class TestAppHost : AppHost
         // implements IAsyncDisposable.
         // See https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.DependencyInjection/src/ServiceLookup/ServiceProviderEngineScope.cs#L156
         // DbOperationCompletionNotifierBase disposing takes at least MaxCommitDuration specified in its Options.
-        // See https://github.com/servicetitan/Stl.Fusion/blob/master/src/Stl.Fusion.EntityFramework/Operations/DbOperationCompletionNotifierBase.cs#L54
+        // See https://github.com/servicetitan/ActualLab.Fusion/blob/master/src/ActualLab.Fusion.EntityFramework/Operations/DbOperationCompletionNotifierBase.cs#L54
         // In our case we MaxCommitDuration is 1 seconds and we have 7 instances
         // of RedisOperationLogChangeNotifier<TDbContext> for each DbContext respectively.
         // Hence AppHost disposing takes at least 7 seconds.

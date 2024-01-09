@@ -3,7 +3,7 @@ using ActualChat.Configuration;
 using ActualChat.Hosting;
 using ActualChat.Module;
 using StackExchange.Redis;
-using Stl.Redis;
+using ActualLab.Redis;
 
 namespace ActualChat.Redis.Module;
 

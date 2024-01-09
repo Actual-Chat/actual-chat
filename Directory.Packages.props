@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabGeneratorsVersion>0.1.5</ActualLabGeneratorsVersion>
+    <ActualLabFusionVersion>7.0.10</ActualLabFusionVersion>
     <AspNetCoreVersion>8.0.0</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>8.0.0</EntityFrameworkCoreVersion>
@@ -14,9 +14,8 @@
     <MicrosoftExtensionsVersion>8.0.0</MicrosoftExtensionsVersion>
     <MicrosoftExtensionsBaseVersion>8.0.0</MicrosoftExtensionsBaseVersion>
     <NpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</NpgsqlVersion>
-    <RedisVersion>2.7.4</RedisVersion>
+    <RedisVersion>2.7.10</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
-    <StlFusionVersion>6.8.11</StlFusionVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.6.0</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.5.1-beta.1</OpenTelemetryAspNetCoreVersion>
@@ -130,23 +129,23 @@
     <PackageVersion Include="Serilog.Sinks.Debug" Version="2.0.0" />
     <PackageVersion Include="SixLabors.ImageSharp" Version="3.0.2" />
     <PackageVersion Include="StackExchange.Redis" Version="$(RedisVersion)" />
-    <PackageVersion Include="Stl" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.CommandR" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Fusion" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Fusion.Blazor" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Fusion.Blazor.Authentication" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Fusion.EntityFramework" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Fusion.EntityFramework.Npgsql" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Fusion.EntityFramework.Redis" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Fusion.Ext.Contracts" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Fusion.Ext.Services" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Fusion.Server" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Interception" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Redis" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.RestEase" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Rpc" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Rpc.Server" Version="$(StlFusionVersion)" />
-    <PackageVersion Include="Stl.Testing" Version="$(StlFusionVersion)" />
+    <PackageVersion Include="ActualLab.Core" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.CommandR" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Fusion" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Fusion.Blazor" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Fusion.Blazor.Authentication" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Fusion.EntityFramework" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Fusion.EntityFramework.Npgsql" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Fusion.EntityFramework.Redis" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Fusion.Ext.Contracts" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Fusion.Ext.Services" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Fusion.Server" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Interception" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Redis" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.RestEase" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Rpc" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Rpc.Server" Version="$(ActualLabFusionVersion)" />
+    <PackageVersion Include="ActualLab.Testing" Version="$(ActualLabFusionVersion)" />
     <PackageVersion Include="System.Collections.Immutable" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="System.Net.Http.Json" Version="$(SystemNetHttpJsonVersion)" />
     <PackageVersion Include="System.Threading.Channels" Version="$(AspNetCoreVersion)" />
@@ -214,6 +213,6 @@
     <PackageVersion Include="xunit.analyzers" Version="1.6.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <!-- Generators -->
     <PackageVersion Include="RestEase.SourceGenerator" Version="1.6.4" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
-    <PackageVersion Include="Stl.Generators" Version="$(StlFusionVersion)" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="ActualLab.Generators" Version="$(ActualLabFusionVersion)" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
   </ItemGroup>
 </Project>

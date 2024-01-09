@@ -1,5 +1,5 @@
 using FluentAssertions.Equivalency;
-using Stl.Versioning;
+using ActualLab.Versioning;
 
 namespace ActualChat.Testing.Assertion;
 

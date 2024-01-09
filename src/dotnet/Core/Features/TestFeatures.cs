@@ -1,4 +1,4 @@
-using Stl.Fusion.Extensions;
+using ActualLab.Fusion.Extensions;
 
 namespace ActualChat;
 

@@ -3,8 +3,8 @@ using System.Numerics;
 using ActualChat.Internal;
 using Cysharp.Text;
 using MemoryPack;
-using Stl.Fusion.Blazor;
-using Stl.Generators;
+using ActualLab.Fusion.Blazor;
+using ActualLab.Generators;
 
 namespace ActualChat;
 

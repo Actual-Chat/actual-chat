@@ -4,8 +4,8 @@ using ActualChat.Transcription.DeepGram;
 using ActualChat.Transcription.Module;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
-using Stl.IO;
-using Stl.Testing.Output;
+using ActualLab.IO;
+using ActualLab.Testing.Output;
 using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Transcription.IntegrationTests;

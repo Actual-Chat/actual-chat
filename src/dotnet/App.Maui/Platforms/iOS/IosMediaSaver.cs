@@ -4,7 +4,7 @@ using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Foundation;
 using Photos;
-using Stl.Fusion.UI;
+using ActualLab.Fusion.UI;
 
 namespace ActualChat.App.Maui;
 

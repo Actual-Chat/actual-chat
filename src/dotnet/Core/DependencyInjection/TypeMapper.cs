@@ -40,9 +40,9 @@ public sealed class TypeMapper<TScope>
                 var match = self._map.GetValueOrDefault(cType);
                 if (match != null) {
                     if (match.IsGenericTypeDefinition)
-                        throw Stl.Internal.Errors.GenericMatchForConcreteType(cType, match);
+                        throw ActualLab.Internal.Errors.GenericMatchForConcreteType(cType, match);
                     if (!match.IsAssignableTo(typeof(TScope)))
-                        throw Stl.Internal.Errors.MustBeAssignableTo<TScope>(match);
+                        throw ActualLab.Internal.Errors.MustBeAssignableTo<TScope>(match);
                     return match;
                 }
                 if (!cType.IsConstructedGenericType)
@@ -55,14 +55,14 @@ public sealed class TypeMapper<TScope>
                     continue;
 
                 if (!match.IsGenericTypeDefinition)
-                    throw Stl.Internal.Errors.ConcreteMatchForGenericType(gType, match);
+                    throw ActualLab.Internal.Errors.ConcreteMatchForGenericType(gType, match);
 
 #pragma warning disable IL2055
                 match = match.MakeGenericType(gTypeArgs);
 #pragma warning restore IL2055
 
                 if (!match.IsAssignableTo(typeof(TScope)))
-                    throw Stl.Internal.Errors.MustBeAssignableTo<TScope>(match);
+                    throw ActualLab.Internal.Errors.MustBeAssignableTo<TScope>(match);
                 return match;
             }
             return null;

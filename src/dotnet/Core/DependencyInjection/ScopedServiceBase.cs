@@ -1,6 +1,6 @@
 using ActualChat.Hosting;
 using ActualChat.Kvas;
-using Stl.Diagnostics;
+using ActualLab.Diagnostics;
 
 namespace ActualChat.DependencyInjection;
 

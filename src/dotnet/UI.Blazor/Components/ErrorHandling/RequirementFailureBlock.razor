@@ -2,7 +2,7 @@
 @using ActualChat.Users
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.Services
-@using Stl.Reflection
+@using ActualLab.Reflection
 @inherits FusionComponentBase
 @{
     var needsSignIn = Failures.Items.Any(x => x.Value is INotFoundException) && Account != AccountFull.Loading;

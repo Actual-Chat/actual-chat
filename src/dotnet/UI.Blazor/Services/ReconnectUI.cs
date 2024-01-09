@@ -1,5 +1,5 @@
 using ActualChat.Hosting;
-using Stl.Rpc;
+using ActualLab.Rpc;
 
 namespace ActualChat.UI.Blazor.Services;
 

@@ -1,7 +1,7 @@
 using ActualChat.Contacts;
 using ActualChat.Kvas;
 using ActualChat.UI.Blazor.Services;
-using Stl.Interception;
+using ActualLab.Interception;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
@@ -272,7 +272,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     [ComputeMethod]
     protected virtual Task<Unit> PseudoListAllUnorderedRawDependency()
-        => Stl.Async.TaskExt.UnitTask;
+        => ActualLab.Async.TaskExt.UnitTask;
 
     [ComputeMethod]
     protected virtual async Task<bool> IsSelectedChatUnlistedInternal(CancellationToken cancellationToken)
