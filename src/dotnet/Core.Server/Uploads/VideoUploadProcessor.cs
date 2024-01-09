@@ -1,7 +1,6 @@
 using System.Net.Mime;
 using ActualChat.Media;
 using FFMpegCore;
-using FFMpegCore.Arguments;
 using FFMpegCore.Enums;
 using ActualLab.IO;
 
@@ -38,8 +37,7 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
                     false,
                     options => options.WithVideoCodec(VideoCodec.LibX264)
                         .WithFastStart()
-                        .WithVariableBitrate(4)
-                        .WithArgument(new VideoFiltersArgument(new VideoFilterOptions())))
+                        .WithVariableBitrate(4))
                 .ProcessAsynchronously()
                 .ConfigureAwait(false);
             return new ProcessedFile(
@@ -66,13 +64,20 @@ public class VideoUploadProcessor(ILogger<VideoUploadProcessor> log) : IUploadPr
             var media = await FFProbe.AnalyseAsync(videoTempFile, cancellationToken: cancellationToken).ConfigureAwait(false);
             var video = media.PrimaryVideoStream;
             var size = video is null ? (Size?)null : new Size(video.Width, video.Height);
-            var mustConvert = !OrdinalIgnoreCaseEquals(media.PrimaryVideoStream?.CodecName, "h264")
-                && !OrdinalIgnoreCaseEquals(media.PrimaryVideoStream?.CodecName, VideoCodec.LibX264.Name);
-            return (mustConvert, size, media.Duration);
+            return (MustConvert(media), size, media.Duration);
         }
         catch (Exception e) {
             Log.LogWarning(e, "Failed to extract video info from '{FileName}'", videoUpload.FileName);
             return (false, null, TimeSpan.Zero);
+        }
+
+        bool MustConvert(IMediaAnalysis media)
+        {
+            if (!OrdinalIgnoreCaseEquals(videoUpload.FileName.Extension, ".mp4"))
+                return true;
+
+            return !OrdinalIgnoreCaseEquals(media.PrimaryVideoStream?.CodecName, "h264")
+                && !OrdinalIgnoreCaseEquals(media.PrimaryVideoStream?.CodecName, VideoCodec.LibX264.Name);
         }
     }
 
