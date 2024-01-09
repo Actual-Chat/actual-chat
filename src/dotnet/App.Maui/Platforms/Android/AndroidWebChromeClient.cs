@@ -67,7 +67,8 @@ internal class AndroidWebChromeClient : WebChromeClient
         _client = client;
         _fileChooser = fileChooser;
 
-        _requestPermissionLauncher = _activity.RegisterForActivityResult(
+        // ReSharper disable once NullCoalescingConditionIsAlwaysNotNullAccordingToAPIContract
+        _requestPermissionLauncher ??= _activity.RegisterForActivityResult(
             new ActivityResultContracts.RequestPermission(),
             new ActivityResultCallback());
     }
