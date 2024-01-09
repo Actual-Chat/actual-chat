@@ -57,7 +57,7 @@
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private ChatUI ChatUI { get; init; } = null!;
 
-    private EventHandler _navbarUIOnSelectedGroupChanged = null!;
+    private EventHandler<NavbarGroupChangedEventArgs> _navbarUIOnSelectedGroupChanged = null!;
 
     protected override void OnInitialized() {
         _navbarUIOnSelectedGroupChanged = NavbarUIOnSelectedGroupChanged;
@@ -70,6 +70,6 @@
         return base.DisposeAsync();
     }
 
-    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
+    private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
         => StateHasChanged();
 }

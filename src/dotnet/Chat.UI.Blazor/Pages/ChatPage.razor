@@ -215,10 +215,12 @@
         if (ChatSid == null) {
             await ChatUI.WhenLoaded;
             chatId = ChatUI.SelectedChatId.Value;
-            if (chatId.IsNone)
+            // If Selected place is defined and chat id is not specified then apparently place has no chats
+            // and we want to display blank chat screen. Do not show Announcements chat.
+            if (chatId.IsNone && Hub.ChatUI.SelectedPlaceId.Value.IsNone)
                 chatId = Constants.Chat.AnnouncementsChatId;
         }
-        ChatUI.SelectChat(chatId);
+        ChatUI.SelectChatOnNavigation(chatId);
     }
 
     // Nested types

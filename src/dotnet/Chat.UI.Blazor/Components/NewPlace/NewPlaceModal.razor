@@ -73,7 +73,7 @@
         if (_defaultChat != null)
             await Hub.History.NavigateTo(Links.Chat(_defaultChat.Id));
         else
-            Hub.NavbarUI.SelectGroup(_place.Id.GetNavbarGroupId());
+            Hub.NavbarUI.SelectGroup(_place.Id.GetNavbarGroupId(), true);
     }
 
     private void Close()

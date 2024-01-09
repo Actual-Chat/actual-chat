@@ -125,10 +125,8 @@ public partial class ChatUI
     private async Task SynchronizeSelectedChatIdAndActivePlaceId(CancellationToken cancellationToken)
     {
         await WhenLoaded.ConfigureAwait(false);
-        var restoreTask = RestoreSelectedPlace(cancellationToken);
-        var synchronizeSelectedChatIdsTask = SynchronizeSelectedChatIds();
-        await Task.WhenAll(restoreTask, synchronizeSelectedChatIdsTask).ConfigureAwait(false);
-        await UpdateSelectedChatWhenPlaceChanged(cancellationToken).ConfigureAwait(false);
+        _ = RestoreSelectedPlace(cancellationToken);
+        _ = SynchronizeSelectedChatIds();
     }
 
     private async Task SynchronizeSelectedChatIds()
@@ -165,56 +163,17 @@ public partial class ChatUI
             if (!placeId.IsNone)
                 place = await Hub.Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
 
-            await Hub.Dispatcher.InvokeAsync(() => {
-                    if (place == null)
-                        SelectChat(ChatId.None);
-                    else
-                        Hub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId());
-                })
-                .ConfigureAwait(false);
+            if (place != null)
+                await Hub.Dispatcher.InvokeAsync(() => {
+                        Hub.NavbarUI.SelectGroup(place.Id.GetNavbarGroupId(), false);
+                    })
+                    .ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            Log.LogError(ex, "RestoreSelectedPlace failed");
         }
         finally {
             _whenActivePlaceRestored.TrySetResult();
-        }
-    }
-
-    private async Task UpdateSelectedChatWhenPlaceChanged(CancellationToken cancellationToken)
-    {
-        var cValueBase = await Computed
-            .Capture(() => SelectedPlaceId.Use(cancellationToken), cancellationToken)
-            .ConfigureAwait(false);
-        var changes = cValueBase.Changes(cancellationToken);
-        await foreach (var cValue in changes.ConfigureAwait(false)) {
-            var placeId = cValue.Value;
-            var selectedChatId = SelectedChatId.Value;
-            if (placeId == selectedChatId.PlaceId)
-                continue;
-
-            var selectedChatIds = SelectedChatIds.Value;
-            if (selectedChatIds.TryGetValue(placeId, out var lastSelectedChatId)) {
-                Chat? readChat = null;
-                if (!lastSelectedChatId.IsNone)
-                    readChat = await Chats.Get(Session, lastSelectedChatId, cancellationToken).ConfigureAwait(false);
-                if (readChat == null)
-                    lastSelectedChatId = ChatId.None;
-            }
-
-            if (lastSelectedChatId == ChatId.None)
-                DebugLog?.LogDebug("ResetSelectedChatOnPlaceChange");
-            else
-                DebugLog?.LogDebug("Restoring SelectedChatOnPlace. ChatId: '{ChatId}'", lastSelectedChatId);
-
-            await Hub.Dispatcher.InvokeAsync(async () => {
-                    SelectChat(lastSelectedChatId);
-                    if (!lastSelectedChatId.IsNone && Hub.PanelsUI.IsWide()) {
-                        // Do not navigate on narrow screen to prevent hiding panels
-                        // Navigate to selected chat only after delay to make ChatLists update smoother.
-                        await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
-                        if (SelectedChatId.Value == lastSelectedChatId)
-                            await Hub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
-                    }
-                })
-                .ConfigureAwait(false);
         }
     }
 }

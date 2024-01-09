@@ -33,6 +33,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private History History => Hub.History;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private KeepAwakeUI KeepAwakeUI => Hub.KeepAwakeUI;
     private TuneUI TuneUI => Hub.TuneUI;
@@ -273,29 +274,12 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         return chatId;
     }
 
-    public bool SelectChat(ChatId chatId)
+    public bool SelectChatOnNavigation(ChatId chatId)
     {
-        lock (Lock) {
-            if (_selectedChatId.Value == chatId)
-                return false;
-
-            _selectedChatId.Value = chatId;
-            SaveSelectedChatIds(chatId);
-        }
-        // The rest is done by InvalidateSelectedChatDependencies
-        return true;
-    }
-
-    public bool SelectPlace(PlaceId placeId)
-    {
-        lock (_lock) {
-            if (_selectedPlaceId.Value == placeId)
-                return false;
-
-            _selectedPlaceId.Value = placeId;
-        }
-        // The rest is done by SynchronizeSelectedChatIdAndActivePlaceId
-        return true;
+        var hasChanged = SelectChatInternal(chatId);
+        if (!chatId.IsNone || hasChanged)
+            SelectPlaceNavbarGroup(chatId);
+        return hasChanged;
     }
 
     public void HighlightEntry(ChatEntryId entryId, bool navigate, bool updateUI = true)
@@ -327,6 +311,37 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     }
 
     // Private methods
+
+    private bool SelectChatInternal(ChatId chatId)
+    {
+        lock (Lock) {
+            if (_selectedChatId.Value == chatId)
+                return false;
+
+            _selectedChatId.Value = chatId;
+            SaveSelectedChatIds(chatId);
+        }
+        // The rest is done by InvalidateSelectedChatDependencies
+        return true;
+    }
+
+    private bool SelectPlaceInternal(PlaceId placeId)
+    {
+        lock (_lock) {
+            if (_selectedPlaceId.Value == placeId)
+                return false;
+
+            _selectedPlaceId.Value = placeId;
+        }
+        // The rest is done by SynchronizeSelectedChatIdAndActivePlaceId
+        return true;
+    }
+
+    private void SelectPlaceNavbarGroup(ChatId chatId)
+    {
+        var placeId = chatId.PlaceChatId.PlaceId;
+        NavbarUI.SelectGroup(placeId.IsNone ? NavbarGroupIds.Chats : placeId.GetNavbarGroupId(), false);
+    }
 
     private async ValueTask<ChatId> FixSelectedChatId(ChatId chatId, CancellationToken cancellationToken = default)
     {
@@ -402,6 +417,8 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     {
         if (chatId.IsNone)
             return;
+        if (chatId == SpecialChat.NoChatSelected.Id)
+            return;
 
         // Is executing under _lock;
         if (_pendingSelectedChatIdChanges != null) {
@@ -415,45 +432,61 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private static IImmutableDictionary<PlaceId, ChatId> SetItem(IImmutableDictionary<PlaceId, ChatId> selectedChatIds, ChatId chatId)
         => selectedChatIds.SetItem(chatId.PlaceId, chatId);
 
-    private void NavbarUIOnSelectedGroupChanged(object? sender, EventArgs e)
+    private void NavbarUIOnSelectedGroupChanged(object? sender, NavbarGroupChangedEventArgs e)
     {
         var placeId = PlaceId.None;
         var isChats = OrdinalEquals(NavbarUI.SelectedGroupId, NavbarGroupIds.Chats) || NavbarUI.IsPlaceSelected(out placeId);
         if (!isChats)
             return;
-        if (SelectPlace(placeId))
-            return;
-        // It's the same place, lets ensure that selected chat is displayed.
-        _ = EnsureSelectedChatIsDisplayed();
 
-        async Task EnsureSelectedChatIsDisplayed(CancellationToken cancellationToken = default)
+        SelectPlaceInternal(placeId);
+        if (!e.IsUserAction)
+            return;
+
+        _ = DisplayLastUsedChat();
+
+        async Task DisplayLastUsedChat(CancellationToken cancellationToken = default)
         {
             try {
-                var lastSelectedChatId = SelectedChatId.Value;
-                if (lastSelectedChatId.IsNone)
-                    return;
-
-                var chat = await Chats.Get(Session, lastSelectedChatId, cancellationToken)
+                var lastSelectedChatId = await GetChatIdToDisplay(cancellationToken)
                     .ConfigureAwait(true); // Continue on the Blazor Dispatcher
-                if (SelectedChatId.Value != lastSelectedChatId)
-                    return;
 
-                if (chat == null) {
-                    SelectChat(ChatId.None);
-                    return;
-                }
+                if (lastSelectedChatId == ChatId.None)
+                    DebugLog?.LogDebug("ResetSelectedChatOnPlaceChange");
+                else
+                    DebugLog?.LogDebug("Restoring SelectedChatOnPlace. ChatId: '{ChatId}'", lastSelectedChatId);
 
-                if (!lastSelectedChatId.IsNone && Hub.PanelsUI.IsWide()) {
+                SelectChatInternal(lastSelectedChatId);
+                if (Hub.PanelsUI.IsWide()) {
                     // Do not navigate on narrow screen to prevent hiding panels
                     // Navigate to selected chat only after delay to make ChatLists update smoother.
                     await Task.Delay(500, default).ConfigureAwait(true); // Continue on the Blazor Dispatcher
-                    if (SelectedChatId.Value == lastSelectedChatId)
-                        await Hub.History.NavigateTo(Links.Chat(lastSelectedChatId)).ConfigureAwait(false);
+                    if (SelectedChatId.Value == lastSelectedChatId) {
+                        var mustReplace = History.LocalUrl.IsChat();
+                        await History.NavigateTo(Links.Chat(lastSelectedChatId), mustReplace).ConfigureAwait(false);
+                    }
                 }
             }
-            catch (Exception e) {
-                Log.LogError(e, "Failed to navigate to selected chat");
+            catch (Exception ex) {
+                Log.LogError(ex, "DisplayLastUsedChat failed");
             }
+        }
+
+        async Task<ChatId> GetChatIdToDisplay(CancellationToken cancellationToken)
+        {
+            var selectedChatIds = SelectedChatIds.Value;
+            if (!selectedChatIds.TryGetValue(placeId, out var lastSelectedChatId)) {
+                var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
+                if (contactIds.Count > 0)
+                    lastSelectedChatId = contactIds[0].ChatId;
+            }
+            Chat? readChat = null;
+            if (!lastSelectedChatId.IsNone)
+                readChat = await Chats.Get(Session, lastSelectedChatId, cancellationToken)
+                    .ConfigureAwait(false);
+            if (readChat == null)
+                lastSelectedChatId = !placeId.IsNone ? ChatId.None : Constants.Chat.AnnouncementsChatId;
+            return lastSelectedChatId;
         }
     }
 }

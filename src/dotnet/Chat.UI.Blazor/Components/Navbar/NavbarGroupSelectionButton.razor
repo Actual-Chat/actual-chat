@@ -44,7 +44,7 @@
     }
 
     private void OnClick()
-        => NavbarUI.SelectGroup(Id);
+        => NavbarUI.SelectGroup(Id, true);
 
     private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
         => StateHasChanged();

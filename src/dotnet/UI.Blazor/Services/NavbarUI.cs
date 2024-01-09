@@ -10,12 +10,12 @@ public class NavbarUI(IServiceProvider services)
 
     public string SelectedGroupId { get; private set; } = "chats";
     public string SelectedGroupTitle { get; private set; } = "";
-    public event EventHandler? SelectedGroupChanged;
+    public event EventHandler<NavbarGroupChangedEventArgs>? SelectedGroupChanged;
     public event EventHandler? SelectedGroupTitleUpdated;
 
     // NOTE(AY): Any public member of this type can be used only from Blazor Dispatcher's thread
 
-    public void SelectGroup(string id)
+    public void SelectGroup(string id, bool isUserAction)
     {
         if (OrdinalEquals(id, SelectedGroupId))
             return;
@@ -24,7 +24,7 @@ public class NavbarUI(IServiceProvider services)
         Log.LogDebug("Group changed (Id='{Id}', Title='{Title}')", id, group?.Title ?? "(unknown)");
         SelectedGroupId = id;
         SelectedGroupTitle = group?.Title ?? string.Empty;
-        SelectedGroupChanged?.Invoke(this, EventArgs.Empty);
+        SelectedGroupChanged?.Invoke(this, new NavbarGroupChangedEventArgs(id, isUserAction));
     }
 
     public void RegisterGroup(string id, string title)
@@ -59,4 +59,10 @@ public class NavbarUI(IServiceProvider services)
         public string Id { get; } = id;
         public string Title { get; set; } = "";
     }
+}
+
+public class NavbarGroupChangedEventArgs(string id, bool isUserAction) : EventArgs
+{
+    public string Id { get; } = id;
+    public bool IsUserAction { get; } = isUserAction;
 }
