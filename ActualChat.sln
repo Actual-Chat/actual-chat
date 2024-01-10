@@ -253,6 +253,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-92B2-4BC2-9970-8AFF829A1987}"
 	ProjectSection(SolutionItems) = preProject
 		docs\Tasks.md = docs\Tasks.md
+		docs\Search.md = docs\Search.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
