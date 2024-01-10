@@ -62,6 +62,42 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         return chat with { Picture = media };
     }
 
+    // TODO: Chat and ChatFull. This method must return Chat
+    // Not a [ComputeMethod]!
+    public async Task<ApiArray<Chat>> List(
+        Moment minCreatedAt,
+        ChatId lastChatId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+        var dMinCreatedAt = minCreatedAt.ToDateTime(DateTime.MinValue, DateTime.MaxValue);
+
+        var dbChats = await dbContext.Chats
+            .Where(x => x.CreatedAt >= dMinCreatedAt)
+            .OrderBy(x => x.CreatedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (dbChats.Count == 0)
+            return ApiArray<Chat>.Empty;
+
+        if (lastChatId.IsNone || dbChats[0].CreatedAt > dMinCreatedAt)
+            // no chats created at minCreatedAt that we need to skip
+            return dbChats.Select(x => x.ToModel()).ToApiArray();
+
+        var lastChatIdx = dbChats.FindIndex(x => new ChatId(x.Id) == lastChatId);
+        if (lastChatIdx < 0)
+            return dbChats.Select(x => x.ToModel()).ToApiArray();
+
+        return dbChats.Skip(lastChatIdx + 1).Select(x => x.ToModel()).ToApiArray();
+    }
+
+    [ComputeMethod]
+    protected virtual Task<Unit> PseudoList()
+        => ActualLab.Async.TaskExt.UnitTask;
+
     // [ComputeMethod]
     public virtual async Task<Chat?> GetTemplatedChatFor(ChatId templateId, UserId userId, CancellationToken cancellationToken)
     {
@@ -78,6 +114,18 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbChat?.ToModel();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<long?> GetMaxEntryVersion(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sid = chatId.Value;
+        return await dbContext.ChatEntries.Where(x => x.Id == sid && x.Kind == ChatEntryKind.Text)
+            .MaxAsync(x => (long?)x.Version, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -134,6 +182,29 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var tile = await GetTile(chatId, ChatEntryKind.Text, idTile.Range, false, cancellationToken).ConfigureAwait(false);
         var lastEntry = tile.Entries.Count > 0 ? tile.Entries[^1] : null;
         return new ChatNews(idRange, lastEntry);
+    }
+
+    // Not a [ComputeMethod]!
+    public async Task<ApiList<ChatEntry>> ListChangedEntries(
+        ChatId chatId,
+        int limit,
+        long maxLocalIdExclusive,
+        long minVersionExclusive,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChatEntries = await dbContext.ChatEntries.Where(x
+                => x.ChatId == chatId.Value
+                && x.Kind == ChatEntryKind.Text
+                && x.Version > minVersionExclusive
+                && x.LocalId < maxLocalIdExclusive)
+            .OrderBy(x => x.Version)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbChatEntries.Select(x => x.ToModel()).ToApiList();
     }
 
     // [ComputeMethod]

@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat.Db;
 
 [Table("Chats")]
+[Index(nameof(CreatedAt))]
 public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;

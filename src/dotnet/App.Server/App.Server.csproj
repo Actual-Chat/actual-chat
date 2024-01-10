@@ -43,6 +43,7 @@
     <ProjectReference Include="..\Invite.Service.Migration\Invite.Service.Migration.csproj" />
     <ProjectReference Include="..\Users.Service.Migration\Users.Service.Migration.csproj" />
     <ProjectReference Include="..\Media.Service.Migration\Media.Service.Migration.csproj" />
+    <ProjectReference Include="..\Search.Service.Migration\Search.Service.Migration.csproj" />
     <!-- And service projects for stateless / other services -->
     <ProjectReference Include="..\Audio.Service\Audio.Service.csproj" />
     <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />

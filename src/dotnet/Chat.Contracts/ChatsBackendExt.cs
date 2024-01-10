@@ -37,4 +37,26 @@ public static class ChatsBackendExt
             .ConfigureAwait(false);
         return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
     }
+
+    public static async IAsyncEnumerable<ApiArray<Chat>> Batches(
+        this IChatsBackend chatsBackend,
+        Moment minCreatedAt,
+        ChatId lastChatId,
+        int limit,
+        [EnumeratorCancellation]
+        CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            var chats = await chatsBackend.List(minCreatedAt, lastChatId, limit, cancellationToken)
+                .ConfigureAwait(false);
+            if (chats.Count == 0)
+                yield break;
+
+            yield return chats;
+
+            var lastChat = chats[^1];
+            lastChatId = lastChat.Id;
+            minCreatedAt = lastChat.CreatedAt;
+        }
+    }
 }

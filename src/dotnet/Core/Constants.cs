@@ -194,4 +194,9 @@ public static partial class Constants
         public const int OpusFrameDurationMs = 20;
         public static readonly TimeSpan OpusFrameDuration = TimeSpan.FromMilliseconds(OpusFrameDurationMs);
     }
+
+    public static class Search
+    {
+        public const int PageSizeLimit = 50;
+    }
 }
