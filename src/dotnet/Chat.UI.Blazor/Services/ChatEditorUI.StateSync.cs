@@ -3,7 +3,7 @@ namespace ActualChat.Chat.UI.Blazor.Services;
 public partial class ChatEditorUI
 {
     protected override Task OnRun(CancellationToken cancellationToken)
-        => AsyncChainExt.From(HideWhenRelatedEntryRemoved)
+        => AsyncChain.From(HideWhenRelatedEntryRemoved)
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
             .RunIsolated(StopToken);

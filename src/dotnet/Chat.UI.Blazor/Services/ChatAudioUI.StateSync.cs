@@ -12,17 +12,17 @@ public partial class ChatAudioUI
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var baseChains = new[] {
-            AsyncChainExt.From(InvalidateActiveChatDependencies),
-            AsyncChainExt.From(InvalidateHistoricalPlaybackDependencies),
-            AsyncChainExt.From(PushRecordingState),
-            AsyncChainExt.From(PushRealtimePlaybackState),
-            AsyncChainExt.From(StopHistoricalPlaybackWhenRecordingStarts),
-            AsyncChainExt.From(StopListeningWhenIdle),
-            AsyncChainExt.From(StopRecordingOnAwake),
-            AsyncChainExt.From(ReconnectOnRpcReconnect),
-            AsyncChainExt.From(UpdateNextBeepAt),
-            AsyncChainExt.From(PlayBeep),
-            AsyncChainExt.From(RecordingTroubleshooter),
+            AsyncChain.From(InvalidateActiveChatDependencies),
+            AsyncChain.From(InvalidateHistoricalPlaybackDependencies),
+            AsyncChain.From(PushRecordingState),
+            AsyncChain.From(PushRealtimePlaybackState),
+            AsyncChain.From(StopHistoricalPlaybackWhenRecordingStarts),
+            AsyncChain.From(StopListeningWhenIdle),
+            AsyncChain.From(StopRecordingOnAwake),
+            AsyncChain.From(ReconnectOnRpcReconnect),
+            AsyncChain.From(UpdateNextBeepAt),
+            AsyncChain.From(PlayBeep),
+            AsyncChain.From(RecordingTroubleshooter),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (

@@ -27,7 +27,7 @@ public class ContactSync(UIHub hub) : ScopedWorkerBase<UIHub>(hub), IComputeServ
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var retryDelays = RetryDelaySeq.Exp(3, 600);
-        return AsyncChainExt.From(TrySync)
+        return AsyncChain.From(TrySync)
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .RunIsolated(cancellationToken);

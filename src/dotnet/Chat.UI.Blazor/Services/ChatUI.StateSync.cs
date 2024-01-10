@@ -11,11 +11,11 @@ public partial class ChatUI
     {
         await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
         var baseChains = new[] {
-            AsyncChainExt.From(InvalidateSelectedChatDependencies),
-            AsyncChainExt.From(NavigateToFixedSelectedChat),
-            AsyncChainExt.From(ResetHighlightedEntry),
-            AsyncChainExt.From(PushKeepAwakeState),
-            AsyncChainExt.From(SynchronizeSelectedChatIdAndActivePlaceId),
+            AsyncChain.From(InvalidateSelectedChatDependencies),
+            AsyncChain.From(NavigateToFixedSelectedChat),
+            AsyncChain.From(ResetHighlightedEntry),
+            AsyncChain.From(PushKeepAwakeState),
+            AsyncChain.From(SynchronizeSelectedChatIdAndActivePlaceId),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (

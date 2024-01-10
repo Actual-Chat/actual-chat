@@ -33,7 +33,7 @@ public sealed class SessionTokens(UIHub hub) : ScopedWorkerBase<UIHub>(hub), ICo
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var retryDelays = RetryDelaySeq.Exp(0.1, 5);
-        return AsyncChainExt.From(AutoRefresh)
+        return AsyncChain.From(AutoRefresh)
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .RunIsolated(cancellationToken);

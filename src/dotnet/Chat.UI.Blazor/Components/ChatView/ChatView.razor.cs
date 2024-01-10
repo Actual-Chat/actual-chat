@@ -78,7 +78,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             _readPosition = await ChatUI.LeaseReadPositionState(Chat.Id, DisposeToken);
             _shownReadEntryLid.Value = _readPosition.Value.EntryLid;
             _whenInitializedSource.TrySetResult();
-            _updateReadStateTask = AsyncChainExt.From(UpdateReadState)
+            _updateReadStateTask = AsyncChain.From(UpdateReadState)
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
                 .RunIsolated(DisposeToken);

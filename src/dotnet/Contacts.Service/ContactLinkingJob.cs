@@ -40,7 +40,7 @@ internal class ContactLinkingJob : WorkerBase, IHasServices, INotifyInitialized
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var retryDelays = RetryDelaySeq.Exp(1, MaxIdleInterval.TotalSeconds);
-        return AsyncChainExt.From(DispatchAll)
+        return AsyncChain.From(DispatchAll)
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .CycleForever()

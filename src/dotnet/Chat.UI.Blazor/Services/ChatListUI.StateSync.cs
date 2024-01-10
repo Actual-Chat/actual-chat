@@ -10,11 +10,11 @@ public partial class ChatListUI
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var baseChains = new[] {
-            AsyncChainExt.From(InvalidateIsSelectedChatUnlisted),
+            AsyncChain.From(InvalidateIsSelectedChatUnlisted),
             new($"{nameof(PushItems)}({ChatListKind.Active})", ct => PushItems(ChatListKind.Active, ct)),
             new($"{nameof(PushItems)}({ChatListKind.All})", ct => PushItems(ChatListKind.All, ct)),
-            AsyncChainExt.From(ResetPushIfStuck),
-            AsyncChainExt.From(PlayTuneOnNewMessages),
+            AsyncChain.From(ResetPushIfStuck),
+            AsyncChain.From(PlayTuneOnNewMessages),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return (

@@ -5,7 +5,7 @@ public partial class AppActivity
     protected override Task OnRun(CancellationToken cancellationToken)
     {
         var retryDelays = RetryDelaySeq.Exp(0.5, 3);
-        return AsyncChainExt.From(PushState)
+        return AsyncChain.From(PushState)
             .Log(LogLevel.Debug, Log)
             .RetryForever(retryDelays, Log)
             .RunIsolated(cancellationToken);

@@ -32,14 +32,14 @@ public sealed partial class AudioInitializer(UIHub hub)
         try {
             Log.LogInformation("AudioInitializer: started");
             var retryDelays = RetryDelaySeq.Exp(0.1, 3);
-            var whenInitialized = AsyncChainExt.From(Initialize, $"{nameof(AudioInitializer)}.{nameof(Initialize)}")
+            var whenInitialized = AsyncChain.From(Initialize, $"{nameof(AudioInitializer)}.{nameof(Initialize)}")
                 .Log(LogLevel.Debug, Log)
                 .Retry(retryDelays, 5, Log)
                 .Run(cancellationToken);
             await _whenInitializedSource.TrySetFromTaskAsync(whenInitialized, cancellationToken).ConfigureAwait(false);
             Log.LogInformation("AudioInitializer: initialized with status {Status}", whenInitialized.Status);
 
-            await AsyncChainExt.From(UpdateBackgroundState, $"{nameof(AudioInitializer)}.{nameof(UpdateBackgroundState)}")
+            await AsyncChain.From(UpdateBackgroundState, $"{nameof(AudioInitializer)}.{nameof(UpdateBackgroundState)}")
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
                 .Run(cancellationToken)
