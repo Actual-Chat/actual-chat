@@ -6,7 +6,7 @@
     _isCurrent = CalculateIsCurrent();
 }
 
-<div class="@Class @activeClass navbar-item group" data-test-url="@Url" data-test-local-url="@History.LocalUrl.Value" @attributes="@Attributes">
+<div class="@Class @activeClass navbar-item group" @attributes="@Attributes">
     @if (Url.IsNullOrEmpty()) { /* IsSelected is needed to make sure click events work on iOS */
         <div class="navbar-item-content">
             @ChildContent
