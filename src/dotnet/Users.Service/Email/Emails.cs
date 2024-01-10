@@ -1,7 +1,7 @@
 using System.Text;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
-using Stl.Fusion.EntityFramework;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Users.Email;
 
