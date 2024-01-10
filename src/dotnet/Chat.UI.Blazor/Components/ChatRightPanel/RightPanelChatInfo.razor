@@ -62,9 +62,6 @@
             await AccountSettings.SetUserChatSettings(Chat.Id, userChatSettings, cancellationToken).ConfigureAwait(false);
         });
 
-    private Task OnInviteClick()
-        => ModalUI.Show(new AddMemberModal.Model(Chat.Id));
-
     public sealed record Model {
         public static readonly Model Loading = new();
 
