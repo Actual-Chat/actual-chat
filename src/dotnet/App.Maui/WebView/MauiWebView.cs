@@ -132,7 +132,7 @@ public sealed partial class MauiWebView
 
     private void OnUnloaded(object? sender, EventArgs eventArgs)
     {
-#if !WINDOWS
+#if IOS
         BlazorWebView.Handler?.DisconnectHandler();
 #else
         // It hangs the app on Windows due to a deadlock described in a workaround below.
