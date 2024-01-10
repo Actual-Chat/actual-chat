@@ -1,5 +1,4 @@
 using ActualChat.Collections.Internal;
-using Cysharp.Text;
 using MemoryPack;
 
 namespace ActualChat.Collections;
@@ -14,6 +13,8 @@ public static class ApiArray
     public static ApiArray<T> New<T>(params T[] items)
         => new(items);
 }
+
+#pragma warning disable MA0084
 
 [JsonConverter(typeof(ApiArrayJsonConverter))]
 [Newtonsoft.Json.JsonConverter(typeof(ApiArrayNewtonsoftJsonConverter))]

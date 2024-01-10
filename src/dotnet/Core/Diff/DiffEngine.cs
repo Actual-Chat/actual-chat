@@ -24,11 +24,11 @@ public class DiffEngine(
 
     static DiffEngine()
         => _defaultLazy = new Lazy<DiffEngine>(() => {
-            var services = new ServiceCollection()
+            var c = new ServiceCollection()
                 .AddTypeMapper<IDiffHandler>(DefaultTypeMapBuilder)
                 .AddSingleton<DiffEngine, DiffEngine>()
                 .BuildServiceProvider();
-            return services.GetRequiredService<DiffEngine>();
+            return c.GetRequiredService<DiffEngine>();
         });
 
     // GetHandler

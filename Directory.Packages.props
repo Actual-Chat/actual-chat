@@ -19,6 +19,7 @@
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.7.0</OpenTelemetryVersion>
     <OpenTelemetryAspNetCoreVersion>1.7.0</OpenTelemetryAspNetCoreVersion>
+    <OpenTelemetryGrpcClientVersion>1.6.0-beta.3</OpenTelemetryGrpcClientVersion>
     <OpenTelemetryNpgsqlVersion>8.0.1</OpenTelemetryNpgsqlVersion>
     <SentryVersion>3.40.1</SentryVersion>
     <MemoryPackVersion>1.10.0</MemoryPackVersion>
@@ -180,7 +181,7 @@
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="$(OpenTelemetryVersion)" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="$(OpenTelemetryAspNetCoreVersion)" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="$(OpenTelemetryAspNetCoreVersion)" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="$(OpenTelemetryAspNetCoreVersion)" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="$(OpenTelemetryGrpcClientVersion)" />
     <PackageVersion Include="Npgsql.OpenTelemetry" Version="$(OpenTelemetryNpgsqlVersion)" />
     <!-- For the build project -->
     <PackageVersion Include="CliWrap" Version="3.5.0" />
