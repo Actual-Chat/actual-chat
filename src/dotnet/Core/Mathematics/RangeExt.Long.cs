@@ -8,6 +8,9 @@ public static partial class RangeExt
     public static Range<long> MoveStart(this Range<long> range, long moveStartBy)
         => new (range.Start + moveStartBy, range.End);
 
+    public static Range<long> WithStart(this Range<long> range, long newStart)
+        => new (newStart, range.End);
+
     public static Range<long> MoveEnd(this Range<long> range, long moveEndBy)
         => new (range.Start, range.End + moveEndBy);
 

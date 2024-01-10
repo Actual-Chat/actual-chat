@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Db\Db.csproj" />
+    <ProjectReference Include="..\Search.Contracts\Search.Contracts.csproj" />
+    <ProjectReference Include="..\Search\Search.csproj" />
+    <ProjectReference Include="..\Chat\Chat.csproj" />
+    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Elastic.Clients.Elasticsearch" />
+  </ItemGroup>
+
+</Project>

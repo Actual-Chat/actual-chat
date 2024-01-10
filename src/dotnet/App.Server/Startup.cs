@@ -16,6 +16,7 @@ using ActualChat.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Redis.Module;
+using ActualChat.Search.Module;
 using ActualChat.Transcription.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
@@ -124,6 +125,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new ChatServiceModule(moduleServices),
                 new TranscriptionServiceModule(moduleServices),
                 new NotificationServiceModule(moduleServices),
+                new SearchServiceModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
                 new AudioBlazorUIModule(moduleServices),

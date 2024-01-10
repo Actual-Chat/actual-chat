@@ -27,6 +27,9 @@
     "Db": "",
     "Redis": ""
   },
+  "SearchSettings": {
+    "IsSearchEnabled": true
+  },
   "UsersSettings": {
     "Db": "",
     "Redis": ""

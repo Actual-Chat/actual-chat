@@ -38,5 +38,6 @@ public sealed class RedisModule(IServiceProvider moduleServices) : HostModule<Re
         var cfg = ConfigurationOptions.Parse(configuration);
         cfg.SocketManager = SocketManager.ThreadPool;
         services.AddRedisDb<TContext>(cfg, keyPrefix);
+        services.AddTransient<DistributedLocks<TContext>>();
     }
 }

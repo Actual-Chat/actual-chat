@@ -2,6 +2,9 @@ namespace ActualChat;
 
 public static class TaskExt
 {
+    public static ValueTask ToVoidValueTask(this Task task)
+        => task.ToValueTask();
+
     // WithDelay
 
     public static async Task WithDelay(this Task task, TimeSpan delay, CancellationToken cancellationToken = default)
