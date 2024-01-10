@@ -9,6 +9,7 @@
     <Button Click="@(() => _counter++)">Counter++</Button>
     <Button Click="@NoStateHasChanged.EventCallback(() => _counter++)">Counter++ w/o StateHasChanged</Button>
     <Button Click="@StateHasChanged">StateHasChanged</Button>
+    <Button Click="@CrashWebView">WebView Crash</Button>
 </p>
 
 <p class="pt-4">Output:</p>
@@ -31,6 +32,7 @@
     private ImmutableList<string> _output = ImmutableList<string>.Empty;
 
     [Inject] private ILogger<BlazorTestPage> Log { get; init; } = null!;
+    [Inject] private IWebViewCrasher WebViewCrasher { get; init; } = null!;
 
     protected override Task OnInitializedAsync() {
         BackgroundTask.Run(() => {
@@ -46,6 +48,11 @@
             }
             return Task.CompletedTask;
         });
+        return Task.CompletedTask;
+    }
+
+    private Task CrashWebView() {
+        WebViewCrasher.Crash();
         return Task.CompletedTask;
     }
 }

@@ -31,13 +31,25 @@ public class AndroidWebViewClient(
         var didCrash = detail?.DidCrash() == true;
         var details = $"DidCrash: {didCrash}, RendererPriorityAtExit: {detail?.RendererPriorityAtExit()}, {detail}";
         log.LogWarning("OnRenderProcessGone: {Details}", details);
-        var markedDead = view.IsNotNull()
+
+        if (view.IsNotNull()
             && MauiWebView.Current is { } mauiWebView
             && mauiWebView.AndroidWebView.IfNotNull() is { } androidWebView
-            && ReferenceEquals(androidWebView, view)
-            && mauiWebView.MarkDead();
-        if (didCrash && markedDead) {
-            MainThread.BeginInvokeOnMainThread(() => MainPage.Current.RecreateWebView());
+            && ReferenceEquals(androidWebView, view)) {
+            if (mauiWebView.MarkDead()) {
+                androidWebView.ClearCache(false);
+                androidWebView.RemoveAllViews();
+                androidWebView.OnPause();
+                androidWebView.ClearHistory();
+                MainThread.BeginInvokeOnMainThread(() => {
+                    if (didCrash)
+                        MainPage.Current.RecreateWebView();
+                    else
+                        MainPage.Current.Unload();
+                    androidWebView.Destroy();
+                    androidWebView.DisposeSilently();
+                });
+            }
             return true; // Indicates that we've handled this gracefully
         }
         return base.OnRenderProcessGone(view, detail);

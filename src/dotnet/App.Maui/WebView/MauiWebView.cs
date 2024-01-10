@@ -32,6 +32,7 @@ public sealed partial class MauiWebView
     public MauiWebView()
     {
         Id = Interlocked.Increment(ref _lastId);
+        Console.WriteLine("MauiWebView: #"+Id);
         BlazorWebView = new BlazorWebView {
             HostPage = "wwwroot/index.html",
             BackgroundColor = MauiSettings.SplashBackgroundColor,
@@ -131,10 +132,8 @@ public sealed partial class MauiWebView
 
     private void OnUnloaded(object? sender, EventArgs eventArgs)
     {
-#if !WINDOWS
-        BlazorWebView.Handler?.DisconnectHandler();
-#else
-        // It hangs the app on Windows due to a deadlock described in a workaround below.
+        // BlazorWebView.Handler?.DisconnectHandler();
+        // It hangs the app on Windows, Android, iOS due to a deadlock described in a workaround below.
 
         if (BlazorWebView.Handler is not BlazorWebViewHandler handler)
             return;
@@ -173,6 +172,5 @@ public sealed partial class MauiWebView
                     }
                 }
             });
-#endif
     }
 }

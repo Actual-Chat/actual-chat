@@ -2,8 +2,10 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.UI.Blazor;
 using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Pages.Landing;
+using ActualChat.UI.Blazor.App.Pages.Test;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.UI.Blazor.App.Module;
 
@@ -35,5 +37,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<PremiumFeaturesModal.Model, PremiumFeaturesModal>()
             .Add<SignInModal.Model, SignInModal>()
         );
+
+        // Test Pages
+        services.TryAddSingleton<IWebViewCrasher, NoopWebViewCrasher>();
     }
 }

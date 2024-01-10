@@ -26,6 +26,8 @@ public class MainApplication : MauiApplication, ILifecycleObserver
     {
         Android.Util.Log.Info(MauiDiagnostics.LogTag, "OnBecameForeground");
         SetBackgroundState(false);
+        if (MainPage.Current is { Content: null } mainPage)
+            MainThread.BeginInvokeOnMainThread(() => mainPage.RecreateWebView());
     }
 
     [Export, Lifecycle.Event.OnStop]

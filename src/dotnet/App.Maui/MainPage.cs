@@ -28,4 +28,7 @@ public class MainPage : ContentPage
         else
             mauiWebView.HardNavigateTo(MauiWebView.BaseLocalUri.ToString());
     }
+
+    public void Unload()
+        => Content = null;
 }
