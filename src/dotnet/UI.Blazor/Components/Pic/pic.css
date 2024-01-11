@@ -22,7 +22,6 @@
 }
 
 .pic-image {
-    @apply rounded-full;
     @apply h-full;
 }
 

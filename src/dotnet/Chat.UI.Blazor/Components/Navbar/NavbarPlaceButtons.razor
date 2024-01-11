@@ -9,6 +9,7 @@
 }
 
 @if (places.Count > 0) {
+    var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
     <div class="navbar-place-buttons">
         @foreach (var place in places) {
             <NavbarGroupSelectionButton
@@ -19,7 +20,8 @@
                     <Pic
                         Title="@place.Title"
                         Picture="@place.Picture.ToPicture()"
-                        Size="@SquareSize.Size8"
+                        Size="@size"
+                        IsSquare="true"
                         AvatarKind="@AvatarKind.Marble"
                         AvatarKey="@place.Id.Value"/>
                 </ChildContent>
@@ -34,6 +36,8 @@
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private Session Session => Hub.Session();
+
+    [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
