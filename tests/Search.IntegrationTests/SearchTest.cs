@@ -37,22 +37,10 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         // arrange
         var chatId = new ChatId(Generate.Option);
         var updates = ApiArray.New(
-            new IndexedEntry {
-                Id = 1,
-                Content = "Let's go outside",
-            },
-            new IndexedEntry {
-                Id = 2,
-                Content = "Saying something loud",
-            },
-            new IndexedEntry {
-                Id = 3,
-                Content = "Sitting on the river bank",
-            },
-            new IndexedEntry {
-                Id = 4,
-                Content = "Wake up",
-            });
+            BuildEntry(1, "Let's go outside"),
+            BuildEntry(2, "Saying something loud"),
+            BuildEntry(3, "Sitting on the river bank"),
+            BuildEntry(4, "Wake up"));
 
         // act
         await _commander.Call(new SearchBackend_BulkIndex(chatId, updates,  ApiArray<long>.Empty));
@@ -66,8 +54,76 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         searchResults.Should()
             .BeEquivalentTo(new SearchResultPage {
                 Offset = 0,
-                Hits = ApiArray.New(new EntrySearchResult(new TextEntryId(chatId, 4, AssumeValid.Option),
-                    SearchMatch.New("Wake up"))),
+                Hits = ApiArray.New(BuildSearchResult(chatId, 4, "Wake up")),
             });
     }
+
+    [Fact]
+    public async Task ShouldFindIfUpdatedMatchesCriteria()
+    {
+        // arrange
+        var chatId = new ChatId(Generate.Option);
+        var updates = ApiArray.New(
+            BuildEntry(1, "Let's go outside"),
+            BuildEntry(2, "Saying something loud"),
+            BuildEntry(3, "Sitting on the river bank"),
+            BuildEntry(4, "Wake up"));
+        await _commander.Call(new SearchBackend_BulkIndex(chatId, updates,  ApiArray<long>.Empty));
+
+        // act
+        updates = ApiArray.New(BuildEntry(3, "Waking up..."));
+        await _commander.Call(new SearchBackend_BulkIndex(chatId, updates,  ApiArray<long>.Empty));
+
+        // assert
+        var searchResults = await _sut.Search(chatId,
+            "wak",
+            0,
+            20,
+            CancellationToken.None);
+        searchResults.Should()
+            .BeEquivalentTo(new SearchResultPage {
+                Offset = 0,
+                Hits = ApiArray.New(BuildSearchResult(chatId, 3, "Waking up..."),
+                    BuildSearchResult(chatId, 4, "Wake up")),
+            });
+    }
+
+    [Fact]
+    public async Task ShouldNotFindDeleted()
+    {
+        // arrange
+        var chatId = new ChatId(Generate.Option);
+        var updates = ApiArray.New(
+            BuildEntry(1, "Let's go outside"),
+            BuildEntry(2, "Saying something loud"),
+            BuildEntry(3, "Sitting on the river bank"),
+            BuildEntry(4, "Wake up"));
+        await _commander.Call(new SearchBackend_BulkIndex(chatId, updates,  ApiArray<long>.Empty));
+
+        // act
+        updates = ApiArray.New(BuildEntry(3, "Waking up..."));
+        var removes = ApiArray.New(4L);
+        await _commander.Call(new SearchBackend_BulkIndex(chatId, updates,  removes));
+
+        // assert
+        var searchResults = await _sut.Search(chatId,
+            "wak",
+            0,
+            20,
+            CancellationToken.None);
+        searchResults.Should()
+            .BeEquivalentTo(new SearchResultPage {
+                Offset = 0,
+                Hits = ApiArray.New(BuildSearchResult(chatId, 3, "Waking up...")),
+            });
+    }
+
+    private static IndexedEntry BuildEntry(long lid, string content)
+        => new() {
+            Id = lid,
+            Content = content,
+        };
+
+    private static EntrySearchResult BuildSearchResult(ChatId chatId, long lid, string content)
+        => new (new TextEntryId(chatId, lid, AssumeValid.Option), SearchMatch.New(content));
 }
