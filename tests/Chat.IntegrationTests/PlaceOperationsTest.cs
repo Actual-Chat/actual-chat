@@ -1,4 +1,5 @@
-﻿using ActualChat.Contacts;
+﻿using System.Security;
+using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Chat.IntegrationTests;
@@ -285,6 +286,51 @@ public class PlaceOperationsTest : AppHostTestBase
         var ownAuthor2 = await authors.GetOwn(session2, chat.Id, default);
         ownAuthor2.Should().NotBeNull();
         ownAuthor2!.ChatId.Should().Be(chat.Id);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ItShouldBeNotPossibleToLeavePublicChatOnPlace(bool isPublicPlace)
+    {
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewBlazorTester();
+        var session = tester.Session;
+        await tester.SignInAsBob();
+
+        var services = tester.AppServices;
+        var chats = services.GetRequiredService<IChats>();
+        var commander = tester.Commander;
+
+        var place = await commander.Call(new Places_Change(session, default, null, new() {
+            Create = new PlaceDiff {
+                Title = PlaceTitle,
+                IsPublic = isPublicPlace,
+            },
+        }));
+
+        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
+            Create = new ChatDiff {
+                Title = ChatTitle,
+                IsPublic = true,
+                PlaceId = place.Id,
+            },
+        }));
+        chat.Should().NotBeNull();
+
+        await TestExt.WhenMetAsync(
+            async () => {
+                chat = await chats.Get(session, chat.Id, default);
+                chat.Should().NotBeNull();
+            },
+            TimeSpan.FromSeconds(1));
+
+        chat.IsPublic.Should().BeTrue();
+        chat.Rules.CanLeave().Should().BeFalse();
+
+        await Assert.ThrowsAsync<SecurityException>(() =>
+            commander.Call(new Authors_Leave(session, chat.Id)
+        ));
     }
 
     [Fact]

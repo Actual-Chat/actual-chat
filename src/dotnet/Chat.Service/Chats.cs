@@ -110,6 +110,14 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
                     };
             }
         }
+
+        if (chatId.IsPlaceChat && !chatId.PlaceChatId.IsRoot) {
+            var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chat?.IsPublic == true)
+                rules = rules with {
+                    Permissions = rules.Permissions & ~ChatPermissions.Leave // Do not allow to leave public chat on a place
+                };
+        }
         return rules;
     }
 
