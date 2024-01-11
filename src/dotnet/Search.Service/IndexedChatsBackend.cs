@@ -12,7 +12,7 @@ internal class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Se
         _dbIndexedChatResolver ??= Services.DbEntityResolver<string, DbIndexedChat>();
 
     // [ComputeMethod]
-    public async Task<IndexedChat?> GetLast(CancellationToken cancellationToken)
+    public virtual async Task<IndexedChat?> GetLast(CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
@@ -23,7 +23,7 @@ internal class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Se
     }
 
     // [ComputeMethod]
-    public async Task<IndexedChat?> Get(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<IndexedChat?> Get(ChatId chatId, CancellationToken cancellationToken)
     {
         var dbIndexedChat = await DbIndexedChatResolver.Get(default, chatId, cancellationToken).ConfigureAwait(false);
         return dbIndexedChat?.ToModel();
