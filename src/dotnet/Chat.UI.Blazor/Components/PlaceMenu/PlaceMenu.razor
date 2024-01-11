@@ -7,6 +7,9 @@
     Text="New chat"
     Click="OnCreateChatClick">
 </MenuEntry>
+@if (!_isOwner) {
+    return;
+}
 <MenuEntry
     Class="important-item"
     Icon="icon-person-add"
@@ -18,9 +21,6 @@
     Text="Settings"
     Click="OnPlaceSettingsClick">
 </MenuEntry>
-@if (!_isOwner) {
-    return;
-}
 <MenuEntrySeparator />
 <MenuEntry
     Class="warning-item"
