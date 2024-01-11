@@ -51,8 +51,8 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
 
         // elastic
         services.AddSingleton(c => {
-            var clientSettings = !HostInfo.IsDevelopmentInstance
-                ? new ElasticsearchClientSettings(Settings.ElasticCloudId, new Base64ApiKey(Settings.ElasticUserId, Settings.ElasticApiKey))
+            var clientSettings = !HostInfo.IsDevelopmentInstance || Settings.IsCloudElastic
+                ? new ElasticsearchClientSettings(Settings.ElasticCloudId, new Base64ApiKey(Settings.ElasticApiKey))
                 : new ElasticsearchClientSettings();
             return new ElasticsearchClient(clientSettings);
         });
