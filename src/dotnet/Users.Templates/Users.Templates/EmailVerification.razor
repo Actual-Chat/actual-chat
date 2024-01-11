@@ -1,0 +1,10 @@
+@namespace ActualChat.Users.Templates
+
+<span>
+    Your email verification code is @Token. Don't share it with anyone.
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Token { get; set; } = null!;
+}

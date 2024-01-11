@@ -1,7 +1,9 @@
 using System.Text;
 using ActualChat.Users.Db;
 using ActualChat.Users.Module;
+using ActualChat.Web;
 using ActualLab.Fusion.EntityFramework;
+using ActualChat.Users.Templates;
 
 namespace ActualChat.Users.Email;
 
@@ -36,11 +38,17 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         var expiresAt = GetExpiresAt();
 
         var sTotp = totp.ToString(TotpFormat, CultureInfo.InvariantCulture);
+        var parameters = new Dictionary<string, object?>(StringComparer.Ordinal) {
+            { nameof(EmailVerification.Token), sTotp },
+        };
+        var renderer = new BlazorRenderer();
+        await using var _ = renderer.ConfigureAwait(false);
+        var html = await renderer.RenderComponent<EmailVerification>(parameters).ConfigureAwait(false);
         await EmailSender.Send(
                 "",
                 email,
                 "Actual Chat: email verification",
-                $"Your email verification code is {sTotp}. Don't share it with anyone.",
+                html,
                 cancellationToken)
             .ConfigureAwait(false);
         return expiresAt;
