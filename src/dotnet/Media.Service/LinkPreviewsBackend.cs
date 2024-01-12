@@ -162,10 +162,10 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (entry.LinkPreviewId == linkPreviewId)
             return linkPreview;
 
-        entry = entry with {
-            LinkPreviewId = linkPreviewId,
-        };
-        var changeTextEntryCmd = new ChatsBackend_UpsertEntry(entry, entry.Attachments.Count > 0);
+        var changeTextEntryCmd = new ChatsBackend_ChangeEntry(
+            entry.Id,
+            entry.Version,
+            Change.Update(new ChatEntryDiff { LinkPreviewId = linkPreviewId }));
         await Commander.Call(changeTextEntryCmd, true, cancellationToken).ConfigureAwait(false);
         return linkPreview;
     }

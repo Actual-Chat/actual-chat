@@ -54,8 +54,11 @@ public interface IChatsBackend : IComputeService
 
     [CommandHandler]
     Task<Chat> OnChange(ChatsBackend_Change command, CancellationToken cancellationToken);
+    [Obsolete("2024.01: Replaced with OnChangeEntry")]
     [CommandHandler]
     Task<ChatEntry> OnUpsertEntry(ChatsBackend_UpsertEntry command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task<ChatEntry> OnChangeEntry(ChatsBackend_ChangeEntry command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ApiArray<TextEntryAttachment>> OnCreateAttachments(ChatsBackend_CreateAttachments command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -81,11 +84,20 @@ public sealed partial record ChatsBackend_Change(
     [property: DataMember, MemoryPackOrder(3)] UserId OwnerId = default
 ) : ICommand<Chat>, IBackendCommand;
 
+[Obsolete("2024.01: Replaced with ChatsBackend_ChangeEntry")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_UpsertEntry(
     [property: DataMember, MemoryPackOrder(0)] ChatEntry Entry,
     [property: DataMember, MemoryPackOrder(1)] bool HasAttachments = false
+) : ICommand<ChatEntry>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ChatsBackend_ChangeEntry(
+    [property: DataMember, MemoryPackOrder(0)] ChatEntryId ChatEntryId,
+    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion,
+    [property: DataMember, MemoryPackOrder(2)] Change<ChatEntryDiff> Change
 ) : ICommand<ChatEntry>, IBackendCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

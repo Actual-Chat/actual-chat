@@ -591,53 +591,128 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
     // [CommandHandler]
     public virtual async Task<ChatEntry> OnUpsertEntry(
+ #pragma warning disable CS0618 // Type or member is obsolete - keep for backward compatibility for a while
         ChatsBackend_UpsertEntry command,
+ #pragma warning restore CS0618 // Type or member is obsolete
         CancellationToken cancellationToken)
     {
         var entry = command.Entry;
         var changeKind = entry.LocalId == 0
             ? ChangeKind.Create
             : entry.IsRemoved ? ChangeKind.Remove : ChangeKind.Update;
-        var chatId = entry.ChatId;
+
+        if (Computed.IsInvalidating())
+            return null!; // we are calling other command there
+
+        if (HostInfo.IsDevelopmentInstance && entry.Kind == ChatEntryKind.Text && OrdinalEquals(entry.Content, "<error>"))
+            throw StandardError.Internal("Just a test error.");
+
+        var change = changeKind switch {
+            ChangeKind.Create => Change.Create(new ChatEntryDiff(entry)),
+            ChangeKind.Update => Change.Update(new ChatEntryDiff(entry)),
+            ChangeKind.Remove => Change.Remove<ChatEntryDiff>(),
+            _ => throw StandardError.Constraint<ChangeKind>($"Invalid ChangeKind: {changeKind}."),
+        };
+        var changeEntryCommand = new ChatsBackend_ChangeEntry(entry.Id, entry.Version, change);
+        return await Commander.Call(changeEntryCommand, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task<ChatEntry> OnChangeEntry(ChatsBackend_ChangeEntry command, CancellationToken cancellationToken)
+    {
+        var change = command.Change;
+        var chatEntryId = command.ChatEntryId;
+        var chatId = command.ChatEntryId.ChatId;
+        var changeKind = change.Kind;
+        var entryKind = command.ChatEntryId.Kind;
+        var expectedVersion = command.ExpectedVersion;
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
             var invChatEntry = context.Operation().Items.Get<ChatEntry>();
             if (invChatEntry != null)
-                InvalidateTiles(chatId, entry.Kind, invChatEntry.LocalId, changeKind);
+                InvalidateTiles(chatId, entryKind, invChatEntry.LocalId, changeKind);
 
             // Invalidate min-max Id range at last
             switch (changeKind) {
             case ChangeKind.Create:
-                _ = GetIdRange(chatId, entry.Kind, true, default);
-                _ = GetIdRange(chatId, entry.Kind, false, default);
+                _ = GetIdRange(chatId, entryKind, true, default);
+                _ = GetIdRange(chatId, entryKind, false, default);
                 break;
             case ChangeKind.Remove:
-                _ = GetIdRange(chatId, entry.Kind, false, default);
+                _ = GetIdRange(chatId, entryKind, false, default);
                 break;
             }
             return null!;
         }
 
-        if (HostInfo.IsDevelopmentInstance && entry.Kind == ChatEntryKind.Text && OrdinalEquals(entry.Content, "<error>"))
-            throw StandardError.Internal("Just a test error.");
-
-        if (chatId.IsPeerChat(out var peerChatId))
-            _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
-
-        // Injecting mention names into the markup
-        var chatMarkupHub = ChatMarkupHubFactory[chatId];
-        entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
-
+        change.RequireValid();
+        ChatEntry entry;
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
+        await using (var __ = dbContext.ConfigureAwait(false)) {
+            var dbEntry = chatEntryId.IsNone
+                ? null
+                : await dbContext.ChatEntries.ForUpdate()
+                    // ReSharper disable once AccessToModifiedClosure
+                    .FirstOrDefaultAsync(c => c.Id == chatEntryId, cancellationToken)
+                    .ConfigureAwait(false);
+            var oldEntry = dbEntry?.ToModel();
 
-        var dbEntry = await DbUpsertEntry(dbContext, entry, command.HasAttachments, cancellationToken).ConfigureAwait(false);
-        entry = dbEntry.ToModel();
-        context.Operation().Items.Set(entry);
+            if (chatId.IsPeerChat(out var peerChatId))
+                _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
 
-        if (entry.Kind != ChatEntryKind.Text)
+            var chatMarkupHub = ChatMarkupHubFactory[chatId];
+            if (change.IsCreate(out var update)) {
+                var localId = await DbNextLocalId(dbContext, chatId, entryKind, cancellationToken)
+                    .ConfigureAwait(false);
+                chatEntryId = new ChatEntryId(chatId, entryKind, localId, AssumeValid.Option);
+                entry = new ChatEntry(chatEntryId) {
+                    Version = VersionGenerator.NextVersion(),
+                    BeginsAt = Clocks.SystemClock.Now,
+                };
+                entry = ApplyDiff(entry, update, false);
+                // Injecting mention names into the markup
+                entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
+                dbEntry = new DbChatEntry(entry) {
+                    HasAttachments = entry.Attachments.Count > 0,
+                };
+                dbContext.Add(dbEntry);
+            }
+            else if (change.IsUpdate(out update)) {
+                dbEntry.RequireVersion(expectedVersion);
+                if (dbEntry.IsRemoved && update.IsRemoved == true)
+                    throw StandardError.Constraint("Removed chat entries cannot be modified.");
+
+                entry = ApplyDiff(dbEntry.ToModel(), update, true) with {
+                    Version = VersionGenerator.NextVersion(dbEntry.Version),
+                };
+                // Injecting mention names into the markup
+                entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
+                var hasAttachments = update.Attachments is { Count: > 0 } || dbEntry.HasAttachments;
+                dbEntry.UpdateFrom(entry);
+                dbEntry.HasAttachments = hasAttachments;
+            }
+            else if (change.IsRemove()) {
+                dbEntry.Require();
+                entry = oldEntry.Require();
+                if (!entry.IsRemoved) {
+                    entry = entry with {
+                        IsRemoved = true,
+                        Version = VersionGenerator.NextVersion(dbEntry.Version),
+                    };
+                    dbEntry.UpdateFrom(entry);
+                }
+            }
+            else
+                throw StandardError.Internal("Invalid ChatEntryDiff state.");
+
+            context.Operation().Items.Set(entry);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (entryKind != ChatEntryKind.Text)
             return entry;
+
         if (changeKind == ChangeKind.Remove || entry.IsStreaming)
             return entry;
 
@@ -651,6 +726,50 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         new TextEntryChangedEvent(entry, author!, changeKind)
             .EnqueueOnCompletion();
         return entry;
+
+        ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate)
+        {
+            var oldAuthorId = originalEntry.AuthorId;
+            var newEntry = DiffEngine.Patch(originalEntry, diff) with {
+                Version = VersionGenerator.NextVersion(originalEntry.Version),
+            };
+            if (newEntry.Kind != originalEntry.Kind)
+                throw StandardError.Constraint("Chat Entry kind cannot be changed.");
+
+            // Validation
+            switch (newEntry.Kind) {
+            case ChatEntryKind.Audio:
+                if (newEntry.AudioEntryId.HasValue)
+                    throw StandardError.Constraint("Audio entry should not have AudioEntryId.");
+                if (newEntry.VideoEntryId.HasValue)
+                    throw StandardError.Constraint("Audio entry should not have VideoEntryId.");
+                if (newEntry.RepliedEntryLocalId.HasValue)
+                    throw StandardError.Constraint("Audio entry should not have RepliedEntryLocalId.");
+                if (!newEntry.ForwardedChatEntryId.IsNone)
+                    throw StandardError.Constraint("Audio entry should not have ForwardedChatEntryId.");
+                if (!newEntry.ForwardedAuthorId.IsNone)
+                    throw StandardError.Constraint("Audio entry should not have ForwardedAuthorId.");
+                if (newEntry.Attachments.Count > 0)
+                    throw StandardError.Constraint("Audio entry should not have Attachments.");
+                if (!newEntry.LinkPreviewId.IsEmpty)
+                    throw StandardError.Constraint("Audio entry should not have LinkPreviewId.");
+                break;
+            case ChatEntryKind.Text:
+                if (!isUpdate)
+                    break;
+
+                if (newEntry.AuthorId != oldAuthorId)
+                    throw StandardError.Unauthorized("You can edit only your own messages.");
+                if (diff?.Content != null && newEntry.IsStreaming)
+                    throw StandardError.Constraint("Only text messages can be edited.");
+                break;
+            case ChatEntryKind.Video:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat kind.");
+            }
+            return newEntry;
+        }
     }
 
     // [CommandHandler]
@@ -968,10 +1087,14 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             authorName = MentionMarkup.NotAvailableName;
 
         var entryId = new ChatEntryId(author.ChatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-        var command = new ChatsBackend_UpsertEntry(new ChatEntry(entryId) {
-            AuthorId = Bots.GetWalleId(author.ChatId),
-            SystemEntry = new MembersChangedOption(authorId, authorName, author.HasLeft),
-        });
+        var command = new ChatsBackend_ChangeEntry(
+            entryId,
+            null,
+            Change.Create(new ChatEntryDiff {
+                AuthorId = Bots.GetWalleId(author.ChatId),
+                SystemEntry = (SystemEntry)new MembersChangedOption(authorId, authorName, author.HasLeft),
+            }));
+
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -1027,53 +1150,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 break;
             }
         }
-    }
-
-    protected async Task<DbChatEntry> DbUpsertEntry(
-        ChatDbContext dbContext,
-        ChatEntry entry,
-        bool hasAttachments,
-        CancellationToken cancellationToken)
-    {
-        // AK: Suspicious - probably can lead to performance issues
-        // AY: Yes, but the goal is to have a dense sequence here;
-        //     later we'll change this to something that's more performant.
-        var entryId = entry.Id;
-        var chatId = entry.ChatId;
-        var kind = entry.Kind;
-        var isNew = entryId.LocalId == 0;
-
-        DbChatEntry dbEntry;
-        if (isNew) {
-            var localId = await DbNextLocalId(dbContext, entry.ChatId, kind, cancellationToken).ConfigureAwait(false);
-            entryId = new ChatEntryId(chatId, kind, localId, AssumeValid.Option);
-            entry = entry with {
-                Id = entryId,
-                Version = VersionGenerator.NextVersion(),
-                BeginsAt = Clocks.SystemClock.Now,
-            };
-            dbEntry = new (entry) {
-                HasAttachments = hasAttachments,
-            };
-
-            dbContext.Add(dbEntry);
-        }
-        else {
-            dbEntry = await dbContext.ChatEntries
-                .Get(entryId, cancellationToken)
-                .RequireVersion(entry.Version)
-                .ConfigureAwait(false)
-                ?? throw StandardError.NotFound<ChatEntry>();
-            if (dbEntry.IsRemoved && entry.IsRemoved)
-                throw StandardError.Constraint("Removed chat entries cannot be modified.");
-            entry = entry with {
-                Version = VersionGenerator.NextVersion(dbEntry.Version),
-            };
-            dbEntry.UpdateFrom(entry);
-        }
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return dbEntry;
     }
 
     protected virtual async Task<AuthorRules> GetRulesRaw(
