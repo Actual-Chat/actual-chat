@@ -229,13 +229,16 @@ public sealed partial class AudioProcessor : IAudioProcessor
 
         var chatId = audioSegment.AudioRecord.ChatId;
         var entryId = new ChatEntryId(chatId, ChatEntryKind.Audio, 0, AssumeValid.Option);
-        var command = new ChatsBackend_UpsertEntry(new ChatEntry(entryId) {
-            AuthorId = audioSegment.Author.Id,
-            Content = "",
-            StreamId = audioSegment.StreamId,
-            BeginsAt = beginsAt,
-            ClientSideBeginsAt = recordedAt,
-        });
+        var command = new ChatsBackend_ChangeEntry(
+            entryId,
+            null,
+            Change.Create(new ChatEntryDiff {
+                AuthorId = audioSegment.Author.Id,
+                Content = "",
+                StreamId = audioSegment.StreamId,
+                BeginsAt = beginsAt,
+                ClientSideBeginsAt = recordedAt,
+            }));
         var audioEntry = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return audioEntry;
     }
@@ -250,13 +253,15 @@ public sealed partial class AudioProcessor : IAudioProcessor
         var endsAt = audioEntry.BeginsAt + closedSegment.Duration;
         var contentEndsAt = audioEntry.BeginsAt + closedSegment.AudibleDuration;
         contentEndsAt = Moment.Min(endsAt, contentEndsAt);
-        audioEntry = audioEntry with {
-            Content = audioBlobId ?? "",
-            StreamId = Symbol.Empty,
-            EndsAt = endsAt,
-            ContentEndsAt = contentEndsAt,
-        };
-        var command = new ChatsBackend_UpsertEntry(audioEntry);
+        var command = new ChatsBackend_ChangeEntry(
+            audioEntry.Id,
+            null, // do not perform version check there - it might have already been changed and it's OK
+            Change.Update(new ChatEntryDiff {
+                Content = audioBlobId ?? "",
+                StreamId = Symbol.Empty,
+                EndsAt = endsAt,
+                ContentEndsAt = contentEndsAt,
+            }));
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -271,8 +276,6 @@ public sealed partial class AudioProcessor : IAudioProcessor
     {
         Transcript? lastTranscript = null;
         ChatEntry? textEntry = null;
-        ChatsBackend_UpsertEntry? command;
-
         var audioEntry = (ChatEntry?)null;
         try {
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {
@@ -287,17 +290,19 @@ public sealed partial class AudioProcessor : IAudioProcessor
                     ? await audioEntryTask.ConfigureAwait(false)
                     : null;
                 var entryId = new ChatEntryId(chatId, ChatEntryKind.Text, 0, AssumeValid.Option);
-                textEntry = new ChatEntry(entryId) {
-                    AuthorId = authorId,
-                    Content = "",
-                    StreamId = transcriptStreamId,
-                    AudioEntryId = audioEntry?.LocalId,
-                    BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
-                    RepliedEntryLocalId = repliedChatEntryId is { IsNone: false, LocalId: var localId }
-                        ? localId
-                        : null,
-                };
-                command = new ChatsBackend_UpsertEntry(textEntry);
+                var command = new ChatsBackend_ChangeEntry(
+                    entryId,
+                    null,
+                    Change.Create(new ChatEntryDiff {
+                        AuthorId = authorId,
+                        Content = "",
+                        StreamId = transcriptStreamId,
+                        AudioEntryId = audioEntry?.LocalId,
+                        BeginsAt = beginsAt + TimeSpan.FromSeconds(transcript.TimeRange.Start),
+                        RepliedEntryLocalId = repliedChatEntryId is { IsNone: false, LocalId: var localId }
+                            ? localId
+                            : null,
+                    }));
                 textEntry = await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
                 DebugLog?.LogDebug("CreateTextEntry: #{EntryId} is created in chat #{ChatId}",
                     textEntry.Id,
@@ -309,24 +314,27 @@ public sealed partial class AudioProcessor : IAudioProcessor
                 audioEntry ??= audioEntryTask != null
                     ? await audioEntryTask.ConfigureAwait(false)
                     : null;
-                textEntry = textEntry with {
-                    Content = lastTranscript.Text,
-                    StreamId = Symbol.Empty,
-                    AudioEntryId = audioEntry?.LocalId,
-                    EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
-                    TimeMap = audioEntry != null
-                        ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
-                        : default,
-                };
-                if (EmptyRegex.IsMatch(textEntry.Content)) {
-                    // Final transcript is empty -> remove text entry
-                    // TODO(AY): Maybe publish [Audio: ...] markup here
-                    textEntry = textEntry with { IsRemoved = true };
-                }
-                command = new ChatsBackend_UpsertEntry(textEntry);
+
+                // Final transcript is empty -> remove text entry
+                // TODO(AY): Maybe publish [Audio: ...] markup here
+                var change = EmptyRegex.IsMatch(lastTranscript.Text)
+                    ? Change.Remove<ChatEntryDiff>()
+                    : Change.Update(new ChatEntryDiff {
+                        Content = lastTranscript.Text,
+                        StreamId = Symbol.Empty,
+                        AudioEntryId = audioEntry?.LocalId,
+                        EndsAt = beginsAt + TimeSpan.FromSeconds(lastTranscript.TimeRange.End),
+                        TimeMap = audioEntry != null
+                            ? lastTranscript.TimeMap.Move(-lastTranscript.TextRange.Start, 0)
+                            : default,
+                    });
+
+                var command = new ChatsBackend_ChangeEntry(
+                    textEntry.Id,
+                    null, // do not perform version check there - it might have already been changed and it's OK
+                    change);
                 await Commander.Call(command, true, CancellationToken.None).ConfigureAwait(false);
             }
-            // TODO(AY): Maybe publish [Audio: ...] markup here
         }
     }
 }

@@ -150,8 +150,14 @@ internal class ReactionsBackend(IServiceProvider services)
             var hasReactions = await dbContext.ReactionSummaries
                 .AnyAsync(x => x.EntryId == entryId && x.Count > 0, cancellationToken)
                 .ConfigureAwait(false);
-            entry = entry with { HasReactions = hasReactions };
-            entry = await Commander.Call(new ChatsBackend_UpsertEntry(entry), cancellationToken).ConfigureAwait(false);
+            entry = entry with { HasReactions = hasReactions }; // intended, as it is used in event
+            var changeEntryCommand = new ChatsBackend_ChangeEntry(
+                entry.Id,
+                null,
+                Change.Update(new ChatEntryDiff {
+                    HasReactions = hasReactions,
+                }));
+            entry = await Commander.Call(changeEntryCommand, cancellationToken).ConfigureAwait(false);
         }
     }
 }

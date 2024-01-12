@@ -75,16 +75,22 @@ public class ChatActivityTest : AppHostTestBase
             ClientSideBeginsAt = clock.Now,
         };
         var commander = authors.GetCommander();
-        var createCommand = new ChatsBackend_UpsertEntry(entry);
+        var createCommand = new ChatsBackend_ChangeEntry(id, null, Change.Create(new ChatEntryDiff(entry)));
         entry = await commander.Call(createCommand, true, cancellationToken).ConfigureAwait(false);
 
         await testClock.Delay(2000, cancellationToken);
 
-        entry = entry with {
-            EndsAt = clock.Now,
-            StreamId = Symbol.Empty,
-        };
-        var completeCommand = new ChatsBackend_UpsertEntry(entry);
-        await commander.Call(completeCommand, true, cancellationToken).ConfigureAwait(false);
+        var endsAt = clock.Now;
+        var completeCommand = new ChatsBackend_ChangeEntry(
+            entry.Id,
+            entry.Version,
+            Change.Update(new ChatEntryDiff {
+                EndsAt = endsAt,
+                StreamId = Symbol.Empty,
+            }));
+        entry = await commander.Call(completeCommand, true, cancellationToken).ConfigureAwait(false);
+
+        entry.StreamId.Should().Be(Symbol.Empty);
+        entry.EndsAt.Should().Be(endsAt);
     }
 }

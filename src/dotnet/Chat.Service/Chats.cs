@@ -240,17 +240,22 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
             if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming || textEntry.AudioEntryId.HasValue)
                 throw StandardError.Constraint("Only text messages can be edited.");
 
-            textEntry = textEntry with { Content = text };
-            if (repliedChatEntryId.IsSome(out var v))
-                textEntry = textEntry with { RepliedEntryLocalId = v };
-            var upsertCommand = new ChatsBackend_UpsertEntry(textEntry);
+            var upsertCommand = new ChatsBackend_ChangeEntry(
+                textEntryId,
+                null,
+                Change.Update(new ChatEntryDiff {
+                    Content = text,
+                    RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
+                }));
             textEntry = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
         }
         else {
             // Create
             var textEntryId = new TextEntryId(chatId, 0, AssumeValid.Option);
-            var upsertCommand = new ChatsBackend_UpsertEntry(
-                new ChatEntry(textEntryId) {
+            var upsertCommand = new ChatsBackend_ChangeEntry(
+                textEntryId,
+                null,
+                Change.Create(new ChatEntryDiff {
                     AuthorId = author.Id,
                     Content = text,
                     RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
@@ -259,8 +264,8 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
                     ForwardedAuthorName = command.ForwardedAuthorName,
                     ForwardedChatEntryId = command.ForwardedChatEntryId,
                     ForwardedChatEntryBeginsAt = command.ForwardedChatEntryBeginsAt,
-                },
-                attachments.Count > 0);
+                    Attachments = attachments,
+                }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
             textEntryId = textEntry.Id.ToTextEntryId();
 
@@ -584,15 +589,11 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
             var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
             await Remove(audioEntryId).ConfigureAwait(false);
         }
+        return;
 
         async Task Remove(ChatEntryId entryId1) {
-            var entry1 = await this.GetEntry(session, entryId1, cancellationToken).ConfigureAwait(false);
-            if (entry1 == null || entry1.IsRemoved)
-                return;
-
-            entry1 = entry1 with { IsRemoved = true };
-            var upsertCommand = new ChatsBackend_UpsertEntry(entry1);
-            await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+            var removeCommand = new ChatsBackend_ChangeEntry(entryId1, null, Change.Remove<ChatEntryDiff>());
+            await Commander.Call(removeCommand, true, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -617,15 +618,16 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
             var audioEntryId = new ChatEntryId(chatId, ChatEntryKind.Audio, localAudioEntryId, AssumeValid.Option);
             await Restore(audioEntryId).ConfigureAwait(false);
         }
+        return;
 
         async Task Restore(ChatEntryId entryId1) {
-            var entry1 = await GetRemovedEntry(entryId1).ConfigureAwait(false);
-            if (entry1 == null || !entry1.IsRemoved)
-                return;
-
-            entry1 = entry1 with { IsRemoved = false };
-            var upsertCommand = new ChatsBackend_UpsertEntry(entry1);
-            await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+            var restoreCommand = new ChatsBackend_ChangeEntry(
+                entryId1,
+                null,
+                Change.Update(new ChatEntryDiff {
+                    IsRemoved = false,
+                }));
+            await Commander.Call(restoreCommand, true, cancellationToken).ConfigureAwait(false);
         }
 
         async ValueTask<ChatEntry?> GetRemovedEntry(ChatEntryId entryId) {
