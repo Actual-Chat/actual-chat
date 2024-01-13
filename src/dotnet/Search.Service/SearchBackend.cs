@@ -57,7 +57,11 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
         if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
 
-        var deletedIds = deleted.Select(lid => new Id(lid));
+        updated = updated.Where(x => !x.Content.IsNullOrEmpty()).ToApiArray();
+        var deletedIds = deleted.Select(lid => new Id(lid)).ToList();
+        if (updated.Count == 0 && deletedIds.Count == 0)
+            return;
+
         await Elastic
             .BulkAsync(r => r
                     .IndexMany(updated, (op, _) => op.Index(chatId.ToIndexName()))

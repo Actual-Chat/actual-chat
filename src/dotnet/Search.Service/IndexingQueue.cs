@@ -119,7 +119,8 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
                     false,
                     cancellationToken)
                 .ConfigureAwait(false);
-            var entries = chatTile.Entries.Select(x => new IndexedEntry {
+            var entries = chatTile.Entries.Where(x => !x.Content.IsNullOrEmpty())
+                .Select(x => new IndexedEntry {
                     Id = x.LocalId,
                     Content = x.Content,
                 })
@@ -149,12 +150,15 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
                     cancellationToken)
                 .ConfigureAwait(false);
             var updated = changedEntries.Where(x => !x.IsRemoved)
+                .Where(x => !x.Content.IsNullOrEmpty())
                 .Select(x => new IndexedEntry {
                     Id = x.LocalId,
                     Content = x.Content,
                 })
                 .ToApiArray();
-            var removed = changedEntries.Where(x => x.IsRemoved).Select(x => x.LocalId).ToApiArray();
+            var removed = changedEntries.Where(x => x.IsRemoved || x.Content.IsNullOrEmpty())
+                .Select(x => x.LocalId)
+                .ToApiArray();
             await Commander.Call(new SearchBackend_BulkIndex(indexedChat.Id, updated, removed), cancellationToken)
                 .ConfigureAwait(false);
             indexedChat = await SaveIndexedChat(indexedChat with {
