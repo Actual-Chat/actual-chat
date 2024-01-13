@@ -56,5 +56,6 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
         => index.Template(ConfigureMappings).IndexPatterns(ElasticExt.IndexPattern);
 
     private static void ConfigureMappings(IndexTemplateMappingDescriptor<IndexedEntry> descriptor)
-        => descriptor.Mappings(m => m.Properties(p => p.LongNumber(x => x.Id).Text(x => x.Content)));
+        => descriptor.Settings(s => s.RefreshInterval(Duration.MinusOne))
+            .Mappings(m => m.Properties(p => p.LongNumber(x => x.Id).Text(x => x.Content)));
 }
