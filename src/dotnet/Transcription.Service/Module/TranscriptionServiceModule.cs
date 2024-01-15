@@ -19,7 +19,7 @@ public sealed class TranscriptionServiceModule(IServiceProvider moduleServices)
             return; // Server-side only module
 
         services.AddSingleton<ITranscriberFactory, TranscriberFactory>();
-        services.AddSingleton<GoogleTranscriber>();
         services.AddSingleton<DeepGramTranscriber>();
+        services.AddSingleton<GoogleTranscriber>();
     }
 }
