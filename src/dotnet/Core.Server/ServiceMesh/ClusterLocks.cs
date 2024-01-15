@@ -8,7 +8,7 @@ public sealed class ClusterLocks
     public ClusterLocks(ClusterLocksBackend backend)
     {
         Backend = backend;
-        DefaultOptions.AssertValid();
+        DefaultOptions.RequireValid();
     }
 
     public Task<ClusterLockInfo?> TryQuery(Symbol key, CancellationToken cancellationToken = default)

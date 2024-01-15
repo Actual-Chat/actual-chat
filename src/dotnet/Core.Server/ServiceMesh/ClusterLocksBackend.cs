@@ -15,8 +15,7 @@ public abstract class ClusterLocksBackend(IMomentClock? clock = null)
         ClusterLockOptions options,
         CancellationToken cancellationToken = default)
     {
-        options = options.WithDefaults(DefaultOptions);
-        options.AssertValid();
+        options = options.WithDefaults(DefaultOptions).RequireValid();
         var holder = CreateHolder(key, value, options);
         Task? whenChanged = null;
         var whenChangedCts = cancellationToken.CreateLinkedTokenSource();

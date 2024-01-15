@@ -6,7 +6,7 @@ public record ClusterLockOptions(
     TimeSpan CheckPeriod = default
 )
 {
-    public virtual void AssertValid()
+    public virtual ClusterLockOptions RequireValid()
     {
         if (ExpirationPeriod <= TimeSpan.Zero)
             throw StandardError.Constraint<ClusterLockOptions>($"{nameof(ExpirationPeriod)} is zero or negative.");
@@ -14,6 +14,7 @@ public record ClusterLockOptions(
             throw StandardError.Constraint<ClusterLockOptions>($"{nameof(RenewalPeriod)} is zero or negative.");
         if (CheckPeriod <= TimeSpan.Zero)
             throw StandardError.Constraint<ClusterLockOptions>($"{nameof(CheckPeriod)} is zero or negative.");
+        return this;
     }
 
     public virtual ClusterLockOptions WithDefaults(ClusterLockOptions defaults)
