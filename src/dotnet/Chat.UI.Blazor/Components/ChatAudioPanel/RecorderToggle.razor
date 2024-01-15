@@ -16,11 +16,13 @@
         _ => (true , $"Recording - {language.Title}...", true), // (true, true, true) => ...
     };
     // start endless animation when auto hide is not needed
-    if (!m.IsRecordingHere || _tooltipAnimator.AnimationEndsAt > _tooltipAnimator.Clock.Now + TimeSpan.FromDays(1))
+    var hasNoAnimation = _tooltipAnimator.AnimationEndsAt > _tooltipAnimator.Clock.Now + TimeSpan.FromDays(1);
+    if (_oldRecordingLanguage != language || !m.IsRecordingHere || hasNoAnimation)
         _tooltipAnimator.BeginAnimation(autoHide ? TimeSpan.FromSeconds(2) : null);
     showStatus = showStatus && _tooltipAnimator.IsAnimating;
     var tooltipText = showStatus ? "" : statusText;
     var tooltipPosition = showStatus ? FloatingPosition.None : FloatingPosition.Top;
+    _oldRecordingLanguage = language;
 }
 
 @if (m.HasMicrophonePermission != false) {
@@ -77,6 +79,7 @@
     private static readonly string JSInitMethod = $"{ChatBlazorUIModule.ImportName}.RecorderToggle.init";
     private OnOffAnimator _animator = null!;
     private ComponentAnimator _tooltipAnimator = null!;
+    private Language _oldRecordingLanguage = Language.None;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
