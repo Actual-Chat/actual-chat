@@ -23,7 +23,7 @@ public abstract class ClusterLocksBackend(IMomentClock? clock = null)
             while (true) {
                 cancellationToken.ThrowIfCancellationRequested();
                 whenChanged ??= await WhenChanged(key, whenChangedCts.Token).ConfigureAwait(false);
-                var isAcquired = await TryAcquire(holder.Key, holder.StoredValue, options.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
+                var isAcquired = await TryAcquire(key, holder.StoredValue, options.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
                 if (isAcquired)
                     break;
 
