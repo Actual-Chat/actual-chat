@@ -290,6 +290,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Search.Service", "src\dotne
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Search.Service.Migration", "src\dotnet\Search.Service.Migration\Search.Service.Migration.csproj", "{820DDE7D-243F-4C91-B5E1-5DFC8A9C16F2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.Templates", "src\dotnet\Users.Templates\Users.Templates.csproj", "{7E762FB0-403F-4363-A44F-53041DB258E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -594,6 +596,10 @@ Global
 		{820DDE7D-243F-4C91-B5E1-5DFC8A9C16F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{820DDE7D-243F-4C91-B5E1-5DFC8A9C16F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{820DDE7D-243F-4C91-B5E1-5DFC8A9C16F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E762FB0-403F-4363-A44F-53041DB258E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E762FB0-403F-4363-A44F-53041DB258E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E762FB0-403F-4363-A44F-53041DB258E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E762FB0-403F-4363-A44F-53041DB258E7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -692,6 +698,7 @@ Global
 		{D9C16967-A439-41CB-9A57-FD4DD5DCB975} = {27D7AD5C-AC03-4366-858F-1428C5926555}
 		{D7E20082-D1D6-4E8A-AEBB-569770C489E8} = {27D7AD5C-AC03-4366-858F-1428C5926555}
 		{820DDE7D-243F-4C91-B5E1-5DFC8A9C16F2} = {27D7AD5C-AC03-4366-858F-1428C5926555}
+		{7E762FB0-403F-4363-A44F-53041DB258E7} = {9EF8D096-E543-418C-A491-331E60F146FA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
