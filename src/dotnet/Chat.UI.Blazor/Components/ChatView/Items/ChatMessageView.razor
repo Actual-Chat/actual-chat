@@ -169,13 +169,13 @@
                     </div>
                 </div>
             }
-            @if (entry.HasReactions) {
-                <MessageReactions Entry="@entry"/>
-            }
             @if (message.ShowLinkPreview) {
                 <div class="message-link-preview">
                     <LinkPreviewView Entry="@entry" />
                 </div>
+            }
+            @if (entry.HasReactions) {
+                <MessageReactions Entry="@entry"/>
             }
         </div>
     </div>
