@@ -292,7 +292,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.IntegrationTests",
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Server", "src\dotnet\Core.Server\Core.Server.csproj", "{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.Templates", "src\dotnet\Users.Templates\Users.Templates\Users.Templates.csproj", "{589F71C6-2FBA-4993-BD35-317322D53F65}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.Templates", "src\dotnet\Users.Templates\Users.Templates.csproj", "{589F71C6-2FBA-4993-BD35-317322D53F65}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Search", "Search", "{C561BF41-8310-4001-AA69-9880F004B1C8}"
 EndProject
