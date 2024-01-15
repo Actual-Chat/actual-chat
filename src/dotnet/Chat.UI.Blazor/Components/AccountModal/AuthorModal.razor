@@ -40,12 +40,10 @@
                     <i class="icon-sync text-lg md:hidden"></i>
                     Edit avatar
                 </Button>
-                @if (m.EnableIncompleteUI) {
-                    <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
-                        <i class="icon-eye text-xl md:hidden"></i>
-                        Reveal
-                    </Button>
-                }
+                <Button Class="btn-modal btn-danger" Click="OnRevealClicked">
+                    <i class="icon-eye text-xl md:hidden"></i>
+                    Reveal
+                </Button>
             }
         } else if (m.Author.IsAnonymous) {
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>

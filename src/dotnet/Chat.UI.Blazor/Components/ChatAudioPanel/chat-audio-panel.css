@@ -483,6 +483,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 
 .recorder-wrapper > .c-tooltip {
     @apply relative bg-01 -top-11 h-10 left-0 text-base text-02 px-[12px] py-[7px] pointer-events-none rounded-lg whitespace-nowrap z-tooltip;
+    @apply flex justify-center;
     filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
 }
 
@@ -493,6 +494,7 @@ body.hoverable .recorder-wrapper .mic-disabled.btn:hover .btn-content {
 .narrow .narrow-recorder-tooltip {
     @apply visible;
     @apply fixed bg-01 bottom-36 h-10 left-0 right-0  text-base text-02 px-[12px] py-[7px] pointer-events-none rounded-lg whitespace-nowrap z-tooltip;
+    @apply flex justify-center;
     margin: 0.25rem auto;
     width: fit-content;
     filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));

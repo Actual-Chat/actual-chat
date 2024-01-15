@@ -7,29 +7,36 @@
     var m = State.Value;
     _animator.State = m.IsRecordingHere;
     var animatorClass = "record-" + _animator.Class;
+    var language = m.Language;
     var transitioningClass = m.IsTransitioning || m is { IsRecordingHere: true, IsConnected: false } ? "applying-changes" : "";
-    var (showStatus, statusText, statusStyle) = (m.IsRecordingHere, m.IsMicrophoneCaptured, m.IsConnected) switch {
-        (false, _, _) => (false, "", ""),
-        (_, false, _) => (true, "Starting recording...", "left:4.6rem"),
-        (_, _, false) => (true, "Reconnecting...", "left:4rem"),
-        _ => (false, "Recording...", "left:3.5rem"), // (true, true, true) => ...
+    var (showStatus, statusText, autoHide) = (m.IsRecordingHere, m.IsMicrophoneCaptured, m.IsConnected) switch {
+        (false, _, _) => (false, "", false),
+        (_, false, _) => (true, "Starting recording...", false),
+        (_, _, false) => (true, "Reconnecting...", false),
+        _ => (true , $"Recording - {language.Title}...", true), // (true, true, true) => ...
     };
+    // start endless animation when auto hide is not needed
+    var hasNoAnimation = _tooltipAnimator.AnimationEndsAt > _tooltipAnimator.Clock.Now + TimeSpan.FromDays(1);
+    if (_oldRecordingLanguage != language || !m.IsRecordingHere || hasNoAnimation)
+        _tooltipAnimator.BeginAnimation(autoHide ? TimeSpan.FromSeconds(2) : null);
+    showStatus = showStatus && _tooltipAnimator.IsAnimating;
     var tooltipText = showStatus ? "" : statusText;
     var tooltipPosition = showStatus ? FloatingPosition.None : FloatingPosition.Top;
+    _oldRecordingLanguage = language;
 }
 
 @if (m.HasMicrophonePermission != false) {
     @if (showStatus) {
         <div class="narrow-recorder-tooltip">
             <div class="c-tooltip-text">@statusText</div>
-            <div class="c-tooltip-arrow" style="@statusStyle"></div>
+            <div class="c-tooltip-arrow"></div>
         </div>
     }
     <div class="recorder-wrapper @animatorClass @transitioningClass">
         @if (showStatus) {
             <div class="c-tooltip">
                 <div class="c-tooltip-text">@statusText</div>
-                <div class="c-tooltip-arrow" style="@statusStyle"></div>
+                <div class="c-tooltip-arrow"></div>
             </div>
         }
         <ButtonRound
@@ -71,10 +78,13 @@
 @code {
     private static readonly string JSInitMethod = $"{ChatBlazorUIModule.ImportName}.RecorderToggle.init";
     private OnOffAnimator _animator = null!;
+    private ComponentAnimator _tooltipAnimator = null!;
+    private Language _oldRecordingLanguage = Language.None;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private LanguageUI LanguageUI => Hub.LanguageUI;
     private IJSRuntime JS => Hub.JSRuntime();
 
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
@@ -83,7 +93,8 @@
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
 
     protected override void OnInitialized() {
-        _animator = new OnOffAnimator(this, TimeSpan.FromMilliseconds(300));
+        _animator = new (this, TimeSpan.FromMilliseconds(300));
+        _tooltipAnimator = new ComponentAnimator(this, TimeSpan.FromDays(30)).BeginAnimation();
         base.OnInitialized();
     }
 
@@ -112,6 +123,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id; // Capture to locals to make sure we can use .ConfigureAwait(false) below
         var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        var language = await LanguageUI.GetChatLanguage(chatId, cancellationToken).ConfigureAwait(false);
         var recorderState = await AudioRecorder.State.Use(cancellationToken).ConfigureAwait(false);
         var hasMicrophonePermission = await AudioRecorder.MicrophonePermission.Cached.Use(cancellationToken).ConfigureAwait(false);
         var isRecordingHere = recordingChatId == chatId;
@@ -120,6 +132,7 @@
             && recorderState.IsRecording != isRecordingHere; // AND it's state is not in sync with the expected one here
         return new Model(
             Chat,
+            language,
             isRecordingHere,
             recorderState.IsRecording,
             recorderState.IsConnected,
@@ -168,6 +181,7 @@
 
     public sealed record Model(
         Chat Chat,
+        Language Language,
         bool IsRecordingHere = false,
         bool IsMicrophoneCaptured = false,
         bool IsConnected = false,
@@ -175,6 +189,6 @@
         bool? HasMicrophonePermission = null,
         bool IsTransitioning = false
     ) {
-        public static readonly Model Loading = new(SpecialChat.Loading, default, false, true);
+        public static readonly Model Loading = new(SpecialChat.Loading, Language.None, default, false, true);
     }
 }
