@@ -14,7 +14,7 @@
         Please confirm your email.
     </p>
     <p class="text-headline-1 mt-2">
-        We will let you sign in with this email address as long as it's associated with your Apple ID or Google Account.
+        We collect this information to send you notifications about latest activities.
     </p>
     <Form
         @ref="_formRef"
@@ -25,14 +25,24 @@
             For="() => _model.Email"
             InputId="email"
             Label="Email"
+            Class="grow"
             IsRequired="true"
             IsLabelInsideInput="true">
-            <InputText
-                id="email"
-                @bind-Value="_model.Email"
-                autocomplete="email"
-                type="email"
-                inputmode="email"/>
+            <ChildContent>
+                <InputText
+                    id="email"
+                    @bind-Value="_model.Email"
+                    autocomplete="email"
+                    type="email"
+                    inputmode="email"/>
+            </ChildContent>
+            <Right>
+                @if (_showVerificationStatus) {
+                    <VerificationStatus
+                        IsVerified="_isVerified ?? false"
+                        Class="w-8 h-8" />
+                }
+            </Right>
         </FormSection>
     </Form>
 </div>
@@ -40,11 +50,15 @@
 @code {
     private readonly Model _model = new();
     private Form? _formRef;
+    private bool _showVerificationStatus;
+    private bool? _isVerified;
+    private bool? _skipped;
 
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private AccountUI AccountUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
     [Inject] private OnboardingUI OnboardingUI { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
 
@@ -76,7 +90,15 @@
         var account = await AccountUI.OwnAccount.Use();
         var command = new Accounts_Update(Session, account with { Email = _model.Email }, account.Version);
         var (_, error) = await UICommander.Run(command);
-        return error is null;
+        if (error is not null)
+            return false;
+
+        var verificationModel = new EmailVerificationModal.Model(_model.Email);
+        var modalRef = await ModalUI.Show(verificationModel);
+        await modalRef.WhenClosed;
+        _showVerificationStatus = verificationModel.IsVerified;
+        _isVerified = verificationModel.IsVerified;
+        return verificationModel.IsVerified;
     }
 
     public class Model {

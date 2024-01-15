@@ -6,6 +6,7 @@ using ActualChat.Kvas;
 using ActualChat.Redis.Module;
 using ActualChat.Security;
 using ActualChat.Users.Db;
+using ActualChat.Users.Email;
 using ActualChat.Users.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -183,6 +184,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
         fusion.AddService<IServerKvas, ServerKvas>();
         fusion.AddService<IServerKvasBackend, ServerKvasBackend>();
         fusion.AddService<IPhoneAuth, PhoneAuth>();
+        fusion.AddService<IEmails, Emails>();
         commander.AddService<IUsersUpgradeBackend, UsersUpgradeBackend>();
         services.AddSingleton<GreetingDispatcher>().AddHostedService(c => c.GetRequiredService<GreetingDispatcher>());
         services.AddTransient<Rfc6238AuthenticationService>();
@@ -195,6 +197,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
             services.AddTransient<ITextMessageGateway, LocalTextMessageGateway>();
         else
             services.AddTransient<ITextMessageGateway, TwilioTextMessageGateway>();
+        services.AddTransient<IEmailSender, EmailSender>();
 
         // Mobile-related module's own services
         fusion.AddService<IMobileSessions, MobileSessions>();

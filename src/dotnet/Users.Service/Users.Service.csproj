@@ -8,11 +8,13 @@
     <ProjectReference Include="..\Media.Contracts\Media.Contracts.csproj" />
     <ProjectReference Include="..\Media\Media.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
+    <ProjectReference Include="..\Users.Templates\Users.Templates.csproj" />
     <ProjectReference Include="..\Web\Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="AspNet.Security.OAuth.Apple" />
+    <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Cookies" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" />

@@ -38,8 +38,12 @@ public static class AccountsExt
                 if (!updatedAccount.Phone.IsValid)
                     throw StandardError.Constraint<Phone>("Incorrect phone number format.");
             }
-            if(!OrdinalIgnoreCaseEquals(ownAccount.Email, updatedAccount.Email) && ownAccount.User.HasEmailIdentity())
-                throw StandardError.Unauthorized("You can't change your email.");
+            if(!OrdinalIgnoreCaseEquals(ownAccount.Email, updatedAccount.Email)) {
+                if (ownAccount.User.HasEmailIdentity())
+                    throw StandardError.Unauthorized("You can't change your email.");
+                if (ownAccount.IsEmailVerified)
+                    throw StandardError.Unauthorized("You can't change your email after it's verified.");
+            }
             if (ownAccount.Status != updatedAccount.Status)
                 throw StandardError.Unauthorized("You can't change your own status.");
         }

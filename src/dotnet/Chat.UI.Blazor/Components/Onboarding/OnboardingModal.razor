@@ -1,9 +1,11 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
 @implements IModalView<OnboardingModal.Model>
-@inherits ComputedStateComponent<AccountFull>
+@inherits ComputedStateComponent<OnboardingModal.ViewModel>
 @{
-    var account = State.Value;
-    if (account.IsGuestOrNone) {
+    var m = State.Value;
+    if (m.AccountFull == AccountFull.Loading)
+        return;
+    if (m.AccountFull.IsGuestOrNone) {
         Modal.Close(true);
         return;
     }
@@ -15,8 +17,10 @@
     <Body>
         <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged">
             <Steps>
-                <PhoneStep Account="account"/>
-                @* <EmailStep Account="account"/> *@
+                <PhoneStep Account="m.AccountFull"/>
+                @if (m.EnableIncompleteUI) {
+                    <EmailStep Account="m.AccountFull"/>
+                }
                 <AvatarStep/>
                 <PermissionsStep NextButtonRef="@_nextButtonRef" />
                 <CreateChatsStep/>
@@ -75,17 +79,24 @@
     private readonly Mutable<ElementReference> _nextButtonRef = new();
 
     [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override ComputedState<AccountFull>.Options GetStateOptions() => new() {
-        InitialValue = AccountUI.OwnAccount.Value,
+    protected override ComputedState<ViewModel>.Options GetStateOptions() => new() {
+        InitialValue = ViewModel.None,
         Category = GetStateCategory(),
     };
 
-    protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
-        => AccountUI.OwnAccount.Use(cancellationToken).AsTask();
+    protected override async Task<ViewModel> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken);
+        var enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        return new ViewModel {
+            AccountFull = account,
+            EnableIncompleteUI = enableIncompleteUI,
+        };
+    }
 
     // Event handlers
 
@@ -95,6 +106,18 @@
 
         ModalModel.CanBeClosed = true;
         Modal.Close(true);
+    }
+
+    // Nested types
+
+    public sealed record ViewModel {
+        public static readonly ViewModel None = new() {
+            AccountFull = AccountFull.Loading,
+            EnableIncompleteUI = false,
+        };
+
+        public AccountFull AccountFull { get; init; } = null!;
+        public bool EnableIncompleteUI { get; init; }
     }
 
     public sealed record Model : IOptionallyClosable {
