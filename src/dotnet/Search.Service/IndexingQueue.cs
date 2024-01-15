@@ -114,7 +114,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
             return;
 
         var idTiles =
-            Constants.Chat.ServerIdTileStack.FirstLayer.GetOptimalCoveringTiles(
+            Constants.Chat.ServerIdTileStack.LastLayer.GetCoveringTiles(
                 news.TextEntryIdRange.WithStart(lastIndexedLid));
         foreach (var tile in idTiles) {
             var chatTile = await ChatsBackend.GetTile(chatId,
