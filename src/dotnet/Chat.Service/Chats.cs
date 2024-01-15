@@ -264,7 +264,7 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
                     ForwardedAuthorName = command.ForwardedAuthorName,
                     ForwardedChatEntryId = command.ForwardedChatEntryId,
                     ForwardedChatEntryBeginsAt = command.ForwardedChatEntryBeginsAt,
-                    Attachments = attachments,
+                    Attachments = attachments.IsEmpty ? null : attachments,
                 }));
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
             textEntryId = textEntry.Id.ToTextEntryId();
