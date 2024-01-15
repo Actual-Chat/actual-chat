@@ -3,6 +3,4 @@ namespace ActualChat.ServiceMesh;
 public record ClusterLockInfo(
     Symbol Key,
     string Value,
-    string HolderId,
-    Moment ExpiresAt // ClusterClockBackend.Clock / System time
-    );
+    string HolderId);
