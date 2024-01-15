@@ -1,6 +1,7 @@
 ﻿using System.Security;
 using ActualChat.Contacts;
 using ActualChat.Testing.Host;
+using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -302,21 +303,7 @@ public class PlaceOperationsTest : AppHostTestBase
         var chats = services.GetRequiredService<IChats>();
         var commander = tester.Commander;
 
-        var place = await commander.Call(new Places_Change(session, default, null, new() {
-            Create = new PlaceDiff {
-                Title = PlaceTitle,
-                IsPublic = isPublicPlace,
-            },
-        }));
-
-        var chat = await commander.Call(new Chats_Change(session, default, null, new() {
-            Create = new ChatDiff {
-                Title = ChatTitle,
-                IsPublic = true,
-                PlaceId = place.Id,
-            },
-        }));
-        chat.Should().NotBeNull();
+        var (_, chat) = await CreatePlaceWithDefaultChat(commander, session, isPublicPlace: isPublicPlace);
 
         await TestExt.WhenMetAsync(
             async () => {
@@ -357,6 +344,35 @@ public class PlaceOperationsTest : AppHostTestBase
 
         var chatEntry2 = await commander2.Call(new Chats_UpsertTextEntry(session2, chat.Id, null, "And mine first message"));
         chatEntry2.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task UpsertTextEntryToPublicPlaceChatShouldEnsureThatExplicitAuthorExist()
+    {
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewBlazorTester();
+        var session1 = tester.Session;
+        await tester.SignInAsBob();
+
+        var commander1 = tester.Commander;
+
+        var (place, chat) = await CreatePlaceWithDefaultChat(commander1, session1);
+
+        await using var tester2 = appHost.NewBlazorTester();
+        var session2 = tester2.Session;
+        await tester2.SignInAsAlice();
+
+        var account = await tester2.AppServices.GetRequiredService<IAccounts>().GetOwn(session2, default);
+        await commander1.Call(new Places_Invite(session1, place.Id, new [] { account.Id }));
+
+        var commander2 = tester2.Commander;
+        var chatEntry1 = await commander2.Call(new Chats_UpsertTextEntry(session2, chat.Id, null, "My first message"));
+        chatEntry1.Should().NotBeNull();
+        var authorId = chatEntry1.AuthorId;
+
+        var authorsBackend = tester2.AppServices.GetRequiredService<IAuthorsBackend>();
+        var explicitAuthor = await authorsBackend.Get(authorId.ChatId, authorId, AuthorsBackend_GetAuthorOption.Raw, default);
+        explicitAuthor.Should().NotBeNull();
     }
 
     private static async Task<(Place, Chat)> CreatePlaceWithDefaultChat(
