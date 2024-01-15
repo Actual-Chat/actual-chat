@@ -15,6 +15,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
     private SearchSettings? _settings;
     private IChatsBackend? _chatsBackend;
     private IIndexedChatsBackend? _indexedChatsBackend;
+    private ElasticConfigurator? _elasticConfigurator;
     private DistributedLocks<SearchDbContext>? _distributedLock;
     private ICommander? _commander;
     private ILogger? _log;
@@ -23,6 +24,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
 
     private SearchSettings Settings => _settings ??= Services.GetRequiredService<SearchSettings>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
+    private ElasticConfigurator ElasticConfigurator => _elasticConfigurator ??= Services.GetRequiredService<ElasticConfigurator>();
 
     private IIndexedChatsBackend IndexedChatsBackend
         => _indexedChatsBackend ??= Services.GetRequiredService<IIndexedChatsBackend>();
@@ -52,6 +54,8 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
     {
         try {
             using var _1 = Tracer.Default.Region();
+            if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
+                await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
             await DistributedLocks.Run(EnsureIndexedChatsCreated, "IndexedChatsSync", cancellationToken)
                 .ConfigureAwait(false);
 
@@ -149,8 +153,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
                     indexedChat.LastEntryVersion,
                     cancellationToken)
                 .ConfigureAwait(false);
-            var updated = changedEntries.Where(x => !x.IsRemoved)
-                .Where(x => !x.Content.IsNullOrEmpty())
+            var updated = changedEntries.Where(x => !x.IsRemoved && !x.Content.IsNullOrEmpty())
                 .Select(x => new IndexedEntry {
                     Id = x.LocalId,
                     Content = x.Content,

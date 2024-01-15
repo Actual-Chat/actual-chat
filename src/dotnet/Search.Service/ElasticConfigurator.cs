@@ -1,3 +1,5 @@
+using ActualChat.Redis;
+using ActualChat.Search.Db;
 using ActualChat.Search.Module;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.IndexManagement;
@@ -9,10 +11,13 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
     private readonly TaskCompletionSource _whenCompleted = new ();
     private SearchSettings? _settings;
     private ElasticsearchClient? _elastic;
+    private DistributedLocks<SearchDbContext>? _distributedLock;
     private ILogger? _log;
 
     private SearchSettings Settings => _settings ??= services.GetRequiredService<SearchSettings>();
     private ElasticsearchClient Elastic => _elastic ??= services.GetRequiredService<ElasticsearchClient>();
+    private DistributedLocks<SearchDbContext> DistributedLocks
+        => _distributedLock ??= services.GetRequiredService<DistributedLocks<SearchDbContext>>();
     private ILogger Log => _log ??= services.LogFor(GetType());
 
     public Task WhenCompleted => _whenCompleted.Task;
@@ -39,7 +44,10 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
         }
     }
 
-    private async Task EnsureIndexTemplate(CancellationToken cancellationToken)
+    private Task EnsureIndexTemplate(CancellationToken cancellationToken)
+        => DistributedLocks.Run(EnsureIndexTemplateUnsafe, "EnsureIndexTemplate", cancellationToken);
+
+    private async Task EnsureIndexTemplateUnsafe(CancellationToken cancellationToken)
     {
         var existsIndexTemplateResponse = await Elastic.Indices.ExistsIndexTemplateAsync(ElasticExt.IndexTemplateName, cancellationToken)
             .ConfigureAwait(false);

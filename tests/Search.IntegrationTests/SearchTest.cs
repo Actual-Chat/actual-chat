@@ -19,14 +19,11 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         _tester = _appHost.NewWebClientTester();
         _sut = _appHost.Services.GetRequiredService<ISearchBackend>();
         _commander = _appHost.Services.Commander();
-        FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
     }
 
     public override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
-        foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
-            FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();
     }
