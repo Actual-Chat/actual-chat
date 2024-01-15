@@ -784,7 +784,13 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (entryKind != ChatEntryKind.Text)
             return entry;
 
-        if (changeKind == ChangeKind.Remove || entry.IsStreaming)
+        if (changeKind == ChangeKind.Remove)
+            return entry;
+
+        if (chatId.IsPlaceChat && !chatId.PlaceChatId.IsRoot)
+            await EnsurePlaceChatAuthorExists(entry.AuthorId).ConfigureAwait(false);
+
+        if (entry.IsStreaming)
             return entry;
 
         if (changeKind == ChangeKind.Create)
@@ -840,6 +846,29 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid chat kind.");
             }
             return newEntry;
+        }
+
+        async Task EnsurePlaceChatAuthorExists(AuthorId authorId1)
+        {
+            var author1 = await AuthorsBackend
+                .Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Raw, cancellationToken)
+                .ConfigureAwait(false);
+            if (author1 is { HasLeft: false })
+                return;
+
+            var author2 = await AuthorsBackend
+                .Get(chatId, authorId1, AuthorsBackend_GetAuthorOption.Full, cancellationToken)
+                .Require()
+                .ConfigureAwait(false);
+            var accountId = author2.UserId.Require();
+
+            var upsertCommand = new AuthorsBackend_Upsert(
+                chatId, authorId1, accountId, null,
+                new AuthorDiff() {
+                    IsAnonymous = false,
+                    HasLeft = false,
+                });
+            author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
     }
 
