@@ -2,7 +2,7 @@
 
 ## ChatId
 - New ChatKind was introduced: ChatKind.Place
-- With its own format: s-{PlaceId}-{ChatIdInsidePlace}
+- With its own format: s-{PlaceId}-{ChatIdInsidePlace} ('s' stands for server since p was taken by peer chats)
 - Chats of the same **Place** has the same id prefix: s-{PlaceId}
 
 ## Root chat as a Place
