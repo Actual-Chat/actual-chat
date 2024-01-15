@@ -98,7 +98,10 @@ public class ChatMigratorBackend(IServiceProvider services)
     {
         _ = await dbContext.Chats
             .Where(c => c.Id == chatSid)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(c => c.Id, c => newChatSid), cancellationToken)
+            .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(c => c.Id, c => newChatSid)
+                    .SetProperty(c => c.Kind, c => ChatKind.Place),
+                cancellationToken)
             .RequireOneUpdated()
             .ConfigureAwait(false);
 
