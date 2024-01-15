@@ -96,8 +96,8 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
 
     private async Task IndexChat(ChatId chatId, CancellationToken cancellationToken)
     {
-        await IndexUpdatedAndRemovedEntries(chatId, cancellationToken).ConfigureAwait(false);
         await IndexNewEntries(chatId, cancellationToken).ConfigureAwait(false);
+        await IndexUpdatedAndRemovedEntries(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task IndexNewEntries(ChatId chatId, CancellationToken cancellationToken)
