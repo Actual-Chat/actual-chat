@@ -1,28 +1,28 @@
-namespace ActualChat.ServiceMesh;
+namespace ActualChat.Mesh;
 
-public static class ClusterLocksExt
+public static class MeshLocksExt
 {
-    public static Task<ClusterLockHolder> Acquire(this ClusterLocks clusterLocks,
+    public static Task<MeshLockHolder> Acquire(this IMeshLocks meshLocks,
         Symbol key, string value,
         CancellationToken cancellationToken = default)
-        => clusterLocks.Acquire(key, value, clusterLocks.DefaultOptions, cancellationToken);
+        => meshLocks.Acquire(key, value, meshLocks.LockOptions, cancellationToken);
 
-    public static Task<ClusterLockHolder> Acquire(this ClusterLocks clusterLocks,
+    public static Task<MeshLockHolder> Acquire(this IMeshLocks meshLocks,
         Symbol key, string value, TimeSpan timeout,
         CancellationToken cancellationToken = default)
-        => clusterLocks.Acquire(key, value, clusterLocks.DefaultOptions, timeout, cancellationToken);
+        => meshLocks.Acquire(key, value, meshLocks.LockOptions, timeout, cancellationToken);
 
-    public static async Task<ClusterLockHolder> Acquire(this ClusterLocks clusterLocks,
-        Symbol key, string value, ClusterLockOptions options, TimeSpan timeout,
+    public static async Task<MeshLockHolder> Acquire(this IMeshLocks meshLocks,
+        Symbol key, string value, MeshLockOptions lockOptions, TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
         if (timeout == TimeSpan.MaxValue)
-            return await clusterLocks.Acquire(key, value, options, cancellationToken).ConfigureAwait(false);
+            return await meshLocks.Acquire(key, value, lockOptions, cancellationToken).ConfigureAwait(false);
 
         var timeoutCts = new CancellationTokenSource(timeout);
         var cts = timeoutCts.Token.LinkWith(cancellationToken);
         try {
-            return await clusterLocks.Acquire(key, value, options, cts.Token).ConfigureAwait(false);
+            return await meshLocks.Acquire(key, value, lockOptions, cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (timeoutCts.Token.IsCancellationRequested) {
             if (!cancellationToken.IsCancellationRequested)
