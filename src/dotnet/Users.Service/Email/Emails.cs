@@ -18,10 +18,10 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
     private Rfc6238AuthenticationService? _totps;
     private TotpRandomSecrets? _randomSecrets;
 
-    private UsersSettings Settings => _settings ??= services.GetRequiredService<UsersSettings>();
-    private IEmailSender EmailSender => _emailSender ??= services.GetRequiredService<IEmailSender>();
-    private Rfc6238AuthenticationService Totps => _totps ??= services.GetRequiredService<Rfc6238AuthenticationService>();
-    private TotpRandomSecrets RandomSecrets => _randomSecrets ??= services.GetRequiredService<TotpRandomSecrets>();
+    private UsersSettings Settings => _settings ??= Services.GetRequiredService<UsersSettings>();
+    private IEmailSender EmailSender => _emailSender ??= Services.GetRequiredService<IEmailSender>();
+    private Rfc6238AuthenticationService Totps => _totps ??= Services.GetRequiredService<Rfc6238AuthenticationService>();
+    private TotpRandomSecrets RandomSecrets => _randomSecrets ??= Services.GetRequiredService<TotpRandomSecrets>();
     private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
     private IAuthBackend AuthBackend => _authBackend ??= Services.GetRequiredService<IAuthBackend>();
 
