@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.IO.Compression;
 using ActualChat.App.Server.Health;
 using ActualChat.Audio;
@@ -10,6 +9,7 @@ using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kubernetes;
 using ActualChat.Notification;
+using ActualChat.Redis.Module;
 using ActualChat.Transcription;
 using ActualChat.Users;
 using ActualChat.Web.Internal;
@@ -151,6 +151,10 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         services.AddHealthChecks()
             .AddCheck<LivelinessHealthCheck>("App-Liveliness", tags: new[] { HealthTags.Live })
             .AddCheck<ReadinessHealthCheck>("App-Readiness", tags: new[] { HealthTags.Ready });
+
+        // Redis
+        var redisModule = Host.GetModule<RedisModule>();
+        redisModule.AddRedisDb<InfrastructureDbContext>(services, Settings.Redis);
 
         // Queues
         services.AddLocalCommandQueues();

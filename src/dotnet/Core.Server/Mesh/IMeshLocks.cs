@@ -17,7 +17,7 @@ public interface IMeshLocksBackend : IMeshLocks
 {
     ILogger? Log { get; }
 
-    Task<bool> TryRenew(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
-    Task<MeshLockReleaseResult> TryRelease(Symbol key, string value, CancellationToken cancellationToken);
-    Task<bool> ForceRelease(Symbol key, bool mustNotify, CancellationToken cancellationToken);
+    Task<bool> TryRenew(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken = default);
+    Task<MeshLockReleaseResult> TryRelease(Symbol key, string value, CancellationToken cancellationToken = default);
+    Task<bool> ForceRelease(Symbol key, bool mustNotify, CancellationToken cancellationToken = default);
 }

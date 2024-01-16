@@ -63,7 +63,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
     // Protected methods
 
     protected virtual MeshLockHolder CreateHolder(Symbol key, string value, MeshLockOptions options)
-        => new(this, key, value, NextHolderId(), options);
+        => new(this, NextHolderId(), key, value, options);
 
     protected virtual string NextHolderId()
         => ZString.Concat(HolderKeyPrefix, Interlocked.Increment(ref LastHolderId));

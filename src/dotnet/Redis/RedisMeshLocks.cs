@@ -5,60 +5,68 @@ using StackExchange.Redis;
 namespace ActualChat.Redis;
 
 public class RedisMeshLocks<TContext>(IServiceProvider services)
-    : RedisMeshLocks(services.GetRequiredService<RedisDb<TContext>>(), services.Clocks().SystemClock);
+    : RedisMeshLocks(services.GetRequiredService<RedisDb<TContext>>(), services.Clocks().SystemClock),
+        IMeshLocks<TContext>;
 
 public class RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
     : MeshLocksBase(clock)
 {
-    private static readonly LuaScript TryAcquireScript = LuaScript.Prepare(
+    // Useful for debugging:
+    // redis.log(redis.LOG_WARNING, string.format(cjson.encode(r)))
+    private static readonly string TryAcquireScript =
         """
-            if redis.call('SET', @key, @value, 'NX', 'PX', @expiresIn) != 'OK' then
-                return -1
-            else
-            redis.call('PUBLISH', @key, '')
-            return 0
-        """);
-    private static readonly LuaScript TryRenewScript = LuaScript.Prepare(
+            local key, value, expiresIn = KEYS[1], ARGV[1], ARGV[2]
+            local r = redis.call('SET', key, value, 'NX', 'PX', expiresIn)
+            local rt = type(r)
+            if (rt == 'boolean' and r) or (rt == 'table' and r['ok'] == 'OK') then
+                redis.call('PUBLISH', key, '+')
+                return 0
+            end
+            return -1
+        """;
+    private static readonly string TryRenewScript =
         """
-            if redis.call('GET', @key) != @value then
+            local key, value, expiresIn = KEYS[1], ARGV[1], ARGV[2]
+            if redis.call('GET', key) ~= value then
                 return -1
             end
-            redis.call('PEXPIRE', @key, @expiresIn, 'GT')
-            if redis.call('GET', @key) != @value then
+            redis.call('PEXPIRE', key, expiresIn, 'GT')
+            if redis.call('GET', key) ~= value then
                 return -1
             end
             return 0
-        """);
-    private static readonly LuaScript TryReleaseScript = LuaScript.Prepare(
+        """;
+    private static readonly string TryReleaseScript =
         """
-            if redis.call('GET', @key) != @value then
+            local key, value = KEYS[1], ARGV[1]
+            if redis.call('GET', key) ~= value then
                 return -2
             end
-            if redis.call('DEL', @key) <= 0 then
+            if redis.call('DEL', key) <= 0 then
                 return -1
             end
-            redis.call('PUBLISH', @key, '')
+            redis.call('PUBLISH', key, '-')
             return 0
-        """);
-    private static readonly LuaScript ForceReleaseScript = LuaScript.Prepare(
+        """;
+    private static readonly string ForceReleaseScript =
         """
-            if redis.call('DEL', @key) <= 0 then
+            local key, mustNotify = KEYS[1], ARGV[1]
+            if redis.call('DEL', key) <= 0 then
                 return -1
             end
-            if @mustNotify != 0 then
-                redis.call('PUBLISH', @key, '')
+            if mustNotify ~= 0 then
+                redis.call('PUBLISH', key, '-')
             end
             return 0
-        """);
+        """;
 
     private RedisDb RedisDb { get; } = redisDb.WithKeyPrefix("MeshLocks");
 
     public override async Task<MeshLockInfo?> TryQuery(Symbol key, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var fullKey = RedisDb.FullKey(key);
         var storedValue = (string?)await RedisDb.Database
-            .StringGetAsync((RedisKey)fullKey, CommandFlags.DemandMaster)
+            .StringGetAsync((RedisKey)key.Value, CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         if (storedValue == null)
             return null;
@@ -70,21 +78,20 @@ public class RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
     public override async Task<Task> WhenChanged(Symbol key, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var fullKey = RedisDb.FullKey(key);
-        var channel = new RedisChannel(fullKey, RedisChannel.PatternMode.Literal);
-        var whenChangedSource = new TaskCompletionSource();
-        Action<RedisChannel, RedisValue> handler = (_, _) => whenChangedSource.TrySetResult();
+        var channel = new RedisChannel(RedisDb.FullKey(key), RedisChannel.PatternMode.Literal);
+        var queue = await RedisDb.Redis
+            .GetSubscriber()
+            .SubscribeAsync(channel)
+            .ConfigureAwait(false);
+        return ReadOneAndUnsubscribe();
 
-        var subscriber = RedisDb.Redis.GetSubscriber();
-        await subscriber.SubscribeAsync(channel, handler, CommandFlags.DemandMaster).ConfigureAwait(false);
-        return Complete();
-
-        async Task Complete() {
+        async Task ReadOneAndUnsubscribe()
+        {
             try {
-                await whenChangedSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                await queue.ReadAsync(cancellationToken).ConfigureAwait(false);
             }
             finally {
-                await subscriber.UnsubscribeAsync(channel, handler, CommandFlags.DemandMaster).ConfigureAwait(false);
+                _ = queue.UnsubscribeAsync(CommandFlags.FireAndForget);
             }
         }
     }
@@ -94,13 +101,8 @@ public class RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
     protected override async Task<bool> TryAcquire(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var fullKey = RedisDb.FullKey(key);
         var r = (long)await RedisDb.Database
-            .ScriptEvaluateAsync(TryAcquireScript, new {
-                key = (RedisKey)fullKey,
-                value = (RedisValue)value,
-                expiresIn = (long)expiresIn.TotalMilliseconds,
-            }, CommandFlags.DemandMaster)
+            .ScriptEvaluateAsync(TryAcquireScript, [key.Value], [value, (long)expiresIn.TotalMilliseconds], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         return r >= 0;
     }
@@ -108,13 +110,8 @@ public class RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
     protected override async Task<bool> TryRenew(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var fullKey = RedisDb.FullKey(key);
         var r = (long)await RedisDb.Database
-            .ScriptEvaluateAsync(TryRenewScript, new {
-                key = (RedisKey)fullKey,
-                value = (RedisValue)value,
-                expiresIn = (long)expiresIn.TotalMilliseconds,
-            }, CommandFlags.DemandMaster)
+            .ScriptEvaluateAsync(TryRenewScript, [key.Value], [value, (long)expiresIn.TotalMilliseconds], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         return r >= 0;
     }
@@ -122,29 +119,22 @@ public class RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
     protected override async Task<MeshLockReleaseResult> TryRelease(Symbol key, string value, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var fullKey = RedisDb.FullKey(key);
         var r = (long)await RedisDb.Database
-            .ScriptEvaluateAsync(TryReleaseScript, new {
-                key = (RedisKey)fullKey,
-                value = (RedisValue)value,
-            }, CommandFlags.DemandMaster)
+            .ScriptEvaluateAsync(TryReleaseScript, [key.Value], [value], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         return r switch {
             -2 => MeshLockReleaseResult.AcquiredBySomeoneElse,
             -1 => MeshLockReleaseResult.NotAcquired,
-            _ => MeshLockReleaseResult.Released,
+            0 => MeshLockReleaseResult.Released,
+            _ => MeshLockReleaseResult.Unknown,
         };
     }
 
     protected override async Task<bool> ForceRelease(Symbol key, bool mustNotify, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var fullKey = RedisDb.FullKey(key);
         var r = (long)await RedisDb.Database
-            .ScriptEvaluateAsync(ForceReleaseScript, new {
-                key = (RedisKey)fullKey,
-                mustNotify = mustNotify ? 1 : 0,
-            }, CommandFlags.DemandMaster)
+            .ScriptEvaluateAsync(ForceReleaseScript, [key.Value], [mustNotify ? 1 : 0], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         return r >= 0;
     }

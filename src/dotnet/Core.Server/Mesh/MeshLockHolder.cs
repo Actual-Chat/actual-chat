@@ -2,29 +2,29 @@ using Cysharp.Text;
 
 namespace ActualChat.Mesh;
 
-public class MeshLockHolder : WorkerBase
+public class MeshLockHolder : WorkerBase, IHasId<string>
 {
     protected readonly IMeshLocksBackend Backend;
     protected IMomentClock Clock => Backend.Clock;
     protected ILogger? Log => Backend.Log;
     protected HashSet<Task>? Dependencies;
 
+    public string Id { get; } // This is the ID of the lock holder, i.e. this object
     public Symbol Key { get; }
     public string Value { get; }
-    public string HolderId { get; }
     public string StoredValue { get; }
     public MeshLockOptions Options { get; }
     public RandomTimeSpan RetryPeriod { get; init; } = TimeSpan.FromSeconds(0.5).ToRandom(0.1);
     public TimeSpan MaxClockDrift { get; init; } = TimeSpan.FromMicroseconds(100);
 
-    public MeshLockHolder(IMeshLocksBackend backend, Symbol key, string value, string holderId, MeshLockOptions options)
+    public MeshLockHolder(IMeshLocksBackend backend, string id, Symbol key, string value, MeshLockOptions options)
     {
         options.AssertValid();
         Backend = backend;
+        Id = id;
         Key = key;
         Value = value;
-        HolderId = holderId;
-        StoredValue = ZString.Concat(holderId, ' ', value);
+        StoredValue = ZString.Concat(id, ' ', value);
         Options = options;
     }
 

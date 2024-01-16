@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Configuration;
 using ActualChat.Hosting;
+using ActualChat.Mesh;
 using ActualChat.Module;
 using StackExchange.Redis;
 using ActualLab.Redis;
@@ -38,6 +39,7 @@ public sealed class RedisModule(IServiceProvider moduleServices) : HostModule<Re
         var cfg = ConfigurationOptions.Parse(configuration);
         cfg.SocketManager = SocketManager.ThreadPool;
         services.AddRedisDb<TContext>(cfg, keyPrefix);
+        services.AddSingleton<IMeshLocks<TContext>>(c => new RedisMeshLocks<TContext>(c));
         services.AddTransient<DistributedLocks<TContext>>();
     }
 }

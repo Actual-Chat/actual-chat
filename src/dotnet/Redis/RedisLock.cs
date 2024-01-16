@@ -9,7 +9,7 @@ public class RedisLock<TContext>(IServiceProvider services, string key) : IAsync
     private RedisDb? _redisDb;
     private MomentClockSet? _clocks;
 
-    private RedisDb RedisDb => _redisDb ??= services.GetRequiredService<RedisDb<TContext>>().WithKeyPrefix(".Locks.");
+    private RedisDb RedisDb => _redisDb ??= services.GetRequiredService<RedisDb<TContext>>().WithKeyPrefix("Locks");
     private MomentClockSet Clocks => _clocks ??= services.Clocks();
     private Moment CpuNow => Clocks.CpuClock.Now;
 

@@ -22,14 +22,12 @@ public abstract class HostModule(IServiceProvider moduleServices)
     protected internal abstract void InjectServices(IServiceCollection services);
 }
 
-public abstract class HostModule<TSettings> : HostModule
+public abstract class HostModule<TSettings>(IServiceProvider moduleServices) : HostModule(moduleServices)
     where TSettings : class, new()
 {
     private TSettings? _settings;
 
     public TSettings Settings => _settings ??= ReadSettings();
-
-    protected HostModule(IServiceProvider moduleServices) : base(moduleServices) { }
 
     protected virtual TSettings ReadSettings()
         => Cfg.GetSettings<TSettings>();
