@@ -61,6 +61,14 @@ public interface IChatsBackend : IComputeService
         PlaceId placeId,
         CancellationToken cancellationToken);
 
+    // Non-compute methods
+
+    Task<ChatEntry?> FindNext(
+        ChatId chatId,
+        long? startEntryId,
+        string text,
+        CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]

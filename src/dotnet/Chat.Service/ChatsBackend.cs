@@ -361,6 +361,24 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         }
     }
 
+    // Not a [ComputeMethod]!
+    public virtual async Task<ChatEntry?> FindNext(
+        ChatId chatId,
+        long? startEntryId,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbEntry = await dbContext.ChatEntries
+            .Where(c => c.ChatId == chatId && c.Content.Contains(text) && (startEntryId == null || c.LocalId < startEntryId))
+            .OrderByDescending(x => x.LocalId)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbEntry?.ToModel(); // LinkPreview & other properties aren't populated here!
+    }
+
     [ComputeMethod]
     protected virtual async Task<ApiArray<TextEntryAttachment>> GetEntryAttachments(TextEntryId entryId, CancellationToken cancellationToken)
     {

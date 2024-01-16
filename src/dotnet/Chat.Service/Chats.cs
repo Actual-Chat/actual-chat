@@ -1,15 +1,12 @@
-using ActualChat.Chat.Db;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.Invite.Backend;
 using ActualChat.Kvas;
 using ActualChat.Users;
-using Microsoft.EntityFrameworkCore;
-using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChats
+public class Chats(IServiceProvider services) : IChats
 {
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
@@ -20,6 +17,7 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
     private IServerKvas ServerKvas { get; } = services.ServerKvas();
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
+    private ICommander Commander { get; } = services.Commander();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
@@ -163,15 +161,7 @@ public class Chats(IServiceProvider services) : DbServiceBase<ChatDbContext>(ser
         if (chat == null)
             return null;
 
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbEntry = await dbContext.ChatEntries
-            .Where(c => c.ChatId == chatId && c.Content.Contains(text) && (startEntryId == null || c.LocalId < startEntryId))
-            .OrderByDescending(x => x.LocalId)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return dbEntry?.ToModel(); // LinkPreview & other properties aren't populated here!
+        return await Backend.FindNext(chatId, startEntryId, text, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
