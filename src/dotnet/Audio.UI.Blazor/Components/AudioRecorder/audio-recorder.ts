@@ -183,7 +183,7 @@ export class AudioRecorder {
                 await opusMediaRecorder.setSessionToken(sessionToken);
 
             if (this.state === 'recording' || this.state === 'starting') {
-                warnLog?.log('startRecording: seems like server and client state are not consistent');
+                warnLog?.log('startRecording: it seems that server and client states are inconsistent');
                 return true;
             }
 
