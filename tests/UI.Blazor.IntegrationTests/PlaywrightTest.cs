@@ -3,10 +3,8 @@ using Microsoft.Playwright;
 
 namespace ActualChat.UI.Blazor.IntegrationTests;
 
-public class PlaywrightTest : AppHostTestBase
+public class PlaywrightTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
-    public PlaywrightTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public async Task CloseBrowserTest()
     {

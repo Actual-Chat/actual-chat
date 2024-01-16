@@ -2,10 +2,8 @@
 
 namespace ActualChat.UI.Blazor.IntegrationTests;
 
-public class ExampleTest : AppHostTestBase
+public class ExampleTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
-    public ExampleTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public async Task SessionTest()
     {

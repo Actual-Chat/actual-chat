@@ -4,7 +4,7 @@ namespace ActualChat.Testing.Host;
 
 public class TestAppHostConfiguration
 {
-    public static readonly TestAppHostConfiguration WithDefaultChat = new TestAppHostConfiguration {
+    public static readonly TestAppHostConfiguration WithDefaultChat = new() {
         ConfigureServices = c => c.AddChatDbDataInitialization(o => o.AddDefaultChat = true)
     };
 

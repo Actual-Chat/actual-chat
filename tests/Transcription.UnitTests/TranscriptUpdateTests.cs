@@ -3,10 +3,8 @@ using ActualChat.Transcription.Google;
 
 namespace ActualChat.Transcription.UnitTests;
 
-public class TranscriptUpdateTests : TestBase
+public class TranscriptUpdateTests(ITestOutputHelper @out) : TestBase(@out)
 {
-    public TranscriptUpdateTests(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void WithDiffTest()
     {

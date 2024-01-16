@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Google.Cloud.Speech.V2;
@@ -66,8 +65,8 @@ public static class GoogleTranscriptReader
     }
 }
 
-
 #pragma warning disable CA2227
+
 public sealed class Response
 {
     public IReadOnlyList<Result> Results { get; set; } = null!;
@@ -96,4 +95,5 @@ public sealed class WordN
     public string Word { get; set; } = null!;
     public string SpeakerLabel { get; set; } = null!;
 }
+
 #pragma warning restore CA2227

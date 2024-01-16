@@ -7,7 +7,8 @@ namespace ActualChat.Testing.Host;
 [Collection(nameof(AppHostTests)), Trait("Category", nameof(AppHostTests))]
 public class AppHostTestBase(ITestOutputHelper @out) : TestBase(@out)
 {
-    protected Task<AppHost> NewAppHost(TestAppHostConfiguration configurator) => TestHostFactory.NewAppHost(Out, configurator.ConfigureAppSettings, configurator.ConfigureServices, configurator.ServerUrls);
+    protected Task<AppHost> NewAppHost(TestAppHostConfiguration cfg)
+        => TestHostFactory.NewAppHost(Out, cfg.ConfigureAppSettings, cfg.ConfigureServices, cfg.ServerUrls);
 
     protected Task<AppHost> NewAppHost(
         Action<IConfigurationBuilder>? configureAppSettings = null,
