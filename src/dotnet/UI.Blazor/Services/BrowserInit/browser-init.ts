@@ -19,6 +19,7 @@ export class BrowserInit {
     public static readonly whenReloading = new PromiseSource<void>();
     public static readonly reconnectedEvents = new EventHandlerSet<void>();
     public static connectionState = "";
+    public static reconnectingPromise: Promise<void> = null;
 
     public static async init(
         appKind: AppKind,
@@ -68,62 +69,101 @@ export class BrowserInit {
 
     public static startReconnecting(mustReconnectBlazor : boolean): void {
         this.setAppConnectionState("Reconnecting...");
-        if (mustReconnectBlazor) {
-            const blazor = window['Blazor'];
-            if (blazor)
-                blazor.reconnect();
-            else
+        if (!mustReconnectBlazor)
+            return;
+
+        this.reconnectingPromise ??= (async (): Promise<void> => {
+            try {
+                const blazor = window['Blazor'];
+                while (blazor) {
+                    await this.whenOnline();
+                    if (this.whenReloading.isCompleted())
+                        return; // Already reloading
+
+                    warnLog?.log('startReconnecting: reconnecting...');
+                    try {
+                        if (await blazor.reconnect())
+                            return;
+                    }
+                    catch {
+                        // Let's assume it may fail
+                    }
+                    errorLog?.log('startReconnecting: failed to reconnect');
+                    if (await this.isOnline())
+                        break; // Couldn't reconnect while online -> reload
+                }
                 this.startReloading();
-        }
+            }
+            finally {
+                this.reconnectingPromise = null;
+            }
+        })();
     }
 
     public static startReloading(): void {
         if (this.whenReloading.isCompleted())
-            return;
+            return; // Already reloading
 
         if (!this.isMauiApp) // No "Reloading..." on MAUI app
             this.setAppConnectionState("Reloading...");
+
+        warnLog?.log('startReloading: reloading...');
         this.whenReloading.resolve(undefined);
-        window.setInterval(() => this.tryReload(), 2000);
-        void this.tryReload();
+        (async () => {
+            await this.whenOnline();
+            void this.reload();
+        })();
     }
 
     public static startReloadWatchers() {
-        const blazorReconnectDiv = document.getElementById('components-reconnect-modal');
-        if (blazorReconnectDiv) {
-            const observer = new MutationObserver((mutations, _) => {
-                mutations.forEach(mutation => {
-                    const target = mutation.target;
-                    if (this.whenReloading.isCompleted() || !(target instanceof HTMLElement))
+        const attachWatchers = () => {
+            const errors = [];
+            const reconnectDiv = document.getElementById('components-reconnect-modal');
+            if (reconnectDiv) {
+                const checkReconnectDiv = () => {
+                    if (this.whenReloading.isCompleted())
                         return;
 
-                    const classList = target.classList;
+                    const classList = reconnectDiv.classList;
                     if (classList.length == 0 || classList.contains("components-reconnect-hide"))
                         this.resetAppConnectionState();
-                    else if (target.classList.contains('components-reconnect-rejected'))
+                    else if (classList.contains('components-reconnect-rejected'))
                         this.startReloading();
                     else if (classList.contains("components-reconnect-failed"))
                         this.startReconnecting(true);
                     else if (classList.contains("components-reconnect-show"))
                         this.startReconnecting(false);
-                });
-            });
-            observer.observe(blazorReconnectDiv, { attributes: true });
-        }
-        const blazorErrorDiv = document.getElementById('blazor-error-ui');
-        if (blazorErrorDiv) {
-            const observer = new MutationObserver((mutations, _) => {
-                mutations.forEach(mutation => {
-                    const target = mutation.target;
-                    if (this.whenReloading.isCompleted() || !(target instanceof HTMLElement))
-                        return;
+                }
+                const observer = new MutationObserver((mutations, _) => checkReconnectDiv());
+                observer.observe(reconnectDiv, { attributes: true });
+                checkReconnectDiv();
+            }
+            else
+                errors.push('no reconnectDiv');
 
-                    if (target.style.display === 'block')
+            const errorDiv = document.getElementById('blazor-error-ui');
+            if (errorDiv) {
+                const checkErrorDiv = () => {
+                    if (errorDiv.style.display === 'block')
                         this.startReloading();
-                });
-            });
-            observer.observe(blazorErrorDiv, { attributes: true });
+                }
+                const observer = new MutationObserver((mutations, _) => checkErrorDiv());
+                observer.observe(errorDiv, { attributes: true });
+                checkErrorDiv();
+            }
+            else
+                errors.push('no errorDiv');
+
+            if (errors.length === 0)
+                infoLog?.log(`startReloadWatchers: completed`);
+            else
+                errorLog?.log(`startReloadWatchers: errors:`, errors);
         }
+
+        if (document.readyState === "loading")
+            document.addEventListener("DOMContentLoaded", () => attachWatchers());
+        else
+            attachWatchers();
     }
 
     public static removeWebSplash(instantly = false) {
@@ -153,7 +193,7 @@ export class BrowserInit {
 
     public static async reload(): Promise<void> {
         // Force stop recording before reload
-        warnLog?.log('reloading...');
+        warnLog?.log('reload: reloading...');
         await globalThis['opusMediaRecorder']?.stop();
 
         if (!window.location.hash) {
@@ -253,18 +293,39 @@ export class BrowserInit {
         }
     }
 
-    public static async tryReload(): Promise<void> {
-        if (!IsReloadEnabled)
-            return;
+    public static async whenOnline(checkInterval = 2000): Promise<void> {
+        let wasOnline = true;
+        while (true) {
+            if (await this.isOnline()) {
+                // Second check - just in case
+                await delayAsync(250);
+                if (await this.isOnline())
+                    break;
+            }
+
+            if (wasOnline) {
+                wasOnline = false;
+                warnLog?.log(`whenOnline: offline`);
+            }
+            await delayAsync(checkInterval);
+        }
+        if (!wasOnline)
+            infoLog?.log(`whenOnline: online`);
+    }
+
+    public static async isOnline(): Promise<boolean> {
+        if (this.isMauiApp)
+            return true;
 
         try {
-            const response = await fetch('/favicon.ico');
+            const response = await fetch('/favicon.ico', { cache: "no-store" });
             if (response.ok)
-                void BrowserInit.reload();
+                return true;
         }
         catch {
-            warnLog?.log(`tryReload: waiting for connection to server to reload the app...`);
+            // Intended
         }
+        return false;
     }
 }
 
