@@ -35,8 +35,9 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1) };
 
         await using var h = await locks.Acquire("x", "", lockOptions);
+
         await locks.Backend.ForceRelease(h.Key, false);
-        await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it fails on GitHub
+        await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it may fail on GitHub
         (await locks.TryQuery(h.Key)).Should().BeNull();
 
         await Task.Delay(TimeSpan.FromSeconds(1.25));
@@ -51,7 +52,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(10) };
 
         await using var h1 = await locks.Acquire("x", "", lockOptions);
-        await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it fails on GitHub
+        await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it may fail on GitHub
 
         var h2AcquireTask = locks.Acquire("x", "", lockOptions);
         await Task.Delay(TimeSpan.FromSeconds(0.5)); // WhenChanged needs some time to subscribe
