@@ -1,6 +1,7 @@
 import { customElement, property } from 'lit/decorators.js';
 import { createRef, Ref, ref } from 'lit/directives/ref.js';
 import { css, html, LitElement, nothing } from 'lit';
+import { delayAsync } from 'promises';
 
 @customElement('image-skeleton')
 class ImageSkeleton extends LitElement {
@@ -75,21 +76,17 @@ class ImageSkeleton extends LitElement {
         this.classList.add('loading');
 
         const isSubDomain = this.isSubDomain(this.src);
-        let attempt = 0;
-        while (true) {
-            attempt++;
+        for (let attempt = 0; attempt < 10; attempt++) {
+            if (attempt >= 1) {
+                const delay = Math.min(30, Math.pow(2, attempt - 1));
+                await delayAsync(delay * 1000);
+            }
             const response = await fetch(this.src, { mode: isSubDomain ? undefined : 'cors' });
             if (response.ok) {
                 const blob = await response.blob();
                 this._imageRef.value.src = URL.createObjectURL(blob);
                 break;
             }
-
-            if (attempt > 5)
-                break;
-
-            const ms = Math.pow(2, attempt) * 1000;
-            await this.timeout(ms);
         }
     }
 
@@ -99,9 +96,5 @@ class ImageSkeleton extends LitElement {
 
     isSubDomain(url: string): boolean {
         return url.indexOf('actual.chat') > -1;
-    }
-
-    timeout(ms: number): Promise<void> {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
