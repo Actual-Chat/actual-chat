@@ -1,7 +1,6 @@
 import { Log } from 'logging';
 import { PreciseTimeout, Timeout } from 'timeout';
 import { Disposable } from 'disposable';
-import {AudioDiagnosticsState} from "../../dotnet/Audio.UI.Blazor/Components/AudioRecorder/audio-recorder";
 
 const { logScope, debugLog, warnLog, errorLog } = Log.get('promises');
 
