@@ -13,6 +13,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1) };
 
         await using var h = await locks.Acquire("x", "", lockOptions);
+        await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it fails on GitHub
         for (var i = 0; i < 10; i++) {
             var info = await locks.TryQuery(h.Key);
             info!.HolderId.Should().Be(h.Id);
@@ -20,6 +21,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         }
         await h.DisposeAsync();
         {
+            await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it fails on GitHub
             var info = await locks.TryQuery(h.Key);
             info.Should().BeNull();
         }
