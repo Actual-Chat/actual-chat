@@ -85,7 +85,6 @@ body.hoverable .system-entry.message-wrapper:hover {
 
 .forwarded-message .message-content,
 .forwarded-message .message-attachments,
-.forwarded-message .message-reactions,
 .forwarded-message .message-link-preview,
 .forwarded-message .forwarded-author-header {
     @apply pl-2;
