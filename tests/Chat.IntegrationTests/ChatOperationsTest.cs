@@ -8,10 +8,8 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class ChatOperationsTest : AppHostTestBase
+public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
-    public ChatOperationsTest(ITestOutputHelper @out) : base(@out) { }
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
