@@ -46,7 +46,7 @@ public abstract class DbInitializer<
             Log.LogInformation("Recreating DB '{DatabaseName}'...", dbName);
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
             var mustMigrate = false;
-            if (isTestServer && false) // TODO(DF): do not commit
+            if (isTestServer)
                 mustMigrate = Random.Shared.Next(30) < 1; // 3% migration probability in tests
             if (mustMigrate)
                 await db.MigrateAsync(cancellationToken).ConfigureAwait(false);
