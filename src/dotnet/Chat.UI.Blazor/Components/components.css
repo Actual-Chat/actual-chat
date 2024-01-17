@@ -2,13 +2,20 @@
 
 .historical-playback-sub-header {
     @apply relative flex-x py-1 px-2;
+    @apply h-14;
     @apply bg-01 shadow-lg text-02;
     @apply border-b border-separator;
     @apply animate-display-from-top;
 }
 .historical-playback-sub-header-content {
-    @apply flex-x items-center;
+    @apply flex-x items-center gap-x-2;
     @apply w-full;
+}
+.historical-playback-sub-header-content > .c-control-panel {
+    @apply flex-none flex-x gap-x-2;
+}
+.historical-playback-sub-header-content > .c-right {
+    @apply flex-none flex-x gap-x-2;
 }
 .historical-playback-sub-header-content .c-chat-title {
     @apply font-semibold;
@@ -22,6 +29,106 @@
 .historical-playback-sub-header-content .c-stop .btn {
     @apply bg-transparent;
 }
+
+.speed-selector {
+    @apply flex items-center;
+    @apply w-10 h-8;
+    @apply overflow-hidden;
+}
+.speed-selector > .c-button {
+    @apply flex items-center justify-center;
+    @apply w-10 h-6;
+    @apply rounded-full;
+    @apply bg-02;
+    @apply text-headline-1 text-03;
+    @apply cursor-pointer;
+}
+body.hoverable .speed-selector > .c-button:hover {
+    @apply bg-hover text-primary;
+}
+.speed-selector > .c-menu {
+    @apply absolute top-16 right-2;
+    @apply items-center gap-y-1;
+    @apply w-30;
+    @apply p-2;
+    @apply rounded-md;
+    @apply bg-01;
+    @apply shadow-modal-wide;
+}
+.speed-selector > .c-menu.open {
+    @apply flex-y;
+}
+.speed-selector > .c-menu.closed {
+    @apply hidden;
+}
+.speed-selector > .c-menu > .c-title {
+    @apply h-6;
+    @apply text-caption-1 text-03;
+}
+.speed-selector .c-separator {
+    @apply h-px w-full;
+    @apply bg-03;
+}
+.speed-selector > .c-menu > .c-menu-item {
+    @apply relative;
+    @apply flex-x items-center;
+    @apply w-full h-6;
+    @apply rounded-md;
+    @apply text-caption-1;
+    @apply cursor-pointer;
+}
+body.hoverable .speed-selector > .c-menu > .c-menu-item:hover {
+    @apply bg-hover;
+}
+.speed-selector > .c-menu > .c-menu-item.active {
+    @apply bg-selected text-primary;
+}
+.speed-selector > .c-menu > .c-menu-item > .c-icon {
+    @apply absolute left-0;
+    @apply flex-x items-center justify-center;
+    @apply w-6;
+}
+.speed-selector > .c-menu > .c-menu-item > .c-text {
+    @apply flex-1 flex-x items-center justify-center;
+    @apply text-caption-1;
+}
+
+.speed-selector .form .form-block,
+.speed-selector .form .form-block .form-section-content {
+/*.speed-selector .form .form-block .form-section-content select {*/
+    @apply h-8 w-8;
+    @apply p-0 m-0;
+    @apply border-none;
+    @apply outline-0;
+}
+.speed-selector select {
+    @apply h-8 w-8;
+    @apply p-0 m-0;
+    @apply bg-transparent;
+    @apply text-primary text-caption-3;
+    @apply overflow-hidden;
+    @apply border-none outline-0;
+    @apply rounded-full;
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    cursor: inherit;
+}
+.speed-selector .form select:focus {
+    @apply outline-0 border-0 ring-0;
+}
+body.hoverable .speed-selector select:hover {
+    @apply cursor-pointer;
+    /*@apply bg-hover;*/
+}
+.speed-selector select {
+    -ms-overflow-style: -ms-autohiding-scrollbar;
+}
+.speed-selector select::-webkit-scrollbar {
+    width: 0px;
+    background: transparent; /* make scrollbar transparent */
+}
+
 
 .people-group {
     @apply gap-x-12;

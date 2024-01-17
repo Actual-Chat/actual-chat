@@ -1,0 +1,77 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<SpeedSelector.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
+    var speed = m.SpeedValue;
+    var title = $"{_speedValue.Title}x";
+    var menuCls = _isOpen ? "open" : "closed";
+}
+
+@if (m.EnableIncompleteUI) {
+    <div class="speed-selector">
+        <div class="c-button" @onclick="@OnSpeedButtonClick">
+            @title
+        </div>
+        <div class="c-menu @menuCls">
+            <div class="c-title">Playback speed</div>
+            <div class="c-separator"></div>
+            @foreach (var speedValue in SpeedValues.All) {
+                var activeCls = Equals(speedValue, speed) ? "active" : "";
+                <div class="c-menu-item @activeCls" @onclick="@(() => OnSpeedChanged(speedValue))">
+                    <div class="c-icon">
+                        <i class="icon-checkmark-simple text-xl"></i>
+                    </div>
+                    <div class="c-text">
+                        @speedValue.Title
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private SpeedValue _speedValue = SpeedValues.Normal;
+    private bool _isOpen;
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
+        var speedValue = _speedValue;
+        return new() {
+            SpeedValue = speedValue,
+            EnableIncompleteUI = enableIncompleteUI,
+        };
+    }
+
+    private void OnSpeedButtonClick() {
+        _isOpen = !_isOpen;
+        StateHasChanged();
+    }
+
+    private void OnSpeedChanged(SpeedValue speedValue) {
+        _speedValue = speedValue;
+        OnSpeedButtonClick();
+        State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model Loading = new();
+
+        public bool EnableIncompleteUI { get; init; }
+        public SpeedValue SpeedValue { get; init; }
+    }
+}

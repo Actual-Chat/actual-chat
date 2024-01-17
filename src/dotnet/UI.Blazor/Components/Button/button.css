@@ -323,6 +323,9 @@ body.hoverable .btn.btn-round:hover > .btn-content {
 .btn.btn-round.hover-primary-icon .btn-content {
     @apply hover:text-primary;
 }
+.btn.btn-round.danger-icon .btn-content {
+    @apply text-danger;
+}
 body.hoverable .btn.blackout:hover .btn-content,
 body.hoverable .btn-h.blackout:hover,
 .btn.blackout:focus .btn-content,

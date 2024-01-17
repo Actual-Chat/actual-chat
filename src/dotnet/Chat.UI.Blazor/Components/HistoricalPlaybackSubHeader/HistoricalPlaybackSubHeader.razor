@@ -11,33 +11,33 @@
 }
 
 <div class="historical-playback-sub-header">
-    <div class="historical-playback-sub-header-content flex-x justify-between items-center gap-x-2">
-        <div class="flex-none flex-x">
+    <div class="historical-playback-sub-header-content">
+        <div class="c-control-panel">
             @if (ScreenSize.IsWide()) {
-                <ButtonRound Title="Backward" Click="@OnBackward" Class="transparent hover-primary-icon">
+                <ButtonRound Title="Backward" Click="@OnBackward" Class="btn-sm transparent hover-primary-icon">
                     <i class="icon-rewind-left-fill text-2xl"></i>
                 </ButtonRound>
             }
             @if (m.IsPaused) {
-                <ButtonRound Title="Play" Click="@OnResume" Class="transparent primary-icon" MustKeepAwake="true">
+                <ButtonRound Title="Play" Click="@OnResume" Class="btn-sm transparent primary-icon" MustKeepAwake="true">
                     <i class="icon-play-fill text-2xl"></i>
                 </ButtonRound>
             } else {
-                <ButtonRound Title="Pause" Click="@OnPause" Class="transparent hover-primary-icon">
+                <ButtonRound Title="Pause" Click="@OnPause" Class="btn-sm transparent hover-primary-icon">
                     <i class="icon-pause-fill text-2xl"></i>
                 </ButtonRound>
             }
-            <ButtonRound Title="Stop" Click="@OnStop" Class="transparent primary-icon">
+            <ButtonRound Title="Stop" Click="@OnStop" Class="btn-sm transparent danger-icon">
                 <i class="icon-stop-fill text-2xl"></i>
             </ButtonRound>
             @if (ScreenSize.IsWide()) {
-                <ButtonRound Title="Fast-forward" Click="@OnForward" Class="transparent hover-primary-icon">
+                <ButtonRound Title="Fast-forward" Click="@OnForward" Class="btn-sm transparent hover-primary-icon">
                     <i class="icon-rewind-right-fill text-2xl"></i>
                 </ButtonRound>
             }
         </div>
 
-        <div class="flex-auto flex-y">
+        <div class="flex-auto flex-y truncate">
             @if (m.ShowChatTitle) {
                 <div class="c-chat-title truncate whitespace-nowrap">
                     <a href="@Links.Chat(m.ChatId)" class="cursor-pointer hover:underline">@m.ChatTitle</a>
@@ -66,9 +66,10 @@
                 AuthorSids="@m.AuthorSids" />
         </div>
 
-        <div class="flex-none">
+        <div class="c-right">
+            <SpeedSelector/>
             @* Speed Selector *@
-            <ButtonRound Title="Close" Click="@OnStop" Class="transparent hover-primary-icon">
+            <ButtonRound Title="Close" Click="@OnStop" Class="btn-sm transparent hover-primary-icon">
                 <i class="icon-close-fill text-2xl"></i>
             </ButtonRound>
         </div>
