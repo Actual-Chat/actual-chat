@@ -65,6 +65,9 @@ public class RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
 
     public override async Task<MeshLockInfo?> GetInfo(Symbol key, CancellationToken cancellationToken = default)
     {
+        if (key.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(key));
+
         var failureCount = 0;
         while (true) {
             try {
@@ -87,6 +90,9 @@ public class RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
 
     public override async Task<Task> WhenChanged(Symbol key, CancellationToken cancellationToken = default)
     {
+        if (key.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(key));
+
         var channel = new RedisChannel(RedisDb.FullKey(key), RedisChannel.PatternMode.Literal);
         var failureCount = 0;
         ChannelMessageQueue queue;

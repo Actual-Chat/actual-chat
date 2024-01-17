@@ -20,7 +20,10 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
 
     public MeshLockHolder(IMeshLocksBackend backend, string id, Symbol key, string value, MeshLockOptions options)
     {
+        if (key.IsEmpty)
+            throw new ArgumentOutOfRangeException(nameof(key));
         options.AssertValid();
+
         Backend = backend;
         Id = id;
         Key = key;
