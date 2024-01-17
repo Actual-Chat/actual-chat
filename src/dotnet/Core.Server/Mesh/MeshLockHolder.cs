@@ -16,6 +16,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     public MeshLockOptions Options { get; }
     public RandomTimeSpan RetryPeriod { get; init; } = TimeSpan.FromSeconds(0.5).ToRandom(0.1);
     public TimeSpan MaxClockDrift { get; init; } = TimeSpan.FromMicroseconds(100);
+    public CpuTimestamp CreatedAt { get; } = CpuTimestamp.Now;
 
     public MeshLockHolder(IMeshLocksBackend backend, string id, Symbol key, string value, MeshLockOptions options)
     {
@@ -65,7 +66,8 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        Log?.LogInformation("[+] {Key} = {StoredValue}", Key, StoredValue);
+        Log?.LogInformation("[+] {Key} = {StoredValue} (acquired in {AcquireTime})",
+            Key, StoredValue, CreatedAt.Elapsed.ToShortString());
         var expirationPeriod = Options.ExpirationPeriod;
         var renewPeriod = Options.RenewalPeriod;
         var now = Clock.Now;

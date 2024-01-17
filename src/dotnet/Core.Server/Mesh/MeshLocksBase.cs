@@ -13,20 +13,44 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
     public IMeshLocksBackend Backend => this;
     ILogger? IMeshLocksBackend.Log => Log;
 
-    public virtual async Task<MeshLockHolder> Acquire(
+    public virtual async Task<MeshLockHolder?> TryLock(
         Symbol key, string value,
         MeshLockOptions lockOptions,
         CancellationToken cancellationToken = default)
     {
         var holder = CreateHolder(key, value, lockOptions);
-        Log?.LogInformation("Acquire: {Key} = {StoredValue}", key, holder.StoredValue);
+        Log?.LogInformation("TryLock: {Key} = {StoredValue}", key, holder.StoredValue);
+        try {
+            cancellationToken.ThrowIfCancellationRequested();
+            var isAcquired = await TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
+            if (!isAcquired)
+                return null;
+        }
+        catch (Exception e) {
+            if (e is OperationCanceledException)
+                Log?.LogInformation("TryLock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
+            else
+                Log?.LogError(e, "TryLock failed: {Key} = {StoredValue}", key, holder.StoredValue);
+            throw;
+        }
+        holder.Start();
+        return holder;
+    }
+
+    public virtual async Task<MeshLockHolder> Lock(
+        Symbol key, string value,
+        MeshLockOptions lockOptions,
+        CancellationToken cancellationToken = default)
+    {
+        var holder = CreateHolder(key, value, lockOptions);
+        Log?.LogInformation("Lock: {Key} = {StoredValue}", key, holder.StoredValue);
         Task? whenChanged = null;
         var whenChangedCts = cancellationToken.CreateLinkedTokenSource();
         try {
             while (true) {
                 cancellationToken.ThrowIfCancellationRequested();
                 whenChanged ??= await WhenChanged(key, whenChangedCts.Token).ConfigureAwait(false);
-                var isAcquired = await TryAcquire(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
+                var isAcquired = await TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
                 if (isAcquired)
                     break;
 
@@ -40,7 +64,10 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
             }
         }
         catch (Exception e) {
-            Log?.LogError(e, "Acquire: {Key} = {StoredValue}", key, holder.StoredValue);
+            if (e is OperationCanceledException)
+                Log?.LogInformation("Lock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
+            else
+                Log?.LogError(e, "Lock failed: {Key} = {StoredValue}", key, holder.StoredValue);
             throw;
         }
         finally {
@@ -50,7 +77,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
         return holder;
     }
 
-    public abstract Task<MeshLockInfo?> TryQuery(Symbol key, CancellationToken cancellationToken = default);
+    public abstract Task<MeshLockInfo?> GetInfo(Symbol key, CancellationToken cancellationToken = default);
     public abstract Task<Task> WhenChanged(Symbol key, CancellationToken cancellationToken = default);
 
     Task<bool> IMeshLocksBackend.TryRenew(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
@@ -68,7 +95,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
     protected virtual string NextHolderId()
         => ZString.Concat(HolderKeyPrefix, Interlocked.Increment(ref LastHolderId));
 
-    protected abstract Task<bool> TryAcquire(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
+    protected abstract Task<bool> TryLock(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
     protected abstract Task<bool> TryRenew(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
     protected abstract Task<MeshLockReleaseResult> TryRelease(Symbol key, string value, CancellationToken cancellationToken);
     protected abstract Task<bool> ForceRelease(Symbol key, bool mustNotify, CancellationToken cancellationToken);

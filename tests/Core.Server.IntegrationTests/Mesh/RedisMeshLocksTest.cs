@@ -13,17 +13,20 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1.5) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
-        await using (var h = await locks.Acquire(key, "", lockOptions)) {
+        var info = await locks.GetInfo(key);
+        info.Should().BeNull();
+
+        await using (var h = await locks.Lock(key, "", lockOptions)) {
+            (await locks.TryLock(key, "")).Should().BeNull();
             for (var i = 0; i < 10; i++) { // 2s
                 await Task.Delay(TimeSpan.FromSeconds(0.2));
-                var info = await locks.TryQuery(key);
+                info = await locks.GetInfo(key);
                 info!.HolderId.Should().Be(h.Id);
             }
         }
-        {
-            var info = await locks.TryQuery(key);
-            info.Should().BeNull();
-        }
+
+        info = await locks.GetInfo(key);
+        info.Should().BeNull();
     }
 
     [Fact]
@@ -34,10 +37,12 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1.5) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
-        await using var h = await locks.Acquire(key, "", lockOptions);
+        (await locks.GetInfo(key)).Should().BeNull();
+        await using var h = await locks.Lock(key, "", lockOptions);
+        (await locks.TryLock(key, "")).Should().BeNull();
 
         await locks.Backend.ForceRelease(key, false);
-        (await locks.TryQuery(key)).Should().BeNull();
+        (await locks.GetInfo(key)).Should().BeNull();
 
         await Task.Delay(TimeSpan.FromSeconds(1.5));
         h.StopToken.IsCancellationRequested.Should().BeTrue();
@@ -51,9 +56,11 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(10) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
-        await using var h1 = await locks.Acquire(key, "", lockOptions);
+        (await locks.GetInfo(key)).Should().BeNull();
+        await using var h1 = await locks.Lock(key, "", lockOptions);
+        (await locks.TryLock(key, "")).Should().BeNull();
 
-        var h2AcquireTask = locks.Acquire(key, "", lockOptions);
+        var h2AcquireTask = locks.Lock(key, "", lockOptions);
         await Task.Delay(TimeSpan.FromSeconds(0.5)); // WhenChanged needs some time to subscribe
         h2AcquireTask.IsCompleted.Should().BeFalse();
 
