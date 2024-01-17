@@ -10,19 +10,18 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     {
         using var appHost = await NewAppHost();
         var locks = appHost.Services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
-        var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1) };
+        var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1.5) };
 
-        await using var h = await locks.Acquire("x", "", lockOptions);
-        await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it fails on GitHub
-        for (var i = 0; i < 10; i++) {
-            var info = await locks.TryQuery(h.Key);
-            info!.HolderId.Should().Be(h.Id);
-            await Task.Delay(TimeSpan.FromSeconds(0.333));
+        var key = Alphabet.AlphaNumeric.Generator8.Next();
+        await using (var h = await locks.Acquire(key, "", lockOptions)) {
+            for (var i = 0; i < 10; i++) { // 2s
+                await Task.Delay(TimeSpan.FromSeconds(0.2));
+                var info = await locks.TryQuery(key);
+                info!.HolderId.Should().Be(h.Id);
+            }
         }
-        await h.DisposeAsync();
         {
-            await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it fails on GitHub
-            var info = await locks.TryQuery(h.Key);
+            var info = await locks.TryQuery(key);
             info.Should().BeNull();
         }
     }
@@ -32,15 +31,15 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     {
         using var appHost = await NewAppHost();
         var locks = appHost.Services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
-        var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1) };
+        var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1.5) };
 
-        await using var h = await locks.Acquire("x", "", lockOptions);
+        var key = Alphabet.AlphaNumeric.Generator8.Next();
+        await using var h = await locks.Acquire(key, "", lockOptions);
 
-        await locks.Backend.ForceRelease(h.Key, false);
-        await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it may fail on GitHub
-        (await locks.TryQuery(h.Key)).Should().BeNull();
+        await locks.Backend.ForceRelease(key, false);
+        (await locks.TryQuery(key)).Should().BeNull();
 
-        await Task.Delay(TimeSpan.FromSeconds(1.25));
+        await Task.Delay(TimeSpan.FromSeconds(1.5));
         h.StopToken.IsCancellationRequested.Should().BeTrue();
     }
 
@@ -51,10 +50,10 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var locks = appHost.Services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(10) };
 
-        await using var h1 = await locks.Acquire("x", "", lockOptions);
-        await Task.Delay(TimeSpan.FromSeconds(0.25)); // Otherwise it may fail on GitHub
+        var key = Alphabet.AlphaNumeric.Generator8.Next();
+        await using var h1 = await locks.Acquire(key, "", lockOptions);
 
-        var h2AcquireTask = locks.Acquire("x", "", lockOptions);
+        var h2AcquireTask = locks.Acquire(key, "", lockOptions);
         await Task.Delay(TimeSpan.FromSeconds(0.5)); // WhenChanged needs some time to subscribe
         h2AcquireTask.IsCompleted.Should().BeFalse();
 
