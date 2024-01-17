@@ -71,13 +71,8 @@ public class DistributedLocks<TContext>(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         using var _1 = Tracer.Default.Region($"{nameof(DistributedLocks<TContext>)}.{nameof(RunInternal)}(): {typeof(TContext).Name}.{key}");
-        var meshLockHolder = !waitLock
-            ? await MeshLocks
-                .TryLock(key, Guid.NewGuid().ToString(), options, cancellationToken)
-                .ConfigureAwait(false)
-            : await MeshLocks
-                .Lock(key, Guid.NewGuid().ToString(), options, cancellationToken)
-                .ConfigureAwait(false);
+        var meshLockHolder = await Lock()
+            .ConfigureAwait(false);
         if (meshLockHolder is null)
             return (false, default!);
 
@@ -85,7 +80,20 @@ public class DistributedLocks<TContext>(IServiceProvider services)
         var result = await taskFactory(cancellationToken).ConfigureAwait(false);
         // TODO: cancel on failed renewal
         return (true, result);
+
+        async Task<MeshLockHolder?> Lock()
+        {
+            using var _ = Tracer.Default.Region($"{nameof(DistributedLocks<TContext>)}.{nameof(RunInternal)}().Lock(): {typeof(TContext).Name}.{key}");
+            return !waitLock
+                ? await MeshLocks
+                    .TryLock(key, Guid.NewGuid().ToString(), options, cancellationToken)
+                    .ConfigureAwait(false)
+                : await MeshLocks
+                    .Lock(key, Guid.NewGuid().ToString(), options, cancellationToken)
+                    .ConfigureAwait(false);
+        }
     }
+
 
     private static MeshLockOptions GetDefaultOptions() => new (TimeSpan.FromSeconds(15));
 }
