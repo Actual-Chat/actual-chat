@@ -1,16 +1,16 @@
+using ActualChat.Mesh;
+
 namespace ActualChat.Redis;
 
 public class DistributedLocks<TContext>(IServiceProvider services)
 {
-    public record Options(TimeSpan Ttl, TimeSpan RefreshInterval)
-    {
-        public static readonly Options Default = new (TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(15));
-    }
+    private IMeshLocks<TContext>? _meshLocks;
+    private IMeshLocks<TContext> MeshLocks => _meshLocks ??= services.GetRequiredService<IMeshLocks<TContext>>();
 
     public async Task<T> Run<T>(
         Func<CancellationToken, Task<T>> taskFactory,
         string key,
-        Options options,
+        MeshLockOptions options,
         CancellationToken cancellationToken)
     {
         var (_, result) = await RunInternal(taskFactory,
@@ -26,14 +26,14 @@ public class DistributedLocks<TContext>(IServiceProvider services)
         Func<CancellationToken, Task<T>> taskFactory,
         string key,
         CancellationToken cancellationToken)
-        => Run(taskFactory, key, Options.Default, cancellationToken);
+        => Run(taskFactory, key, GetDefaultOptions(), cancellationToken);
 
     public Task Run(
         Func<CancellationToken, Task> taskFactory,
         string key,
-        Options options,
+        MeshLockOptions options,
         CancellationToken cancellationToken)
-        => Run(ct => taskFactory(ct).ContinueWith(_ => Unit.Default, TaskScheduler.Current),
+        => Run(taskFactory.ToUnitTaskFactory(),
             key,
             options,
             cancellationToken);
@@ -42,17 +42,17 @@ public class DistributedLocks<TContext>(IServiceProvider services)
         Func<CancellationToken, Task> taskFactory,
         string key,
         CancellationToken cancellationToken)
-        => Run(ct => ToTaskWithResult(taskFactory, ct),
+        => Run(taskFactory.ToUnitTaskFactory(),
             key,
-            Options.Default,
+            GetDefaultOptions(),
             cancellationToken);
 
-    public Task<(bool WasRun, T Result)> TryRun<T>(Func<CancellationToken, Task<T>> taskFactory, string key, Options options, CancellationToken cancellationToken)
+    public Task<(bool WasRun, T Result)> TryRun<T>(Func<CancellationToken, Task<T>> taskFactory, string key, MeshLockOptions options, CancellationToken cancellationToken)
         => RunInternal(taskFactory, key, options, false, cancellationToken);
 
-    public async Task<bool> TryRun(Func<CancellationToken, Task> taskFactory, string key, Options options, CancellationToken cancellationToken)
+    public async Task<bool> TryRun(Func<CancellationToken, Task> taskFactory, string key, MeshLockOptions options, CancellationToken cancellationToken)
     {
-        var (isStarted, _) = await TryRun(ct => ToTaskWithResult(taskFactory, ct), key, options, cancellationToken)
+        var (isStarted, _) = await TryRun(taskFactory.ToUnitTaskFactory(), key, options, cancellationToken)
             .ConfigureAwait(false);
         return isStarted;
     }
@@ -61,35 +61,31 @@ public class DistributedLocks<TContext>(IServiceProvider services)
         Func<CancellationToken, Task> taskFactory,
         string key,
         CancellationToken cancellationToken)
-        => TryRun(taskFactory, key, Options.Default, cancellationToken);
-
-    private static Task<Unit> ToTaskWithResult(Func<CancellationToken, Task> taskFactory, CancellationToken ct)
-        => taskFactory(ct).ContinueWith(_ => Unit.Default, TaskScheduler.Current);
+        => TryRun(taskFactory, key, GetDefaultOptions(), cancellationToken);
 
     private async Task<(bool WasRun, T Result)> RunInternal<T>(
         Func<CancellationToken, Task<T>> taskFactory,
         string key,
-        Options options,
+        MeshLockOptions options,
         bool waitLock,
         CancellationToken cancellationToken)
     {
         using var _1 = Tracer.Default.Region($"{nameof(DistributedLocks<TContext>)}.{nameof(RunInternal)}(): {typeof(TContext).Name}.{key}");
-        var redisLock = new RedisLock<TContext>(services, key);
-        if (waitLock)
-            await redisLock.Wait(options.Ttl, cancellationToken).ConfigureAwait(false);
-        else if (!await redisLock.TryLock(options.Ttl).ConfigureAwait(false))
+        var meshLockHolder = !waitLock
+            ? await MeshLocks
+                .TryLock(key, Guid.NewGuid().ToString(), options, cancellationToken)
+                .ConfigureAwait(false)
+            : await MeshLocks
+                .Lock(key, Guid.NewGuid().ToString(), options, cancellationToken)
+                .ConfigureAwait(false);
+        if (meshLockHolder is null)
             return (false, default!);
-        await using var _2 = redisLock.ConfigureAwait(false);
 
-        var cts = cancellationToken.CreateLinkedTokenSource();
-        var keepLockTask = redisLock.Keep(options.Ttl, options.RefreshInterval, cancellationToken);
-        var jobTask = taskFactory(cts.Token);
-        try {
-            await Task.WhenAny(keepLockTask, jobTask).ConfigureAwait(false);
-        }
-        finally {
-            await cts.CancelAsync().ConfigureAwait(false);
-        }
-        return (true, await jobTask.ConfigureAwait(false));
+        await using var _2 = meshLockHolder.ConfigureAwait(false);
+        var result = await taskFactory(cancellationToken).ConfigureAwait(false);
+        // TODO: cancel on failed renewal
+        return (true, result);
     }
+
+    private static MeshLockOptions GetDefaultOptions() => new (TimeSpan.FromSeconds(15));
 }
