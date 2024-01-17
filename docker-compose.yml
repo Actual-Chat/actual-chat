@@ -4,6 +4,8 @@ services:
     image: "redis:7.2.4-alpine3.19"
     ports:
      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
   postgres:
     image: "postgres:16.1-alpine3.19"
     environment:
@@ -12,6 +14,11 @@ services:
       POSTGRES_HOST_AUTH_METHOD: "password"
     ports:
       - "5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
   imageproxy:
     image: willnorris/imageproxy:latest
@@ -65,6 +72,10 @@ services:
       - ELASTIC_PASSWORD=elastic
       - xpack.security.enabled=false
       - discovery.type=single-node
+    healthcheck:
+      interval: 10s
+      retries: 80
+      test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:9200/
     ulimits:
       memlock:
         soft: -1
