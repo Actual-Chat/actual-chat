@@ -76,6 +76,10 @@ services:
       interval: 10s
       retries: 80
       test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:9200/
+    deploy:
+      resources:
+        limits:
+          memory: 4G
     ulimits:
       memlock:
         soft: -1
