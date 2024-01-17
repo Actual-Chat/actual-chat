@@ -14,6 +14,13 @@ public class AppDelegate : MauiUIApplicationDelegate
         return MauiProgram.CreateMauiApp();
     }
 
+    public override bool FinishedLaunching(UIApplication application, NSDictionary launchOptions)
+    {
+        var settings = UIUserNotificationSettings.GetSettingsForTypes(UIUserNotificationType.Badge, null);
+        UIApplication.SharedApplication.RegisterUserNotificationSettings(settings);
+        return base.FinishedLaunching(application, launchOptions);
+    }
+
     public override bool ContinueUserActivity(
         UIApplication application,
         NSUserActivity userActivity,

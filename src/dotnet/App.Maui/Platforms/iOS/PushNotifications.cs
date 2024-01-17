@@ -1,3 +1,4 @@
+using ActualChat.Chat.UI.Blazor;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor;
 using Foundation;
@@ -28,6 +29,7 @@ public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission
         Hub = hub;
         Messaging = hub.GetRequiredService<IFirebaseCloudMessaging>();
         Messaging.NotificationTapped += OnNotificationTapped;
+        Messaging.NotificationReceived += OnNotificationReceived;
     }
 
     public static void Initialize(UIApplication app, NSDictionary options)
@@ -83,6 +85,11 @@ public class PushNotifications : IDeviceTokenRetriever, INotificationsPermission
             isGranted = await IsGranted(cancellationToken).ConfigureAwait(true);
             NotificationUI.SetIsGranted(isGranted);
         }, Log, "Notifications permission request failed", cancellationToken);
+
+    private void OnNotificationReceived(object? sender, FCMNotificationReceivedEventArgs e)
+        => _ = DispatchToBlazor(
+            _ => UIApplication.SharedApplication.ApplicationIconBadgeNumber = Hub.ChatUIHub().ChatListUI.UnreadChatCount.Value.Value,
+            "PushNotifications.OnNotificationReceived()");
 
     private static void OnNotificationTapped(object? sender, FCMNotificationTappedEventArgs e)
     {
