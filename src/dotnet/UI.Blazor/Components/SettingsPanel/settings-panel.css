@@ -116,11 +116,11 @@ body.hoverable .tile:hover {
 .tile-item.unselected {
     @apply hover:bg-transparent;
 }
-.tile-item.active {
-    @apply cursor-default;
-}
-.tile-item.inactive {
+.tile-item.clickable {
     @apply cursor-pointer;
+}
+.settings-tab .tile-item label {
+    cursor: inherit;
 }
 .tile-item-icon {
     @apply flex-none flex justify-center;

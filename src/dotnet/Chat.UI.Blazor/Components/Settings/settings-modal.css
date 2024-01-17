@@ -26,7 +26,7 @@
     @apply text-base mr-2;
 }
 
-.blazor-mode-tile .form label {
+.blazor-mode-tile .label {
     @apply whitespace-normal;
     @apply text-headline-1 text-02;
 }
@@ -34,9 +34,9 @@
     @apply whitespace-normal;
     @apply text-caption-6 text-03;
 }
-.blazor-mode-tile .form .tile-item.inactive:hover label {
+.blazor-mode-tile .tile-item:not(.selected):hover label {
     @apply text-01;
 }
-.blazor-mode-tile .form .tile-item.inactive:hover .c-comment {
+.blazor-mode-tile .tile-item:not(.selected):hover .c-comment {
     @apply text-02;
 }

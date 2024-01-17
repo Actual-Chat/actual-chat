@@ -3,14 +3,9 @@
 
 @{
     var unselectedCls = IsHoverable ? "" : "unselected";
-    var extraClass = Click.HasDelegate ? " cursor-pointer" : "";
-    var activeClass = "inactive";
-    if (IsActive) {
-        activeClass = "active";
-        extraClass = "";
-    }
+    var extraClass = Click.HasDelegate ? " clickable" : "";
 }
-<div class="tile-item @unselectedCls @extraClass @activeClass group @Class"
+<div class="tile-item @unselectedCls @extraClass group @Class"
      @attributes="@_resolvedAdditionalAttributes">
     <div class="tile-item-icon">
         @Icon
@@ -37,7 +32,6 @@
     [Parameter] public RenderFragment? Right { get; set; }
     [Parameter] public RenderFragment? Content { get; set; }
     [Parameter] public RenderFragment? Caption { get; set; }
-    [Parameter] public bool IsActive { get; set; }
     [Parameter] public bool IsHoverable { get; set; } = true;
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public EventCallback Click { get; set; }

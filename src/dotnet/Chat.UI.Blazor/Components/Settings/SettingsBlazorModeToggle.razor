@@ -1,4 +1,13 @@
 @namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var ssbIsSelected = BlazorModeHelper.IsBlazorServer;
+    var wasmIsSelected = !ssbIsSelected;
+    var ssbClass = ssbIsSelected ? "selected" : "";
+    var wasmClass = wasmIsSelected ? "selected" : "";
+    // Use NoStateHasChanged since ChangeMode will cause page reload anyway, no need to re-render component.
+    var ssbClickHandler = !ssbIsSelected ? NoStateHasChanged.EventCallback(() => ChangeMode(true)) : default;
+    var wasmClickHandler = !wasmIsSelected ? NoStateHasChanged.EventCallback(() => ChangeMode(false)): default;
+}
 
 <TileTopic Topic="Blazor Mode"/>
 <Tile Class="blazor-mode-tile">
@@ -12,7 +21,7 @@
                 DisplayName="Blazor Mode"
                 @bind-Value="_formModel.IsServerMode">
 
-                <TileItem Click="@(() => ChangeMode(true))" IsActive="@(BlazorModeHelper.IsBlazorServer)">
+                <TileItem Class="@ssbClass" Click="@ssbClickHandler">
                     <Icon>
                         <FormRadio Id="@_formModel.ServerModeFormId" Value="@true"/>
                     </Icon>
@@ -24,7 +33,7 @@
                     </Content>
                 </TileItem>
 
-                <TileItem Click="@(() => ChangeMode(false))" IsActive="@(!BlazorModeHelper.IsBlazorServer)">
+                <TileItem Class="@wasmClass" Click="@wasmClickHandler">
                     <Icon>
                         <FormRadio Id="@_formModel.WasmModeFormId" Value="@false"/>
                     </Icon>
