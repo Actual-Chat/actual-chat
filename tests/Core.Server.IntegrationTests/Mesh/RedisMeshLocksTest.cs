@@ -21,10 +21,8 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
             for (var i = 0; i < 10; i++) { // 2s
                 await Task.Delay(TimeSpan.FromSeconds(0.2));
                 info = await locks.GetInfo(key);
-                if (info == null) {
-                    Out.WriteLine($"i = {i}");
-                    Assert.Fail("info == null");
-                }
+                if (info == null)
+                    Assert.Fail($"info == null (i = {i})");
                 info.HolderId.Should().Be(h.Id);
             }
         }
