@@ -2,13 +2,18 @@
 @typeparam TValue;
 
 @* This component is needed to customize InputRadio styles in a custom themes, with hover, etc. *@
-<label class="form-radio-hidden">
-    <InputRadio id="@Id" Name="@Name" Value="@Value"/>
+@{
+    var cls = "form-radio-hidden";
+    cls += IsDisabled ? " form-radio-disabled" : " form-radio-active";
+}
+<label class="@cls">
+    <InputRadio id="@Id" disabled="@IsDisabled" Name="@Name" Value="@Value" />
     <span class="radio"></span>
 </label>
 
 @code {
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Name { get; set; } = "";
+    [Parameter] public bool IsDisabled { get; set; }
     [Parameter] public TValue? Value { get; set; }
 }

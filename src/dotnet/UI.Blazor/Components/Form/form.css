@@ -188,18 +188,18 @@
 }
 
 /* Radio buttons */
-.form .form-radio-hidden {
+.form-radio-hidden {
     @apply relative;
     @apply justify-start;
     @apply h-5 w-5;
 }
-.form .form-radio-hidden input {
+.form-radio-hidden input {
     @apply absolute;
     @apply block;
     @apply h-0 w-0;
     @apply opacity-0;
 }
-.form .form-radio-hidden .radio {
+.form-radio-hidden .radio {
     @apply relative;
     @apply inline-block;
     @apply appearance-none;
@@ -208,25 +208,29 @@
     @apply box-border;
     @apply bg-radio;
     @apply outline-none;
-    @apply cursor-pointer;
     @apply transition-all duration-500;
     box-shadow: 0 0 4px 0 var(--radio-shadow);
 }
-.form-radio-hidden:hover .radio {
-    @apply bg-radio;
+.form-radio-hidden.form-radio-active .radio {
+    @apply cursor-pointer;
+}
+.form-radio-hidden.form-radio-disabled .radio {
+    @apply bg-radio-shadow;
+}
+.form-radio-hidden.form-radio-active:hover .radio {
     box-shadow: inset 1px 2px 3px 0 var(--radio-shadow);
 }
-.form-radio-hidden:hover input:checked + .radio {
+.form-radio-hidden.form-radio-active:hover input:checked + .radio {
     box-shadow: none;
 }
 
 .form-radio-hidden input:checked + .radio {
     @apply bg-radio;
     @apply border-primary;
-    @apply cursor-default;
 }
 
-.form-radio-hidden:hover .radio::before, .form-radio-hidden input:checked + .radio::before {
+.form-radio-hidden.form-radio-active:hover input:not(:checked) + .radio::before,
+.form-radio-hidden input:checked + .radio::before {
     @apply content-empty;
     @apply absolute top-1/2 left-1/2;
     @apply w-2.5 h-2.5;
