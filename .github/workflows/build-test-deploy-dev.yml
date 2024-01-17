@@ -155,7 +155,7 @@ jobs:
           # Maps port 6379 on service container to the host
           - 6379:6379
       postgres:
-        image: postgres:15.1-alpine
+        image: postgres:16.1-alpine3.19
         # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: postgres
