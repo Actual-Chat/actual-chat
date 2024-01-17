@@ -35,10 +35,7 @@ public static class ChatPermissionsExt
     }
 
     public static Exception NotEnoughPermissions(ChatPermissions? required = null)
-    {
-        var message = "You can't perform this action: not enough permissions.";
-        return required.HasValue
-            ? new SecurityException($"{message} Requested permission: {required.Value}.")
-            : new SecurityException(message);
-    }
+        => required.HasValue
+            ? StandardError.NotEnoughPermissions(required.Value.ToString())
+            : StandardError.NotEnoughPermissions();
 }

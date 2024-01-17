@@ -14,10 +14,7 @@ public static class PlacePermissionsExt
     }
 
     public static Exception NotEnoughPermissions(PlacePermissions? required = null)
-    {
-        var message = "You can't perform this action: not enough permissions.";
-        return required.HasValue
-            ? new SecurityException($"{message} Requested permission: {required.Value}.")
-            : new SecurityException(message);
-    }
+        => required.HasValue
+            ? StandardError.NotEnoughPermissions(required.Value.ToString())
+            : StandardError.NotEnoughPermissions();
 }
