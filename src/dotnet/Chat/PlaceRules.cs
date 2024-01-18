@@ -23,6 +23,7 @@ public sealed partial record PlaceRules(
     public bool CanEditRoles() => Permissions.Has(PlacePermissions.EditRoles);
     public bool CanEditMembers() => Permissions.Has(PlacePermissions.EditMembers);
     public bool IsOwner() => Permissions.Has(PlacePermissions.Owner);
+    public bool CanApplyPublicChatType() => IsOwner();
 
     public bool Has(PlacePermissions required)
         => Permissions.Has(required);

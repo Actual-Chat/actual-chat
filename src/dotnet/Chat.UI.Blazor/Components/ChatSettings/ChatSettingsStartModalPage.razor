@@ -17,7 +17,8 @@
         return;
 
     Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
-    var isPlaceChat = m.Chat.Id.IsPlaceChat;
+    var isPlaceChat = !_placeId.IsNone;
+    var canChangeChatType = _placeId.IsNone || _place != null && _place.Rules.CanApplyPublicChatType();
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -49,7 +50,7 @@
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
             <TileItem>
                 <Icon>
-                    <FormRadio id="@_form.IsPublicTrueFormId" Value="@true" />
+                    <FormRadio id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true" />
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
@@ -60,7 +61,7 @@
             </TileItem>
             <TileItem>
                 <Icon>
-                    <FormRadio id="@_form.IsPublicFalseFormId" Value="@false"/>
+                    <FormRadio id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>
@@ -212,6 +213,8 @@
     private AvatarKind _avatarKind;
     private string? _avatarKey;
     private bool _isAdmin;
+    private PlaceId _placeId;
+    private Place? _place;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -255,6 +258,12 @@
             AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
             ImageUploadUrl = $"/api/chat-media/{chat.Id}/upload",
         };
+        _placeId = chat.Id.PlaceChatId.PlaceId;
+        if (!_placeId.IsNone) {
+            _place = await Hub.Places.Get(Hub.Session(), _placeId, default).Require().ConfigureAwait(false);
+            if (!_place.Rules.CanApplyPublicChatType())
+                _form.IsPublic = false;
+        }
         Context.PageDataBag.Set(formBagKey, _form);
     }
 

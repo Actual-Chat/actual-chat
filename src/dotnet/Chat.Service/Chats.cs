@@ -8,6 +8,8 @@ namespace ActualChat.Chat;
 
 public class Chats(IServiceProvider services) : IChats
 {
+    private IPlaces? _places;
+
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
@@ -18,6 +20,8 @@ public class Chats(IServiceProvider services) : IChats
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
     private ICommander Commander { get; } = services.Commander();
+
+    private IPlaces Places => _places ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
@@ -175,24 +179,45 @@ public class Chats(IServiceProvider services) : IChats
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new ChatsBackend_Change(chatId, expectedVersion, change.RequireValid());
-        if (change.Create.HasValue) {
+        if (change.IsCreate(out var chatDiff1)) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
             account.Require(AccountFull.MustBeActive);
             changeCommand = changeCommand with {
                 OwnerId = account.Id,
             };
+            var placeId = chatDiff1.PlaceId ?? PlaceId.None;
+            await ValidatePlaceChatChangeConstraints(placeId, chatDiff1).ConfigureAwait(false);
         }
         else {
             var requiredPermissions = change.Remove
                 ? ChatPermissions.Owner
                 : ChatPermissions.EditProperties;
             chat.Require().Rules.Permissions.Require(requiredPermissions);
+            if (change.IsUpdate(out var chatDiff2))
+                await ValidatePlaceChatChangeConstraints(chat.Id.PlaceId, chatDiff2).ConfigureAwait(false);
         }
 
         chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
         if (change.Create.HasValue)
             await Authors.EnsureJoined(session, chat.Id, cancellationToken).ConfigureAwait(false);
         return chat;
+
+        async Task ValidatePlaceChatChangeConstraints(PlaceId placeId, ChatDiff chatDiff)
+        {
+            if (placeId.IsNone)
+                return;
+
+            var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
+            if (place == null)
+                throw StandardError.Constraint("Requested place is unavailable.");
+
+            var placeMember = place.Rules.Author;
+            if (placeMember == null)
+                throw StandardError.Constraint("Only place members can add chats.");
+            var isOwner = place.Rules.IsOwner();
+            if (!isOwner && chatDiff.IsPublic == true)
+                throw StandardError.NotEnoughPermissions("Make chat public");
+        }
     }
 
     public virtual async Task<ChatEntry> OnUpsertTextEntry(Chats_UpsertTextEntry command, CancellationToken cancellationToken)

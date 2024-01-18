@@ -1,6 +1,9 @@
 ﻿@using System.ComponentModel.DataAnnotations
 @inherits FusionComponentBase
 @namespace ActualChat.Chat.UI.Blazor.Components
+@{
+    var canChangeChatType = _placeId.IsNone || _place != null && _place.Rules.CanApplyPublicChatType();
+}
 
 <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
     <FormBlock>
@@ -33,7 +36,7 @@
         <InputRadioGroup Name="chat_type" DisplayName="Chat type" @bind-Value="_form.IsPublic">
             <TileItem>
                 <Icon>
-                    <FormRadio Id="@_form.IsPublicTrueFormId" Value="@true"/>
+                    <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true"/>
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicTrueFormId" Text="Public chat"></Label>
@@ -44,7 +47,7 @@
             </TileItem>
             <TileItem>
                 <Icon>
-                    <FormRadio Id="@_form.IsPublicFalseFormId" Value="@false"/>
+                    <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
                 </Icon>
                 <Content>
                     <Label InputId="@_form.IsPublicFalseFormId" Text="Private chat"></Label>
@@ -116,6 +119,7 @@
     private FormModel _form = null!;
     private bool _isAdmin;
     private PlaceId _placeId;
+    private Place? _place;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -130,6 +134,14 @@
         _form = new(ComponentIdGenerator);
         _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
         _placeId = PlaceId.Parse(PlaceSid);
+    }
+
+    protected override async Task OnInitializedAsync() {
+        if (!_placeId.IsNone) {
+            _place = await Hub.Places.Get(Hub.Session(), _placeId, default).Require().ConfigureAwait(false);
+            if (!_place.Rules.CanApplyPublicChatType())
+                _form.IsPublic = false;
+        }
     }
 
     private void OnImagePicked(MediaContent mediaContent) {

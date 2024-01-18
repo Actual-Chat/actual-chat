@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Security;
 using ActualLab.Internal;
 
 namespace ActualChat;
@@ -56,6 +57,14 @@ public static partial class StandardError
 
     public static Exception Unauthorized(string message)
         => new UnauthorizedAccessException(message);
+
+    public static Exception Security(string message)
+        => new SecurityException(message);
+
+    public static Exception NotEnoughPermissions(string? requiredPermission = null)
+        => requiredPermission.IsNullOrEmpty()
+            ? Security("You can't perform this action: not enough permissions.")
+            : Security($"You can't perform this action: not enough permissions. Requested permission: {requiredPermission}");
 
     public static Exception Configuration(string message)
         => new InternalError($"Configuration: {message}");
