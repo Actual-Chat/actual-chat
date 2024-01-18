@@ -77,8 +77,8 @@ public class DistributedLocks<TContext>(IServiceProvider services)
             return (false, default!);
 
         await using var _2 = meshLockHolder.ConfigureAwait(false);
-        var result = await taskFactory(cancellationToken).ConfigureAwait(false);
-        // TODO: cancel on failed renewal
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, meshLockHolder.StopToken);
+        var result = await taskFactory(cts.Token).ConfigureAwait(false);
         return (true, result);
 
         async Task<MeshLockHolder?> Lock()
