@@ -25,12 +25,13 @@ public class RedisMeshLocks : MeshLocksBase
             return -1
         """;
     private static readonly string TryRenewScript =
+        // Ideally we want to use GT option with PEXPIRE, but it's available only since Redis 7.0
         """
             local key, value, expiresIn = KEYS[1], ARGV[1], ARGV[2]
             if redis.call('GET', key) ~= value then
                 return -1
             end
-            redis.call('PEXPIRE', key, expiresIn, 'GT')
+            redis.call('PEXPIRE', key, expiresIn)
             if redis.call('GET', key) ~= value then
                 return -1
             end
