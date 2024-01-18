@@ -3,6 +3,7 @@ using ActualChat.Search.Db;
 using ActualChat.Search.Module;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Clients.Elasticsearch.Mapping;
 
 namespace ActualChat.Search;
 
@@ -55,15 +56,18 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
             return;
 
         await Elastic.Indices
-            .PutIndexTemplateAsync<IndexedEntry>(ElasticExt.IndexTemplateName, EntryIndexTemplate, cancellationToken)
+            .PutIndexTemplateAsync<IndexedEntry>(ElasticExt.IndexTemplateName, ConfigureEntryIndexTemplate, cancellationToken)
             .Assert(Log)
             .ConfigureAwait(false);
     }
 
-    private static void EntryIndexTemplate(PutIndexTemplateRequestDescriptor<IndexedEntry> index)
+    private static void ConfigureEntryIndexTemplate(PutIndexTemplateRequestDescriptor<IndexedEntry> index)
         => index.Template(ConfigureMappings).IndexPatterns(ElasticExt.IndexPattern);
 
     private static void ConfigureMappings(IndexTemplateMappingDescriptor<IndexedEntry> descriptor)
         => descriptor.Settings(s => s.RefreshInterval(Duration.MinusOne))
-            .Mappings(m => m.Properties(p => p.LongNumber(x => x.Id).Text(x => x.Content)));
+            .Mappings(m => m.Properties(ConfigureProperties));
+
+    private static void ConfigureProperties(PropertiesDescriptor<IndexedEntry> p)
+        => p.Keyword(x => x.Id).Text(x => x.Content).Keyword(x => x.ChatId);
 }

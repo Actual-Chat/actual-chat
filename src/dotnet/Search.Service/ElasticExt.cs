@@ -5,11 +5,15 @@ namespace ActualChat.Search;
 
 public static class ElasticExt
 {
-    public const string IndexTemplateName = "entries";
-    public const string IndexPattern = "entries-*";
+    public const string EntriesIndexVersion = "v1";
+    public const string IndexTemplateName = $"entries-{EntriesIndexVersion}";
+    public const string IndexPattern = $"entries-{EntriesIndexVersion}-*";
 
-    public static IndexName ToIndexName(this ChatId chatId)
-        => $"entries-{chatId.Value.ToLowerInvariant()}";
+    public static IndexName ToIndexName(this Chat.Chat chat)
+    {
+        var sid = chat.IsPublicPlaceChat() ? chat.Id.PlaceId.Value : chat.Id.Value;
+        return $"entries-{EntriesIndexVersion}-{sid.ToLowerInvariant()}";
+    }
 
     public static async Task<T> Assert<T>(this Task<T> responseTask, ILogger? log = null) where T : ElasticsearchResponse
     {
