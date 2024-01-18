@@ -125,7 +125,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
                 .ConfigureAwait(false);
             var entries = chatTile.Entries.Where(x => !x.Content.IsNullOrEmpty())
                 .Select(x => new IndexedEntry {
-                    Id = x.LocalId,
+                    Id = new TextEntryId(chatId, x.LocalId, AssumeValid.Option),
                     Content = x.Content,
                 })
                 .ToApiArray();
@@ -155,7 +155,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
                 .ConfigureAwait(false);
             var updated = changedEntries.Where(x => !x.IsRemoved && !x.Content.IsNullOrEmpty())
                 .Select(x => new IndexedEntry {
-                    Id = x.LocalId,
+                    Id = new TextEntryId(chatId, x.LocalId, AssumeValid.Option),
                     Content = x.Content,
                 })
                 .ToApiArray();

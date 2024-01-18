@@ -1,28 +1,28 @@
 ﻿using ActualChat.App.Server;
+using ActualChat.Chat;
 using ActualChat.Invite;
-using ActualChat.Testing.Host;
 using ActualChat.Users;
 
-namespace ActualChat.Chat.IntegrationTests;
+namespace ActualChat.Testing.Host;
 
 public static class ChatOperations
 {
-    public static async Task SignInAsAlice(this IWebTester tester)
-        => await tester.SignIn(new User("", "Alice"));
+    public static Task<AccountFull> SignInAsAlice(this IWebTester tester)
+        => tester.SignIn(new User("", "Alice"));
 
-    public static async Task SignInAsBob(this IWebTester tester, string identity = "")
+    public static Task<AccountFull> SignInAsBob(this IWebTester tester, string identity = "")
     {
         var user = new User("", "Bob");
         if (!identity.IsNullOrEmpty())
             user = user.WithIdentity(identity);
-        await tester.SignIn(user);
+        return tester.SignIn(user);
     }
 
-    public static async Task<(ChatId, Symbol)> CreateChat(AppHost appHost, bool isPublicChat)
-        => await CreateChat(appHost, c => c with{ IsPublic = isPublicChat});
+    public static Task<(ChatId, Symbol)> CreateChat(AppHost appHost, bool isPublicChat)
+        => CreateChat(appHost, c => c with{ IsPublic = isPublicChat});
 
-    public static async Task<(ChatId, Symbol)> CreateChat(IWebTester tester, bool isPublicChat)
-        => await CreateChat(tester, c => c with{ IsPublic = isPublicChat});
+    public static Task<(ChatId, Symbol)> CreateChat(IWebTester tester, bool isPublicChat)
+        => CreateChat(tester, c => c with{ IsPublic = isPublicChat});
 
     public static async Task<(ChatId, Symbol)> CreateChat(AppHost appHost, Func<ChatDiff, ChatDiff> configure)
     {

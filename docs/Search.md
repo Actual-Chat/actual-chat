@@ -58,10 +58,13 @@ TBD
 
 # Indexing
 
+- Rebuild index when [index schema version](#index-verisoning) has changed
 - Scoped indexes
     - If content is public or available on a parent level, than put it into a scoped index
         - i.e. index per place
     - TODO: what needs to be in a scoped index?
+  - Refresh scoped index when chat is migrated to a place
+  - Refresh scoped index when chat became private or public
 
 ## History Indexing / Reindexing
 
@@ -79,3 +82,11 @@ Example criteria:
 
 - Bunch of short serial messages
 - Maybe try to combine related messages into a block
+
+## Index versioning
+
+- Index schema must contain version
+- When there are changes in a schema we need to bump index version
+- When deployment happens, new replicas start working with a newer index version
+- Older replicas continue working with a previous index version
+- Ideally, we shouldn't switch to a newer version until new version index ready to use to avoid search breaking on index rebuild
