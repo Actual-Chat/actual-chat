@@ -7,7 +7,7 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
   postgres:
-    image: "postgres:16.1-alpine3.19"
+    image: "postgres:14.0-alpine3.14"
     environment:
       POSTGRES_PASSWORD: "postgres"
       POSTGRES_USER: "postgres"
