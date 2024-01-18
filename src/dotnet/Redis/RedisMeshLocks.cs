@@ -64,6 +64,7 @@ public class RedisMeshLocks : MeshLocksBase
         """;
 
     private readonly Func<ChannelMessage, string> _changeMessageMapper;
+    private readonly string _fullKeyPrefix;
 
     public RedisDb RedisDb { get; }
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
@@ -71,14 +72,12 @@ public class RedisMeshLocks : MeshLocksBase
     public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null) : base(clock)
     {
         RedisDb = redisDb.WithKeyPrefix("MeshLocks");
-        var fullKeyPrefix = RedisDb.FullKey("");
+        _fullKeyPrefix = RedisDb.FullKey("");
         _changeMessageMapper = m => {
-            var key = (string?)m.Message;
-            if (key.IsNullOrEmpty())
-                return "";
-            if (key.OrdinalStartsWith(fullKeyPrefix))
-                return key[fullKeyPrefix.Length..];
-            return key;
+            var key = (string?)m.Message ?? "";
+            if (key.Length >= _fullKeyPrefix.Length)
+                return key[_fullKeyPrefix.Length..];
+            return "";
         };
     }
 
@@ -128,6 +127,25 @@ public class RedisMeshLocks : MeshLocksBase
         }
 
         return new RedisSubscription<string>(queue, _changeMessageMapper);
+    }
+
+    public override async Task<string[]> ListKeys(string prefix, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var r = await RedisDb.Database
+            .ExecuteAsync("KEYS", new object[] { (RedisKey)(prefix + "*") }, CommandFlags.DemandMaster)
+            .ConfigureAwait(false);
+        var length = r.Length;
+        if (length == 0)
+            return Array.Empty<string>();
+
+        var keys = new string[length];
+        for (var index = 0; index < keys.Length; index++) {
+            var key = (string?)r[index] ?? "";
+            key = key.Length >= _fullKeyPrefix.Length ? key[_fullKeyPrefix.Length..] : "";
+            keys[index] = key;
+        }
+        return keys;
     }
 
     // Protected methods

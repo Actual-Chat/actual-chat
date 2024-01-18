@@ -13,6 +13,7 @@ public interface IMeshLocks
     Task<MeshLockHolder?> TryLock(string key, string value, MeshLockOptions lockOptions, CancellationToken cancellationToken = default);
     Task<MeshLockHolder> Lock(string key, string value, MeshLockOptions lockOptions, CancellationToken cancellationToken = default);
     Task<IAsyncSubscription<string>> Changes(string key, CancellationToken cancellationToken = default);
+    Task<string[]> ListKeys(string prefix, CancellationToken cancellationToken = default);
 }
 
 public interface IMeshLocksBackend : IMeshLocks
