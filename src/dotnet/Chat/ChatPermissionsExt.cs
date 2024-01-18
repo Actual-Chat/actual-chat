@@ -35,7 +35,5 @@ public static class ChatPermissionsExt
     }
 
     public static Exception NotEnoughPermissions(ChatPermissions? required = null)
-        => required.HasValue
-            ? StandardError.NotEnoughPermissions(required.Value.ToString())
-            : StandardError.NotEnoughPermissions();
+        => StandardError.NotEnoughPermissions(required?.ToString());
 }

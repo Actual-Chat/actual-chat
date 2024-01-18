@@ -179,23 +179,22 @@ public class Chats(IServiceProvider services) : IChats
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new ChatsBackend_Change(chatId, expectedVersion, change.RequireValid());
-        if (change.Create.HasValue) {
+        if (change.IsCreate(out var chatDiff1)) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
             account.Require(AccountFull.MustBeActive);
             changeCommand = changeCommand with {
                 OwnerId = account.Id,
             };
-            var chatDiff = changeCommand.Change.Create.Value;
-            var placeId = chatDiff.PlaceId ?? PlaceId.None;
-            await ValidatePlaceChatChangeConstraints(placeId, chatDiff).ConfigureAwait(false);
+            var placeId = chatDiff1.PlaceId ?? PlaceId.None;
+            await ValidatePlaceChatChangeConstraints(placeId, chatDiff1).ConfigureAwait(false);
         }
         else {
             var requiredPermissions = change.Remove
                 ? ChatPermissions.Owner
                 : ChatPermissions.EditProperties;
             chat.Require().Rules.Permissions.Require(requiredPermissions);
-            if (change.IsUpdate(out var chatDiff))
-                await ValidatePlaceChatChangeConstraints(chat.Id.PlaceId, chatDiff).ConfigureAwait(false);
+            if (change.IsUpdate(out var chatDiff2))
+                await ValidatePlaceChatChangeConstraints(chat.Id.PlaceId, chatDiff2).ConfigureAwait(false);
         }
 
         chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);

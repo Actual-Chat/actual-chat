@@ -14,7 +14,5 @@ public static class PlacePermissionsExt
     }
 
     public static Exception NotEnoughPermissions(PlacePermissions? required = null)
-        => required.HasValue
-            ? StandardError.NotEnoughPermissions(required.Value.ToString())
-            : StandardError.NotEnoughPermissions();
+        => StandardError.NotEnoughPermissions(required?.ToString());
 }

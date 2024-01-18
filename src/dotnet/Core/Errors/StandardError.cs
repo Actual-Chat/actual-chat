@@ -61,11 +61,10 @@ public static partial class StandardError
     public static Exception Security(string message)
         => new SecurityException(message);
 
-    public static Exception NotEnoughPermissions()
-        => Security("You can't perform this action: not enough permissions.");
-
-    public static Exception NotEnoughPermissions(string requestedPermission)
-        => Security($"You can't perform this action: not enough permissions. Requested permission: {requestedPermission}");
+    public static Exception NotEnoughPermissions(string? requiredPermission = null)
+        => requiredPermission.IsNullOrEmpty()
+            ? Security("You can't perform this action: not enough permissions.")
+            : Security($"You can't perform this action: not enough permissions. Requested permission: {requiredPermission}");
 
     public static Exception Configuration(string message)
         => new InternalError($"Configuration: {message}");
