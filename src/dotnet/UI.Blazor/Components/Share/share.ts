@@ -1,10 +1,12 @@
 ﻿import { Log } from "logging";
+import { audioContextSource } from "../../../Audio.UI.Blazor/Services/audio-context-source";
 
 const { infoLog } = Log.get('Share');
 
 export class Share {
     private static backendRef: DotNet.DotNetObject = null;
 
+    /** Called from Blazor  */
     public static init(backendRef1: DotNet.DotNetObject): void {
         this.backendRef = backendRef1;
 
@@ -20,11 +22,20 @@ export class Share {
         void this.backendRef.invokeMethodAsync('OnInitialized', initResult);
     }
 
+    /** Called from Blazor  */
     public static canShare(data?: ShareData): boolean {
         return navigator.canShare && navigator.canShare(data);
     }
 
-    public static async shareLink(title: string, link: string) : Promise<boolean> {
+    /** Called from Blazor  */
+    public static registerHandler(): void {
+        const buttons = [...document.querySelectorAll<HTMLButtonElement>('div.share-externally-button > button')];
+        buttons.forEach(btn => btn.addEventListener('click', Share.onClick));
+    }
+
+    // Private methods
+
+    private static async shareLink(title: string, link: string) : Promise<boolean> {
         const data = {
             title: title,
             url: link
@@ -36,7 +47,7 @@ export class Share {
         return true;
     }
 
-    public static async shareText(title: string, text: string) : Promise<boolean> {
+    private static async shareText(title: string, text: string) : Promise<boolean> {
         const data = {
             title: title,
             text: text
@@ -48,7 +59,7 @@ export class Share {
         return true;
     }
 
-    public static onClick = async (event: Event): Promise<void> => {
+    private static onClick = async (event: Event): Promise<void> => {
         const target = event.currentTarget as HTMLElement;
         if (!target)
             return;
