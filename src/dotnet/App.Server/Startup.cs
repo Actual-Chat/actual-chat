@@ -42,7 +42,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
     public void ConfigureServices(IServiceCollection services)
     {
         var hostSettings = Cfg.GetSettings<HostSettings>();
-        var appKind = hostSettings.AppKind ?? AppKind.WebServer;
+        var appKind = hostSettings.AppKind ?? HostKind.Server;
         var isTested = hostSettings.IsTested ?? false;
 
         // Logging
@@ -90,11 +90,12 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
             }
 
             return new HostInfo() {
-                AppKind = appKind,
-                IsTested = isTested,
-                ClientKind = ClientKind.Unknown,
+                HostKind = appKind,
+                AppKind = AppKind.Unknown,
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,
+                Roles = HostRole.GetServerRoles(hostSettings.ServerRoles),
+                IsTested = isTested,
                 BaseUrl = baseUrl ?? "",
                 BaseUrlProvider = baseUrlProvider,
             };

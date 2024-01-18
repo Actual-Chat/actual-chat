@@ -32,8 +32,6 @@ public abstract class DbInitializer<
 
     public virtual async Task InitializeSchema(CancellationToken cancellationToken)
     {
-        var isTestServer = HostInfo.AppKind.IsServer() && HostInfo.IsTested;
-
         var dbContext = CreateDbContext(readWrite: true);
         await using var _ = dbContext.ConfigureAwait(false);
 
@@ -46,7 +44,7 @@ public abstract class DbInitializer<
             Log.LogInformation("Recreating DB '{DatabaseName}'...", dbName);
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
             var mustMigrate = false;
-            if (isTestServer)
+            if (HostInfo.IsTested)
                 mustMigrate = Random.Shared.Next(30) < 1; // 3% migration probability in tests
             if (mustMigrate)
                 await db.MigrateAsync(cancellationToken).ConfigureAwait(false);

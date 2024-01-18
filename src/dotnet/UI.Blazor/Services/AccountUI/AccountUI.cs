@@ -31,7 +31,7 @@ public partial class AccountUI : ScopedWorkerBase<UIHub>, IComputeService, INoti
         CpuClock = Services.Clocks().CpuClock;
 
         StartedAt = CpuClock.Now;
-        _maxInvalidationDelay = TimeSpan.FromSeconds(HostInfo.AppKind.IsServer() ? 0.5 : 2);
+        _maxInvalidationDelay = TimeSpan.FromSeconds(HostInfo.HostKind.IsServer() ? 0.5 : 2);
         var ownAccountComputed = Computed.GetExisting(() => Accounts.GetOwn(Session, default));
         var ownAccount = ownAccountComputed?.IsConsistent() == true &&  ownAccountComputed.HasValue ? ownAccountComputed.Value : null;
         var initialOwnAccount = ownAccount ?? AccountFull.Loading;

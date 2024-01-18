@@ -29,7 +29,7 @@ public class DeviceAwakeUI : ScopedServiceBase<UIHub>, ISleepDurationProvider, I
 
     private async Task Initialize()
     {
-        if (HostInfo.AppKind == AppKind.WebServer)
+        if (HostInfo.HostKind == HostKind.Server)
             // We reload whole app for SSB on awake. See base-layout.ts
             return;
 

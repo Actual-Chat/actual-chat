@@ -33,7 +33,7 @@ public class AppNonScopedServiceStarter
 
     public static void WarmupStaticServices(HostInfo hostInfo)
     {
-        if (hostInfo.ClientKind.HasJit())
+        if (hostInfo.AppKind.HasJit())
             _ = Task.Run(() => {
                 WarmupByteSerializer();
                 WarmupNewtonsoftJsonSerializer();
@@ -53,7 +53,7 @@ public class AppNonScopedServiceStarter
                 // so you CAN'T access any scoped services here!
 
                 var startHostedServicesTask = StartHostedServices();
-                if (HostInfo.AppKind.IsWasmApp()) {
+                if (HostInfo.HostKind.IsWasmApp()) {
                     await startHostedServicesTask.ConfigureAwait(false);
                     return; // Further code warms up some services, which isn't necessary in WASM
                 }

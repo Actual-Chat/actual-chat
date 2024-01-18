@@ -46,11 +46,11 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
         WhenReady = Initialize();
 
         async Task Initialize() {
-            if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp) {
+            if (HostInfo.HostKind is HostKind.Server or HostKind.WasmApp) {
                 var backendRef = DotNetObjectReference.Create<INotificationUIBackend>(this);
-                await JS.InvokeVoidAsync(JSInitMethod, backendRef, HostInfo.AppKind.ToString()).ConfigureAwait(false);
+                await JS.InvokeVoidAsync(JSInitMethod, backendRef, HostInfo.HostKind.ToString()).ConfigureAwait(false);
             }
-            else if (HostInfo.AppKind == AppKind.MauiApp) {
+            else if (HostInfo.HostKind == HostKind.MauiApp) {
                 // There should be no cycle reference as we implement INotificationPermissions for MAUI platform separately
                 var notificationsPermission = hub.GetRequiredService<INotificationsPermission>();
                 var isGranted = await notificationsPermission.IsGranted().ConfigureAwait(false);
@@ -62,13 +62,13 @@ public class NotificationUI : ProcessorBase, INotificationUIBackend, INotificati
 
     public async ValueTask RegisterRequestNotificationHandler(ElementReference reference)
     {
-        if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp)
+        if (HostInfo.HostKind is HostKind.Server or HostKind.WasmApp)
             await JS.InvokeVoidAsync(JSRegisterRequestNotificationHandlerMethod, reference).ConfigureAwait(false);
     }
 
     public async ValueTask UnregisterRequestNotificationHandler(ElementReference reference)
     {
-        if (HostInfo.AppKind is AppKind.WebServer or AppKind.WasmApp)
+        if (HostInfo.HostKind is HostKind.Server or HostKind.WasmApp)
             await JS.InvokeVoidAsync(JSUnregisterRequestNotificationHandlerMethod, reference).ConfigureAwait(false);
     }
 

@@ -61,7 +61,7 @@ internal sealed class MauiClientAuth(UIHub hub) : IClientAuth
             (IClientAuth.GoogleSchemeName, "Google"),
             (IClientAuth.AppleIdSchemeName, "Apple"),
         };
-        if (HostInfo.ClientKind == ClientKind.Ios)
+        if (HostInfo.AppKind == AppKind.Ios)
             Array.Reverse(schemas);
         return ValueTask.FromResult(schemas);
     }

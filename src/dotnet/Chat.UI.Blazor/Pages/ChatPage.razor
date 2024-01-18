@@ -108,7 +108,7 @@
             _isVeryFirstLoad = false;
             var hostInfo = Services.HostInfo();
             var mustDelayVeryFirstLoad =
-                hostInfo.AppKind.IsClient()
+                hostInfo.HostKind.IsApp()
                 && ChatSid.IsNullOrEmpty()
                 && BrowserInfo.ScreenSize.Value.IsNarrow();
             if (mustDelayVeryFirstLoad) {

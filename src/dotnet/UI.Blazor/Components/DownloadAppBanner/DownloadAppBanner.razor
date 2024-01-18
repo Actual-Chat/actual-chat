@@ -6,8 +6,8 @@
 @{
     if (!State.Value)
         return;
-    if (HostInfo.AppKind == AppKind.MauiApp) {
-        if (HostInfo.ClientKind.IsMobile())
+    if (HostInfo.HostKind == HostKind.MauiApp) {
+        if (HostInfo.AppKind.IsMobile())
             return;
         if (CanBeClosed)
             return;

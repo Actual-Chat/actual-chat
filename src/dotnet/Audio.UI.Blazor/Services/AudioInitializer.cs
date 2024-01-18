@@ -63,7 +63,7 @@ public sealed partial class AudioInitializer(UIHub hub)
     // ReSharper disable once InconsistentNaming
     private bool CanUseNNVad()
     {
-        if (HostInfo.ClientKind != ClientKind.Ios)
+        if (HostInfo.AppKind != AppKind.Ios)
             return true;
 
         var deviceModel = HostInfo.DeviceModel;

@@ -12,7 +12,7 @@ public static class MauiSettings
 #endif
     public static readonly Uri BaseUri;
     public static readonly string BaseUrl;
-    public static readonly ClientKind ClientKind;
+    public static readonly AppKind AppKind;
     public static readonly Color SplashBackgroundColor = Color.FromArgb("#0036A3");
 
     static MauiSettings()
@@ -20,17 +20,17 @@ public static class MauiSettings
         BaseUrl = "https://" + Host + "/";
         BaseUri = BaseUrl.ToUri();
 
-        var platform = DeviceInfo.Current.Platform;
-        if (platform == DevicePlatform.Android)
-            ClientKind = ClientKind.Android;
-        else if (platform == DevicePlatform.iOS)
-            ClientKind = ClientKind.Ios;
-        else if (platform == DevicePlatform.WinUI)
-            ClientKind = ClientKind.Windows;
-        else if (platform == DevicePlatform.macOS)
-            ClientKind = ClientKind.MacOS;
-        else
-            ClientKind = ClientKind.Unknown;
+#if ANDROID
+        AppKind = AppKind.Android;
+#elif WINDOWS
+        AppKind = AppKind.Windows;
+#elif MACCATALYST
+        AppKind = AppKind.MacOS;
+#elif IOS
+        AppKind = AppKind.Ios;
+#else
+        AppKind = AppKind.Unknown;
+#endif
     }
 
     // Nested types

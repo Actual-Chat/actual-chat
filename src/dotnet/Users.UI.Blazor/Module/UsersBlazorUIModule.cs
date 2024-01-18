@@ -14,7 +14,7 @@ public sealed class UsersBlazorUIModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.AppKind.HasBlazorUI())
+        if (!HostInfo.HostKind.HasBlazorUI())
             return; // Blazor UI only module
 
         var fusion = services.AddFusion();

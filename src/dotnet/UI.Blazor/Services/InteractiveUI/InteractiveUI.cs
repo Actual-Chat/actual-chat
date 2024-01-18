@@ -43,7 +43,7 @@ public class InteractiveUI : ScopedServiceBase<UIHub>, IInteractiveUIBackend
 
     public async Task<bool> Demand(string operation, CancellationToken cancellationToken)
     {
-        if (HostInfo.AppKind == AppKind.MauiApp)
+        if (HostInfo.HostKind == HostKind.MauiApp)
             // MAUI controlled browsers doesn't require user interaction to use sound
             return true;
 

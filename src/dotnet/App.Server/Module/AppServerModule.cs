@@ -135,7 +135,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        if (!HostInfo.AppKind.IsServer())
+        if (!HostInfo.HostKind.IsServer())
             return; // Server-side only module
 
         // Host options

@@ -33,7 +33,7 @@ public static class Program
         FusionSettings.Mode = FusionMode.Client;
 
         // NOTE(AY): This thing takes 1 second on Windows!
-        var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp);
+        var isSentryEnabled = Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp);
         var sentrySdkDisposable = isSentryEnabled
             ? SentrySdk.Init(options => options.ConfigureForApp(true))
             : null;
@@ -81,20 +81,21 @@ public static class Program
         services.AddSingleton(new ScopedTracerProvider(Tracer)); // We don't want to have scoped tracers in WASM app
 
         // Logging
-        services.AddLogging(logging => logging.ConfigureClientFilters(ClientKind.Wasm));
+        services.AddLogging(logging => logging.ConfigureClientFilters(AppKind.Wasm));
 
         // Other services shared with plugins
         services.TryAddSingleton(configuration);
         services.AddSingleton(c => new HostInfo() {
-            AppKind = AppKind.WasmApp,
-            ClientKind = ClientKind.Wasm,
-            IsTested = isTested,
+            HostKind = HostKind.WasmApp,
+            AppKind = AppKind.Wasm,
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
             Configuration = c.GetRequiredService<IConfiguration>(),
+            Roles = HostRole.AddImpliedServerRoles([ HostRole.WasmApp ]),
+            IsTested = isTested,
             BaseUrl = baseUrl,
         });
 
-        AppStartup.ConfigureServices(services, AppKind.WasmApp);
+        AppStartup.ConfigureServices(services, HostKind.WasmApp);
     }
 
     private static void CreateClientSentryTraceProvider(IServiceProvider services, Action<TracerProvider?> saveTracerProvider)

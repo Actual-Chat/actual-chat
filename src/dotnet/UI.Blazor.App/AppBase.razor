@@ -73,15 +73,15 @@
     protected override async Task OnInitializedAsync() {
         using var _1 = Tracer.Region();
 
-        var appKind = HostInfo.AppKind;
+        var hostKind = HostInfo.HostKind;
         var sessionHash = SessionHash; // It's passed directly only in WASM app
-        if (appKind.IsServer()) {
+        if (hostKind.IsServer()) {
             var secureTokensBackend = Services.GetRequiredService<ISecureTokensBackend>();
             var session = secureTokensBackend.ParseSessionToken(SessionToken);
             SessionResolver.Session = session; // All clients use DefaultSessionResolver
             sessionHash = session.Hash;
         }
-        else if (appKind.IsMauiApp()) {
+        else if (hostKind.IsMauiApp()) {
             sessionHash = TrueSessionResolver!.Session.Hash;
         }
         if (_isPrerendering)

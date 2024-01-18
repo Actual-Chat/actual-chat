@@ -34,7 +34,7 @@
         // Handler will consider that menu is already opened (while it's not true)
         // and will close menu because click happened outside of the menu (menu is not visible yet).
         // To prevent this make small delay in wasm.
-        if (HostInfo.AppKind == AppKind.WasmApp)
+        if (HostInfo.HostKind == HostKind.WasmApp)
             await Task.Delay(1);
         Toggle(true);
     }

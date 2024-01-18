@@ -16,8 +16,8 @@ public sealed class CoreServerModule(IServiceProvider moduleServices) : HostModu
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        var appKind = HostInfo.AppKind;
-        if (appKind.IsClient())
+        var hostKind = HostInfo.HostKind;
+        if (hostKind.IsApp())
             throw StandardError.Internal("This module can be used on server side only.");
 
         services.AddSingleton<IContentSaver>(

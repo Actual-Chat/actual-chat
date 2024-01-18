@@ -19,8 +19,8 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        var appKind = HostInfo.AppKind;
-        if (!appKind.HasBlazorUI())
+        var hostKind = HostInfo.HostKind;
+        if (!hostKind.HasBlazorUI())
             return; // Blazor UI only module
 
         services.AddScoped<AppScopedServiceStarter>(c => new AppScopedServiceStarter(c));

@@ -2,7 +2,7 @@
 @using ActualChat.Hosting
 @namespace ActualChat.UI.Blazor.Components
 @{
-    if (HostInfo.AppKind.IsServer())
+    if (HostInfo.HostKind.IsServer())
         return;
     if (UrlMapper.IsActualChat && AccountUI.OwnAccount.ValueOrDefault?.IsAdmin != true)
         return;

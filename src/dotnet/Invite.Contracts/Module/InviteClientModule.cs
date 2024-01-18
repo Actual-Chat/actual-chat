@@ -10,7 +10,7 @@ public sealed class InviteClientModule(IServiceProvider moduleServices) : HostMo
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.AppKind.IsClient())
+        if (!HostInfo.HostKind.IsApp())
             return; // Client-side only module
 
         var fusion = services.AddFusion();

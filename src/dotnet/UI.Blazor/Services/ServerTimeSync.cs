@@ -30,7 +30,7 @@ public class ServerTimeSync : WorkerBase
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        if (!HostInfo.AppKind.IsClient()) {
+        if (!HostInfo.HostKind.IsApp()) {
             Log.LogInformation("Exit: not a client");
             return Task.CompletedTask;
         }

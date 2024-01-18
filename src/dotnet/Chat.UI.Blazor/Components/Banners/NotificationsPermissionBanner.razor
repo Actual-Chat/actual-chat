@@ -64,7 +64,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        if (HostInfo.AppKind.IsMauiApp() && HostInfo.ClientKind == ClientKind.Windows)
+        if (HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows)
             return new Model(true, false);
 
         if (!_dismissedAt.WhenRead.IsCompleted)

@@ -3,7 +3,7 @@
 @using ActualChat.Hosting
 
 @{
-    var isMaui = HostInfo.AppKind.IsMauiApp();
+    var isMaui = HostInfo.HostKind.IsMauiApp();
     var signinText = isMaui ? "Sign in" : "Sign-in to web app";
 }
 

@@ -16,7 +16,7 @@ public class AddPhotoPermissionHandler(UIHub hub, bool mustStart = true)
             PermissionStatus.Granted => true,
             PermissionStatus.Limited => true,
             PermissionStatus.Unknown => null,
-            PermissionStatus.Denied => HostInfo.ClientKind == ClientKind.Android ? null : false,
+            PermissionStatus.Denied => HostInfo.AppKind == AppKind.Android ? null : false,
             _ => false,
         };
     }

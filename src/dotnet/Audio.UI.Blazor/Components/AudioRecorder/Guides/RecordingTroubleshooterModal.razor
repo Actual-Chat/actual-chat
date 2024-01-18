@@ -11,10 +11,10 @@
         if (ModalModel.IsUnknown) {
             type = GuideType.Unknown;
         }
-        else if (HostInfo.AppKind.IsMauiApp()) {
-            type = HostInfo.ClientKind switch {
-                ClientKind.Ios => GuideType.IosApp,
-                ClientKind.Android => GuideType.AndroidApp,
+        else if (HostInfo.HostKind.IsMauiApp()) {
+            type = HostInfo.AppKind switch {
+                AppKind.Ios => GuideType.IosApp,
+                AppKind.Android => GuideType.AndroidApp,
                 _ => GuideType.WebChrome,
             };
         } else {

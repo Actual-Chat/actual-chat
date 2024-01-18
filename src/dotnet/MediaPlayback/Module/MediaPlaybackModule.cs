@@ -10,7 +10,7 @@ public sealed class MediaPlaybackModule(IServiceProvider moduleServices) : HostM
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.AppKind.HasBlazorUI())
+        if (!HostInfo.HostKind.HasBlazorUI())
             return; // Blazor UI only module
 
         services.AddScoped<IPlaybackFactory>(c => new PlaybackFactory(c));

@@ -24,7 +24,7 @@ public class FileUploader(Hub hub)
         formData.Add(streamContent, "file", fileName.NullIfEmpty() ?? "Upload");
 
         var httpClient = HttpClientFactory.CreateClient("UploadFile.Client");
-        if (HostInfo.AppKind.IsClient()) {
+        if (HostInfo.HostKind.IsApp()) {
             var sessionToken = await SessionTokens.Get(cancellationToken).ConfigureAwait(false);
             // TODO: review default session header configuration at ActualChat.UI.Blazor.App.AppStartup restEase.ConfigureHttpClient
             httpClient.DefaultRequestHeaders.Remove(SessionTokens.HeaderName);

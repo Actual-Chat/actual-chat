@@ -41,9 +41,9 @@ public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<Cor
     protected internal override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        var appKind = HostInfo.AppKind;
-        var isServer = appKind.IsServer();
-        var isClient = appKind.IsClient();
+        var hostKind = HostInfo.HostKind;
+        var isServer = hostKind.IsServer();
+        var isClient = hostKind.IsApp();
 
         // Common services
         services.AddTracer();
@@ -78,13 +78,13 @@ public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<Cor
         }
         else if (isClient) {
             services.AddScoped<ISessionResolver>(c => new DefaultSessionResolver(c));
-            if (appKind.IsMauiApp())
+            if (hostKind.IsMauiApp())
                 services.AddSingleton(c => new TrueSessionResolver(c));
 
             services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) {
                 Delays = RetryDelaySeq.Exp(1, 180),
             });
-            if (appKind.IsWasmApp() && HostInfo.IsDevelopmentInstance) {
+            if (hostKind.IsWasmApp() && HostInfo.IsDevelopmentInstance) {
                 if (Constants.DebugMode.RpcClient)
                     services.AddSingleton<RpcPeerFactory>(_
                         => static (hub, peerRef) => peerRef.IsServer

@@ -21,7 +21,7 @@ public static class AppLogging
         DevLogPath = FilePath.New(devLogEnvVar);
     }
 
-    public static ILoggingBuilder ConfigureClientFilters(this ILoggingBuilder logging, ClientKind clientKind)
+    public static ILoggingBuilder ConfigureClientFilters(this ILoggingBuilder logging, AppKind appKind)
     {
         MinLevel = IsDevLogRequested ? LogLevel.Debug : LogLevel.Information;
 #if DEBUG

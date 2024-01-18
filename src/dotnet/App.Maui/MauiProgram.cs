@@ -255,10 +255,11 @@ public static partial class MauiProgram
         var environment = Environments.Development;
 #endif
         var hostInfo = new HostInfo {
-            AppKind = AppKind.MauiApp,
-            ClientKind = MauiSettings.ClientKind,
+            HostKind = HostKind.MauiApp,
+            AppKind = MauiSettings.AppKind,
             Environment = environment,
             Configuration = configuration,
+            Roles = HostRole.AddImpliedServerRoles([ MauiSettings.AppKind.ToHostRole() ]),
             BaseUrl = MauiSettings.BaseUrl,
             DeviceModel = DeviceInfo.Current.Model,
         };

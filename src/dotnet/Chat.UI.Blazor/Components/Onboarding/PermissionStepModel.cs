@@ -16,7 +16,7 @@ public sealed class PermissionStepModel(IServiceProvider services)
         = services.GetRequiredService<INotificationsPermission>();
     public readonly ContactsPermissionHandler ContactsPermission
         = services.GetRequiredService<ContactsPermissionHandler>();
-    public bool IsMobile => HostInfo.ClientKind.IsMobile();
+    public bool IsMobile => HostInfo.AppKind.IsMobile();
 
     public bool SkipMicrophonePermission { get; set; }
     public bool SkipNotificationsPermission { get; set; }

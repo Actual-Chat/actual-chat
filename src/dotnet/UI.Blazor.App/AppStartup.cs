@@ -57,13 +57,13 @@ public static class AppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All, typeof(SetDiffHandler<,>))]
     public static void ConfigureServices(
         IServiceCollection services,
-        AppKind appKind,
+        HostKind hostKind,
         Func<IServiceProvider, HostModule[]>? platformModuleFactory = null)
     {
 #if !DEBUG
         InterceptorBase.Options.Defaults.IsValidationEnabled = false;
 #else
-        if (appKind.IsMauiApp())
+        if (hostKind.IsMauiApp())
             InterceptorBase.Options.Defaults.IsValidationEnabled = false;
 #endif
         var tracer = Tracer.Default;
@@ -82,7 +82,7 @@ public static class AppStartup
                 client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower;
                 // c.LogFor(typeof(AppStartup)).LogInformation(
                 //     "HTTP client '{Name}' configured @ {BaseAddress}", name, client.BaseAddress);
-                if (!appKind.IsMauiApp())
+                if (!hostKind.IsMauiApp())
                     return;
 
                 var gclbCookieHeader = AppLoadBalancerSettings.Instance.GclbCookieHeader;
@@ -92,7 +92,7 @@ public static class AppStartup
                     client.DefaultRequestHeaders.Add(Constants.Session.HeaderName, session.Id.Value);
                 }
             });
-            if (appKind.IsMauiApp())
+            if (hostKind.IsMauiApp())
                 o.HttpMessageHandlerBuilderActions.Add(b => {
                     if (b.PrimaryHandler is HttpClientHandler h)
                         h.UseCookies = false;
@@ -121,7 +121,7 @@ public static class AppStartup
                     return sb.ToStringAndRelease().ToUri();
                 },
             };
-            if (appKind.IsMauiApp())
+            if (hostKind.IsMauiApp())
                 // NOTE(AY): "new ClientWebSocket()" triggers this exception in WASM:
                 // - PlatformNotSupportedException: Operation is not supported on this platform.
                 // So the code below should never run in WASM.

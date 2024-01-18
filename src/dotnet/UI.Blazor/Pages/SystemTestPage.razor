@@ -8,8 +8,8 @@
 <MainHeader>System Test Page</MainHeader>
 
 <p>AgentId: <b>@(AgentInfo.Id)</b></p>
-<p>App kind: <b>@(HostInfo.AppKind)</b></p>
-<p>Required service scopes: <b>@(HostInfo.RequiredServiceScopes.ToDelimitedString())</b></p>
+<p>App kind: <b>@(HostInfo.HostKind)</b></p>
+<p>Host roles: <b>@(HostInfo.Roles.ToDelimitedString())</b></p>
 
 <p>Invalidate everything:
     <Button Click="@OnInvalidateEverythingLocallyClick">Locally</Button>

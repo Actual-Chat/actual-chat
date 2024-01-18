@@ -8,9 +8,8 @@ public class StaticImportsInitializer : IHostedService
     public StaticImportsInitializer(IServiceProvider services)
     {
         var hostInfo = services.HostInfo();
-        var isTestServer = hostInfo.AppKind.IsServer() && hostInfo.IsTested;
-        if (isTestServer)
-            return; // Don't set DefaultLog for tests
+        if (hostInfo.HostKind.IsServer() && hostInfo.IsTested)
+            return; // Don't set DefaultLog for test server
 
         if (DefaultLog == NullLogger.Instance)
             DefaultLog = services.LogFor("ActualChat.Unknown");

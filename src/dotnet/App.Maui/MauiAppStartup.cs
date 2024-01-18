@@ -21,7 +21,7 @@ public static class MauiAppStartup
     [DynamicDependency(DynamicallyAccessedMemberTypes.All,
         "Microsoft.AspNetCore.Components.WebView.IpcReceiver", "Microsoft.AspNetCore.Components.WebView")]
     public static void ConfigureServices(IServiceCollection services)
-        => AppStartup.ConfigureServices(services, AppKind.MauiApp, c => new HostModule[] {
+        => AppStartup.ConfigureServices(services, HostKind.MauiApp, c => new HostModule[] {
             new Module.MauiAppModule(c),
         });
 }

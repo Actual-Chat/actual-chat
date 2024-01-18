@@ -131,7 +131,7 @@ public sealed class DbModule(IServiceProvider moduleServices) : HostModule<DbSet
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.AppKind.IsServer())
+        if (!HostInfo.HostKind.IsServer())
             return; // Server-side only module
 
         var fusion = services.AddFusion();

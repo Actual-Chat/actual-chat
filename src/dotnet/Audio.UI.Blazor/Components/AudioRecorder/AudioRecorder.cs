@@ -89,7 +89,7 @@ public class AudioRecorder : ProcessorBase, IAudioRecorderBackend
             await StopRecordingUnsafe();
 
         var sessionToken = "";
-        if (HostInfo.AppKind.IsClient()) {
+        if (HostInfo.HostKind.IsApp()) {
             var sessionTokens = _sessionTokens ??= Services.GetRequiredService<SessionTokens>();
             var secureToken = await sessionTokens.Get(cancellationToken).ConfigureAwait(false);
             sessionToken = secureToken.Token;

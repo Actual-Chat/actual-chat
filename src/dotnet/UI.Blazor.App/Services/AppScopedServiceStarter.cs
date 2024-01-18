@@ -39,7 +39,7 @@ public class AppScopedServiceStarter
             var browserInfo = Services.GetRequiredService<BrowserInfo>();
             var browserInit = Services.GetRequiredService<BrowserInit>();
             _ = browserInit.Initialize(
-                HostInfo.AppKind,
+                HostInfo.HostKind,
                 Constants.Api.Version,
                 baseUri,
                 sessionHash,
@@ -96,13 +96,13 @@ public class AppScopedServiceStarter
         try {
             await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(true);
             _ = Services.GetRequiredService<OnboardingUI>().TryShow();
-            var appKind = HostInfo.AppKind;
-            var baseDelay = TimeSpan.FromSeconds(appKind.IsServer() ? 0.25 : 1);
+            var hostKind = HostInfo.HostKind;
+            var baseDelay = TimeSpan.FromSeconds(hostKind.IsServer() ? 0.25 : 1);
 
             // Starting less important UI services
             await Task.Delay(baseDelay, cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<ReconnectUI>().Start();
-            if (appKind.IsClient())
+            if (hostKind.IsApp())
                 Services.GetRequiredService<SessionTokens>().Start();
             Services.GetRequiredService<AppPresenceReporter>().Start();
             Services.GetRequiredService<AppIconBadgeUpdater>().Start();
@@ -113,7 +113,7 @@ public class AppScopedServiceStarter
 
             await Task.Delay(baseDelay * 2, cancellationToken).ConfigureAwait(false);
             Services.GetRequiredService<AudioInitializer>().Start();
-            if (appKind.IsClient())
+            if (hostKind.IsApp())
                 await StartHostedServices().ConfigureAwait(false);
 
             await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);

@@ -139,7 +139,7 @@ public partial class ChatListUI
 
     private async Task PlayTuneOnNewMessages(CancellationToken cancellationToken)
     {
-        if (Hub.HostInfo().ClientKind.IsMobile())
+        if (Hub.HostInfo().AppKind.IsMobile())
             return; // skip tune notifications for mobile MAUI
 
         var cChatInfoMap = await Computed

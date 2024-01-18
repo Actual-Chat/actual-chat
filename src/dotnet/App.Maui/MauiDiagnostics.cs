@@ -64,7 +64,7 @@ public static class MauiDiagnostics
         services.AddTracer(Tracer); // We don't want to have scoped tracers in MAUI app
         services.AddLogging(logging => {
             logging.ClearProviders();
-            logging.ConfigureClientFilters(MauiSettings.ClientKind);
+            logging.ConfigureClientFilters(MauiSettings.AppKind);
             logging.AddFilteringSerilog(Log.Logger, dispose: dispose);
         });
         return services;
@@ -80,7 +80,7 @@ public static class MauiDiagnostics
             .Enrich.FromLogContext()
             .Enrich.WithProperty(Serilog.Core.Constants.SourceContextPropertyName, "app.maui");
         logging = AddPlatformLoggerSinks(logging);
-        if (Constants.Sentry.EnabledFor.Contains(AppKind.MauiApp))
+        if (Constants.Sentry.EnabledFor.Contains(HostKind.MauiApp))
             logging = logging.WriteTo.Sentry(ConfigureSentrySerilog);
         return logging.CreateLogger();
     }

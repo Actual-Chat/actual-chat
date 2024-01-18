@@ -33,7 +33,7 @@ public class MauiMicrophonePermissionHandler : MicrophonePermissionHandler
             PermissionStatus.Granted => true,
             PermissionStatus.Limited => true,
             PermissionStatus.Unknown => null,
-            PermissionStatus.Denied => HostInfo.ClientKind == ClientKind.Android ? null : false,
+            PermissionStatus.Denied => HostInfo.AppKind == AppKind.Android ? null : false,
             _ => false,
         };
     }

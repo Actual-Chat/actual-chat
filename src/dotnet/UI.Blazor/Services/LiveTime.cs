@@ -17,7 +17,7 @@ public class LiveTime : SafeAsyncDisposableBase, IComputeService
         Clocks = services.Clocks();
         _maxInvalidationDelay = HostInfo.IsDevelopmentInstance
             ? TimeSpan.FromSeconds(30)
-            : TimeSpan.FromMinutes(HostInfo.AppKind.IsClient() ? 10 : 5);
+            : TimeSpan.FromMinutes(HostInfo.HostKind.IsApp() ? 10 : 5);
     }
 
     protected override Task DisposeAsync(bool disposing)

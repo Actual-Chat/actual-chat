@@ -6,7 +6,7 @@
 @using ActualChat.UI.Blazor.Module
 @layout NoLayout
 
-@if (HostInfo.AppKind.IsMauiApp()) {
+@if (HostInfo.HostKind.IsMauiApp()) {
     <NewLandingApp/>
 } else {
     <NewLandingWeb/>

@@ -121,7 +121,7 @@ public static partial class Constants
 
     public static class Sentry
     {
-        public static readonly HashSet<AppKind> EnabledFor = new () {AppKind.MauiApp};
+        public static readonly HashSet<HostKind> EnabledFor = new () {HostKind.MauiApp};
     }
 
     public static class Auth

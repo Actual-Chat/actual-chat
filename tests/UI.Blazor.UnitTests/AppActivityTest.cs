@@ -11,8 +11,8 @@ public class AppActivityTest: TestBase
         => Services = new ServiceCollection()
             .ConfigureLogging(Out)
             .AddSingleton(_ => new HostInfo {
-                AppKind = AppKind.MauiApp,
-                ClientKind = ClientKind.Ios,
+                HostKind = HostKind.MauiApp,
+                AppKind = AppKind.Ios,
                 Environment = HostInfo.DevelopmentEnvironment,
                 IsTested = true,
             })

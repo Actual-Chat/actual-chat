@@ -26,8 +26,8 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        var appKind = HostInfo.AppKind;
-        if (!appKind.HasBlazorUI())
+        var hostKind = HostInfo.HostKind;
+        if (!hostKind.HasBlazorUI())
             return; // Blazor UI only module
 
         // Just to test how it impacts the performance
@@ -55,10 +55,10 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // Core UI-related services
         services.AddScoped(c => new UIHub(c));
         services.AddAlias<Hub, UIHub>(ServiceLifetime.Scoped); // Required for PermissionHandler descendants
-        if (!appKind.IsServer())
+        if (!hostKind.IsServer())
             services.TryAddSingleton<IHostApplicationLifetime>(_ => new FakeHostApplicationLifetime());
-        services.AddSingleton(_ => new AutoNavigationTasks(appKind));
-        if (appKind.IsClient())
+        services.AddSingleton(_ => new AutoNavigationTasks(hostKind));
+        if (hostKind.IsApp())
             services.AddSingleton(_ => new RenderModeSelector()); // Kinda no-op on the client
         else
             services.AddScoped(_ => new RenderModeSelector()); // Should be scoped on server
@@ -74,7 +74,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         });
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
         services.AddScoped(c => c.AccountSettings(c.Session()));
-        if (appKind.IsServer()) {
+        if (hostKind.IsServer()) {
             services.AddScoped<TimeZoneConverter>(c => new ServerSideTimeZoneConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
         }
@@ -90,7 +90,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped(c => new LoadingUI(c));
         services.AddScoped(c => new ReconnectUI(c.UIHub()));
         services.AddScoped(c => new ReloadUI(c));
-        if (appKind.IsMauiApp())
+        if (hostKind.IsMauiApp())
             services.AddSingleton<BackgroundStateTracker>(c => new MauiBackgroundStateTracker(c));
         else
             services.AddScoped<BackgroundStateTracker>(c => new WebBackgroundStateTracker(c));
@@ -140,7 +140,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
 
         // ClientComputedCache:
         // Temporarily disabled for WASM due to startup issues
-        if (appKind.IsWasmApp() && !HostInfo.IsTested) {
+        if (hostKind.IsWasmApp() && !HostInfo.IsTested) {
             services.AddSingleton(_ => new WebClientComputedCache.Options());
             services.AddSingleton<IClientComputedCache>(c => {
                 var options = c.GetRequiredService<WebClientComputedCache.Options>();
@@ -157,10 +157,10 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
     {
         // Diagnostics
         var isDev = HostInfo.IsDevelopmentInstance;
-        var appKind = HostInfo.AppKind;
-        var isServer = appKind.IsServer();
-        var isClient = appKind.IsClient();
-        var isWasmApp = appKind.IsWasmApp();
+        var hostKind = HostInfo.HostKind;
+        var isServer = hostKind.IsServer();
+        var isClient = hostKind.IsApp();
+        var isWasmApp = hostKind.IsWasmApp();
 
         services.AddScoped(c => new DebugUI(c));
 

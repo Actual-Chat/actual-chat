@@ -15,14 +15,14 @@ public sealed class ContactsBlazorUIModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.AppKind.HasBlazorUI())
+        if (!HostInfo.HostKind.HasBlazorUI())
             return; // Blazor UI only module
 
         var fusion = services.AddFusion();
         fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
         services.AddScoped<DeviceContacts>(c => new DeviceContacts());
 
-        if (HostInfo.AppKind != AppKind.MauiApp)
+        if (HostInfo.HostKind != HostKind.MauiApp)
             services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c.UIHub()));
     }
 }

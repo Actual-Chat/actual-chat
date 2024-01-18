@@ -70,7 +70,7 @@
                 </Button>
                 @if (isGuest) {
                     <button class="signin-button-group items-center" @onclick="@SignIn">
-                        @if (HostInfo.AppKind.IsMauiApp()) {
+                        @if (HostInfo.HostKind.IsMauiApp()) {
                             <span class="font-medium">Sign in</span>
                         }
                         else {

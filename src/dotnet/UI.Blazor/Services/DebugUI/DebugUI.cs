@@ -44,7 +44,7 @@ public sealed class DebugUI : IDisposable
     [JSInvokable]
     public void StartFusionMonitor()
     {
-        var isServer = HostInfo.AppKind.IsServer();
+        var isServer = HostInfo.HostKind.IsServer();
         if (isServer)
             throw StandardError.Constraint("This method can be used only on WASM or MAUI client.");
 
@@ -55,7 +55,7 @@ public sealed class DebugUI : IDisposable
     [JSInvokable]
     public void StartTaskMonitor()
     {
-        var isServer = HostInfo.AppKind.IsServer();
+        var isServer = HostInfo.HostKind.IsServer();
         if (isServer)
             throw StandardError.Constraint("This method can be used only on WASM or MAUI client.");
 

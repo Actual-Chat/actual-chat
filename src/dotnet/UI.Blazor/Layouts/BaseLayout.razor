@@ -27,7 +27,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override async Task OnInitializedAsync() {
-        if (Hub.HostInfo().AppKind.IsMauiApp())
+        if (Hub.HostInfo().HostKind.IsMauiApp())
             return;
         if (BlazorModeHelper.IsBlazorServer && !RenderModeSelector.IsPrerendering)
             await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);

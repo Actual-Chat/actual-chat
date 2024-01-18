@@ -57,7 +57,7 @@ public partial class History : ScopedServiceBase<UIHub>, IDisposable
         _isSaveSuppressed = new RegionalValue<bool>(false);
         _saveRegion = new NoRecursionRegion("Save", Lock, Log);
         _locationChangeRegion = new NoRecursionRegion("LocationChange", Lock, Log);
-        var isTestServer = HostInfo.AppKind.IsServer() && HostInfo.IsTested;
+        var isTestServer = HostInfo.HostKind.IsServer() && HostInfo.IsTested;
         if (isTestServer)
             _uri = Links.Home;
         else

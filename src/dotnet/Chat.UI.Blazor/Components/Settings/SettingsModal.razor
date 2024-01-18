@@ -12,7 +12,7 @@
     var showLanguages = true;
     var showUserInterface = true;
     var showLogout = !isGuestOrNone;
-    var showQuit = HostInfo.AppKind.IsMauiApp() && HostInfo.ClientKind == ClientKind.Windows;
+    var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
 }
 
 <ModalFrame>
@@ -53,7 +53,7 @@
                 @if (NativeAppSettings != null) {
                     <AppSettingsView NativeAppSettings="@NativeAppSettings"></AppSettingsView>
                 }
-                @if (HostInfo.AppKind != AppKind.MauiApp) {
+                @if (HostInfo.HostKind != HostKind.MauiApp) {
                     <SettingsBlazorModeToggle/>
                 }
                 <TileTopic Topic="Walk-through"/>

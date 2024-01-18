@@ -13,10 +13,10 @@ public sealed class UsersClientModule(IServiceProvider moduleServices) : HostMod
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.AppKind.IsClient())
+        if (!HostInfo.HostKind.IsApp())
             return; // Client-side only module
 
-        if (HostInfo.AppKind.IsMauiApp())
+        if (HostInfo.HostKind.IsMauiApp())
             services.AddRestEase(restEase => restEase.AddClient<INativeAuthClient>());
 
         var fusion = services.AddFusion().AddAuthClient();

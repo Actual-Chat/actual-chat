@@ -17,7 +17,7 @@ public sealed class AudioBlazorUIModule(IServiceProvider moduleServices)
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.AppKind.HasBlazorUI())
+        if (!HostInfo.HostKind.HasBlazorUI())
             return; // Blazor UI only module
 
         services.AddFusion();
@@ -25,7 +25,7 @@ public sealed class AudioBlazorUIModule(IServiceProvider moduleServices)
         services.AddScoped<ITrackPlayerFactory>(c => new AudioTrackPlayerFactory(c));
         services.AddScoped<AudioInitializer>(c => new AudioInitializer(c.UIHub()));
         services.AddScoped<AudioRecorder>(c => new AudioRecorder(c));
-        if (HostInfo.AppKind != AppKind.MauiApp) {
+        if (HostInfo.HostKind != HostKind.MauiApp) {
             services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
             services.AddScoped<IRecordingPermissionRequester>(_ => new WebRecordingPermissionRequester());
         }

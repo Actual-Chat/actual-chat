@@ -14,7 +14,7 @@ public sealed class InviteServiceModule(IServiceProvider moduleServices) : HostM
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        if (!HostInfo.AppKind.IsServer())
+        if (!HostInfo.HostKind.IsServer())
             return; // Server-side only module
 
         // Redis
