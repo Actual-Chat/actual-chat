@@ -83,6 +83,9 @@ public static class EnumerableExt
     public static IEnumerable<T> Shuffle<T>(this IEnumerable<T> source, Random random)
         => source.ShuffleIterator(random);
 
+    public static IOrderedEnumerable<T> ToFakeOrderedEnumerable<T>(this IEnumerable<T> source)
+        => new FakeOrderedEnumerable<T>(source);
+
     private static IEnumerable<T> ShuffleIterator<T>(this IEnumerable<T> source, Random random)
     {
         var buffer = source.ToList();
@@ -92,5 +95,22 @@ public static class EnumerableExt
 
             buffer[j] = buffer[i];
         }
+    }
+
+    private class FakeOrderedEnumerable<T>(IEnumerable<T> source) : IOrderedEnumerable<T>
+    {
+        public IOrderedEnumerable<T> CreateOrderedEnumerable<TKey>(
+            Func<T, TKey> keySelector,
+            IComparer<TKey>? comparer,
+            bool descending)
+            => descending
+                ? source.OrderByDescending(keySelector, comparer)
+                : source.OrderBy(keySelector, comparer);
+
+        public IEnumerator<T> GetEnumerator()
+            => source.GetEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator()
+            => GetEnumerator();
     }
 }

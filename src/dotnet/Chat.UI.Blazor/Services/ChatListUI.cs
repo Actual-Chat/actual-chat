@@ -152,7 +152,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         CancellationToken cancellationToken = default)
     {
         var chatById = await ListAllUnordered(placeId, settings.Filter, cancellationToken).ConfigureAwait(false);
-        var chats = chatById.Values.OrderBy(settings.Order);
+        var chats = chatById.Values.OrderBy(settings.Order, ChatListPreOrder.ChatList);
 
         var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken).ConfigureAwait(false);
         chats = chats.FilterAndOrderBySearchPhrase(searchPhrase);

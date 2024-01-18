@@ -45,18 +45,38 @@ public static class ChatListExt
 
     public static IEnumerable<ChatInfo> OrderBy(
         this IEnumerable<ChatInfo> chats,
-        ChatListOrder order)
-        => order switch {
-            ChatListOrder.ByLastEventTime => PreOrderChats(chats)
+        ChatListOrder order,
+        ChatListPreOrder preOrder)
+    {
+        var preOrderedChats = preOrder switch {
+            ChatListPreOrder.ChatList => PreOrderChatListFor(chats, order),
+            ChatListPreOrder.None => chats.ToFakeOrderedEnumerable(),
+            ChatListPreOrder.NotesFirst => chats.OrderByDescending(c => c.Chat.SystemTag == Constants.Chat.SystemTags.Notes),
+            _ => throw new ArgumentOutOfRangeException(nameof(preOrder)),
+        };
+        return order switch {
+            ChatListOrder.ByLastEventTime => preOrderedChats
                 .ThenByDescending(c => c.News.LastTextEntry?.Version ?? c.Contact.Version),
-            ChatListOrder.ByOwnUpdateTime => PreOrderChats(chats)
+            ChatListOrder.ByOwnUpdateTime => preOrderedChats
                 .ThenByDescending(c => c.Contact.Version),
-            ChatListOrder.ByUnreadCount => PreOrderChats(chats)
+            ChatListOrder.ByUnreadCount => preOrderedChats
                 .ThenByDescending(c => c.UnreadCount.Value)
                 .ThenByDescending(c => c.News.LastTextEntry?.Version ?? c.Contact.Version),
-            ChatListOrder.ByAlphabet => chats
+            ChatListOrder.ByAlphabet => preOrderedChats
                 .OrderByDescending(c => c.Contact.IsPinned)
                 .ThenBy(c => c.Chat.Title, StringComparer.Ordinal),
+            _ => throw new ArgumentOutOfRangeException(nameof(order)),
+        };
+    }
+
+    private static IOrderedEnumerable<ChatInfo> PreOrderChatListFor(
+        this IEnumerable<ChatInfo> chats,
+        ChatListOrder order)
+        => order switch {
+            ChatListOrder.ByLastEventTime => PreOrderChats(chats),
+            ChatListOrder.ByOwnUpdateTime => PreOrderChats(chats),
+            ChatListOrder.ByUnreadCount => PreOrderChats(chats),
+            ChatListOrder.ByAlphabet => chats.OrderByDescending(c => c.Contact.IsPinned),
             _ => throw new ArgumentOutOfRangeException(nameof(order)),
         };
 

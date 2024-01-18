@@ -8,6 +8,13 @@ public enum ChatListOrder
     ByAlphabet,
 }
 
+public enum ChatListPreOrder
+{
+    ChatList = 0,
+    None,
+    NotesFirst
+}
+
 public static class ChatListOrderExt
 {
     public static string GetIcon(this ChatListOrder order)

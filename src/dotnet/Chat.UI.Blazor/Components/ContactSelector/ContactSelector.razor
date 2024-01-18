@@ -16,6 +16,7 @@
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     [Parameter] public ChatListOrder Order { get; set; } = ChatListOrder.ByOwnUpdateTime;
+    [Parameter] public ChatListPreOrder ChatListPreOrder { get; set; } = ChatListPreOrder.ChatList;
     [Parameter] public ChatListFilter Filter { get; set; } = ChatListFilter.None;
     [Parameter] public IReadOnlySet<ChatId>? ExcludeChatIds { get; set; } = null;
     [Parameter] public SearchPhrase SearchPhrase { get; set; } = SearchPhrase.None;
@@ -71,7 +72,7 @@
         var chats = allChats.Values;
         if (ExcludeChatIds is { } excludeChatIds && excludeChatIds.Count != 0)
             chats = chats.Where(x => !excludeChatIds.Contains(x.Id));
-        chats = chats.OrderBy(Order);
+        chats = chats.OrderBy(Order, ChatListPreOrder);
         if (!SearchPhrase.IsEmpty)
             chats = chats.FilterAndOrderBySearchPhrase(SearchPhrase);
         return chats.ToList();

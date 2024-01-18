@@ -16,6 +16,7 @@
         <ContactSelector
             @ref="@_contactSelectorRef"
             ExcludeChatIds="@ModalModel.ExcludedChatIds"
+            ChatListPreOrder="@ChatListPreOrder.NotesFirst"
             SearchPhrase="@_searchPhrase"
             Changed="@StateHasChanged">
             <SearchBoxNew
