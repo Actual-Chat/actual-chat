@@ -18,7 +18,7 @@
             <div class="chat-footer">
                 @if (!m.IsGuest) {
                     <div>
-                        <span class="c-text">To post or talk,</span>
+                        <span class="c-text">To post or talk,&nbsp;</span>
                         @if (m.ShouldJoinPlaceFirst) {
                             <Button Click="@(() => OnJoinPlace(m.Place!))" Class="btn-sm btn-primary">Join '@m.Place!.Title' place</Button>
                         } else {
