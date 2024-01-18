@@ -1118,35 +1118,33 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
-        var skipJoinAnnouncementsChat = false;
-        var skipJoinDefaultChat = false;
-        var skipJoinFeedbackTemplateChat = false;
-        var skipNotesChatCreation = false;
+        var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
+        var isTested = HostInfo.IsTested;
 
-        if (HostInfo.IsTested) {
-            var options = Services.GetService<ChatDbInitializer.Options>();
-            if (options != null) {
-                if (!options.AddAnnouncementsChat)
-                    skipJoinAnnouncementsChat = true;
-                if (!options.AddDefaultChat)
-                    skipJoinDefaultChat = true;
-                if (!options.AddFeedbackTemplateChat)
-                    skipJoinFeedbackTemplateChat = true;
-                if (!options.AddNotesChat)
-                    skipNotesChatCreation = true;
-            }
+        // If we aren't running tests, we always join Announcements chat,
+        // + try joining other dev-only chats if they exist.
+        var joinAnnouncementsChat = true;
+        var joinDefaultChat = isDevelopmentInstance;
+        var joinNotesChat = isDevelopmentInstance;
+        var joinFeedbackTemplateChat = isDevelopmentInstance;
+        if (isTested) {
+            // If we're running tests, these options are matching to ChatDbInitializer.Options.AddXxx
+            var options = Services.GetService<ChatDbInitializer.Options>() ?? ChatDbInitializer.Options.Default;
+            joinAnnouncementsChat = options.AddAnnouncementsChat;
+            joinDefaultChat = options.AddDefaultChat;
+            joinNotesChat = options.AddNotesChat;
+            joinFeedbackTemplateChat = options.AddFeedbackTemplateChat;
         }
-        if (!skipJoinAnnouncementsChat)
-            await JoinAnnouncementsChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
-        if (!skipNotesChatCreation)
-            await CreateNotesChat(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
 
-        if (HostInfo.IsDevelopmentInstance) {
-            if (!skipJoinDefaultChat)
-                await JoinDefaultChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
-            if (!skipJoinFeedbackTemplateChat)
-                await JoinFeedbackTemplateChatIfAdmin(eventCommand.UserId, cancellationToken).ConfigureAwait(false);
-        }
+        var userId = eventCommand.UserId;
+        if (joinAnnouncementsChat)
+            await JoinAnnouncementsChat(userId, cancellationToken).ConfigureAwait(false);
+        if (joinDefaultChat)
+            await JoinDefaultChatIfAdmin(userId, cancellationToken).ConfigureAwait(false);
+        if (joinNotesChat)
+            await CreateNotesChat(userId, cancellationToken).ConfigureAwait(false);
+        if (joinFeedbackTemplateChat)
+            await JoinFeedbackTemplateChatIfAdmin(userId, cancellationToken).ConfigureAwait(false);
     }
 
     [EventHandler]

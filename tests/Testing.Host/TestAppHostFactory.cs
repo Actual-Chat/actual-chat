@@ -123,10 +123,11 @@ public static class TestAppHostFactory
         var displayName = test.DisplayName;
         // On build server displayName is generated based on class full name and method name,
         // while in Rider only method name is used.
-        // Drop namespace to have more readable instance name (with test method name) after length is truncated.
-        var classNamespace = test.TestCase.TestMethod.TestClass.Class.ToRuntimeType().Namespace;
-        if (displayName.OrdinalStartsWith(classNamespace))
-            displayName = displayName.Substring(classNamespace.Length + 1);
-        return FilePath.GetHashedName(test.TestCase.UniqueID, displayName);
+        // We drop the namespace to have more readable instance name
+        // (with test method name) after the length is truncated.
+        var ns = test.TestCase.TestMethod.TestClass.Class.ToRuntimeType().Namespace;
+        if (displayName.OrdinalStartsWith(ns))
+            displayName = displayName[(ns.Length + 1)..];
+        return FilePath.GetHashedName(test.TestCase.UniqueID, displayName, maxLength: 32);
     }
 }

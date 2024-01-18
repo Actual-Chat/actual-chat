@@ -15,8 +15,9 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
             AddDefaultChat = true,
         };
 
-        public bool AddDefaultChat { get; init; }
         public bool AddAnnouncementsChat { get; init; }
+        // The options below are used on dev/test instances only
+        public bool AddDefaultChat { get; init; }
         public bool AddNotesChat { get; init; }
         public bool AddFeedbackTemplateChat { get; init; }
     }
@@ -31,12 +32,14 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
 
         if (options.AddAnnouncementsChat)
             await EnsureAnnouncementsChatExists(cancellationToken).ConfigureAwait(false);
-        if (options.AddDefaultChat && HostInfo.IsDevelopmentInstance)
-            await EnsureDefaultChatExists(cancellationToken).ConfigureAwait(false);
-        // if (options.AddNotesChat)
-        //     await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
-        // if (options.AddFeedbackTemplateChat)
-        //     await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
+        if (HostInfo.IsDevelopmentInstance) {
+            if (options.AddDefaultChat)
+                await EnsureDefaultChatExists(cancellationToken).ConfigureAwait(false);
+            if (options.AddNotesChat)
+                await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
+            if (options.AddFeedbackTemplateChat)
+                await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public override async Task RepairData(CancellationToken cancellationToken)

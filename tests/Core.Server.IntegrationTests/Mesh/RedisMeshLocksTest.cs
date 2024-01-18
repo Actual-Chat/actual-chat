@@ -25,7 +25,9 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task BasicTest()
     {
         var locks = _services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
-        var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1.5) };
+        var lockOptions = locks.LockOptions with {
+            ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
+        };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
         var info = await locks.GetInfo(key);
@@ -33,11 +35,12 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 
         await using (var h = await locks.Lock(key, "", lockOptions)) {
             (await locks.TryLock(key, "")).Should().BeNull();
-            for (var i = 0; i < 10; i++) { // 2s
-                await Task.Delay(TimeSpan.FromSeconds(0.2));
+            var now = CpuTimestamp.Now;
+            while (now.Elapsed <= lockOptions.ExpirationPeriod + TimeSpan.FromSeconds(0.5)) {
+                await Task.Delay(TimeSpan.FromSeconds(0.5));
                 info = await locks.GetInfo(key);
                 if (info == null)
-                    Assert.Fail($"info == null (i = {i})");
+                    Assert.Fail($"info == null (elapsed = {now.Elapsed})");
                 info.HolderId.Should().Be(h.Id);
             }
         }
@@ -50,7 +53,9 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task LockIsGoneTest()
     {
         var locks = _services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
-        var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1.5) };
+        var lockOptions = locks.LockOptions with {
+            ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
+        };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
         await using var changes = await locks.Changes("");
@@ -62,7 +67,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await locks.Backend.ForceRelease(key, false);
         (await locks.GetInfo(key)).Should().BeNull();
 
-        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        await Task.Delay(lockOptions.ExpirationPeriod + TimeSpan.FromSeconds(0.25));
         h.StopToken.IsCancellationRequested.Should().BeTrue();
 
         await changes.DisposeAsync();

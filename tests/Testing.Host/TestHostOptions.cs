@@ -25,6 +25,8 @@ public record TestAppHostOptions
         ChatDbInitializerOptions = new ChatDbInitializer.Options() {
             AddAnnouncementsChat = true,
             AddDefaultChat = true,
+            AddNotesChat = true,
+            AddFeedbackTemplateChat = true,
         },
     };
 
