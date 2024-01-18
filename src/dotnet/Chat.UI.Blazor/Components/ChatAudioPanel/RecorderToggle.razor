@@ -13,7 +13,7 @@
         (false, _, _) => (false, "", false),
         (_, false, _) => (true, "Starting recording...", false),
         (_, _, false) => (true, "Reconnecting...", false),
-        _ => (true , $"Recording - {language.Title}...", true), // (true, true, true) => ...
+        _ => (true , $"Recording - {language.Title}", true), // (true, true, true) => ...
     };
     // start endless animation when auto hide is not needed
     var hasNoAnimation = _tooltipAnimator.AnimationEndsAt > _tooltipAnimator.Clock.Now + TimeSpan.FromDays(1);
@@ -32,7 +32,7 @@
             <div class="c-tooltip-arrow"></div>
         </div>
     }
-    <div class="recorder-wrapper @animatorClass @transitioningClass">
+    <div class="recorder-wrapper @animatorClass @transitioningClass" data-tooltip="@tooltipText" data-tooltip-position="@(tooltipPosition.ToPositionString())">
         @if (showStatus) {
             <div class="c-tooltip">
                 <div class="c-tooltip-text">@statusText</div>
@@ -43,8 +43,6 @@
             Class="record-off-btn"
             Click="@OnClick"
             MustKeepAwake="true"
-            Tooltip="@tooltipText"
-            TooltipPosition="@tooltipPosition"
             @onmouseup="@OnPointerUp"
             @ontouchend="@OnPointerUp"
             @ontouchcancel="@OnPointerUp"
@@ -55,8 +53,6 @@
         <ButtonRound
             Class="record-on-btn"
             Click="@OnClick"
-            Tooltip="@tooltipText"
-            TooltipPosition="@tooltipPosition"
             @onmouseup="@OnPointerUp"
             @ontouchend="@OnPointerUp"
             @ontouchcancel="@OnPointerUp"
