@@ -7,7 +7,7 @@ public static class Languages
     // Chinese does support only `chirp` recognition model which does not support streaming.
     //public static readonly Language Chinese = new("zh-CN", "CN", "Chinese", AssumeValid.Option);
     public static readonly Language English      = new("en-US", "EN", "English (USA)", AssumeValid.Option);
-    public static readonly Language EnglishUK    = new("en-GB", "EN-GB", "English (United Kingdom)", AssumeValid.Option);
+    public static readonly Language EnglishUK    = new("en-GB", "EN-GB", "English (UK)", AssumeValid.Option);
     public static readonly Language EnglishIN    = new("en-IN", "EN-IN", "English (India)", AssumeValid.Option);
     public static readonly Language French       = new("fr-FR", "FR", "French", AssumeValid.Option);
     public static readonly Language FrenchCA     = new("fr-CA", "FR-CA", "French (Canada)", AssumeValid.Option);

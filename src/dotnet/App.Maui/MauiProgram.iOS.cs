@@ -1,6 +1,7 @@
 using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
 using ActualChat.UI.Blazor;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.Maui.LifecycleEvents;
@@ -22,6 +23,7 @@ public static partial class MauiProgram
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IMediaSaver, IosMediaSaver>();
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
+        services.AddTransient<IAppIconBadge>(_ => new IosAppIconBadge());
     }
 
     private static partial void AddPlatformServicesToSkip(HashSet<Type> servicesToSkip)

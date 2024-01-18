@@ -12,7 +12,6 @@
         var textAndLink = Request.GetShareTextAndLink(UrlMapper);
         var link = Request.GetShareLink(UrlMapper);
         <button class="btn btn-modal"
-                onclick="@($"{BlazorUICoreModule.ImportName}.Share.onClick(event)")"
                 data-share-title="@Request.Text"
                 data-share-text="@textAndLink"
                 data-share-link="@link"
@@ -50,6 +49,16 @@
             var webShareInfo = Hub.GetRequiredService<WebShareInfo>();
             _canUseWebShare = await webShareInfo.CanShare();
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender)
+            return;
+
+        if (!_canUseWebShare)
+            return;
+
+        await Hub.JSRuntime().InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.Share.registerHandler");
     }
 
     private Task OnMauiShareClick()
