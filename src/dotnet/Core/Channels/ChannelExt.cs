@@ -82,4 +82,16 @@ public static class ChannelExt
 
     public static Result<T> GetChannelClosedResult<T>()
         => Result.New<T>(default!, ChannelClosedError);
+
+    public static async Task<bool> WaitToReadAndConsumeAsync<T>(
+        this ChannelReader<T> reader,
+        CancellationToken cancellationToken = default)
+    {
+#pragma warning disable CA1849
+        var canRead = await reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false);
+        if (canRead)
+            while (reader.TryRead(out _)) { }
+        return canRead;
+#pragma warning restore CA1849
+    }
 }

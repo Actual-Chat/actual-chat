@@ -10,7 +10,7 @@ public class RemoveAccountTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task RemoveOwnEntriesTest()
     {
-        using var appHost = await NewAppHost(TestAppHostConfiguration.WithDefaultChat);
+        using var appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat);
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
         var bob = await tester.SignIn(new User("Bob"));

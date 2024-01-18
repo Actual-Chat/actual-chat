@@ -1,3 +1,4 @@
+using ActualChat.App.Server;
 using ActualChat.Mesh;
 using ActualChat.Testing.Host;
 
@@ -5,11 +6,25 @@ namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 
 public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
-    [Fact]
+    private AppHost _appHost = null!;
+    private IServiceProvider _services = null!;
+
+    public override async Task InitializeAsync()
+    {
+        _appHost = await NewAppHost(TestAppHostOptions.None);
+        _services = _appHost.Services;
+    }
+
+    public override Task DisposeAsync()
+    {
+        _appHost.Dispose();
+        return Task.CompletedTask;
+    }
+
+    [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
-        using var appHost = await NewAppHost();
-        var locks = appHost.Services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
+        var locks = _services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1.5) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
@@ -31,14 +46,15 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         info.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(Timeout = 30_000)]
     public async Task LockIsGoneTest()
     {
-        using var appHost = await NewAppHost();
-        var locks = appHost.Services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
+        var locks = _services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(1.5) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
+        await using var changes = await locks.Changes("");
+
         (await locks.GetInfo(key)).Should().BeNull();
         await using var h = await locks.Lock(key, "", lockOptions);
         (await locks.TryLock(key, "")).Should().BeNull();
@@ -48,16 +64,22 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 
         await Task.Delay(TimeSpan.FromSeconds(1.5));
         h.StopToken.IsCancellationRequested.Should().BeTrue();
+
+        await changes.DisposeAsync();
+        var changeSet = await changes.Reader.ReadAllAsync().ToHashSetAsync(StringComparer.Ordinal);
+        changeSet.Count.Should().Be(1);
+        changeSet.Contains(key).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(Timeout = 30_000)]
     public async Task ReleaseNotifyTest()
     {
-        using var appHost = await NewAppHost();
-        var locks = appHost.Services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
+        var locks = _services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(10) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
+        await using var changes = await locks.Changes("");
+
         (await locks.GetInfo(key)).Should().BeNull();
         await using var h1 = await locks.Lock(key, "", lockOptions);
         (await locks.TryLock(key, "")).Should().BeNull();
@@ -70,5 +92,10 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var startedAt = CpuTimestamp.Now;
         await using var h2 = await h2AcquireTask;
         startedAt.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(1));
+
+        await changes.DisposeAsync();
+        var changeSet = await changes.Reader.ReadAllAsync().ToHashSetAsync(StringComparer.Ordinal);
+        changeSet.Count.Should().Be(1);
+        changeSet.Contains(key).Should().BeTrue();
     }
 }

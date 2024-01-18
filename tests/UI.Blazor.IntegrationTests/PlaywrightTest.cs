@@ -18,7 +18,7 @@ public class PlaywrightTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task AddMessageTest()
     {
         const float timeout = 20_000f;
-        using var appHost = await NewAppHost(TestAppHostConfiguration.WithDefaultChat);
+        using var appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat);
         using var tester = appHost.NewPlaywrightTester();
         var account = await tester.SignIn(new User("", "it-works"));
         var (page, _) = await tester.NewPage("chat/the-actual-one");
@@ -71,7 +71,7 @@ public class PlaywrightTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task ChatPageTest()
     {
-        using var appHost = await NewAppHost(TestAppHostConfiguration.WithDefaultChat);
+        using var appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat);
         using var tester = appHost.NewPlaywrightTester();
         var account = await tester.SignIn(new User(Symbol.Empty, "ChatPageTester"));
         var (page, _) = await tester.NewPage("chat/the-actual-one");

@@ -1,18 +1,11 @@
 using ActualChat.App.Server;
 using ActualChat.Testing.Collections;
-using Microsoft.Extensions.Configuration;
 
 namespace ActualChat.Testing.Host;
 
 [Collection(nameof(AppHostTests)), Trait("Category", nameof(AppHostTests))]
 public class AppHostTestBase(ITestOutputHelper @out) : TestBase(@out)
 {
-    protected Task<AppHost> NewAppHost(TestAppHostConfiguration cfg)
-        => TestHostFactory.NewAppHost(Out, cfg.ConfigureAppSettings, cfg.ConfigureServices, cfg.ServerUrls);
-
-    protected Task<AppHost> NewAppHost(
-        Action<IConfigurationBuilder>? configureAppSettings = null,
-        Action<IServiceCollection>? configureServices = null,
-        string? serverUrls = null)
-        => TestHostFactory.NewAppHost(Out, configureAppSettings, configureServices, serverUrls);
+    protected Task<AppHost> NewAppHost(TestAppHostOptions? options = default)
+        => TestAppHostFactory.NewAppHost(Out, options);
 }

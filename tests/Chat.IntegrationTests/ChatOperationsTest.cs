@@ -137,11 +137,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task NotesChatCreatedOnSignIn()
     {
-        using var appHost = await NewAppHost(configureServices:c => c.AddChatDbDataInitialization(
-            o => {
-                o.AddAnnouncementsChat = true;
-                o.AddNotesChat = true;
-            }));
+        using var appHost = await NewAppHost(TestAppHostOptions.WithAllChats);
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         var account = await tester.SignIn(new User("", "Notes"));

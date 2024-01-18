@@ -4,7 +4,7 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Users.IntegrationTests;
 
-public class UserStatusTest : AppHostTestBase
+public class UserStatusTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
 
@@ -13,13 +13,13 @@ public class UserStatusTest : AppHostTestBase
     private AppHost _appHost = null!;
     private Session _adminSession = null!;
 
-    public UserStatusTest(ITestOutputHelper @out) : base(@out)
-    { }
-
     public override async Task InitializeAsync()
     {
-        _appHost = await NewAppHost(
-            builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString())));
+        _appHost = await NewAppHost(TestAppHostOptions.Default with {
+            AppConfigurationExtender = cfg => {
+                cfg.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString()));
+            },
+        });
         _tester = _appHost.NewWebClientTester();
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _adminSession = Session.New();

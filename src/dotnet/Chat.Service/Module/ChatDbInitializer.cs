@@ -7,21 +7,36 @@ namespace ActualChat.Chat.Module;
 
 public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDbContext>(services)
 {
+    public sealed record Options
+    {
+        public static readonly Options None = new();
+        public static readonly Options Default = new() {
+            AddAnnouncementsChat = true,
+            AddDefaultChat = true,
+        };
+
+        public bool AddDefaultChat { get; init; }
+        public bool AddAnnouncementsChat { get; init; }
+        public bool AddNotesChat { get; init; }
+        public bool AddFeedbackTemplateChat { get; init; }
+    }
+
     public override async Task InitializeData(CancellationToken cancellationToken)
     {
+        var options = Services.GetService<Options>() ?? Options.Default;
+
         // This initializer runs after everything else
         var chatDbInitializer = DbInitializer.GetCurrent<ChatDbInitializer>();
         await chatDbInitializer.WaitForOtherInitializers(_ => true).ConfigureAwait(false);
-        var options = Services.GetService<InitializeDataOptions>() ?? new InitializeDataOptions();
 
         if (options.AddAnnouncementsChat)
             await EnsureAnnouncementsChatExists(cancellationToken).ConfigureAwait(false);
-        // if (options.AddFeedbackTemplateChat)
-        //     await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
         if (options.AddDefaultChat && HostInfo.IsDevelopmentInstance)
             await EnsureDefaultChatExists(cancellationToken).ConfigureAwait(false);
         // if (options.AddNotesChat)
         //     await EnsureNotesChatsExist(cancellationToken).ConfigureAwait(false);
+        // if (options.AddFeedbackTemplateChat)
+        //     await EnsureFeedbackTemplateChatExists(cancellationToken).ConfigureAwait(false);
     }
 
     public override async Task RepairData(CancellationToken cancellationToken)
@@ -147,22 +162,6 @@ public class ChatDbInitializer(IServiceProvider services) : DbInitializer<ChatDb
         catch (Exception e) {
             Log.LogCritical(e, "Failed to fix corrupted chat read positions");
             throw;
-        }
-    }
-
-    public class InitializeDataOptions
-    {
-        public bool AddAnnouncementsChat { get; set; } = true;
-        public bool AddFeedbackTemplateChat { get; set; } = true;
-        public bool AddDefaultChat { get; set; } = true;
-        public bool AddNotesChat { get; set; } = true;
-
-        public void DisableAll()
-        {
-            AddAnnouncementsChat = false;
-            AddFeedbackTemplateChat = false;
-            AddDefaultChat = false;
-            AddNotesChat = false;
         }
     }
 }

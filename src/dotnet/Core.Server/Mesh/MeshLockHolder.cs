@@ -10,7 +10,7 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     protected HashSet<Task>? Dependencies;
 
     public string Id { get; } // This is the ID of the lock holder, i.e. this object
-    public Symbol Key { get; }
+    public string Key { get; }
     public string Value { get; }
     public string StoredValue { get; }
     public MeshLockOptions Options { get; }
@@ -18,9 +18,9 @@ public class MeshLockHolder : WorkerBase, IHasId<string>
     public TimeSpan MaxClockDrift { get; init; } = TimeSpan.FromMicroseconds(100);
     public CpuTimestamp CreatedAt { get; } = CpuTimestamp.Now;
 
-    public MeshLockHolder(IMeshLocksBackend backend, string id, Symbol key, string value, MeshLockOptions options)
+    public MeshLockHolder(IMeshLocksBackend backend, string id, string key, string value, MeshLockOptions options)
     {
-        if (key.IsEmpty)
+        if (key.IsNullOrEmpty())
             throw new ArgumentOutOfRangeException(nameof(key));
         options.AssertValid();
 

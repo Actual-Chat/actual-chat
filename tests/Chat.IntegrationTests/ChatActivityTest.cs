@@ -4,16 +4,14 @@ using ActualLab.Time.Testing;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class ChatActivityTest : AppHostTestBase
+public class ChatActivityTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
     private ChatId TestChatId => Constants.Chat.DefaultChatId;
-
-    public ChatActivityTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public async Task BasicTest()
     {
-        using var appHost = await NewAppHost(TestAppHostConfiguration.WithDefaultChat);
+        using var appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat);
         await using var tester = appHost.NewBlazorTester();
         var services = tester.AppServices;
         var clientServices = tester.ScopedAppServices;

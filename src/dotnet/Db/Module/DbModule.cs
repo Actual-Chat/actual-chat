@@ -17,7 +17,8 @@ namespace ActualChat.Db.Module;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
 public sealed class DbModule(IServiceProvider moduleServices) : HostModule<DbSettings>(moduleServices)
 {
-    private const int CommandTimeout = 3;
+    private const int CommandTimeout = 3; // In seconds
+    private const int TestCommandTimeout = 30; // In seconds
 
     public void AddDbContextServices<TDbContext>(
         IServiceCollection services,
@@ -70,7 +71,10 @@ public sealed class DbModule(IServiceProvider moduleServices) : HostModule<DbSet
         */
 
         services.AddSingleton(dbInfo);
-        services.AddPooledDbContextFactory<TDbContext>(db => {
+        services.AddPooledDbContextFactory<TDbContext>((c, db) => {
+            var hostInfo = c.GetRequiredService<HostInfo>();
+            var commandTimeout = hostInfo.IsTested ? TestCommandTimeout : CommandTimeout;
+
             switch (dbKind) {
             case DbKind.InMemory:
                 Log.LogWarning("In-memory DB is used for {DbContext}", typeof(TDbContext).GetName());
@@ -79,7 +83,7 @@ public sealed class DbModule(IServiceProvider moduleServices) : HostModule<DbSet
                 break;
             case DbKind.PostgreSql:
                 db.UseNpgsql(dbInfo.ConnectionString, npgsql => {
-                    npgsql.CommandTimeout(CommandTimeout);
+                    npgsql.CommandTimeout(commandTimeout);
                     npgsql.EnableRetryOnFailure(0);
                     npgsql.MaxBatchSize(16); // NOTE(AY): Was 1 - not sure why, prob. related to old concurrency issues
                     npgsql.MigrationsAssembly(typeof(TDbContext).Assembly.GetName().Name + ".Migration");

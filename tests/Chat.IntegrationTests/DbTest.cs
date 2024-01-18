@@ -17,7 +17,7 @@ public class DbTest: AppHostTestBase
     [InlineData(2000)]
     public async Task ConcurrentUpdatesShouldNotBlockReads(int duration)
     {
-        using var appHost = await NewAppHost(TestAppHostConfiguration.WithDefaultChat);
+        using var appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat);
         var logger = appHost.Services.LogFor<DbTest>();
         logger.LogInformation("app host init");
 
@@ -78,7 +78,7 @@ public class DbTest: AppHostTestBase
     [Fact]
     public async Task DeadlockShouldBeDetected()
     {
-        using var appHost = await NewAppHost(TestAppHostConfiguration.WithDefaultChat);
+        using var appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat);
         var logger = appHost.Services.LogFor<DbTest>();
         logger.LogInformation("app host init");
 

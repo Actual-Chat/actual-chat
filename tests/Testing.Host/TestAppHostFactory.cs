@@ -12,7 +12,7 @@ using ActualLab.IO;
 
 namespace ActualChat.Testing.Host;
 
-public static class TestHostFactory
+public static class TestAppHostFactory
 {
     public static FilePath GetManifestPath()
     {
@@ -31,13 +31,12 @@ public static class TestHostFactory
 
     public static async Task<AppHost> NewAppHost(
         ITestOutputHelper output,
-        Action<IConfigurationBuilder>? configureAppSettings = null,
-        Action<IServiceCollection>? configureServices = null,
-        string? serverUrls = null)
+        TestAppHostOptions? options = null)
     {
+        options ??= TestAppHostOptions.Default;
         var manifestPath = GetManifestPath();
         var appHost = new TestAppHost {
-            ServerUrls = serverUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
+            ServerUrls = options.ServerUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
             HostConfigurationBuilder = cfg => {
                 cfg.Sources.Insert(0,
                     new MemoryConfigurationSource {
@@ -46,40 +45,37 @@ public static class TestHostFactory
                             { WebHostDefaults.StaticWebAssetsKey, manifestPath },
                         },
                     });
+                options.HostConfigurationExtender?.Invoke(cfg);
             },
             AppServicesBuilder = (host, services) => {
-                configureServices?.Invoke(services);
+                options.AppServicesExtender?.Invoke(host, services);
 
                 // The code below runs after module service registration & everything else
+                services.AddSettings<TestSettings>();
+                services.AddSingleton(output);
                 services.ConfigureLogging(output);
                 services.AddSingleton(new ServerAuthHelper.Options {
                     KeepSignedIn = true,
                 });
-                services.AddSettings<TestSettings>();
-                services.AddSingleton(output);
-                services.AddSingleton<PostgreSqlPoolCleaner>();
+                services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
-
-                services.AddSingleton<ChatDbInitializer.InitializeDataOptions>(c => {
-                    var options = new ChatDbInitializer.InitializeDataOptions();
-                    options.DisableAll();
-                    var configurators = c.GetRequiredService<IEnumerable<Action<ChatDbInitializer.InitializeDataOptions>>>();
-                    foreach (var configurator in configurators)
-                        configurator(options);
-                    return options;
-                });
+                services.AddSingleton<PostgreSqlPoolCleaner>();
             },
-            AppConfigurationBuilder = builder => {
-                ConfigureTestApp(builder, output);
-                configureAppSettings?.Invoke(builder);
+            AppConfigurationBuilder = cfg => {
+                ConfigureTestApp(cfg, output);
+                options.AppConfigurationExtender?.Invoke(cfg);
             },
         };
         await appHost.Build();
+
         if (Constants.DebugMode.Npgsql)
-            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(),true);
-        await appHost.InvokeDbInitializers();
-        _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // force service instantiation
-        await appHost.Start();
+            Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(), true);
+        _ = appHost.Services.GetRequiredService<PostgreSqlPoolCleaner>(); // Force instantiation to ensure it's disposed in the end
+
+        if (options.MustInitializeDb)
+            await appHost.InvokeDbInitializers();
+        if (options.MustStart)
+            await appHost.Start();
         return appHost;
     }
 

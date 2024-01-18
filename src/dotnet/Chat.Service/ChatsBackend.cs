@@ -1124,7 +1124,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var skipNotesChatCreation = false;
 
         if (HostInfo.IsTested) {
-            var options = Services.GetService<ChatDbInitializer.InitializeDataOptions>();
+            var options = Services.GetService<ChatDbInitializer.Options>();
             if (options != null) {
                 if (!options.AddAnnouncementsChat)
                     skipJoinAnnouncementsChat = true;

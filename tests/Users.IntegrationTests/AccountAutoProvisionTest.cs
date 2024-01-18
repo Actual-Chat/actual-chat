@@ -3,7 +3,7 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;
 
-public class AccountAutoProvisionTest : AppHostTestBase
+public class AccountAutoProvisionTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
 
@@ -11,13 +11,13 @@ public class AccountAutoProvisionTest : AppHostTestBase
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
 
-    public AccountAutoProvisionTest(ITestOutputHelper @out) : base(@out)
-    { }
-
     public override async Task InitializeAsync()
     {
-        _appHost = await NewAppHost(
-            builder => builder.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString())));
+        _appHost = await NewAppHost(TestAppHostOptions.Default with {
+            AppConfigurationExtender = cfg => {
+                cfg.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString()));
+            },
+        });
         _tester = _appHost.NewWebClientTester();
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
     }

@@ -17,9 +17,9 @@ public class ChatPageAuthorizationTest(ITestOutputHelper @out) : AppHostTestBase
 
     public override async Task InitializeAsync()
     {
-        _appHost = await NewAppHost(
-            serverUrls: "http://localhost:7080",
-            configureServices:c => c.AddChatDbDataInitialization(o => o.AddDefaultChat = true));
+        _appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat with {
+            ServerUrls = "http://localhost:7080",
+        });
         _testSettings = _appHost.Services.GetRequiredService<TestSettings>();
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _tester = _appHost.NewPlaywrightTester();

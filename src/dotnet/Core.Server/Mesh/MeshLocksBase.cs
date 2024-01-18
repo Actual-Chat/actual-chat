@@ -14,7 +14,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
     ILogger? IMeshLocksBackend.Log => Log;
 
     public virtual async Task<MeshLockHolder?> TryLock(
-        Symbol key, string value,
+        string key, string value,
         MeshLockOptions lockOptions,
         CancellationToken cancellationToken = default)
     {
@@ -38,27 +38,37 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
     }
 
     public virtual async Task<MeshLockHolder> Lock(
-        Symbol key, string value,
+        string key, string value,
         MeshLockOptions lockOptions,
         CancellationToken cancellationToken = default)
     {
         var holder = CreateHolder(key, value, lockOptions);
         Log?.LogInformation("Lock: {Key} = {StoredValue}", key, holder.StoredValue);
-        Task? whenChanged = null;
-        var whenChangedCts = cancellationToken.CreateLinkedTokenSource();
+        IAsyncSubscription<string>? changes = null;
         try {
+            var consumeTask = (Task<bool>?)null;
             while (true) {
+                changes ??= await Changes(key, cancellationToken).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
-                whenChanged ??= await WhenChanged(key, whenChangedCts.Token).ConfigureAwait(false);
                 var isAcquired = await TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
                 if (isAcquired)
                     break;
 
                 try {
+                    consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(cancellationToken);
                     // It's fine to use CancellationToken.None here:
                     // whenChanged already depends on cancellationToken via whenChangedCts.
-                    await whenChanged.WaitAsync(lockOptions.CheckPeriod, CancellationToken.None).ConfigureAwait(false);
-                    whenChanged = null;
+                    var canRead = await consumeTask
+                        .WaitAsync(lockOptions.CheckPeriod, CancellationToken.None)
+                        .ConfigureAwait(false);
+                    if (!canRead) {
+                        // Something is off, prob. Redis disconnect - we need to restart
+                        await changes.DisposeSilentlyAsync().ConfigureAwait(false);
+                        changes = null;
+                        consumeTask = null;
+                        continue;
+                    }
+                    consumeTask = null;
                 }
                 catch (TimeoutException) { }
             }
@@ -71,32 +81,32 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
             throw;
         }
         finally {
-            whenChangedCts.CancelAndDisposeSilently();
+            await changes.DisposeSilentlyAsync().ConfigureAwait(false);
         }
         holder.Start();
         return holder;
     }
 
-    public abstract Task<MeshLockInfo?> GetInfo(Symbol key, CancellationToken cancellationToken = default);
-    public abstract Task<Task> WhenChanged(Symbol key, CancellationToken cancellationToken = default);
+    public abstract Task<MeshLockInfo?> GetInfo(string key, CancellationToken cancellationToken = default);
+    public abstract Task<IAsyncSubscription<string>> Changes(string key, CancellationToken cancellationToken = default);
 
-    Task<bool> IMeshLocksBackend.TryRenew(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
+    Task<bool> IMeshLocksBackend.TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
         => TryRenew(key, value, expiresIn, cancellationToken);
-    Task<MeshLockReleaseResult> IMeshLocksBackend.TryRelease(Symbol key, string value, CancellationToken cancellationToken)
+    Task<MeshLockReleaseResult> IMeshLocksBackend.TryRelease(string key, string value, CancellationToken cancellationToken)
         => TryRelease(key, value, cancellationToken);
-    Task<bool> IMeshLocksBackend.ForceRelease(Symbol key, bool mustNotify, CancellationToken cancellationToken)
+    Task<bool> IMeshLocksBackend.ForceRelease(string key, bool mustNotify, CancellationToken cancellationToken)
         => ForceRelease(key, mustNotify, cancellationToken);
 
     // Protected methods
 
-    protected virtual MeshLockHolder CreateHolder(Symbol key, string value, MeshLockOptions options)
+    protected virtual MeshLockHolder CreateHolder(string key, string value, MeshLockOptions options)
         => new(this, NextHolderId(), key, value, options);
 
     protected virtual string NextHolderId()
         => ZString.Concat(HolderKeyPrefix, Interlocked.Increment(ref LastHolderId));
 
-    protected abstract Task<bool> TryLock(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
-    protected abstract Task<bool> TryRenew(Symbol key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
-    protected abstract Task<MeshLockReleaseResult> TryRelease(Symbol key, string value, CancellationToken cancellationToken);
-    protected abstract Task<bool> ForceRelease(Symbol key, bool mustNotify, CancellationToken cancellationToken);
+    protected abstract Task<bool> TryLock(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
+    protected abstract Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken);
+    protected abstract Task<MeshLockReleaseResult> TryRelease(string key, string value, CancellationToken cancellationToken);
+    protected abstract Task<bool> ForceRelease(string key, bool mustNotify, CancellationToken cancellationToken);
 }

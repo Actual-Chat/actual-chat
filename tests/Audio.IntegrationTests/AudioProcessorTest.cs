@@ -297,12 +297,13 @@ public class AudioProcessorTest : AppHostTestBase
     }
 
     private async Task<AppHost> NewAppHost()
-        => await NewAppHost(
-            configureServices: services => {
+        => await NewAppHost(TestAppHostOptions.Default with {
+            AppServicesExtender = (_, services) => {
                 services.AddSingleton(new AudioProcessor.Options {
                     IsEnabled = false,
                 });
-            });
+            },
+        });
 
     private async Task<int> ReadTranscriptStream(
         string audioRecordId,

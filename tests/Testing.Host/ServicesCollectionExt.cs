@@ -6,7 +6,7 @@ public static class ServicesCollectionExt
 {
     public static IServiceCollection AddChatDbDataInitialization(
         this IServiceCollection services,
-        Action<ChatDbInitializer.InitializeDataOptions> setupAction)
+        Action<ChatDbInitializer.Options> setupAction)
     {
         services.AddSingleton(setupAction);
         return services;

@@ -5,24 +5,24 @@ public static class MeshLocksExt
     // TryLock
 
     public static Task<MeshLockHolder?> TryLock(this IMeshLocks meshLocks,
-        Symbol key, string value,
+        string key, string value,
         CancellationToken cancellationToken = default)
         => meshLocks.TryLock(key, value, meshLocks.LockOptions, cancellationToken);
 
     // Lock
 
     public static Task<MeshLockHolder> Lock(this IMeshLocks meshLocks,
-        Symbol key, string value,
+        string key, string value,
         CancellationToken cancellationToken = default)
         => meshLocks.Lock(key, value, meshLocks.LockOptions, cancellationToken);
 
     public static Task<MeshLockHolder> Lock(this IMeshLocks meshLocks,
-        Symbol key, string value, TimeSpan timeout,
+        string key, string value, TimeSpan timeout,
         CancellationToken cancellationToken = default)
         => meshLocks.Lock(key, value, meshLocks.LockOptions, timeout, cancellationToken);
 
     public static async Task<MeshLockHolder> Lock(this IMeshLocks meshLocks,
-        Symbol key, string value, MeshLockOptions lockOptions, TimeSpan timeout,
+        string key, string value, MeshLockOptions lockOptions, TimeSpan timeout,
         CancellationToken cancellationToken = default)
     {
         if (timeout == TimeSpan.MaxValue)
