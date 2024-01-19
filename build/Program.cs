@@ -250,7 +250,7 @@ internal static class Program
                 .WithArguments("test",
                     "ActualChat.sln",
                     "--nologo",
-                    "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.IntegrationTests\"",
+                    "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests\"",
                     "--no-restore",
                     "--blame-hang",
                     "--blame-hang-timeout 300s",

@@ -1,7 +1,7 @@
 using ActualChat.Testing.Host;
 using Microsoft.Playwright;
 
-namespace ActualChat.UI.Blazor.IntegrationTests;
+namespace ActualChat.UI.Blazor.PlaywrightTests;
 
 public class PlaywrightTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
