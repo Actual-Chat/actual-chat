@@ -37,7 +37,7 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var deviceContacts = new Mock<DeviceContacts>();
         deviceContacts.SetupGet(x => x.DeviceId).Returns(() => DeviceId);
         deviceContacts.Setup(x => x.List(It.IsAny<CancellationToken>())).Returns(() => Task.FromResult(DeviceContacts.ToApiArray()));
-        _appHost = await NewAppHost( serverUrls: "http://localhost:7080");
+        _appHost = await NewAppHost(TestAppHostOptions.Default with { ServerUrls = "http://localhost:7080" });
         _externalContacts = _appHost.Services.GetRequiredService<IExternalContacts>();
         _tester = _appHost.NewWebClientTester(services => {
             TrueSessionResolver? sessionResolver = null;
