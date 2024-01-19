@@ -15,7 +15,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var account = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignInAsBob();
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
@@ -55,7 +55,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var account = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignInAsBob();
         var session = tester.Session;
         var clocks = services.Clocks().SystemClock;
 
@@ -96,7 +96,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var account = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignInAsBob();
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
@@ -131,7 +131,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         await using var tester = appHost.NewWebClientTester();
 
         var services = tester.AppServices;
-        var account = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignInAsBob();
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
@@ -172,7 +172,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         await using var tester = appHost.NewWebClientTester();
 
         var services = tester.AppServices;
-        var account = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignInAsBob();
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
@@ -205,7 +205,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var account = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignInAsBob();
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();
@@ -250,7 +250,7 @@ public class ChatEntryReaderTest : AppHostTestBase
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var account = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignInAsBob();
         var session = tester.Session;
 
         var auth = services.GetRequiredService<IAuth>();

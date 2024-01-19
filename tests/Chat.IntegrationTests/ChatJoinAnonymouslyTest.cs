@@ -52,7 +52,7 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
 
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        await tester.SignIn(new User("", "Bob"));
+        await tester.SignInAsBob();
 
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default);
@@ -108,7 +108,7 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
 
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        await tester.SignIn(new User("", "Bob"));
+        await tester.SignInAsBob();
 
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default);

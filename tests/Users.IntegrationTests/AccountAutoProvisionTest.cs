@@ -32,7 +32,7 @@ public class AccountAutoProvisionTest(ITestOutputHelper @out) : AppHostTestBase(
     public async Task ShouldCreateAccountForNewUser()
     {
         // arrange
-        var user = await _tester.SignIn(new User("Bob"));
+        var user = await _tester.SignInAsBob();
 
         // act
         var account = await _accounts.GetOwn(_tester.Session, default);
@@ -47,7 +47,7 @@ public class AccountAutoProvisionTest(ITestOutputHelper @out) : AppHostTestBase(
     public async Task ShouldNotCreateAccountForExistingUser()
     {
         // arrange
-        var account = await _tester.SignIn(new User("Bob"));
+        var account = await _tester.SignInAsBob();
         await _tester.SignOut();
 
         // act

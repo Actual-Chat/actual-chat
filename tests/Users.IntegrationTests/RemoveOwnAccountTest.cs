@@ -14,7 +14,7 @@ public class RemoveOwnAccountTest(ITestOutputHelper @out) : AppHostTestBase(@out
         using var appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat);
         await using var tester = appHost.NewWebClientTester();
         var services = tester.AppServices;
-        var bob = await tester.SignIn(new User("Bob"));
+        var bob = await tester.SignInAsBob();
         var session = tester.Session;
 
         var chats = services.GetRequiredService<IChats>();
