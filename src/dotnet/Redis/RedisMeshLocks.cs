@@ -4,9 +4,16 @@ using StackExchange.Redis;
 
 namespace ActualChat.Redis;
 
-public class RedisMeshLocks<TContext>(IServiceProvider services)
-    : RedisMeshLocks(services.GetRequiredService<RedisDb<TContext>>(), services.Clocks().SystemClock),
-        IMeshLocks<TContext>;
+public class RedisMeshLocks<TContext> : RedisMeshLocks,
+        IMeshLocks<TContext>
+{
+    public RedisMeshLocks(IServiceProvider services)
+        : base(services.GetRequiredService<RedisDb<TContext>>(), services.Clocks().SystemClock) { }
+    public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
+        : base(redisDb, DefaultKeyPrefix, clock) { }
+    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, IMomentClock? clock = null)
+        : base(redisDb, keyPrefix, clock) { }
+}
 
 public class RedisMeshLocks : MeshLocksBase
 {
@@ -63,15 +70,20 @@ public class RedisMeshLocks : MeshLocksBase
             return 0
         """;
 
+    public static readonly string DefaultKeyPrefix = "MeshLocks";
+
     private readonly Func<ChannelMessage, string> _changeMessageMapper;
     private readonly string _fullKeyPrefix;
 
     public RedisDb RedisDb { get; }
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
 
-    public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null) : base(clock)
+    public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null) : this(redisDb, DefaultKeyPrefix, clock) { }
+    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, IMomentClock? clock = null) : base(clock)
     {
-        RedisDb = redisDb.WithKeyPrefix("MeshLocks");
+        if (!keyPrefix.IsNullOrEmpty())
+            redisDb = redisDb.WithKeyPrefix(keyPrefix);
+        RedisDb = redisDb;
         _fullKeyPrefix = RedisDb.FullKey("");
         _changeMessageMapper = m => {
             var key = (string?)m.Message ?? "";

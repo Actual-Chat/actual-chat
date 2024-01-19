@@ -1,5 +1,4 @@
 using ActualChat.Collections.Internal;
-using Cysharp.Text;
 using MemoryPack;
 
 namespace ActualChat.Collections;
@@ -8,6 +7,8 @@ namespace ActualChat.Collections;
 public sealed partial class ApiMap<TKey, TValue> : Dictionary<TKey, TValue>, ICloneable<ApiMap<TKey, TValue>>
     where TKey : notnull
 {
+    public static readonly ApiMap<TKey, TValue> Empty = new();
+
     public ApiMap() { }
     public ApiMap(IDictionary<TKey, TValue> dictionary) : base(dictionary) { }
     public ApiMap(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey>? comparer) : base(dictionary, comparer) { }

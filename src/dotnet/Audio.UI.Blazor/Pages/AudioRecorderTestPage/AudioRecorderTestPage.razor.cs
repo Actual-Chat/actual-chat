@@ -32,7 +32,7 @@ public partial class AudioRecorderTestPage : ComponentBase, IDisposable
                 $"{AudioBlazorUIModule.ImportName}.AudioRecorderTestPage.createObj",
                 _cts.Token, blazorRef, DebugMode, _recordsRef, _recordNumber++
                 );
-#pragma warning disable VSTHRD101, MA0040
+#pragma warning disable VSTHRD101, MA0040, MA0147
             // ReSharper disable once AsyncVoidLambda
             _registration = _cts.Token.Register(async () => {
                 Log.LogInformation("Recording was cancelled");

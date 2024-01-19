@@ -17,14 +17,14 @@ public class AndroidWebViewClient(
     private WebViewClient Original { get; } = original;
     private AndroidContentDownloader ContentDownloader { get; } = contentDownloader;
 
-#pragma warning disable CA2215
+#pragma warning disable CA2215, MA0084
     protected override void Dispose(bool disposing)
-#pragma warning restore CA2215
     {
         var original = Original;
         if (disposing && original.IsNotNull())
             original.Dispose();
     }
+#pragma warning restore CA2215, MA0084
 
     public override bool OnRenderProcessGone(WebView? view, RenderProcessGoneDetail? detail)
     {

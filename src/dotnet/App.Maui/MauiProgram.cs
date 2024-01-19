@@ -259,7 +259,7 @@ public static partial class MauiProgram
             AppKind = MauiSettings.AppKind,
             Environment = environment,
             Configuration = configuration,
-            Roles = HostRole.AddImpliedServerRoles([ MauiSettings.AppKind.ToHostRole() ]),
+            Roles = HostRole.AddImpliedServerRoles([ HostRole.App, HostRole.BlazorHost ]),
             BaseUrl = MauiSettings.BaseUrl,
             DeviceModel = DeviceInfo.Current.Model,
         };

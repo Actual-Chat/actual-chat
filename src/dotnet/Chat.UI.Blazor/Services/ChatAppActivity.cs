@@ -2,6 +2,8 @@
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
+#pragma warning disable MA0084
+
 public class ChatAppActivity(ChatUIHub hub) : AppActivity(hub)
 {
     // [ComputeMethod]

@@ -1,5 +1,4 @@
 using ActualChat.Collections.Internal;
-using Cysharp.Text;
 using MemoryPack;
 
 namespace ActualChat.Collections;

@@ -8,7 +8,9 @@ using ActualChat.Feedback;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kubernetes;
+using ActualChat.Mesh;
 using ActualChat.Notification;
+using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Transcription;
 using ActualChat.Users;
@@ -34,6 +36,7 @@ using ActualLab.Fusion.Server;
 using ActualLab.Fusion.Server.Middlewares;
 using ActualLab.Fusion.Server.Rpc;
 using ActualLab.IO;
+using ActualLab.Redis;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
@@ -155,6 +158,12 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<InfrastructureDbContext>(services, Settings.Redis);
+
+        // MeshStateWatcher
+        redisModule.AddRedisDb<MeshInfo>(services, Settings.Redis);
+        services.AddSingleton<IMeshLocks<MeshInfo>>(c => new RedisMeshLocks<MeshInfo>(
+            c.GetRequiredService<RedisDb<InfrastructureDbContext>>(), nameof(MeshInfo), c.Clocks().SystemClock));
+        services.AddHostedService<MeshStateWatcher>();
 
         // Queues
         services.AddLocalCommandQueues();

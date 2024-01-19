@@ -66,7 +66,7 @@ public partial class AudioPlayerTestPage : ComponentBase, IAudioPlayerBackend, I
                 $"{AudioBlazorUIModule.ImportName}.AudioPlayerTestPage.create",
                 _cts.Token,
                 blazorRef);
-#pragma warning disable VSTHRD101, MA0040
+#pragma warning disable VSTHRD101, MA0040, MA0147
             // ReSharper disable once AsyncVoidLambda
             _registration = _cts.Token.Register(async () => {
                 try {

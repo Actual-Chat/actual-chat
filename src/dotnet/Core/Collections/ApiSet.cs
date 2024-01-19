@@ -1,5 +1,4 @@
 using ActualChat.Collections.Internal;
-using Cysharp.Text;
 using MemoryPack;
 
 namespace ActualChat.Collections;
@@ -20,7 +19,7 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
 #pragma warning restore SYSLIB0051
 
     object ICloneable.Clone() => Clone();
-    public ApiSet<T> Clone() => new(this);
+    public ApiSet<T> Clone() => new(this, Comparer);
 
     public override string ToString()
     {
@@ -45,23 +44,5 @@ public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
         }
         sb.Append(" }");
         return sb.ToStringAndRelease();
-    }
-}
-
-public static class ApiSetExt
-{
-    public static ApiSet<T> With<T>(this ApiSet<T> set, params T[] item)
-    {
-        var newItems = set.ToApiSet(set.Comparer);
-        newItems.AddRange(item);
-        return newItems;
-    }
-
-    public static ApiSet<T> Without<T>(this ApiSet<T> set, params T[] items)
-    {
-        var newItems = set.ToApiSet(set.Comparer);
-        foreach (var item in items)
-            newItems.Remove(item);
-        return newItems;
     }
 }

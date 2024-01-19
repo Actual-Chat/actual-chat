@@ -16,7 +16,7 @@ public partial record struct HostRole(
     public static readonly HostRole App = nameof(App); // Implies BlazorUI
 
     // This implicit roles are used on both sides (server & client)
-    public static readonly HostRole HasBlazorUI = nameof(HasBlazorUI);
+    public static readonly HostRole BlazorHost = nameof(BlazorHost);
 
     private static readonly HashSet<HostRole> ServerRoles = [
         SingleServer,
@@ -38,7 +38,7 @@ public partial record struct HostRole(
     public static implicit operator HostRole(string source) => new(source);
 
     public static IReadOnlySet<HostRole> GetClientRoles(AppKind appKind)
-        => new HashSet<HostRole>() { App, HasBlazorUI };
+        => new HashSet<HostRole>() { App, BlazorHost };
 
     public static IReadOnlySet<HostRole> GetServerRoles(string roles)
     {
@@ -66,7 +66,7 @@ public partial record struct HostRole(
         if (roles.Contains(SingleServer))
             roles.Add(WebApi);
         if (roles.Contains(WebApi))
-            roles.Add(HasBlazorUI);
+            roles.Add(BlazorHost);
         return roles;
     }
 }
