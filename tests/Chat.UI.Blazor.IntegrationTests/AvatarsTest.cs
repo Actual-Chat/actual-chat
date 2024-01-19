@@ -19,7 +19,7 @@ public class AvatarsTest : AppHostTestBase
 
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewWebClientTester();
-        var account = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
+        var account = await tester.SignInAsBob("no-admin");
         var command = new Avatars_Change(tester.Session, Symbol.Empty, null, new Change<AvatarFull>() {
             Create = new AvatarFull(account.Id),
         });

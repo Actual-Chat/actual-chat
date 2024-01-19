@@ -17,7 +17,7 @@ public class ChatActivityTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var clientServices = tester.ScopedAppServices;
         var commander = services.GetRequiredService<ICommander>();
         var authors = services.GetRequiredService<IAuthors>();
-        var account = await tester.SignIn(new User("Bob"));
+        var account = await tester.SignInAsBob();
         var session = tester.Session;
 
         var chats = services.GetRequiredService<IChats>();

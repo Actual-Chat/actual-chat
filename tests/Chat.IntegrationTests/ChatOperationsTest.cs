@@ -18,7 +18,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        var account = await tester.SignIn(new User("", "Bob"));
+        var account = await tester.SignInAsBob();
 
         var services = tester.AppServices;
         var chats = services.GetRequiredService<IChats>();
@@ -80,7 +80,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         using var appHost = await NewAppHost();
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        var account = await tester.SignIn(new User("", "Bob"));
+        var account = await tester.SignInAsBob();
 
         var services = tester.AppServices;
         var chatsBackend = services.GetRequiredService<IChatsBackend>();
@@ -186,7 +186,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var (chatId, inviteId) = await ChatOperations.CreateChat(appHost, isPublicChat);
 
         await using var tester = appHost.NewBlazorTester();
-        await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
+        await tester.SignInAsBob("no-admin");
 
         await ChatOperations.JoinChat(tester, chatId, inviteId);
         await ChatOperations.AssertJoined(tester, chatId);
@@ -203,7 +203,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
-        var account = await tester.SignIn(new User("", "Bob").WithIdentity("no-admin"));
+        var account = await tester.SignInAsBob("no-admin");
         var commander = tester.Commander;
         var chats = tester.AppServices.GetRequiredService<IChats>();
         var authors = tester.AppServices.GetRequiredService<IAuthors>();

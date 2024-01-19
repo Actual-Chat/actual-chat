@@ -38,7 +38,7 @@ public class UserStatusTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     {
         // arrange
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
-        await _tester.SignIn(new User("Bob"));
+        await _tester.SignInAsBob();
         var log = _tester.AppServices.LogFor<UserStatusTest>();
         var versionGenerator = _tester.AppServices.GetRequiredService<VersionGenerator<long>>();
 
