@@ -5,6 +5,8 @@ public interface IMeshLocks<TContext> : IMeshLocks;
 public interface IMeshLocks
 {
     MeshLockOptions LockOptions { get; }
+    TimeSpan UnconditionalCheckPeriod { get; }
+
     IMomentClock Clock { get; }
     IMeshLocksBackend Backend { get; }
 

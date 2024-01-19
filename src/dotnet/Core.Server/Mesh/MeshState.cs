@@ -4,21 +4,21 @@ using MemoryPack;
 namespace ActualChat.Mesh;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record MeshInfo
+public sealed partial record MeshState
 {
-    public static readonly MeshInfo Empty = new();
+    public static readonly MeshState Empty = new();
 
-    private readonly ImmutableArray<MeshNodeInfo> _nodes;
+    private readonly ImmutableArray<MeshNode> _nodes;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public ImmutableArray<MeshNodeInfo> Nodes {
+    public ImmutableArray<MeshNode> Nodes {
         get => _nodes;
         init {
             _nodes = value;
             Roles = Nodes.SelectMany(x => x.Roles).ToHashSet();
-            NodesByRole = Roles.Select(r => new KeyValuePair<HostRole, ApiArray<MeshNodeInfo>>(
+            NodesByRole = Roles.Select(r => new KeyValuePair<HostRole, ApiArray<MeshNode>>(
                 r,
-                new ApiArray<MeshNodeInfo>(Nodes.Where(n => n.Roles.Contains(r))))
+                new ApiArray<MeshNode>(Nodes.Where(n => n.Roles.Contains(r))))
             ).ToDictionary();
         }
     }
@@ -27,23 +27,20 @@ public sealed partial record MeshInfo
     public IReadOnlySet<HostRole> Roles { get; private init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public IReadOnlyDictionary<HostRole, ApiArray<MeshNodeInfo>> NodesByRole { get; private init; }
+    public IReadOnlyDictionary<HostRole, ApiArray<MeshNode>> NodesByRole { get; private init; }
 
-    public MeshInfo()
+    public MeshState()
     {
-        _nodes = ImmutableArray<MeshNodeInfo>.Empty;
+        _nodes = ImmutableArray<MeshNode>.Empty;
         Roles = ImmutableHashSet<HostRole>.Empty;
-        NodesByRole = ImmutableDictionary<HostRole, ApiArray<MeshNodeInfo>>.Empty;
+        NodesByRole = ImmutableDictionary<HostRole, ApiArray<MeshNode>>.Empty;
     }
 
-    public MeshInfo(params MeshNodeInfo[] nodes)
-        : this(nodes.ToImmutableArray()) { }
-
     [MemoryPackConstructor, Newtonsoft.Json.JsonConstructor]
-    public MeshInfo(ImmutableArray<MeshNodeInfo> nodes) : this()
+    public MeshState(ImmutableArray<MeshNode> nodes) : this()
         => Nodes = nodes;
 
     // This record relies on referential equality
-    public bool Equals(MeshInfo? other) => ReferenceEquals(this, other);
+    public bool Equals(MeshState? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);
 }

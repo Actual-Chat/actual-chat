@@ -49,7 +49,7 @@ public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<Cor
         services.AddTracer();
         services.AddSingleton(c => new StaticImportsInitializer(c));
         services.AddHostedService(c => c.GetRequiredService<StaticImportsInitializer>());
-        services.AddSingleton(c => new UrlMapper(c.GetRequiredService<HostInfo>()));
+        services.AddSingleton(c => new UrlMapper(c.HostInfo()));
         services.AddSingleton(c => new HealthEventListener(c));
         services.AddSingleton<IRuntimeStats>(c => c.GetRequiredService<HealthEventListener>());
 

@@ -4,14 +4,19 @@ namespace ActualChat.Mesh;
 
 public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = null) : IMeshLocksBackend
 {
+    public static readonly MeshLockOptions DefaultLockOptions = new(TimeSpan.FromSeconds(15));
+    public static readonly TimeSpan DefaultUnconditionalCheckPeriod = TimeSpan.FromSeconds(10);
+
     protected readonly string HolderKeyPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     protected long LastHolderId;
+    ILogger? IMeshLocksBackend.Log => Log;
     protected ILogger? Log { get; init; } = log;
 
-    public MeshLockOptions LockOptions { get; init; } = new(TimeSpan.FromSeconds(10));
+    public MeshLockOptions LockOptions { get; init; } = DefaultLockOptions;
+    public TimeSpan UnconditionalCheckPeriod { get; init; } = DefaultUnconditionalCheckPeriod;
+
     public IMomentClock Clock { get; init; } = clock ?? MomentClockSet.Default.SystemClock;
     public IMeshLocksBackend Backend => this;
-    ILogger? IMeshLocksBackend.Log => Log;
 
     public virtual async Task<MeshLockHolder?> TryLock(
         string key, string value,
@@ -59,7 +64,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
                     // It's fine to use CancellationToken.None here:
                     // whenChanged already depends on cancellationToken via whenChangedCts.
                     var canRead = await consumeTask
-                        .WaitAsync(lockOptions.CheckPeriod, CancellationToken.None)
+                        .WaitAsync(UnconditionalCheckPeriod, CancellationToken.None)
                         .ConfigureAwait(false);
                     if (!canRead) {
                         // Something is off, prob. Redis disconnect - we need to restart

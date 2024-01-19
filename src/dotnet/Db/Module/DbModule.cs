@@ -72,7 +72,7 @@ public sealed class DbModule(IServiceProvider moduleServices) : HostModule<DbSet
 
         services.AddSingleton(dbInfo);
         services.AddPooledDbContextFactory<TDbContext>((c, db) => {
-            var hostInfo = c.GetRequiredService<HostInfo>();
+            var hostInfo = c.HostInfo();
             var commandTimeout = hostInfo.IsTested ? TestCommandTimeout : CommandTimeout;
 
             switch (dbKind) {

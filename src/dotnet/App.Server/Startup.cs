@@ -72,7 +72,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 var server = c.GetRequiredService<IServer>();
                 var serverAddressesFeature =
                     server.Features.Get<IServerAddressesFeature>()
-                    ?? throw StandardError.NotFound<IServerAddressesFeature>("Can't get server address.");
+                    ?? throw StandardError.Internal("Can't get server address.");
                 baseUrl = serverAddressesFeature.Addresses.FirstOrDefault();
                 if (baseUrl.IsNullOrEmpty()) {
                     // If we can't figure out base url at the moment,
@@ -81,7 +81,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                     baseUrlProvider = () => {
                         if (resolvedBaseUrl.IsNullOrEmpty()) {
                             resolvedBaseUrl = serverAddressesFeature.Addresses.FirstOrDefault()
-                                ?? throw StandardError.NotFound<IServerAddressesFeature>(
+                                ?? throw StandardError.Internal(
                                     "No server addresses found. Most likely you trying to use UrlMapper before the server has started.");
                         }
                         return resolvedBaseUrl;

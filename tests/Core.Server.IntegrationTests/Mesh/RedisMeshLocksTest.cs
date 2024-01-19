@@ -71,7 +71,8 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await locks.Backend.ForceRelease(key, false);
         (await locks.GetInfo(key)).Should().BeNull();
 
-        await Task.Delay(lockOptions.ExpirationPeriod + TimeSpan.FromSeconds(0.25));
+        var minDelay = TimeSpanExt.Max(locks.UnconditionalCheckPeriod, lockOptions.ExpirationPeriod);
+        await Task.Delay(minDelay + TimeSpan.FromSeconds(0.25));
         h.StopToken.IsCancellationRequested.Should().BeTrue();
 
         await changes.DisposeAsync();

@@ -5,7 +5,7 @@ using MemoryPack;
 namespace ActualChat.Mesh;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial record MeshNodeInfo(
+public sealed partial record MeshNode(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol Id,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string Endpoint,
     [property: DataMember(Order = 2), MemoryPackOrder(2)] IReadOnlySet<HostRole> Roles
@@ -15,10 +15,10 @@ public sealed partial record MeshNodeInfo(
     public override string ToString()
         => Format.Format(Id.Value, Endpoint, Roles.ToDelimitedString(","));
 
-    public static MeshNodeInfo Parse(string value)
-        => TryParse(value, out var result) ? result : throw StandardError.Format<MeshNodeInfo>();
+    public static MeshNode Parse(string value)
+        => TryParse(value, out var result) ? result : throw StandardError.Format<MeshNode>();
 
-    public static bool TryParse(string value, [NotNullWhen(true)] out MeshNodeInfo? nodeInfo)
+    public static bool TryParse(string value, [NotNullWhen(true)] out MeshNode? nodeInfo)
     {
         nodeInfo = null;
         var parser = Format.CreateParser(value);
@@ -44,7 +44,20 @@ public sealed partial record MeshNodeInfo(
         if (parser.TryParseNext())
             return false;
 
-        nodeInfo = new MeshNodeInfo(id, endpoint, new HashSet<HostRole>(roles));
+        nodeInfo = new MeshNode(id, endpoint, new HashSet<HostRole>(roles));
         return true;
     }
+
+    // Equality: Id-only equality
+
+    public bool Equals(MeshNode? other)
+    {
+        if (ReferenceEquals(null, other))
+            return false;
+        if (ReferenceEquals(this, other))
+            return true;
+        return Id.Equals(other.Id);
+    }
+
+    public override int GetHashCode() => Id.HashCode;
 }

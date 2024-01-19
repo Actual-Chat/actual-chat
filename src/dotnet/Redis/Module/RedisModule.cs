@@ -39,7 +39,15 @@ public sealed class RedisModule(IServiceProvider moduleServices) : HostModule<Re
         var cfg = ConfigurationOptions.Parse(configuration);
         cfg.SocketManager = SocketManager.ThreadPool;
         services.AddRedisDb<TContext>(cfg, keyPrefix);
-        services.AddSingleton<IMeshLocks<TContext>>(c => new RedisMeshLocks<TContext>(c));
+        services.AddSingleton<IMeshLocks<TContext>>(c => {
+            var isTested = c.HostInfo().IsTested;
+            return !isTested
+                ? new RedisMeshLocks<TContext>(c)
+                : new RedisMeshLocks<TContext>(c) {
+                    // To speedup tests relying on this
+                    UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),
+                };
+        });
         services.AddTransient<DistributedLocks<TContext>>();
     }
 }

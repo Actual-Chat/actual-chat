@@ -1,4 +1,6 @@
 using System.IO.Compression;
+using System.Net;
+using System.Text.RegularExpressions;
 using ActualChat.App.Server.Health;
 using ActualChat.Audio;
 using ActualChat.Chat;
@@ -40,12 +42,16 @@ using ActualLab.Redis;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace ActualChat.App.Server.Module;
 
-public sealed class AppServerModule(IServiceProvider moduleServices)
+public sealed partial class AppServerModule(IServiceProvider moduleServices)
     : HostModule<HostSettings>(moduleServices), IWebModule
 {
+
     public static readonly string AppVersion =
         typeof(AppServerModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
 
@@ -160,10 +166,33 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         redisModule.AddRedisDb<InfrastructureDbContext>(services, Settings.Redis);
 
         // MeshStateWatcher
-        redisModule.AddRedisDb<MeshInfo>(services, Settings.Redis);
-        services.AddSingleton<IMeshLocks<MeshInfo>>(c => new RedisMeshLocks<MeshInfo>(
-            c.GetRequiredService<RedisDb<InfrastructureDbContext>>(), nameof(MeshInfo), c.Clocks().SystemClock));
-        services.AddHostedService<MeshStateWatcher>();
+        services.AddSingleton<MeshNode>(c => {
+            var hostInfo = c.HostInfo();
+            var host = Environment.GetEnvironmentVariable("NODE_HOST") ?? "";
+            _ = int.TryParse(
+                Environment.GetEnvironmentVariable("NODE_PORT") ?? "0",
+                CultureInfo.InvariantCulture,
+                out var port);
+            if (host.IsNullOrEmpty() || port == 0) {
+                (host, port) = ServerEndpoints.GetHttpEndpoint(c);
+                if (ServerEndpoints.InternalHosts.Contains(host)) {
+                    if (!hostInfo.IsDevelopmentInstance)
+                        throw StandardError.Internal($"Server host name is internal: {host}");
+
+                    host = Dns.GetHostName();
+                }
+            }
+
+            var endpoint = $"{host}:{port.Format()}";
+            var id = $"{host}-{Ulid.NewUlid().ToString()}";
+            var meshNode = new MeshNode(id, endpoint, hostInfo.Roles);
+            Log.LogInformation("MeshNode: {MeshNode}", meshNode.ToString());
+            return meshNode;
+        });
+        services.AddSingleton<IMeshLocks<MeshState>>(c => new RedisMeshLocks<MeshState>(
+            c.GetRequiredService<RedisDb<InfrastructureDbContext>>(), nameof(MeshState), c.Clocks().SystemClock));
+        if (HostInfo.IsDevelopmentInstance) // For now
+            services.AddHostedService<MeshWatcher>();
 
         // Queues
         services.AddLocalCommandQueues();

@@ -41,7 +41,7 @@ public abstract class Hub : IServiceProvider, IHasServices, IAsyncDisposable, IH
     protected Hub(IServiceProvider services)
     {
         Services = services;
-        _hostInfo = services.GetRequiredService<HostInfo>();
+        _hostInfo = services.HostInfo();
         _stateFactory = services.GetRequiredService<IStateFactory>();
         _logs = services.GetRequiredService<ILoggerFactory>();
         _clocks = services.GetRequiredService<MomentClockSet>();
