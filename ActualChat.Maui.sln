@@ -296,6 +296,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Server.UnitTests", "te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Server.IntegrationTests", "tests\Core.Server.IntegrationTests\Core.Server.IntegrationTests.csproj", "{928527F6-DD8D-435D-B904-2AD8258C7ED7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat.UI.Blazor.PlaywrightTests", "tests\Chat.UI.Blazor.PlaywrightTests\Chat.UI.Blazor.PlaywrightTests.csproj", "{8D8A3D9E-F1AF-4757-B956-2E8727D29E20}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.PlaywrightTests", "tests\UI.Blazor.PlaywrightTests\UI.Blazor.PlaywrightTests.csproj", "{352AEBC6-AB13-4327-A84E-299013E47918}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -612,6 +616,14 @@ Global
 		{928527F6-DD8D-435D-B904-2AD8258C7ED7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{928527F6-DD8D-435D-B904-2AD8258C7ED7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{928527F6-DD8D-435D-B904-2AD8258C7ED7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D8A3D9E-F1AF-4757-B956-2E8727D29E20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D8A3D9E-F1AF-4757-B956-2E8727D29E20}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D8A3D9E-F1AF-4757-B956-2E8727D29E20}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D8A3D9E-F1AF-4757-B956-2E8727D29E20}.Release|Any CPU.Build.0 = Release|Any CPU
+		{352AEBC6-AB13-4327-A84E-299013E47918}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{352AEBC6-AB13-4327-A84E-299013E47918}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{352AEBC6-AB13-4327-A84E-299013E47918}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{352AEBC6-AB13-4327-A84E-299013E47918}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -713,6 +725,8 @@ Global
 		{7E762FB0-403F-4363-A44F-53041DB258E7} = {9EF8D096-E543-418C-A491-331E60F146FA}
 		{58A62A39-CE38-4FAC-8C0B-DCA15C5758C1} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 		{928527F6-DD8D-435D-B904-2AD8258C7ED7} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{8D8A3D9E-F1AF-4757-B956-2E8727D29E20} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
+		{352AEBC6-AB13-4327-A84E-299013E47918} = {89CA819A-3EDA-406F-A39F-1F1CEB50C370}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7CB00270-3EF6-42B5-A4D4-3894AFA5E25C}
