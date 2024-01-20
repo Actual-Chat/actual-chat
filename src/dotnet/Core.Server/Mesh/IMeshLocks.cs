@@ -6,6 +6,7 @@ public interface IMeshLocks
 {
     MeshLockOptions LockOptions { get; }
     TimeSpan UnconditionalCheckPeriod { get; }
+    RetryDelaySeq RetryDelays { get; }
 
     IMomentClock Clock { get; }
     IMeshLocksBackend Backend { get; }

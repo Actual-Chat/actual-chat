@@ -1,3 +1,4 @@
+using System.Text;
 using ActualChat.Hosting;
 using MemoryPack;
 
@@ -39,6 +40,19 @@ public sealed partial record MeshState
     [MemoryPackConstructor, Newtonsoft.Json.JsonConstructor]
     public MeshState(ImmutableArray<MeshNode> nodes) : this()
         => Nodes = nodes;
+
+    public override string ToString()
+    {
+        var sb = StringBuilderExt.Acquire();
+        sb.Append("MeshState(").Append(Nodes.Length).AppendLine(" node(s)) {");
+        var i = 0;
+        foreach (var node in Nodes) {
+            sb.Append("  [").Append(i).Append("] = ").Append(node).AppendLine();
+            i++;
+        }
+        sb.Append('}');
+        return sb.ToStringAndRelease();
+    }
 
     // This record relies on referential equality
     public bool Equals(MeshState? other) => ReferenceEquals(this, other);

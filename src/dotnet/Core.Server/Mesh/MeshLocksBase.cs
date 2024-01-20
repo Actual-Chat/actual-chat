@@ -14,6 +14,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
 
     public MeshLockOptions LockOptions { get; init; } = DefaultLockOptions;
     public TimeSpan UnconditionalCheckPeriod { get; init; } = DefaultUnconditionalCheckPeriod;
+    public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
 
     public IMomentClock Clock { get; init; } = clock ?? MomentClockSet.Default.SystemClock;
     public IMeshLocksBackend Backend => this;
@@ -62,10 +63,12 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
                 try {
                     consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(cancellationToken);
                     // It's fine to use CancellationToken.None here:
-                    // whenChanged already depends on cancellationToken via whenChangedCts.
+                    // consumeTask already depends on cancellationToken.
                     var canRead = await consumeTask
                         .WaitAsync(UnconditionalCheckPeriod, CancellationToken.None)
                         .ConfigureAwait(false);
+                    // It's important to throw on cancellation here: canRead may return false exactly due to this
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (!canRead) {
                         // Something is off, prob. Redis disconnect - we need to restart
                         await changes.DisposeSilentlyAsync().ConfigureAwait(false);
@@ -79,7 +82,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
             }
         }
         catch (Exception e) {
-            if (e is OperationCanceledException)
+            if (e.IsCancellationOf(cancellationToken))
                 Log?.LogInformation("Lock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
             else
                 Log?.LogError(e, "Lock failed: {Key} = {StoredValue}", key, holder.StoredValue);

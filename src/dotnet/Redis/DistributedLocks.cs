@@ -5,7 +5,7 @@ namespace ActualChat.Redis;
 public class DistributedLocks<TContext>(IServiceProvider services)
 {
     private IMeshLocks<TContext>? _meshLocks;
-    private IMeshLocks<TContext> MeshLocks => _meshLocks ??= services.GetRequiredService<IMeshLocks<TContext>>();
+    private IMeshLocks<TContext> MeshLocks => _meshLocks ??= services.MeshLocks<TContext>();
 
     public async Task<T> Run<T>(
         Func<CancellationToken, Task<T>> taskFactory,

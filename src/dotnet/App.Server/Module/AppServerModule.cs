@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using System.Net;
-using System.Text.RegularExpressions;
 using ActualChat.App.Server.Health;
 using ActualChat.Audio;
 using ActualChat.Chat;
@@ -42,16 +41,12 @@ using ActualLab.Redis;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 namespace ActualChat.App.Server.Module;
 
-public sealed partial class AppServerModule(IServiceProvider moduleServices)
+public sealed class AppServerModule(IServiceProvider moduleServices)
     : HostModule<HostSettings>(moduleServices), IWebModule
 {
-
     public static readonly string AppVersion =
         typeof(AppServerModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
 
@@ -191,8 +186,9 @@ public sealed partial class AppServerModule(IServiceProvider moduleServices)
         });
         services.AddSingleton<IMeshLocks<MeshState>>(c => new RedisMeshLocks<MeshState>(
             c.GetRequiredService<RedisDb<InfrastructureDbContext>>(), nameof(MeshState), c.Clocks().SystemClock));
-        if (HostInfo.IsDevelopmentInstance) // For now
-            services.AddHostedService<MeshWatcher>();
+        services.AddSingleton<MeshWatcher>();
+        if (HostInfo.IsDevelopmentInstance)
+            services.AddHostedService(c => c.MeshWatcher());
 
         // Queues
         services.AddLocalCommandQueues();

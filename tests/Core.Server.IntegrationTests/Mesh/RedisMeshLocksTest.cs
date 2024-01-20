@@ -24,7 +24,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
-        var locks = _services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
+        var locks = _services.MeshLocks<InfrastructureDbContext>();
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
@@ -54,7 +54,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact(Timeout = 30_000)]
     public async Task LockIsGoneTest()
     {
-        var locks = _services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
+        var locks = _services.MeshLocks<InfrastructureDbContext>();
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
@@ -84,7 +84,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact(Timeout = 30_000)]
     public async Task ReleaseNotifyTest()
     {
-        var locks = _services.GetRequiredService<IMeshLocks<InfrastructureDbContext>>();
+        var locks = _services.MeshLocks<InfrastructureDbContext>();
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(10) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();

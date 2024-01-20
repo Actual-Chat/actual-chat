@@ -8,7 +8,7 @@ namespace ActualChat;
 
 public static partial class ServerEndpoints
 {
-    [GeneratedRegex(@"^(.*//)?(.+):(\d+)$")]
+    [GeneratedRegex(@"^(.*\/\/)?(.+):(\d+)")]
     private static partial Regex EndpointRegexFactory();
 
     public static readonly HashSet<Symbol> InternalHosts = [ "*", "localhost", "127.0.0.1", "0.0.0.0" ];

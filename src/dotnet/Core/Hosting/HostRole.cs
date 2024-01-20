@@ -51,6 +51,7 @@ public partial record struct HostRole(
         var roleSet = roles
             .Split(',')
             .Select(x => x.Trim())
+            .Where(x => !x.IsNullOrEmpty())
             .Select(x => ServerRoleByValueMap.TryGetValue(x, out var role) ? role : (HostRole)x)
             .ToHashSet();
         AddImpliedServerRoles(roleSet);

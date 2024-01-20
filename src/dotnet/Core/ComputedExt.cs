@@ -28,16 +28,12 @@ public static class ComputedExt
         var sb = StringBuilderExt.Acquire();
         // var flags = pFlags.GetGetter<ComputedFlags>().Invoke(computed);
         var flags = (ComputedFlags)pFlags.GetMethod!.Invoke(computed, Array.Empty<object?>())!;
-        sb.Append("Computed: ");
-        sb.AppendLine(computed.ToString()!);
-        sb.Append("- Flags: ");
-        sb.AppendLine(flags.ToString());
+        sb.Append("Computed: ").Append(computed).AppendLine();
+        sb.Append("- Flags: ").Append(flags).AppendLine();
         sb.AppendLine("- Dependencies:");
         var impl = (IComputedImpl)computed;
-        foreach (var d in impl.Used) {
-            sb.Append("  - ");
-            sb.AppendLine(d.ToString()!);
-        }
+        foreach (var d in impl.Used)
+            sb.Append("  - ").Append(d).AppendLine();
         return sb.ToStringAndRelease();
     }
 

@@ -76,7 +76,6 @@ public class RedisMeshLocks : MeshLocksBase
     private readonly string _fullKeyPrefix;
 
     public RedisDb RedisDb { get; }
-    public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.5, 10);
 
     public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null) : this(redisDb, DefaultKeyPrefix, clock) { }
     public RedisMeshLocks(RedisDb redisDb, string keyPrefix, IMomentClock? clock = null) : base(clock)

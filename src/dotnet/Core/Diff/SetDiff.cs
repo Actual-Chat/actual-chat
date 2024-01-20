@@ -5,6 +5,37 @@ namespace ActualChat.Diff;
 [StructLayout(LayoutKind.Sequential)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]
+public readonly partial struct SetDiff<TItem>(
+    ApiArray<TItem> addedItems,
+    ApiArray<TItem> removedItems = default
+) : IDiff, IEquatable<SetDiff<TItem>>
+{
+    public static readonly SetDiff<TItem> Unchanged = default!;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsEmpty => AddedItems.IsEmpty && RemovedItems.IsEmpty;
+
+    [DataMember(Order = 0), MemoryPackOrder(0)] public ApiArray<TItem> AddedItems { get; init; } = addedItems;
+    [DataMember(Order = 1), MemoryPackOrder(1)] public ApiArray<TItem> RemovedItems { get; init; } = removedItems;
+
+    // Equality
+    public bool Equals(SetDiff<TItem> other)
+        => AddedItems.Equals(other.AddedItems) && RemovedItems.Equals(other.RemovedItems);
+    public override bool Equals(object? obj)
+        => obj is SetDiff<TItem> other && Equals(other);
+    public override int GetHashCode()
+        => HashCode.Combine(AddedItems, RemovedItems);
+    public static bool operator ==(SetDiff<TItem> left, SetDiff<TItem> right)
+        => left.Equals(right);
+    public static bool operator !=(SetDiff<TItem> left, SetDiff<TItem> right)
+        => !left.Equals(right);
+}
+
+// SetDiff<T> version which also "encodes" original collection type.
+// Its' the one used by SetDiffHandler.
+[StructLayout(LayoutKind.Sequential)]
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+[method: MemoryPackConstructor]
 public readonly partial struct SetDiff<TCollection, TItem>(
     ApiArray<TItem> addedItems,
     ApiArray<TItem> removedItems = default
