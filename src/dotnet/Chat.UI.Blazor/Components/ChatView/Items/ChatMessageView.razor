@@ -349,14 +349,21 @@
         if (ownAuthor == null)
             return null;
 
-        if (peerChatId.IndexOf(ownAuthor.UserId) != -1)
-            return await Authors.Get(Session, entry.ForwardedAuthorId.ChatId, entry.ForwardedAuthorId, cancellationToken);
+        // extract user id of forwarded author!
+        var forwardedUserId = entry.ForwardedAuthorId.LocalId == 1
+            ? peerChatId.UserId1
+            : peerChatId.UserId2;
 
-        var messageUserId = entry.ForwardedAuthorId.LocalId == 1 ? peerChatId.UserId1 : peerChatId.UserId2;
-        var peerChatWithMessageUser = new PeerChatId(messageUserId, ownAuthor.UserId);
-        var messageAuthorId = new AuthorId(peerChatWithMessageUser, peerChatWithMessageUser.UserId1 == messageUserId ? 1 : 2, AssumeValid.Option);
-        var author = await Authors.Get(Session, peerChatWithMessageUser, messageAuthorId, cancellationToken);
-        return author;
+        if (forwardedUserId == ownAuthor.UserId)
+            return ownAuthor; // we have forwarded the message - so let's use own author in the current chat
+
+        // try find your peer chat and author for the user who forwarded the message
+        var yourPeerChatId = new PeerChatId(forwardedUserId, ownAuthor.UserId);
+        var yourPeerAuthorId = new AuthorId(yourPeerChatId, yourPeerChatId.UserId1 == forwardedUserId ? 1 : 2, AssumeValid.Option);
+        var author = await Authors.Get(Session, yourPeerChatId, yourPeerAuthorId, cancellationToken);
+        return author?.Version == 0
+            ? null // do not return virtual author
+            : author;
     }
 
     private async Task<Author?> GetForwardedPeerAuthor(ChatEntry entry, AuthorFull? ownAuthor, CancellationToken cancellationToken) {
@@ -367,21 +374,21 @@
         if (ownAuthor == null)
             return null;
 
-        if (peerChatId.IndexOf(ownAuthor.UserId) != -1) {
-            var anotherAuthorId = new AuthorId(peerChatId, peerChatId.UserId1 == ownAuthor.UserId ? 2 : 1, AssumeValid.Option);
-            var anotherAuthor = await Authors.Get(Session, peerChatId, anotherAuthorId, cancellationToken);
-            return anotherAuthor;
-        }
+        // extract user id of forwarded author peer!!!
+        var forwardedPeerUserId = entry.ForwardedAuthorId.LocalId == 1
+            ? peerChatId.UserId2
+            : peerChatId.UserId1;
 
-        var entryAuthorFull = await Authors.GetFull(Session, entry.ChatId, entry.AuthorId, cancellationToken);
-        if (entryAuthorFull == null)
-            return null;
+        if (forwardedPeerUserId == ownAuthor.UserId)
+            return ownAuthor; // message has been forwarded form peer chat with us - so let's use own author in the current chat
 
-        var peerUserId = peerChatId.UserId1 == entryAuthorFull.UserId ? peerChatId.UserId2 : peerChatId.UserId1;
-        var peerChatWithMessageUser = new PeerChatId(peerUserId, ownAuthor.UserId);
-        var messageAuthorId = new AuthorId(peerChatWithMessageUser, peerChatWithMessageUser.UserId1 == peerUserId ? 1 : 2, AssumeValid.Option);
-        var author = await Authors.Get(Session, peerChatWithMessageUser, messageAuthorId, cancellationToken);
-        return author;
+        // try find your peer chat and author for the user who was the peer of the author who forwarded the message
+        var yourPeerChatId = new PeerChatId(forwardedPeerUserId, ownAuthor.UserId);
+        var yourPeerAuthorId = new AuthorId(yourPeerChatId, yourPeerChatId.UserId1 == forwardedPeerUserId ? 1 : 2, AssumeValid.Option);
+        var author = await Authors.Get(Session, yourPeerChatId, yourPeerAuthorId, cancellationToken);
+        return author?.Version == 0
+            ? null // do not return virtual author
+            : author;
     }
 
     // Nested types
