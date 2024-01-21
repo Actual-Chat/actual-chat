@@ -27,7 +27,7 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
 
 WORKDIR /src
 COPY lib/ lib/
-COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.sln ./
+COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.CI.slnf ActualChat.sln ./
 COPY .config/ .config/
 # copy from {repoRoot}/src/dotnet/
 COPY src/dotnet/*/*.csproj ./
@@ -87,7 +87,7 @@ COPY src/dotnet/ src/dotnet/
 COPY tests/ tests/
 COPY *.props *.targets ./
 # we need to regenerate ThisAssembly files with the new version info
-RUN dotnet msbuild /t:GenerateAssemblyNBGVVersionInfo ActualChat.sln
+RUN dotnet msbuild /t:GenerateAssemblyNBGVVersionInfo ActualChat.CI.slnf
 
 FROM base as dotnet-build
 RUN dotnet publish --no-restore --nologo -c Release -nodeReuse:false -o /app ./src/dotnet/App.Server/App.Server.csproj
