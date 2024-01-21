@@ -53,5 +53,5 @@ body.narrow .editor-content:focus {
     @apply ml-0;
 }
 @keyframes cursor {
-    50% { background: transparent; }
+    50% { opacity: 0; }
 }
