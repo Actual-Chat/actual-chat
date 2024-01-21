@@ -158,7 +158,7 @@ internal static class Program
             async () => {
                 await Cli.Wrap(dotnet)
                     .WithArguments("test",
-                        "ActualChat.sln",
+                        "ActualChat.CI.slnf",
                         "--nologo",
                         "--filter \"FullyQualifiedName~UnitTests\"",
                         "--no-restore",
@@ -248,7 +248,7 @@ internal static class Program
         Target(Targets.IntegrationTests, async () => {
             await Cli.Wrap(dotnet)
                 .WithArguments("test",
-                    "ActualChat.sln",
+                    "ActualChat.CI.slnf",
                     "--nologo",
                     "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests\"",
                     "--no-restore",
@@ -276,7 +276,7 @@ internal static class Program
             try {
                 var dotnetTask = Cli
                     .Wrap(dotnet)
-                    .WithArguments($"build ActualChat.sln -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
+                    .WithArguments($"build ActualChat.CI.slnf -noLogo -maxCpuCount -nodeReuse:false -c {configuration}")
                     .ToConsole(Green("dotnet: "))
                     .ExecuteAsync(token).Task;
 
@@ -366,7 +366,7 @@ internal static class Program
         Target(Targets.Restore, async () => {
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             try {
-                await Cli.Wrap(dotnet).WithArguments("restore ActualChat.sln")
+                await Cli.Wrap(dotnet).WithArguments("restore ActualChat.CI.slnf")
                     .ToConsole(Green("dotnet restore: "))
                     .WithValidation(CommandResultValidation.None)
                     .ExecuteAsync(cts.Token).Task.ConfigureAwait(false);
