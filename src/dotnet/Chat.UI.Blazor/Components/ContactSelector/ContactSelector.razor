@@ -11,6 +11,7 @@
 @code {
     private IMutableState<IReadOnlyDictionary<ChatId, ChatInfo>> _allChats = null!;
     private IMutableState<ImmutableHashSet<ChatId>> _selectedChatIds = null!;
+    private PlaceId _placeId = PlaceId.None;
 
     [Inject] private IContacts Contacts { get; init; } = null!;
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
@@ -37,12 +38,16 @@
     public void Add(ChatId chatId)
         => _selectedChatIds.Set(chatId, static (chatId1, x) => x.Value.Add(chatId1));
 
-
     public void Remove(ChatId chatId)
         => _selectedChatIds.Set(chatId, static (chatId1, x) => x.Value.Remove(chatId1));
 
     public void Clear()
         => _selectedChatIds.Set(static x => x.Value.Clear());
+
+    public void SelectPlace(PlaceId placeId) {
+        _placeId = placeId;
+        _ = State.Recompute();
+    }
 
     // Protected methods
 
@@ -66,7 +71,7 @@
         };
 
     protected override async Task<IReadOnlyList<ChatInfo>> ComputeState(CancellationToken cancellationToken) {
-        var allChats = await ChatListUI.ListAllUnordered(PlaceId.None, Filter, cancellationToken);
+        var allChats = await ChatListUI.ListAllUnordered(_placeId, Filter, cancellationToken);
         _allChats.Value = allChats;
 
         var chats = allChats.Values;
