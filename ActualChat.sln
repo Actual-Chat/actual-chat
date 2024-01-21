@@ -71,22 +71,27 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-4560-B32B-91CF7A62F918}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
+		.gitignore = .gitignore
 		add-hosts.cmd = add-hosts.cmd
 		clean.cmd = clean.cmd
 		Directory.Build.props = Directory.Build.props
 		Directory.Build.targets = Directory.Build.targets
 		Directory.Packages.props = Directory.Packages.props
+		docker-compose.yml = docker-compose.yml
+		docker-restart.cmd = docker-restart.cmd
 		docker-start.cmd = docker-start.cmd
 		Dockerfile = Dockerfile
 		dotnet-watch.cmd = dotnet-watch.cmd
 		ef-migrations.cmd = ef-migrations.cmd
 		git-prevent-tracking.cmd = git-prevent-tracking.cmd
+		global.json = global.json
 		icons-to-font.cmd = icons-to-font.cmd
 		monitor.Dockerfile = monitor.Dockerfile
 		npm-build.cmd = npm-build.cmd
 		npm-install.cmd = npm-install.cmd
 		npm-watch.cmd = npm-watch.cmd
 		nuget.config = nuget.config
+		prepare-sounds.cmd = prepare-sounds.cmd
 		README.md = README.md
 		rider-with-tiered-pgo.cmd = rider-with-tiered-pgo.cmd
 		run-build.cmd = run-build.cmd
@@ -95,11 +100,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		run-watch.cmd = run-watch.cmd
 		run.cmd = run.cmd
 		version.json = version.json
-		global.json = global.json
-		docker-compose.yml = docker-compose.yml
-		.gitignore = .gitignore
-		prepare-sounds.cmd = prepare-sounds.cmd
-		docker-restart.cmd = docker-restart.cmd
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -182,10 +182,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\disposable.ts = src\nodejs\src\disposable.ts
 		src\nodejs\src\dom-helpers.ts = src\nodejs\src\dom-helpers.ts
 		src\nodejs\src\event-handling.ts = src\nodejs\src\event-handling.ts
+		src\nodejs\src\fast-raf.ts = src\nodejs\src\fast-raf.ts
+		src\nodejs\src\font-sizes.ts = src\nodejs\src\font-sizes.ts
 		src\nodejs\src\gestures.ts = src\nodejs\src\gestures.ts
 		src\nodejs\src\init.ts = src\nodejs\src\init.ts
 		src\nodejs\src\interactive.ts = src\nodejs\src\interactive.ts
 		src\nodejs\src\keyboard.ts = src\nodejs\src\keyboard.ts
+		src\nodejs\src\kvas.ts = src\nodejs\src\kvas.ts
 		src\nodejs\src\logging-init.ts = src\nodejs\src\logging-init.ts
 		src\nodejs\src\logging.ts = src\nodejs\src\logging.ts
 		src\nodejs\src\math.ts = src\nodejs\src\math.ts
@@ -195,14 +198,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6F6D1942-E72
 		src\nodejs\src\promises.ts = src\nodejs\src\promises.ts
 		src\nodejs\src\resettable.ts = src\nodejs\src\resettable.ts
 		src\nodejs\src\rpc.ts = src\nodejs\src\rpc.ts
+		src\nodejs\src\service-worker.ts = src\nodejs\src\service-worker.ts
+		src\nodejs\src\theme.ts = src\nodejs\src\theme.ts
 		src\nodejs\src\timeout.ts = src\nodejs\src\timeout.ts
 		src\nodejs\src\timerQueue.ts = src\nodejs\src\timerQueue.ts
 		src\nodejs\src\versioning.ts = src\nodejs\src\versioning.ts
-		src\nodejs\src\fast-raf.ts = src\nodejs\src\fast-raf.ts
-		src\nodejs\src\kvas.ts = src\nodejs\src\kvas.ts
-		src\nodejs\src\service-worker.ts = src\nodejs\src\service-worker.ts
-		src\nodejs\src\font-sizes.ts = src\nodejs\src\font-sizes.ts
-		src\nodejs\src\theme.ts = src\nodejs\src\theme.ts
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "worklets", "worklets", "{DBDAA2CE-FEAF-46AE-9EBD-808C191E1A78}"
@@ -253,9 +253,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts", "src\dotnet\Cont
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-92B2-4BC2-9970-8AFF829A1987}"
 	ProjectSection(SolutionItems) = preProject
-		docs\Tasks.md = docs\Tasks.md
 		docs\Places.md = docs\Places.md
 		docs\Search.md = docs\Search.md
+		docs\Tasks.md = docs\Tasks.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"
@@ -282,42 +282,42 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{1612
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{4C3BF424-4983-404C-A62B-F2D286EBCB4E}"
 	ProjectSection(SolutionItems) = preProject
-		.github\workflows\build-test-deploy-dev.yml = .github\workflows\build-test-deploy-dev.yml
 		.github\workflows\build-monitor.yml = .github\workflows\build-monitor.yml
+		.github\workflows\build-test-deploy-dev.yml = .github\workflows\build-test-deploy-dev.yml
 		.github\workflows\create-release-branch.yml = .github\workflows\create-release-branch.yml
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.UI.Blazor", "src\dotnet\Contacts.UI.Blazor\Contacts.UI.Blazor.csproj", "{7C92432E-7ED8-436B-974B-7F077C7E4A86}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.UI.Blazor", "src\dotnet\Contacts.UI.Blazor\Contacts.UI.Blazor.csproj", "{7C92432E-7ED8-436B-974B-7F077C7E4A86}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.IntegrationTests", "tests\Contacts.IntegrationTests\Contacts.IntegrationTests.csproj", "{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.IntegrationTests", "tests\Contacts.IntegrationTests\Contacts.IntegrationTests.csproj", "{5ECF11E4-C107-431F-9FC7-9FAE6B2B677E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Server", "src\dotnet\Core.Server\Core.Server.csproj", "{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.Server", "src\dotnet\Core.Server\Core.Server.csproj", "{BA7C82F3-CBDE-4182-AF3D-CEF9C95773E3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Users.Templates", "src\dotnet\Users.Templates\Users.Templates.csproj", "{589F71C6-2FBA-4993-BD35-317322D53F65}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Users.Templates", "src\dotnet\Users.Templates\Users.Templates.csproj", "{589F71C6-2FBA-4993-BD35-317322D53F65}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Search", "Search", "{C561BF41-8310-4001-AA69-9880F004B1C8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Search", "src\dotnet\Search\Search.csproj", "{FC69901E-AEA8-489B-803A-BCC777E9C588}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Search", "src\dotnet\Search\Search.csproj", "{FC69901E-AEA8-489B-803A-BCC777E9C588}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Search.Contracts", "src\dotnet\Search.Contracts\Search.Contracts.csproj", "{FF505BC1-4931-4F97-A09C-7DCDCAF4BBA8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Search.Contracts", "src\dotnet\Search.Contracts\Search.Contracts.csproj", "{FF505BC1-4931-4F97-A09C-7DCDCAF4BBA8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Search.Service", "src\dotnet\Search.Service\Search.Service.csproj", "{EEF91C44-A239-4B66-8531-442EB83A18B3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Search.Service", "src\dotnet\Search.Service\Search.Service.csproj", "{EEF91C44-A239-4B66-8531-442EB83A18B3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Search.Service.Migration", "src\dotnet\Search.Service.Migration\Search.Service.Migration.csproj", "{6AE15C68-F16F-424A-917C-8D5313D7FAAF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Search.Service.Migration", "src\dotnet\Search.Service.Migration\Search.Service.Migration.csproj", "{6AE15C68-F16F-424A-917C-8D5313D7FAAF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Search.IntegrationTests", "tests\Search.IntegrationTests\Search.IntegrationTests.csproj", "{27F928AD-F87D-4D4D-97F9-5780F9CAC62C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Search.IntegrationTests", "tests\Search.IntegrationTests\Search.IntegrationTests.csproj", "{27F928AD-F87D-4D4D-97F9-5780F9CAC62C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Server.UnitTests", "tests\Core.Server.UnitTests\Core.Server.UnitTests.csproj", "{0708832C-D62E-4E56-BA7E-33C6886EFF61}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.Server.UnitTests", "tests\Core.Server.UnitTests\Core.Server.UnitTests.csproj", "{0708832C-D62E-4E56-BA7E-33C6886EFF61}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core.Server.IntegrationTests", "tests\Core.Server.IntegrationTests\Core.Server.IntegrationTests.csproj", "{240640BA-BAD7-4138-990A-641F169425A9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core.Server.IntegrationTests", "tests\Core.Server.IntegrationTests\Core.Server.IntegrationTests.csproj", "{240640BA-BAD7-4138-990A-641F169425A9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.UnitTests", "tests\Contacts.UnitTests\Contacts.UnitTests.csproj", "{14B6189E-7906-4820-86C8-F605F7F9F26E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.UnitTests", "tests\Contacts.UnitTests\Contacts.UnitTests.csproj", "{14B6189E-7906-4820-86C8-F605F7F9F26E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Contacts.UI.Blazor.IntegrationTests", "tests\Contacts.UI.Blazor.IntegrationTests\Contacts.UI.Blazor.IntegrationTests.csproj", "{2CF5622D-6B02-4EAC-A1C1-31F166B4A5FF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.UI.Blazor.IntegrationTests", "tests\Contacts.UI.Blazor.IntegrationTests\Contacts.UI.Blazor.IntegrationTests.csproj", "{2CF5622D-6B02-4EAC-A1C1-31F166B4A5FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Chat.UI.Blazor.PlaywrightTests", "tests\Chat.UI.Blazor.PlaywrightTests\Chat.UI.Blazor.PlaywrightTests.csproj", "{BF0B5637-0F9F-4C7D-97C0-939241BAB9A1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.UI.Blazor.PlaywrightTests", "tests\Chat.UI.Blazor.PlaywrightTests\Chat.UI.Blazor.PlaywrightTests.csproj", "{BF0B5637-0F9F-4C7D-97C0-939241BAB9A1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UI.Blazor.PlaywrightTests", "tests\UI.Blazor.PlaywrightTests\UI.Blazor.PlaywrightTests.csproj", "{2EA12092-1DA6-4AFF-A1DE-C69AE181CE69}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.PlaywrightTests", "tests\UI.Blazor.PlaywrightTests\UI.Blazor.PlaywrightTests.csproj", "{2EA12092-1DA6-4AFF-A1DE-C69AE181CE69}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -526,6 +526,8 @@ Global
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{851DA676-E22D-4ED0-976C-40AF2FA46FD0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
 		{A25697FF-B40C-4B1E-A61E-82FA8F89BE93}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C9869B09-9993-4BB2-9235-D2435B313685}.Debug|Any CPU.Build.0 = Debug|Any CPU
