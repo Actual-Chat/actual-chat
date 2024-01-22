@@ -138,10 +138,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     {
         await ChatUI.WhenActivePlaceRestored.ConfigureAwait(false);
         var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        var settings = ChatListSettings.None;
-        // Use ChatListSettings only for Chats navigation group.
-        if (placeId.IsNone)
-            settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
+        var settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
         return await ListAll(placeId, settings, cancellationToken).ConfigureAwait(false);
     }
 

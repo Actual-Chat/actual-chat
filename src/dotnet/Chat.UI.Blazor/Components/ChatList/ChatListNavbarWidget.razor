@@ -31,9 +31,7 @@
             TabsClass="left-panel-tabs"
             SelectedTabIdChanged="@OnSelectedTabIdChanged">
             <AdditionalButton>
-                @if (_placeId.IsNone) {
-                    <ChatListSortButton/>
-                }
+                <ChatListSortButton/>
             </AdditionalButton>
             <ChildContent>
                 @if (_placeId.IsNone) {
