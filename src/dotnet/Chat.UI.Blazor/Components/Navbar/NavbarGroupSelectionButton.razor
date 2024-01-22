@@ -24,6 +24,7 @@
 
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
+    [Inject] private TuneUI TuneUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
@@ -43,8 +44,10 @@
         NavbarUI.UnregisterGroup(Id);
     }
 
-    private void OnClick()
-        => NavbarUI.SelectGroup(Id, true);
+    private void OnClick() {
+        NavbarUI.SelectGroup(Id, true);
+        _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
+    }
 
     private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
         => StateHasChanged();
