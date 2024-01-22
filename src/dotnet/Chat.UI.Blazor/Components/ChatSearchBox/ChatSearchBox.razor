@@ -2,6 +2,7 @@
 
 @if (_isCollapsed == true) {
     <HeaderButton
+        Class="blackout"
         Click="OnExpandClick"
         Tooltip="@Placeholder"
         TooltipPosition="FloatingPosition.Bottom">
@@ -11,7 +12,7 @@
     <div class="@Class chat-search-box">
         <label>
             <HeaderButton
-                Class="btn-lg search-button inactive"
+                Class="btn-lg search-button blackout inactive"
                 Click="OnSearchButtonClick"
                 IsDisabled="!CanBeTriggered"
                 Tooltip="@Placeholder"

@@ -96,6 +96,10 @@
     @apply shrink-0; /* prevents shrinking tile item when list overflows */
 }
 
+.edit-settings-modal .pic.pic-square {
+    @apply rounded-xl overflow-hidden;
+}
+
 /* Edit member menu */
 
 .edit-member-menu {

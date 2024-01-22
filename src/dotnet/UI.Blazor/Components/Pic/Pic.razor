@@ -4,8 +4,11 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
     var picClass = IsBlurred ? "pic-blurred" : $"pic-size-{(int)Size}";
-    if (!IsSquare)
+    if (!IsSquare) {
         picClass += " pic-rounded";
+    } else {
+        picClass += " pic-square";
+    }
     if (Click.HasDelegate)
         picClass += " pic-show-cursor";
     var hasPicture = !_pictureUrl.IsNullOrEmpty();
