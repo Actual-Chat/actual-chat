@@ -1,6 +1,6 @@
 .pic-upload {
     @apply relative;
-    @apply flex-x gap-8;
+    @apply flex-x gap-4;
 }
 body.hoverable .pic-upload:hover .pic-upload-picker {
     @apply visible;
@@ -10,7 +10,7 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
 }
 
 .pic-upload-picker {
-    @apply absolute top-0 left-0;
+    @apply absolute top-0;
     @apply invisible;
     @apply rounded-full;
 }

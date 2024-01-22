@@ -9,6 +9,8 @@
 
 @{
     var sizeClass = $"pic-size-{(int)Size}";
+    var hasButtons = GenerateAvatar.HasDelegate;
+    var picUploadCls = hasButtons ? " left-0" : " inset-x-auto";
 }
 
 <div class="pic-upload pic-upload-drop-zone" @ref="_dropZoneRef">
@@ -17,10 +19,11 @@
         Picture="@Picture"
         Size="@Size"
         NoPicture="@NoPicture"
+        IsSquare="@IsSquare"
         AvatarKind="@AvatarKind"
         AvatarKey="@AvatarKey"
         Click="@Click"/>
-    <div class="pic-upload-picker @(sizeClass)">
+    <div class="pic-upload-picker @(sizeClass) @picUploadCls">
         <FileUpload
             id="@_inputId"
             UploadUrl="@UploadUrl"
@@ -33,21 +36,21 @@
                class="pic-upload-input-file-label">
         </label>
     </div>
-    <div class="c-btn-group">
-        <Button Class="btn-modal">
-            <i class="icon-image"></i>
-            <span>Upload image</span>
-            <label for="@_inputId"
-                   class="pic-upload-input-file-label absolute">
-            </label>
-        </Button>
-        @if (GenerateAvatar.HasDelegate) {
+    @if (GenerateAvatar.HasDelegate) {
+        <div class="c-btn-group">
+            <Button Class="btn-modal">
+                <i class="icon-image"></i>
+                <span>Upload image</span>
+                <label for="@_inputId"
+                       class="pic-upload-input-file-label absolute">
+                </label>
+            </Button>
             <Button Class="btn-modal" Click="GenerateAvatar">
                 <i class="icon-sync"></i>
                 <span>Generate avatar</span>
             </Button>
-        }
-    </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -66,6 +69,7 @@
     [Parameter] public Picture? Picture { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public AvatarKind AvatarKind { get; set; } = AvatarKind.Beam;
+    [Parameter] public bool IsSquare { get; set; }
     [Parameter] public string? AvatarKey { get; set; }
     [Parameter] public string UploadUrl { get; set; } = "";
     [Parameter] public RenderFragment? NoPicture { get; set; }

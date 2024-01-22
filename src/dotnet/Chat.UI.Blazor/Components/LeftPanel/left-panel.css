@@ -57,7 +57,7 @@
 }
 .left-panel-content-header .c-ending {
     @apply absolute right-0;
-    @apply flex-x items-center justify-end;
+    @apply flex-x items-center justify-end gap-x-2;
     @apply w-full;
     @apply px-2;
 }
