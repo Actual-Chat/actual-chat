@@ -5,6 +5,7 @@
 .share-modal.modal-frame {
     @apply px-0 pb-0;
     @apply gap-y-0;
+    @apply md:min-w-96 md:max-w-96 md:h-160 md:max-h-160;
 }
 .share-modal .form-block {
     @apply p-0;

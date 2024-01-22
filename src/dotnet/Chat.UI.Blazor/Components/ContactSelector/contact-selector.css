@@ -52,3 +52,31 @@ body.hoverable .contact-selector-badges-contact:hover .contact-selector-badges-r
 body.hoverable .contact-selector-badges-contact:hover .avatar-circle {
     @apply hidden;
 }
+
+/* Place picker */
+.contact-selector-place-picker {
+    @apply flex-x mx-4 gap-x-4 ;
+    @apply overflow-x-auto custom-scrollbar;
+}
+.contact-selector-place-picker .tab-panel-tabs {
+    @apply mb-0 pb-0;
+}
+.contact-selector-place-picker .tab-panel-tabs .btn-group {
+    @apply justify-start;
+}
+.contact-selector-place-picker .tab-panel-tabs .btn-group-container {
+    @apply min-h-12 max-h-12;
+    @apply justify-between;
+}
+.contact-selector-place-picker .btn.tab-btn {
+    @apply min-w-10 max-w-10 min-h-10 max-h-10;
+    @apply p-0;
+    @apply bg-square;
+    @apply rounded-xl md:rounded-lg;
+}
+.contact-selector-place-picker .c-bottom-hill {
+    @apply w-full;
+}
+.contact-selector-place-picker .tab-panel-tabs .btn .icon-message-ellipse {
+    @apply text-primary;
+}
