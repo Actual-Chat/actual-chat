@@ -9,6 +9,12 @@ public interface IContactsBackend : IComputeService
     [ComputeMethod]
     Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<ApiArray<ContactId>> ListIds(
+        UserId ownerId,
+        ChatKind? chatKind,
+        PlaceId placeId,
+        CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
     [CommandHandler]
     Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);

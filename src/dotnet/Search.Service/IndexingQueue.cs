@@ -100,18 +100,20 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
 
     private async Task IndexChat(ChatId chatId, CancellationToken cancellationToken)
     {
-        await IndexNewEntries(chatId, cancellationToken).ConfigureAwait(false);
-        await IndexUpdatedAndRemovedEntries(chatId, cancellationToken).ConfigureAwait(false);
+        var hasChanges = await IndexNewEntries(chatId, cancellationToken).ConfigureAwait(false);
+        hasChanges |= await IndexUpdatedAndRemovedEntries(chatId, cancellationToken).ConfigureAwait(false);
+        if (hasChanges)
+            await Commander.Call(new SearchBackend_Refresh(chatId), cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task IndexNewEntries(ChatId chatId, CancellationToken cancellationToken)
+    private async Task<bool> IndexNewEntries(ChatId chatId, CancellationToken cancellationToken)
     {
         var news = await ChatsBackend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
         var lastLid = (news.TextEntryIdRange.End - 1).Clamp(0, long.MaxValue);
         var indexedChat = await IndexedChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
         var lastIndexedLid = indexedChat.LastEntryLocalId;
         if (lastIndexedLid >= lastLid)
-            return;
+            return false;
 
         var idTiles =
             Constants.Chat.ServerIdTileStack.LastLayer.GetCoveringTiles(
@@ -136,14 +138,15 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+        return true;
     }
 
-    private async Task IndexUpdatedAndRemovedEntries(ChatId chatId, CancellationToken cancellationToken)
+    private async Task<bool> IndexUpdatedAndRemovedEntries(ChatId chatId, CancellationToken cancellationToken)
     {
         var indexedChat = await IndexedChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
         var maxEntryVersion = await ChatsBackend.GetMaxEntryVersion(indexedChat.Id, cancellationToken).ConfigureAwait(false) ?? 0;
         if (indexedChat.LastEntryVersion >= maxEntryVersion)
-            return;
+            return false;
 
         while (!cancellationToken.IsCancellationRequested) {
             var changedEntries = await ChatsBackend
@@ -170,6 +173,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
                     cancellationToken)
                 .ConfigureAwait(false);
         }
+        return true;
     }
 
     private async Task<IndexedChat> SaveIndexedChat(IndexedChat indexedChat, CancellationToken cancellationToken)

@@ -6,6 +6,7 @@
     <ProjectReference Include="..\Search\Search.csproj" />
     <ProjectReference Include="..\Chat\Chat.csproj" />
     <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
+    <ProjectReference Include="..\Contacts.Contracts\Contacts.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

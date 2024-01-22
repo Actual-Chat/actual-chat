@@ -6,7 +6,6 @@ public interface IChatsBackend : IComputeService
 {
     [ComputeMethod]
     Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken);
-    Task<ApiArray<Chat>> List(Moment minCreatedAt, ChatId lastChatId, int limit, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<Chat?> GetTemplatedChatFor(ChatId templateId, UserId userId, CancellationToken cancellationToken);
@@ -20,13 +19,6 @@ public interface IChatsBackend : IComputeService
     Task<AuthorRules> GetRules(
         ChatId chatId,
         PrincipalId principalId,
-        CancellationToken cancellationToken);
-
-    Task<ApiList<ChatEntry>> ListChangedEntries(
-        ChatId chatId,
-        int limit,
-        long maxLocalIdExclusive,
-        long minVersionExclusive,
         CancellationToken cancellationToken);
 
     [ComputeMethod]
@@ -62,6 +54,14 @@ public interface IChatsBackend : IComputeService
         CancellationToken cancellationToken);
 
     // Non-compute methods
+    Task<ApiArray<Chat>> List(Moment minCreatedAt, ChatId lastChatId, int limit, CancellationToken cancellationToken);
+
+    Task<ApiList<ChatEntry>> ListChangedEntries(
+        ChatId chatId,
+        int limit,
+        long maxLocalIdExclusive,
+        long minVersionExclusive,
+        CancellationToken cancellationToken);
 
     Task<ChatEntry?> FindNext(
         ChatId chatId,

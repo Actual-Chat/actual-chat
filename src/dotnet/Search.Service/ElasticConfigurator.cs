@@ -61,13 +61,13 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
             .ConfigureAwait(false);
     }
 
-    private static void ConfigureEntryIndexTemplate(PutIndexTemplateRequestDescriptor<IndexedEntry> index)
+    private void ConfigureEntryIndexTemplate(PutIndexTemplateRequestDescriptor<IndexedEntry> index)
         => index.Template(ConfigureMappings).IndexPatterns(ElasticExt.IndexPattern);
 
-    private static void ConfigureMappings(IndexTemplateMappingDescriptor<IndexedEntry> descriptor)
-        => descriptor.Settings(s => s.RefreshInterval(Duration.MinusOne))
+    private void ConfigureMappings(IndexTemplateMappingDescriptor<IndexedEntry> descriptor)
+        => descriptor.Settings(s => s.RefreshInterval(Settings.ElasticRefreshInterval))
             .Mappings(m => m.Properties(ConfigureProperties));
 
-    private static void ConfigureProperties(PropertiesDescriptor<IndexedEntry> p)
+    private void ConfigureProperties(PropertiesDescriptor<IndexedEntry> p)
         => p.Keyword(x => x.Id).Text(x => x.Content).Keyword(x => x.ChatId);
 }

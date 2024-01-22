@@ -6,13 +6,28 @@ namespace ActualChat.Search;
 public static class ElasticExt
 {
     public const string EntriesIndexVersion = "v1";
-    public const string IndexTemplateName = $"entries-{EntriesIndexVersion}";
-    public const string IndexPattern = $"entries-{EntriesIndexVersion}-*";
+    public const string IndexNamePrefix = $"entries-{EntriesIndexVersion}";
+    public const string IndexTemplateName = IndexNamePrefix;
+    public const string IndexPattern = $"{IndexNamePrefix}-*";
 
     public static IndexName ToIndexName(this Chat.Chat chat)
+        => chat.Id.ToIndexName(chat.IsPublicPlaceChat());
+
+    public static IndexName ToIndexName(this ChatId chatId, bool isPublicPlaceChat)
+        => isPublicPlaceChat
+            ? chatId.PlaceId.ToIndexName()
+            : ToIndexName(chatId.Value);
+
+    public static IndexName ToIndexName(this PlaceId placeId)
+        => ToIndexName(placeId.Value);
+
+    private static string ToIndexName(string sid)
+        => $"{IndexNamePrefix}-{sid.ToLowerInvariant()}";
+
+    public static IEnumerable<IndexName> GetPeerChatSearchIndexNamePatterns(UserId userId)
     {
-        var sid = chat.IsPublicPlaceChat() ? chat.Id.PlaceId.Value : chat.Id.Value;
-        return $"entries-{EntriesIndexVersion}-{sid.ToLowerInvariant()}";
+        yield return $"{IndexNamePrefix}-p-{userId.Value.ToLowerInvariant()}-*";
+        yield return $"{IndexNamePrefix}-p-*-{userId.Value.ToLowerInvariant()}";
     }
 
     public static async Task<T> Assert<T>(this Task<T> responseTask, ILogger? log = null) where T : ElasticsearchResponse

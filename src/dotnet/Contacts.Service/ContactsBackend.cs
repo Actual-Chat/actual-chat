@@ -1,8 +1,10 @@
+using System.Linq.Expressions;
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.Commands;
 using ActualChat.Contacts.Db;
 using ActualChat.Contacts.Module;
+using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
@@ -63,19 +65,25 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken)
+    public virtual Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken)
+        => ListIds(ownerId, null, placeId, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ContactId>> ListIds(
+        UserId ownerId,
+        ChatKind? chatKind,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
     {
-        if (ownerId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(ownerId));
+        ownerId.Require();
 
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var idPrefix = ownerId.Value + ' ';
         var sPlaceId = placeId.Id.Value.NullIfEmpty();
         var sContactIds = await dbContext.Contacts
-            .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
-            .Where(a => a.PlaceId == sPlaceId)
+            .Where(BuildIdPrefixFilter())
+            .WhereIf(x => x.PlaceId == sPlaceId, placeId != PlaceId.Any)
             .OrderByDescending(a => a.TouchedAt)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
@@ -111,6 +119,23 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         return result;
+
+        Expression<Func<DbContact, bool>> BuildIdPrefixFilter()
+        {
+            var idPrefix = ownerId.Value + ' ';
+            if (chatKind == null)
+                return x => x.Id.StartsWith(idPrefix);
+
+            return chatKind switch {
+ #pragma warning disable CA1310
+                ChatKind.Place => x => x.Id.StartsWith($"{idPrefix}{PlaceChatId.IdPrefix}"),
+                ChatKind.Peer => x => x.Id.StartsWith($"{idPrefix}{PeerChatId.IdPrefix}"),
+ #pragma warning restore CA1310
+                _ => x => x.Id.StartsWith(idPrefix)
+                    && !x.Id.StartsWith($"{idPrefix}{PlaceChatId.IdPrefix}")
+                    && !x.Id.StartsWith($"{idPrefix}{PeerChatId.IdPrefix}"),
+            };
+        }
     }
 
     public virtual async Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken)
@@ -151,8 +176,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             var invIndex = context.Operation().Items.GetOrDefault(long.MinValue);
             if (invIndex != long.MinValue) {
                 _ = Get(ownerId, id, default);
-                if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit)
-                    _ = ListIds(ownerId, placeId, default); // Create, Delete or move into MinLoadLimit
+                if (invIndex < 0 || invIndex > Constants.Contacts.MinLoadLimit) {
+                    _ = ListIds(ownerId, null, placeId, default); // Create, Delete or move into MinLoadLimit
+                    _ = ListIds(ownerId, chatId.Kind, placeId, default); // Create, Delete or move into MinLoadLimit
+                }
             }
             return default!;
         }
