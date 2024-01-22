@@ -11,6 +11,7 @@ public partial record struct HostRole(
     public static readonly HostRole AudioApi = nameof(WebApi);
     public static readonly HostRole UsersBackend = nameof(UsersBackend);
     public static readonly HostRole ChatsBackend = nameof(ChatsBackend);
+    public static readonly HostRole Backend = nameof(Backend);
 
     // The only role any app has
     public static readonly HostRole App = nameof(App); // Implies BlazorUI
@@ -64,10 +65,15 @@ public partial record struct HostRole(
             roles.Add(SingleServer);
 
         // Server roles
-        if (roles.Contains(SingleServer))
+        if (roles.Contains(SingleServer)) {
             roles.Add(WebApi);
+            roles.Add(UsersBackend);
+            roles.Add(ChatsBackend);
+        }
         if (roles.Contains(WebApi))
             roles.Add(BlazorHost);
+        if (roles.Any(x => x.Value.OrdinalEndsWith("Backend")))
+            roles.Add(Backend);
         return roles;
     }
 }

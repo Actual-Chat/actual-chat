@@ -36,30 +36,30 @@ public readonly struct HashRing<T>
         return m >= 0 ? m : m + Count;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int ClampCount(int count)
-        => Math.Min(Math.Max(count, 0), Count);
-
     public T Get(int hash, int offset = 0)
-        => this[offset + ~Array.BinarySearch(Items, (default!, hash), Comparer)];
+        => this[offset + GetEqualOrGreaterHashIndex(hash)];
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public int GetEqualOrGreaterHashIndex(int hash)
+        => ~Array.BinarySearch(Items, (default!, hash), Comparer);
 
     public ReadOnlySpan<T> Span(int hash, int count, int offset = 0)
     {
-        count = ClampCount(count);
+        count = count.Clamp(0, Count);
         if (count == 0)
             return Span<T>.Empty;
 
-        offset = Mod(offset + ~Array.BinarySearch(Items, (default!, hash), Comparer));
+        offset = Mod(offset + GetEqualOrGreaterHashIndex(hash));
         return _doubleItems.AsSpan(offset, count);
     }
 
     public ArraySegment<T> Segment(int hash, int count, int offset = 0)
     {
-        count = ClampCount(count);
+        count = count.Clamp(0, Count);
         if (count == 0)
             return ArraySegment<T>.Empty;
 
-        offset = Mod(offset + ~Array.BinarySearch(Items, (default!, hash), Comparer));
+        offset = Mod(offset + GetEqualOrGreaterHashIndex(hash));
         return new ArraySegment<T>(_doubleItems, offset, count);
     }
 

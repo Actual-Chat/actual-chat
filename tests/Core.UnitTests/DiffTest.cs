@@ -2,10 +2,8 @@ using ActualChat.Diff;
 
 namespace ActualChat.Core.UnitTests;
 
-public class DiffTest : TestBase
+public class DiffTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public DiffTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void BasicTest()
     {

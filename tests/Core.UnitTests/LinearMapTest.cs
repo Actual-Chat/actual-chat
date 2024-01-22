@@ -2,10 +2,8 @@ using ActualChat.Mathematics.Internal;
 
 namespace ActualChat.Core.UnitTests;
 
-public class LinearMapTest : TestBase
+public class LinearMapTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public LinearMapTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void BasicTest()
     {

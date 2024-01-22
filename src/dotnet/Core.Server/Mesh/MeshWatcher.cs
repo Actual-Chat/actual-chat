@@ -2,12 +2,12 @@ namespace ActualChat.Mesh;
 
 public sealed class MeshWatcher : WorkerBase
 {
-    private volatile AsyncState<MeshState> _state = new(MeshState.Empty, true);
+    private readonly IMutableState<MeshState> _state;
     private IMeshLocks<MeshState> MeshLocks { get; }
     private ILogger Log { get; }
 
     public MeshNode ThisNode { get; }
-    public AsyncState<MeshState> State => _state;
+    public IState<MeshState> State => _state;
     public IMomentClock Clock => MeshLocks.Clock;
 
     public MeshWatcher(IServiceProvider services)
@@ -15,6 +15,7 @@ public sealed class MeshWatcher : WorkerBase
         Log = services.LogFor(GetType());
         ThisNode = services.MeshNode();
         MeshLocks = services.MeshLocks<MeshState>();
+        _state = services.StateFactory().NewMutable(new MeshState());
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -41,7 +42,7 @@ public sealed class MeshWatcher : WorkerBase
                 var diff = nodes.OrderedDiffFrom(state.Nodes);
                 if (!diff.IsEmpty) {
                     state = new MeshState(nodes);
-                    Interlocked.Exchange(ref _state, _state.SetNext(state));
+                    _state.Value = state;
                     var sb = StringBuilderExt.Acquire();
                     foreach (var item in diff.RemovedItems)
                         sb.Append("- ").Append(item).AppendLine();
@@ -94,7 +95,7 @@ public sealed class MeshWatcher : WorkerBase
     protected override Task OnStop()
     {
         Log.LogInformation("Stopped");
-        _state.SetFinal(StopToken);
+        _state.Error = new ObjectDisposedException(GetType().GetName());
         return Task.CompletedTask;
     }
 

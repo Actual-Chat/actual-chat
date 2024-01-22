@@ -3,10 +3,8 @@ using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.UnitTests;
 
-public class SharedResourcePoolTest : TestBase
+public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public SharedResourcePoolTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public async Task BasicTest()
     {

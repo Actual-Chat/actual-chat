@@ -2,10 +2,8 @@ using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Core.UnitTests;
 
-public class HashRingTest : TestBase
+public class HashRingTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public HashRingTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void BasicTest()
     {
