@@ -5,12 +5,10 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class PlaceOperationsTest : AppHostTestBase
+public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
     private const string PlaceTitle = "AC Place";
     private const string ChatTitle = "General";
-
-    public PlaceOperationsTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public async Task TryGetNonExistingPlace()

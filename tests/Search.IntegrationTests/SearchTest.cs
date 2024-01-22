@@ -43,6 +43,7 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 
         // act
         await _commander.Call(new SearchBackend_BulkIndex(chat.Id, updates,  ApiArray<long>.Empty));
+        await _commander.Call(new SearchBackend_Refresh(chat.Id));
 
         // assert
         var searchResults = await _sut.Search(chat.Id,
@@ -97,21 +98,64 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await _commander.Call(new SearchBackend_BulkIndex(publicChat2.Id, publicChat2Updates,  ApiArray<long>.Empty));
         await _commander.Call(new SearchBackend_BulkIndex(privateChat1.Id, privateChat1Updates,  ApiArray<long>.Empty));
         await _commander.Call(new SearchBackend_BulkIndex(privateChat2.Id, privateChat2Updates,  ApiArray<long>.Empty));
+        await _commander.Call(new SearchBackend_Refresh(publicChat1.Id, publicChat2.Id, privateChat1.Id, privateChat2.Id));
 
         // assert
-        var searchResults = await _sut.Search(chat.Id,
+        var publicChat1SearchResults = await _sut.Search(publicChat1.Id,
             "wak",
             0,
             20,
             CancellationToken.None);
-        searchResults.Should()
+        publicChat1SearchResults.Should()
             .BeEquivalentTo(new SearchResultPage {
                 Offset = 0,
-                Hits = ApiArray.New(BuildSearchResult(chat.Id, 4, "Wake up")),
+                Hits = ApiArray.New(BuildSearchResult(publicChat1.Id, 4, "PublicChat1: Wake up")),
+            });
+        var publicChat2SearchResults = await _sut.Search(publicChat2.Id,
+            "wak",
+            0,
+            20,
+            CancellationToken.None);
+        publicChat2SearchResults.Should()
+            .BeEquivalentTo(new SearchResultPage {
+                Offset = 0,
+                Hits = ApiArray.New(BuildSearchResult(publicChat2.Id, 4, "PublicChat2: Wake up")),
+            });
+        var privateChat1SearchResults = await _sut.Search(privateChat1.Id,
+            "wak",
+            0,
+            20,
+            CancellationToken.None);
+        privateChat1SearchResults.Should()
+            .BeEquivalentTo(new SearchResultPage {
+                Offset = 0,
+                Hits = ApiArray.New(BuildSearchResult(privateChat1.Id, 4, "PrivateChat1: Wake up")),
+            });
+        var privateChat2SearchResults = await _sut.Search(privateChat2.Id,
+            "wak",
+            0,
+            20,
+            CancellationToken.None);
+        privateChat2SearchResults.Should()
+            .BeEquivalentTo(new SearchResultPage {
+                Offset = 0,
+                Hits = ApiArray.New(BuildSearchResult(privateChat2.Id, 4, "PrivateChat2: Wake up")),
+            });
+        var globalSearchResults = await _sut.Search(bob.Id,
+            "wak",
+            0,
+            20,
+            CancellationToken.None);
+        globalSearchResults.Should()
+            .BeEquivalentTo(new SearchResultPage {
+                Offset = 0,
+                Hits = ApiArray.New(
+                    BuildSearchResult(publicChat1.Id, 4, "PublicChat1: Wake up"),
+                    BuildSearchResult(publicChat2.Id, 4, "PublicChat2: Wake up"),
+                    BuildSearchResult(privateChat1.Id, 4, "PrivateChat1: Wake up"),
+                    BuildSearchResult(privateChat2.Id, 4, "PrivateChat2: Wake up")),
             });
     }
-
-    // TODO: tests on private/public place with private/public chats
 
     [Fact]
     public async Task ShouldFindIfUpdatedMatchesCriteria()
@@ -125,10 +169,12 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
             BuildEntry(chat.Id, 3, "Sitting on the river bank"),
             BuildEntry(chat.Id, 4, "Wake up"));
         await _commander.Call(new SearchBackend_BulkIndex(chat.Id, updates,  ApiArray<long>.Empty));
+        await _commander.Call(new SearchBackend_Refresh(chat.Id));
 
         // act
         updates = ApiArray.New(BuildEntry(chat.Id, 3, "Waking up..."));
         await _commander.Call(new SearchBackend_BulkIndex(chat.Id, updates,  ApiArray<long>.Empty));
+        await _commander.Call(new SearchBackend_Refresh(chat.Id));
 
         // assert
         var searchResults = await _sut.Search(chat.Id,
@@ -156,11 +202,13 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
             BuildEntry(chat.Id, 3, "Sitting on the river bank"),
             BuildEntry(chat.Id, 4, "Wake up"));
         await _commander.Call(new SearchBackend_BulkIndex(chat.Id, updates,  ApiArray<long>.Empty));
+        await _commander.Call(new SearchBackend_Refresh(chat.Id));
 
         // act
         updates = ApiArray.New(BuildEntry(chat.Id, 3, "Waking up..."));
         var removes = ApiArray.New(4L);
         await _commander.Call(new SearchBackend_BulkIndex(chat.Id, updates,  removes));
+        await _commander.Call(new SearchBackend_Refresh(chat.Id));
 
         // assert
         var searchResults = await _sut.Search(chat.Id,

@@ -1,3 +1,5 @@
+using Elastic.Clients.Elasticsearch;
+
 namespace ActualChat.Search.Module;
 
 public sealed class SearchSettings
@@ -8,6 +10,7 @@ public sealed class SearchSettings
     public bool IsSearchEnabled { get; set; }
     public string ElasticCloudId { get; set; } = "";
     public string ElasticApiKey { get; set; } = "";
+    public TimeSpan ElasticRefreshInterval { get; set; } = TimeSpan.FromSeconds(30);
 
     public bool IsCloudElastic => !ElasticCloudId.IsNullOrEmpty() && !ElasticApiKey.IsNullOrEmpty();
 }

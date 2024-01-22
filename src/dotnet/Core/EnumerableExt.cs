@@ -86,6 +86,12 @@ public static class EnumerableExt
     public static IOrderedEnumerable<T> ToFakeOrderedEnumerable<T>(this IEnumerable<T> source)
         => new FakeOrderedEnumerable<T>(source);
 
+    public static async Task<List<T>> Flatten<T>(this Task<ApiArray<T>[]> task)
+    {
+        var arrays = await task.ConfigureAwait(false);
+        return arrays.SelectMany(x => x).ToList();
+    }
+
     private static IEnumerable<T> ShuffleIterator<T>(this IEnumerable<T> source, Random random)
     {
         var buffer = source.ToList();
