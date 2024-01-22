@@ -21,5 +21,5 @@ public static class QueryableExt
         this IQueryable<TSource> source,
         Expression<Func<TSource, bool>> filter,
         bool condition)
-        => condition ? source : source.Where(filter);
+        => !condition ? source : source.Where(filter);
 }
