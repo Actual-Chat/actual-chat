@@ -93,3 +93,8 @@ services:
      - 5601:5601
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.2'
