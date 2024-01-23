@@ -63,7 +63,13 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
         if (Computed.IsInvalidating())
             return;
 
-        var updated = command.Updated.Require(IndexedEntry.MustBeValid).ToList();
+        var entriesWithUnexpectedChat = command.Updated.Where(x => !x.ChatId.IsNone && x.ChatId != chatId).ToList();
+        if (entriesWithUnexpectedChat.Count > 0)
+            throw StandardError.Constraint($"All indexed entries must have chat #{chatId}");
+
+        var updated = command.Updated
+            .Require(IndexedEntry.MustBeValid)
+            .ToList();
         var deletedIds = command.Deleted.Select(lid => new Id(new TextEntryId(chatId, lid, AssumeValid.Option))).ToList();
         if (updated.Count == 0 && deletedIds.Count == 0)
             return;

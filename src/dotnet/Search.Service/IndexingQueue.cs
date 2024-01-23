@@ -129,6 +129,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
                 .Select(x => new IndexedEntry {
                     Id = new TextEntryId(chatId, x.LocalId, AssumeValid.Option),
                     Content = x.Content,
+                    ChatId = chatId,
                 })
                 .ToApiArray();
             await Commander.Call(new SearchBackend_BulkIndex(chatId, entries, ApiArray<long>.Empty), cancellationToken)
@@ -160,6 +161,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
                 .Select(x => new IndexedEntry {
                     Id = new TextEntryId(chatId, x.LocalId, AssumeValid.Option),
                     Content = x.Content,
+                    ChatId = chatId,
                 })
                 .ToApiArray();
             var removed = changedEntries.Where(x => x.IsRemoved || x.Content.IsNullOrEmpty())

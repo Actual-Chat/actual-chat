@@ -5,7 +5,7 @@ namespace ActualChat.Search;
 
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public sealed partial class IndexedEntry : IRequirementTarget
+public sealed partial record IndexedEntry : IRequirementTarget
 {
     public static readonly Requirement<IndexedEntry> MustBeValid = Requirement.New(
         new (() => StandardError.Constraint<IndexedEntry>("Not all fields set.")),
