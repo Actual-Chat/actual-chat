@@ -15,7 +15,6 @@ namespace ActualChat;
 public readonly partial struct PlaceId : ISymbolIdentifier<PlaceId>
 {
     public static PlaceId None => default;
-    public static PlaceId Any { get; } = new ("__ANY_PLACE_ID__", AssumeValid.Option);
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public Symbol Id { get; }
