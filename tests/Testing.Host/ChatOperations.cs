@@ -1,5 +1,4 @@
-﻿using ActualChat.App.Server;
-using ActualChat.Chat;
+﻿using ActualChat.Chat;
 using ActualChat.Invite;
 using ActualChat.Users;
 
@@ -18,17 +17,8 @@ public static class ChatOperations
         return tester.SignIn(user);
     }
 
-    public static Task<(ChatId, Symbol)> CreateChat(this AppHost appHost, bool isPublicChat)
-        => CreateChat(appHost, c => c with{ IsPublic = isPublicChat});
-
     public static Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, bool isPublicChat)
         => CreateChat(tester, c => c with { IsPublic = isPublicChat });
-
-    public static async Task<(ChatId, Symbol)> CreateChat(this AppHost appHost, Func<ChatDiff, ChatDiff> configure)
-    {
-        await using var tester = appHost.NewBlazorTester();
-        return await CreateChat(tester, configure);
-    }
 
     public static async Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, Func<ChatDiff, ChatDiff> configure)
     {
@@ -70,7 +60,7 @@ public static class ChatOperations
         var chat = await chats.Get(session, chatId, default).ConfigureAwait(false);
         var chatRules = await chats.GetRules(session, chatId, default).ConfigureAwait(false);
         var canJoin = chatRules.CanJoin();
-        var isPublicChat = chat != null && chat.IsPublic;
+        var isPublicChat = chat is { IsPublic: true };
 
         if (!isPublicChat) {
             canJoin.Should().BeFalse();

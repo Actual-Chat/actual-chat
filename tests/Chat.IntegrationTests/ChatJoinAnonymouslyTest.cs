@@ -3,32 +3,31 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class ChatJoinAnonymouslyTest : AppHostTestBase
+public class ChatJoinAnonymouslyTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
-    public ChatJoinAnonymouslyTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public async Task JoinWithGuestUser()
     {
         using var appHost = await NewAppHost();
+        var tester = appHost.NewBlazorTester();
 
         // Guest user can not join to a chat with invite code, should we change this?
-        var (chatId, inviteId) = await ChatOperations.CreateChat(appHost,
-            c => c with {
+        await tester.SignInAsAlice();
+        var (chatId, inviteId) = await tester.CreateChat(c => c with {
                 IsPublic = true,
                 AllowGuestAuthors = true,
             });
+        await tester.SignOut();
 
-        await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.Commander.Call(new AuthBackend_SetupSession(session));
         var accounts = tester.AppServices.GetRequiredService<IAccounts>();
         var account = await accounts.GetOwn(session, default);
         account.IsGuest.Should().BeTrue();
 
-        var author = await ChatOperations.JoinChat(tester, chatId, inviteId);
+        var author = await tester.JoinChat(chatId, inviteId);
 
-        await ChatOperations.AssertJoined(tester, chatId);
+        await tester.AssertJoined(chatId);
         author.IsAnonymous.Should().BeTrue();
 
         var avatars = tester.AppServices.GetRequiredService<IAvatars>();
@@ -43,14 +42,15 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
     public async Task JoinAnonymouslyWithSignedInUser(bool isPublicChat)
     {
         using var appHost = await NewAppHost();
+        await using var tester = appHost.NewBlazorTester();
 
-        var (chatId, inviteId) = await ChatOperations.CreateChat(appHost,
-            c => c with {
+        await tester.SignInAsAlice();
+        var (chatId, inviteId) = await tester.CreateChat(c => c with {
                 IsPublic = isPublicChat,
                 AllowAnonymousAuthors = true,
             });
+        await tester.SignOut();
 
-        await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
 
@@ -60,14 +60,13 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
 
         var anonymous = await CreateAnonymousAvatar(tester);
 
-        var author = await ChatOperations
-            .JoinChat(tester,
-                chatId,
+        var author = await tester
+            .JoinChat(chatId,
                 inviteId,
                 joinAnonymously: true,
                 avatarId: anonymous.Id);
 
-        await ChatOperations.AssertJoined(tester, chatId);
+        await tester.AssertJoined(chatId);
         author.IsAnonymous.Should().BeTrue();
 
         var avatars = tester.AppServices.GetRequiredService<IAvatars>();
@@ -80,10 +79,12 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
     public async Task JoinAsGuestShouldBeForbidden()
     {
         using var appHost = await NewAppHost();
-
-        var (chatId, _) = await ChatOperations.CreateChat(appHost, true);
-
         await using var tester = appHost.NewBlazorTester();
+
+        await tester.SignInAsAlice();
+        var (chatId, _) = await tester.CreateChat(true);
+        await tester.SignOut();
+
         var session = tester.Session;
         await tester.Commander.Call(new AuthBackend_SetupSession(session));
 
@@ -93,7 +94,7 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             async () => {
-                _ = await ChatOperations.JoinChat(tester, chatId, Symbol.Empty);
+                _ = await tester.JoinChat(chatId, Symbol.Empty);
             });
     }
 
@@ -103,10 +104,11 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
     public async Task JoinAnonymouslyShouldBeForbidden(bool isPublicChat)
     {
         using var appHost = await NewAppHost();
-
-        var (chatId, inviteId) = await ChatOperations.CreateChat(appHost, isPublicChat);
-
         await using var tester = appHost.NewBlazorTester();
+
+        await tester.SignInAsAlice();
+        var (chatId, inviteId) = await tester.CreateChat(isPublicChat);
+
         var session = tester.Session;
         await tester.SignInAsBob();
 
@@ -124,8 +126,7 @@ public class ChatJoinAnonymouslyTest : AppHostTestBase
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             async () => {
-                _ = await ChatOperations.JoinChat(tester,
-                    chatId,
+                _ = await tester.JoinChat(chatId,
                     inviteId,
                     joinAnonymously: true,
                     avatarId: anonymousAvatar.Id);
