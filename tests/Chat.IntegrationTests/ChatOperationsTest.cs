@@ -182,14 +182,15 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task JoinChat(bool isPublicChat)
     {
         using var appHost = await NewAppHost();
-
-        var (chatId, inviteId) = await ChatOperations.CreateChat(appHost, isPublicChat);
-
         await using var tester = appHost.NewBlazorTester();
+
+        await tester.SignInAsAlice();
+        var (chatId, inviteId) = await tester.CreateChat(isPublicChat);
+
         await tester.SignInAsBob("no-admin");
 
-        await ChatOperations.JoinChat(tester, chatId, inviteId);
-        await ChatOperations.AssertJoined(tester, chatId);
+        await tester.JoinChat(chatId, inviteId);
+        await tester.AssertJoined(chatId);
     }
 
     [Theory]
@@ -198,10 +199,11 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task Leave(bool isPublicChat)
     {
         using var appHost = await NewAppHost();
-
-        var (chatId, inviteId) = await ChatOperations.CreateChat(appHost, isPublicChat);
-
         await using var tester = appHost.NewBlazorTester();
+
+        await tester.SignInAsAlice();
+        var (chatId, inviteId) = await tester.CreateChat(isPublicChat);
+
         var session = tester.Session;
         var account = await tester.SignInAsBob("no-admin");
         var commander = tester.Commander;
@@ -214,7 +216,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         }
 
         await authors.EnsureJoined(session, chatId, default);
-        await ChatOperations.AssertJoined(tester, chatId);
+        await tester.AssertJoined(chatId);
 
         var leaveCommand = new Authors_Leave(session, chatId);
         await commander.Call(leaveCommand);
@@ -237,7 +239,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
             await Task.Delay(1000); // Let the command complete
         }
         await authors.EnsureJoined(session, chatId, default);
-        await ChatOperations.AssertJoined(tester, chatId);
+        await tester.AssertJoined(chatId);
     }
 
     [Theory]
@@ -272,12 +274,12 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
 
-        var (chatId, inviteId) = await ChatOperations.CreateChat(ownerTester, isPublicChat);
+        var (chatId, inviteId) = await ownerTester.CreateChat(isPublicChat);
 
         await using var otherTester = appHost.NewBlazorTester();
         await otherTester.SignInAsBob();
 
-        var author = await ChatOperations.JoinChat(otherTester, chatId, inviteId);
+        var author = await otherTester.JoinChat(chatId, inviteId);
 
         var roles = otherTester.AppServices.GetRequiredService<IRoles>();
         var ownerIds = await roles.ListOwnerIds(otherTester.Session, chatId, default);
@@ -302,12 +304,14 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task NonOwnerUserShouldNotBeAblePromoteAuthorToOwner()
     {
         using var appHost = await NewAppHost();
-        var (chatId, inviteId) = await ChatOperations.CreateChat(appHost, true);
+        await using var tester = appHost.NewBlazorTester();
+        await tester.SignInAsAlice();
+        var (chatId, inviteId) = await tester.CreateChat(true);
 
         await using var otherTester = appHost.NewBlazorTester();
         await otherTester.SignInAsBob();
 
-        var author = await ChatOperations.JoinChat(otherTester, chatId, inviteId);
+        var author = await otherTester.JoinChat(chatId, inviteId);
 
         var roles = otherTester.AppServices.GetRequiredService<IRoles>();
         var ownerIds = await roles.ListOwnerIds(otherTester.Session, chatId, default);
@@ -332,9 +336,9 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
 
-        var (chatId, _) = await ChatOperations.CreateChat(ownerTester, isPublicChat);
+        var (chatId, _) = await ownerTester.CreateChat(isPublicChat);
 
-        await Assert.ThrowsAsync<System.InvalidOperationException>(async () => {
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => {
             await ownerTester.Commander.Call(new Authors_Leave(ownerTester.Session, chatId));
         });
     }
@@ -348,12 +352,12 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
 
-        var (chatId, inviteId) = await ChatOperations.CreateChat(ownerTester, isPublicChat);
+        var (chatId, inviteId) = await ownerTester.CreateChat(isPublicChat);
 
         await using var otherTester = appHost.NewBlazorTester();
         await otherTester.SignInAsBob();
 
-        var author = await ChatOperations.JoinChat(otherTester, chatId, inviteId);
+        var author = await otherTester.JoinChat(chatId, inviteId);
 
         await ownerTester.Commander.Call(new Authors_PromoteToOwner(ownerTester.Session, author.Id));
 
@@ -367,12 +371,12 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
 
-        var (chatId, inviteId) = await ChatOperations.CreateChat(ownerTester, true);
+        var (chatId, inviteId) = await ownerTester.CreateChat(true);
 
         await using var otherTester = appHost.NewBlazorTester();
         await otherTester.SignInAsBob();
 
-        var author = await ChatOperations.JoinChat(otherTester, chatId, inviteId);
+        var author = await otherTester.JoinChat(chatId, inviteId);
 
         var commander = ownerTester.Commander;
 
@@ -380,7 +384,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 
         await commander.Call(new Authors_Leave(ownerTester.Session, chatId));
 
-        await ChatOperations.JoinChat(ownerTester, chatId, inviteId);
+        await ownerTester.JoinChat(chatId, inviteId);
 
         var chats = ownerTester.AppServices.GetRequiredService<IChats>();
         var chat = await chats.Get(ownerTester.Session, chatId, default);
@@ -396,7 +400,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await ownerTester.SignInAsAlice();
         var session = ownerTester.Session;
 
-        var (chatId, _) = await ChatOperations.CreateChat(ownerTester, true);
+        var (chatId, _) = await ownerTester.CreateChat(true);
 
         var contacts = ownerTester.AppServices.GetRequiredService<IContacts>();
         await TestExt.WhenMetAsync(async () => {
