@@ -18,23 +18,21 @@ public static class ChatOperations
         return tester.SignIn(user);
     }
 
-    public static Task<(ChatId, Symbol)> CreateChat(AppHost appHost, bool isPublicChat)
+    public static Task<(ChatId, Symbol)> CreateChat(this AppHost appHost, bool isPublicChat)
         => CreateChat(appHost, c => c with{ IsPublic = isPublicChat});
 
-    public static Task<(ChatId, Symbol)> CreateChat(IWebTester tester, bool isPublicChat)
-        => CreateChat(tester, c => c with{ IsPublic = isPublicChat});
+    public static Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, bool isPublicChat)
+        => CreateChat(tester, c => c with { IsPublic = isPublicChat });
 
-    public static async Task<(ChatId, Symbol)> CreateChat(AppHost appHost, Func<ChatDiff, ChatDiff> configure)
+    public static async Task<(ChatId, Symbol)> CreateChat(this AppHost appHost, Func<ChatDiff, ChatDiff> configure)
     {
         await using var tester = appHost.NewBlazorTester();
-        await SignInAsAlice(tester);
         return await CreateChat(tester, configure);
     }
 
-    public static async Task<(ChatId, Symbol)> CreateChat(IWebTester tester, Func<ChatDiff, ChatDiff> configure)
+    public static async Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, Func<ChatDiff, ChatDiff> configure)
     {
         var session = tester.Session;
-        await tester.SignIn(new User("", "Alice"));
         var chatDiff = configure(new ChatDiff() {
             Title = "test chat",
             Kind = ChatKind.Group,
@@ -62,7 +60,7 @@ public static class ChatOperations
         return (chatId, inviteId);
     }
 
-    public static async Task<AuthorFull> JoinChat(IWebTester tester, ChatId chatId, Symbol inviteId,
+    public static async Task<AuthorFull> JoinChat(this IWebTester tester, ChatId chatId, Symbol inviteId,
         bool? joinAnonymously = null, Symbol avatarId = default)
     {
         var session = tester.Session;
@@ -91,7 +89,7 @@ public static class ChatOperations
         return author;
     }
 
-    public static async Task AssertJoined(IWebTester tester, ChatId chatId)
+    public static async Task AssertJoined(this IWebTester tester, ChatId chatId)
     {
         var services = tester.AppServices;
         var session = tester.Session;
@@ -120,5 +118,20 @@ public static class ChatOperations
         userIds.Should().Contain(account.Id);
         var authorIds = await authors.ListAuthorIds(session, chatId, default).ConfigureAwait(false);
         authorIds.Should().Contain(author.Id);
+    }
+
+    public static async Task InviteToPlace(this IWebTester tester, PlaceId placeId, params UserId[] userIds)
+    {
+        var session = tester.Session;
+        var commander = tester.Commander;
+        await commander.Call(new Places_Invite(session, placeId, userIds));
+    }
+
+    public static async Task InviteToChat(this IWebTester tester, ChatId chatId, params UserId[] userIds)
+    {
+        var session = tester.Session;
+        var commander = tester.Commander;
+
+        await commander.Call(new Authors_Invite(session, chatId, userIds));
     }
 }

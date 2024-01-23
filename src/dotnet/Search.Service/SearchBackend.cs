@@ -101,65 +101,11 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
     [ComputeMethod]
     protected virtual async Task<ApiSet<string>> GetIndices(UserId userId, CancellationToken cancellationToken)
     {
-        var placeIds = await ContactsBackend.ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
-        var privatePlaceGroupContactIds = await ListChatIds(userId,
-                ChatKind.Place,
-                PlaceId.Any,
-                false,
-                cancellationToken)
-            .ConfigureAwait(false);
-        var privateGroupContactIds = await ListChatIds(userId,
-                ChatKind.Group,
-                PlaceId.None,
-                false,
-                cancellationToken)
-            .ConfigureAwait(false);
-        var publicGroupContactIds = await ListChatIds(userId,
-                ChatKind.Group,
-                PlaceId.None,
-                true,
-                cancellationToken)
-            .ConfigureAwait(false);
+        var contactIds = await ContactsBackend.ListIdsForSearch(userId, cancellationToken).ConfigureAwait(false);
         var indices = new List<IndexName>(ElasticExt.GetPeerChatSearchIndexNamePatterns(userId));
-        indices.AddRange(privateGroupContactIds.Select(x => x.ToIndexName(false)));
-        indices.AddRange(privatePlaceGroupContactIds.Select(x => x.ToIndexName(false)));
-        indices.AddRange(publicGroupContactIds.Select(x => x.ToIndexName(false)));
-        indices.AddRange(placeIds.Select(x => x.ToIndexName()));
-
+        // TODO: handle place root chat ids
+        indices.AddRange(contactIds.Select(x => x.ChatId.ToIndexName(false)));
         return indices.Select(x => x.ToString()).ToApiSet();
-    }
-
-    // TODO: handle cases when there are too many contacts for a user
-    [ComputeMethod]
-    protected virtual async Task<ApiArray<ChatId>> ListChatIds(
-        UserId userId,
-        ChatKind? chatKind,
-        PlaceId placeId,
-        bool? isPublic,
-        CancellationToken cancellationToken)
-    {
-        var contactIds = await ContactsBackend.ListIds(
-                userId,
-                chatKind,
-                placeId,
-                cancellationToken)
-            .ConfigureAwait(false);
-        var chatIds = contactIds.Select(x => x.ChatId).ToApiArray();
-        if (isPublic is null)
-            return chatIds;
-
-        var placeIds = chatIds.Where(x => x.IsPlaceChat).Select(x => x.PlaceId).Distinct().ToList();
-        if (placeIds.Count == 0)
-            return chatIds.ToApiArray();
-
-        var publicPlaceChatIds = await placeIds
-            .Select(x => ChatsBackend.GetPublicChatIdsFor(x, cancellationToken))
-            .Collect()
-            .Flatten()
-            .ConfigureAwait(false);
-        return isPublic.Value
-            ? chatIds.Intersect(publicPlaceChatIds).ToApiArray()
-            : chatIds.Except(publicPlaceChatIds).ToApiArray();
     }
 
     // Private methods
