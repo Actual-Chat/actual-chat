@@ -21,7 +21,7 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
     private ElasticConfigurator ElasticConfigurator { get; } = services.GetRequiredService<ElasticConfigurator>();
 
     // Not a [ComputeMethod]!
-    public async Task<SearchResultPage> Search(
+    public async Task<SearchResultPage> SearchInChat(
         ChatId chatId,
         string criteria,
         int skip,
@@ -37,7 +37,7 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
     }
 
     // Not a [ComputeMethod]!
-    public async Task<SearchResultPage> Search(
+    public async Task<SearchResultPage> SearchInAllChats(
         UserId userId,
         string criteria,
         int skip,

@@ -46,7 +46,7 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await _commander.Call(new SearchBackend_Refresh(chat.Id));
 
         // assert
-        var searchResults = await _sut.Search(chat.Id,
+        var searchResults = await _sut.SearchInChat(chat.Id,
             "wak",
             0,
             20,
@@ -101,7 +101,7 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await _commander.Call(new SearchBackend_Refresh(publicChat1.Id, publicChat2.Id, privateChat1.Id, privateChat2.Id));
 
         // assert
-        var publicChat1SearchResults = await _sut.Search(publicChat1.Id,
+        var publicChat1SearchResults = await _sut.SearchInChat(publicChat1.Id,
             "wak",
             0,
             20,
@@ -111,7 +111,7 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
                 Offset = 0,
                 Hits = ApiArray.New(BuildSearchResult(publicChat1.Id, 4, "PublicChat1: Wake up")),
             });
-        var publicChat2SearchResults = await _sut.Search(publicChat2.Id,
+        var publicChat2SearchResults = await _sut.SearchInChat(publicChat2.Id,
             "wak",
             0,
             20,
@@ -121,7 +121,7 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
                 Offset = 0,
                 Hits = ApiArray.New(BuildSearchResult(publicChat2.Id, 4, "PublicChat2: Wake up")),
             });
-        var privateChat1SearchResults = await _sut.Search(privateChat1.Id,
+        var privateChat1SearchResults = await _sut.SearchInChat(privateChat1.Id,
             "wak",
             0,
             20,
@@ -131,7 +131,7 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
                 Offset = 0,
                 Hits = ApiArray.New(BuildSearchResult(privateChat1.Id, 4, "PrivateChat1: Wake up")),
             });
-        var privateChat2SearchResults = await _sut.Search(privateChat2.Id,
+        var privateChat2SearchResults = await _sut.SearchInChat(privateChat2.Id,
             "wak",
             0,
             20,
@@ -141,7 +141,7 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
                 Offset = 0,
                 Hits = ApiArray.New(BuildSearchResult(privateChat2.Id, 4, "PrivateChat2: Wake up")),
             });
-        var globalSearchResults = await _sut.Search(bob.Id,
+        var globalSearchResults = await _sut.SearchInAllChats(bob.Id,
             "wak",
             0,
             20,
@@ -177,7 +177,7 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await _commander.Call(new SearchBackend_Refresh(chat.Id));
 
         // assert
-        var searchResults = await _sut.Search(chat.Id,
+        var searchResults = await _sut.SearchInChat(chat.Id,
             "wak",
             0,
             20,
@@ -211,7 +211,7 @@ public class SearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await _commander.Call(new SearchBackend_Refresh(chat.Id));
 
         // assert
-        var searchResults = await _sut.Search(chat.Id,
+        var searchResults = await _sut.SearchInChat(chat.Id,
             "wak",
             0,
             20,

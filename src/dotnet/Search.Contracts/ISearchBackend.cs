@@ -11,14 +11,14 @@ public interface ISearchBackend : IComputeService
     Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken);
 
     // Non-compute methods
-    Task<SearchResultPage> Search(
+    Task<SearchResultPage> SearchInChat(
         ChatId chatId,
         string criteria,
         int skip,
         int limit,
         CancellationToken cancellationToken);
 
-    Task<SearchResultPage> Search(
+    Task<SearchResultPage> SearchInAllChats(
         UserId userId,
         string criteria,
         int skip,
