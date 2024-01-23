@@ -41,6 +41,8 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsPlaceChat => !PlaceChatId.IsNone;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsPlaceRootChat => IsPlaceChat && PlaceChatId.IsRoot;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public PlaceId PlaceId => PlaceChatId.PlaceId;
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]

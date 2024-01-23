@@ -14,7 +14,7 @@ public static class ElasticExt
         => chat.Id.ToIndexName(chat.IsPublicPlaceChat());
 
     public static IndexName ToIndexName(this ChatId chatId, bool isPublicPlaceChat)
-        => isPublicPlaceChat
+        => isPublicPlaceChat || chatId.IsPlaceRootChat
             ? chatId.PlaceId.ToIndexName()
             : ToIndexName(chatId.Value);
 

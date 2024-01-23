@@ -101,9 +101,9 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
     [ComputeMethod]
     protected virtual async Task<ApiSet<string>> GetIndices(UserId userId, CancellationToken cancellationToken)
     {
+        // public place chats are not returned since we use scoped indexes
         var contactIds = await ContactsBackend.ListIdsForSearch(userId, cancellationToken).ConfigureAwait(false);
         var indices = new List<IndexName>(ElasticExt.GetPeerChatSearchIndexNamePatterns(userId));
-        // TODO: handle place root chat ids
         indices.AddRange(contactIds.Select(x => x.ChatId.ToIndexName(false)));
         return indices.Select(x => x.ToString()).ToApiSet();
     }
