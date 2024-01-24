@@ -30,18 +30,12 @@ public partial class ChatUI
         var prevEntry = (ChatEntry?)null;
         var prevDate = DateOnly.MinValue;
         var isPrevUnread = false;
-        var isPrevForward = false;
-        var prevForwardChatId = ChatId.None;
-        var prevForwardAuthorId = AuthorId.None;
         var isPrevAudio = false;
         var hasVeryFirstItem = false;
         if (prevMessage != null) {
             prevEntry = prevMessage.Entry;
             prevDate = DateOnly.FromDateTime(TimeZoneConverter.ToLocalTime(prevEntry.BeginsAt));
             isPrevUnread = prevMessage.Flags.HasFlag(ChatMessageFlags.Unread);
-            isPrevForward = !prevEntry.ForwardedAuthorId.IsNone;
-            prevForwardChatId = prevEntry.ForwardedAuthorId.ChatId;
-            prevForwardAuthorId = prevEntry.ForwardedAuthorId;
             isPrevAudio = prevEntry.AudioEntryId != null || prevEntry.IsStreaming;
             hasVeryFirstItem = prevMessage.ReplacementKind == ChatMessageReplacementKind.WelcomeBlock;
         }
@@ -52,8 +46,9 @@ public partial class ChatUI
             var date = DateOnly.FromDateTime(TimeZoneConverter.ToLocalTime(entry.BeginsAt));
             var isBlockStart = IsBlockStart(prevEntry, entry);
             var isForward = !entry.ForwardedAuthorId.IsNone;
-            var isForwardFromOtherChat = prevForwardChatId != entry.ForwardedAuthorId.ChatId;
-            var isForwardFromOtherAuthor = prevForwardAuthorId != entry.ForwardedAuthorId;
+            var isPrevForward = prevEntry is { ForwardedAuthorId.IsNone: false };
+            var isForwardFromOtherChat = prevEntry?.ForwardedAuthorId.ChatId != entry.ForwardedAuthorId.ChatId;
+            var isForwardFromOtherAuthor = prevEntry?.ForwardedAuthorId != entry.ForwardedAuthorId;
             var isForwardBlockStart = (isBlockStart && isForward) || (isForward && (!isPrevForward || isForwardFromOtherChat));
             var isForwardAuthorBlockStart = isForwardBlockStart || (isForward && isForwardFromOtherAuthor);
             var isEntryUnread = entry.LocalId > lastReadEntryId;
@@ -95,8 +90,6 @@ public partial class ChatUI
             prevEntry = entry;
             prevDate = date;
             isPrevUnread = isEntryUnread;
-            isPrevForward = isForward;
-            prevForwardChatId = entry.ForwardedAuthorId.ChatId;
             isPrevAudio = isAudio;
         }
         return new VirtualListTile<ChatMessage>($"tile:{idRange.Format()}", messages);
