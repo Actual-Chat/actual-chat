@@ -159,6 +159,9 @@ public class RedisMeshLocks : MeshLocksBase
         return keys;
     }
 
+    public override IMeshLocks WithKeyPrefix(string keyPrefix)
+        => new RedisMeshLocks(RedisDb, keyPrefix, Clock);
+
     // Protected methods
 
     protected override async Task<bool> TryLock(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)

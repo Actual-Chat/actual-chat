@@ -4,7 +4,7 @@ namespace ActualChat.Mesh;
 
 public static class Sharding
 {
-    public sealed class Backend() : MeshShardingDef(HostRole.Backend, 32), IMeshShardingDef<Backend>
+    public sealed class Backend() : MeshShardingDef(HostRole.Backend, 8), IMeshShardingDef<Backend>
     {
         public static Backend Instance => new();
     }

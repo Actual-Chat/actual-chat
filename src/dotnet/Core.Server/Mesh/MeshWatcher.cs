@@ -3,18 +3,18 @@ namespace ActualChat.Mesh;
 public sealed class MeshWatcher : WorkerBase
 {
     private readonly IMutableState<MeshState> _state;
-    private IMeshLocks<MeshState> MeshLocks { get; }
+    private IMeshLocks NodeLocks { get; }
     private ILogger Log { get; }
 
     public MeshNode ThisNode { get; }
     public IState<MeshState> State => _state;
-    public IMomentClock Clock => MeshLocks.Clock;
+    public IMomentClock Clock => NodeLocks.Clock;
 
     public MeshWatcher(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
         ThisNode = services.MeshNode();
-        MeshLocks = services.MeshLocks<MeshState>();
+        NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
     }
 
@@ -35,7 +35,7 @@ public sealed class MeshWatcher : WorkerBase
                     await whenLockedTcs.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                 // 1. Subscribe to key space changes unless already subscribed
-                changes ??= await MeshLocks.Changes("", cancellationToken).ConfigureAwait(false);
+                changes ??= await NodeLocks.Changes("", cancellationToken).ConfigureAwait(false);
 
                 // 2. Fetch the most current state & update State, if necessary
                 var nodes = await ListNodes(cancellationToken).ConfigureAwait(false);
@@ -59,7 +59,7 @@ public sealed class MeshWatcher : WorkerBase
                     // It's fine to use CancellationToken.None here:
                     // consumeTask already depends on cancellationToken.
                     var canRead = await consumeTask
-                        .WaitAsync(MeshLocks.UnconditionalCheckPeriod, CancellationToken.None)
+                        .WaitAsync(NodeLocks.UnconditionalCheckPeriod, CancellationToken.None)
                         .ConfigureAwait(false);
                     // It's important to throw on cancellation here: canRead may return false exactly due to this
                     cancellationToken.ThrowIfCancellationRequested();
@@ -80,7 +80,7 @@ public sealed class MeshWatcher : WorkerBase
                     throw;
                 }
 
-                var delay = MeshLocks.RetryDelays[++failureCount];
+                var delay = NodeLocks.RetryDelays[++failureCount];
                 var resumeAt = Clock.Now + delay;
                 Log.LogError(e, "State update cycle failed, will retry in {Delay}", delay.ToShortString());
 
@@ -101,8 +101,11 @@ public sealed class MeshWatcher : WorkerBase
 
     private async Task<ImmutableArray<MeshNode>> ListNodes(CancellationToken cancellationToken)
     {
-        var keys = await MeshLocks.ListKeys("", cancellationToken).ConfigureAwait(false);
-        return keys.Select(MeshNode.Parse).Order().ToImmutableArray();
+        var keys = await NodeLocks.ListKeys("", cancellationToken).ConfigureAwait(false);
+        return keys.Select(key => {
+            var node = MeshNode.Parse(key);
+            return node == ThisNode ? ThisNode : node;
+        }).Order().ToImmutableArray();
     }
 
     private async Task KeepLocked(TaskCompletionSource whenLockedTcs, CancellationToken cancellationToken)
@@ -110,7 +113,7 @@ public sealed class MeshWatcher : WorkerBase
         var key = ThisNode.ToString();
         while (!cancellationToken.IsCancellationRequested) {
             try {
-                var holder = await MeshLocks
+                var holder = await NodeLocks
                     .Lock(key, "", cancellationToken)
                     .ConfigureAwait(false);
                 await using var _ = holder.ConfigureAwait(false);

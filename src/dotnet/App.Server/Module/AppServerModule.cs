@@ -179,13 +179,12 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             }
 
             var endpoint = $"{host}:{port.Format()}";
-            var id = $"{host}-{Ulid.NewUlid().ToString()}";
+            // var id = $"{host}-{Ulid.NewUlid().ToString()}";
+            var id = Alphabet.AlphaNumeric.Generator8.Next();
             var meshNode = new MeshNode(id, endpoint, hostInfo.Roles);
             Log.LogInformation("MeshNode: {MeshNode}", meshNode.ToString());
             return meshNode;
         });
-        services.AddSingleton<IMeshLocks<MeshState>>(c => new RedisMeshLocks<MeshState>(
-            c.GetRequiredService<RedisDb<InfrastructureDbContext>>(), nameof(MeshState), c.Clocks().SystemClock));
         services.AddSingleton<MeshWatcher>();
         if (HostInfo.IsDevelopmentInstance)
             services.AddHostedService(c => c.MeshWatcher());

@@ -98,6 +98,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
     public abstract Task<MeshLockInfo?> GetInfo(string key, CancellationToken cancellationToken = default);
     public abstract Task<IAsyncSubscription<string>> Changes(string key, CancellationToken cancellationToken = default);
     public abstract Task<string[]> ListKeys(string prefix, CancellationToken cancellationToken = default);
+    public abstract IMeshLocks WithKeyPrefix(string keyPrefix);
 
     Task<bool> IMeshLocksBackend.TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
         => TryRenew(key, value, expiresIn, cancellationToken);

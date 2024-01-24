@@ -56,9 +56,7 @@ public sealed partial record MeshNode(
     {
         if (ReferenceEquals(null, other))
             return false;
-        if (ReferenceEquals(this, other))
-            return true;
-        return Id.Equals(other.Id);
+        return ReferenceEquals(this, other) || Id == other.Id;
     }
 
     public override int GetHashCode() => Id.HashCode;
