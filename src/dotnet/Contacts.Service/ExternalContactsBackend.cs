@@ -1,4 +1,5 @@
 using ActualChat.Contacts.Db;
+using ActualChat.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -24,8 +25,9 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
 
         var idPrefix = ExternalContactId.Prefix(ownerId, deviceId);
         var dbExternalContacts = await dbContext.ExternalContacts
-            .Include(x => x.ExternalContactLinks)
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
+            .Include(x => x.ExternalContactLinks)
+            .Log(Log)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
