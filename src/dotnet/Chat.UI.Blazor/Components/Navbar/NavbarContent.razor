@@ -45,6 +45,9 @@
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/js">JavaScript</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/embedded">Embedded</NavbarItem>
             <NavbarItem ReplaceOnPrefix="/test/" Url="/test/totp">Totp</NavbarItem>
+            @if (HostInfo.HostKind != HostKind.MauiApp && HostInfo.IsDevelopmentInstance) {
+                <NavbarItem ReplaceOnPrefix="/test/" Url="/test/external-contacts">External Contacts</NavbarItem>
+            }
             @if (HostInfo.HostKind == HostKind.MauiApp) {
                 <NavbarItem ReplaceOnPrefix="/test/" Url="/test/maui">Maui</NavbarItem>
             }

@@ -1,0 +1,13 @@
+@page "/test/external-contacts"
+@using ActualChat.Contacts.UI.Blazor.Services
+<Button Class="btn-primary" Click="@(_ => OnGenerateClick())">
+        Generate contacts
+    </Button>
+
+@code {
+    private FakeDeviceContacts DeviceContacts { get; init; } = null!;
+
+    private async Task OnGenerateClick() {
+        await DeviceContacts.Regenerate(CancellationToken.None);
+    }
+}

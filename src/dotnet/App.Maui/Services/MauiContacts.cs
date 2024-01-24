@@ -6,9 +6,7 @@ using ActualChat.Permissions;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using banditoth.MAUI.DeviceId.Interfaces;
-using MauiContacts = Microsoft.Maui.ApplicationModel.Communication.Contacts;
 using MauiContact = Microsoft.Maui.ApplicationModel.Communication.Contact;
-using MauiPermissions = Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace ActualChat.App.Maui.Services;
 

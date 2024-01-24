@@ -17,9 +17,13 @@ public static class QueryableExt
         CancellationToken cancellationToken = default)
         => source.AsAsyncEnumerable().ToApiListAsync(cancellationToken);
 
-    public static IQueryable<TSource> WhereIf<TSource>(
+    public static IQueryable<TSource> Log<TSource>(
         this IQueryable<TSource> source,
-        Expression<Func<TSource, bool>> filter,
-        bool condition)
-        => !condition ? source : source.Where(filter);
+        ILogger log,
+        [CallerMemberName] string context = "",
+        LogLevel logLevel = LogLevel.Debug)
+    {
+        log.Log(logLevel, "{Context}: {Query}", context, source.ToQueryString());
+        return source;
+    }
 }
