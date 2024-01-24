@@ -3,7 +3,7 @@
     _lastSkeletonCount = SkeletonCount;
 }
 
-<SkeletonContainer Class="flex flex-nowrap items-stretch content-start justify-start flex-col">
+<SkeletonContainer Class="skeleton-container">
     @if (Skeleton != null) {
         @for (var i = 0; i < SkeletonCount; ++i) {
             <div @key="@i" class="skeleton">
