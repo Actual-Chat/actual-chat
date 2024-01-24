@@ -42,6 +42,9 @@ public abstract class MeshShardWorker : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         MeshWatcher.Start();
+        var usedShards = new BitArray(ShardingDef.Size);
+        var addedShards = new List<int>();
+        var removedShards = new List<int>();
         try {
             var changes = MeshWatcher.State.Changes(FixedDelayer.ZeroUnsafe, cancellationToken);
             await foreach (var (state, error) in changes.ConfigureAwait(false)) {
@@ -53,16 +56,24 @@ public abstract class MeshShardWorker : WorkerBase
                     continue;
                 }
 
+                addedShards.Clear();
+                removedShards.Clear();
                 var sharding = state.GetSharding(ShardingDef);
                 for (var shardIndex = 0; shardIndex < sharding.Shards.Length; shardIndex++) {
                     var node = sharding.Shards[shardIndex];
                     var shardState = ShardStates[shardIndex];
                     var mustUse = node == ThisNode;
-                    if (mustUse == shardState.IsUsed)
+                    if (mustUse == usedShards[shardIndex])
                         continue;
 
-                    ShardStates[shardIndex] = shardState.Flip();
+                    usedShards[shardIndex] = mustUse;
+                    (mustUse ? addedShards : removedShards).Add(shardIndex);
+                    ShardStates[shardIndex] = shardState.NextState(mustUse);
                 }
+                if (addedShards.Count > 0 || removedShards.Count > 0)
+                    Log.LogInformation("Shards @ {ThisNodeId}: {UsedShards} (+{AddedShards}, -{RemovedShards})",
+                        ThisNode.Id,
+                        usedShards.Format(), addedShards.ToDelimitedString(","), removedShards.ToDelimitedString(","));
             }
         }
         finally {
@@ -80,7 +91,7 @@ public abstract class MeshShardWorker : WorkerBase
             var lockIsLost = false;
             Exception? error = null;
             try {
-                Log.LogInformation("#{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Id);
+                Log.LogInformation("Shard #{ShardIndex} -> {ThisNodeId}", shardIndex, ThisNode.Id);
                 await OnRun(shardIndex, lockToken).ConfigureAwait(false);
                 failureCount = 0;
             }
@@ -98,14 +109,14 @@ public abstract class MeshShardWorker : WorkerBase
                 lockCts.DisposeSilently();
                 await lockHolder.DisposeSilentlyAsync().ConfigureAwait(false);
                 if (lockIsLost)
-                    Log.LogWarning("#{ShardIndex} <- {ThisNodeId} (shard lock is lost)", shardIndex, ThisNode.Id);
+                    Log.LogWarning("Shard #{ShardIndex} <- {ThisNodeId} (shard lock is lost)", shardIndex, ThisNode.Id);
                 else
-                    Log.LogInformation("#{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Id);
+                    Log.LogInformation("Shard #{ShardIndex} <- {ThisNode}", shardIndex, ThisNode.Id);
             }
 
             if (error != null) {
                 var delay = RetryDelays[failureCount];
-                Log.LogError(error, "#{ShardIndex}] @ {ThisNodeId}: OnRun failed, will retry in {Delay}",
+                Log.LogError(error, "Shard #{ShardIndex} @ {ThisNodeId}: OnRun failed, will retry in {Delay}",
                     shardIndex, ThisNode.Id, delay.ToShortString());
                 await Clock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
@@ -124,8 +135,6 @@ public abstract class MeshShardWorker : WorkerBase
         public int Index { get; }
         public CancellationToken StopToken { get; }
         public Task? WhenStopped { get; set; }
-        public bool IsStarted => WhenStopped != null;
-        public bool IsUsed => IsStarted && !StopToken.IsCancellationRequested;
 
         public ShardState(MeshShardWorker worker, int index)
         {
@@ -135,9 +144,9 @@ public abstract class MeshShardWorker : WorkerBase
             StopToken = StopTokenSource.Token;
         }
 
-        public ShardState Flip()
+        public ShardState NextState(bool mustUse)
         {
-            if (!IsUsed)
+            if (mustUse)
                 return Start();
 
             StopTokenSource.CancelAndDisposeSilently();
