@@ -64,3 +64,7 @@
 .virtual-list > ul.c-virtual-container > li.item.anchor {
     overflow-anchor: auto;
 }
+
+.virtual-list .skeleton-container {
+    @apply flex flex-nowrap items-stretch content-start justify-start flex-col;
+}

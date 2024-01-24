@@ -7,6 +7,8 @@ export const messageStyles = css`
         display: flex;
         flex-direction: row;
         column-gap: 0.25rem;
+    }
+    .animated-skeleton.message-skeleton {
         animation: pulse 2s infinite;
     }
     .message-avatar-wrapper {
@@ -48,6 +50,8 @@ export const messageStyles = css`
         flex-direction: column;
         column-gap: 0.25rem;
         margin-bottom: 0.5rem;
+    }
+    .animated-skeleton.message-list {
         animation: pulse 2s infinite;
     }
     .message-wrapper {

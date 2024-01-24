@@ -8,6 +8,10 @@ import {messageStyles} from "./styles.lit";
 class ChatMessageSkeletonLit extends LitElement {
     @property()
     count = 1;
+    @property({type: Boolean})
+    visible = true;
+
+    private observer: IntersectionObserver;
 
     static styles = [messageStyles,
         ];
@@ -16,6 +20,7 @@ class ChatMessageSkeletonLit extends LitElement {
         // noinspection JSMismatchedCollectionQueryUpdate
         const messages: HTMLTemplateResult[] = [];
         const messageCount = randomIntFromInterval(0, 4);
+        let animatedCls = this.visible ? "animated-skeleton" : "";
         for (let i = 0; i < messageCount; i++) {
             messages.push(html`
                 <div class="message-wrapper">
@@ -23,7 +28,7 @@ class ChatMessageSkeletonLit extends LitElement {
                 </div>`);
         }
         return html`
-            <div class="message-skeleton">
+            <div class="message-skeleton ${animatedCls}">
                 <div class="message-avatar-wrapper">
                     <div class="message-avatar"></div>
                 </div>
@@ -32,7 +37,7 @@ class ChatMessageSkeletonLit extends LitElement {
                     <div class="message ${this.getMessageWidth(4, 10)}"></div>
                 </div>
             </div>
-            <div class="message-list">
+            <div class="message-list ${animatedCls}">
                 ${messages}
             </div>
         `;
@@ -41,5 +46,27 @@ class ChatMessageSkeletonLit extends LitElement {
     private getMessageWidth(first: number, second: number): string {
         let num = randomIntFromInterval(first, second);
         return MessageWidth[num];
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        const root = document.querySelector('.layout-body');
+        this.observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                this.visible = entry.isIntersecting;
+            });
+        }, {
+            root: root,
+        });
+        this.observer.observe(this);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this.observer.disconnect();
+    }
+
+    constructor() {
+        super();
     }
 }
