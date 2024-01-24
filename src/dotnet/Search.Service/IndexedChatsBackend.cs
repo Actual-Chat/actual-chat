@@ -16,7 +16,9 @@ internal class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Se
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
-        var dbIndexedChat = await dbContext.IndexedChats.OrderByDescending(x => x.ChatCreatedAt)
+        var dbIndexedChat = await dbContext.IndexedChats
+            .Where(x => x.Id.StartsWith(DbIndexedChat.IdIndexSchemaVersionPrefix))
+            .OrderByDescending(x => x.ChatCreatedAt)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
         return dbIndexedChat?.ToModel();
@@ -25,7 +27,7 @@ internal class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Se
     // [ComputeMethod]
     public virtual async Task<IndexedChat?> Get(ChatId chatId, CancellationToken cancellationToken)
     {
-        var dbIndexedChat = await DbIndexedChatResolver.Get(default, chatId, cancellationToken).ConfigureAwait(false);
+        var dbIndexedChat = await DbIndexedChatResolver.Get(default, DbIndexedChat.ComposeId(chatId), cancellationToken).ConfigureAwait(false);
         return dbIndexedChat?.ToModel();
     }
 
@@ -41,6 +43,7 @@ internal class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Se
         var dMinCreatedAt = minCreatedAt.ToDateTime(DateTime.MinValue, DateTime.MaxValue);
 
         var dbChats = await dbContext.IndexedChats
+            .Where(x => x.Id.StartsWith(DbIndexedChat.IdIndexSchemaVersionPrefix))
             .Where(x => x.ChatCreatedAt >= dMinCreatedAt)
             .OrderBy(x => x.ChatCreatedAt)
             .Take(limit)
@@ -53,7 +56,7 @@ internal class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Se
             // no chats created at minCreatedAt that we need to skip
             return dbChats.Select(x => x.ToModel()).ToApiArray();
 
-        var lastChatIdx = dbChats.FindIndex(x => new ChatId(x.Id) == lastId);
+        var lastChatIdx = dbChats.FindIndex(x => x.GetChatId() == lastId);
         if (lastChatIdx < 0)
             return dbChats.Select(x => x.ToModel()).ToApiArray();
 
@@ -78,17 +81,17 @@ internal class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Se
         await using var __ = dbContext.ConfigureAwait(false);
 
         var sidsUpdatedAndRemoved = changes.Where(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Remove)
-            .Select(x => x.Id.Value)
+            .Select(x => DbIndexedChat.ComposeId(x.Id))
             .ToList();
         var existingDbIndexedChats = await dbContext.IndexedChats.Where(x => sidsUpdatedAndRemoved.Contains(x.Id))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var existingDbIndexedChatMap = existingDbIndexedChats.ToDictionary(x => new ChatId(x.Id));
+        var existingDbIndexedChatMap = existingDbIndexedChats.ToDictionary(x => x.GetChatId());
         var dbResults = new List<DbIndexedChat?>(changes.Count);
         foreach (var change in changes)
             if (change.Change.IsCreate(out var create)) {
                 var dbIndexedChat = new DbIndexedChat {
-                    Id = create.Id,
+                    Id = DbIndexedChat.ComposeId(create.Id),
                     Version = VersionGenerator.NextVersion(),
                     ChatCreatedAt = create.ChatCreatedAt,
                 };
