@@ -52,8 +52,8 @@ class ChatMessageSkeletonLit extends LitElement {
         super.connectedCallback();
         const root = document.querySelector('.layout-body');
         this.observer = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                this.visible = entry.isIntersecting;
+            entries.some(e => {
+                this.visible = e.isIntersecting;
             });
         }, {
             root: root,
@@ -64,9 +64,5 @@ class ChatMessageSkeletonLit extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         this.observer.disconnect();
-    }
-
-    constructor() {
-        super();
     }
 }
