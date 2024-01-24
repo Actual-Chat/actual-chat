@@ -62,8 +62,6 @@ services:
       - "25:25"
   elasticsearch:
     image: elasticsearch:8.11.4
-    volumes:
-      - ./artifacts/elasticsearch-data:/usr/share/elasticsearch/data
     ports:
       - 9200:9200
     environment:
@@ -87,8 +85,6 @@ services:
     depends_on:
       - elasticsearch
     image: kibana:8.11.4
-    volumes:
-      - ./artifacts/kibana-data:/usr/share/kibana/data
     ports:
      - 5601:5601
     environment:
