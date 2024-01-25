@@ -24,8 +24,6 @@ using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using ActualChat.Web.Module;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Logging.Console;
 using Serilog;
 using Serilog.Events;
@@ -66,31 +64,16 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
         // HostInfo
         services.AddSingleton(c => {
             var baseUrl = hostSettings.BaseUri;
-            BaseUrlProvider? baseUrlProvider = null;
             if (baseUrl.IsNullOrEmpty()) {
-                var server = c.GetRequiredService<IServer>();
-                var serverAddressesFeature =
-                    server.Features.Get<IServerAddressesFeature>()
-                    ?? throw StandardError.Internal("Can't get server address.");
-                baseUrl = serverAddressesFeature.Addresses.FirstOrDefault();
-                if (baseUrl.IsNullOrEmpty()) {
-                    // If we can't figure out base url at the moment,
-                    // lets define a base url provider to resolve base url later on demand.
-                    string? resolvedBaseUrl = null;
-                    baseUrlProvider = () => {
-                        if (resolvedBaseUrl.IsNullOrEmpty()) {
-                            resolvedBaseUrl = serverAddressesFeature.Addresses.FirstOrDefault()
-                                ?? throw StandardError.Internal(
-                                    "No server addresses found. Most likely you trying to use UrlMapper before the server has started.");
-                        }
-                        return resolvedBaseUrl;
-                    };
-                }
+                var baseUrlPrefix = isTested || Equals(Env.EnvironmentName, Environments.Development)
+                    ? "http" // Any http* endpoint is fine on dev/test
+                    : "https://";
+                baseUrl = ServerEndpoints.List(c).FirstOrDefault(x => x.OrdinalStartsWith(baseUrlPrefix));
+                if (baseUrl.IsNullOrEmpty())
+                    throw StandardError.Internal("Can't resolve BaseUrl.");
             }
 
-            var serverRole = HostRoles.Server.FromCommandLine();
-            if (serverRole.IsNone)
-                serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
+            var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
             var roles = HostRoles.Server.GetAllRoles(serverRole);
 
             return new HostInfo() {
@@ -100,8 +83,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 Configuration = Cfg,
                 Roles = roles,
                 IsTested = isTested,
-                BaseUrl = baseUrl ?? "",
-                BaseUrlProvider = baseUrlProvider,
+                BaseUrl = baseUrl,
             };
         });
 

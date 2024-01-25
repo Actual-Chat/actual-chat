@@ -8,7 +8,6 @@ public sealed record HostInfo
     private readonly BoolOption _isProductionInstance = new();
     private readonly BoolOption _isStagingInstance = new();
     private readonly BoolOption _isDevelopmentInstance = new();
-    private string _baseUrl = "";
 
     public static readonly Symbol ProductionEnvironment = Environments.Production;
     public static readonly Symbol StagingEnvironment = Environments.Staging;
@@ -21,24 +20,7 @@ public sealed record HostInfo
     public string DeviceModel { get; init; } = "Unknown";
     public IReadOnlySet<HostRole> Roles { get; init; } = ImmutableHashSet<HostRole>.Empty;
     public bool IsTested { get; init; }
-
-    public string BaseUrl {
-        get {
-            if (!_baseUrl.IsNullOrEmpty())
-                return _baseUrl;
-            if (BaseUrlProvider == null)
-                throw StandardError.Internal("Both BaseUrl and BaseUrlProvider are unspecified.");
-
-            _baseUrl = BaseUrlProvider.Invoke();
-            if (_baseUrl.IsNullOrEmpty())
-                throw StandardError.Internal("BaseUrlProvider returned empty BaseUrl.");
-
-            return _baseUrl;
-        }
-        init => _baseUrl = value;
-    }
-
-    public BaseUrlProvider? BaseUrlProvider { get; init; }
+    public string BaseUrl { get; init; } = "";
 
     public bool IsProductionInstance => _isProductionInstance.Value ??= Environment == ProductionEnvironment;
     public bool IsStagingInstance => _isStagingInstance.Value ??= Environment == StagingEnvironment;

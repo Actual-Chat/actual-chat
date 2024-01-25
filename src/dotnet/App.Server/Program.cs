@@ -21,12 +21,13 @@ internal static class Program
         Activity.ForceDefaultIdFormat = true;
         // TODO(AK): try to disable Http/3 for google speech-to-text only instead of global toggle!
         AppContext.SetSwitch("System.Net.SocketsHttpHandler.Http3Support", false);
+        CommandLineHandler.Process(args);
         AdjustThreadPool();
         AdjustGrpcCoreThreadPool();
 
         using var appHost = new AppHost();
         try {
-            await appHost.Build().ConfigureAwait(false);
+            appHost.Build();
         }
         catch (Exception ex) {
             Console.ForegroundColor = ConsoleColor.Red;

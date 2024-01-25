@@ -66,7 +66,7 @@ public static class TestAppHostFactory
                 options.AppConfigurationExtender?.Invoke(cfg);
             },
         };
-        await appHost.Build();
+        appHost.Build();
 
         if (Constants.DebugMode.Npgsql)
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(), true);

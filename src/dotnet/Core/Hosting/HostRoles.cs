@@ -7,8 +7,6 @@ public static class HostRoles
 
     public static class Server
     {
-        private const string RoleArgPrefix = "-role:";
-
         private static readonly HashSet<HostRole> ParsableRoles = [
             HostRole.SingleServer,
             HostRole.FrontendServer,
@@ -21,15 +19,6 @@ public static class HostRoles
         public static HostRole Parse(string? value)
             => value.IsNullOrEmpty() ? default
                 : ParsableRoleByValue.GetValueOrDefault(value);
-
-        public static HostRole FromCommandLine()
-        {
-            var role = Environment.GetCommandLineArgs()
-                .Skip(1)
-                .Select(x => x.OrdinalStartsWith(RoleArgPrefix) ? x[RoleArgPrefix.Length..].Trim() : null)
-                .FirstOrDefault(x => !x.IsNullOrEmpty());
-            return Parse(role);
-        }
 
         public static HashSet<HostRole> GetAllRoles(HostRole role)
         {

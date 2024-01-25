@@ -37,7 +37,6 @@ using ActualLab.Fusion.Server;
 using ActualLab.Fusion.Server.Middlewares;
 using ActualLab.Fusion.Server.Rpc;
 using ActualLab.IO;
-using ActualLab.Redis;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
@@ -169,7 +168,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 CultureInfo.InvariantCulture,
                 out var port);
             if (host.IsNullOrEmpty() || port == 0) {
-                (host, port) = ServerEndpoints.GetHttpEndpoint(c);
+                var endpoint = ServerEndpoints.List(c, "http://").FirstOrDefault();
+                (host, port) = ServerEndpoints.Parse(endpoint);
                 if (ServerEndpoints.InvalidHostNames.Contains(host)) {
                     if (!hostInfo.IsDevelopmentInstance)
                         throw StandardError.Internal($"Server host name is invalid: {host}");
@@ -178,12 +178,12 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 }
             }
 
-            var endpoint = $"{host}:{port.Format()}";
-            // var id = $"{host}-{Ulid.NewUlid().ToString()}";
-            var id = Alphabet.AlphaNumeric.Generator8.Next();
-            var meshNode = new MeshNode(id, endpoint, hostInfo.Roles);
-            Log.LogInformation("MeshNode: {MeshNode}", meshNode.ToString());
-            return meshNode;
+            var node = new MeshNode(
+                Alphabet.AlphaNumeric.Generator8.Next(), // $"{host}-{Ulid.NewUlid().ToString()}";
+                $"{host}:{port.Format()}",
+                hostInfo.Roles);
+            Log.LogInformation("MeshNode: {MeshNode}", node.ToString());
+            return node;
         });
         services.AddSingleton(c => new MeshWatcher(c));
 

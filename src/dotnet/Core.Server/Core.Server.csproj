@@ -9,6 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CliWrap" />
     <PackageReference Include="FFMpegCore" />
     <PackageReference Include="Google.Cloud.Storage.V1" />
     <PackageReference Include="Microsoft.AspNetCore.StaticFiles" />

@@ -1,7 +1,4 @@
-using System.Net;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.Configuration;
 
 namespace ActualChat;
@@ -10,34 +7,41 @@ public static partial class ServerEndpoints
 {
     [GeneratedRegex(@"^(.*\/\/)?(.+):(\d+)")]
     private static partial Regex EndpointRegexFactory();
+    private static Regex EndpointRegex { get; } = EndpointRegexFactory();
 
     public static readonly HashSet<Symbol> InvalidHostNames = [ "*", "localhost", "127.0.0.1", "0.0.0.0" ];
 
-    public static string[] List(IServiceProvider services)
-    {
-        var server = services.GetRequiredService<IServer>();
-        var endpoints = server.Features.Get<IServerAddressesFeature>()?.Addresses.ToArray() ?? Array.Empty<string>();
-        if (endpoints.Length != 0)
-            return endpoints;
+    public static string[] List(IServiceProvider services, string? prefix = null)
+        => List(services.GetRequiredService<IConfiguration>(), prefix);
 
-        var cfg = services.GetRequiredService<IConfiguration>();
-        endpoints = (cfg.GetValue<string>("URLS") ?? "").Split(";");
+    public static string[] List(IConfiguration configuration, string? prefix = null)
+    {
+        var endpoints = (configuration.GetValue<string>("URLS") ?? "").Split(";");
+        if (!prefix.IsNullOrEmpty())
+            endpoints = endpoints.Where(x => x.OrdinalStartsWith(prefix)).ToArray();
         return endpoints;
     }
 
-    public static (string Host, int Port) GetHttpEndpoint(IServiceProvider services)
+    public static (string Host, int Port) Parse(string? endpoint)
+        => TryParse(endpoint, out var host, out var port)
+            ? (host, port)
+            : throw new ArgumentOutOfRangeException(nameof(endpoint), $"Invalid endpoint: {endpoint}");
+
+    public static bool TryParse(string? endpoint, out string host, out int port)
     {
-        var endpoints = List(services);
-        var httpEndpoint = endpoints.FirstOrDefault(x => x.OrdinalStartsWith("http://"));
-        if (httpEndpoint.IsNullOrEmpty())
-            throw StandardError.Internal($"No server endpoint with http:// scheme: {endpoints.ToDelimitedString(";")}");
+        host = "";
+        port = 0;
+        if (endpoint.IsNullOrEmpty())
+            return false;
 
-        var m = EndpointRegexFactory().Match(httpEndpoint);
+        var m = EndpointRegex.Match(endpoint);
         if (!m.Success)
-            throw StandardError.Internal($"Can't parse server endpoint: {httpEndpoint}");
+            return false;
 
-        var host = m.Groups[2].Value;
-        var port = int.Parse(m.Groups[3].Value, CultureInfo.InvariantCulture);
-        return (host, port);
+        if (!int.TryParse(m.Groups[3].Value, CultureInfo.InvariantCulture, out port))
+            return false;
+
+        host = m.Groups[2].Value;
+        return true;
     }
 }

@@ -8,9 +8,11 @@ namespace ActualChat.App.Server;
 
 public class AppHost : IDisposable
 {
+    public static readonly string DefaultServerUrls = "http://localhost:7080";
+
     private volatile int _isDisposed;
 
-    public string ServerUrls { get; set; } = "http://localhost:7080;https://localhost:7081";
+    public string ServerUrls { get; set; } = DefaultServerUrls;
     public Action<IConfigurationBuilder>? HostConfigurationBuilder { get; set; }
     public Action<IConfigurationBuilder>? AppConfigurationBuilder { get; set; }
     public Action<WebHostBuilderContext, IServiceCollection>? AppServicesBuilder { get; set; }
@@ -33,26 +35,29 @@ public class AppHost : IDisposable
             Host.DisposeSilently();
     }
 
-    public virtual Task Build(CancellationToken cancellationToken = default)
+    public virtual AppHost Build(bool configurationOnly = false)
     {
         var webBuilder = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
             .ConfigureHostConfiguration(ConfigureHostConfiguration)
-            .ConfigureWebHostDefaults(builder => builder
-                .UseDefaultServiceProvider((ctx, options) => {
-                    if (ctx.HostingEnvironment.IsDevelopment()) {
-                        options.ValidateScopes = true;
-                        options.ValidateOnBuild = true;
-                    }
-                })
-                .UseKestrel(ConfigureKestrel)
-                .ConfigureAppConfiguration(ConfigureAppConfiguration)
-                .UseStartup<Startup>()
-                .ConfigureServices(ConfigureAppServices)
-                .ConfigureServices(ValidateContainerRegistrations)
-            );
+            .ConfigureWebHostDefaults(host => {
+                host
+                    .UseDefaultServiceProvider((ctx, options) => {
+                        if (ctx.HostingEnvironment.IsDevelopment()) {
+                            options.ValidateScopes = true;
+                            options.ValidateOnBuild = true;
+                        }
+                    })
+                    .UseKestrel(ConfigureKestrel)
+                    .ConfigureAppConfiguration(ConfigureAppConfiguration);
+                if (!configurationOnly)
+                    host
+                        .UseStartup<Startup>()
+                        .ConfigureServices(ConfigureAppServices)
+                        .ConfigureServices(ValidateContainerRegistrations);
+            });
 
         Host = webBuilder.Build();
-        return Task.CompletedTask;
+        return this;
     }
 
     private void ValidateContainerRegistrations(WebHostBuilderContext webHostBuilderContext, IServiceCollection services)
