@@ -18,7 +18,9 @@
            @attributes="@AdditionalAttributes"
            @onchange="EventCallback.Factory.CreateBinder<string>(this, v => CurrentValueAsString = v, CurrentValueAsString!)" />
     @if (ClearButton) {
-        <ButtonX Class="btn-sm transparent" Click="OnClearClick"></ButtonX>
+        <button type="button" class="text-box-btn" @onclick="@OnClearClick">
+            <i class="icon-close"></i>
+        </button>
     }
 </div>
 

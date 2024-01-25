@@ -20,11 +20,11 @@
             <ValidationSummary/>
 
             <FormSection For="() => _form.Name" IsRequired="true" InputId="@_form.NameFieldId" Label="First name" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true"/>
+                <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" Autofocus="true" ClearButton="true"/>
             </FormSection>
 
             <FormSection For="() => _form.LastName" InputId="@_form.LastNameFieldId" Label="Last name" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.LastName" Id="@_form.LastNameFieldId" Autofocus="true"/>
+                <TextBox @bind-Value="@_form.LastName" Id="@_form.LastNameFieldId" Autofocus="true" ClearButton="true"/>
             </FormSection>
 
             <FormSection
