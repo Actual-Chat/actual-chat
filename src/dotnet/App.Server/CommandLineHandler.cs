@@ -17,6 +17,15 @@ public static class CommandLineHandler
 
     public static void Process(string[] args)
     {
+        // -url:<url> argument
+        var urlOverride = args
+            .Select(x => x.OrdinalStartsWith(UrlArgPrefix) ? x[UrlArgPrefix.Length..].Trim() : null)
+            .SingleOrDefault(x => !x.IsNullOrEmpty());
+        if (!urlOverride.IsNullOrEmpty()) {
+            WriteLine($"URL override: {urlOverride}");
+            Environment.SetEnvironmentVariable(UrlsEnvVar, urlOverride);
+        }
+
         // -role:<role> argument
         var roleOverride = args
             .Select(x => x.OrdinalStartsWith(RoleArgPrefix) ? x[RoleArgPrefix.Length..].Trim() : null)
@@ -25,15 +34,6 @@ public static class CommandLineHandler
         if (!roleOverride.IsNone) {
             WriteLine($"Role override: {roleOverride}");
             Environment.SetEnvironmentVariable(ServerRoleEnvVar, roleOverride.Value);
-        }
-
-        // -url:<url> argument
-        var urlOverride = args
-            .Select(x => x.OrdinalStartsWith(UrlArgPrefix) ? x[UrlArgPrefix.Length..].Trim() : null)
-            .SingleOrDefault(x => !x.IsNullOrEmpty());
-        if (!urlOverride.IsNullOrEmpty()) {
-            WriteLine($"URL override: {urlOverride}");
-            Environment.SetEnvironmentVariable(UrlsEnvVar, urlOverride);
         }
 
         // "-multihost-role:<role>" argument
