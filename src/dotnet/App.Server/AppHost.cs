@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualChat.Mesh;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
@@ -75,19 +76,35 @@ public class AppHost : IDisposable
 
     public virtual async Task InvokeDbInitializers(CancellationToken cancellationToken = default)
     {
+        if (Services.HostInfo().IsTested) {
+            // Just to speed up tests
+            await InvokeDbInitializersUnsafe(cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(AppHost));
+        var lockHolder = await meshLocks.Lock(nameof(InvokeDbInitializers), "", cancellationToken).ConfigureAwait(false);
+        await using var _ = lockHolder.ConfigureAwait(false);
+        var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
+
+        await InvokeDbInitializersUnsafe(lockCts.Token).ConfigureAwait(false);
+    }
+
+    public virtual async Task InvokeDbInitializersUnsafe(CancellationToken cancellationToken = default)
+    {
         // InitializeSchema
         await InvokeDbInitializers(
             nameof(IDbInitializer.InitializeSchema),
             (x, ct) => x.InitializeSchema(ct),
             cancellationToken
-        ).ConfigureAwait(false);
+            ).ConfigureAwait(false);
 
         // InitializeData
         await InvokeDbInitializers(
             nameof(IDbInitializer.InitializeData),
             (x, ct) => x.InitializeData(ct),
             cancellationToken
-        ).ConfigureAwait(false);
+            ).ConfigureAwait(false);
 
         // RepairData
         await InvokeDbInitializers(
@@ -95,7 +112,7 @@ public class AppHost : IDisposable
             x => x.ShouldRepairData,
             (x, ct) => x.RepairData(ct),
             cancellationToken
-        ).ConfigureAwait(false);
+            ).ConfigureAwait(false);
 
         // VerifyData
         await InvokeDbInitializers(
@@ -103,7 +120,7 @@ public class AppHost : IDisposable
             x => x.ShouldVerifyData,
             (x, ct) => x.VerifyData(ct),
             cancellationToken
-        ).ConfigureAwait(false);
+            ).ConfigureAwait(false);
     }
 
     public virtual Task Run(CancellationToken cancellationToken = default)

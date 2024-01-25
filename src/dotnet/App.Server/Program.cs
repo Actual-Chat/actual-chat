@@ -1,6 +1,5 @@
 using System.Text;
 using ActualChat.Audio.WebM;
-using ActualChat.Hosting;
 using Grpc.Core;
 
 namespace ActualChat.App.Server;

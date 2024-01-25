@@ -163,16 +163,16 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // MeshStateWatcher
         services.AddSingleton<MeshNode>(c => {
             var hostInfo = c.HostInfo();
-            var host = Environment.GetEnvironmentVariable("NODE_HOST") ?? "";
+            var host = Environment.GetEnvironmentVariable("NODE_IP") ?? "";
             _ = int.TryParse(
                 Environment.GetEnvironmentVariable("NODE_PORT") ?? "0",
                 CultureInfo.InvariantCulture,
                 out var port);
             if (host.IsNullOrEmpty() || port == 0) {
                 (host, port) = ServerEndpoints.GetHttpEndpoint(c);
-                if (ServerEndpoints.InternalHosts.Contains(host)) {
+                if (ServerEndpoints.InvalidHostNames.Contains(host)) {
                     if (!hostInfo.IsDevelopmentInstance)
-                        throw StandardError.Internal($"Server host name is internal: {host}");
+                        throw StandardError.Internal($"Server host name is invalid: {host}");
 
                     host = Dns.GetHostName();
                 }
@@ -185,9 +185,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             Log.LogInformation("MeshNode: {MeshNode}", meshNode.ToString());
             return meshNode;
         });
-        services.AddSingleton<MeshWatcher>();
-        if (HostInfo.IsDevelopmentInstance)
-            services.AddHostedService(c => c.MeshWatcher());
+        services.AddSingleton(c => new MeshWatcher(c));
 
         // Queues
         services.AddLocalCommandQueues();

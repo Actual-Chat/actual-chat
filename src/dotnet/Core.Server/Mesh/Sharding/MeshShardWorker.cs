@@ -41,7 +41,6 @@ public abstract class MeshShardWorker : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        MeshWatcher.Start();
         var usedShards = new BitArray(ShardingDef.Size);
         var addedShards = new List<int>();
         var removedShards = new List<int>();

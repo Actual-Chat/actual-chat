@@ -5,7 +5,7 @@ namespace ActualChat.App.Server.Module;
 public sealed class HostSettings
 {
     public HostKind? AppKind { get; set; }
-    public string ServerRoles { get; set; } = "";
+    public string ServerRole { get; set; } = "";
     public bool? IsTested { get; set; }
 
     public string Redis { get; set; } = "";

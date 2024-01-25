@@ -10,12 +10,14 @@ public sealed class MeshWatcher : WorkerBase
     public IState<MeshState> State => _state;
     public IMomentClock Clock => NodeLocks.Clock;
 
-    public MeshWatcher(IServiceProvider services)
+    public MeshWatcher(IServiceProvider services, bool mustStart = true)
     {
         Log = services.LogFor(GetType());
         ThisNode = services.MeshNode();
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
+        if (mustStart)
+            this.Start();
     }
 
     protected override async Task OnRun(CancellationToken cancellationToken)

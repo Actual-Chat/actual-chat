@@ -20,7 +20,6 @@ using ActualChat.Search.Module;
 using ActualChat.Transcription.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
-using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
@@ -89,12 +88,17 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 }
             }
 
+            var serverRole = HostRoles.Server.FromCommandLine();
+            if (serverRole.IsNone)
+                serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
+            var roles = HostRoles.Server.GetAllRoles(serverRole);
+
             return new HostInfo() {
                 HostKind = appKind,
                 AppKind = AppKind.Unknown,
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,
-                Roles = HostRole.GetServerRoles(hostSettings.ServerRoles),
+                Roles = roles,
                 IsTested = isTested,
                 BaseUrl = baseUrl ?? "",
                 BaseUrlProvider = baseUrlProvider,

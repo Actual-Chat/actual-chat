@@ -90,7 +90,7 @@ public static class Program
             AppKind = AppKind.Wasm,
             Environment = c.GetService<IWebAssemblyHostEnvironment>()?.Environment ?? "Development",
             Configuration = c.GetRequiredService<IConfiguration>(),
-            Roles = HostRole.AddImpliedServerRoles([ HostRole.App, HostRole.BlazorHost ]),
+            Roles = HostRoles.App,
             IsTested = isTested,
             BaseUrl = baseUrl,
         });
