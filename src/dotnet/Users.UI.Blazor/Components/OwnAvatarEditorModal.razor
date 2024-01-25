@@ -32,11 +32,11 @@
                 Picked="@OnImagePicked"/>
 
             <FormSection For="() => _form.Name" InputId="@_form.NameFieldId" Label="Name" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId"/>
+                <TextBox @bind-Value="@_form.Name" Id="@_form.NameFieldId" ClearButton="true"/>
             </FormSection>
 
             <FormSection For="() => _form.Bio" InputId="@_form.BioFieldId" Label="Bio" IsLabelInsideInput="true">
-                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId"/>
+                <TextBox @bind-Value="@_form.Bio" Id="@_form.BioFieldId" ClearButton="true"/>
             </FormSection>
         </FormBlock>
 

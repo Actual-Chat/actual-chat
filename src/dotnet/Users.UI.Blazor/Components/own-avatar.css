@@ -7,13 +7,16 @@
 .is-default-avatar {
     @apply h-12 my-2;
 }
+.is-default-avatar .form-section-content {
+    @apply px-0;
+}
 .is-default-avatar label.checkbox {
     @apply m-0;
 }
 .default-avatar-btn {
     @apply flex-x items-center justify-between;
     @apply h-12 w-full;
-    @apply px-2;
+    @apply px-3;
     @apply rounded-lg;
 }
 body.hoverable .default-avatar-btn:hover {

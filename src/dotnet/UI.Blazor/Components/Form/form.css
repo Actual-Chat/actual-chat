@@ -50,7 +50,14 @@
     @apply flex-none w-full;
 }
 .form.form-y section .form-section-content {
-    @apply mt-1 px-1;
+    @apply px-1;
+}
+.form.form-y section .form-section-content.label-inside-input {
+    @apply h-12;
+    @apply px-4;
+}
+.form.form-y section .form-section-content.label-inside-input:has(.form-section-label) .text-box-btn {
+    @apply -mt-4;
 }
 
 .form.form-x section {
@@ -95,6 +102,11 @@
     @apply border-none rounded-none;
     @apply bg-transparent;
     @apply text-02 font-normal;
+}
+.form-section-content > .c-left > select,
+.label-inside-input select {
+    width: calc(100% + 0.5rem);
+    @apply -ml-1;
 }
 
 .form .form-section-content.label-inside-input label {
