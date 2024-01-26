@@ -151,8 +151,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         redisModule.AddRedisDb<InfrastructureDbContext>(services);
 
         // Queues
-        services.AddLocalCommandQueues();
-        services.AddCommandQueueScheduler();
+        services.AddNatsCommandQueues();
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;

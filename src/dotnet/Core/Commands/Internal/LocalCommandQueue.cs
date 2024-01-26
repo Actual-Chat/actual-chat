@@ -47,14 +47,7 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
         }
 
         Interlocked.Increment(ref _retryCount);
-        var id = command.Id.Value;
-        if (id.OrdinalIndexOf(" @retry-") is var retrySuffixStart and >= 0)
-            id = id[..retrySuffixStart];
-        var newTryIndex = command.TryIndex + 1;
-        var newCommand = command with {
-            Id = $"{id} @retry-{newTryIndex.Format()}",
-            TryIndex = newTryIndex,
-        };
+        var newCommand = command.WithRetry();
         return _queue.Writer.WriteAsync(newCommand, cancellationToken);
     }
 }

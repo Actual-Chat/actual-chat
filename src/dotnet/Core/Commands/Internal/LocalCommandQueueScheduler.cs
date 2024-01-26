@@ -1,33 +1,26 @@
-namespace ActualChat.Commands;
+namespace ActualChat.Commands.Internal;
 
-public class CommandQueueScheduler : WorkerBase
+public class LocalCommandQueueScheduler : WorkerBase
 {
-    public sealed class Options
-    {
-        public int ShardCount { get; set; } = 1;
-        public int Concurrency { get; set; } = HardwareInfo.GetProcessorCountFactor(8);
-        public int MaxTryCount { get; set; } = 2;
-        public int MaxKnownCommandCount { get; init; } = 10_000;
-        public TimeSpan MaxKnownCommandAge { get; init; } = TimeSpan.FromHours(1);
-    }
+    private const int ShardKey = 0;
 
-    protected static bool DebugMode => Constants.DebugMode.CommandQueue;
-    protected ILogger? DebugLog => DebugMode ? Log : null;
-    protected ILogger Log { get; }
-    protected IServiceProvider Services { get; }
-    protected ICommandQueues Queues { get; }
-    protected ICommander Commander { get; }
-    protected RecentlySeenMap<Symbol, Unit> KnownCommands { get; }
+    private static bool DebugMode => Constants.DebugMode.CommandQueue;
+    private ILogger? DebugLog => DebugMode ? Log : null;
+    private ILogger Log { get; }
+    private IServiceProvider Services { get; }
+    private ICommandQueues Queues { get; }
+    private ICommander Commander { get; }
+    private RecentlySeenMap<Symbol, Unit> KnownCommands { get; }
 
-    public Options Settings { get; }
+    public LocalCommandQueues.Options Settings { get; }
 
-    public CommandQueueScheduler(Options settings, IServiceProvider services)
+    public LocalCommandQueueScheduler(LocalCommandQueues.Options settings, IServiceProvider services)
     {
         Settings = settings;
         Services = services;
         Log = services.LogFor(GetType());
 
-        Queues = services.GetRequiredService<ICommandQueues>();
+        Queues = services.GetRequiredService<LocalCommandQueues>();
         Commander = services.GetRequiredService<ICommander>();
         KnownCommands = new RecentlySeenMap<Symbol, Unit>(
             Settings.MaxKnownCommandCount,
@@ -42,9 +35,9 @@ public class CommandQueueScheduler : WorkerBase
             QueuedCommandPriority.High,
             QueuedCommandPriority.Critical,
         };
-        var tasks = (from shardKey in Enumerable.Range(0, Settings.ShardCount)
+        var tasks = (
             from priority in priorities
-            let queueId = new QueueId(shardKey, priority)
+            let queueId = new QueueId(ShardKey, priority)
             select ProcessQueue(queueId, cancellationToken)
             ).ToList();
         return Task.WhenAll(tasks);
@@ -76,7 +69,7 @@ public class CommandQueueScheduler : WorkerBase
 
         DebugLog?.LogDebug("Running queued command: {Command}", command);
         try {
-            await Commander.Call(command.Command, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(command.UntypedCommand, true, cancellationToken).ConfigureAwait(false);
             await queueBackend.MarkCompleted(command, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) {

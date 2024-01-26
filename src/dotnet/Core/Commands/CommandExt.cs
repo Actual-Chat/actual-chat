@@ -15,7 +15,9 @@ public static class CommandExt
         var queuedCommand = QueuedCommand.New(command, priority);
         var commandContext = CommandContext.GetCurrent();
         var queues = commandContext.Services.GetRequiredService<ICommandQueues>();
-        var queue = queues[queuedCommand.QueueId];
+        var queueIdProvider = commandContext.Services.GetRequiredService<ICommandQueueIdProvider>();
+        var queueId = queueIdProvider.Get(queuedCommand);
+        var queue = queues[queueId];
         return queue.Enqueue(queuedCommand, cancellationToken);
     }
 
@@ -34,6 +36,19 @@ public static class CommandExt
         list = list.Add(queuedCommand);
         operationItems.Set(list);
         return command;
+    }
+
+    public static QueuedCommand WithRetry(this QueuedCommand command)
+    {
+        var id = command.Id.Value;
+        if (id.OrdinalIndexOf(" @retry-") is var retrySuffixStart and >= 0)
+            id = id[..retrySuffixStart];
+        var newTryIndex = command.TryIndex + 1;
+        var newCommand = command with {
+            Id = $"{id} @retry-{newTryIndex.Format()}",
+            TryIndex = newTryIndex,
+        };
+        return newCommand;
     }
 
     // Private methods
