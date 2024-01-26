@@ -15,10 +15,11 @@ public sealed partial class MeshState
     public ImmutableArray<MeshNode> Nodes { get; } = ImmutableArray<MeshNode>.Empty;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public IReadOnlySet<HostRole> Roles { get; private init; } = ImmutableHashSet<HostRole>.Empty;
+    public IReadOnlySet<HostRole> Roles { get; } = ImmutableHashSet<HostRole>.Empty;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public IReadOnlyDictionary<HostRole, ApiArray<MeshNode>> NodesByRole { get; private init; } = ImmutableDictionary<HostRole, ApiArray<MeshNode>>.Empty;
+    public IReadOnlyDictionary<HostRole, ImmutableArray<MeshNode>> NodesByRole { get; }
+        = ImmutableDictionary<HostRole, ImmutableArray<MeshNode>>.Empty;
 
     public MeshState()
     { }
@@ -31,9 +32,9 @@ public sealed partial class MeshState
             return;
 
         Roles = Nodes.SelectMany(x => x.Roles).ToHashSet();
-        NodesByRole = Roles.Select(r => new KeyValuePair<HostRole, ApiArray<MeshNode>>(
+        NodesByRole = Roles.Select(r => new KeyValuePair<HostRole, ImmutableArray<MeshNode>>(
             r,
-            new ApiArray<MeshNode>(Nodes.Where(n => n.Roles.Contains(r))))
+            Nodes.Where(n => n.Roles.Contains(r)).ToImmutableArray())
         ).ToDictionary();
     }
 
@@ -67,7 +68,7 @@ public sealed partial class MeshState
                 return sharding;
 
             if (!NodesByRole.TryGetValue(shardingDef.HostRole, out var nodes))
-                nodes = ApiArray<MeshNode>.Empty;
+                nodes = ImmutableArray<MeshNode>.Empty;
             sharding = new MeshSharding(shardingDef, nodes);
             cache = cache == null ? new() : new Dictionary<MeshShardingDef, MeshSharding>(cache);
             cache[shardingDef] = sharding;

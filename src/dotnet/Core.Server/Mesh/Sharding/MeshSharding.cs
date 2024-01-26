@@ -10,7 +10,7 @@ public sealed class MeshSharding
     public int Size { get; }
     public IReadOnlyList<MeshNode> Nodes { get; }
     public ImmutableArray<MeshNode> Shards { get; }
-    public bool IsValid { get; }
+    public bool IsValid => Nodes.Count != 0;
     // Indexers
     public MeshNode this[int index] => _doubleShards[Size + (index % Size)];
     public MeshNode this[string hash] => _doubleShards[Size + (hash.GetDjb2HashCode() % Size)];
@@ -21,7 +21,6 @@ public sealed class MeshSharding
         ShardingDef = shardingDef;
         Size = shardingDef.Size;
         Nodes = nodes;
-        IsValid = nodes.Count > 0;
         _doubleShards = new MeshNode[Size * 2];
         if (IsValid) {
             var shardsPerNode = Math.Max(1, (double)Size / nodes.Count);

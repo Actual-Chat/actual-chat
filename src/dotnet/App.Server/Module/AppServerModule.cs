@@ -162,9 +162,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // MeshStateWatcher
         services.AddSingleton<MeshNode>(c => {
             var hostInfo = c.HostInfo();
-            var host = Environment.GetEnvironmentVariable("NODE_IP") ?? "";
+            var host = Environment.GetEnvironmentVariable("POD_IP") ?? "";
             _ = int.TryParse(
-                Environment.GetEnvironmentVariable("NODE_PORT") ?? "0",
+                Environment.GetEnvironmentVariable("POD_PORT") ?? "80",
                 CultureInfo.InvariantCulture,
                 out var port);
             if (host.IsNullOrEmpty() || port == 0) {
