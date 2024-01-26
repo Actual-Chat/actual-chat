@@ -200,8 +200,15 @@
 
     /* Mozilla */
     .custom-scrollbar, .custom-scrollbar-x {
-        scrollbar-width: 2px;
-        scrollbar-color: #e2e7ec #F9FAFB;
+        scrollbar-width: thin;
+        scrollbar-color: transparent transparent;
+    }
+    .custom-scrollbar:hover,
+    .custom-scrollbar-x:hover {
+        scrollbar-color: var(--scrollbar) transparent;
+    }
+    .custom-scrollbar-hide {
+        scrollbar-width: none;
     }
 
     /* Ordinary header style */
