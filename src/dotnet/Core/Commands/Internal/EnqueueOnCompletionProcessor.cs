@@ -2,16 +2,12 @@ using ActualLab.Fusion.Operations.Internal;
 
 namespace ActualChat.Commands.Internal;
 
-public class EnqueueOnCompletionProcessor : IOperationCompletionListener
+public class EnqueueOnCompletionProcessor(ICommandQueues commandQueues, AgentInfo agentInfo, ICommandQueueIdProvider queueIdProvider)
+    : IOperationCompletionListener
 {
-    private ICommandQueues CommandQueues { get; }
-    private AgentInfo AgentInfo { get; }
-
-    public EnqueueOnCompletionProcessor(ICommandQueues commandQueues, AgentInfo agentInfo)
-    {
-        CommandQueues = commandQueues;
-        AgentInfo = agentInfo;
-    }
+    private ICommandQueues CommandQueues { get; } = commandQueues;
+    private AgentInfo AgentInfo { get; } = agentInfo;
+    private ICommandQueueIdProvider QueueIdProvider { get; } = queueIdProvider;
 
     public bool IsReady()
         => true;
@@ -28,18 +24,24 @@ public class EnqueueOnCompletionProcessor : IOperationCompletionListener
         switch (items.Count) {
         case 1:
             var command0 = items[0];
-            return CommandQueues[command0.QueueId].Enqueue(command0);
+            var queueId0 = GetQueueId(command0);
+            return CommandQueues[queueId0].Enqueue(command0);
         case 2:
             command0 = items[0];
             var command1 = items[1];
-            var task1 = CommandQueues[command0.QueueId].Enqueue(command0);
-            var task2 = CommandQueues[command1.QueueId].Enqueue(command1);
+            var queueId1 = GetQueueId(command0);
+            var queueId2 = GetQueueId(command1);
+            var task1 = CommandQueues[queueId1].Enqueue(command0);
+            var task2 = CommandQueues[queueId2].Enqueue(command1);
             return Task.WhenAll(task1, task2);
         default:
-            var tasks = items.Select(command => CommandQueues[command.QueueId].Enqueue(command));
+            var tasks = items.Select(command => CommandQueues[GetQueueId(command)].Enqueue(command));
             return Task.WhenAll(tasks);
         }
     }
+
+    private QueueId GetQueueId(QueuedCommand queueIdProvider)
+        => QueueIdProvider.Get(queueIdProvider);
 
     private static List<QueuedCommand>? CollectEnqueueOnCompletionEntries(
         OptionSet operationItems,

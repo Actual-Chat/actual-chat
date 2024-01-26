@@ -1,29 +1,23 @@
 namespace ActualChat.Commands.Internal;
 
-public sealed class LocalCommandQueues : ICommandQueues
+public sealed class LocalCommandQueues(LocalCommandQueues.Options settings, IServiceProvider services) : ICommandQueues
 {
     public sealed record Options
     {
-        public int ShardKeyMask { get; set; } = 0;
         public int MaxQueueSize { get; init; } = Constants.Queues.LocalCommandQueueDefaultSize;
+        public int Concurrency { get; set; } = HardwareInfo.GetProcessorCountFactor(8);
+        public int MaxTryCount { get; set; } = 2;
+        public int MaxKnownCommandCount { get; init; } = 10_000;
+        public TimeSpan MaxKnownCommandAge { get; init; } = TimeSpan.FromHours(1);
     }
 
-    // NOTE(AY): We ignore ShardKey here for now, coz there are no shards
-    private readonly ConcurrentDictionary<QueueId, LocalCommandQueue> _queues;
+    private readonly ConcurrentDictionary<QueueId, LocalCommandQueue> _queues = new ();
 
-    public Options Settings { get; }
-    public IServiceProvider Services { get; }
-    public IMomentClock Clock { get; }
+    public Options Settings { get; } = settings;
+    public IServiceProvider Services { get; } = services;
+    public IMomentClock Clock { get; } = QueuedCommand.Clock;
 
     public ICommandQueue this[QueueId queueId] => Get(queueId);
-
-    public LocalCommandQueues(Options settings, IServiceProvider services)
-    {
-        Settings = settings;
-        Services = services;
-        Clock = QueuedCommand.Clock;
-        _queues = new ConcurrentDictionary<QueueId, LocalCommandQueue>();
-    }
 
     public ICommandQueueBackend GetBackend(QueueId queueId)
         => Get(queueId);
@@ -32,6 +26,6 @@ public sealed class LocalCommandQueues : ICommandQueues
 
     private LocalCommandQueue Get(QueueId queueId)
         => _queues.GetOrAdd(
-            queueId.WithShardKeyMask(Settings.ShardKeyMask),
+            queueId,
             static (queueId, self) => new LocalCommandQueue(queueId, self), this);
 }

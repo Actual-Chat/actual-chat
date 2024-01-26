@@ -1,6 +1,6 @@
 namespace ActualChat.Commands;
 
-public enum QueuedCommandPriority
+public enum QueuedCommandPriority: sbyte
 {
     Low = -1,
     Normal = 0,
