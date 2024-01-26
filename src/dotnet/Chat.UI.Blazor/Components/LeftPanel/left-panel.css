@@ -50,10 +50,27 @@
     @apply px-2;
     @apply border-b border-separator;
 }
+.left-panel-content-header.place > .c-content {
+    @apply flex-y;
+    @apply min-h-26 max-h-26;
+    @apply rounded-b-xl;
+    @apply border-0;
+    @apply overflow-hidden;
+}
+.left-panel-content-header.place > .c-content > .c-start {
+    @apply z-10;
+    @apply flex-1 flex-x items-center;
+    @apply w-full h-10;
+    @apply px-1;
+}
 .left-panel-content-header .c-title {
+    @apply flex-1;
     @apply text-01 text-lg font-medium;
     @apply truncate;
     @apply pl-1;
+}
+.left-panel-content-header.place .c-title {
+    @apply text-[var(--place-header-text)];
 }
 .left-panel-content-header .c-ending {
     @apply absolute right-0;
@@ -61,6 +78,21 @@
     @apply w-full;
     @apply px-2;
 }
+.left-panel-content-header.place .c-ending {
+    @apply static z-10;
+    @apply h-14;
+    @apply px-1;
+}
 .left-panel-content > .download-app-banner {
     @apply px-2 pt-2;
+}
+
+.left-panel-content-header.place .chat-search-box input {
+    @apply bg-[var(--place-header-search)];
+}
+
+.left-panel-content-header.place .btn-h i,
+.left-panel-content-header.place .chat-search-box .btn-h i,
+.left-panel-content-header.place .chat-search-box *::placeholder {
+    @apply text-[var(--place-header-text)];
 }

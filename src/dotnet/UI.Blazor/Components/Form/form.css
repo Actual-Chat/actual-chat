@@ -110,7 +110,7 @@
 }
 
 .form .form-section-content.label-inside-input label {
-    @apply text-xs font-normal text-03;
+    @apply text-xs leading-3.5 font-normal text-03;
 }
 .form .form-section-content.label-inside-input:focus-within label {
     @apply text-primary;
