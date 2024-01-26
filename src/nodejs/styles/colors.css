@@ -13,6 +13,7 @@
     --gray-10: #282828;
     --gray-05: #1C1C1C;
 
+    --gray-05-05: #1C1C1C0D;
     --gray-10-20: #28282833;
     --gray-40-10: #2828281A;
     --gray-40-20: #28282833;
@@ -37,6 +38,7 @@
     --ash-99-04: #F5F5FC0A;
     --ash-99-05: #F5F5FC0D;
     --ash-99-08: #F5F5FC14;
+    --ash-99-10: #F5F5FC1A;
 
     --blue-99: #E5F2FF;
     --blue-95: #C9E3FF;
@@ -180,6 +182,7 @@
     --green-10: #005F15;
     --green-05: #00320B;
 
+    --green-30-10: #00AC261A;
     --green-40-10: #00D12E1A;
     --green-40-20: #00D12E33;
     --green-50-10: #00FF381A;
@@ -317,12 +320,12 @@
     --download-banner-right: var(--blue-50);
 
     /* Status badge */
-    --status: var(--gray-50);
-    --status-badge: var(--gray-40-20);
+    --status: var(--gray-40);
+    --status-badge: var(--gray-05-05);
     --status-online: var(--green-30);
-    --status-online-badge: var(--green-40-20);
-    --status-away: var(--sienna-50);
-    --status-away-badge: var(--sienna-40-20);
+    --status-online-badge: var(--green-30-10);
+    --status-away: var(--sienna-40);
+    --status-away-badge: var(--sienna-40-10);
     --status-offline: var(--magenta-50);
     --status-offline-badge: var(--magenta-40-20);
 
@@ -374,6 +377,8 @@
     --viewer-header: var(--black-50);
     --left-side-logo: var(--black);
     --link-preview-icon: var(--blue-70);
+    --place-header-search: var(--white-30);
+    --place-header-text: var(--white);
 
     /* Specific colors */
     --loading-cat-lines: var(--gray-70);
@@ -505,12 +510,12 @@
     --download-banner-right: var(--blue-50);
 
     /* Status badge */
-    --status: var(--gray-40);
-    --status-badge: var(--white-04);
-    --status-online: var(--green-40);
-    --status-online-badge: var(--green-40-10);
+    --status: var(--ash-70);
+    --status-badge: var(--ash-99-10);
+    --status-online: var(--green-30);
+    --status-online-badge: var(--green-30-10);
     --status-away: var(--sienna-40);
-    --status-away-badge: var(--sienna-40-10);
+    --status-away-badge: var(--sienna-40-20);
     --status-offline: var(--magenta-40);
     --status-offline-badge: var(--magenta-40-10);
 
@@ -562,6 +567,8 @@
     --reaction-own: var(--white-10);
     --viewer-header: var(--white-10);
     --left-side-logo: var(--white);
+    --place-header-search: var(--ash-99-10);
+    --place-header-text: var(--ash-99);
 
     /* Specific colors */
     --loading-cat-lines: var(--ash-80);
@@ -694,13 +701,13 @@
 
     /* Status badge */
     --status: var(--gray-40);
-    --status-badge: var(--gray-40-10);
-    --status-online: var(--green-40);
-    --status-online-badge: var(--green-40-10);
+    --status-badge: var(--gray-05-05);
+    --status-online: var(--green-30);
+    --status-online-badge: var(--green-30-10);
     --status-away: var(--sienna-40);
     --status-away-badge: var(--sienna-40-10);
-    --status-offline: var(--magenta-40);
-    --status-offline-badge: var(--magenta-40-10);
+    --status-offline: var(--magenta-50);
+    --status-offline-badge: var(--magenta-40-20);
 
     /* Utils */
     --transparent: rgba(0, 0, 0, 0);
@@ -750,6 +757,8 @@
     --viewer-header: var(--black-50);
     --left-side-logo: var(--black);
     --link-preview-icon: var(--blue-70);
+    --place-header-search: var(--white-30);
+    --place-header-text: var(--white);
 
     /* Specific colors */
     --loading-cat-lines: var(--gray-70);
