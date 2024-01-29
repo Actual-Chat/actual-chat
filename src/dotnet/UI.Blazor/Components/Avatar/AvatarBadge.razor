@@ -10,31 +10,21 @@
         BadgeContent="@BadgeContent" />
     <div class="c-name">
         <AvatarName Avatar="@Avatar" Class="@NameClass"/>
-        @if (ShowStatusText && !StatusText.IsNullOrEmpty()) {
-            <span class="@_statusTextClass">@StatusText</span>
+        @if (!StatusText.IsNullOrEmpty()) {
+            <span class="c-status">@StatusText</span>
+        } else if (StatusContent != null) {
+            <span class="c-status">@StatusContent</span>
         }
     </div>
 </div>
 
 @code {
-    private string _statusTextClass = "";
-
     [Parameter, EditorRequired] public Avatar Avatar { get; set; } = null!;
     [Parameter] public RenderFragment? BadgeContent { get; set; }
+    [Parameter] public RenderFragment? StatusContent { get; set; }
     [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
     [Parameter] public string NameClass { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
-    [Parameter] public bool ShowStatusText { get; set; }
     [Parameter] public string? StatusText { get; set; }
     [Parameter] public EventCallback<MouseEventArgs> Click { get; set; }
-
-    protected override void OnParametersSet() {
-        _statusTextClass = "c-status " + GetStatusTextClass();
-    }
-
-    private string GetContentClass()
-        => "ml-3";
-
-    private string GetStatusTextClass()
-        => (int)Size < 12 ? "c-status-sm" : "";
 }
