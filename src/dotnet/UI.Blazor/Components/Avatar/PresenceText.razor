@@ -10,7 +10,9 @@
         @("speaking...")
         break;
     case Presence.Away or Presence.Offline:
-        @("last seen ")<LiveTimeDeltaText Moment="@LastCheckIn" NullText=""/>
+        @if (LastCheckIn != null) {
+            @("last seen ")<LiveTimeDeltaText Moment="@LastCheckIn" NullText=""/>
+        }
         break;
 }
 
