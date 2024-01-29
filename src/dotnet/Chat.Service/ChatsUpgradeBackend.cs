@@ -15,7 +15,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
     private IRolesBackend RolesBackend { get; }
     private IContactsBackend ContactsBackend { get; }
     private IUsersUpgradeBackend UsersUpgradeBackend { get; }
-    private IBlobStorageProvider Blobs { get; }
+    private IBlobStorages Blobs { get; }
 
     public ChatsUpgradeBackend(IServiceProvider services) : base(services)
     {
@@ -26,7 +26,7 @@ public partial class ChatsUpgradeBackend : DbServiceBase<ChatDbContext>, IChatsU
         RolesBackend = services.GetRequiredService<IRolesBackend>();
         ContactsBackend = services.GetRequiredService<IContactsBackend>();
         UsersUpgradeBackend = services.GetRequiredService<IUsersUpgradeBackend>();
-        Blobs = Services.GetRequiredService<IBlobStorageProvider>();
+        Blobs = Services.GetRequiredService<IBlobStorages>();
     }
 
     // [CommandHandler]

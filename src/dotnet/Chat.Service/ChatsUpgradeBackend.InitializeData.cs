@@ -138,7 +138,7 @@ public partial class ChatsUpgradeBackend
 
         var chatId = Constants.Chat.DefaultChatId;
         var randomWords = new[] { "most", "chat", "actual", "ever", "amazing", "absolutely", "terrific", "truly", "level 100500" };
-        var audioBlobs = Services.GetRequiredService<IBlobStorageProvider>().GetBlobStorage(BlobScope.AudioRecord);
+        var audioBlobs = Services.GetRequiredService<IBlobStorages>()[BlobScope.AudioRecord];
 
         // Signing in admin
         var admin = await AccountsBackend.Get(Constants.User.Admin.UserId, cancellationToken).ConfigureAwait(false);

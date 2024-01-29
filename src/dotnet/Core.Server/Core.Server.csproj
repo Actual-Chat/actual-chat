@@ -18,4 +18,8 @@
     <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="ActualLab.Core" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
+  </ItemGroup>
 </Project>

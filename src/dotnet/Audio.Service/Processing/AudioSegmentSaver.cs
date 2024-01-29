@@ -2,10 +2,10 @@ namespace ActualChat.Audio.Processing;
 
 public sealed class AudioSegmentSaver : AudioProcessorBase
 {
-    private IBlobStorageProvider Blobs { get; }
+    private IBlobStorages Blobs { get; }
 
     public AudioSegmentSaver(IServiceProvider services) : base(services)
-        => Blobs = services.GetRequiredService<IBlobStorageProvider>();
+        => Blobs = services.GetRequiredService<IBlobStorages>();
 
     public async Task<string> Save(
         ClosedAudioSegment closedAudioSegment,
@@ -17,7 +17,7 @@ public sealed class AudioSegmentSaver : AudioProcessorBase
         var converter = new ActualOpusStreamConverter(Clocks, Log);
         var audioSource = closedAudioSegment.Audio;
         var byteStream = converter.ToByteStream(audioSource, cancellationToken);
-        var blobStorage = Blobs.GetBlobStorage(BlobScope.AudioRecord);
+        var blobStorage = Blobs[BlobScope.AudioRecord];
         await blobStorage.UploadByteStream(blobId, byteStream, cancellationToken).ConfigureAwait(false);
         return blobId;
     }

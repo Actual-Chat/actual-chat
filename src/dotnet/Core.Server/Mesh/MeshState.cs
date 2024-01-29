@@ -9,7 +9,7 @@ public sealed partial class MeshState
     public static readonly MeshState Empty = new();
 
     private readonly object _lock = new();
-    private volatile Dictionary<MeshShardingDef, MeshSharding>? _shardingCache;
+    private volatile Dictionary<Sharding, ShardMap>? _shardMapCache;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public ImmutableArray<MeshNode> Nodes { get; } = ImmutableArray<MeshNode>.Empty;
@@ -51,29 +51,29 @@ public sealed partial class MeshState
         return sb.ToStringAndRelease();
     }
 
-    public MeshSharding GetSharding<TShardingDef>()
-        where TShardingDef : MeshShardingDef, IMeshShardingDef<TShardingDef>
-        => GetSharding(TShardingDef.Instance);
+    public ShardMap GetShardMap<TSharding>()
+        where TSharding : Sharding, ISharding<TSharding>
+        => GetShardMap(TSharding.Instance);
 
-    public MeshSharding GetSharding(MeshShardingDef shardingDef)
+    public ShardMap GetShardMap(Sharding sharding)
     {
         // ReSharper disable once InconsistentlySynchronizedField
-        var cache = _shardingCache;
-        if (cache != null && cache.TryGetValue(shardingDef, out var sharding))
-            return sharding;
+        var cache = _shardMapCache;
+        if (cache != null && cache.TryGetValue(sharding, out var shardMap))
+            return shardMap;
 
         lock (_lock) { // Double-check locking
-            cache = _shardingCache;
-            if (cache != null && cache.TryGetValue(shardingDef, out sharding))
-                return sharding;
+            cache = _shardMapCache;
+            if (cache != null && cache.TryGetValue(sharding, out shardMap))
+                return shardMap;
 
-            if (!NodesByRole.TryGetValue(shardingDef.HostRole, out var nodes))
+            if (!NodesByRole.TryGetValue(sharding.HostRole, out var nodes))
                 nodes = ImmutableArray<MeshNode>.Empty;
-            sharding = new MeshSharding(shardingDef, nodes);
-            cache = cache == null ? new() : new Dictionary<MeshShardingDef, MeshSharding>(cache);
-            cache[shardingDef] = sharding;
-            _shardingCache = cache;
+            shardMap = new ShardMap(sharding, nodes);
+            cache = cache == null ? new() : new Dictionary<Sharding, ShardMap>(cache);
+            cache[sharding] = shardMap;
+            _shardMapCache = cache;
         }
-        return sharding;
+        return shardMap;
     }
 }

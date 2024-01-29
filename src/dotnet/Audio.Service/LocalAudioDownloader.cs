@@ -9,10 +9,10 @@ public partial class LocalAudioDownloader : AudioDownloader
     
     private static readonly Regex AudioBlobIdRegex = AudioBlobIdRegexFactory();
 
-    private IBlobStorageProvider Blobs { get; init; }
+    private IBlobStorages Blobs { get; init; }
 
     public LocalAudioDownloader(IServiceProvider services) : base(services)
-        => Blobs = services.GetRequiredService<IBlobStorageProvider>();
+        => Blobs = services.GetRequiredService<IBlobStorages>();
 
     public override async Task<AudioSource> Download(
         string audioBlobUrl,
@@ -25,7 +25,7 @@ public partial class LocalAudioDownloader : AudioDownloader
 
         var blobId = match.Groups["blobId"].Value;
         Log.LogDebug("Fetching blob #{BlobId}", blobId);
-        var blobStorage = Blobs.GetBlobStorage(BlobScope.AudioRecord);
+        var blobStorage = Blobs[BlobScope.AudioRecord];
         var stream = await blobStorage.Read(blobId, cancellationToken).ConfigureAwait(false);
         if (stream == null) {
             Log.LogWarning("Blob #{BlobId} is not found", blobId);

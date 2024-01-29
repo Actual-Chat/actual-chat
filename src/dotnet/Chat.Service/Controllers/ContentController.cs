@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace ActualChat.Chat.Controllers;
 
 [ApiController, Route("api/content")]
-public sealed class ContentController(IBlobStorageProvider blobs) : ControllerBase
+public sealed class ContentController(IBlobStorages blobs) : ControllerBase
 {
     [HttpGet("{**blobId}")]
     [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client, VaryByQueryKeys = new[] { "blobId" })]
@@ -15,7 +15,7 @@ public sealed class ContentController(IBlobStorageProvider blobs) : ControllerBa
         if (blobId.IsNullOrEmpty())
             return NotFound();
 
-        var blobStorage = blobs.GetBlobStorage(BlobScope.ContentRecord);
+        var blobStorage = blobs[BlobScope.ContentRecord];
         var byteStream = await blobStorage.Read(blobId, cancellationToken).ConfigureAwait(false);
         if (byteStream == null)
             return NotFound();

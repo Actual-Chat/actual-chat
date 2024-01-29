@@ -1,4 +1,4 @@
-namespace ActualChat.Hosting;
+namespace ActualChat;
 
 public enum ServiceMode
 {

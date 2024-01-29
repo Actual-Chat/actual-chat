@@ -1,9 +1,8 @@
-using ActualChat.Mesh;
 using ActualChat.Testing.Host;
 
-namespace ActualChat.Core.Server.IntegrationTests.Mesh;
+namespace ActualChat.Core.Server.IntegrationTests;
 
-public class MeshShardWorkerTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+public class ShardWorkerTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
@@ -15,7 +14,7 @@ public class MeshShardWorkerTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await Task.Delay(1000);
         await w1a.DisposeSilentlyAsync();
         var shardIndexes = await w1a.Channel.Reader.ReadAllAsync().Distinct().ToListAsync();
-        shardIndexes.Count.Should().Be(shardingDef.Size);
+        shardIndexes.Count.Should().Be(shardingDef.ShardCount);
 
         await using var w1b = new TestShardWorker(h1.Services, "w1b");
         w1b.Start();
@@ -28,15 +27,15 @@ public class MeshShardWorkerTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await Task.Delay(3000);
         await w2a.DisposeSilentlyAsync();
         shardIndexes = await w2a.Channel.Reader.ReadAllAsync().Distinct().ToListAsync();
-        shardIndexes.Count.Should().Be(shardingDef.Size / 2);
+        shardIndexes.Count.Should().Be(shardingDef.ShardCount / 2);
         await w2b.DisposeSilentlyAsync();
         shardIndexes = await w2b.Channel.Reader.ReadAllAsync().Distinct().ToListAsync();
-        shardIndexes.Count.Should().Be(shardingDef.Size / 2);
+        shardIndexes.Count.Should().Be(shardingDef.ShardCount / 2);
     }
 
-    public class TestShardWorker(IServiceProvider services, string name) : MeshShardWorker<Sharding.Backend>(services)
+    public class TestShardWorker(IServiceProvider services, string name) : ShardWorker<Sharding.Backend>(services)
     {
-        private static readonly object?[] ShardOwners = new object?[Sharding.Backend.Instance.Size];
+        private static readonly object?[] ShardOwners = new object?[Sharding.Backend.Instance.ShardCount];
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
         private ITestOutputHelper Out { get; } = services.GetRequiredService<ITestOutputHelper>();
 

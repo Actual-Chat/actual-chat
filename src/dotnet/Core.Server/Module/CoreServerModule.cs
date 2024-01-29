@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
+using ActualLab.Rpc;
 using Microsoft.AspNetCore.StaticFiles;
 
 namespace ActualChat.Module;
@@ -20,16 +21,18 @@ public sealed class CoreServerModule(IServiceProvider moduleServices) : HostModu
         if (hostKind.IsApp())
             throw StandardError.Internal("This module can be used on server side only.");
 
-        services.AddSingleton<IContentSaver>(
-            c => new ContentSaver(c.GetRequiredService<IBlobStorageProvider>()));
+        // Core server-side services
+        services.AddSingleton(c => new ServerSideServiceDefs(c));
 
+        // Other services
+        services.AddSingleton<IContentSaver>(c => new ContentSaver(c.BlobStorages()));
         var storageBucket = Settings.GoogleStorageBucket;
         if (storageBucket.IsNullOrEmpty()) {
-            services.AddSingleton<IContentTypeProvider>(ContentTypeProvider.Instance);
-            services.AddSingleton<LocalFolderBlobStorage.Options>();
-            services.AddSingleton<IBlobStorageProvider>(c => new LocalFolderBlobStorageProvider(c));
+            services.AddSingleton<IContentTypeProvider>(_ => ContentTypeProvider.Instance);
+            services.AddSingleton(_ => new LocalFolderBlobStorage.Options());
+            services.AddSingleton<IBlobStorages>(c => new LocalFolderBlobStorages(c));
         }
         else
-            services.AddSingleton<IBlobStorageProvider>(new GoogleCloudBlobStorageProvider(storageBucket));
+            services.AddSingleton<IBlobStorages>(_ => new GoogleCloudBlobStorages(storageBucket));
     }
 }

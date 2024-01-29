@@ -32,8 +32,8 @@ namespace ActualChat.Media.Migrations
             var dbInitializer = DbInitializer.GetCurrent<MediaDbInitializer>();
             var log = dbInitializer.Services.LogFor(GetType());
 
-            var blobStorageProvider = dbInitializer.Services.GetRequiredService<IBlobStorageProvider>();
-            var blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
+            var blobStorageProvider = dbInitializer.Services.GetRequiredService<IBlobStorages>();
+            var blobStorage = blobStorageProvider[BlobScope.ContentRecord];
 
             using var dbContext = dbInitializer.CreateDbContext(true);
 

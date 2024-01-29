@@ -59,7 +59,7 @@ public static class TestAppHostFactory
                     KeepSignedIn = true,
                 });
                 services.AddSingleton(options.ChatDbInitializerOptions);
-                services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
+                services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
                 services.AddSingleton<ElasticNames>(_ => {
                     var rsg = new RandomStringGenerator(6, RandomStringGenerator.Base32Alphabet);

@@ -1,19 +1,21 @@
-namespace ActualChat.Mesh;
+using ActualChat.Mesh;
 
-public abstract class MeshShardWorker<TShardingDef>(IServiceProvider services, string? keySuffix = null)
-    : MeshShardWorker(services, TShardingDef.Instance, keySuffix)
-    where TShardingDef : MeshShardingDef, IMeshShardingDef<TShardingDef>;
+namespace ActualChat;
 
-public abstract class MeshShardWorker : WorkerBase
+public abstract class ShardWorker<TSharding>(IServiceProvider services, string? keySuffix = null)
+    : ShardWorker(services, TSharding.Instance, keySuffix)
+    where TSharding : Sharding, ISharding<TSharding>;
+
+public abstract class ShardWorker : WorkerBase
 {
     private ILogger? _log;
 
     protected IServiceProvider Services { get; }
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    protected MeshShardingDef ShardingDef { get; }
-    protected IMeshLocks ShardLocks { get; }
+    protected Sharding Sharding { get; }
     protected MeshWatcher MeshWatcher { get; }
+    protected IMeshLocks ShardLocks { get; }
     protected ShardState[] ShardStates { get; }
 
     public MeshNode ThisNode { get; }
@@ -22,26 +24,27 @@ public abstract class MeshShardWorker : WorkerBase
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.1, 5);
     public IMomentClock Clock => ShardLocks.Clock;
 
-    protected MeshShardWorker(IServiceProvider services, MeshShardingDef shardingDef, string? keySuffix = null)
+    protected ShardWorker(IServiceProvider services, Sharding sharding, string? keySuffix = null)
     {
         Services = services;
-        ShardingDef = shardingDef;
+        Sharding = sharding;
+        MeshWatcher = services.MeshWatcher();
+        ThisNode = MeshWatcher.ThisNode;
+
         keySuffix ??= GetType().Name;
         if (keySuffix.Length != 0)
             keySuffix = "." + keySuffix;
-        var fullKeySuffix = $"{nameof(ShardLocks)}.{shardingDef.HostRole.Value}{keySuffix}";
+        var fullKeySuffix = $"{nameof(ShardLocks)}.{sharding.HostRole.Value}{keySuffix}";
         ShardLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(fullKeySuffix);
         LockOptions = ShardLocks.LockOptions;
-        MeshWatcher = services.MeshWatcher();
-        ThisNode = MeshWatcher.ThisNode;
-        ShardStates = Enumerable.Range(0, shardingDef.Size).Select(i => new ShardState(this, i)).ToArray();
+        ShardStates = Enumerable.Range(0, sharding.ShardCount).Select(i => new ShardState(this, i)).ToArray();
     }
 
     protected abstract Task OnRun(int shardIndex, CancellationToken cancellationToken);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var usedShards = new BitArray(ShardingDef.Size);
+        var usedShards = new BitArray(Sharding.ShardCount);
         var addedShards = new List<int>();
         var removedShards = new List<int>();
         try {
@@ -57,9 +60,12 @@ public abstract class MeshShardWorker : WorkerBase
 
                 addedShards.Clear();
                 removedShards.Clear();
-                var sharding = state.GetSharding(ShardingDef);
-                for (var shardIndex = 0; shardIndex < sharding.Shards.Length; shardIndex++) {
-                    var node = sharding.Shards[shardIndex];
+                var sharding = state.GetShardMap(Sharding);
+                var shards = sharding.Shards;
+                var nodes = sharding.Nodes;
+                for (var shardIndex = 0; shardIndex < shards.Length; shardIndex++) {
+                    var nodeIndex = shards[shardIndex];
+                    var node = nodeIndex >= 0 ? nodes[nodeIndex] : null;
                     var shardState = ShardStates[shardIndex];
                     var mustUse = node == ThisNode;
                     if (mustUse == usedShards[shardIndex])
@@ -130,12 +136,12 @@ public abstract class MeshShardWorker : WorkerBase
     {
         private CancellationTokenSource StopTokenSource { get; }
 
-        public MeshShardWorker Worker { get; }
+        public ShardWorker Worker { get; }
         public int Index { get; }
         public CancellationToken StopToken { get; }
         public Task? WhenStopped { get; set; }
 
-        public ShardState(MeshShardWorker worker, int index)
+        public ShardState(ShardWorker worker, int index)
         {
             Worker = worker;
             Index = index;

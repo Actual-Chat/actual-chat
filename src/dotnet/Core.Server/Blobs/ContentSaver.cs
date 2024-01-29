@@ -1,8 +1,8 @@
 namespace ActualChat.Blobs;
 
-internal class ContentSaver(IBlobStorageProvider blobStorageProvider) : IContentSaver
+internal class ContentSaver(IBlobStorages blobStorages) : IContentSaver
 {
-    private readonly IBlobStorage _blobStorage = blobStorageProvider.GetBlobStorage(BlobScope.ContentRecord);
+    private readonly IBlobStorage _blobStorage = blobStorages[BlobScope.ContentRecord];
 
     public TimeSpan PostOperationDelay { get; init; } = TimeSpan.FromMilliseconds(250);
 

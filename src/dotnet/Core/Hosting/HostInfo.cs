@@ -27,11 +27,4 @@ public sealed record HostInfo
     public bool IsDevelopmentInstance => _isDevelopmentInstance.Value ??= Environment == DevelopmentEnvironment;
 
     public bool HasRole(HostRole role) => Roles.Contains(role);
-
-    public ServiceMode GetServiceMode(HostRole role)
-        => HasRole(HostRole.SingleServer)
-            ? ServiceMode.SelfHosted
-            : HasRole(role)
-                ? ServiceMode.Server
-                : ServiceMode.Client;
 }
