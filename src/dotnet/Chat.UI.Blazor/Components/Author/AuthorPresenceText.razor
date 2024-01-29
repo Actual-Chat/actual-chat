@@ -6,7 +6,7 @@
         return;
 }
 
-<PresenceText Presence="@m.Presence" LastCheckIn="@m.LastSeenAt" />
+<PresenceText Presence="@m.Presence" LastCheckIn="@m.LastCheckIn" />
 
 @code {
     [Inject] protected Session Session { get; init; } = null!;
@@ -65,20 +65,20 @@
                 presence = Presence.Recording;
         }
 
-        var lastSeen = await Authors.GetLastCheckIn(Session, AuthorId.ChatId, AuthorId, cancellationToken);
+        var lastCheckIn = await Authors.GetLastCheckIn(Session, AuthorId.ChatId, AuthorId, cancellationToken);
         return new Model {
             Presence = presence,
-            LastSeenAt = lastSeen,
+            LastCheckIn = lastCheckIn,
         };
     }
 
     public sealed record Model {
         public static Model None = new() {
             Presence = Presence.Unknown,
-            LastSeenAt = null,
+            LastCheckIn = null,
         };
 
         public required Presence Presence { get; init; }
-        public required Moment? LastSeenAt { get; init; }
+        public required Moment? LastCheckIn { get; init; }
     }
 }
