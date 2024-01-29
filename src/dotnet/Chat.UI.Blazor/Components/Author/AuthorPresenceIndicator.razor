@@ -2,11 +2,9 @@
 @inherits ComputedStateComponent<Presence>
 @{
     var presence = State.Value;
-    if (presence is Presence.Unknown or Presence.Offline)
-        return;
 }
 
-@PresenceIndicator.Render(presence)
+<PresenceIndicator Presence="@presence" />
 
 @code {
     [Inject] protected Session Session { get; init; } = null!;
