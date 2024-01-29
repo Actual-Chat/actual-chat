@@ -64,26 +64,15 @@ export class AudioVadWorkletProcessor extends AudioWorkletProcessor implements A
         const hasInput = inputs
             && inputs.length !== 0
             && inputs[0].length !== 0;
-        const hasOutput = outputs
-            && outputs.length !== 0
-            && outputs[0].length !== 0;
 
         if (this.state === 'stopped')
             return false;
         if (this.state === 'inactive')
             return true;
-        if (!hasInput || !hasOutput)
+        if (!hasInput)
             return true;
 
         const input = inputs[0];
-        const output = outputs[0];
-
-        for (let channel = 0; channel < input.length; channel++) {
-            const inputChannel = input[channel];
-            const outputChannel = output[channel];
-            outputChannel.set(inputChannel);
-        }
-
         const { samplesPerWindow } = this;
 
         this.buffer.push(input);
