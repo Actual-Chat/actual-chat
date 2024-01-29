@@ -1,0 +1,84 @@
+﻿@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<AuthorPresenceText.Model>
+@{
+    var m = State.Value;
+    if (m == Model.None)
+        return;
+}
+
+<PresenceText Presence="@m.Presence" LastCheckIn="@m.LastSeenAt" />
+
+@code {
+    [Inject] protected Session Session { get; init; } = null!;
+    [Inject] protected IAuthors Authors { get; init; } = null!;
+    [Inject] protected ChatActivity ChatActivity { get; init; } = null!;
+
+    protected AuthorId AuthorId { get; private set; }
+    protected ChatId ChatId => AuthorId.ChatId;
+    protected IChatStreamingActivity? ChatRecordingActivity { get; set; }
+
+    [Parameter, EditorRequired] public string AuthorSid { get; set; } = "";
+    [Parameter] public bool ShowRecording { get; set; }
+
+    public override async ValueTask DisposeAsync() {
+        await base.DisposeAsync();
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = null;
+    }
+
+    protected override void OnInitialized()
+    {
+        // Set AuthorId here in order to have actual AuthorId value in GetStateOptions.
+        AuthorId = new AuthorId(AuthorSid);
+        base.OnInitialized();
+    }
+
+    protected override void OnParametersSet()
+    {
+        AuthorId = new AuthorId(AuthorSid);
+        ChatRecordingActivity?.Dispose();
+        ChatRecordingActivity = null;
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        if (ShowRecording && !ChatId.IsNone)
+            ChatRecordingActivity = await ChatActivity.GetStreamingActivity(ChatId, CancellationToken.None);
+        await base.OnParametersSetAsync();
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+    {
+        return new () {
+            InitialValue = Model.None,
+            Category = GetStateCategory(),
+        };
+    }
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        if (AuthorId.IsNone)
+            return Model.None;
+
+        var presence = await Authors.GetPresence(Session, AuthorId.ChatId, AuthorId, cancellationToken);
+        if (ShowRecording && ChatRecordingActivity != null) {
+            var isStreaming = await ChatRecordingActivity.IsAuthorStreaming(AuthorId, cancellationToken);
+            if (isStreaming)
+                presence = Presence.Recording;
+        }
+
+        var lastSeen = await Authors.GetLastCheckIn(Session, AuthorId.ChatId, AuthorId, cancellationToken);
+        return new Model {
+            Presence = presence,
+            LastSeenAt = lastSeen,
+        };
+    }
+
+    public sealed record Model {
+        public static Model None = new() {
+            Presence = Presence.Unknown,
+            LastSeenAt = null,
+        };
+
+        public required Presence Presence { get; init; }
+        public required Moment? LastSeenAt { get; init; }
+    }
+}

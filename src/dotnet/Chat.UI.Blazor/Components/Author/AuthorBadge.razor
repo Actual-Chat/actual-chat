@@ -2,17 +2,22 @@
 @inherits AuthorBadgeBase
 @{
     var m = State.Value;
-    var badgeContent = ShowPresence ? @<AuthorPresenceIndicator AuthorSid="@AuthorSid" ShowRecording="true"/> : (RenderFragment?)null;
+    var badgeContent = ShowPresence
+        ? @<AuthorPresenceIndicator AuthorSid="@AuthorSid" ShowRecording="true"/>
+        : (RenderFragment?)null;
+    var statusContent = ShowPresenceText
+        ? @<AuthorPresenceText AuthorSid="@AuthorSid" ShowRecording="true"/>
+        : (RenderFragment?)null;
 }
 
 <AvatarBadge
     Avatar="@m.Author.Avatar"
     Size="@Size"
     NameClass="@NameClass"
-    ShowStatusText="@ShowStatusText"
     StatusText="@StatusText"
     Click="@_onClickCallback"
-    BadgeContent="@badgeContent">
+    BadgeContent="@badgeContent"
+    StatusContent="@statusContent">
 </AvatarBadge>
 
 @code {
@@ -22,7 +27,7 @@
     [Parameter] public string NameClass { get; set; } = "";
     [Parameter] public EventCallback<AuthorId> Click { get; set; }
     [Parameter] public bool ShowPresence { get; set; }
-    [Parameter] public bool ShowStatusText { get; set; }
+    [Parameter] public bool ShowPresenceText { get; set; }
     [Parameter] public string? StatusText { get; set; }
 
     protected override void OnInitialized() {
