@@ -29,6 +29,12 @@ internal class UserPresenceTracker : IAsyncDisposable
     public Presence GetPresence(UserId userId)
         => ToPresence(_checkIns.Get(userId), SystemNow);
 
+    public Moment? GetLastCheckIn(UserId userId)
+    {
+        var lastCheckIn = _checkIns.Get(userId);
+        return lastCheckIn?.LastActiveAt ?? lastCheckIn?.At;
+    }
+
     public void CheckIn(UserId userId, Moment at, bool isActive)
     {
         var now = SystemNow;
@@ -46,6 +52,7 @@ internal class UserPresenceTracker : IAsyncDisposable
             _awayTimers.Remove(userId);
             _offlineTimers.Remove(userId);
         }
+
         if (oldPresence != newPresence)
             _onPresenceChanged.Invoke(userId);
     }

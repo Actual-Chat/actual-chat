@@ -12,6 +12,10 @@ public class UserPresences(IServiceProvider services) : IUserPresences
     public virtual async Task<Presence> Get(UserId userId, CancellationToken cancellationToken)
         => await Backend.Get(userId, cancellationToken).ConfigureAwait(false);
 
+    // [ComputeMethod]
+    public virtual async Task<Moment?> GetLastCheckIn(UserId userId, CancellationToken cancellationToken)
+        => await Backend.GetLastCheckIn(userId, cancellationToken).ConfigureAwait(false);
+
     // [CommandHandler]
     public virtual async Task OnCheckIn(UserPresences_CheckIn command, CancellationToken cancellationToken)
     {
