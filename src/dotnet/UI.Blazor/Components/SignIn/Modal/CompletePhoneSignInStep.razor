@@ -2,6 +2,7 @@
 @using ActualChat.Users
 @using ActualChat.UI.Blazor.Services
 @using TaskExt = ActualLab.Async.TaskExt
+@using ActualChat.Hosting
 @inherits Step;
 
 @{
@@ -22,16 +23,20 @@
     private TotpVerifier? _totpVerifier;
 
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
-    [Inject] private NavigationManager Nav { get; init; } = null!;
+    [Inject] private History History { get; init; } = null!;
+    [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
 
     public override bool IsCompleted { get; } = false;
 
-    protected override Task<bool> Save() {
+    protected override async Task<bool> Save() {
         var url = UrlMapper.ToAbsolute(Constants.Auth.Phone.CallbackPath);
-        Nav.NavigateTo(url, true);
-        return TaskExt.TrueTask;
+        if (HostInfo.HostKind == HostKind.MauiApp)
+            await History.NavigateTo(Links.Chats);
+        else
+            await History.NavigateTo(url, force: true);
+        return true;
     }
 
     protected override void MarkCompleted()
