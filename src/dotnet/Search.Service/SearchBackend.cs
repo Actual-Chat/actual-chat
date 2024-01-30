@@ -5,23 +5,26 @@ using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Core.Search;
 using Microsoft.AspNetCore.Http;
 using ActualLab.Fusion.EntityFramework;
+using Elastic.Clients.Elasticsearch.QueryDsl;
 
 namespace ActualChat.Search;
 
 internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbContext>(services), ISearchBackend
 {
     private const int MaxRefreshChatCount = 100;
+    private ElasticNames? _elasticNames;
     private ElasticsearchClient? _elastic;
     private IChatsBackend? _chatsBackend;
     private IContactsBackend? _contactsBackend;
 
+    private ElasticNames ElasticNames => _elasticNames ??= Services.GetRequiredService<ElasticNames>();
     private ElasticsearchClient Elastic => _elastic ??= Services.GetRequiredService<ElasticsearchClient>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
     private ElasticConfigurator ElasticConfigurator { get; } = services.GetRequiredService<ElasticConfigurator>();
 
     // Not a [ComputeMethod]!
-    public async Task<SearchResultPage> SearchInChat(
+    public async Task<EntrySearchResultPage> FindEntriesInChat(
         ChatId chatId,
         string criteria,
         int skip,
@@ -29,7 +32,7 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
         CancellationToken cancellationToken)
     {
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        return await Search(chat.ToIndexName(),
+        return await FindEntries(ElasticNames.GetIndexName(chat),
             criteria,
             skip,
             limit,
@@ -37,7 +40,7 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
     }
 
     // Not a [ComputeMethod]!
-    public async Task<SearchResultPage> SearchInAllChats(
+    public async Task<EntrySearchResultPage> FindEntriesInAllChats(
         UserId userId,
         string criteria,
         int skip,
@@ -47,8 +50,8 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
         if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
 
-        var indices = await GetIndices(userId, cancellationToken).ConfigureAwait(false);
-        return await Search(indices.ToArray(),
+        var indices = await GetIndicesForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
+        return await FindEntries(indices.ToArray(),
                 criteria,
                 skip,
                 limit,
@@ -56,8 +59,109 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
             .ConfigureAwait(false);
     }
 
+    // Not a [ComputeMethod]!
+    public async Task<ContactSearchResultPage> FindUserContacts(
+        UserId userId,
+        string criteria,
+        int skip,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+
+        skip = skip.Clamp(0, int.MaxValue);
+        limit = limit.Clamp(0, Constants.Search.PageSizeLimit);
+
+        var searchResponse =
+            await Elastic.SearchAsync<IndexedUserContact>(s
+                        => s.Index(ElasticNames.PublicUserIndexName)
+                            .From(skip)
+                            .Size(limit)
+                            .Query(q => q.MultiMatch(
+                                m => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
+                                    .Query(criteria)
+                                    .Type(TextQueryType.PhrasePrefix)))
+                            // .Query(q => q.MatchPhrasePrefix(p
+                            //     => p.Query(criteria)
+                            //         .Field(x => x.FullName)
+                            //         .Field(x => x.FirstName)
+                            //         .Field(x => x.SecondName)))
+                            .Query(q
+                                => q.Bool(b
+                                    => b.Should(q2
+                                        => q2.MatchPhrasePrefix(p
+                                            => p.Field(f => f.FullName).Query(criteria)))))
+                            .IgnoreUnavailable(),
+                    cancellationToken)
+                .Assert(Log)
+                .ConfigureAwait(false);
+        if (searchResponse.ApiCallDetails.HttpStatusCode == StatusCodes.Status404NotFound)
+            return ContactSearchResultPage.Empty;
+        return new ContactSearchResultPage {
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Offset = skip,
+        };
+
+        ContactSearchResult ToSearchResult(Hit<IndexedUserContact> x)
+        {
+            // TODO: highlighting
+            var peerChatId = new PeerChatId(userId, x.Source!.Id);
+            var contactId = new ContactId(userId, peerChatId.ToChatId());
+            return new ContactSearchResult(contactId, SearchMatch.New(x.Source.FullName));
+        }
+    }
+
+    // Not a [ComputeMethod]!
+    public async Task<ContactSearchResultPage> FindChatContacts(
+        UserId userId,
+        bool isPublic,
+        string criteria,
+        int skip,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+
+        skip = skip.Clamp(0, int.MaxValue);
+        limit = limit.Clamp(0, Constants.Search.PageSizeLimit);
+
+        var chatIds = !isPublic
+            ? await ContactsBackend.ListIdsForContactSearch(userId, cancellationToken).ConfigureAwait(false)
+            : ApiArray<ContactId>.Empty;
+        var searchResponse =
+            await Elastic.SearchAsync<IndexedChatContact>(s
+                        => s.Index(ElasticNames.GetChatContactIndexName(isPublic))
+                            .From(skip)
+                            .Size(limit)
+                            .Query(q => {
+                                q = q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Title));
+                                if (!isPublic) {
+                                    var terms = new TermsQueryField(chatIds.Select(x => (FieldValue)x.Value).ToList());
+                                    q.Terms(t => t.Field(f => f.Id).Terms(terms));
+                                }
+                            })
+                            .IgnoreUnavailable(),
+                    cancellationToken)
+                .Assert(Log)
+                .ConfigureAwait(false);
+        if (searchResponse.ApiCallDetails.HttpStatusCode == StatusCodes.Status404NotFound)
+            return ContactSearchResultPage.Empty;
+        return new ContactSearchResultPage {
+            Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
+            Offset = skip,
+        };
+
+        ContactSearchResult ToSearchResult(Hit<IndexedChatContact> x)
+        {
+            // TODO: highlighting
+            return new ContactSearchResult(new ContactId(userId, x.Source!.Id), SearchMatch.New(x.Source.Title));
+        }
+    }
+
     // [CommandHandler]
-    public virtual async Task OnBulkIndex(SearchBackend_BulkIndex command, CancellationToken cancellationToken)
+    public virtual async Task OnEntryBulkIndex(SearchBackend_EntryBulkIndex command, CancellationToken cancellationToken)
     {
         var chatId = command.ChatId.Require();
         if (Computed.IsInvalidating())
@@ -70,23 +174,40 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
         var updated = command.Updated
             .Require(IndexedEntry.MustBeValid)
             .ToList();
-        var deletedIds = command.Deleted.Select(lid => new Id(new TextEntryId(chatId, lid, AssumeValid.Option))).ToList();
-        if (updated.Count == 0 && deletedIds.Count == 0)
+        if (updated.Count == 0 && command.Deleted.Count == 0)
             return;
 
         if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
             await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
 
         var chat = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
-        var indexName = chat.ToIndexName();
+        var indexName = ElasticNames.GetIndexName(chat);
 
-        await Elastic
-            .BulkAsync(r => r
-                    .IndexMany(updated, (op, _) => op.Index(indexName))
-                    .DeleteMany(deletedIds, (op, _) => op.Index(indexName)),
-                cancellationToken)
-            .Assert(Log)
-            .ConfigureAwait(false);
+        await IndexEntries(updated, command.Deleted, indexName, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnUserContactBulkIndex(SearchBackend_UserContactBulkIndex command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
+
+        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+
+        await IndexUserContacts(command.Updated, command.Deleted, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnChatContactBulkIndex(SearchBackend_ChatContactBulkIndex command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return;
+
+        if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
+            await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
+
+        await IndexChatContacts(command.Updated, command.Deleted, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -100,23 +221,67 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
             return;
 
         var chats = await chatIds.Select(x => ChatsBackend.Get(x, cancellationToken)).Collect().ConfigureAwait(false);
-        var indices = chats.SkipNullItems().Select(x => x.ToIndexName()).Distinct().ToArray();
-        await Elastic.Indices.RefreshAsync(r => r.Indices(indices), cancellationToken).ConfigureAwait(false);
+        var indices = new List<IndexName>();
+        if (command.RefreshUsers)
+            indices.Add(ElasticNames.PublicUserIndexName);
+        if (command.RefreshPublicChats)
+            indices.Add(ElasticNames.GetChatContactIndexName(true));
+        if (command.RefreshPrivateChats)
+            indices.Add(ElasticNames.GetChatContactIndexName(false));
+        indices.AddRange(chats.SkipNullItems().Select(ElasticNames.GetIndexName).Distinct());
+        if (indices.Count == 0)
+            return;
+
+        await Elastic.Indices.RefreshAsync(r => r.Indices(indices.ToArray()), cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
-    protected virtual async Task<ApiSet<string>> GetIndices(UserId userId, CancellationToken cancellationToken)
+    protected virtual async Task<ApiSet<string>> GetIndicesForEntrySearch(UserId userId, CancellationToken cancellationToken)
     {
         // public place chats are not returned since we use scoped indexes
-        var contactIds = await ContactsBackend.ListIdsForSearch(userId, cancellationToken).ConfigureAwait(false);
-        var indices = new List<IndexName>(ElasticExt.GetPeerChatSearchIndexNamePatterns(userId));
-        indices.AddRange(contactIds.Select(x => x.ChatId.ToIndexName(false)));
+        var contactIds = await ContactsBackend.ListIdsForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
+        var indices = new List<IndexName>(ElasticNames.GetPeerChatSearchIndexNamePatterns(userId));
+        indices.AddRange(contactIds.Select(x => ElasticNames.GetIndexName(x.ChatId, false)));
         return indices.Select(x => x.ToString()).ToApiSet();
     }
 
     // Private methods
 
-    private async Task<SearchResultPage> Search(
+    private Task IndexEntries(
+        IReadOnlyCollection<IndexedEntry> updated,
+        IReadOnlyCollection<IndexedEntry> deleted,
+        IndexName indexName,
+        CancellationToken cancellationToken)
+        => Elastic
+            .BulkAsync(r => r
+                    .IndexMany(updated, (op, _) => op.Index(indexName))
+                    .DeleteMany(deleted, (op, _) => op.Index(indexName)),
+                cancellationToken)
+            .Assert(Log);
+
+    private Task IndexUserContacts(
+        IReadOnlyCollection<IndexedUserContact> updated,
+        IReadOnlyCollection<IndexedUserContact> deleted,
+        CancellationToken cancellationToken)
+        => Elastic
+            .BulkAsync(r => r
+                    .IndexMany(updated, (op, _) => op.Index(ElasticNames.PublicUserIndexName))
+                    .DeleteMany(deleted, (op, _) => op.Index(ElasticNames.PublicUserIndexName)),
+                cancellationToken)
+            .Assert(Log);
+
+    private Task IndexChatContacts(
+        IReadOnlyCollection<IndexedChatContact> updated,
+        IReadOnlyCollection<IndexedChatContact> deleted,
+        CancellationToken cancellationToken)
+        => Elastic
+            .BulkAsync(r
+                    => r.IndexMany(updated, (op, x) => op.Index(ElasticNames.GetChatContactIndexName(x.IsPublic)))
+                        .DeleteMany(deleted, (op, x) => op.Index(ElasticNames.GetChatContactIndexName(x.IsPublic))),
+                cancellationToken)
+            .Assert(Log);
+
+    private async Task<EntrySearchResultPage> FindEntries(
         Indices indices,
         string criteria,
         int skip,
@@ -139,9 +304,9 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
                 .Assert(Log)
                 .ConfigureAwait(false);
         if (searchResponse.ApiCallDetails.HttpStatusCode == StatusCodes.Status404NotFound)
-            return SearchResultPage.Empty;
+            return EntrySearchResultPage.Empty;
 
-        return new SearchResultPage {
+        return new EntrySearchResultPage {
             Hits = searchResponse.Hits.Select(ToSearchResult).ToApiArray(),
             Offset = skip,
         };

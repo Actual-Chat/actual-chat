@@ -63,5 +63,6 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
         fusion.AddService<IIndexedChatsBackend, IndexedChatsBackend>();
         services.AddSingleton<ElasticConfigurator>().AddAlias<IHostedService, ElasticConfigurator>();
         services.AddSingleton<IndexingQueue>().AddHostedService(c => c.GetRequiredService<IndexingQueue>());
+        services.AddSingleton<ElasticNames>();
     }
 }

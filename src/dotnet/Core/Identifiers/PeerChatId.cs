@@ -114,6 +114,7 @@ public readonly partial struct PeerChatId : ISymbolIdentifier<PeerChatId>
 
     // Conversion
 
+    public ChatId ToChatId() => new (Id);
     public override string ToString() => Value;
     public static implicit operator Symbol(PeerChatId source) => source.Id;
     public static implicit operator string(PeerChatId source) => source.Id.Value;

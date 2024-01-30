@@ -1,6 +1,7 @@
 using ActualChat.App.Server;
 using ActualChat.Chat.Module;
 using ActualChat.Blobs.Internal;
+using ActualChat.Search;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
 using ActualLab.Fusion.Server.Authentication;
+using ActualLab.Generators;
 using ActualLab.IO;
 
 namespace ActualChat.Testing.Host;
@@ -60,6 +62,9 @@ public static class TestAppHostFactory
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
+                services.AddSingleton<ElasticNames>(_ => new () {
+                    IndexPrefix = "test-" + RandomSymbolGenerator.Default.Next(6).ToLowerInvariant() + "-",
+                });
             },
             AppConfigurationBuilder = cfg => {
                 ConfigureTestApp(cfg, output);

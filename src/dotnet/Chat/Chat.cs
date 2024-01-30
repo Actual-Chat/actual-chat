@@ -22,6 +22,11 @@ public sealed partial record Chat(
             new (() => StandardError.Chat.NonTemplate()),
             c => c is { IsPublic: true, IsTemplate: true });
 
+    public static readonly Requirement<Chat> MustBePlaceRoot = MustExist
+        & Requirement.New<Chat>(
+            new (() => StandardError.Constraint<Chat>("Place root chat is expected.")),
+            c => c is { Id: { IsPlaceChat: true, PlaceChatId.IsRoot: true } });
+
     [DataMember, MemoryPackOrder(2)] public string Title { get; init; } = "";
     [DataMember, MemoryPackOrder(3)] public Moment CreatedAt { get; init; }
     [DataMember, MemoryPackOrder(4)] public bool IsPublic { get; init; }
