@@ -45,7 +45,10 @@
                 }
             </ChildContent>
             <TabContent>
-                <ChatList Kind="ChatListKind.All" />
+                @if (!_placeId.IsNone && OrdinalEquals(ChatListFilter.People.Id.Value, context)) {
+                    <PlacePeopleBanner />
+                }
+                <ChatList Kind="ChatListKind.All"/>
             </TabContent>
         </TabPanel>
     </div>
