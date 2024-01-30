@@ -26,4 +26,7 @@ public static class QueryableExt
         log.Log(logLevel, "{Context}: {Query}", context, source.ToQueryString());
         return source;
     }
+
+    public static IQueryable<TSource> WhereIf<TSource>(this IQueryable<TSource> queryable, Expression<Func<TSource, bool>> filter, bool condition)
+        => condition ? queryable.Where(filter) : queryable;
 }
