@@ -12,8 +12,8 @@
 .avatar-name > .c-anonymous {
     @apply sup;
 }
-.avatar-badge .c-status.c-status-sm {
-    @apply text-xxs leading-3;
+.avatar-badge .c-status {
+    @apply text-caption-6 text-03;
 }
 
 .avatar-text {

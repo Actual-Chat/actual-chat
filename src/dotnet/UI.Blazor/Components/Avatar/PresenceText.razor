@@ -1,0 +1,22 @@
+@using ActualChat.Users
+@namespace ActualChat.UI.Blazor.Components
+
+@switch (Presence)
+{
+    case Presence.Online:
+        @("online")
+        break;
+    case Presence.Recording:
+        @("speaking...")
+        break;
+    case Presence.Away or Presence.Offline:
+        @if (LastCheckIn != null) {
+            @("last seen ")<LiveTimeDeltaText Moment="@LastCheckIn" NullText=""/>
+        }
+        break;
+}
+
+@code {
+    [Parameter] public Presence Presence { get; set; }
+    [Parameter] public Moment? LastCheckIn { get; set; }
+}

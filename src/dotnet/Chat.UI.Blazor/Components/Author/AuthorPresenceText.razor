@@ -1,10 +1,12 @@
 ﻿@namespace ActualChat.Chat.UI.Blazor.Components
-@inherits ComputedStateComponent<Presence>
+@inherits ComputedStateComponent<AuthorPresenceText.Model>
 @{
-    var presence = State.Value;
+    var m = State.Value;
+    if (m == Model.None)
+        return;
 }
 
-<PresenceIndicator Presence="@presence" />
+<PresenceText Presence="@m.Presence" LastCheckIn="@m.LastCheckIn" />
 
 @code {
     [Inject] protected Session Session { get; init; } = null!;
@@ -44,17 +46,17 @@
         await base.OnParametersSetAsync();
     }
 
-    protected override ComputedState<Presence>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
     {
         return new () {
-            InitialValue = Presence.Unknown,
+            InitialValue = Model.None,
             Category = GetStateCategory(),
         };
     }
 
-    protected override async Task<Presence> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         if (AuthorId.IsNone)
-            return Presence.Offline;
+            return Model.None;
 
         var presence = await Authors.GetPresence(Session, AuthorId.ChatId, AuthorId, cancellationToken);
         if (ShowRecording && ChatRecordingActivity != null) {
@@ -62,6 +64,21 @@
             if (isStreaming)
                 presence = Presence.Recording;
         }
-        return presence;
+
+        var lastCheckIn = await Authors.GetLastCheckIn(Session, AuthorId.ChatId, AuthorId, cancellationToken);
+        return new Model {
+            Presence = presence,
+            LastCheckIn = lastCheckIn,
+        };
+    }
+
+    public sealed record Model {
+        public static Model None = new() {
+            Presence = Presence.Unknown,
+            LastCheckIn = null,
+        };
+
+        public required Presence Presence { get; init; }
+        public required Moment? LastCheckIn { get; init; }
     }
 }

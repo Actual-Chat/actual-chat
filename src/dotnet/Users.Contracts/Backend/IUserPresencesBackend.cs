@@ -7,6 +7,9 @@ public interface IUserPresencesBackend : IComputeService
     [ComputeMethod(MinCacheDuration = 30)]
     Task<Presence> Get(UserId userId, CancellationToken cancellationToken);
 
+    [ComputeMethod(MinCacheDuration = 30)]
+    Task<Moment?> GetLastCheckIn(UserId userId, CancellationToken cancellationToken);
+
     [CommandHandler]
     public Task OnCheckIn(UserPresencesBackend_CheckIn command, CancellationToken cancellationToken);
 }

@@ -140,6 +140,27 @@ public class Authors : DbServiceBase<ChatDbContext>, IAuthors
         return await UserPresences.Get(author.UserId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<Moment?> GetLastCheckIn(
+        Session session,
+        ChatId chatId,
+        AuthorId authorId,
+        CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return null;
+
+        var author = await Backend.Get(chatId, authorId, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+        if (author == null)
+            return null;
+
+        if (author.IsAnonymous || author.UserId.IsNone)
+            return null; // Important: we shouldn't report anonymous author presence
+
+        return await UserPresences.GetLastCheckIn(author.UserId, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task<AuthorFull> OnJoin(Authors_Join command, CancellationToken cancellationToken)
     {
