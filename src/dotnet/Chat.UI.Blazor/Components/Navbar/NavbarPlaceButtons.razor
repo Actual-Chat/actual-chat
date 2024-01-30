@@ -1,4 +1,5 @@
 ﻿@using ActualChat.Media;
+@using ActualChat.Chat.UI.Blazor.Module
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<NavbarPlaceButtons.Model>
 @{
@@ -10,7 +11,7 @@
 
 @if (places.Count > 0) {
     var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
-    <div class="navbar-place-buttons">
+    <div @ref="Ref" class="navbar-place-buttons">
         @foreach (var place in places) {
             <NavbarGroupSelectionButton
                 Title="@place.Title"
@@ -34,10 +35,31 @@
 }
 
 @code {
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.PlaceButtons.create";
+    private DotNetObjectReference<NavbarPlaceButtons> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
     private Session Session => Hub.Session();
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+        }
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
