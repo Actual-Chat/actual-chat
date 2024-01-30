@@ -33,8 +33,6 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
     {
         // arrange
         var bob = await _tester.SignInAsBob();
-
-        // act
         var privateChat1 = await CreateChat(false, "Private non-place chat 1");
         var privateChat2 = await CreateChat(false, "Private non-place chat 2");
         var publicChat1 = await CreateChat(true, "Public non-place chat 1");
@@ -50,6 +48,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
         var publicPlacePublicChat1 = await CreateChat(true, "Public place public chat 1", publicPlace.Id);
         var publicPlacePublicChat2 = await CreateChat(true, "Public place public chat 2", publicPlace.Id);
 
+        // act
         var updates = BuildChatContacts(
             new[] { privatePlace, publicPlace },
             privateChat1,
@@ -66,21 +65,33 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
             publicPlacePublicChat2);
         await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
-        var searchResults = await _sut.FindChatContacts(bob.Id,
-            true,
-            "chat",
-            0,
-            20,
-            CancellationToken.None);
 
         // assert
+        var searchResults = await Find(bob.Id, true, "chat");
         searchResults.Should()
-            .BeEquivalentTo(BuildResponse(
-                (bob.Id, publicChat1),
-                (bob.Id, publicChat2),
-                (bob.Id, publicPlacePublicChat1),
-                (bob.Id, publicPlacePublicChat2)
-            ));
+            .BeEquivalentTo(
+                new[] {
+                    BuildSearchResult(bob.Id, publicChat1),
+                    BuildSearchResult(bob.Id, publicChat2),
+                    BuildSearchResult(bob.Id, publicPlacePublicChat1),
+                    BuildSearchResult(bob.Id, publicPlacePublicChat2),
+                }
+            );
+
+        searchResults = await Find(bob.Id, false, "chat");
+        searchResults.Should()
+            .BeEquivalentTo(
+                new[] {
+                    BuildSearchResult(bob.Id, privateChat1),
+                    BuildSearchResult(bob.Id, privateChat2),
+                    BuildSearchResult(bob.Id, publicPlacePrivateChat1),
+                    BuildSearchResult(bob.Id, publicPlacePrivateChat2),
+                    BuildSearchResult(bob.Id, privatePlacePublicChat1),
+                    BuildSearchResult(bob.Id, privatePlacePublicChat2),
+                    BuildSearchResult(bob.Id, privatePlacePrivateChat1),
+                    BuildSearchResult(bob.Id, privatePlacePrivateChat2),
+                }
+            );
     }
 
     private static ApiArray<IndexedChatContact> BuildChatContacts(IEnumerable<Place> places, params Chat.Chat[] chats)
@@ -106,16 +117,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
     private static ContactSearchResult BuildSearchResult(UserId ownerId, ChatId chatId, string title)
         => new (new ContactId(ownerId, chatId), SearchMatch.New(title));
 
-    private static ContactSearchResultPage BuildResponse(params (UserId OwnerId, Chat.Chat Chat)[] hits)
-        => BuildResponse(hits.Select(x => BuildSearchResult(x.OwnerId, x.Chat)).ToArray());
-
-    private static ContactSearchResultPage BuildResponse(params ContactSearchResult[] hits)
-        => new() {
-            Offset = 0,
-            Hits = hits.ToApiArray(),
-        };
-
-    private async Task<Place> CreatePlace(bool isPublic, string title, PlaceId placeId = default)
+    private async Task<Place> CreatePlace(bool isPublic, string title)
     {
         var (id, _) = await _tester.CreateChat(x => x with {
             Kind = ChatKind.Place,
@@ -134,5 +136,17 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
             IsPublic = isPublic,
         });
         return await _tester.Chats.Get(_tester.Session, id, CancellationToken.None).Require();
+    }
+
+    private async Task<ApiArray<ContactSearchResult>> Find(UserId ownerId, bool isPublic, string criteria)
+    {
+        var searchResults = await _sut.FindChatContacts(ownerId,
+            isPublic,
+            criteria,
+            0,
+            20,
+            CancellationToken.None);
+        searchResults.Offset.Should().Be(0);
+        return searchResults.Hits;
     }
 }

@@ -4,9 +4,9 @@ namespace ActualChat.Search;
 
 public class ElasticNames
 {
-    public const string EntryIndexVersion = "v1";
-    public const string UserIndexVersion = "v1";
-    public const string ChatIndexVersion = "v1";
+    public const string EntryIndexVersion = "v2";
+    public const string UserIndexVersion = "v2";
+    public const string ChatIndexVersion = "v2";
 
     public string IndexPrefix { get; init; } = ""; // for testing purpose only
     private string EntryIndexNamePrefix => $"{IndexPrefix}entries-{EntryIndexVersion}";

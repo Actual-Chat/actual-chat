@@ -127,7 +127,7 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
         skip = skip.Clamp(0, int.MaxValue);
         limit = limit.Clamp(0, Constants.Search.PageSizeLimit);
 
-        var chatIds = !isPublic
+        var chatContactIds = !isPublic
             ? await ContactsBackend.ListIdsForContactSearch(userId, cancellationToken).ConfigureAwait(false)
             : ApiArray<ContactId>.Empty;
         var searchResponse =
@@ -138,8 +138,8 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
                             .Query(q => {
                                 q = q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Title));
                                 if (!isPublic) {
-                                    var terms = new TermsQueryField(chatIds.Select(x => (FieldValue)x.Value).ToList());
-                                    q.Terms(t => t.Field(f => f.Id).Terms(terms));
+                                    var terms = new TermsQueryField(chatContactIds.Select(x => (FieldValue)x.ChatId.Value).ToList());
+                                    q.Terms(t => t.Field(x => x.Id).Terms(terms));
                                 }
                             })
                             .IgnoreUnavailable(),
