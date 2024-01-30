@@ -135,13 +135,15 @@ internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDb
                         => s.Index(ElasticNames.GetChatContactIndexName(isPublic))
                             .From(skip)
                             .Size(limit)
-                            .Query(q => {
-                                q = q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Title));
+                            .Query(qq => qq.Bool(b => {
+                                b.Must(q => q.MatchPhrasePrefix(p => p.Query(criteria).Field(x => x.Title)));
                                 if (!isPublic) {
-                                    var terms = new TermsQueryField(chatContactIds.Select(x => (FieldValue)x.ChatId.Value).ToList());
-                                    q.Terms(t => t.Field(x => x.Id).Terms(terms));
+                                    var terms = new TermsQueryField(chatContactIds
+                                        .Select(x => (FieldValue)x.ChatId.Value)
+                                        .ToList());
+                                    b.Filter(q => q.Terms(t => t.Field(x => x.Id).Terms(terms)));
                                 }
-                            })
+                            }))
                             .IgnoreUnavailable(),
                     cancellationToken)
                 .Assert(Log)
