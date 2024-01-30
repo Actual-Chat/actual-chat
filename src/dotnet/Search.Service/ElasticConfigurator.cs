@@ -3,6 +3,7 @@ using ActualChat.Search.Db;
 using ActualChat.Search.Module;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Clients.Elasticsearch.Mapping;
 
 namespace ActualChat.Search;
 
@@ -103,19 +104,21 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
         => index.Template(t
                 => t.Mappings(m
                         => m.Properties(p
-                            => p.Keyword(x => x.Id)
-                                .Text(x => x.Content)
-                                .Keyword(x => x.ChatId)))
+                                => p.Keyword(x => x.Id)
+                                    .Text(x => x.Content)
+                                    .Keyword(x => x.ChatId))
+                            .Dynamic(DynamicMapping.False))
                     .Settings(s => s.RefreshInterval(Settings.ElasticRefreshInterval)))
             .IndexPatterns(ElasticNames.EntryIndexPattern);
 
     private void ConfigureUserContactIndex(CreateIndexRequestDescriptor<IndexedUserContact> index)
         => index.Mappings(m
                 => m.Properties(p
-                    => p.Keyword(x => x.Id)
-                        .Text(x => x.FullName)
-                        .Text(x => x.FirstName)
-                        .Text(x => x.SecondName)))
+                        => p.Keyword(x => x.Id)
+                            .Text(x => x.FullName)
+                            .Text(x => x.FirstName)
+                            .Text(x => x.SecondName))
+                    .Dynamic(DynamicMapping.False))
             .Settings(s => s.RefreshInterval(Settings.ElasticRefreshInterval));
 
     private void ConfigureChatContactIndex(CreateIndexRequestDescriptor<IndexedChatContact> index)

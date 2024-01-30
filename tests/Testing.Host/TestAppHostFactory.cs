@@ -1,5 +1,4 @@
 using ActualChat.App.Server;
-using ActualChat.Chat.Module;
 using ActualChat.Blobs.Internal;
 using ActualChat.Search;
 using Microsoft.AspNetCore.Hosting;
@@ -62,8 +61,11 @@ public static class TestAppHostFactory
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
-                services.AddSingleton<ElasticNames>(_ => new () {
-                    IndexPrefix = "test-" + RandomSymbolGenerator.Default.Next(6).ToLowerInvariant() + "-",
+                services.AddSingleton<ElasticNames>(_ => {
+                    var rsg = new RandomStringGenerator(6, RandomStringGenerator.Base32Alphabet);
+                    return new () {
+                        IndexPrefix = "test-" + rsg.Next(6).ToLowerInvariant() + "-",
+                    };
                 });
             },
             AppConfigurationBuilder = cfg => {
