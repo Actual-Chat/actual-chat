@@ -59,4 +59,15 @@ public static class ChatsBackendExt
             minCreatedAt = lastChat.CreatedAt;
         }
     }
+
+    public static async Task<Place?> GetPlace(this IChatsBackend chatsBackend, PlaceId placeId, CancellationToken cancellationToken)
+    {
+        placeId.Require();
+
+        var placeRootChat = await chatsBackend.Get(placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
+        if (placeRootChat == null)
+            return null;
+
+        return !placeRootChat.Rules.CanRead() ? null : placeRootChat.ToPlace();
+    }
 }

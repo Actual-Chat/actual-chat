@@ -63,22 +63,51 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<ContactId>> ListIdsForSearch(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<ContactId>> ListIdsForEntrySearch(UserId userId, CancellationToken cancellationToken)
     {
         var nonPlaceContactIds = await ListIds(userId, PlaceId.None, cancellationToken).ConfigureAwait(false);
         var placeIds = await ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
-        var contactIdLists = await placeIds.Select(placeId => ListIdsForSearch(userId, placeId, cancellationToken))
+        var placeContactIds = await placeIds.Select(placeId => ListIdsForSearch(userId, placeId, false, cancellationToken))
             .Collect()
+            .Flatten()
             .ConfigureAwait(false);
-        var placeContactIds = contactIdLists.SelectMany(x => x);
-        return nonPlaceContactIds.Concat(placeContactIds).Concat(placeIds.Select(x => new ContactId(userId, x.ToRootChatId()))).ToApiArray();
+        return nonPlaceContactIds.Concat(placeContactIds)
+            .Concat(placeIds.Select(x => new ContactId(userId, x.ToRootChatId())))
+            .ToApiArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ContactId>> ListIdsForContactSearch(UserId userId, CancellationToken cancellationToken)
+    {
+        var nonPlacePrivateChatContactIds = await ListIdsForSearch(userId, PlaceId.None, false, cancellationToken).ConfigureAwait(false);
+        var placeIds = await ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
+        var places = await GetPlaces().ConfigureAwait(false);
+        // for private place we also include public chats
+        var placeChatContactIds = await places.Select(x => ListIdsForSearch(userId, x.Id, !x.IsPublic, cancellationToken))
+            .Collect()
+            .Flatten()
+            .ConfigureAwait(false);
+
+        return nonPlacePrivateChatContactIds.Concat(placeChatContactIds)
+            .Concat(placeIds.Select(x => new ContactId(userId, x.ToRootChatId())))
+            .ToApiArray();
+
+        async Task<Place[]> GetPlaces()
+        {
+            var allPlaces = await placeIds.Select(x => ChatsBackend.GetPlace(x, cancellationToken)).Collect().ConfigureAwait(false);
+            return allPlaces.SkipNullItems().ToArray();
+        }
     }
 
     [ComputeMethod]
-    protected virtual async Task<ApiArray<ContactId>> ListIdsForSearch(UserId userId, PlaceId placeId, CancellationToken cancellationToken)
+    protected virtual async Task<ApiArray<ContactId>> ListIdsForSearch(UserId userId, PlaceId placeId, bool includePublic, CancellationToken cancellationToken)
     {
         var contactIds = await ListIds(userId, placeId, cancellationToken).ConfigureAwait(false);
-        var publicChatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
+        if (includePublic)
+            return contactIds;
+
+        var publicChatIds =
+            await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
         return contactIds.ExceptBy(publicChatIds, x => x.ChatId).ToApiArray();
     }
 

@@ -22,13 +22,7 @@ public class Places(IServiceProvider services) : IPlaces
         if (placeRootChat == null)
             return null;
 
-        if (!placeRootChat.Rules.CanRead())
-            return null;
-
-        var place = ToPlace(placeRootChat) with {
-            Rules = ToPlaceRules(placeId, placeRootChat.Rules)
-        };
-        return place;
+        return placeRootChat.Rules.CanRead() ? placeRootChat.ToPlace() : null;
     }
 
     public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
@@ -77,8 +71,7 @@ public class Places(IServiceProvider services) : IPlaces
         var chatChangeCommand = new Chats_Change(session, chatId, expectedVersion, chatChange);
 
         var placeRootChat = await Commander.Call(chatChangeCommand, true, cancellationToken).ConfigureAwait(false);
-        var place = ToPlace(placeRootChat);
-        return place;
+        return placeRootChat.ToPlace();
     }
 
     public virtual async Task OnJoin(Places_Join command, CancellationToken cancellationToken)
@@ -159,23 +152,6 @@ public class Places(IServiceProvider services) : IPlaces
         var deleteRootChatCommand = new Chats_Change(session, place.Id.ToRootChatId(), null, new Change<ChatDiff> { Remove = true });
         await Commander.Call(deleteRootChatCommand, true, cancellationToken).ConfigureAwait(false);
     }
-
-    private static Place ToPlace(Chat chat)
-    {
-        if (!chat.Id.IsPlaceChat || !chat.Id.PlaceChatId.IsRoot)
-            throw StandardError.Constraint("Place root chat expected");
-
-        return new Place(chat.Id.PlaceId, chat.Version) {
-            CreatedAt = chat.CreatedAt,
-            IsPublic = chat.IsPublic,
-            Title = chat.Title,
-            MediaId = chat.MediaId,
-            Picture = chat.Picture,
-        };
-    }
-
-    private static PlaceRules ToPlaceRules(PlaceId placeId, AuthorRules authorRules)
-        => new (placeId, authorRules.Author, authorRules.Account, (PlacePermissions)(int)authorRules.Permissions);
 
     private static ChatDiff ToChatDiff(PlaceDiff placeDiff)
         => new() {
