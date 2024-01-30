@@ -33,6 +33,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
     private History History => Hub.History;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private KeepAwakeUI KeepAwakeUI => Hub.KeepAwakeUI;
@@ -278,7 +279,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     {
         var hasChanged = SelectChatInternal(chatId);
         if (!chatId.IsNone || hasChanged)
-            SelectPlaceNavbarGroup(chatId);
+            _ = SelectPlaceNavbarGroup(chatId).SuppressExceptions();
         return hasChanged;
     }
 
@@ -337,10 +338,25 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         return true;
     }
 
-    private void SelectPlaceNavbarGroup(ChatId chatId)
+    private async Task SelectPlaceNavbarGroup(ChatId chatId)
     {
         var placeId = chatId.PlaceChatId.PlaceId;
-        NavbarUI.SelectGroup(placeId.IsNone ? NavbarGroupIds.Chats : placeId.GetNavbarGroupId(), false);
+        if (!placeId.IsNone) {
+            NavbarUI.SelectGroup(placeId.GetNavbarGroupId(), false);
+            return;
+        }
+
+        if (chatId.Kind == ChatKind.Peer &&
+            !SelectedPlaceId.Value.IsNone &&
+            OrdinalEquals(NavbarUI.SelectedGroupId, SelectedPlaceId.Value.GetNavbarGroupId()) &&
+            ChatListUI.Settings.Value.Filter == ChatListFilter.People) {
+            // Check if peer chat was shown for place people view
+            var chats = await ChatListUI.ListAllUnordered(SelectedPlaceId.Value).ConfigureAwait(false);
+            if (chats.ContainsKey(chatId))
+                return; // Keep selected group
+        }
+
+        NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
     }
 
     private async ValueTask<ChatId> FixSelectedChatId(ChatId chatId, CancellationToken cancellationToken = default)
