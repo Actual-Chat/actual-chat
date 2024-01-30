@@ -173,7 +173,6 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                     BuildSearchResult(bob.Id, publicPlacePrivateChat2),
                     BuildSearchResult(bob.Id, privatePlacePublicChat1),
                     BuildSearchResult(bob.Id, privatePlacePublicChat2),
-                    // BuildSearchResult(bob.Id, privatePlacePrivateChat1),
                     BuildSearchResult(bob.Id, privatePlacePrivateChat2),
                 }
             );
@@ -218,6 +217,104 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
 
         searchResults = await Find(bob.Id, false, "abra");
         searchResults.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ShouldNotFindDeletedChats()
+    {
+        // arrange
+        var bob = await _tester.SignInAsBob();
+        var privateChat1 = await CreateChat(false, "Private non-place chat 1 one");
+        var privateChat2 = await CreateChat(false, "Private non-place chat 2 two");
+        var publicChat1 = await CreateChat(true, "Public non-place chat 1 one");
+        var publicChat2 = await CreateChat(true, "Public non-place chat 2 two");
+        var privatePlace = await CreatePlace(false, "Bob's private Place");
+        var privatePlacePrivateChat1 = await CreateChat(false, "Private place private chat 1 one", privatePlace.Id);
+        var privatePlacePrivateChat2 = await CreateChat(false, "Private place private chat 2 two", privatePlace.Id);
+        var privatePlacePublicChat1 = await CreateChat(true, "Private place public chat 1 one", privatePlace.Id);
+        var privatePlacePublicChat2 = await CreateChat(true, "Private place public chat 2 two", privatePlace.Id);
+        var publicPlace = await CreatePlace(true, "Bob's public Place");
+        var publicPlacePrivateChat1 = await CreateChat(false, "Public place private chat 1 one", publicPlace.Id);
+        var publicPlacePrivateChat2 = await CreateChat(false, "Public place private chat 2 two", publicPlace.Id);
+        var publicPlacePublicChat1 = await CreateChat(true, "Public place public chat 1 one", publicPlace.Id);
+        var publicPlacePublicChat2 = await CreateChat(true, "Public place public chat 2 two", publicPlace.Id);
+
+        // act
+        var updates = BuildChatContacts(
+            new[] { privatePlace, publicPlace },
+            privateChat1,
+            privateChat2,
+            publicChat1,
+            publicChat2,
+            privatePlacePrivateChat1,
+            privatePlacePrivateChat2,
+            privatePlacePublicChat1,
+            privatePlacePublicChat2,
+            publicPlacePrivateChat1,
+            publicPlacePrivateChat2,
+            publicPlacePublicChat1,
+            publicPlacePublicChat2);
+        await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
+        await _commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
+
+        // assert
+        var searchResults = await Find(bob.Id, true, "chat");
+        searchResults.Should()
+            .BeEquivalentTo(
+                new[] {
+                    BuildSearchResult(bob.Id, publicChat1),
+                    BuildSearchResult(bob.Id, publicChat2),
+                    BuildSearchResult(bob.Id, publicPlacePublicChat1),
+                    BuildSearchResult(bob.Id, publicPlacePublicChat2),
+                }
+            );
+
+        searchResults = await Find(bob.Id, false, "chat");
+        searchResults.Should()
+            .BeEquivalentTo(
+                new[] {
+                    BuildSearchResult(bob.Id, privateChat1),
+                    BuildSearchResult(bob.Id, privateChat2),
+                    BuildSearchResult(bob.Id, publicPlacePrivateChat1),
+                    BuildSearchResult(bob.Id, publicPlacePrivateChat2),
+                    BuildSearchResult(bob.Id, privatePlacePublicChat1),
+                    BuildSearchResult(bob.Id, privatePlacePublicChat2),
+                    BuildSearchResult(bob.Id, privatePlacePrivateChat1),
+                    BuildSearchResult(bob.Id, privatePlacePrivateChat2),
+                }
+            );
+
+        // act
+        await _commander.Call(new SearchBackend_ChatContactBulkIndex(ApiArray<IndexedChatContact>.Empty,
+            BuildChatContacts(new[] { privatePlace, publicPlace, },
+                publicChat2,
+                publicPlacePublicChat1,
+                privateChat1,
+                publicPlacePrivateChat2,
+                privatePlacePublicChat1,
+                privatePlacePrivateChat2)));
+        await _commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
+
+        // assert
+        searchResults = await Find(bob.Id, true, "chat");
+        searchResults.Should()
+            .BeEquivalentTo(
+                new[] {
+                    BuildSearchResult(bob.Id, publicChat1),
+                    BuildSearchResult(bob.Id, publicPlacePublicChat2),
+                }
+            );
+
+        searchResults = await Find(bob.Id, false, "chat");
+        searchResults.Should()
+            .BeEquivalentTo(
+                new[] {
+                    BuildSearchResult(bob.Id, privateChat2),
+                    BuildSearchResult(bob.Id, publicPlacePrivateChat1),
+                    BuildSearchResult(bob.Id, privatePlacePublicChat2),
+                    BuildSearchResult(bob.Id, privatePlacePrivateChat1),
+                }
+            );
     }
 
     private static ApiArray<IndexedChatContact> BuildChatContacts(IEnumerable<Place> places, params Chat.Chat[] chats)
