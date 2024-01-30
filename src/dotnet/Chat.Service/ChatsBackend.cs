@@ -131,25 +131,18 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     // [ComputeMethod]
     public virtual async Task<ApiArray<ChatId>> GetPublicChatIdsFor(PlaceId placeId, CancellationToken cancellationToken)
     {
-        if (placeId.IsNone)
-            throw new ArgumentOutOfRangeException(nameof(placeId));
-
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idPrefix = PlaceChatId.IdPrefix + placeId.Value;
         var sChatIds = await dbContext.Chats
-            .Where(c => c.Id.StartsWith(idPrefix))
+            .WhereIf(c => c.Id.StartsWith(idPrefix), !placeId.IsNone) // place chats
+            .WhereIf(c => !c.Id.StartsWith(idPrefix), placeId.IsNone) // non-place chats
             .Where(c => c.IsPublic)
             .Select(c => c.Id)
             .OrderBy(c => c)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        var placeChatIds = sChatIds
-            .Select(c => new PlaceChatId(c))
-            .Where(c => !c.IsRoot)
-            .ToArray();
-        return placeChatIds
-            .ToApiArray(c => (ChatId)c);
+        return sChatIds.Select(x => new ChatId(x)).Where(x => !x.IsPlaceRootChat).ToApiArray();
     }
 
     // [ComputeMethod]

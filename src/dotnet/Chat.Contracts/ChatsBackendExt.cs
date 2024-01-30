@@ -65,9 +65,6 @@ public static class ChatsBackendExt
         placeId.Require();
 
         var placeRootChat = await chatsBackend.Get(placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
-        if (placeRootChat == null)
-            return null;
-
-        return !placeRootChat.Rules.CanRead() ? null : placeRootChat.ToPlace();
+        return placeRootChat?.ToPlace();
     }
 }

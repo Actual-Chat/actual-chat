@@ -87,9 +87,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .Collect()
             .Flatten()
             .ConfigureAwait(false);
-
+        var privatePlaceRootChatContactIds = places.Where(x => !x.IsPublic).Select(x => new ContactId(userId, x.Id.ToRootChatId()));
         return nonPlacePrivateChatContactIds.Concat(placeChatContactIds)
-            .Concat(placeIds.Select(x => new ContactId(userId, x.ToRootChatId())))
+            .Concat(privatePlaceRootChatContactIds)
             .ToApiArray();
 
         async Task<Place[]> GetPlaces()
@@ -106,8 +106,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (includePublic)
             return contactIds;
 
-        var publicChatIds =
-            await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
+        var publicChatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
         return contactIds.ExceptBy(publicChatIds, x => x.ChatId).ToApiArray();
     }
 
