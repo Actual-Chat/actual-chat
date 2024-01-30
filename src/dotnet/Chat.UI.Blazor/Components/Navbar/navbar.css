@@ -125,3 +125,11 @@ body.hoverable .navbar-item:hover {
 .navbar-place-buttons::-webkit-scrollbar {
     display: none;
 }
+
+.right-line {
+    @apply w-[5px];
+}
+.navbar-button.drag-btn > .left-line,
+.navbar-button.drag-btn > .right-line {
+    @apply hidden;
+}
