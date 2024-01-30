@@ -40,7 +40,8 @@
                         @RenderTab(filter, i)
                     }
                 } else {
-                    @RenderTab(ChatListFilter.None, 0);
+                    @RenderTab(ChatListFilter.Groups, 1)
+                    @RenderTab(ChatListFilter.People, 2)
                 }
             </ChildContent>
             <TabContent>

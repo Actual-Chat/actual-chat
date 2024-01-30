@@ -5,13 +5,14 @@ namespace ActualChat.Chat;
 public class Places(IServiceProvider services) : IPlaces
 {
     private IChats? _chats;
+    private IContacts? _contacts;
 
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
     private IRoles Roles { get; } = services.GetRequiredService<IRoles>();
-    private IContacts Contacts { get; } = services.GetRequiredService<IContacts>();
     private ICommander Commander { get; } = services.Commander();
 
     private IChats Chats => _chats ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
+    private IContacts Contacts => _contacts ??= services.GetRequiredService<IContacts>(); // Lazy resolving to prevent cyclic dependency
 
     public virtual async Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken)
     {

@@ -221,7 +221,7 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         extendedPlaceIds.AddRange(placeIds);
         foreach (var placeId in extendedPlaceIds) {
             var chatById = await ListAllUnorderedRaw(placeId, cancellationToken).ConfigureAwait(false);
-            result.AddRange(chatById);
+            result.AddRange(placeId.IsNone ? chatById : chatById.Where(c => c.Key.PeerChatId.IsNone));
         }
         return result;
     }

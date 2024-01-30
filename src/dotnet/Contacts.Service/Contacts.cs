@@ -7,10 +7,14 @@ namespace ActualChat.Contacts;
 
 public class Contacts(IServiceProvider services) : IContacts
 {
+    private IPlaces? _places;
+
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private IContactsBackend Backend { get; } = services.GetRequiredService<IContactsBackend>();
     private ICommander Commander { get; } = services.Commander();
+
+    private IPlaces Places => _places ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
 
     // [ComputeMethod]
     public virtual async Task<Contact?> Get(Session session, ContactId contactId, CancellationToken cancellationToken)
@@ -68,7 +72,19 @@ public class Contacts(IServiceProvider services) : IContacts
         CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var contactIds = await Backend.ListIds(account.Id, placeId, cancellationToken).ConfigureAwait(false);
+        var accountId = account.Id;
+        var contactIds = await Backend.ListIds(accountId, placeId, cancellationToken).ConfigureAwait(false);
+        // Add peer contacts for place members
+        if (!placeId.IsNone) {
+            var peerContacts = await GetPeerContacts(accountId, cancellationToken).ConfigureAwait(false);
+            var memberUserIds = await Places.ListUserIds(session, placeId, cancellationToken).ConfigureAwait(false);
+            var memberContactIds = new ApiSet<ContactId>();
+            foreach (var userId in memberUserIds)
+                if (peerContacts.TryGetValue(userId, out var contactId))
+                    memberContactIds.Add(contactId);
+            if (memberContactIds.Count > 0)
+                contactIds = contactIds.Concat(memberContactIds).ToApiArray();
+        }
         return contactIds;
     }
 
@@ -113,6 +129,18 @@ public class Contacts(IServiceProvider services) : IContacts
     // [CommandHandler]
     public virtual Task OnGreet(Contacts_Greet command, CancellationToken cancellationToken)
         => Task.CompletedTask;
+
+    // Protected methods
+
+    [ComputeMethod]
+    protected virtual async Task<Dictionary<UserId, ContactId>> GetPeerContacts(UserId accountId, CancellationToken cancellationToken)
+    {
+        var chatContactIds = await Backend.ListIds(accountId, PlaceId.None, cancellationToken).ConfigureAwait(false);
+        return chatContactIds
+            .Where(c => !c.ChatId.PeerChatId.IsNone)
+            .Select(c => (Contact: c, UserId: c.ChatId.PeerChatId.UserIds.OtherThan(accountId)))
+            .ToDictionary(c => c.UserId, c => c.Contact);
+    }
 
     // Private methods
 
