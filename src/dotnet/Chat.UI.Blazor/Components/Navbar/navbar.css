@@ -116,6 +116,7 @@ body.hoverable .navbar-item:hover {
 }
 
 .navbar-place-buttons {
+    @apply relative;
     @apply flex-y items-center gap-y-3 md:gap-y-2;
     @apply w-full overflow-y-auto;
     @apply pt-2 -mt-2;
@@ -130,6 +131,15 @@ body.hoverable .navbar-item:hover {
     @apply w-[5px];
 }
 .navbar-button.drag-btn > .left-line,
-.navbar-button.drag-btn > .right-line {
-    @apply hidden;
+.navbar-button.is-selected > .left-line,
+.navbar-button.drag-btn > .right-line,
+.navbar-button.is-selected > .right-line {
+    @apply invisible md:hidden;
+}
+
+body.narrow .navbar-button.drag-btn .btn.btn-square .navbar-button-content.btn-content {
+    @apply h-10 w-10;
+}
+body.narrow .navbar-button.drag-btn {
+    @apply opacity-50;
 }
