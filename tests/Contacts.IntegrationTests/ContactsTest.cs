@@ -47,11 +47,7 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var (privateChatId, privateChatInviteId) = await _tester.CreateChat(false);
 
         // public place
-        var (publicPlaceRootChatId, _) = await _tester.CreateChat(x => x with {
-            Kind = ChatKind.Place,
-            IsPublic = true,
-        });
-        var publicPlaceId = publicPlaceRootChatId.PlaceId;
+        var (publicPlaceId, _) = await _tester.CreatePlace(true);
         var (publicPlacePublicChatId, publicPlacePublicChatInviteId) = await _tester.CreateChat(x => x with {
             IsPublic = true,
             Kind = null,
@@ -64,11 +60,7 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         });
 
         // private place
-        var (privatePlaceRootChatId, _) = await _tester.CreateChat(x => x with {
-            Kind = ChatKind.Place,
-            IsPublic = false,
-        });
-        var privatePlaceId = privatePlaceRootChatId.PlaceId;
+        var (privatePlaceId, _) = await _tester.CreatePlace(false);
         var (privatePlacePublicChatId, privatePlacePublicChatInviteId) = await _tester.CreateChat(x => x with {
             IsPublic = true,
             Kind = null,
@@ -81,8 +73,8 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         });
 
         // act
-        await _tester.InviteToPlace(publicPlaceRootChatId.PlaceId, bob.Id);
-        await _tester.InviteToPlace(privatePlaceRootChatId.PlaceId, bob.Id);
+        await _tester.InviteToPlace(publicPlaceId, bob.Id);
+        await _tester.InviteToPlace(privatePlaceId, bob.Id);
         await _tester.SignIn(bob.User);
         await _tester.JoinChat(publicChatId, publicChatInviteId);
         await _tester.JoinChat(privateChatId, privateChatInviteId);
@@ -147,11 +139,7 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var (privateChatId, _) = await _tester.CreateChat(false);
 
         // public place
-        var (publicPlaceRootChatId, _) = await _tester.CreateChat(x => x with {
-            Kind = ChatKind.Place,
-            IsPublic = true,
-        });
-        var publicPlaceId = publicPlaceRootChatId.PlaceId;
+        var (publicPlaceId, _) = await _tester.CreatePlace(true);
         var (publicPlacePublicChatId, _) = await _tester.CreateChat(x => x with {
             IsPublic = true,
             Kind = null,
@@ -164,11 +152,7 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         });
 
         // private place
-        var (privatePlaceRootChatId, _) = await _tester.CreateChat(x => x with {
-            Kind = ChatKind.Place,
-            IsPublic = false,
-        });
-        var privatePlaceId = privatePlaceRootChatId.PlaceId;
+        var (privatePlaceId, _) = await _tester.CreatePlace(false);
         var (privatePlacePublicChatId, _) = await _tester.CreateChat(x => x with {
             IsPublic = true,
             Kind = null,

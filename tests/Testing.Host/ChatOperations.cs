@@ -50,6 +50,38 @@ public static class ChatOperations
         return (chatId, inviteId);
     }
 
+    public static Task<(PlaceId, Symbol)> CreatePlace(this IWebTester tester, bool isPublicPlace)
+        => CreatePlace(tester, c => c with { IsPublic = isPublicPlace });
+
+    public static async Task<(PlaceId, Symbol)> CreatePlace(this IWebTester tester, Func<PlaceDiff, PlaceDiff> configure)
+    {
+        var session = tester.Session;
+        var placeDiff = configure(new PlaceDiff() {
+            Title = "test place",
+        });
+        var isPublicPlace = placeDiff.IsPublic ?? false;
+
+        var commander = tester.Commander;
+        var place = await commander.Call(new Places_Change(session,
+            default,
+            null,
+            new () {
+                Create = placeDiff,
+            }));
+        place.Require();
+        var placeId = place.Id;
+
+        var inviteId = Symbol.Empty;
+        if (!isPublicPlace) {
+            // TODO(DF): Somehow activate possibility to join place. Invite code?
+            // var invite = Invite.Invite.New(Constants.Invites.Defaults.ChatRemaining, new ChatInviteOption(placeId));
+            // invite = await commander.Call(new Invites_Generate(session, invite));
+            // inviteId = invite.Id;
+        }
+
+        return (placeId, inviteId);
+    }
+
     public static async Task<AuthorFull> JoinChat(this IWebTester tester, ChatId chatId, Symbol inviteId,
         bool? joinAnonymously = null, Symbol avatarId = default)
     {

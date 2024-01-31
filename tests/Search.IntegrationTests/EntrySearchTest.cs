@@ -58,11 +58,11 @@ public class EntrySearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     {
         // arrange
         var bob = await _tester.SignInAsBob();
-        var place = await CreateChat(ChatKind.Place, "Bob's Place");
-        var publicChat1Id = await CreateChat(ChatKind.Group, "Public Group Chat 1", place.PlaceId);
-        var publicChat2Id = await CreateChat(ChatKind.Group, "Public Group Chat 1", place.PlaceId);
-        var privateChat1Id = await CreateChat(ChatKind.Group, "Private Group Chat 1", place.PlaceId);
-        var privateChat2Id = await CreateChat(ChatKind.Group, "Private Group Chat 1", place.PlaceId);
+        var placeId = await CreatePlace("Bob's Place");
+        var publicChat1Id = await CreateChat(ChatKind.Group, "Public Group Chat 1", placeId);
+        var publicChat2Id = await CreateChat(ChatKind.Group, "Public Group Chat 1", placeId);
+        var privateChat1Id = await CreateChat(ChatKind.Group, "Private Group Chat 1", placeId);
+        var privateChat2Id = await CreateChat(ChatKind.Group, "Private Group Chat 1", placeId);
 
         var publicChat1Updates = ApiArray.New(
             BuildEntry(publicChat1Id, 1, "PublicChat1: Let's go outside"),
@@ -219,6 +219,14 @@ public class EntrySearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
             Kind = kind,
             Title = title,
             PlaceId = placeId,
+        });
+        return id;
+    }
+
+    private async Task<PlaceId> CreatePlace(string title = "some place")
+    {
+        var (id, _) = await _tester.CreatePlace(x => x with {
+            Title = title,
         });
         return id;
     }

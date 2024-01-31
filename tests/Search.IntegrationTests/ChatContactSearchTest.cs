@@ -342,12 +342,11 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
 
     private async Task<Place> CreatePlace(bool isPublic, string title)
     {
-        var (id, _) = await _tester.CreateChat(x => x with {
-            Kind = ChatKind.Place,
+        var (placeId, _) = await _tester.CreatePlace(x => x with {
             IsPublic = isPublic,
             Title = title,
         });
-        return await _tester.Places.Get(_tester.Session, id.PlaceId, CancellationToken.None).Require();
+        return await _tester.Places.Get(_tester.Session, placeId, CancellationToken.None).Require();
     }
 
     private async Task<Chat.Chat> CreateChat(bool isPublic, string title, PlaceId placeId = default)
