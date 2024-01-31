@@ -17,8 +17,15 @@ public class RemoveAccountTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var session = tester.Session;
 
         var chats = services.GetRequiredService<IChats>();
+        var authors = services.GetRequiredService<IAuthors>();
         var chat = await chats.Get(session, TestChatId, CancellationToken.None);
         chat.Should().NotBeNull();
+        // NOTE(DF): await till user has joined to default chat (for admins it happens automatically) before
+        // creating text entries
+        await TestExt.WhenMetAsync(async () => {
+            var author = await authors.GetOwn(session, chat!.Id, default);
+            author.Should().NotBeNull();
+        }, TimeSpan.FromSeconds(2));
 
         var entries = await CreateChatEntries(chats, session, TestChatId, 3);
 
