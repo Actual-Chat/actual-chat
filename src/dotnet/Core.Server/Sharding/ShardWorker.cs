@@ -60,12 +60,12 @@ public abstract class ShardWorker : WorkerBase
 
                 addedShards.Clear();
                 removedShards.Clear();
-                var sharding = state.GetShardMap(Sharding);
-                var shards = sharding.Shards;
-                var nodes = sharding.Nodes;
-                for (var shardIndex = 0; shardIndex < shards.Length; shardIndex++) {
-                    var nodeIndex = shards[shardIndex];
-                    var node = nodeIndex >= 0 ? nodes[nodeIndex] : null;
+                var shardMap = state.GetShardMap(Sharding);
+                var nodes = shardMap.Nodes;
+                var nodeIndexes = shardMap.NodeIndexes;
+                foreach (var shardIndex in Sharding.ShardIndexes) {
+                    var nodeIndex = nodeIndexes[shardIndex];
+                    var node = nodeIndex.HasValue ? nodes[nodeIndex.GetValueOrDefault()] : null;
                     var shardState = ShardStates[shardIndex];
                     var mustUse = node == ThisNode;
                     if (mustUse == usedShards[shardIndex])

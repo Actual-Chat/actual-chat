@@ -9,6 +9,42 @@ public static class ArrayExt
         return items[index];
     }
 
+    public static T GetRingItem<T>(this T[] items, int index)
+    {
+        var count = items.Length;
+        if (count == 0)
+            throw new ArgumentOutOfRangeException(nameof(index));
+
+        index %= count;
+        if (index < 0)
+            index += count;
+        return items[index];
+    }
+
+    public static T GetRingItem<T>(this ReadOnlySpan<T> items, int index)
+    {
+        var count = items.Length;
+        if (count == 0)
+            throw new ArgumentOutOfRangeException(nameof(index));
+
+        index %= count;
+        if (index < 0)
+            index += count;
+        return items[index];
+    }
+
+    public static T GetRingItem<T>(this ImmutableArray<T> items, int index)
+    {
+        var count = items.Length;
+        if (count == 0)
+            throw new ArgumentOutOfRangeException(nameof(index));
+
+        index %= count;
+        if (index < 0)
+            index += count;
+        return items[index];
+    }
+
     public static int CommonPrefixLength<T>(this T[] first, T[] second, IEqualityComparer<T>? comparer = null)
     {
         var c = comparer ?? EqualityComparer<T>.Default;

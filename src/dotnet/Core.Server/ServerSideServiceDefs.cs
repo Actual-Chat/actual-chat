@@ -10,12 +10,15 @@ public class ServerSideServiceDefs
 
     public ServerSideServiceDefs(IServiceProvider services)
     {
-        var serviceDefs = services.GetService<IEnumerable<ServerSideServiceDef>>()?.ToList() ?? new();
+        var serviceDefs = services.GetServices<ServerSideServiceDef>().ToList();
         _serviceDefs = serviceDefs.Select(x => KeyValuePair.Create(x.ServiceType, x))
             .Concat(serviceDefs.Select(x => KeyValuePair.Create(x.ImplementationType, x)))
             .DistinctBy(kv => kv.Key)
             .ToFrozenDictionary();
     }
+
+    public bool Contains(Type serviceType)
+        => _serviceDefs.ContainsKey(serviceType);
 
     public bool TryGet(Type serviceType, out ServerSideServiceDef? serviceDef)
         => _serviceDefs.TryGetValue(serviceType, out serviceDef);

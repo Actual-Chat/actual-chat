@@ -1,4 +1,5 @@
 using ActualChat.Hosting;
+using ActualLab.Rpc;
 
 namespace ActualChat;
 
@@ -18,6 +19,18 @@ public abstract class Sharding(HostRole hostRole, int shardCount)
 
     public HostRole HostRole { get; } = hostRole;
     public int ShardCount { get; } = shardCount;
+    public IEnumerable<int> ShardIndexes { get; } = Enumerable.Range(0, shardCount);
+    public ImmutableArray<RpcPeerRef> ClientPeerRefs { get; }
+        = Enumerable.Range(0, shardCount).Select(x => RpcPeerRef.NewClient($"backend-{x}")).ToImmutableArray();
+
+    public int GetShardIndex(int hash)
+    {
+        var index = hash % ShardCount;
+        return index >= 0 ? index : index + ShardCount;
+    }
+
+    public RpcPeerRef GetClientPeerRef(int hash)
+        => ClientPeerRefs[GetShardIndex(hash)];
 
     public override string ToString()
         => $"{nameof(Sharding)}.{HostRole}[{ShardCount}]";
