@@ -96,7 +96,7 @@ public static class ChatMarkupHubExt
             return Markup.Empty;
 
         if (consumer is MarkupConsumer.QuoteView)
-            return new PlainTextMarkup("Click to see attachment");
+            return new PlainTextMarkup("Click to see the attachment");
 
         var imageCount = 0;
         var videoCount = 0;
