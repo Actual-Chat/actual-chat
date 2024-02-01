@@ -131,15 +131,34 @@ body.hoverable .navbar-item:hover {
     @apply w-[5px];
 }
 .navbar-button.drag-btn > .left-line,
-.navbar-button.is-selected > .left-line,
-.navbar-button.drag-btn > .right-line,
-.navbar-button.is-selected > .right-line {
+.navbar-button.drag-btn > .right-line {
     @apply invisible md:hidden;
 }
 
-body.narrow .navbar-button.drag-btn .btn.btn-square .navbar-button-content.btn-content {
+body.narrow .navbar-button.drag-btn .btn.btn-square .navbar-button-content.btn-content,
+body.narrow .navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
     @apply h-10 w-10;
 }
-body.narrow .navbar-button.drag-btn {
-    @apply opacity-50;
+
+body.narrow .navbar-button.ghost-btn {
+    @apply opacity-30;
+    animation: twitch 250ms 2 forwards;
+}
+
+@keyframes twitch {
+    0% {
+        transform: rotate(0);
+    }
+    25% {
+        transform: rotate(15deg);
+    }
+    50% {
+        transform: rotate(0);
+    }
+    75% {
+        transform: rotate(-15deg);
+    }
+    100% {
+        transform: rotate(0);
+    }
 }
