@@ -6,7 +6,6 @@ export class PlaceButtons {
     private blazorRef: DotNet.DotNetObject;
     private readonly places: HTMLElement;
     private buttons: HTMLElement[] = [];
-    private shiftX: number;
     private shiftY: number;
     private currentBtn: HTMLElement;
     private ghostBtn: HTMLElement;
@@ -15,6 +14,7 @@ export class PlaceButtons {
     private readonly longTap: number = 500;
     private delay: number;
     private placeListObserver: MutationObserver;
+    private isScrolling: boolean;
 
     static create(places: HTMLElement, blazorRef: DotNet.DotNetObject): PlaceButtons {
         return new PlaceButtons(places, blazorRef);
@@ -23,26 +23,7 @@ export class PlaceButtons {
     constructor(places: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.places = places;
         this.blazorRef = blazorRef;
-
-        this.updateButtons();
-        for (const btn of this.buttons) {
-            btn.addEventListener('dragstart', this.onDragStart);
-            btn.addEventListener('dragend', this.onDragEnd);
-            btn.setAttribute('draggable', 'true');
-
-            btn.addEventListener('touchstart', this.onTouchStart);
-            btn.addEventListener('touchend', this.onTouchEnd);
-            btn.addEventListener('touchcancel', this.onTouchEnd);
-        }
-
-        this.places.addEventListener('dragover', this.onDragOver);
-
-        this.placeListObserver = new MutationObserver(this.updatePlaces);
-        this.placeListObserver.observe(this.places, {
-            attributes: true,
-            childList: true,
-            subtree: true,
-        });
+        this.updatePlaceState(false);
     }
 
     public dispose() {
@@ -63,26 +44,83 @@ export class PlaceButtons {
         this.placeListObserver.disconnect();
     }
 
-    private updatePlaces = (mutationList, observer) => {
+    private updatePlaceList = (mutationList, observer) => {
         mutationList.forEach(m => {
             m.addedNodes.forEach(element => {
-                if (element && element.classList && element.classList.contains('navbar-button')) {
-                    this.updateButtons();
+                if (element
+                    && element.classList
+                    && element.classList.contains('navbar-button')
+                    && !element.classList.contains('ghost-btn')
+                    && this.buttons.length != this.places.children.length) {
+                    this.updatePlaceState(true);
                 }
             });
             m.removedNodes.forEach(element => {
-                if (element && element.classList && element.classList.contains('navbar-button')) {
-                    this.updateButtons();
+                if (element
+                    && element.classList
+                    && element.classList.contains('navbar-button')
+                    && !element.classList.contains('ghost-btn')
+                    && this.buttons.length != this.places.children.length) {
+                    this.updatePlaceState(true);
                 }
             });
-        })
+        });
     }
 
-    private updateButtons() {
+    private updatePlaceState(dispose: boolean) {
+        if (dispose) {
+            this.dispose();
+        }
+        this.updatePlaceOrder();
+        for (const btn of this.buttons) {
+            btn.addEventListener('dragstart', this.onDragStart);
+            btn.addEventListener('dragend', this.onDragEnd);
+
+            btn.addEventListener('touchstart', this.onTouchStart);
+            btn.addEventListener('touchend', this.onTouchEnd);
+            btn.addEventListener('touchcancel', this.onTouchEnd);
+        }
+        this.places.addEventListener('dragover', this.onDragOver);
+
+        this.placeListObserver = new MutationObserver(this.updatePlaceList);
+        this.placeListObserver.observe(this.places, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+        });
+    }
+
+    private scrollUp() {
+        let delta = Math.round(this.places.scrollTop);
+        if (this.isScrolling && delta > 2) {
+            setTimeout(() => {
+                this.places.scrollBy(0, -10);
+                this.scrollUp();
+            }, 25);
+        } else {
+            return;
+        }
+    }
+
+    private scrollDown() {
+        let delta = Math.round(this.places.scrollHeight - this.places.scrollTop - this.places.clientHeight);
+        if (this.isScrolling && delta > 2) {
+            setTimeout(() => {
+                this.places.scrollBy(0, 10);
+                this.scrollDown();
+            }, 25);
+        } else {
+            return;
+        }
+    }
+
+    private updatePlaceOrder() {
         this.buttons = [];
         let navbarButtons = this.places.querySelectorAll('.navbar-button');
         navbarButtons.forEach(b => {
-            this.buttons.push(b as HTMLElement);
+            let btn = b as HTMLElement;
+            this.buttons.push(btn);
+            btn.draggable = true;
         });
     }
 
@@ -90,7 +128,6 @@ export class PlaceButtons {
         this.currentBtn = event.currentTarget as HTMLElement;
         if (this.currentBtn == null)
             return;
-        this.currentBtn.classList.add('drag-btn');
         this.delay = setTimeout(() => {
             this.onLongTouch(event);
         }, this.longTap);
@@ -100,20 +137,19 @@ export class PlaceButtons {
         this.ghostBtn = this.currentBtn.cloneNode(true) as HTMLElement;
         this.ghostBtn.style.position = 'fixed';
         this.ghostBtn.style.zIndex = '100';
-        this.ghostBtn.style.scale = '1.10';
+        this.ghostBtn.style.scale = '1.1';
+        this.ghostBtn.classList.add('ghost-btn');
         let rect = this.currentBtn.getBoundingClientRect();
-        this.shiftX = (event.touches[0].pageX - rect.left) / 2;
         this.shiftY = (event.touches[0].pageY - rect.top) / 2;
         document.body.appendChild(this.ghostBtn);
+        this.currentBtn.classList.add('drag-btn');
 
         this.ghostBtn.style.left = rect.left + 'px';
         this.ghostBtn.style.top = rect.top + 'px';
 
-        this.currentBtn.classList.add('is-selected');
-
         let placesRect = this.places.getBoundingClientRect();
-        this.topLimit = placesRect.top;
-        this.bottomLimit = placesRect.bottom;
+        this.topLimit = placesRect.top - 5;
+        this.bottomLimit = placesRect.bottom + 10;
 
         window.addEventListener('touchmove', this.onTouchMove);
     }
@@ -124,10 +160,19 @@ export class PlaceButtons {
         let top = event.touches[0].clientY - this.shiftY;
         if (top <= this.topLimit) {
             this.ghostBtn.style.top = this.topLimit + 'px';
+            if (!this.isScrolling) {
+                this.isScrolling = true;
+                this.scrollUp();
+            }
         } else if (top >= this.bottomLimit - ghostRect.height) {
             this.ghostBtn.style.top = this.bottomLimit - ghostRect.height + 'px';
+            if (!this.isScrolling) {
+                this.isScrolling = true;
+                this.scrollDown();
+            }
         } else {
             this.ghostBtn.style.top = top + 'px';
+            this.isScrolling = false;
         }
         this.replaceButton(event, ghostRect);
     }
@@ -145,24 +190,21 @@ export class PlaceButtons {
                 } else {
                     this.places.insertBefore(this.currentBtn, btn);
                 }
-                this.updateButtons();
+                this.updatePlaceOrder();
             }
         }
     }
 
-
-
     private onTouchEnd = (event: TouchEvent) => {
         clearTimeout(this.delay);
-        if (this.currentBtn != null) {
-            this.currentBtn.classList.remove('is-selected');
-        }
         window.removeEventListener('touchmove', this.onTouchMove);
         if (this.ghostBtn) {
             this.ghostBtn.remove();
         }
-        this.currentBtn.classList.remove('drag-btn');
-        this.currentBtn = null;
+        if (this.currentBtn != null) {
+            this.currentBtn.classList.remove('drag-btn');
+            this.currentBtn = null;
+        }
     }
 
     private onDragStart = (event: Event) => {
