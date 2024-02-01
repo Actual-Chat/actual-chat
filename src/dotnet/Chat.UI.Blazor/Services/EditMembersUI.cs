@@ -2,26 +2,17 @@
 
 public class EditMembersUI(ChatUIHub hub)
 {
-    public ChatUIHub Hub { get; } = hub;
-    private Session Session => Hub.Session();
-    private IAuthors Authors => Hub.Authors;
-    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private ChatUIHub Hub { get; } = hub;
 
     public async Task<bool> HaveMembersToAdd(Chat chat)
     {
-        bool canAddContacts;
-        if (!chat.Id.IsPlaceChat) {
-            var peopleContacts = await ChatListUI.ListPeopleContacts().ConfigureAwait(false);
-            canAddContacts = peopleContacts.Count > 0;
-        } else {
-            if (chat.IsPublic)
-                canAddContacts = false;
-            else {
-                var chatMembers = await Authors.ListUserIds(Session, chat.Id, default).ConfigureAwait(false);
-                var placeMembers = await Authors.ListUserIds(Session, chat.Id.PlaceId.ToRootChatId(), default).ConfigureAwait(false);
-                canAddContacts = placeMembers.Except(chatMembers).Any();
-            }
-        }
+        if (chat.IsPublicPlaceChat())
+            return false;
+
+        var provider = new ChatMemberSelector(Hub, chat.Id);
+        var selected = await provider.ListPreSelectedUserIds(default).ConfigureAwait(false);
+        var available = await provider.ListUserIds(default).ConfigureAwait(false);
+        var canAddContacts = available.Except(selected).Any();
         return canAddContacts;
     }
 
