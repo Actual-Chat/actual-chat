@@ -7,7 +7,7 @@ public class HashRingTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact(Skip = "Fails always")]
     public void BasicTest()
     {
-        var hr = new HashRing<string>(new [] { "a", "b", "c"}, v => v.GetDjb2HashCode());
+        var hr = new HashRing<string>(new [] { "a", "b", "c" }, v => v.GetDjb2HashCode());
         hr.Count.Should().Be(3);
 
         foreach (var (item, hash) in hr.Items) {

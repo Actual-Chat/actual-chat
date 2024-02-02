@@ -27,7 +27,7 @@ public readonly struct HashRing<T>
             .ToArray();
         _doubleItems = new T[Items.Length * 2];
         for (var i = 0; i < _doubleItems.Length; i++)
-            _doubleItems[i] = this[i];
+            _doubleItems[i] = Items[i.Mod(Count)].Value;
     }
 
     public T Get(int hash, int offset = 0)
