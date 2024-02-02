@@ -53,6 +53,11 @@ public class HashTest(ITestOutputHelper @out) : TestBase(@out)
             h1.ToString().Should().Be(h1.Base16());
             h1.AsSpan<byte>().ToArray().Should().Equal(h1.Bytes.ToArray());
             h1.Base16(8).Should().Be(h1.Base16()[..16]);
+            h1.Count<byte>().Should().Be(THash.Size);
+            h1.Count<int>().Should().Be(THash.Size / 4);
+            h1.Item<uint>(0).Should().Be(h1.First4Bytes);
+            h1.Item<ulong>(0).Should().Be(h1.First8Bytes);
+            h1.Item<Int128>(0).Should().Be(h1.First16Bytes);
 
             using var stream = new MemoryStream();
             await stream.WriteAsync(buffer);

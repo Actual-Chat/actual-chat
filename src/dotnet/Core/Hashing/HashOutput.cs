@@ -6,11 +6,14 @@ namespace ActualChat.Hashing;
 
 public interface IHashOutput
 {
+    public static abstract int Size { get; }
     public Span<byte> Bytes { get; }
     public uint First4Bytes { get; }
     public ulong First8Bytes { get; }
     public Int128 First16Bytes { get; }
 
+    public int Count<T>() where T : unmanaged;
+    public T Item<T>(int index) where T : unmanaged;
     public Span<T> AsSpan<T>() where T : unmanaged;
 }
 
@@ -19,13 +22,20 @@ public struct HashOutput16 : IHashOutput, IEquatable<HashOutput16>
 {
     private byte _byte0;
 
-    public Span<byte> Bytes => MemoryMarshal.CreateSpan(ref _byte0, 16);
+    public static int Size => 16;
+    public Span<byte> Bytes => MemoryMarshal.CreateSpan(ref _byte0, Size);
     public uint First4Bytes => Unsafe.As<byte, uint>(ref _byte0);
     public ulong First8Bytes => Unsafe.As<byte, ulong>(ref _byte0);
     public Int128 First16Bytes => Unsafe.As<byte, Int128>(ref _byte0);
 
     public override string ToString()
         => this.Base16();
+
+    public unsafe int Count<T>() where T : unmanaged
+        => Size / sizeof(T);
+
+    public T Item<T>(int index) where T : unmanaged
+        => AsSpan<T>()[index];
 
     public Span<T> AsSpan<T>()
         where T : unmanaged
@@ -45,13 +55,20 @@ public struct HashOutput20 : IHashOutput, IEquatable<HashOutput20>
 {
     private byte _byte0;
 
-    public Span<byte> Bytes => MemoryMarshal.CreateSpan(ref _byte0, 20);
+    public static int Size => 20;
+    public Span<byte> Bytes => MemoryMarshal.CreateSpan(ref _byte0, Size);
     public uint First4Bytes => Unsafe.As<byte, uint>(ref _byte0);
     public ulong First8Bytes => Unsafe.As<byte, ulong>(ref _byte0);
     public Int128 First16Bytes => Unsafe.As<byte, Int128>(ref _byte0);
 
     public override string ToString()
         => this.Base16();
+
+    public unsafe int Count<T>() where T : unmanaged
+        => Size / sizeof(T);
+
+    public T Item<T>(int index) where T : unmanaged
+        => AsSpan<T>()[index];
 
     public Span<T> AsSpan<T>()
         where T : unmanaged
@@ -71,13 +88,20 @@ public struct HashOutput32 : IHashOutput, IEquatable<HashOutput32>
 {
     private byte _byte0;
 
-    public Span<byte> Bytes => MemoryMarshal.CreateSpan(ref _byte0, 32);
+    public static int Size => 32;
+    public Span<byte> Bytes => MemoryMarshal.CreateSpan(ref _byte0, Size);
     public uint First4Bytes => Unsafe.As<byte, uint>(ref _byte0);
     public ulong First8Bytes => Unsafe.As<byte, ulong>(ref _byte0);
     public Int128 First16Bytes => Unsafe.As<byte, Int128>(ref _byte0);
 
     public override string ToString()
         => this.Base16();
+
+    public unsafe int Count<T>() where T : unmanaged
+        => Size / sizeof(T);
+
+    public T Item<T>(int index) where T : unmanaged
+        => AsSpan<T>()[index];
 
     public Span<T> AsSpan<T>()
         where T : unmanaged
@@ -97,13 +121,20 @@ public struct HashOutput64 : IHashOutput, IEquatable<HashOutput64>
 {
     private byte _byte0;
 
-    public Span<byte> Bytes => MemoryMarshal.CreateSpan(ref _byte0, 64);
+    public static int Size => 64;
+    public Span<byte> Bytes => MemoryMarshal.CreateSpan(ref _byte0, Size);
     public uint First4Bytes => Unsafe.As<byte, uint>(ref _byte0);
     public ulong First8Bytes => Unsafe.As<byte, ulong>(ref _byte0);
     public Int128 First16Bytes => Unsafe.As<byte, Int128>(ref _byte0);
 
     public override string ToString()
         => this.Base16();
+
+    public unsafe int Count<T>() where T : unmanaged
+        => Size / sizeof(T);
+
+    public T Item<T>(int index) where T : unmanaged
+        => AsSpan<T>()[index];
 
     public Span<T> AsSpan<T>()
         where T : unmanaged

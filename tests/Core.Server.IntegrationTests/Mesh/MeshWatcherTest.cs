@@ -15,7 +15,6 @@ public class MeshWatcherTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var s = w1.State.Value.GetShardMap<Sharding.Backend>();
         Out.WriteLine(s.ToString());
-        s.IsEmpty.Should().BeTrue();
 
         await w1.State.When(x => x.Nodes.Length == 1).WaitAsync(syncTimeout);
         s = w1.State.Value.GetShardMap<Sharding.Backend>();

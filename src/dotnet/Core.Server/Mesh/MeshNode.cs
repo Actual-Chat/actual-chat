@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Hashing;
 using ActualChat.Hosting;
 using MemoryPack;
 
@@ -60,6 +61,16 @@ public sealed partial record MeshNode(
     }
 
     public override int GetHashCode() => Id.HashCode;
+
+    public IEnumerable<T> GetHashes<T>()
+        where T : unmanaged
+    {
+        for (var hashSource = Id.Value;; hashSource += Id.Value) {
+            var hashes = hashSource.Hash().Blake2b().AsSpan<T>().ToArray();
+            foreach (var hash in hashes)
+                yield return hash;
+        }
+    }
 
     // Comparison: uses only Id
 
