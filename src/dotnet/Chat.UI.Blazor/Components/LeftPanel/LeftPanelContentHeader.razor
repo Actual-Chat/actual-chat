@@ -86,7 +86,7 @@
         _onSearchBoxTextChanged = NoStateHasChanged.EventCallback<string>(OnSearchBoxTextChanged);
         NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupOrTitleChanged;
         NavbarUI.SelectedGroupTitleUpdated += OnNavbarSelectedGroupOrTitleChanged;
-        await GetPlace();
+        await UpdatePlace();
     }
 
     public void Dispose() {
@@ -98,22 +98,20 @@
         => SearchUI.Text.Value = text;
 
     private async void OnNavbarSelectedGroupOrTitleChanged(object? s, EventArgs e) {
-        await GetPlace();
+        await UpdatePlace();
         await InvokeAsync(StateHasChanged);
     }
 
     private async Task OnSelectedChatChangedEvent(SelectedChatChangedEvent @event, CancellationToken cancellationToken) {
         if (_searchBoxRef != null)
             await _searchBoxRef.Cancel();
-        await GetPlace();
+        await UpdatePlace();
     }
 
-    private async Task GetPlace() {
+    private async Task UpdatePlace() {
         Place? place = null;
-        if (NavbarUI.IsPlaceSelected(out var placeId)) {
-            place = await Hub.Places.Get(Hub.Session(), PlaceId.Parse(placeId), default).Require().ConfigureAwait(false);
-        }
+        if (NavbarUI.IsPlaceSelected(out var placeId))
+            place = await Hub.Places.Get(Hub.Session(), placeId, default).ConfigureAwait(false);
         _place = place;
     }
-
 }
