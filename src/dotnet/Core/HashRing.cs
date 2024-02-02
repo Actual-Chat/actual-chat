@@ -12,10 +12,11 @@ public readonly struct HashRing<T>
     public static readonly HashRing<T> Empty = new(Array.Empty<T>());
 
     private readonly T[] _doubleItems;
+
     public (T Value, int Hash)[] Items { get; }
     public int Count => Items.Length;
     public bool IsEmpty => Count == 0;
-    public T this[int index] => Items[Mod(index)].Value;
+    public T this[int index] => _doubleItems[Count + (index % Count)];
 
     public HashRing(IEnumerable<T> values, Func<T, int>? hasher = null)
     {
@@ -29,18 +30,11 @@ public readonly struct HashRing<T>
             _doubleItems[i] = this[i];
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int Mod(int index)
-    {
-        var m = index % Count;
-        return m >= 0 ? m : m + Count;
-    }
-
     public T Get(int hash, int offset = 0)
-        => this[offset + GetEqualOrGreaterHashIndex(hash)];
+        => this[offset + FindHashIndex(hash)];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int GetEqualOrGreaterHashIndex(int hash)
+    public int FindHashIndex(int hash)
         => ~Array.BinarySearch(Items, (default!, hash), Comparer);
 
     public ReadOnlySpan<T> Span(int hash, int count, int offset = 0)
@@ -49,7 +43,7 @@ public readonly struct HashRing<T>
         if (count == 0)
             return Span<T>.Empty;
 
-        offset = Mod(offset + GetEqualOrGreaterHashIndex(hash));
+        offset = (offset + FindHashIndex(hash)).Mod(Count);
         return _doubleItems.AsSpan(offset, count);
     }
 
@@ -59,7 +53,7 @@ public readonly struct HashRing<T>
         if (count == 0)
             return ArraySegment<T>.Empty;
 
-        offset = Mod(offset + GetEqualOrGreaterHashIndex(hash));
+        offset = (offset + FindHashIndex(hash)).Mod(Count);
         return new ArraySegment<T>(_doubleItems, offset, count);
     }
 

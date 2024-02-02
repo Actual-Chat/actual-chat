@@ -1,3 +1,5 @@
+using System.Text;
+using ActualChat.Hashing;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 using ActualLab.Generators;
@@ -33,11 +35,11 @@ public class FakeDeviceContacts(IServiceProvider services) : DeviceContacts
             var externalContactId = new ExternalContactId(ownerId, DeviceId, RandomSymbolGenerator.Default.Next(8));
             var phoneHashes = Enumerable.Range(1, 10)
                 .Select(GeneratePhone)
-                .Select(x => x.Value.GetSHA256HashCode())
+                .Select(x => x.Hash(Encoding.UTF8).SHA256().Base64())
                 .ToApiSet();
             var emailHashes = Enumerable.Range(1, 10)
                 .Select(i => GenerateEmail(contactIndex, i))
-                .Select(x => x.GetSHA256HashCode())
+                .Select(x => x.Hash(Encoding.UTF8).SHA256().Base64())
                 .ToApiSet();
             return new (externalContactId) {
                 GivenName = $"User {contactIndex}",

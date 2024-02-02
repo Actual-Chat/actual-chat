@@ -1,4 +1,6 @@
-﻿using ActualChat.Db;
+﻿using System.Text;
+using ActualChat.Db;
+using ActualChat.Hashing;
 using ActualChat.Hosting;
 using ActualChat.Media.Db;
 using ActualChat.Media.Module;
@@ -51,13 +53,13 @@ namespace ActualChat.Media.Migrations
 
             async Task AddMedia(string id, Resource resource) {
                 var mediaId = new MediaId(id);
-                var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
+                var mediaIdHash = mediaId.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
                 var resourceStream = resource.GetStream();
                 var extension = Path.GetExtension(resource.Name);
                 var type = contentTypeProvider.TryGetContentType(resource.Name, out var contentType)
                     ? contentType
                     : throw StandardError.Internal($"Unknown content type: {resource.Name}.");
-                var contentId = $"media/{hashCode}/{mediaId.LocalId}{extension}";
+                var contentId = $"media/{mediaIdHash}/{mediaId.LocalId}{extension}";
                 var media = new Media(mediaId) {
                     ContentId = contentId,
                     FileName = resource.Name,

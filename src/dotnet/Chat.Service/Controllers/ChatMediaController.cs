@@ -1,3 +1,5 @@
+using System.Text;
+using ActualChat.Hashing;
 using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Uploads;
@@ -62,9 +64,9 @@ public sealed class ChatMediaController(IServiceProvider services) : ControllerB
     private async Task<Media.Media> SaveMedia(ChatId chatId, UploadedFile file, Size? size, CancellationToken cancellationToken)
     {
         var mediaId = new MediaId(chatId, Generate.Option);
-        var hashCode = mediaId.Id.ToString().GetSHA256HashCode(HashEncoding.AlphaNumeric);
+        var mediaIdHash = mediaId.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
         var media = new Media.Media(mediaId) {
-            ContentId = $"media/{hashCode}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
+            ContentId = $"media/{mediaIdHash}/{mediaId.LocalId}{Path.GetExtension(file.FileName)}",
             FileName = file.FileName,
             Length = file.Length,
             ContentType = file.ContentType,

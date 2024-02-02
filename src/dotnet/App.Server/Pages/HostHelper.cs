@@ -1,3 +1,6 @@
+using System.Text;
+using ActualChat.Hashing;
+
 namespace ActualChat.App.Server.Pages;
 
 public static class HostHelper
@@ -13,7 +16,7 @@ public static class HostHelper
             .Assembly
             .GetInformationalVersion()
             .RequireNonEmpty("Blazor extensions assembly version");
-        _blazorScriptSuffix = "." + version.GetSHA1HashCode(HashEncoding.AlphaNumeric).ToLowerInvariant();
+        _blazorScriptSuffix = "." + version.Hash().SHA1().AlphaNumeric().ToLowerInvariant();
         return _blazorScriptSuffix;
     }
 }

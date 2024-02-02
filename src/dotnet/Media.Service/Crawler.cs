@@ -1,3 +1,5 @@
+using System.Text;
+using ActualChat.Hashing;
 using ActualChat.Media.Module;
 using ActualChat.Uploads;
 using OpenGraphNet;
@@ -108,8 +110,11 @@ public class Crawler(IServiceProvider services) : IHasServices
         if (processedFile is null)
             return MediaId.None;
 
-        var mediaIdScope = imageUri.AbsoluteUri.GetSHA256HashCode(HashEncoding.AlphaNumeric);
-        var mediaLid = await processedFile.File.GetSHA256HashCode(HashEncoding.AlphaNumeric).ConfigureAwait(false);
+        var mediaIdScope = imageUri.AbsoluteUri.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
+        var mediaLid = await processedFile.File.Process(async stream => {
+            var hash = await stream.Hash().SHA256(cancellationToken).ConfigureAwait(false);
+            return hash.AlphaNumeric();
+        }).ConfigureAwait(false);
         var mediaId = new MediaId(mediaIdScope, mediaLid);
         var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
         if (media is not null)

@@ -15,6 +15,7 @@
     <PackageReference Include="ActualLab.Fusion" />
     <PackageReference Include="ActualLab.Fusion.Ext.Contracts" />
     <PackageReference Include="ActualLab.Rpc" />
+    <PackageReference Include="SauceControl.Blake2Fast" />
     <PackageReference Include="Ulid" />
   </ItemGroup>
 

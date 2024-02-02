@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Text;
+using ActualChat.Hashing;
 using Microsoft.AspNetCore.Http;
 using ActualLab.Fusion.Server.Authentication;
 
@@ -44,7 +46,8 @@ public class AppServerAuthHelper : ServerAuthHelper
             if (!existingUserId.IsNone || !Constants.Auth.IsExternalEmailScheme(schema) || httpUser.FindFirstValue(ClaimTypes.Email) is not { } email)
                 return;
 
-            var userId = await AccountsBackend.GetIdByEmailHash(email.GetSHA256HashCode(), cancellationToken)
+            var emailHash = email.Hash(Encoding.UTF8).SHA256().Base64();
+            var userId = await AccountsBackend.GetIdByEmailHash(emailHash, cancellationToken)
                 .ConfigureAwait(false);
             if (userId.IsNone)
                 return;

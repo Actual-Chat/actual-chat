@@ -5,6 +5,7 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using ActualChat.Search;
 using Cysharp.Text;
+using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 
@@ -116,6 +117,13 @@ public static partial class StringExt
     [return: NotNullIfNotNull("url")]
     public static Uri? ToUri(this string? url)
         => url == null ? null : new Uri(url);
+
+    // "null encoding" means "return string byte span", i.e. UTF16 encoding
+    public static ReadOnlySpan<byte> Encode(this string value, Encoding? encoding)
+        => encoding?.GetBytes(value) ?? value.Utf16Encode();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ReadOnlySpan<byte> Utf16Encode(this string value)
+        => value.AsSpan().Cast<char, byte>();
 
     public static string UrlEncode(this string input)
         => WebUtility.UrlEncode(input);
