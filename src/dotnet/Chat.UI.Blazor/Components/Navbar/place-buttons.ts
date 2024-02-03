@@ -32,15 +32,12 @@ export class PlaceButtons {
 
         this.disposed$.next();
         this.disposed$.complete();
-        for(const btn of this.buttons) {
-            btn.removeEventListener('dragstart', this.onDragStart);
-            btn.removeEventListener('dragend', this.onDragEnd);
-
-            btn.removeEventListener('touchstart', this.onTouchStart);
-            btn.removeEventListener('touchend', this.onTouchEnd);
-            btn.removeEventListener('touchcancel', this.onTouchEnd);
-        }
-        this.places.removeEventListener('dragover', this.onDragOver);
+        this.places.removeEventListener('pointerdown', this.onPointerDown);
+        window.removeEventListener('pointermove', this.onPointerMove);
+        window.removeEventListener('pointerup', this.onPointerUp);
+        window.removeEventListener('pointercancel', this.onPointerUp);
+        if (this.currentBtn && this.currentBtn.classList.contains('drag-btn'))
+            this.currentBtn.classList.remove('drag-btn');
         this.placeListObserver.disconnect();
     }
 
@@ -73,15 +70,10 @@ export class PlaceButtons {
         }
         this.updatePlaceOrder();
         for (const btn of this.buttons) {
-            btn.addEventListener('dragstart', this.onDragStart);
-            btn.addEventListener('dragend', this.onDragEnd);
-
-            btn.addEventListener('touchstart', this.onTouchStart);
-            btn.addEventListener('touchend', this.onTouchEnd);
-            btn.addEventListener('touchcancel', this.onTouchEnd);
+            btn.style.touchAction = 'none';
+            btn.ondragstart = () => false;
         }
-        this.places.addEventListener('dragover', this.onDragOver);
-
+        this.places.addEventListener('pointerdown', this.onPointerDown);
         this.placeListObserver = new MutationObserver(this.updatePlaceList);
         this.placeListObserver.observe(this.places, {
             attributes: true,
@@ -120,44 +112,49 @@ export class PlaceButtons {
         navbarButtons.forEach(b => {
             let btn = b as HTMLElement;
             this.buttons.push(btn);
-            btn.draggable = true;
         });
     }
 
-    private onTouchStart = (event: TouchEvent) => {
-        this.currentBtn = event.currentTarget as HTMLElement;
+    private onPointerDown = (event: PointerEvent) => {
+        event.preventDefault();
+        for (const btn of this.buttons) {
+            if (btn.contains(event.target as HTMLElement)) {
+                this.currentBtn = btn;
+                window.addEventListener('pointerup', this.onPointerUp);
+                window.addEventListener('pointercancel', this.onPointerUp);
+                break;
+            }
+        }
         if (this.currentBtn == null)
             return;
         this.delay = setTimeout(() => {
-            this.onLongTouch(event);
+            this.onLongTap(event);
         }, this.longTap);
     }
 
-    private onLongTouch = (event: TouchEvent) => {
-        this.ghostBtn = this.currentBtn.cloneNode(true) as HTMLElement;
-        this.ghostBtn.style.position = 'fixed';
-        this.ghostBtn.style.zIndex = '100';
-        this.ghostBtn.style.scale = '1.1';
-        this.ghostBtn.classList.add('ghost-btn');
-        let rect = this.currentBtn.getBoundingClientRect();
-        this.shiftY = (event.touches[0].pageY - rect.top) / 2;
-        document.body.appendChild(this.ghostBtn);
-        this.currentBtn.classList.add('drag-btn');
-
-        this.ghostBtn.style.left = rect.left + 'px';
-        this.ghostBtn.style.top = rect.top + 'px';
-
-        let placesRect = this.places.getBoundingClientRect();
-        this.topLimit = placesRect.top - 5;
-        this.bottomLimit = placesRect.bottom + 10;
-
-        window.addEventListener('touchmove', this.onTouchMove);
+    private onLongTap = (event: PointerEvent) => {
+        event.preventDefault();
+        this.addGhostBtn(event);
+        window.addEventListener('pointermove', this.onPointerMove);
     }
 
-    private onTouchMove = (event: TouchEvent) => {
+    private onPointerUp = (event: PointerEvent) => {
+        event.preventDefault();
+        if (this.delay)
+            clearTimeout(this.delay);
+        if (this.ghostBtn) {
+            this.ghostBtn.remove();
+        }
+        this.currentBtn.classList.remove('drag-btn');
+        window.removeEventListener('pointermove', this.onPointerMove);
+        window.removeEventListener('pointerup', this.onPointerUp);
+        window.removeEventListener('pointercancel', this.onPointerUp);
+    }
+
+    private onPointerMove = (event: PointerEvent) => {
         event.preventDefault();
         let ghostRect = this.ghostBtn.getBoundingClientRect();
-        let top = event.touches[0].clientY - this.shiftY;
+        let top = event.y - this.shiftY;
         if (top <= this.topLimit) {
             this.ghostBtn.style.top = this.topLimit + 'px';
             if (!this.isScrolling) {
@@ -174,10 +171,10 @@ export class PlaceButtons {
             this.ghostBtn.style.top = top + 'px';
             this.isScrolling = false;
         }
-        this.replaceButton(event, ghostRect);
+        this.replaceButton(ghostRect);
     }
 
-    private replaceButton = (event: TouchEvent, ghostRect: DOMRect) => {
+    private replaceButton = (ghostRect: DOMRect) => {
         for (const btn of this.buttons) {
             let rect = btn.getBoundingClientRect();
             let topDelta = Math.abs(rect.top - ghostRect.top);
@@ -195,59 +192,32 @@ export class PlaceButtons {
         }
     }
 
-    private onTouchEnd = (event: TouchEvent) => {
-        clearTimeout(this.delay);
-        window.removeEventListener('touchmove', this.onTouchMove);
-        if (this.ghostBtn) {
-            this.ghostBtn.remove();
-        }
-        if (this.currentBtn != null) {
-            this.currentBtn.classList.remove('drag-btn');
-            this.currentBtn = null;
-        }
+    private addGhostBtn = (event: PointerEvent) => {
+        this.ghostBtn = document.createElement('div');
+        this.ghostBtn.classList.add('ghost-btn');
+
+        let offsetX = 8;
+        let dots = document.createElement('div');
+        dots.innerHTML = `<i class="icon-more-vertical-2 text-xl"></i>`;
+        dots.style.marginRight = offsetX + 'px';
+
+        let btn = this.currentBtn.cloneNode(true) as HTMLElement;
+
+        let rect = this.currentBtn.getBoundingClientRect();
+        this.shiftY = (event.y - rect.top) / 2;
+        this.ghostBtn.appendChild(dots);
+        this.ghostBtn.appendChild(btn);
+        document.body.appendChild(this.ghostBtn);
+
+        this.currentBtn.classList.add('drag-btn');
+
+        let dotsOffset = dots.getBoundingClientRect().width;
+        this.ghostBtn.style.left = rect.left - dotsOffset - offsetX + 'px';
+        this.ghostBtn.style.top = rect.top + 'px';
+
+        let placesRect = this.places.getBoundingClientRect();
+        this.topLimit = placesRect.top - 5;
+        this.bottomLimit = placesRect.bottom + 10;
     }
-
-    private onDragStart = (event: Event) => {
-        let target = event.target as HTMLElement;
-        let btn = target.closest('.navbar-button');
-        btn.classList.add('drag-btn');
-    }
-
-    private onDragEnd = (event: Event) => {
-        let target = event.target as HTMLElement;
-        let btn = target.closest('.navbar-button');
-        btn.classList.remove('drag-btn');
-    }
-
-    private onDragOver = (event: DragEvent) => {
-        event.preventDefault();
-        const activeElement = this.places.querySelector('.drag-btn');
-        let target = event.target as HTMLElement;
-        let currentElement = target.closest('.navbar-button');
-
-        const isMovable = currentElement != null && activeElement !== currentElement &&
-            currentElement.classList.contains('navbar-button');
-
-        if (!isMovable) {
-            return;
-        }
-
-        const nextElement = this.getNextElement(event.pageY, currentElement);
-
-        if (nextElement && activeElement === nextElement.previousElementSibling || activeElement === nextElement) {
-            return;
-        }
-
-        this.places.insertBefore(activeElement, nextElement);
-    }
-
-    private getNextElement = (cursorPosition: number, currentElement: Element) => {
-        const currentElementRect = currentElement.getBoundingClientRect();
-        const currentElementCenter = currentElementRect.y + currentElementRect.height / 2;
-
-        return (cursorPosition < currentElementCenter) ?
-               currentElement :
-               currentElement.nextElementSibling;
-    };
 }
 

@@ -135,28 +135,43 @@ body.hoverable .navbar-item:hover {
     @apply invisible md:hidden;
 }
 
+.navbar-button.drag-btn .btn.btn-square .navbar-button-content.btn-content,
+.navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
+    @apply h-12 w-12;
+}
+
 body.narrow .navbar-button.drag-btn .btn.btn-square .navbar-button-content.btn-content,
 body.narrow .navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
     @apply h-10 w-10;
 }
 
-body.narrow .navbar-button.ghost-btn {
-    @apply opacity-30;
-    animation: twitch 250ms 2 forwards;
+.ghost-btn {
+    @apply fixed z-[1000];
+    @apply flex-x items-center justify-center;
+    @apply scale-110;
 }
-
+.ghost-btn > .navbar-button {
+    @apply opacity-30;
+    animation: twitch 200ms 2 forwards;
+}
+.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
+    @apply h-10 w-10 md:h-12 md:w-12;
+}
+.ghost-btn > .dots {
+    @apply sm:hidden md:hidden lg:flex;
+}
 @keyframes twitch {
     0% {
         transform: rotate(0);
     }
     25% {
-        transform: rotate(15deg);
+        transform: rotate(10deg);
     }
     50% {
         transform: rotate(0);
     }
     75% {
-        transform: rotate(-15deg);
+        transform: rotate(-10deg);
     }
     100% {
         transform: rotate(0);
