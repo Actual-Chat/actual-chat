@@ -39,7 +39,6 @@ public class ValueMeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
 
         var r5 = ValueMeshRefResolvers.Get<TestCommand>()!;
         r5.Invoke(new TestCommand(nodeA), shardScheme).Should().Be(MeshRef.Node(nodeA));
-
     }
 
     public sealed record TestCommand(MeshNodeId NodeId) : IHasShardKeySource<MeshNodeId>
