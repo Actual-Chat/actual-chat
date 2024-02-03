@@ -178,8 +178,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 }
             }
 
+            var nodeId = new MeshNodeId(Generate.Option);
             var node = new MeshNode(
-                Alphabet.AlphaNumeric.Generator8.Next(), // $"{host}-{Ulid.NewUlid().ToString()}";
+                nodeId, // $"{host}-{Ulid.NewUlid().ToString()}";
                 $"{host}:{port.Format()}",
                 hostInfo.Roles);
             Log.LogInformation("MeshNode: {MeshNode}", node.ToString());

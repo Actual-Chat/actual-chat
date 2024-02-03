@@ -23,7 +23,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices) : HostModu
 
         // Core server-side services
         services.AddSingleton(c => new ServerSideServiceDefs(c));
-        services.AddSingleton(c => new RpcCallShardMappers(c));
+        services.AddSingleton(c => new RpcMeshRefResolvers(c));
         services.AddSingleton<RpcBackendServiceDetector>(c => {
             var serverSideServiceDefs = c.GetRequiredService<ServerSideServiceDefs>();
             return (serviceType, serviceName) => serverSideServiceDefs.Contains(serviceType)
@@ -33,7 +33,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices) : HostModu
         });
         services.AddSingleton<RpcCallRouter>(c => {
             var serverSideServiceDefs = c.GetRequiredService<ServerSideServiceDefs>();
-            var shardMappers = c.GetRequiredService<RpcCallShardMappers>();
+            var meshRefResolvers = c.GetRequiredService<RpcMeshRefResolvers>();
             RpcHub? rpcHub = null;
             return (methodDef, arguments) => {
                 rpcHub ??= c.RpcHub(); // We can't resolve it earlier, coz otherwise it will trigger recursion
@@ -45,10 +45,13 @@ public sealed class CoreServerModule(IServiceProvider moduleServices) : HostModu
                 if (serverSideServiceDef.ServiceMode != ServiceMode.Client)
                     throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client service.");
 
-                var sharding = Sharding.ByRole[serverSideServiceDef.ServerRole];
-                var shardMapper = shardMappers[methodDef];
-                var hash = shardMapper.Invoke(methodDef, arguments, sharding);
-                var peerRef = sharding.GetClientPeerRef(hash);
+                var shardScheme = ShardScheme.ById[serverSideServiceDef.ServerRole.Id];
+                var meshRefResolver = meshRefResolvers[methodDef];
+                var meshRef = meshRefResolver.Invoke(methodDef, arguments, shardScheme);
+                var peerRef = BackendClientPeerRef.Get(meshRef);
+                if (peerRef == null)
+                    throw StandardError.Internal($"Invalid MeshRef: {meshRef}.");
+
                 return rpcHub.GetClientPeer(peerRef);
             };
         });

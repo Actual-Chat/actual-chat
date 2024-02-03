@@ -462,7 +462,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             else if (chatKind == ChatKind.Place) {
                 if (chatId.IsNone) {
                     chatId = placeId.IsNone
-                        ? PlaceChatId.GetForRoot(new PlaceId(Generate.Option))
+                        ? PlaceChatId.Root(new PlaceId(Generate.Option))
                         : new PlaceChatId(placeId, Generate.Option);
                 }
                 else

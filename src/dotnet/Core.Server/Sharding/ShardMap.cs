@@ -1,39 +1,35 @@
 using ActualChat.Mesh;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 
 public sealed class ShardMap
 {
-    public Sharding Sharding { get; }
+    public ShardScheme ShardScheme { get; }
     public ImmutableArray<MeshNode> Nodes { get; }
     public ImmutableArray<int?> NodeIndexes { get; }
     public bool IsEmpty => Nodes.Length == 0;
 
     // Indexers
-    public MeshNode? this[int hash] {
+    public MeshNode? this[int shardKey] {
         get {
-            var nodeIndex = NodeIndexes[Sharding.GetShardIndex(hash)];
+            var nodeIndex = NodeIndexes[ShardScheme.GetShardIndex(shardKey)];
             return nodeIndex.HasValue ? Nodes[nodeIndex.GetValueOrDefault()] : null;
         }
     }
 
-    public MeshNode? this[int hash, int nodeOffset] {
+    public MeshNode? this[int shardKey, int nodeOffset] {
         get {
-            var nodeIndex = NodeIndexes[Sharding.GetShardIndex(hash)];
+            var nodeIndex = NodeIndexes[ShardScheme.GetShardIndex(shardKey)];
             return nodeIndex.HasValue ? Nodes.GetRingItem(nodeOffset + nodeIndex.GetValueOrDefault()) : null;
         }
     }
 
-    public MeshNode? this[string hash] => this[hash.GetDjb2HashCode()];
-    public MeshNode? this[string hash, int nodeOffset] => this[hash.GetDjb2HashCode(), nodeOffset];
-
-    public ShardMap(Sharding sharding, ImmutableArray<MeshNode> nodes)
+    public ShardMap(ShardScheme shardScheme, ImmutableArray<MeshNode> nodes)
     {
-        Sharding = sharding;
+        ShardScheme = shardScheme;
         Nodes = nodes;
         var remainingNodeCount = nodes.Length;
-        var shardCount = Sharding.ShardCount;
+        var shardCount = ShardScheme.ShardCount;
         var shards = new int?[shardCount];
         var remainingShardCount = shardCount;
         while (remainingNodeCount != 0) {
@@ -59,7 +55,7 @@ public sealed class ShardMap
     {
         var sb = StringBuilderExt.Acquire();
         sb.Append(nameof(ShardMap));
-        sb.Append('(').Append(Sharding).Append(" -> ");
+        sb.Append('(').Append(ShardScheme).Append(" -> ");
         sb.Append(Nodes.Length).Append(' ').Append("node".Pluralize(Nodes.Length)).Append(')');
         if (IsEmpty)
             return sb.ToStringAndRelease();

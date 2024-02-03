@@ -1,14 +1,14 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class ContactIdTest : SymbolIdentifierTestBase<ContactId>
+public class ContactIdTest(ITestOutputHelper @out) : SymbolIdentifierTestBase<ContactId>(@out)
 {
-    public override Symbol[] ValidIdentifiers => new Symbol[] {
+    public override Symbol[] ValidIdentifiers => [
         "admin chatId1",
         "admin p-admin-bobby93",
         "bobby93 chatId1",
         "bobby93 p-admin-bobby93",
-    };
-    public override Symbol[] InvalidIdentifiers => new Symbol[] {
+    ];
+    public override Symbol[] InvalidIdentifiers => [
         "x",
         "x ",
         "x y",
@@ -19,7 +19,5 @@ public class ContactIdTest : SymbolIdentifierTestBase<ContactId>
         "bobby93 x",
         "bobby93 -",
         "bobby93 p-bobby93-admin",
-    };
-
-    public ContactIdTest(ITestOutputHelper @out) : base(@out) { }
+    ];
 }

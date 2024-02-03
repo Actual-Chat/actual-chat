@@ -31,7 +31,10 @@ public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsRoot => !IsNone && PlaceId.Id.Equals(LocalChatId);
+    public bool IsRoot => !IsNone && PlaceId.Id == LocalChatId;
+
+    public static PlaceChatId Root(PlaceId placeId)
+        => new(Format(placeId, placeId.Id), placeId, placeId.Id, AssumeValid.Option);
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public PlaceChatId(Symbol id) => this = Parse(id);
@@ -61,8 +64,6 @@ public readonly partial struct PlaceChatId : ISymbolIdentifier<PlaceChatId>
     public override string ToString() => Value;
     public static implicit operator Symbol(PlaceChatId source) => source.Id;
     public static implicit operator string(PlaceChatId source) => source.Id.Value;
-    public static PlaceChatId GetForRoot(PlaceId placeId)
-        => new PlaceChatId(Format(placeId, placeId.Id), placeId, placeId.Id, AssumeValid.Option);
 
     // Equality
 

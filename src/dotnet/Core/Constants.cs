@@ -12,9 +12,9 @@ public static partial class Constants
 
     public static class Chat
     {
-        public static readonly ChatId DefaultChatId = ChatId.CreateGroupChatId("the-actual-one");
-        public static readonly ChatId AnnouncementsChatId = ChatId.CreateGroupChatId("announcements");
-        public static readonly ChatId FeedbackTemplateChatId = ChatId.CreateGroupChatId("feedback-template");
+        public static readonly ChatId DefaultChatId = ChatId.Group("the-actual-one");
+        public static readonly ChatId AnnouncementsChatId = ChatId.Group("announcements");
+        public static readonly ChatId FeedbackTemplateChatId = ChatId.Group("feedback-template");
         public static readonly IReadOnlySet<Symbol> SystemChatIds =
             new HashSet<Symbol>(new [] { DefaultChatId.Id, AnnouncementsChatId.Id, FeedbackTemplateChatId.Id });
 

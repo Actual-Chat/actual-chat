@@ -14,6 +14,8 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct PlaceId : ISymbolIdentifier<PlaceId>
 {
+    private static RandomStringGenerator IdGenerator => ChatId.IdGenerator;
+
     public static PlaceId None => default;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
@@ -33,25 +35,16 @@ public readonly partial struct PlaceId : ISymbolIdentifier<PlaceId>
     public PlaceId(string? id, ParseOrNone _)
         => this = ParseOrNone(id);
     public PlaceId(Generate _)
-        => this = new PlaceId(new ChatId(Generate.Option).Id);
+        => this = new PlaceId(IdGenerator.Next(), AssumeValid.Option);
 
     public PlaceId(Symbol id, AssumeValid _)
-    {
-        if (id.IsEmpty) {
-            this = None;
-            return;
-        }
-        Id = id;
-    }
+        => Id = id;
 
     // Conversion
 
     public override string ToString() => Value;
     public static implicit operator Symbol(PlaceId source) => source.Id;
     public static implicit operator string(PlaceId source) => source.Id.Value;
-
-    // public static PlaceId From(ChatId chatId)
-    //     => new (chatId.Id);
 
     // Equality
 
@@ -80,7 +73,6 @@ public readonly partial struct PlaceId : ISymbolIdentifier<PlaceId>
         if (!(Alphabet.AlphaNumeric.IsMatch(s) || Constants.Chat.SystemChatIds.Contains(s)))
             return false;
 
-        // Group chat ID
         result = new PlaceId(s, AssumeValid.Option);
         return true;
     }

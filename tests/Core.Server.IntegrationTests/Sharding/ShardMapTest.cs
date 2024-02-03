@@ -24,7 +24,7 @@ public class ShardMapTest(ITestOutputHelper @out) : TestBase(@out)
                 nodes.Add(new MeshNode(i.Format(), "local:80", nodeRoles));
             else
                 nodes.RemoveAt(rnd.Next(nodes.Count));
-            var shardMap = new ShardMap(Sharding.Backend.Instance, nodes.ToImmutableArray());
+            var shardMap = new ShardMap(ShardScheme.Backend.Instance, nodes.ToImmutableArray());
             if (!shardMap.IsEmpty) {
                 var nodeIndexes = shardMap.NodeIndexes;
                 nodeIndexes.All(x => x.HasValue).Should().BeTrue();

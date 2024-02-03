@@ -11,31 +11,31 @@ public readonly struct HashRing<T>
     public static readonly Func<T, int> DefaultStringHasher = static v => v is string s ? s.GetDjb2HashCode() : v.GetHashCode();
     public static readonly HashRing<T> Empty = new(Array.Empty<T>());
 
-    private readonly T[] _doubleItems;
+    private readonly T[] _doubleNodes;
 
-    public (T Value, int Hash)[] Items { get; }
-    public int Count => Items.Length;
+    public (T Value, int Hash)[] Nodes { get; }
+    public int Count => Nodes.Length;
     public bool IsEmpty => Count == 0;
-    public T this[int index] => _doubleItems[Count + (index % Count)];
+    public T this[int nodeIndex] => _doubleNodes[Count + (nodeIndex % Count)];
 
     public HashRing(IEnumerable<T> values, Func<T, int>? hasher = null)
     {
         hasher ??= typeof(T) == typeof(string) ? DefaultStringHasher : DefaultHasher;
-        Items = values
+        Nodes = values
             .Select(v => (Value: v, Hash: hasher.Invoke(v)))
             .OrderBy(i => i.Hash)
             .ToArray();
-        _doubleItems = new T[Items.Length * 2];
-        for (var i = 0; i < _doubleItems.Length; i++)
-            _doubleItems[i] = Items[i.Mod(Count)].Value;
+        _doubleNodes = new T[Nodes.Length * 2];
+        for (var i = 0; i < _doubleNodes.Length; i++)
+            _doubleNodes[i] = Nodes[i.Mod(Count)].Value;
     }
 
-    public T Get(int hash, int offset = 0)
-        => this[offset + FindHashIndex(hash)];
+    public T FindNode(int hash, int offset = 0)
+        => this[offset + FindNodeIndex(hash)];
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public int FindHashIndex(int hash)
-        => ~Array.BinarySearch(Items, (default!, hash), Comparer);
+    public int FindNodeIndex(int hash)
+        => ~Array.BinarySearch(Nodes, (default!, hash), Comparer);
 
     public ReadOnlySpan<T> Span(int hash, int count, int offset = 0)
     {
@@ -43,8 +43,8 @@ public readonly struct HashRing<T>
         if (count == 0)
             return Span<T>.Empty;
 
-        offset = (offset + FindHashIndex(hash)).Mod(Count);
-        return _doubleItems.AsSpan(offset, count);
+        offset = (offset + FindNodeIndex(hash)).Mod(Count);
+        return _doubleNodes.AsSpan(offset, count);
     }
 
     public ArraySegment<T> Segment(int hash, int count, int offset = 0)
@@ -53,8 +53,8 @@ public readonly struct HashRing<T>
         if (count == 0)
             return ArraySegment<T>.Empty;
 
-        offset = (offset + FindHashIndex(hash)).Mod(Count);
-        return new ArraySegment<T>(_doubleItems, offset, count);
+        offset = (offset + FindNodeIndex(hash)).Mod(Count);
+        return new ArraySegment<T>(_doubleNodes, offset, count);
     }
 
     // Nested types
