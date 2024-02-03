@@ -36,5 +36,14 @@ public class ValueMeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
 
         var r4 = ValueMeshRefResolvers.Get<PlaceId>()!;
         r4.Invoke(placeId, shardScheme).ShardRef.ShardKey.Should().Be(placeId.Value.GetDjb2HashCode());
+
+        var r5 = ValueMeshRefResolvers.Get<TestCommand>()!;
+        r5.Invoke(new TestCommand(nodeA), shardScheme).Should().Be(MeshRef.Node(nodeA));
+
+    }
+
+    public sealed record TestCommand(MeshNodeId NodeId) : IHasShardKeySource<MeshNodeId>
+    {
+        MeshNodeId IHasShardKeySource<MeshNodeId>.GetShardKeySource() => NodeId;
     }
 }
