@@ -10,6 +10,7 @@ Nerdbank.GitVersioning.*
 .idea/
 .history
 .DS_Store
+.env
 _ReSharper*/
 *.[Rr]e[Ss]harper
 *.suo
