@@ -25,6 +25,10 @@ ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_ROLL_FORWARD_TO_PRERELEASE=1 \
     NUGET_CERT_REVOCATION_MODE=offline
 
+RUN apt update \
+    && apt install -y --no-install-recommends python3 python3-pip libatomic1 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /src
 COPY lib/ lib/
 COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.CI.slnf ActualChat.sln ./
@@ -42,9 +46,6 @@ COPY tests/Directory.Build.* tests/.editorconfig tests/
 COPY build/ build/
 COPY run-build.cmd .
 
-RUN apt update \
-    && apt install -y --no-install-recommends python3 python3-pip libatomic1 \
-    && rm -rf /var/lib/apt/lists/*
 RUN ./run-build.cmd restore \
     && dotnet workload install wasm-tools
 
