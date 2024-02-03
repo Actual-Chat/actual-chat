@@ -16,10 +16,19 @@ public class ValueMeshRefResolversTest(ITestOutputHelper @out) : TestBase(@out)
         r1.Invoke(0, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 0));
         r1.Invoke(10, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 10));
 
+        var r1u = ValueMeshRefResolvers.GetUntyped<int>()!;
+        r1u.Invoke(0, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 0));
+        r1u.Invoke(10, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 10));
+
         var r2 = ValueMeshRefResolvers.Get<int?>()!;
         r2.Invoke(0, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 0));
         r2.Invoke(10, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 10));
         r2.Invoke(null, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 0));
+
+        var r2u = ValueMeshRefResolvers.GetUntyped<int?>()!;
+        r2u.Invoke(0, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 0));
+        r2u.Invoke(10, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 10));
+        r2u.Invoke(null, shardScheme).Should().Be(MeshRef.Shard(shardScheme, 0));
 
         var r3 = ValueMeshRefResolvers.Get<MeshNodeId>()!;
         r3.Invoke(nodeA, shardScheme).Should().Be(MeshRef.Node(nodeA));
