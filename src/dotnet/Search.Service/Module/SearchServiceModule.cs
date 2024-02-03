@@ -8,6 +8,7 @@ using ActualLab.Fusion.EntityFramework.Operations;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Transport;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace ActualChat.Search.Module;
 
@@ -51,10 +52,14 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
 
         // elastic
         services.AddSingleton(c => {
-            var clientSettings = !HostInfo.IsDevelopmentInstance || Settings.IsCloudElastic
-                ? new ElasticsearchClientSettings(Settings.ElasticCloudId, new Base64ApiKey(Settings.ElasticApiKey))
-                : new ElasticsearchClientSettings();
-            return new ElasticsearchClient(clientSettings);
+            if (!HostInfo.IsDevelopmentInstance || Settings.IsCloudElastic) {
+                var cloudElasticClientSettings = new ElasticsearchClientSettings(Settings.ElasticCloudId, new Base64ApiKey(Settings.ElasticApiKey));
+                return new ElasticsearchClient(cloudElasticClientSettings);
+            }
+            if (!Settings.ElasticLocalUri.IsNullOrEmpty()) {
+                return new ElasticsearchClient(new Uri(Settings.ElasticLocalUri));
+            }
+            return new ElasticsearchClient();
         });
 
         // Module's own services
