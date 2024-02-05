@@ -7,10 +7,10 @@ public abstract record UploadedFile(FilePath FileName, string ContentType)
     public abstract long Length { get; init; }
     public abstract Task<Stream> Open();
 
-    public async Task<string> GetSHA256HashCode(HashEncoding hashEncoding)
+    public async Task<T> Process<T>(Func<Stream, Task<T>> processor)
     {
         var stream = await Open().ConfigureAwait(false);
         await using var _ = stream.ConfigureAwait(false);
-        return await stream.GetSHA256HashCode(hashEncoding).ConfigureAwait(false);
+        return await processor.Invoke(stream).ConfigureAwait(false);
     }
 }

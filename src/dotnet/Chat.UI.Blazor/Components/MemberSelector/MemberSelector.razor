@@ -1,0 +1,155 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualChat.Contacts
+@using ActualChat.Search
+@using TaskExt = ActualChat.TaskExt
+@inherits FusionComponentBase
+@implements IDisposable
+
+<SearchBox
+    Class="icon-alight-right"
+    Placeholder="Whom would you like to add?"
+    MaxLength="@Constants.Chat.MaxSearchFilterLength"
+    TextChanged="@OnFilter"/>
+<div class="contact-selector-badges">
+    @foreach (var userId in _selectedUserIds.Value) {
+        var contact = AllContacts.FirstOrDefault(c => c.Account.Id.Equals(userId));
+        if (contact == null)
+            continue;
+
+        var account = contact.Account;
+        <div class="contact-selector-badges-contact" @onclick="() => Remove(contact)">
+            <div class="contact-selector-badges-remove-contact-icon">
+                <i class="icon-close"></i>
+            </div>
+            <AccountCircle UserSid="@userId" Size="@SquareSize.Size6" />
+            <div class="contact-selector-badges-title">
+                @account.Avatar.Name
+            </div>
+        </div>
+    }
+</div>
+<div class="c-contact-list">
+    @foreach (var contact in FilteredContacts) {
+        <div class="c-item"
+             @key="@contact.Account.Id.Value"
+             @onclick="@(_ => OnContactClick(contact))">
+            <AccountCircle UserSid="@contact.Account.Id" ShowPresence="true"/>
+            <div class="avatar-name">
+                <SearchMatchHighlighter Match="@GetMatch(contact.Account.Avatar.Name)"/>
+            </div>
+            @if (contact.IsExisting) {
+                <Checkbox
+                    IsChecked="true"
+                    IsDisabled="true"
+                    Class="!flex-none"/>
+            } else {
+                <Checkbox
+                    IsChecked="@contact.IsChecked"
+                    Class="!flex-none"
+                    Change="@(_ => OnContactClick(contact))"/>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private IMutableState<ImmutableHashSet<UserId>> _selectedUserIds = null!;
+
+    private string Filter { get; set; } = "";
+    private Contact[] FilteredContacts { get; set; } = Array.Empty<Contact>();
+    private Contact[] AllContacts { get; set; } = Array.Empty<Contact>();
+    private CancellationTokenSource DisposeTokenSource { get; set; } = null!;
+    private CancellationToken DisposeToken { get; set; }
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Parameter, EditorRequired] public IMemberSelectorDataProvider DataProvider { get; set; } = null!;
+    [Parameter] public EventCallback Changed { get; set; }
+
+    public IState<ImmutableHashSet<UserId>> SelectedUserIds => _selectedUserIds;
+
+    protected override async Task OnInitializedAsync() {
+        if (DataProvider is null)
+            throw StandardError.NotSupported("DataProvider should be specified.");
+
+        DisposeTokenSource = new();
+        DisposeToken = DisposeTokenSource.Token;
+
+        _selectedUserIds = Hub.StateFactory().NewMutable(
+            ImmutableHashSet<UserId>.Empty,
+            StateCategories.Get(GetType(), nameof(SelectedUserIds)));
+        _selectedUserIds.Updated += OnSelectedUserIdsUpdated;
+
+        var userIds = await DataProvider.ListUserIds(DisposeToken);
+
+        var session = Hub.Session();
+        var accounts = await userIds
+            .Select(c => Hub.Accounts.Get(session, c, DisposeToken))
+            .Collect()
+            .ConfigureAwait(false);
+
+        var existingUserIds = new HashSet<UserId>(await DataProvider.ListPreSelectedUserIds(DisposeToken));
+
+        var contacts = accounts
+            .SkipNullItems()
+            .Select(c => new Contact {
+                Account = c,
+                IsExisting = existingUserIds.Contains(c.Id),
+            })
+            .ToArray();
+
+        AllContacts = contacts
+            .OrderBy(x => x.Account.Avatar.Name)
+            .ToArray();
+        FilteredContacts = AllContacts;
+    }
+
+    private void OnSelectedUserIdsUpdated(IState<ImmutableHashSet<UserId>> state, StateEventKind eventKind)
+        => _ = InvokeAsync(() => !DisposeToken.IsCancellationRequested
+            ? Changed.InvokeAsync()
+            : Task.CompletedTask);
+
+    public void Dispose()
+        => DisposeTokenSource.CancelAndDisposeSilently();
+
+    private void OnFilter(string filter) {
+        Filter = filter;
+
+        FilteredContacts = string.IsNullOrWhiteSpace(filter)
+            ? AllContacts.ToArray()
+            : AllContacts
+                .Where(x => x.Account.Avatar.Name.OrdinalIgnoreCaseContains(filter))
+                .ToArray();
+    }
+
+    private SearchMatch GetMatch(string text) {
+        var searchPhrase = Filter.ToSearchPhrase(true, false);
+        return searchPhrase.GetMatch(text);
+    }
+
+    private void OnContactClick(Contact contact) {
+        if (contact.IsExisting)
+            return;
+
+        contact.IsChecked = !contact.IsChecked;
+        var userId = contact.Account.Id;
+        if (contact.IsChecked)
+            _selectedUserIds.Set(userId, static (userId1, x) => x.Value.Add(userId1));
+        else
+            _selectedUserIds.Set(userId, static (userId1, x) => x.Value.Remove(userId1));
+        StateHasChanged();
+    }
+
+    private void Remove(Contact contact) {
+        if (contact.IsExisting)
+            return;
+        _selectedUserIds.Set(contact.Account.Id, static (userId1, x) => x.Value.Remove(userId1));
+    }
+
+    // Nested types
+
+    private sealed class Contact {
+        public Account Account { get; init; } = null!;
+        public bool IsExisting { get; init; }
+        public bool IsChecked { get; set; }
+    }
+}

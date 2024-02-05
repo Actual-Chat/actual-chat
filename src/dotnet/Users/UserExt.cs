@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Text;
+using ActualChat.Hashing;
 
 namespace ActualChat.Users;
 
@@ -30,7 +32,7 @@ public static class UserExt
             throw StandardError.Constraint("Phone identity already set for this user.");
 
         return user.WithIdentity(ToPhoneIdentity(phone))
-            .WithIdentity(ToHashedPhoneIdentity(phone.Value.GetSHA256HashCode()))
+            .WithIdentity(ToHashedPhoneIdentity(phone.Hash(Encoding.UTF8).SHA256().Base64()))
             .WithClaim(ClaimTypes.MobilePhone, phone);
     }
 
@@ -43,7 +45,7 @@ public static class UserExt
             throw StandardError.Constraint("Email identity already set for this user.");
 
         return user.WithIdentity(ToEmailIdentity(email))
-            .WithIdentity(ToHashedEmailIdentity(email.GetSHA256HashCode()));
+            .WithIdentity(ToHashedEmailIdentity(email.Hash(Encoding.UTF8).SHA256().Base64()));
     }
 
     public static UserIdentity GetPhoneIdentity(this User user)

@@ -1,9 +1,7 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class LanguageTest : SymbolIdentifierTestBase<Language>
+public class LanguageTest(ITestOutputHelper @out) : SymbolIdentifierTestBase<Language>(@out)
 {
-    public override Symbol[] ValidIdentifiers => new Symbol[] { "eN-Us", "UA", "rU" };
-    public override Symbol[] InvalidIdentifiers => new Symbol[] { "X", "~" };
-
-    public LanguageTest(ITestOutputHelper @out) : base(@out) { }
+    public override Symbol[] ValidIdentifiers => [ "eN-Us", "UA", "rU" ];
+    public override Symbol[] InvalidIdentifiers => [ "X", "~" ];
 }

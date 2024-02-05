@@ -1,3 +1,6 @@
+using System.Text;
+using ActualChat.Hashing;
+
 namespace ActualChat.Users;
 
 public static class AccountsExt
@@ -33,7 +36,7 @@ public static class AccountsExt
             // User updates its own profile
             if (ownAccount.Phone != updatedAccount.Phone) {
                 var verifiedPhoneHash = ownAccount.User.GetPhoneHash();
-                if (!verifiedPhoneHash.IsNullOrEmpty() && !OrdinalEquals(updatedAccount.Phone.Value.GetSHA256HashCode(), verifiedPhoneHash))
+                if (!verifiedPhoneHash.IsNullOrEmpty() && !OrdinalEquals(updatedAccount.Phone.Hash(Encoding.UTF8).SHA256().Base64(), verifiedPhoneHash))
                     throw StandardError.Unauthorized("You can't change your phone number after it's verified.");
                 if (!updatedAccount.Phone.IsValid)
                     throw StandardError.Constraint<Phone>("Incorrect phone number format.");

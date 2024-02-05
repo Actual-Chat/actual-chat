@@ -1,9 +1,7 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public class UserIdTest : SymbolIdentifierTestBase<UserId>
+public class UserIdTest(ITestOutputHelper @out) : SymbolIdentifierTestBase<UserId>(@out)
 {
-    public override Symbol[] ValidIdentifiers => new Symbol[] { "admin", "bobby93", "~guest15" };
-    public override Symbol[] InvalidIdentifiers => new Symbol[] { "x", "some:one", "~", "~guest~1" };
-
-    public UserIdTest(ITestOutputHelper @out) : base(@out) { }
+    public override Symbol[] ValidIdentifiers => [ "admin", "bobby93", "~guest15" ];
+    public override Symbol[] InvalidIdentifiers => [ "x", "some:one", "~", "~guest~1" ];
 }

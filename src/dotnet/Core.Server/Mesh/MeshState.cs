@@ -9,7 +9,7 @@ public sealed partial class MeshState
     public static readonly MeshState Empty = new();
 
     private readonly object _lock = new();
-    private volatile Dictionary<Sharding, ShardMap>? _shardMapCache;
+    private volatile Dictionary<ShardScheme, ShardMap>? _shardMapCache;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
     public ImmutableArray<MeshNode> Nodes { get; } = ImmutableArray<MeshNode>.Empty;
@@ -51,27 +51,27 @@ public sealed partial class MeshState
         return sb.ToStringAndRelease();
     }
 
-    public ShardMap GetShardMap<TSharding>()
-        where TSharding : Sharding, ISharding<TSharding>
-        => GetShardMap(TSharding.Instance);
+    public ShardMap GetShardMap<TShardScheme>()
+        where TShardScheme : ShardScheme, IShardScheme<TShardScheme>
+        => GetShardMap(TShardScheme.Instance);
 
-    public ShardMap GetShardMap(Sharding sharding)
+    public ShardMap GetShardMap(ShardScheme shardScheme)
     {
         // ReSharper disable once InconsistentlySynchronizedField
         var cache = _shardMapCache;
-        if (cache != null && cache.TryGetValue(sharding, out var shardMap))
+        if (cache != null && cache.TryGetValue(shardScheme, out var shardMap))
             return shardMap;
 
         lock (_lock) { // Double-check locking
             cache = _shardMapCache;
-            if (cache != null && cache.TryGetValue(sharding, out shardMap))
+            if (cache != null && cache.TryGetValue(shardScheme, out shardMap))
                 return shardMap;
 
-            if (!NodesByRole.TryGetValue(sharding.HostRole, out var nodes))
+            if (!NodesByRole.TryGetValue(shardScheme.Id, out var nodes))
                 nodes = ImmutableArray<MeshNode>.Empty;
-            shardMap = new ShardMap(sharding, nodes);
-            cache = cache == null ? new() : new Dictionary<Sharding, ShardMap>(cache);
-            cache[sharding] = shardMap;
+            shardMap = new ShardMap(shardScheme, nodes);
+            cache = cache == null ? new() : new Dictionary<ShardScheme, ShardMap>(cache);
+            cache[shardScheme] = shardMap;
             _shardMapCache = cache;
         }
         return shardMap;

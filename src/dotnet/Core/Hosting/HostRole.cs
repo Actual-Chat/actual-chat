@@ -28,4 +28,5 @@ public partial record struct HostRole(
 
     public static implicit operator HostRole(Symbol source) => new(source);
     public static implicit operator HostRole(string source) => new(source);
+    public static implicit operator Symbol(HostRole source) => source.Id;
 }

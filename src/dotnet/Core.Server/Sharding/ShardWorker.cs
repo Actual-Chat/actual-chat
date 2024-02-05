@@ -2,9 +2,9 @@ using ActualChat.Mesh;
 
 namespace ActualChat;
 
-public abstract class ShardWorker<TSharding>(IServiceProvider services, string? keySuffix = null)
-    : ShardWorker(services, TSharding.Instance, keySuffix)
-    where TSharding : Sharding, ISharding<TSharding>;
+public abstract class ShardWorker<TShardScheme>(IServiceProvider services, string? keySuffix = null)
+    : ShardWorker(services, TShardScheme.Instance, keySuffix)
+    where TShardScheme : ShardScheme, IShardScheme<TShardScheme>;
 
 public abstract class ShardWorker : WorkerBase
 {
@@ -13,8 +13,8 @@ public abstract class ShardWorker : WorkerBase
     protected IServiceProvider Services { get; }
     protected ILogger Log => _log ??= Services.LogFor(GetType());
 
-    protected Sharding Sharding { get; }
     protected MeshWatcher MeshWatcher { get; }
+    protected ShardScheme ShardScheme { get; }
     protected IMeshLocks ShardLocks { get; }
     protected ShardState[] ShardStates { get; }
 
@@ -24,27 +24,27 @@ public abstract class ShardWorker : WorkerBase
     public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(0.1, 5);
     public IMomentClock Clock => ShardLocks.Clock;
 
-    protected ShardWorker(IServiceProvider services, Sharding sharding, string? keySuffix = null)
+    protected ShardWorker(IServiceProvider services, ShardScheme shardScheme, string? keySuffix = null)
     {
         Services = services;
-        Sharding = sharding;
+        ShardScheme = shardScheme;
         MeshWatcher = services.MeshWatcher();
         ThisNode = MeshWatcher.ThisNode;
 
         keySuffix ??= GetType().Name;
         if (keySuffix.Length != 0)
             keySuffix = "." + keySuffix;
-        var fullKeySuffix = $"{nameof(ShardLocks)}.{sharding.HostRole.Value}{keySuffix}";
+        var fullKeySuffix = $"{nameof(ShardLocks)}.{shardScheme.Id.Value}{keySuffix}";
         ShardLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(fullKeySuffix);
         LockOptions = ShardLocks.LockOptions;
-        ShardStates = Enumerable.Range(0, sharding.ShardCount).Select(i => new ShardState(this, i)).ToArray();
+        ShardStates = Enumerable.Range(0, shardScheme.ShardCount).Select(i => new ShardState(this, i)).ToArray();
     }
 
     protected abstract Task OnRun(int shardIndex, CancellationToken cancellationToken);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        var usedShards = new BitArray(Sharding.ShardCount);
+        var usedShards = new BitArray(ShardScheme.ShardCount);
         var addedShards = new List<int>();
         var removedShards = new List<int>();
         try {
@@ -60,10 +60,10 @@ public abstract class ShardWorker : WorkerBase
 
                 addedShards.Clear();
                 removedShards.Clear();
-                var shardMap = state.GetShardMap(Sharding);
+                var shardMap = state.GetShardMap(ShardScheme);
                 var nodes = shardMap.Nodes;
                 var nodeIndexes = shardMap.NodeIndexes;
-                foreach (var shardIndex in Sharding.ShardIndexes) {
+                foreach (var shardIndex in ShardScheme.ShardIndexes) {
                     var nodeIndex = nodeIndexes[shardIndex];
                     var node = nodeIndex.HasValue ? nodes[nodeIndex.GetValueOrDefault()] : null;
                     var shardState = ShardStates[shardIndex];

@@ -1,14 +1,12 @@
 namespace ActualChat.Core.UnitTests.Identifiers;
 
-public abstract class SymbolIdentifierTestBase<TIdentifier> : TestBase
+public abstract class SymbolIdentifierTestBase<TIdentifier>(ITestOutputHelper @out) : TestBase(@out)
     where TIdentifier : struct, ISymbolIdentifier<TIdentifier>
 {
     public abstract Symbol[] ValidIdentifiers { get; }
     public abstract Symbol[] InvalidIdentifiers { get; }
     public TIdentifier Default = default;
     public TIdentifier None = TIdentifier.None;
-
-    protected SymbolIdentifierTestBase(ITestOutputHelper @out) : base(@out) { }
 
     [Fact]
     public void NoneTest()

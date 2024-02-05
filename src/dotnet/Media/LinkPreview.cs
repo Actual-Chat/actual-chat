@@ -1,3 +1,5 @@
+using System.Text;
+using ActualChat.Hashing;
 using MemoryPack;
 using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
@@ -72,7 +74,7 @@ public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IH
     public static Symbol ComposeId(string url)
         => url.IsNullOrEmpty()
             ? Symbol.Empty
-            : url.GetSHA256HashCode(HashEncoding.AlphaNumeric);
+            : url.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
 
     // This record relies on referential equality
     public bool Equals(LinkPreview? other)

@@ -8,7 +8,6 @@ using ActualLab.Fusion.EntityFramework.Operations;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Transport;
 using Microsoft.Extensions.Hosting;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace ActualChat.Search.Module;
 

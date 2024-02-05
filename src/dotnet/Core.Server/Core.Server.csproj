@@ -9,6 +9,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ActualLab.Core" />
+    <PackageReference Include="Blake3" />
     <PackageReference Include="CliWrap" />
     <PackageReference Include="FFMpegCore" />
     <PackageReference Include="Google.Cloud.Storage.V1" />
@@ -16,10 +18,5 @@
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
     <PackageReference Include="OpenGraph-Net" />
     <PackageReference Include="SixLabors.ImageSharp" />
-    <PackageReference Include="ActualLab.Core" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Internal\" />
   </ItemGroup>
 </Project>

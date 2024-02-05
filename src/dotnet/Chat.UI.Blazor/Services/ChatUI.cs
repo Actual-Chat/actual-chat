@@ -27,6 +27,7 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     private IAccounts Accounts => Hub.Accounts;
     private IContacts Contacts => Hub.Contacts;
     private IChats Chats => Hub.Chats;
+    private IPlaces Places => Hub.Places;
     private IChatPositions ChatPositions => Hub.ChatPositions;
     private IMentions Mentions => Hub.Mentions;
     private TimeZoneConverter TimeZoneConverter => Hub.TimeZoneConverter;
@@ -342,7 +343,9 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
     {
         var placeId = chatId.PlaceChatId.PlaceId;
         if (!placeId.IsNone) {
-            NavbarUI.SelectGroup(placeId.GetNavbarGroupId(), false);
+            var place = await Places.Get(Session, placeId, default).ConfigureAwait(true); // Continue on blazor context.
+            var navbarGroupId = place != null ? placeId.GetNavbarGroupId() : NavbarGroupIds.Chats;
+            NavbarUI.SelectGroup(navbarGroupId, false);
             return;
         }
 

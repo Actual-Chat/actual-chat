@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net.Mail;
+using System.Text;
 using ActualChat.Contacts;
 using ActualChat.Contacts.UI.Blazor.Services;
+using ActualChat.Hashing;
 using ActualChat.Permissions;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
@@ -67,7 +69,7 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
     private static string? GetPhoneHash(ContactPhone mauiPhone, PhoneNumberExtractor phoneNumberExtractor)
     {
         var phone = phoneNumberExtractor.GetFromNumber(mauiPhone.PhoneNumber);
-        return !phone.IsValid ? null : phone.Value.GetSHA256HashCode();
+        return !phone.IsValid ? null : phone.Hash(Encoding.UTF8).SHA256().Base64();
     }
 
     private static string? GetEmailHash(ContactEmail mauiEmail)
@@ -75,6 +77,6 @@ public class MauiContacts(IServiceProvider services) : DeviceContacts
         if (mauiEmail.EmailAddress.IsNullOrEmpty() || !MailAddress.TryCreate(mauiEmail.EmailAddress, out _))
             return null;
 
-        return mauiEmail.EmailAddress.ToLowerInvariant().GetSHA256HashCode();
+        return mauiEmail.EmailAddress.ToLowerInvariant().Hash(Encoding.UTF8).SHA256().Base64();
     }
 }

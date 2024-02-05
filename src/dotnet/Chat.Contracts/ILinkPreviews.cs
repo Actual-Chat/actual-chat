@@ -1,3 +1,5 @@
+using System.Text;
+using ActualChat.Hashing;
 using MemoryPack;
 using ActualLab.Fusion.Blazor;
 
@@ -31,5 +33,5 @@ public sealed partial record LinkPreview : IHasId<Symbol>, IRequirementTarget
     public bool IsEmpty => PreviewMediaId.IsNone && Title.IsNullOrEmpty() && Description.IsNullOrEmpty();
 
     public static Symbol ComposeId(string url)
-        => url.GetSHA256HashCode(HashEncoding.AlphaNumeric);
+        => url.Hash(Encoding.UTF8).SHA256().AlphaNumeric();
 }

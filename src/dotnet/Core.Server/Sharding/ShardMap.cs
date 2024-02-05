@@ -1,46 +1,52 @@
 using ActualChat.Mesh;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat;
 
 public sealed class ShardMap
 {
-    public Sharding Sharding { get; }
+    public ShardScheme ShardScheme { get; }
     public ImmutableArray<MeshNode> Nodes { get; }
     public ImmutableArray<int?> NodeIndexes { get; }
     public bool IsEmpty => Nodes.Length == 0;
 
     // Indexers
-    public MeshNode? this[int hash] {
+    public MeshNode? this[int shardKey] {
         get {
-            var nodeIndex = NodeIndexes[Sharding.GetShardIndex(hash)];
+            var nodeIndex = NodeIndexes[ShardScheme.GetShardIndex(shardKey)];
             return nodeIndex.HasValue ? Nodes[nodeIndex.GetValueOrDefault()] : null;
         }
     }
 
-    public MeshNode? this[int hash, int nodeOffset] {
+    public MeshNode? this[int shardKey, int nodeOffset] {
         get {
-            var nodeIndex = NodeIndexes[Sharding.GetShardIndex(hash)];
+            var nodeIndex = NodeIndexes[ShardScheme.GetShardIndex(shardKey)];
             return nodeIndex.HasValue ? Nodes.GetRingItem(nodeOffset + nodeIndex.GetValueOrDefault()) : null;
         }
     }
 
-    public MeshNode? this[string hash] => this[hash.GetDjb2HashCode()];
-    public MeshNode? this[string hash, int nodeOffset] => this[hash.GetDjb2HashCode(), nodeOffset];
-
-    public ShardMap(Sharding sharding, ImmutableArray<MeshNode> nodes)
+    public ShardMap(ShardScheme shardScheme, ImmutableArray<MeshNode> nodes)
     {
-        Sharding = sharding;
+        ShardScheme = shardScheme;
         Nodes = nodes;
-        var nodeCount = nodes.Length;
-        var shardCount = Sharding.ShardCount;
+        var remainingNodeCount = nodes.Length;
+        var shardCount = ShardScheme.ShardCount;
         var shards = new int?[shardCount];
-        if (nodeCount != 0) {
-            var shardsPerNode = Math.Max(1, (double)shardCount / nodeCount);
-            for (var i = 0; i < shards.Length; i++) {
-                var nodeIndex = (int)Math.Floor(1e-6 + (i % shardCount / shardsPerNode));
-                shards[i] = nodeIndex;
+        var remainingShardCount = shardCount;
+        while (remainingNodeCount != 0) {
+            var nodeIndex = nodes.Length - remainingNodeCount;
+            var node = nodes[nodeIndex];
+            var nodeShardCount = (remainingShardCount + remainingNodeCount - 1) / remainingNodeCount;
+            foreach (var hash in node.GetHashes<int>().Take(nodeShardCount)) {
+                for (var i = 0; i < shardCount; i++) {
+                    ref var shard = ref shards[(hash + i).Mod(shardCount)];
+                    if (!shard.HasValue) {
+                        shard = nodeIndex;
+                        break;
+                    }
+                }
             }
+            remainingShardCount -= nodeShardCount;
+            remainingNodeCount--;
         }
         NodeIndexes = shards.ToImmutableArray();
     }
@@ -49,21 +55,19 @@ public sealed class ShardMap
     {
         var sb = StringBuilderExt.Acquire();
         sb.Append(nameof(ShardMap));
-        sb.Append('(').Append(Sharding).Append(" -> ");
-        sb.Append(Nodes.Length).Append(' ').Append("node".Pluralize(Nodes.Length)).Append(") {");
-        sb.AppendLine();
-        if (!IsEmpty) {
-            var start = 0;
-            foreach (var group in NodeIndexes.GroupBy(x => x)) {
-                var count = group.Count();
-                var end = start + count - 1;
-                var node = Nodes[(int)group.Key!];
-                sb.Append("  [").Append(start).Append("..").Append(end).Append("] -> ").Append(node.Id).AppendLine();
-                start += count;
-            }
+        sb.Append('(').Append(ShardScheme).Append(" -> ");
+        sb.Append(Nodes.Length).Append(' ').Append("node".Pluralize(Nodes.Length)).Append(')');
+        if (IsEmpty)
+            return sb.ToStringAndRelease();
+
+        sb.AppendLine(" {");
+        for (var nodeIndex = 0; nodeIndex < Nodes.Length; nodeIndex++) {
+            var node = Nodes[nodeIndex];
+            sb.Append("  ").Append(node.Id).Append(": ");
+            foreach (var shardNodeIndex in NodeIndexes)
+                sb.Append(shardNodeIndex == nodeIndex ? '\u25cf' : '•');
+            sb.AppendLine();
         }
-        else
-            sb.Append("  [0..").Append(NodeIndexes.Length - 1).Append("] -> n/a").AppendLine();
         sb.Append('}');
         return sb.ToStringAndRelease();
     }

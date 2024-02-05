@@ -14,7 +14,7 @@ namespace ActualChat;
 [StructLayout(LayoutKind.Auto)]
 public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
 {
-    private static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
+    internal static RandomStringGenerator IdGenerator { get; } = new(10, Alphabet.AlphaNumeric);
 
     public static ChatId None => default;
 
@@ -45,6 +45,15 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public PlaceId PlaceId => PlaceChatId.PlaceId;
 
+    // Factories
+
+    public static ChatId Group(Symbol chatId)
+        => new(chatId, default, default, AssumeValid.Option);
+    public static ChatId Peer(PeerChatId peerChatId)
+        => new(peerChatId.Id, peerChatId, default, AssumeValid.Option);
+    public static ChatId Place(PlaceChatId placeChatId)
+        => new(placeChatId.Id, default, placeChatId, AssumeValid.Option);
+
     [JsonConstructor, Newtonsoft.Json.JsonConstructor, MemoryPackConstructor]
     public ChatId(Symbol id)
         => this = Parse(id);
@@ -65,11 +74,6 @@ public readonly partial struct ChatId : ISymbolIdentifier<ChatId>
         PeerChatId = peerChatId;
         PlaceChatId = placeChatId;
     }
-
-    // Factory
-
-    public static ChatId CreateGroupChatId(string chatId)
-        => new (chatId, PeerChatId.None, PlaceChatId.None, AssumeValid.Option);
 
     // Helpers
 
