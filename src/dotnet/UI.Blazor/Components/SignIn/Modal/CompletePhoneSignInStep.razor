@@ -25,6 +25,7 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
     [Inject] private HostInfo HostInfo { get; init; } = null!;
+    [Inject] private NavigationManager Nav { get; init; } = null!;
 
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
 
@@ -35,7 +36,7 @@
         if (HostInfo.HostKind == HostKind.MauiApp)
             await History.NavigateTo(Links.Chats);
         else
-            await History.NavigateTo(url, force: true);
+            Nav.NavigateTo(url, true);
         return true;
     }
 
