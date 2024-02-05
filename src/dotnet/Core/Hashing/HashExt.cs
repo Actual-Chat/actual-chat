@@ -1,5 +1,4 @@
 using System.Text;
-using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Hashing;
 
