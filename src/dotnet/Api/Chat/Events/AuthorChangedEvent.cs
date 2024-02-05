@@ -7,4 +7,8 @@ namespace ActualChat.Chat.Events;
 public partial record AuthorChangedEvent(
     [property: DataMember, MemoryPackOrder(1)] AuthorFull Author,
     [property: DataMember, MemoryPackOrder(2)] AuthorFull? OldAuthor
-) : EventCommand;
+) : EventCommand, IHasShardKey<ChatId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public ChatId ShardKey => Author.ChatId;
+}

@@ -34,9 +34,16 @@ public interface IAccountsBackend : IComputeService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record AccountsBackend_Update(
-    [property: DataMember, MemoryPackOrder(0)] AccountFull Account,
-    [property: DataMember, MemoryPackOrder(1)] long? ExpectedVersion
-) : ICommand<Unit>, IBackendCommand;
+    [property: DataMember, MemoryPackOrder(0)]
+    AccountFull Account,
+    [property: DataMember, MemoryPackOrder(1)]
+    long? ExpectedVersion
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => Account.Id;
+}
+
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
