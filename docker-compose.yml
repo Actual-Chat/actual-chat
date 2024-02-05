@@ -49,7 +49,19 @@ services:
       - "local.actual.chat:host-gateway"
       - "embedded.actual.chat:host-gateway"
   dns-forwarder:
-    profiles: ["dns"]
+    # Note: DNS_FORWARDER variable
+    # In some cases this dns service is not required (macos).
+    # To solve this issue while having the same config for all devs
+    # this service has profile set with DNS_FORWARDER env variable.
+    # So, for those who does NOT want to have this service running
+    # you can set DNS_FORWARDER variable in the .env file.
+    # Example: cat ./.env
+    #   DNS_FORWARDER="no-dns"
+    # For other developers this will not change anything
+    # as an empty profile will be dismissed and the service
+    # will start normally.
+    profiles:
+      - ${DNS_FORWARDER}
     image: janeczku/go-dnsmasq
     network_mode: bridge
     ports:
