@@ -57,6 +57,7 @@
 
 .post-panel .message-input .editor-content {
     @apply mr-0 md:mr-4;
+    @apply custom-scrollbar-hide;
     /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
        but flexbox ensures it never grows above what's allowed;
        I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
