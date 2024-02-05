@@ -7,6 +7,10 @@ public class ScheduledCommandTestService : IComputeService
 {
     public readonly ConcurrentQueue<IEventCommand> ProcessedEvents = new();
 
+    [ComputeMethod]
+    public virtual Task<int> GetProcessedEventCount(CancellationToken cancellationToken)
+        => Task.FromResult(ProcessedEvents.Count);
+
     [CommandHandler]
     public virtual Task ProcessTestCommand(TestCommand command, CancellationToken cancellationToken)
     {
@@ -44,25 +48,29 @@ public class ScheduledCommandTestService : IComputeService
     }
 
     [EventHandler]
-    public virtual async Task ProcessTestEvent(TestEvent eventCommand, CancellationToken cancellationToken)
+    public virtual Task ProcessTestEvent(TestEvent eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return;
+        if (Computed.IsInvalidating()) {
+            _ = GetProcessedEventCount(default);
+            return Task.CompletedTask;
+        }
 
         if (eventCommand.Error != null)
             throw new InvalidOperationException(eventCommand.Error);
 
-        await Task.Delay(250, cancellationToken);
         ProcessedEvents.Enqueue(eventCommand);
+        return Task.CompletedTask;
     }
 
     [EventHandler]
-    public virtual async Task ProcessTestEvent2(TestEvent2 eventCommand, CancellationToken cancellationToken)
+    public virtual Task ProcessTestEvent2(TestEvent2 eventCommand, CancellationToken cancellationToken)
     {
-        if (Computed.IsInvalidating())
-            return;
+        if (Computed.IsInvalidating()) {
+            _ = GetProcessedEventCount(default);
+            return Task.CompletedTask;
+        }
 
-        await Task.Delay(250, cancellationToken);
         ProcessedEvents.Enqueue(eventCommand);
+        return Task.CompletedTask;
     }
 }

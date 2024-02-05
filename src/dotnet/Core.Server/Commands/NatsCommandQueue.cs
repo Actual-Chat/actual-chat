@@ -122,7 +122,8 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             select chain
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(retryDelays, Log)
-            ).RunIsolated(cancellationToken)
+            )
+            .RunIsolated(cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -181,17 +182,27 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             return _jetStream;
 
         var js = new NatsJSContext(Nats);
+        var retryCount = 0;
+        while (_jetStream == null)
+            try {
+                var jetStream = await js
+                    .GetStreamAsync(CommandStreamName, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                _jetStream = jetStream;
 
-        try {
-            var jetStream = await js
-                .GetStreamAsync(CommandStreamName, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-            _jetStream = jetStream;
+            }
+            catch (NatsJSApiException e) when (e.Error.Code == 404) {
+                _jetStream = await CreateCommandsStream(cancellationToken);
+            }
+            catch (NatsJSApiNoResponseException e) {
+                if (retryCount++ > 3)
+                    throw;
 
-        }
-        catch (NatsJSApiException e) when (e.Error.Code == 404) {
-            _jetStream = await CreateCommandsStream(cancellationToken);
-        }
+                Log.LogWarning(e, "EnsureStreamExists: error getting stream");
+                var delay = Random.Shared.Next(100, 250);
+                await Services.Clocks().SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+
         return _jetStream;
 
         async Task<INatsJSStream> CreateCommandsStream(CancellationToken cancellationToken1)

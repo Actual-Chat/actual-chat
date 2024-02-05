@@ -30,8 +30,14 @@ public interface INotificationsBackend : IComputeService
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record NotificationsBackend_Notify(
-    [property: DataMember, MemoryPackOrder(0)] Notification Notification
-) : ICommand<Unit>, IBackendCommand;
+    [property: DataMember, MemoryPackOrder(0)]
+    Notification Notification
+) : ICommand<Unit>, IBackendCommand, IHasShardKey<UserId>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public UserId ShardKey => Notification.UserId;
+}
+
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
