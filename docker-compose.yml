@@ -22,6 +22,7 @@ services:
     entrypoint: ["docker-entrypoint.sh", "-c", "shared_buffers=256MB", "-c", "max_connections=1000", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
   imageproxy:
     image: willnorris/imageproxy:latest
+    platform: linux/amd64
     expose:
       - 8080
     environment:
@@ -48,6 +49,7 @@ services:
       - "local.actual.chat:host-gateway"
       - "embedded.actual.chat:host-gateway"
   dns-forwarder:
+    profiles: ["dns"]
     image: janeczku/go-dnsmasq
     network_mode: bridge
     ports:
@@ -56,7 +58,7 @@ services:
     expose:
       - 53
   smtp4dev:
-    image: rnwood/smtp4dev:linux-amd64-v3
+    image: rnwood/smtp4dev:3.2.0-ci20221023104
     ports:
       - "5000:80"
       - "25:25"
