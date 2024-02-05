@@ -56,3 +56,6 @@ node_modules/
 # MAUI replaced index.html
 index.html
 sw.js
+
+# VIM swap files
+*.swp
