@@ -2,18 +2,11 @@ using ActualChat.Kvas;
 
 namespace ActualChat.Users;
 
-public class ServerKvasBackendClient : IKvas
+public class ServerKvasBackendClient(IServerKvasBackend serverKvasBackend, string prefix) : IKvas
 {
-    private string Prefix { get; }
-    private IServerKvasBackend ServerKvasBackend { get; }
-    private ICommander Commander { get; }
-
-    public ServerKvasBackendClient(IServerKvasBackend serverKvasBackend, string prefix)
-    {
-        ServerKvasBackend = serverKvasBackend;
-        Prefix = prefix;
-        Commander = serverKvasBackend.GetCommander();
-    }
+    private string Prefix { get; } = prefix;
+    private IServerKvasBackend ServerKvasBackend { get; } = serverKvasBackend;
+    private ICommander Commander { get; } = serverKvasBackend.GetCommander();
 
     public ValueTask<byte[]?> Get(string key, CancellationToken cancellationToken = default)
         => ServerKvasBackend.Get(Prefix, key, cancellationToken).ToValueTask();
