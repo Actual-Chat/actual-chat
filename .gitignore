@@ -11,6 +11,7 @@ Nerdbank.GitVersioning.*
 .history
 .DS_Store
 .env
+.devcontainer
 _ReSharper*/
 *.[Rr]e[Ss]harper
 *.suo
