@@ -43,10 +43,12 @@
 }
 
 @code {
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private UIHub UIHub { get; init; } = null!;
 
-    private ShareUI ShareUI => Services.GetRequiredService<ShareUI>();
+    private ShareUI ShareUI => UIHub.ShareUI;
+    private UrlMapper UrlMapper => UIHub.UrlMapper();
+    private UICommander UICommander => UIHub.UICommander();
+    private Session Session => UIHub.Session();
 
     [Parameter, EditorRequired] public ApiArray<Invite> Invites { get; set; }
     [Parameter, EditorRequired] public string LinkFormat { get; set; } = "";
@@ -62,13 +64,15 @@
                 return "User invite link";
             case ChatInviteOption:
                 return "Private join link";
+            case PlaceInviteOption:
+                return "Private join link";
             default:
                 return "Unknown link";
         }
     }
 
     private Task Revoke(Invite invite)
-        => Services.UICommander().Run(new Invites_Revoke(Services.Session(), invite.Id));
+        => UICommander.Run(new Invites_Revoke(Session, invite.Id));
 
     private async ValueTask OnShareClick(Invite invite) {
         var link = GetLink(invite);
@@ -80,8 +84,8 @@
             }
             case ChatInviteOption chatDetails: {
                 // The code here is ~ a copy of ShareUIExt.GetModel(ChatId...) - we can't reference it here, so...
-                var chats = Services.GetRequiredService<IChats>();
-                var chat = await chats.Get(Services.Session(), chatDetails.ChatId, default);
+                var chats = UIHub.GetRequiredService<IChats>();
+                var chat = await chats.Get(Session, chatDetails.ChatId, default);
                 if (chat == null || !chat.CanInvite())
                     return;
 
@@ -89,6 +93,20 @@
                 var text = $"\"{chat.Title}\" on Actual Chat";
                 var shareModel = new ShareModalModel(
                     ShareKind.ChatInvite, title, chat.Title,
+                    new(text, link));
+                _ = ShareUI.Share(shareModel);
+                return;
+            }
+            case PlaceInviteOption placeDetails: {
+                var places = UIHub.GetRequiredService<IPlaces>();
+                var place = await places.Get(Session, placeDetails.PlaceId, default);
+                if (place == null || !place.Rules.CanInvite())
+                    return;
+
+                var title = "Share private place join link";
+                var text = $"\"{place.Title}\" on Actual Chat";
+                var shareModel = new ShareModalModel(
+                    ShareKind.PlaceInvite, title, place.Title,
                     new(text, link));
                 _ = ShareUI.Share(shareModel);
                 return;

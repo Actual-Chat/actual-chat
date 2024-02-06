@@ -5,6 +5,7 @@ namespace ActualChat.Chat;
 public class Places(IServiceProvider services) : IPlaces
 {
     private IChats? _chats;
+    private IChatsBackend? _chatsBackend;
     private IContacts? _contacts;
 
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
@@ -12,6 +13,7 @@ public class Places(IServiceProvider services) : IPlaces
     private ICommander Commander { get; } = services.Commander();
 
     private IChats Chats => _chats ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
+    private IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>(); // Lazy resolving to prevent cyclic dependency
     private IContacts Contacts => _contacts ??= services.GetRequiredService<IContacts>(); // Lazy resolving to prevent cyclic dependency
 
     public virtual async Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken)
@@ -20,10 +22,42 @@ public class Places(IServiceProvider services) : IPlaces
             throw new ArgumentOutOfRangeException(nameof(placeId));
 
         var placeRootChat = await Chats.Get(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
-        if (placeRootChat == null)
-            return null;
+        return placeRootChat?.Rules.CanRead() == true ? placeRootChat.ToPlace() : null;
+    }
 
-        return placeRootChat.Rules.CanRead() ? placeRootChat.ToPlace() : null;
+    public virtual async Task<PlaceRules> GetRules(
+        Session session,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+
+        var placeRootChatRules = await Chats.GetRules(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
+        return placeRootChatRules.ToPlaceRules(placeId)!;
+    }
+
+    public virtual async Task<ChatId> GetWelcomeChatId(
+        Session session,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+
+        var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
+            return ChatId.None;
+
+        var chatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
+        var chats = await chatIds
+            .Select(c => Chats.Get(session, c, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+
+        // TODO(DF): make it possible to configure Welcome Chat
+        var welcomeChat = chats.SkipNullItems().MinBy(c => c.CreatedAt);
+        return welcomeChat?.Id ?? ChatId.None;
     }
 
     public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken)

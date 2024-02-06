@@ -102,6 +102,9 @@ internal class InvitesBackend(IServiceProvider services)
                 _ = PseudoGetAll(invInvite.Details?.GetSearchKey() ?? "");
                 _ = Get(invInvite.Id, default);
             }
+            var invActivationKey = context.Operation().Items.Get<string>();
+            if (invActivationKey != null)
+                _ = IsValid(invActivationKey, default);
             return default!;
         }
 
@@ -120,7 +123,7 @@ internal class InvitesBackend(IServiceProvider services)
         invite = invite.Use(VersionGenerator);
 
         switch (invite.Details.Option) {
-        case UserInviteOption:
+        case UserInviteOption: {
             if (account.IsGuestOrNone)
                 throw StandardError.Unauthorized("Please sign in and open this link again to use this invite.");
             if (account.Status == AccountStatus.Suspended)
@@ -132,8 +135,35 @@ internal class InvitesBackend(IServiceProvider services)
             new AccountsBackend_Update(account with { Status = AccountStatus.Active }, null)
                 .EnqueueOnCompletion();
             break;
-        case ChatInviteOption chatInviteOption:
+        }
+        case ChatInviteOption chatInviteOption: {
             var chatId = chatInviteOption.ChatId;
+            if (chatId.IsPlaceChat && !chatId.IsPlaceRootChat) {
+                var placeRootChatId = chatId.PlaceId.ToRootChatId();
+                var principalId = new PrincipalId(account.Id, AssumeValid.Option);
+                var placeRules = await ChatsBackend.GetRules(placeRootChatId, principalId, cancellationToken).ConfigureAwait(false);
+                if (!placeRules.CanRead())
+                    throw StandardError.NotEnoughPermissions("access chat's place");
+            }
+            await OnUseForChat(chatId).ConfigureAwait(false);
+            break;
+        }
+        case PlaceInviteOption placeInviteOption: {
+            var placeId = placeInviteOption.PlaceId;
+            await OnUseForChat(placeId.ToRootChatId()).ConfigureAwait(false);
+            break;
+        }
+        default:
+            throw StandardError.Format<Invite>();
+        }
+        dbInvite.UpdateFrom(invite);
+
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        context.Operation().Items.Set(invite);
+        return invite;
+
+        async Task OnUseForChat(ChatId chatId)
+        {
             _ = await ChatsBackend.Get(chatId, cancellationToken).Require().ConfigureAwait(false);
 
             var dbActivationKey = new DbActivationKey(invite.Id);
@@ -144,15 +174,7 @@ internal class InvitesBackend(IServiceProvider services)
             await accountSettings
                 .Set(ServerKvasInviteKey.ForChat(chatId), dbActivationKey.Id, cancellationToken)
                 .ConfigureAwait(false);
-            break;
-        default:
-            throw StandardError.Format<Invite>();
         }
-        dbInvite.UpdateFrom(invite);
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(invite);
-        return invite;
     }
 
     // [CommandHandler]

@@ -9,6 +9,8 @@ public interface IInvites : IComputeService
     [ComputeMethod]
     Task<ApiArray<Invite>> ListChatInvites(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<ApiArray<Invite>> ListPlaceInvites(Session session, PlaceId placeId, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<Invite?> GetOrGenerateChatInvite(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [CommandHandler]

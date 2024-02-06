@@ -4,6 +4,9 @@ using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Commands;
+using ActualChat.Invite;
+using ActualChat.Invite.Backend;
+using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Users;
 using ActualChat.Users.Events;
@@ -31,11 +34,16 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     private IRolesBackend? _rolesBackend;
     private IMediaBackend? _mediaBackend;
     private ILinkPreviewsBackend? _linkPreviewsBackend;
+    private IInvitesBackend? _invitesBackend;
+    private IServerKvasBackend? _serverKvasBackend;
+
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
     private IAuthorsBackend AuthorsBackend => _authorsBackend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
     private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
     private ILinkPreviewsBackend LinkPreviewsBackend => _linkPreviewsBackend ??= Services.GetRequiredService<ILinkPreviewsBackend>();
+    private IInvitesBackend InvitesBackend => _invitesBackend ??= Services.GetRequiredService<IInvitesBackend>();
+    private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
 
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
@@ -1316,6 +1324,14 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         permissions = permissions.AddImplied();
 
         var rules = new AuthorRules(chatId, author, account, permissions);
+        if (chatId.Kind != ChatKind.Peer && !rules.CanRead()) {
+            // Has invite = same as having read permission
+            var hasActivated = await HasActivatedInvite(account.Id, chatId, cancellationToken).ConfigureAwait(false);
+            if (hasActivated)
+                rules = rules with {
+                    Permissions = (rules.Permissions | ChatPermissions.Join).AddImplied(),
+                };
+        }
         return rules;
     }
 
@@ -1346,8 +1362,11 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         var rootChatPrincipalId = new PrincipalId(account.Id, AssumeValid.Option);
         var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
-        if (chat.IsPublic)
-            return rootChatRules;
+        if (chat.IsPublic) {
+            var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            var permissions = rootChatRules.Permissions & ~ChatPermissions.Leave; // Do not allow to leave public chat on a place
+            return new AuthorRules(chat.Id, author, account, permissions);
+        }
 
         if (!rootChatRules.CanRead())
             return AuthorRules.None(chatId);
@@ -1481,5 +1500,16 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var command = new ChatsBackend_Change(peerChatId, null, new() { Create = new ChatDiff() });
         chat = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return chat;
+    }
+
+    private async Task<bool> HasActivatedInvite(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var activationKeyOpt = await ServerKvasBackend
+            .GetUserClient(userId)
+            .TryGet<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
+            .ConfigureAwait(false);
+        if (!activationKeyOpt.IsSome(out var activationKey))
+            return false;
+        return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
     }
 }
