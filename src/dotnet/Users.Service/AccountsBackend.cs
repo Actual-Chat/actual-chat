@@ -14,7 +14,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private IAuthBackend? _authBackend;
     private IAvatarsBackend? _avatarsBackend;
     private IServerKvasBackend? _serverKvasBackend;
-    private GreetingDispatcher? _greetingDispatcher;
+    private ContactGreeter? _contactGreeter;
     private IDbEntityResolver<string, DbAccount>? _dbAccountResolver;
     private const string AdminEmailDomain = "actual.chat";
     private static HashSet<string> AdminEmails { get; } = new(StringComparer.Ordinal) { "alex.yakunin@gmail.com" };
@@ -22,7 +22,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private IAuthBackend AuthBackend => _authBackend ??= Services.GetRequiredService<IAuthBackend>();
     private IAvatarsBackend AvatarsBackend => _avatarsBackend ??= Services.GetRequiredService<IAvatarsBackend>();
     private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
-    private GreetingDispatcher GreetingDispatcher => _greetingDispatcher ??= Services.GetRequiredService<GreetingDispatcher>();
+    private ContactGreeter ContactGreeter => _contactGreeter ??= Services.GetRequiredService<ContactGreeter>();
     private IDbEntityResolver<string, DbAccount> DbAccountResolver => _dbAccountResolver ??= Services.GetRequiredService<IDbEntityResolver<string, DbAccount>>();
 
     // [ComputeMethod]
@@ -95,12 +95,12 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .FirstOrDefaultAsync(a => a.Id == account.Id, cancellationToken)
             .ConfigureAwait(false);
         dbAccount = dbAccount.RequireVersion(expectedVersion);
-        var needsGreeting = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
+        var mustGreet = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        if (needsGreeting)
-            GreetingDispatcher.OnGreetingNeeded();
+        if (mustGreet)
+            ContactGreeter.Activate();
     }
 
     // [CommandHandler]
@@ -155,7 +155,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         if (Computed.IsInvalidating())
             return Task.CompletedTask; // It just notifies GreetingDispatcher
 
-        GreetingDispatcher.OnGreetingNeeded();
+        ContactGreeter.Activate();
         return Task.CompletedTask;
     }
 

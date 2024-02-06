@@ -367,7 +367,12 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return;
 
         var alreadyGreetingKey = ToRedisKey(account.Id);
-        var canStart = await RedisDb.Database.StringSetAsync(alreadyGreetingKey, Clocks.SystemClock.Now.ToString(), Settings.GreetingTimeout, When.NotExists).ConfigureAwait(false);
+        var canStart = await RedisDb.Database.StringSetAsync(
+            alreadyGreetingKey,
+            Clocks.SystemClock.Now.ToString(),
+            Settings.GreetingTimeout,
+            When.NotExists
+            ).ConfigureAwait(false);
         if (!canStart)
             return;
 

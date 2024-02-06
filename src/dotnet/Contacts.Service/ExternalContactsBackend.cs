@@ -10,10 +10,11 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     IExternalContactsBackend
 {
     private IAccountsBackend? _accountsBackend;
-    private ContactLinkingJob? _contactLinkingJob;
+    private ContactLinker? _contactLinker;
 
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-    private ContactLinkingJob ContactLinkingJob => _contactLinkingJob ??= Services.GetRequiredService<ContactLinkingJob>();
+    private ContactLinker ContactLinker => _contactLinker ??= Services.GetRequiredService<ContactLinker>();
+    private AgentInfo AgentInfo { get; } = services.GetRequiredService<AgentInfo>();
 
     // [ComputeMethod]
     public virtual async Task<ApiArray<ExternalContact>> List(UserId ownerId, Symbol deviceId, CancellationToken cancellationToken)
@@ -76,6 +77,11 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             var invIds = command.Changes.Select(x => x.Id).DistinctBy(x => (x.OwnerId, x.DeviceId));
             foreach (var invId in invIds)
                 _ = List(invId.OwnerId, invId.DeviceId, default);
+            // NOTE(DF): force sync after changes are committed
+            var context = CommandContext.GetCurrent();
+            var isLocal = context.Operation().AgentId == AgentInfo.Id;
+            if (isLocal && command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
+                ContactLinker.Activate();
             return default!;
         }
 
@@ -92,8 +98,6 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
                     itemChange.Id);
                 result.Add(new Result<ExternalContact?>(null, e));
             }
-        if (command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
-            ContactLinkingJob.OnSyncNeeded();
         return result.ToApiArray();
     }
 

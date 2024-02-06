@@ -59,6 +59,6 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices) : Hos
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);
-        services.AddSingleton<ContactLinkingJob>().AddHostedService(c => c.GetRequiredService<ContactLinkingJob>());
+        services.AddSingleton<ContactLinker>().AddHostedService(c => c.GetRequiredService<ContactLinker>());
     }
 }
