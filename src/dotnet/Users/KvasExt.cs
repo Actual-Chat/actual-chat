@@ -6,6 +6,17 @@ public static class KvasExt
 {
     // UserChatSettings
 
+    public static async ValueTask<UserPlaceSettings> GetUserPlaceSettings(this IKvas<User> kvas, PlaceId placeId, CancellationToken cancellationToken)
+    {
+        var valueOpt = await kvas.TryGet<UserPlaceSettings>(UserPlaceSettings.GetKvasKey(placeId), cancellationToken).ConfigureAwait(false);
+        return valueOpt.IsSome(out var value) ? value : new();
+    }
+
+    public static Task SetUserPlacesSettings(this IKvas<User> kvas, PlaceId placeId, UserPlaceSettings value, CancellationToken cancellationToken)
+        => kvas.Set(UserPlaceSettings.GetKvasKey(placeId), value, cancellationToken);
+
+    // UserChatSettings
+
     public static async ValueTask<UserChatSettings> GetUserChatSettings(this IKvas<User> kvas, ChatId chatId, CancellationToken cancellationToken)
     {
         var valueOpt = await kvas.TryGet<UserChatSettings>(UserChatSettings.GetKvasKey(chatId), cancellationToken).ConfigureAwait(false);
