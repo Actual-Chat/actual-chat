@@ -1,4 +1,4 @@
-using ActualChat.Channels.Internal;
+using ActualChat.Internal;
 using StackExchange.Redis;
 
 namespace ActualChat.Redis;
