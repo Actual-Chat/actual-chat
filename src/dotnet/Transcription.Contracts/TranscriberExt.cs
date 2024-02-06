@@ -1,5 +1,4 @@
 using ActualChat.Audio;
-using ChannelExt = ActualChat.Channels.ChannelExt;
 
 namespace ActualChat.Transcription;
 

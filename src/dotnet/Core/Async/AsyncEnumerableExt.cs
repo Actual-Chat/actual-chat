@@ -1,6 +1,6 @@
-using ActualChat.Channels.Internal;
+using ActualChat.Internal;
 
-namespace ActualChat.Channels;
+namespace ActualChat;
 
 #pragma warning disable CA1849 // Task.Result synchronously blocks
 

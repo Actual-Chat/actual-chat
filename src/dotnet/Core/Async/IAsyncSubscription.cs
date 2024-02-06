@@ -1,4 +1,4 @@
-namespace ActualChat.Channels;
+namespace ActualChat;
 
 public interface IAsyncSubscription<T> : IAsyncDisposable
 {
