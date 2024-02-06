@@ -69,7 +69,7 @@ public partial class ChatUI
             .ConfigureAwait(false);
 
         var link = Links.Chat(cFixedSelectedChatId.Value);
-        _ = AutoNavigationUI.NavigateTo(link, AutoNavigationReason.FixedChatId);
+        _ = AutoNavigationUI.DispatchNavigateTo(link, AutoNavigationReason.FixedChatId);
     }
 
     [ComputeMethod]
