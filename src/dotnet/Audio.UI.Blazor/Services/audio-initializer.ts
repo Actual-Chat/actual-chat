@@ -34,10 +34,7 @@ export class AudioInitializer {
 
         const initRecorder = async () => {
             try {
-                await Promise.allSettled([
-                    AudioRecorder.init(),
-                    opusMediaRecorder.init(baseUri, canUseNNVad),
-                ]);
+                await opusMediaRecorder.init(baseUri, canUseNNVad);
                 this.isRecorderInitialized = true;
             }
             catch (e) {
