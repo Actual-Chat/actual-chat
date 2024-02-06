@@ -12,7 +12,6 @@ import {
     delayAsync,
     delayAsyncWith,
     PromiseSource,
-    PromiseSourceWithTimeout,
     retry
 } from 'promises';
 import { OpusEncoderWorker } from './workers/opus-encoder-worker-contract';

@@ -8,5 +8,4 @@ public interface IKvas
     Task SetMany((string Key, byte[]? Value)[] items, CancellationToken cancellationToken = default);
 }
 
-public interface IKvas<TScope> : IKvas
-{ }
+public interface IKvas<TScope> : IKvas;

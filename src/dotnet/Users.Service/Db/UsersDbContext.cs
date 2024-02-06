@@ -6,7 +6,7 @@ using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Users.Db;
 
-public class UsersDbContext : DbContextBase
+public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContextBase(options)
 {
     public DbSet<DbKvasEntry> KvasEntries { get; protected set; } = null!;
     public DbSet<DbAccount> Accounts { get; protected set; } = null!;
@@ -19,8 +19,6 @@ public class UsersDbContext : DbContextBase
     public DbSet<DbUserIdentity<string>> UserIdentities { get; protected set; } = null!;
     public DbSet<DbSessionInfo> Sessions { get; protected set; } = null!;
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
-
-    public UsersDbContext(DbContextOptions<UsersDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(UsersDbContext).Assembly).UseSnakeCaseNaming();

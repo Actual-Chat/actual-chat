@@ -38,6 +38,7 @@ using ActualLab.Fusion.Server.Middlewares;
 using ActualLab.Fusion.Server.Rpc;
 using ActualLab.IO;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Clients;
 using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
 
@@ -206,6 +207,40 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         // Replace DefaultSessionReplacerRpcMiddleware with AppDefaultSessionReplacerRpcMiddleware
         rpc.RemoveInboundMiddleware<DefaultSessionReplacerRpcMiddleware>();
         rpc.AddInboundMiddleware<AppDefaultSessionReplacerRpcMiddleware>();
+        // Replace
+        services.AddSingleton(_ => new RpcWebSocketClient.Options() {
+            ConnectionUriResolver = (client, peer) => {
+                var peerRef = peer.Ref;
+                if (!peerRef.IsBackend)
+                    throw StandardError.Internal("Server-side RpcPeer.Ref.IsBackend must be true.");
+
+                var meshWatcher = client.Services.MeshWatcher();
+                MeshNode? node = null;
+                if (peerRef.IsNodeRef(out var nodeRef))
+                    node = meshWatcher.State.Value.NodeById.GetValueOrDefault(nodeRef.Id);
+                else if (peerRef.IsShardRef(out var shardRef)) {
+                    var shardMap = meshWatcher.State.Value.GetShardMap(shardRef.ShardScheme);
+                    var nodeIndex = shardMap.NodeIndexes[shardRef.ShardKey];
+                    if (nodeIndex.HasValue)
+                        node = shardMap.Nodes[nodeIndex.GetValueOrDefault()];
+                }
+                else
+                    throw StandardError.Internal("Server-side RpcPeer.Ref has invalid format.");
+                if (node == null)
+                    return new Uri("wait://none", UriKind.Absolute);
+
+                var settings = client.Settings;
+                var sb = StringBuilderExt.Acquire();
+                sb.Append("ws://");
+                sb.Append(node.Endpoint);
+                sb.Append(settings.BackendRequestPath);
+                sb.Append('?');
+                sb.Append(settings.ClientIdParameterName);
+                sb.Append('=');
+                sb.Append(client.ClientId.UrlEncode());
+                return sb.ToStringAndRelease().ToUri();
+            },
+        });
 
         // Add RpcMethodActivityTracer
         services.AddSingleton<RpcMethodTracerFactory>(method => new RpcMethodActivityTracer(method) {

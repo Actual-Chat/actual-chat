@@ -102,17 +102,13 @@ public static class AppStartup
         fusion.Rpc.AddWebSocketClient(c => {
             var options = new RpcWebSocketClient.Options() {
                 ConnectionUriResolver = (client, peer) => {
+                    if (peer.Ref != RpcPeerRef.Default)
+                        throw StandardError.Internal("Client-side RpcPeer.Ref != RpcPeerRef.Default.");
+
                     var settings = client.Settings;
                     var urlMapper = client.Services.UrlMapper();
-
                     var sb = StringBuilderExt.Acquire();
-                    if (peer.Ref == RpcPeerRef.Default)
-                        sb.Append(urlMapper.WebsocketBaseUrl);
-                    else {
-                        var addressAndPort = peer.Ref.Key.Value;
-                        sb.Append(addressAndPort.OrdinalEndsWith(":443") ? "wss://" : "ws://");
-                        sb.Append(addressAndPort);
-                    }
+                    sb.Append(urlMapper.WebsocketBaseUrl);
                     sb.Append(settings.RequestPath);
                     sb.Append('?');
                     sb.Append(settings.ClientIdParameterName);

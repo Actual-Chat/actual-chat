@@ -1,4 +1,3 @@
-import DetectRTC from 'detectrtc';
 import { Log } from 'logging';
 import { DeviceInfo } from 'device-info';
 import { OpusMediaRecorder, opusMediaRecorder } from './opus-media-recorder';
@@ -34,19 +33,7 @@ export class AudioRecorder {
     private readonly blazorRef: DotNet.DotNetObject;
     private readonly onReconnected: EventHandler<void>;
 
-    private static whenInitialized: Promise<void> | null;
     private state: 'starting' | 'failed' | 'recording' | 'stopped' = 'stopped';
-
-    public static init(): Promise<void> {
-        if (this.whenInitialized)
-            return this.whenInitialized;
-
-        debugLog?.log(`-> init()`);
-        return this.whenInitialized = new Promise<void>(resolve => {
-            DetectRTC.load(resolve);
-            debugLog?.log(`<- init(): resolved`);
-        });
-    }
 
     public static async terminate(): Promise<void> {
         debugLog?.log(`-> terminate()`);
@@ -65,7 +52,6 @@ export class AudioRecorder {
         this.onReconnected = BrowserInit.reconnectedEvents.add(() => this.reconnect());
         opusMediaRecorder.subscribeToStateChanges((isRecording, isConnected, isVoiceActive) =>
             this.onRecordingStateChange(isRecording, isConnected, isVoiceActive));
-        void AudioRecorder.init();
     }
 
     /** Called from Blazor */
@@ -85,20 +71,8 @@ export class AudioRecorder {
     public async checkPermission(): Promise<PermissionState> {
         debugLog?.log(`-> checkPermission()`);
         try {
-            await AudioRecorder.whenInitialized;
-
-            const isMaui = BrowserInfo.appKind == 'MauiApp';
-            const hasMicrophone = DetectRTC.isAudioContextSupported
-                && DetectRTC.hasMicrophone
-                && DetectRTC.isGetUserMediaSupported
-                && (DetectRTC.isWebsiteHasMicrophonePermissions || isMaui);
-
-            debugLog?.log(`checkPermission(): hasMicrophone=`,
-                hasMicrophone,
-                DetectRTC.isAudioContextSupported,
-                DetectRTC.hasMicrophone,
-                DetectRTC.isGetUserMediaSupported,
-                DetectRTC.isWebsiteHasMicrophonePermissions);
+            const hasMicrophone = await this.hasMicrophone();
+            debugLog?.log(`checkPermission(): hasMicrophone=`, hasMicrophone);
 
             if ('permissions' in navigator && !DeviceInfo.isFirefox) {
                 // @ts-ignore
@@ -119,22 +93,10 @@ export class AudioRecorder {
     public async requestPermission(): Promise<boolean> {
         debugLog?.log(`-> requestPermission()`);
         try {
-            await AudioRecorder.whenInitialized;
+            const hasMicrophone = await this.hasMicrophone();
+            const hasPermission = await this.hasPermission();
 
-            const isMaui = BrowserInfo.appKind == 'MauiApp';
-            const hasMicrophone = DetectRTC.isAudioContextSupported
-                && DetectRTC.hasMicrophone
-                && DetectRTC.isGetUserMediaSupported
-                && (DetectRTC.isWebsiteHasMicrophonePermissions || isMaui);
-
-            debugLog?.log(`requestPermission(): hasMicrophone=`,
-                hasMicrophone,
-                DetectRTC.isAudioContextSupported,
-                DetectRTC.hasMicrophone,
-                DetectRTC.isGetUserMediaSupported,
-                DetectRTC.isWebsiteHasMicrophonePermissions);
-
-            if (!hasMicrophone) {
+            if (!hasMicrophone || !hasPermission) {
                 // Requests microphone permission
                 let stream: MediaStream = null;
                 try {
@@ -150,9 +112,6 @@ export class AudioRecorder {
                         stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                         await OpusMediaRecorder.stopStreamTracks(stream);
                     }
-
-                    // update DetectRTC with new microphone permission if granted
-                    AudioRecorder.whenInitialized = new Promise<void>(resolve => DetectRTC.load(resolve));
                 }
                 catch (error) {
                     errorLog?.log(`requestPermission: failed to request microphone permissions`, error);
@@ -176,7 +135,6 @@ export class AudioRecorder {
     /** Called from Blazor  */
     public async startRecording(chatId: string, repliedChatEntryId: string, sessionToken: string): Promise<boolean> {
         debugLog?.log(`-> startRecording(), ChatId =`, chatId);
-        await AudioRecorder.whenInitialized;
 
         try {
             if (sessionToken)
@@ -242,12 +200,10 @@ export class AudioRecorder {
         diagnosticsState.isPlayerInitialized = AudioPlayer.isInitialized;
 
         const isMaui = BrowserInfo.appKind == 'MauiApp';
-        const hasMicrophone = DetectRTC.isAudioContextSupported
-            && DetectRTC.hasMicrophone
-            && DetectRTC.isGetUserMediaSupported
-            && DetectRTC.isWebsiteHasMicrophonePermissions;
+        const hasMicrophone = await this.hasMicrophone();
+        const hasPermission = await this.hasPermission();
         if (!isMaui)
-            diagnosticsState.hasMicrophonePermission = hasMicrophone;
+            diagnosticsState.hasMicrophonePermission = hasMicrophone && hasPermission;
 
         diagnosticsState.isAudioContextSourceActive = audioContextSource.isActive;
         diagnosticsState.isAudioContextActive = audioContextSource.context && audioContextSource.context.state === 'running';
@@ -262,5 +218,27 @@ export class AudioRecorder {
         catch (error) {
             errorLog?.log(`onRecordingStateChange: unhandled error:`, error);
         }
+    }
+
+    private async hasMicrophone(): Promise<boolean> {
+        const isMaui = BrowserInfo.appKind == 'MauiApp';
+        let hasMicrophone = false;
+        if (navigator.mediaDevices?.enumerateDevices) {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const inputDevices = devices.filter(d => d.kind === 'audioinput');
+            const inputDevice = inputDevices.pop();
+            hasMicrophone = (inputDevice && inputDevice.deviceId !== '') || isMaui;
+        }
+        return hasMicrophone;
+    }
+
+    private async hasPermission(): Promise<boolean> {
+        let hasPermission = false;
+        if ('permissions' in navigator && !DeviceInfo.isFirefox) {
+            // @ts-ignore
+            const status = await navigator.permissions.query({ name: 'microphone' });
+            hasPermission = status.state === 'granted';
+        }
+        return hasPermission;
     }
 }

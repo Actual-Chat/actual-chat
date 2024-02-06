@@ -141,7 +141,10 @@ body.wide.app-maui .landing.new .landing-header {
     @apply px-8;
 }
 .landing.new .landing-header .light-icon,
-.landing.new .landing-header .dark-icon {
+.landing.new .landing-header .dark-icon,
+.landing.new .menu-header .dark-icon,
+.docs-layout .menu-header .dark-icon,
+.docs-left-panel .c-header .dark-icon {
     @apply min-w-10 min-h-10 max-h-10;
 }
 
@@ -183,7 +186,10 @@ body.wide.app-maui .landing.new .landing-header {
     @apply max-w-9;
 }
 .landing.new .landing-header .light-header .light-title,
-.landing.new .landing-header .dark-header .dark-title {
+.landing.new .landing-header .dark-header .dark-title,
+.landing.new .menu-header .dark-title,
+.docs-layout .menu-header .dark-title,
+.docs-left-panel .c-header-header .dark-title {
     @apply max-w-32 md:max-w-none;
 }
 .landing.new .landing-header .c-btn-group {
@@ -769,13 +775,21 @@ body.narrow .landing.new .landing-menu {
 }
 .landing-menu .c-container .menu-header {
     @apply ordinary-header;
-    @apply justify-start;
+    @apply justify-start gap-x-2;
     @apply px-0 py-2;
+}
+.landing-menu .c-container .menu-header > .c-title {
+    @apply self-center;
+    @apply pb-2;
 }
 .landing-menu .menu-footer {
     @apply flex-x items-center justify-start gap-x-2;
     @apply my-8;
 }
+.landing-menu .menu-footer .btn.btn-round .btn-content {
+    @apply min-w-10 min-h-10 max-w-10 max-h-10;
+}
+
 .landing-menu .menu-content {
     @apply flex-y items-start justify-start gap-y-2;
     @apply h-full;

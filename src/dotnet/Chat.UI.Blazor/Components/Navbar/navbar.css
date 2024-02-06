@@ -118,6 +118,8 @@ body.hoverable .navbar-item:hover {
 .navbar-place-buttons {
     @apply flex-y items-center gap-y-3 md:gap-y-2;
     @apply w-full overflow-y-auto;
+    @apply pt-2 -mt-2;
+    @apply custom-scrollbar-hide;
 }
 
 .navbar-place-buttons::-webkit-scrollbar {

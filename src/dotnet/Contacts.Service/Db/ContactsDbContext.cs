@@ -5,7 +5,7 @@ using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.Contacts.Db;
 
-public class ContactsDbContext : DbContextBase
+public class ContactsDbContext(DbContextOptions<ContactsDbContext> options) : DbContextBase(options)
 {
     public DbSet<DbContact> Contacts { get; protected set; } = null!;
     public DbSet<DbExternalContact> ExternalContacts { get; protected set; } = null!;
@@ -14,8 +14,6 @@ public class ContactsDbContext : DbContextBase
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
-
-    public ContactsDbContext(DbContextOptions<ContactsDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder model)
         => model.ApplyConfigurationsFromAssembly(typeof(ContactsDbContext).Assembly).UseSnakeCaseNaming();

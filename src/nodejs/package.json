@@ -53,7 +53,6 @@
     "@types/youtube": "^0.0.50",
     "buffer": "^6.0.3",
     "denque": "^2.1.0",
-    "detectrtc": "^1.4.1",
     "firebase": "^9.15.0",
     "heap-js": "^2.2.0",
     "highlight.js": "^11.7.0",
