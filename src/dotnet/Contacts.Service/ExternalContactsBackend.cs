@@ -10,10 +10,10 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
     IExternalContactsBackend
 {
     private IAccountsBackend? _accountsBackend;
-    private ContactLinkingJob? _contactLinkingJob;
+    private ContactLinker? _contactLinker;
 
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
-    private ContactLinkingJob ContactLinkingJob => _contactLinkingJob ??= Services.GetRequiredService<ContactLinkingJob>();
+    private ContactLinker ContactLinker => _contactLinker ??= Services.GetRequiredService<ContactLinker>();
     private AgentInfo AgentInfo { get; } = services.GetRequiredService<AgentInfo>();
 
     // [ComputeMethod]
@@ -81,7 +81,7 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             var context = CommandContext.GetCurrent();
             var isLocal = context.Operation().AgentId == AgentInfo.Id;
             if (isLocal && command.Changes.Any(x => x.Change.Kind is ChangeKind.Update or ChangeKind.Create))
-                ContactLinkingJob.OnSyncNeeded();
+                ContactLinker.Activate();
             return default!;
         }
 

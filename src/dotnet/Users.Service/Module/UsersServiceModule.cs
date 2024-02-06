@@ -186,7 +186,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
         fusion.AddService<IPhoneAuth, PhoneAuth>();
         fusion.AddService<IEmails, Emails>();
         commander.AddService<IUsersUpgradeBackend, UsersUpgradeBackend>();
-        services.AddSingleton<GreetingDispatcher>().AddHostedService(c => c.GetRequiredService<GreetingDispatcher>());
+        services.AddSingleton<ContactGreeter>().AddHostedService(c => c.GetRequiredService<ContactGreeter>());
         services.AddTransient<Rfc6238AuthenticationService>();
         services.AddSingleton<TotpRandomSecrets>();
         services.AddSingleton<ITwilioRestClient>(_ => {
