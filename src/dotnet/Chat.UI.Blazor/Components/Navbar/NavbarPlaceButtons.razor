@@ -1,5 +1,6 @@
-﻿@using ActualChat.Media;
+@using ActualChat.Media;
 @using ActualChat.Chat.UI.Blazor.Module
+@using ActualChat.Kvas;
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<NavbarPlaceButtons.Model>
 @{
@@ -45,6 +46,8 @@
 
     private Session Session => Hub.Session();
 
+    private AccountSettings AccountSettings => Hub.AccountSettings();
+
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
     public override async ValueTask DisposeAsync() {
@@ -69,14 +72,29 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken);
+
         var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
         if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
             placeIds = placeIds.Add(selectedChatId.PlaceId, true);
+
+        var placesOrderHints = await placeIds
+            .Select(id => AccountSettings.GetUserPlaceSettings(id, cancellationToken).AsTask())
+            .Collect();
+
         var places = (await placeIds
             .Select(id => Hub.Places.Get(Session, id, cancellationToken))
             .Collect())
+            .Zip(placesOrderHints)
+            .Where(e => e.First != null)
+            .OrderByDescending(e => e.Second)
+            .ThenByDescending(e => {
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+                // Checked in the Where clause
+                return e.First.CreatedAt;
+#pragma warning restore CS8602 // Dereference of a possibly null reference.
+            })
+            .Select(e=> e.First)
             .SkipNullItems()
-            .OrderBy(c => c.CreatedAt)
             .ToApiArray();
 
         return new Model {
