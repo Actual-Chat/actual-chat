@@ -30,7 +30,7 @@ public abstract class ShardScheme(Symbol id, int shardCount, bool isNone = false
     public IEnumerable<int> ShardIndexes { get; } = Enumerable.Range(0, shardCount);
     public ImmutableArray<RpcPeerRef> BackendClientPeerRefs { get; }
         = Enumerable.Range(0, shardCount)
-            .Select(shardIndex => RpcPeerRef.NewClient($"@shard-{id.Value}-{shardIndex}"))
+            .Select(shardIndex => RpcPeerRef.NewClient($"@shard-{id.Value}-{shardIndex}", true))
             .ToImmutableArray();
 
     public int GetShardIndex(int shardKey)
