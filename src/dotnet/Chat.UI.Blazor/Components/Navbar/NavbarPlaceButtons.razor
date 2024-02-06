@@ -1,4 +1,4 @@
-@using ActualChat.Media;
+﻿@using ActualChat.Media;
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.Kvas;
 @namespace ActualChat.Chat.UI.Blazor.Components
@@ -6,14 +6,34 @@
 @{
     var m = State.Value;
     var places = m.Places;
+    var previewPlace = m.PreviewPlace;
     var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
 }
 
 <div @ref="Ref" class="navbar-place-buttons">
+    @if (previewPlace != null) {
+        <NavbarGroupSelectionButton
+            @key="@previewPlace.Id"
+            AdditionalAttributes="@(new Dictionary<string, object>() { { "data-place-id", previewPlace.Id } })"
+            CanMove="@false"
+            Title="@previewPlace.Title"
+            Id="@previewPlace.Id.GetNavbarGroupId()"
+            Tooltip="@previewPlace.Title">
+            <ChildContent>
+                <Pic
+                    Title="@previewPlace.Title"
+                    Picture="@previewPlace.Picture.ToPicture()"
+                    Size="@size"
+                    IsSquare="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@previewPlace.Id.Value"/>
+            </ChildContent>
+        </NavbarGroupSelectionButton>
+    }
     @foreach (var place in places) {
         <NavbarGroupSelectionButton
             @key="@place.Id"
-            AdditionalAttributes="@(new Dictionary<string, object>() { {"data-place-id", place.Id} })"
+            AdditionalAttributes="@(new Dictionary<string, object>() { { "data-place-id", place.Id } })"
             CanMove="@true"
             Title="@place.Title"
             Id="@place.Id.GetNavbarGroupId()"
@@ -79,14 +99,25 @@
 
         var placesOrdered = await PlacesSettings.GetPlacesOrder(Session, placeIds.Items, cancellationToken);
 
+        var previewPlaceId = PlaceId.None;
+        if (selectedChatId.IsPlaceChat
+            && !placeIds.Contains(selectedChatId.PlaceId)) {
+            previewPlaceId = selectedChatId.PlaceId;
+        }
+
+        var previewPlace = !previewPlaceId.IsNone
+            ? await Hub.Places.Get(Session, previewPlaceId, cancellationToken)
+            : null;
+
         var places = (await placesOrdered
-                .Select(id => Hub.Places.Get(Session, id, cancellationToken))
-                .Collect())
+            .Select(id => Hub.Places.Get(Session, id, cancellationToken))
+            .Collect())
             .SkipNullItems()
             .ToApiArray();
 
         return new Model {
             Places = places,
+            PreviewPlace = previewPlace,
         };
     }
 
@@ -96,5 +127,6 @@
 
     public record Model {
         public ApiArray<Place> Places { get; init; } = ApiArray.Empty<Place>();
+        public Place? PreviewPlace { get; init; }
     }
 }

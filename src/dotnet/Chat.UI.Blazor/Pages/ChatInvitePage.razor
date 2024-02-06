@@ -19,12 +19,18 @@
     private bool _navigateRequested;
     private Result<Invite>? _useResult;
     private AccountFull? _account;
+    private ILogger? _log;
 
-    [Inject] private Session Session { get; init; } = null!;
-    [Inject] private History History { get; init; } = null!;
-    [Inject] private SignInRequesterUI SignInRequesterUI { get; init; } = null!;
-    [Inject] private UICommander UICommander { get; init; } = null!;
-    [Inject] private AccountUI AccountUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private MomentClockSet Clocks => Hub.Clocks();
+    private UICommander UICommander => Hub.UICommander();
+    private History History => Hub.History;
+    private AccountUI AccountUI => Hub.AccountUI;
+    private IPlaces Places => Hub.Places;
+    private SignInRequesterUI SignInRequesterUI => Hub.GetRequiredService<SignInRequesterUI>();
+    private ILogger Log => _log ??= Hub.LogFor(GetType());
 
     [Parameter] public string InviteId { get; set; } = "";
 
@@ -42,7 +48,33 @@
             return;
 
         var invite = useResult.Value;
+        var placeInvite = invite.Details.Place;
+        if (placeInvite != null) {
+            var placeId = placeInvite.PlaceId;
+            Place? place = null;
+            try {
+                var cPlace = await Computed.Capture(() => Places.Get(Session, placeId, default));
+                cPlace = await ActualChat.ClockExt.Timeout(Clocks, 3)
+                    .ApplyTo(ct => cPlace.When(p => p != null, ct));
+                place = cPlace.Value;
+            }
+            catch (TimeoutException) {
+                Log.LogWarning("PlaceInvite: Places.Get couldn't complete in 3 seconds");
+            }
+            if (place != null) {
+                var welcomeChatId = await Places.GetWelcomeChatId(Session, place.Id, default);
+                if (welcomeChatId.IsNone) {
+                    _ = History.NavigateTo(Links.Chats, true);
+                    return;
+                }
+
+                _ = History.NavigateTo(Links.Chat(welcomeChatId), true);
+            }
+            return;
+        }
+
         var chatInvite = invite.Details.Chat.Require();
-        _ = History.NavigateTo(Links.Chat(chatInvite.ChatId), true);
+        var chatId = chatInvite.ChatId;
+        _ = History.NavigateTo(Links.Chat(chatId), true);
     }
 }
