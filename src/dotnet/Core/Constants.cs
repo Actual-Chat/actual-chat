@@ -35,6 +35,7 @@ public static partial class Constants
             public static readonly Symbol Classmates = "classmates";
             public static readonly Symbol Alumni = "alumni";
             public static readonly Symbol Coworkers = "coworkers";
+            public static readonly Symbol Welcome = "welcome";
         }
     }
 

@@ -18,7 +18,7 @@
 
     Context.ModalDataBag.Set(nameof(ComputedModel.MembersCount), m.MembersCount);
     var isPlaceChat = !_placeId.IsNone;
-    var canChangeChatType = _placeId.IsNone || _place != null && _place.Rules.CanApplyPublicChatType();
+    var canChangeChatType = _placeId.IsNone || _place != null && (_place.Rules.CanApplyPublicChatType() && !_isPlaceWelcomeChat);
 }
 
 <Form Class="h-full" @ref="@_formRef" Model="@_form">
@@ -191,7 +191,7 @@
                 </TileItem>
             }
 
-            @if (m.IsOwner) {
+            @if (m.IsOwner && !_isPlaceWelcomeChat) {
                 var leaveTitle = m.CanDelete ? "Delete chat" : "Leave chat";
                 <TileItem Class="item-leave-group" Click="@(() => OnLeaveGroupClick(m))">
                     <Icon><i class="icon-log-out"></i></Icon>
@@ -215,6 +215,7 @@
     private bool _isAdmin;
     private PlaceId _placeId;
     private Place? _place;
+    private bool _isPlaceWelcomeChat;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
@@ -260,6 +261,7 @@
         };
         _placeId = chat.Id.PlaceChatId.PlaceId;
         if (!_placeId.IsNone) {
+            _isPlaceWelcomeChat = OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag);
             _place = await Hub.Places.Get(Hub.Session(), _placeId, default).Require().ConfigureAwait(false);
             if (!_place.Rules.CanApplyPublicChatType())
                 _form.IsPublic = false;

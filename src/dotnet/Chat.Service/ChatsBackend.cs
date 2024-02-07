@@ -469,9 +469,12 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             }
             else if (chatKind == ChatKind.Place) {
                 if (chatId.IsNone) {
-                    chatId = placeId.IsNone
-                        ? PlaceChatId.Root(new PlaceId(Generate.Option))
-                        : new PlaceChatId(placeId, Generate.Option);
+                    if (placeId.IsNone)
+                        chatId = PlaceChatId.Root(new PlaceId(Generate.Option));
+                    else if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, update.SystemTag))
+                        chatId = new PlaceChatId(PlaceChatId.Format(placeId, Constants.Chat.SystemTags.Welcome));
+                    else
+                        chatId = new PlaceChatId(placeId, Generate.Option);
                 }
                 else
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
@@ -573,15 +576,21 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             ownerId.RequireNone();
             if (update.PlaceId.HasValue)
                 throw new ArgumentOutOfRangeException(nameof(command), "ChatDiff.PlaceId should be null.");
-            if (chatId.IsPlaceChat)
-                update.ValidateForPlaceChat();
             dbChat.RequireVersion(expectedVersion);
+            if (chatId.IsPlaceChat) {
+                update.ValidateForPlaceChat();
+                if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag)
+                    && update.IsPublic == false)
+                    throw StandardError.Constraint("Can't change chat type to private for 'Welcome' chat.");
+            }
 
             chat = ApplyDiff(dbChat.ToModel(), update);
             dbChat.UpdateFrom(chat);
         }
         else if (change.IsRemove()) {
             dbChat.Require();
+            if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag))
+                throw StandardError.Constraint("It's prohibited to remove 'Welcome' chat.");
 
             if (!dbChat.MediaId.IsNullOrEmpty()) {
                 var removeMediaCommand = new MediaBackend_Change(

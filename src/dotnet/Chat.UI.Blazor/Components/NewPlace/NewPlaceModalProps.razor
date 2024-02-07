@@ -122,10 +122,11 @@
             // Create default chat. Later we should add place templates.
             var createChatCommand = new Chats_Change(session, default, null, new() {
                 Create = new ChatDiff {
-                    Title = "General",
+                    Title = "Welcome",
                     Kind = null,
                     IsPublic = true,
                     MediaId = _form.Picture?.MediaContent?.MediaId,
+                    SystemTag = Constants.Chat.SystemTags.Welcome,
                     PlaceId = place.Id
                 },
             });
