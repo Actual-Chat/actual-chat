@@ -1,6 +1,7 @@
 using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
 using ActualChat.Search;
+using ActualLab.Generators;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.EnvironmentVariables;
