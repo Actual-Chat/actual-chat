@@ -1,0 +1,158 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            .gradient-background {
+                background-color: #0036A3;
+                background-image: radial-gradient(circle at 50% 120%, #FF3880 0%, #0036A3 100%);
+            }
+
+            .grey-text a {
+                color: #A0A0A0;
+                font-size: 12px;
+                font-weight: 400;
+                font-family: 'Arial', serif;
+                line-height: 14px;
+            }
+
+            @supports (background-clip: text) {
+                .gradient-text {
+                    background-image: linear-gradient(179.66deg, #2970FF -128.11%, #FF3880 196.01%);
+                    background-clip: text;
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    -moz-background-clip: text;
+                    -moz-text-fill-color: transparent;
+                }
+            }
+
+            .content-border {
+                background-color: #F7F7FC;
+                border-radius: 16px;
+            }
+        </mj-style>
+    </mj-head>
+    <mj-body>
+        <mj-wrapper css-class="gradient-background"
+                    full-width="full-width"
+                    padding="0px 16px 40px 16px">
+            <mj-section padding="15px 0px 5px 0px">
+                <mj-column>
+                    <mj-table width="161px"
+                              align="center">
+                        <tr>
+                            <td width="30px"
+                                height="40px">
+                                <img width="30px"
+                                     src="https://actual.chat/dist/images/emails/ac-icon-light.png"
+                                     alt=""/>
+                            </td>
+                            <td width="10px"/>
+                            <td width="121px">
+                                <img width="121px"
+                                     src="https://actual.chat/dist/images/emails/ac-title-light.png"
+                                     alt=""/>
+                            </td>
+                        </tr>
+                    </mj-table>
+                </mj-column>
+            </mj-section>
+            <mj-section css-class="content-border">
+                <mj-column>
+                    <mj-image align="center"
+                              width="221px"
+                              src="https://actual.chat/dist/images/emails/email-cat.png">
+                    </mj-image>
+                    <mj-text align="center"
+                             font-family="Arial"
+                             css-class="gradient-text"
+                             font-size="28px"
+                             font-weight="600"
+                             line-height="30px"
+                             color="#AE00CA">
+                        Your email verification code
+                    </mj-text>
+                    <mj-text align="center"
+                             font-family="Arial"
+                             font-size="14px"
+                             font-weight="400"
+                             line-height="20px"
+                             color="#1C1C1C">
+                        Please enter your verification code in Actual Chat app when prompted:
+                    </mj-text>
+                    <mj-text align="center"
+                             font-family="Arial"
+                             font-size="28px"
+                             font-weight="700"
+                             letter-spacing="10px"
+                             line-height="30px"
+                             color="#1C1C1C">
+                        {{TOKEN}}
+                    </mj-text>
+                    <mj-text align="center"
+                             font-size="14px"
+                             font-weight="400"
+                             line-height="20px"
+                             font-family="Arial"
+                             color="#1C1C1C">
+                        If you didn`t request a code, you can ignore this email. To protect your account, don`t forward
+                        this email or give this code to anyone.
+                    </mj-text>
+                    <mj-divider border-width="1px"
+                                border-color="#D3D3D3"/>
+                    <mj-table width="292px"
+                              align="center">
+                        <tr>
+                            <td width="136px">
+                                <a href="https://apps.apple.com/us/app/actual-chat/id6450874551">
+                                    <img width="136px"
+                                         height="40px"
+                                         src="https://actual.chat/dist/images/emails/get-ios.png"
+                                         alt=""/>
+                                </a>
+                            </td>
+                            <td width="20px"/>
+                            <td width="136px">
+                                <a href="https://play.google.com/store/apps/details?id=chat.actual.app">
+                                    <img width="136px"
+                                         height="40px"
+                                         src="https://actual.chat/dist/images/emails/get-android.png"
+                                         alt=""/>
+                                </a>
+                            </td>
+                        </tr>
+                    </mj-table>
+                    <mj-table width="220px"
+                              align="center"
+                              css-class="grey-text">
+                        <tr>
+                            <td>
+                                <a href="https://actual.chat/docs/privacy">Privacy Policy</a>
+                            </td>
+                            <td width="10px">
+                            </td>
+                            <td>
+                                <a href="https://actual.chat/docs/terms">Terms and Conditions</a>
+                            </td>
+                        </tr>
+                    </mj-table>
+                    <mj-text align="center"
+                             font-size="12px"
+                             font-weight="400"
+                             font-family="Arial"
+                             line-height="14px"
+                             color="#A0A0A0">
+                        2024 Actual chat, LLC, All Rights Reserved
+                    </mj-text>
+                    <mj-text align="center">
+                        <a href="https://github.com/Actual-Chat/">
+                            <img width="30px"
+                                 height="28px"
+                                 src="https://actual.chat/dist/images/emails/github.png"
+                                 alt=""/>
+                        </a>
+                    </mj-text>
+                </mj-column>
+            </mj-section>
+        </mj-wrapper>
+    </mj-body>
+</mjml>
