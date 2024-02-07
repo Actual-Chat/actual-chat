@@ -77,10 +77,8 @@
     [Inject] private ModalUI ModalUI { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
-
-    public override bool IsCompleted { get; } = false;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
 
     protected override async Task OnInitializedAsync() {
         _isPhoneAuthEnabled = await Features.Get<Features_EnablePhoneAuth, bool>(CancellationToken.None);
@@ -115,9 +113,6 @@
         PhoneSignInModel.Phone = phone;
         return TaskExt.TrueTask;
     }
-
-    protected override void MarkCompleted()
-    { }
 
     private void OnSignInWith(string schema) {
         Modal.Close();

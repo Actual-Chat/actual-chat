@@ -27,20 +27,13 @@
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [Parameter, EditorRequired] public PhoneSignInModel PhoneSignInModel { get; set; } = null!;
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
 
-    public override bool IsCompleted { get; } = false;
-
-    protected override async Task<bool> Save() {
-        var url = UrlMapper.ToAbsolute(Constants.Auth.Phone.CallbackPath);
-        if (HostInfo.HostKind == HostKind.MauiApp)
-            await History.NavigateTo(Links.Chats);
-        else
-            await History.NavigateTo(url, force: true);
-        return true;
+    protected override Task<bool> Save() {
+        Modal.Close();
+        _ = History.NavigateTo(Links.Chats);
+        return TaskExt.TrueTask;
     }
-
-    protected override void MarkCompleted()
-    { }
 
     protected override Task<bool> Validate()
         => TaskExt.TrueTask;

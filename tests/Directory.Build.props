@@ -59,7 +59,6 @@
     <!-- Global usings -->
     <Using Include="ActualChat" />
     <Using Include="ActualChat.Blobs" />
-    <Using Include="ActualChat.Channels" />
     <Using Include="ActualChat.Collections" />
     <Using Include="ActualChat.DependencyInjection" />
     <Using Include="ActualChat.Mathematics" />

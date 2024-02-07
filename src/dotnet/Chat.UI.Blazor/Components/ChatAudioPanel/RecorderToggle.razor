@@ -2,6 +2,7 @@
 @using ActualChat.Audio.UI.Blazor.Components
 @using ActualChat.Chat.UI.Blazor.Module
 @using System.Diagnostics.CodeAnalysis
+@using Timeout = System.Threading.Timeout
 @inherits ComputedStateComponent<RecorderToggle.Model>
 @{
     var m = State.Value;
@@ -76,15 +77,20 @@
     private OnOffAnimator _animator = null!;
     private ComponentAnimator _tooltipAnimator = null!;
     private Language _oldRecordingLanguage = Language.None;
+    private TaskSerializer _taskSerializer = new();
+    private CpuTimestamp _lastActionAt;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private IJSRuntime JS => Hub.JSRuntime();
 
+    private ChatId RecordingChatId => ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId;
+    private bool IsRecordingHere => !Chat.Id.IsNone && RecordingChatId == Chat.Id;
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
-    private bool IsForcePushed { get; set; } = false;
+    private bool IsPushToTalk { get; set; } = false;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = SpecialChat.Unavailable;
 
@@ -137,40 +143,59 @@
             isTransitioning);
     }
 
-    private async Task OnClick() {
-        var m = State.Value;
-        if (Chat.Id != m.Chat.Id)
-            return; // Loading or updating
+    private void OnClick()
+        => ToggleRecording();
 
-        if (m.IsRecordingHere) {
-            // Stop recording
-            _ = ChatAudioUI.SetRecordingChatId(default);
-        }
-        else {
-            // Start recording
-            if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
-                return;
-
-            _ = ChatAudioUI.SetRecordingChatId(Chat.Id);
-        }
-    }
-
-    private async Task OnContextMenu() {
-        if (IsForcePushed)
-            return;
-        if (!await AudioRecorder.MicrophonePermission.CheckOrRequest())
-            return;
-
-        IsForcePushed = true;
-        _ = ChatAudioUI.SetRecordingChatId(Chat.Id, true);
-    }
+    private void OnContextMenu()
+        => ToggleRecording(true);
 
     private void OnPointerUp() {
-        if (!IsForcePushed)
+        if (IsPushToTalk && IsRecordingHere)
+            StopRecording();
+    }
+
+    private void ToggleRecording(bool isPushToTalk = false) {
+        if (IsRecordingHere)
+            StopRecording();
+        else
+            StartRecording(isPushToTalk);
+    }
+
+    private void StartRecording(bool isPushToTalk = false) {
+        isPushToTalk = IsPushToTalk |= isPushToTalk;
+        var chatId = Chat.Id;
+        if (chatId.IsNone)
             return;
 
-        IsForcePushed = false;
-        _ = ChatAudioUI.SetRecordingChatId(default);
+        if (IsValidAction())
+            _ = _taskSerializer.Enqueue(async cancellationToken => {
+                // .ConfigureAwait(false) is fine here
+                if (RecordingChatId == chatId)
+                    return;
+                if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false))
+                    return;
+
+                cancellationToken.ThrowIfCancellationRequested();
+                await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk).ConfigureAwait(false);
+            });
+    }
+
+    private void StopRecording() {
+        IsPushToTalk = false;
+        if (IsValidAction())
+            _ = _taskSerializer.Enqueue(async _ => {
+                // .ConfigureAwait(false) is fine here
+                if (!RecordingChatId.IsNone)
+                    await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(false);
+            }, mustAbortPreviousTasks: true);
+    }
+
+    private bool IsValidAction() {
+        if (_lastActionAt.Elapsed < TimeSpan.FromMilliseconds(350))
+            return false; // Rapid action sequence is likely a mistake
+
+        _lastActionAt = CpuTimestamp.Now;
+        return true;
     }
 
     // Nested types

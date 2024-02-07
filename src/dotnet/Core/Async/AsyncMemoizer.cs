@@ -1,7 +1,7 @@
 using System.Buffers;
 using System.Runtime.ExceptionServices;
 
-namespace ActualChat.Channels;
+namespace ActualChat;
 
 public sealed class AsyncMemoizer<T>
 {

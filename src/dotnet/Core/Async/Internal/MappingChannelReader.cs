@@ -1,4 +1,4 @@
-namespace ActualChat.Channels.Internal;
+namespace ActualChat.Internal;
 
 public sealed class MappingChannelReader<T, TFrom>(ChannelReader<TFrom> source, Func<TFrom, T> mapper)
     : ChannelReader<T>

@@ -53,7 +53,6 @@
     private async Task OnInputCompleted(int totp) {
         _isVerifying = true;
         StateHasChanged();
-        // as for now we can decide what to do with totp right here, no need for external handling
         ICommand<bool> cmd = Purpose switch {
             TotpPurpose.SignIn => new PhoneAuth_ValidateTotp(Session, new Phone(Phone), totp),
             TotpPurpose.VerifyPhone => new PhoneAuth_VerifyPhone(Session, new Phone(Phone), totp),
