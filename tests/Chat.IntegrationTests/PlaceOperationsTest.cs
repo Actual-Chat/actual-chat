@@ -218,6 +218,87 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LeavePlace(bool isPublicPlace)
+    {
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewBlazorTester();
+        var session = tester.Session;
+        await tester.SignInAsBob();
+        var commander = tester.Commander;
+
+        var place = await CreatePlace(commander, session, isPublicPlace);
+        var placeId = place.Id;
+
+        await using var tester2 = appHost.NewBlazorTester();
+        var anotherSession = tester2.Session;
+        await tester2.SignInAsAlice();
+        var services = tester2.AppServices;
+        var contacts = services.GetRequiredService<IContacts>();
+        var places = services.GetRequiredService<IPlaces>();
+        {
+            var placeIds = await contacts.ListPlaceIds(anotherSession, default);
+            placeIds.Should().BeEmpty();
+        }
+
+        var inviteId = Symbol.Empty;
+        if (!isPublicPlace) {
+            var invite = ActualChat.Invite.Invite.New(Constants.Invites.Defaults.PlaceRemaining, new PlaceInviteOption(placeId));
+            invite = await commander.Call(new Invites_Generate(session, invite));
+            inviteId = invite.Id;
+
+            await tester2.Commander.Call(new Invites_Use(anotherSession, inviteId));
+        }
+
+        await commander.Call(new Places_Join(anotherSession, placeId));
+
+        await TestExt.WhenMetAsync(
+            async () => {
+                var placeIds = await contacts.ListPlaceIds(anotherSession, default);
+                placeIds.Should().HaveCount(1);
+                placeIds.Should().Contain(placeId);
+            },
+            TimeSpan.FromSeconds(3));
+
+        place = await places.Get(anotherSession, placeId, default);
+        place.Should().NotBeNull();
+        place!.Rules.CanLeave().Should().BeTrue();
+
+        // Leave
+        await commander.Call(new Places_Leave(anotherSession, placeId));
+
+        await TestExt.WhenMetAsync(
+            async () => {
+                var placeIds = await contacts.ListPlaceIds(anotherSession, default);
+                placeIds.Should().BeEmpty();
+            },
+            TimeSpan.FromSeconds(3));
+
+        place = await places.Get(anotherSession, placeId, default);
+        if (isPublicPlace)
+            place.Should().NotBeNull();
+        else
+            place.Should().BeNull();
+
+        // Re-join again
+        if (!isPublicPlace)
+            await tester2.Commander.Call(new Invites_Use(anotherSession, inviteId));
+        await commander.Call(new Places_Join(anotherSession, placeId));
+
+        await TestExt.WhenMetAsync(
+            async () => {
+                var placeIds = await contacts.ListPlaceIds(anotherSession, default);
+                placeIds.Should().HaveCount(1);
+                placeIds.Should().Contain(placeId);
+            },
+            TimeSpan.FromSeconds(3));
+
+        place = await places.Get(anotherSession, placeId, default);
+        place.Should().NotBeNull();
+    }
+
+    [Theory]
     [InlineData(false, false)]
     [InlineData(false, true)]
     [InlineData(true, false)]

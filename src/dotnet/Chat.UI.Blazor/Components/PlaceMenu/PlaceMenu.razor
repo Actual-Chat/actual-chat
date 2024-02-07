@@ -7,57 +7,80 @@
     Text="New chat"
     Click="OnCreateChatClick">
 </MenuEntry>
-@if (!_isOwner) {
-    return;
+@if (_isOwner) {
+    <MenuEntry
+        Class="important-item"
+        Icon="icon-person-add"
+        Text="Invite members"
+        Click="OnInviteMembersClick">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-edit"
+        Text="Settings"
+        Click="OnPlaceSettingsClick">
+    </MenuEntry>
+    <MenuEntrySeparator />
+    <MenuEntry
+        Class="warning-item"
+        Icon="icon-log-out"
+        Text="Leave place & delete"
+        Click="OnPlaceDeleteClick">
+    </MenuEntry>
 }
-<MenuEntry
-    Class="important-item"
-    Icon="icon-person-add"
-    Text="Invite members"
-    Click="OnInviteMembersClick">
-</MenuEntry>
-<MenuEntry
-    Icon="icon-edit"
-    Text="Settings"
-    Click="OnPlaceSettingsClick">
-</MenuEntry>
-<MenuEntrySeparator />
-<MenuEntry
-    Class="warning-item"
-    Icon="icon-log-out"
-    Text="Leave place & delete"
-    Click="OnPlaceDeleteClick">
-</MenuEntry>
+else if (_canLeave) {
+    <MenuEntry
+        Class="warning-item"
+        Icon="icon-log-out"
+        Text="Leave place"
+        Click="OnPlaceLeaveClick">
+    </MenuEntry>
+}
 
 @code {
     private PlaceId _placeId;
     private bool _isOwner;
+    private bool _canLeave;
 
-    [Inject] private ChatUIHub Chat { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+
+    private Session Session => Hub.Session();
+    private UICommander UICommander => Hub.UICommander();
+    private IPlaces Places => Hub.Places;
+    private ModalUI ModalUI => Hub.ModalUI;
+    private NavbarUI NavbarUI => Hub.NavbarUI;
 
     protected override async Task OnParametersSetAsync() {
         if (Arguments is not [ var placeSid ])
             throw new ArgumentOutOfRangeException(nameof(Arguments));
 
         _placeId = new PlaceId(placeSid);
-        var place = await Chat.Places.Get(Chat.Session(), _placeId, default).ConfigureAwait(false);
+        var place = await Places.Get(Session, _placeId, default).ConfigureAwait(false);
         _isOwner = place?.Rules.IsOwner() ?? false;
+        _canLeave = place != null && place.Rules.CanLeave();
     }
 
     private void OnCreateChatClick()
-        => Chat.ModalUI.Show(new NewChatModal.Model(_placeId));
+        => ModalUI.Show(new NewChatModal.Model(_placeId));
 
     private void OnInviteMembersClick()
-        => _ = Chat.ModalUI.Show(new AddMemberModal.Model(_placeId));
+        => _ = ModalUI.Show(new AddMemberModal.Model(_placeId));
 
     private void OnPlaceSettingsClick()
-        => _ = Chat.ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
+        => _ = ModalUI.Show(new PlaceSettingsModal.Model(_placeId));
 
     private async Task OnPlaceDeleteClick() {
-        var (_, error) = await Chat.UICommander().Run(new Places_Delete(Chat.Session(), _placeId));
+        var (_, error) = await UICommander.Run(new Places_Delete(Session, _placeId));
         if (error != null)
             return;
 
-        Chat.NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
+        NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
+    }
+
+    private async Task OnPlaceLeaveClick() {
+        var (_, error) = await UICommander.Run(new Places_Leave(Session, _placeId));
+        if (error != null)
+            return;
+
+        NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
     }
 }
