@@ -14,7 +14,7 @@
     <MicrosoftExtensionsVersion>8.0.0</MicrosoftExtensionsVersion>
     <MicrosoftExtensionsBaseVersion>8.0.0</MicrosoftExtensionsBaseVersion>
     <NpgsqlVersion>$(EntityFrameworkCoreNpgsqlVersion)</NpgsqlVersion>
-    <RedisVersion>2.7.10</RedisVersion>
+    <RedisVersion>2.7.17</RedisVersion>
     <SignalRVersion>$(AspNetCoreVersion)</SignalRVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.6.0</OpenTelemetryVersion>
