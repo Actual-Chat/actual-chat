@@ -46,7 +46,9 @@
 
     private Session Session => Hub.Session();
 
-    private AccountSettings AccountSettings => Hub.AccountSettings();
+    private PlacesSettings? _placesSettings;
+    private PlacesSettings PlacesSettings => _placesSettings ??= new(Hub.Services, Hub.AccountSettings());
+
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
@@ -77,23 +79,11 @@
         if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
             placeIds = placeIds.Add(selectedChatId.PlaceId, true);
 
-        var placesOrderHints = await placeIds
-            .Select(id => AccountSettings.GetUserPlaceSettings(id, cancellationToken).AsTask())
-            .Collect();
+        var placesOrdered = await PlacesSettings.GetPlacesOrder(Session, placeIds.Items, cancellationToken);
 
-        var places = (await placeIds
-            .Select(id => Hub.Places.Get(Session, id, cancellationToken))
-            .Collect())
-            .Zip(placesOrderHints)
-            .Where(e => e.First != null)
-            .OrderByDescending(e => e.Second)
-            .ThenByDescending(e => {
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-                // Checked in the Where clause
-                return e.First.CreatedAt;
-#pragma warning restore CS8602 // Dereference of a possibly null reference.
-            })
-            .Select(e=> e.First)
+        var places = (await placesOrdered
+                .Select(id => Hub.Places.Get(Session, id, cancellationToken))
+                .Collect())
             .SkipNullItems()
             .ToApiArray();
 
@@ -101,6 +91,10 @@
             Places = places
         };
     }
+
+    [JSInvokable]
+    public Task StorePlacesOrder(PlaceId[] placeIds)
+        => PlacesSettings.SetPlacesOrder(Session, placeIds);
 
     public record Model {
         public ApiArray<Place> Places { get; init; } = ApiArray.Empty<Place>();

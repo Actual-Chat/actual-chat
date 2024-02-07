@@ -12,7 +12,7 @@ public static class KvasExt
         return valueOpt.IsSome(out var value) ? value : new();
     }
 
-    public static Task SetUserPlacesSettings(this IKvas<User> kvas, PlaceId placeId, UserPlaceSettings value, CancellationToken cancellationToken)
+    public static Task SetUserPlaceSettings(this IKvas<User> kvas, PlaceId placeId, UserPlaceSettings value, CancellationToken cancellationToken)
         => kvas.Set(UserPlaceSettings.GetKvasKey(placeId), value, cancellationToken);
 
     // UserChatSettings
