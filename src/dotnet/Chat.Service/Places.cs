@@ -56,7 +56,8 @@ public class Places(IServiceProvider services) : IPlaces
             .ConfigureAwait(false);
 
         // TODO(DF): make it possible to configure Welcome Chat
-        var welcomeChat = chats.SkipNullItems().MinBy(c => c.CreatedAt);
+        var welcomeChat = chats.SkipNullItems().FirstOrDefault(c => OrdinalEquals(Constants.Chat.SystemTags.Welcome, c.SystemTag))
+            ?? chats.SkipNullItems().MinBy(c => c.CreatedAt);
         return welcomeChat?.Id ?? ChatId.None;
     }
 
@@ -180,6 +181,13 @@ public class Places(IServiceProvider services) : IPlaces
         var contacts = await Contacts.ListIds(session, placeId, cancellationToken).ConfigureAwait(false);
         foreach (var contact in contacts) {
             var chatId = contact.ChatId;
+            var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+            if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
+                var resetChatTagCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> {
+                    Update = new ChatDiff { SystemTag = Symbol.Empty }
+                });
+                await Commander.Call(resetChatTagCommand, true, cancellationToken).ConfigureAwait(false);
+            }
             var deleteChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
             await Commander.Call(deleteChatCommand, true, cancellationToken).ConfigureAwait(false);
         }
