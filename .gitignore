@@ -10,6 +10,8 @@ Nerdbank.GitVersioning.*
 .idea/
 .history
 .DS_Store
+.env
+.devcontainer
 _ReSharper*/
 *.[Rr]e[Ss]harper
 *.suo
@@ -54,3 +56,6 @@ node_modules/
 # MAUI replaced index.html
 index.html
 sw.js
+
+# VIM swap files
+*.swp
