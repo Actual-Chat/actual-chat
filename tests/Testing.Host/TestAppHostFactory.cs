@@ -1,5 +1,4 @@
 using ActualChat.App.Server;
-using ActualChat.Chat.Module;
 using ActualChat.Blobs.Internal;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -7,7 +6,6 @@ using Microsoft.Extensions.Configuration.EnvironmentVariables;
 using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
-using ActualLab.Fusion.Server.Authentication;
 using ActualLab.IO;
 
 namespace ActualChat.Testing.Host;
@@ -54,9 +52,6 @@ public static class TestAppHostFactory
                 services.AddSettings<TestSettings>();
                 services.AddSingleton(output);
                 services.ConfigureLogging(output);
-                services.AddSingleton(new ServerAuthHelper.Options {
-                    KeepSignedIn = true,
-                });
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorageProvider, TempFolderBlobStorageProvider>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
