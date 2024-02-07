@@ -196,6 +196,20 @@ public class Places(IServiceProvider services) : IPlaces
         await Commander.Call(deleteRootChatCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    public virtual async Task OnLeave(Places_Leave command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, placeId) = command;
+        var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
+            return;
+
+        place.Rules.Require(PlacePermissions.Leave);
+        await Commander.Call(new Authors_Leave(session, placeId.ToRootChatId()), true, cancellationToken).ConfigureAwait(false);
+    }
+
     private static ChatDiff ToChatDiff(PlaceDiff placeDiff)
         => new() {
             IsPublic = placeDiff.IsPublic,
