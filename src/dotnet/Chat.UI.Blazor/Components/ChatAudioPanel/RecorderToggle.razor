@@ -163,35 +163,36 @@
 
     private void StartRecording(bool isPushToTalk = false) {
         isPushToTalk = IsPushToTalk |= isPushToTalk;
-        var chatId = Chat.Id;
-        if (chatId.IsNone)
+        if (!IsValidAction())
             return;
 
-        if (IsValidAction())
-            _ = _taskSerializer.Enqueue(async cancellationToken => {
-                // .ConfigureAwait(false) is fine here
-                if (RecordingChatId == chatId)
-                    return;
-                if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false))
-                    return;
+        var chatId = Chat.Id;
+        _ = _taskSerializer.Enqueue(async cancellationToken => {
+            // .ConfigureAwait(false) is fine here
+            if (chatId.IsNone || RecordingChatId == chatId)
+                return;
+            if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false))
+                return;
 
-                cancellationToken.ThrowIfCancellationRequested();
-                await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk).ConfigureAwait(false);
-            });
+            cancellationToken.ThrowIfCancellationRequested();
+            await ChatAudioUI.SetRecordingChatId(chatId, isPushToTalk).ConfigureAwait(false);
+        });
     }
 
     private void StopRecording() {
+        if (!IsValidAction())
+            return;
+
         IsPushToTalk = false;
-        if (IsValidAction())
-            _ = _taskSerializer.Enqueue(async _ => {
-                // .ConfigureAwait(false) is fine here
-                if (!RecordingChatId.IsNone)
-                    await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(false);
-            }, mustAbortPreviousTasks: true);
+        _ = _taskSerializer.Enqueue(async _ => {
+            // .ConfigureAwait(false) is fine here
+            if (!RecordingChatId.IsNone)
+                await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(false);
+        }, mustAbortPreviousTasks: true);
     }
 
     private bool IsValidAction() {
-        if (_lastActionAt.Elapsed < TimeSpan.FromMilliseconds(350))
+        if (_lastActionAt.Elapsed < TimeSpan.FromMilliseconds(500))
             return false; // Rapid action sequence is likely a mistake
 
         _lastActionAt = CpuTimestamp.Now;
