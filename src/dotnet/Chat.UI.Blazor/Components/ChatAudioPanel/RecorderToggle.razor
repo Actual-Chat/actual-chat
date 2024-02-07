@@ -82,10 +82,13 @@
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
+    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private LanguageUI LanguageUI => Hub.LanguageUI;
     private IJSRuntime JS => Hub.JSRuntime();
 
+    private ChatId RecordingChatId => ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording).ChatId;
+    private bool IsRecordingHere => !Chat.Id.IsNone && RecordingChatId == Chat.Id;
     private bool IsUpdating => !Chat.Id.IsNone && State.Value.Chat.Id != Chat.Id;
     private bool IsPushToTalk { get; set; } = false;
 
@@ -140,37 +143,35 @@
             isTransitioning);
     }
 
-    private void OnClick() {
-        if (IsPushToTalk)
-            return; // Normally shouldn't happen
+    private void OnClick()
+        => ToggleRecording();
 
-        var m = State.Value;
-        if (m.IsRecordingHere)
-            StopRecording();
-        else
-            StartRecording();
-    }
-
-    private void OnContextMenu() {
-        if (!IsPushToTalk)
-            StartRecording(true);
-    }
+    private void OnContextMenu()
+        => ToggleRecording(true);
 
     private void OnPointerUp() {
-        if (IsPushToTalk)
+        if (IsPushToTalk && IsRecordingHere)
             StopRecording();
+    }
+
+    private void ToggleRecording(bool isPushToTalk = false) {
+        if (IsRecordingHere)
+            StopRecording();
+        else
+            StartRecording(isPushToTalk);
     }
 
     private void StartRecording(bool isPushToTalk = false) {
-        var m = State.Value;
-        var chatId = m.Chat.Id;
-        if (chatId != Chat.Id)
-            return; // The state isn't in sync yet
-
         isPushToTalk = IsPushToTalk |= isPushToTalk;
+        var chatId = Chat.Id;
+        if (chatId.IsNone)
+            return;
+
         if (IsValidAction())
             _ = _taskSerializer.Enqueue(async cancellationToken => {
                 // .ConfigureAwait(false) is fine here
+                if (RecordingChatId == chatId)
+                    return;
                 if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false))
                     return;
 
@@ -184,13 +185,14 @@
         if (IsValidAction())
             _ = _taskSerializer.Enqueue(async _ => {
                 // .ConfigureAwait(false) is fine here
-                await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(false);
+                if (!RecordingChatId.IsNone)
+                    await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(false);
             }, mustAbortPreviousTasks: true);
     }
 
     private bool IsValidAction() {
         if (_lastActionAt.Elapsed < TimeSpan.FromMilliseconds(350))
-            return false; // Quick start-stop recording sequence is likely a mistake
+            return false; // Rapid action sequence is likely a mistake
 
         _lastActionAt = CpuTimestamp.Now;
         return true;
