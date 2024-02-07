@@ -113,6 +113,9 @@ export class PlaceButtons {
             let btn = b as HTMLElement;
             this.buttons.push(btn);
         });
+        //TODO: fill placesOrdering list with placeId's in the right order
+        var placesOrdering = [];
+        this.blazorRef.invokeMethodAsync("StorePlacesOrder", placesOrdering);
     }
 
     private onPointerDown = (event: PointerEvent) => {
