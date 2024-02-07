@@ -158,6 +158,11 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
         fusionWebServer.ConfigureServerAuthHelper(_ => new() {
             NameClaimKeys = Array.Empty<string>(),
             SessionInfoUpdatePeriod = Constants.Session.SessionInfoUpdatePeriod,
+            AllowSignIn = HostInfo.IsDevelopmentInstance
+                ? ServerAuthHelper.Options.AllowAnywhere
+                : ServerAuthHelper.Options.AllowOnCloseWindowRequest,
+            AllowChange = ServerAuthHelper.Options.AllowOnCloseWindowRequest,
+            AllowSignOut = ServerAuthHelper.Options.AllowOnCloseWindowRequest,
         });
 
         commander.AddService<AuthCommandFilters>();
