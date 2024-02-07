@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.csproj" />
@@ -6,6 +6,10 @@
 
   <ItemGroup>
     <PackageReference Include="Mjml.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="EmailVerification.mjml" />
   </ItemGroup>
 
 </Project>
