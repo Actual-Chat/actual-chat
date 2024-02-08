@@ -28,16 +28,19 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         if (!Settings.IsSearchEnabled) {
+            Log.LogWarning("Search feature is turned off");
             _whenCompleted.SetException(StandardError.Unavailable("Search feature is turned off."));
             return;
         }
 
         try {
             await Run(cancellationToken).ConfigureAwait(false);
+            Log.LogInformation("ElasticConfigurator initialized");
             _whenCompleted.SetResult();
         }
         catch (Exception e)
         {
+            Log.LogWarning(e, "Failed to init ElasticConfigurator");
             _whenCompleted.SetException(e);
             throw;
         }
@@ -52,6 +55,7 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
 
         return (from chain in baseChains
             select chain
+                .Log(LogLevel.Debug, Log)
                 .Retry(RetryDelaySeq.Exp(0, 60), 10)
                 .Log(LogLevel.Debug, Log))
             .RunIsolated(cancellationToken);
@@ -90,14 +94,21 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
 
     private async Task EnsureContactIndex<T>(IndexName indexName, Action<CreateIndexRequestDescriptor<T>> configure, CancellationToken cancellationToken)
     {
-        var existsResponse = await Elastic.Indices.ExistsAsync(indexName, cancellationToken).ConfigureAwait(false);
-        if (existsResponse.Exists)
-            return;
+        try {
+            using var _1 = Tracer.Default.Region(nameof(EnsureContactIndex) + "_" + indexName + "_ExistsAsync");
+            var existsResponse = await Elastic.Indices.ExistsAsync(indexName, cancellationToken).ConfigureAwait(false);
+            if (existsResponse.Exists)
+                return;
 
-        await Elastic.Indices
-            .CreateAsync(indexName, configure, cancellationToken)
-            .Assert(Log)
-            .ConfigureAwait(false);
+            using var _2 = Tracer.Default.Region(nameof(EnsureContactIndex) + "_" + indexName + "_CreateAsync");
+            await Elastic.Indices
+                .CreateAsync(indexName, configure, cancellationToken)
+                .Assert(Log)
+                .ConfigureAwait(false);
+        }
+        catch(Exception e) {
+            Log.LogWarning(e, "Failed to EnsureContactIndex: '{IndexName}'", indexName);
+        }
     }
 
     private void ConfigureEntryIndexTemplate(PutIndexTemplateRequestDescriptor<IndexedEntry> index)
