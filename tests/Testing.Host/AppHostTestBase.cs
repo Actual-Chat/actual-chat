@@ -1,11 +1,12 @@
-using ActualChat.App.Server;
-using ActualChat.Testing.Collections;
+using ActualChat.Testing.Host.Collections;
 
 namespace ActualChat.Testing.Host;
 
-[Collection(nameof(AppHostTests)), Trait("Category", nameof(AppHostTests))]
-public class AppHostTestBase(ITestOutputHelper @out) : TestBase(@out)
+[Collection(nameof(AppHostTestCollection)), Trait("Category", nameof(AppHostTestCollection))]
+public class AppHostTestBase(ITestOutputHelper @out, AppHostFixture? fixture=null) : TestBase(@out)
 {
-    protected Task<AppHost> NewAppHost(TestAppHostOptions? options = default)
+    public TestAppHost? Host => fixture?.Host;
+
+    protected Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
         => TestAppHostFactory.NewAppHost(Out, options);
 }

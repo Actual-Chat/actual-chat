@@ -2,17 +2,11 @@ using Cysharp.Text;
 
 namespace ActualChat.Testing;
 
-public class TimestampedTestOutput : ITestOutputHelper
+public class TimestampedTestOutput(ITestOutputHelper output) : ITestOutputHelper
 {
-    private readonly CpuTimestamp _startedAt;
+    private readonly CpuTimestamp _startedAt = CpuTimestamp.Now;
 
-    public ITestOutputHelper Output { get; }
-
-    public TimestampedTestOutput(ITestOutputHelper output)
-    {
-        Output = output;
-        _startedAt = CpuTimestamp.Now;
-    }
+    public ITestOutputHelper Output { get; } = output;
 
     public void WriteLine(string message)
         => Output.WriteLine(ZString.Format("{0,5} {1}", _startedAt.Elapsed, message));

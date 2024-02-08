@@ -3,9 +3,11 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
-public class AvatarsTest : AppHostTestBase
+[Collection(nameof(ChatUICollection)), Trait("Category", nameof(ChatUICollection))]
+public class AvatarsTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
-    public AvatarsTest(ITestOutputHelper @out) : base(@out) { }
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     [Fact(Skip = "TODO(DF): fix for CI")]
     public async Task CanCreateAnAvatar()
@@ -17,8 +19,8 @@ public class AvatarsTest : AppHostTestBase
         // The issue was solved by adding ActualChat.Web.Internal.OptionPropsValidationFilter
         // which excludes accessing ActualLab.Option.Value property during model validation.
 
-        using var appHost = await NewAppHost();
-        await using var tester = appHost.NewWebClientTester();
+        var appHost = Host;
+        await using var tester = appHost.NewWebClientTester(Out);
         var account = await tester.SignInAsBob("no-admin");
         var command = new Avatars_Change(tester.Session, Symbol.Empty, null, new Change<AvatarFull>() {
             Create = new AvatarFull(account.Id),

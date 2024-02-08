@@ -2,15 +2,11 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Testing.Host;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Redis;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class LocalIdGeneratorTest: AppHostTestBase
+public class LocalIdGeneratorTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 {
-    public LocalIdGeneratorTest(ITestOutputHelper @out) : base(@out)
-    { }
-
     [Fact(Skip = "For manual runs only")]
     public async Task LocalIdsOnDifferentHostsAreUnique()
     {

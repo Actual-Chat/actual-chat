@@ -2,27 +2,31 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests;
 
-public class ShardWorkerTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ServerCollection)), Trait("Category", nameof(ServerCollection))]
+public class ShardWorkerTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
         var shardScheme = ShardScheme.Backend.Instance;
         using var h1 = await NewAppHost(TestAppHostOptions.None);
-        await using var w1a = new TestShardWorker(h1.Services, "w1a");
+        await using var w1a = new TestShardWorker(h1.Services, @out, "w1a");
         w1a.Start();
         await Task.Delay(1000);
         await w1a.DisposeSilentlyAsync();
         var shardIndexes = await w1a.Channel.Reader.ReadAllAsync().Distinct().ToListAsync();
         shardIndexes.Count.Should().Be(shardScheme.ShardCount);
 
-        await using var w1b = new TestShardWorker(h1.Services, "w1b");
+        await using var w1b = new TestShardWorker(h1.Services, @out, "w1b");
         w1b.Start();
 
         using var h2 = await NewAppHost(TestAppHostOptions.None);
-        await using var w2a = new TestShardWorker(h2.Services, "w2a");
+        await using var w2a = new TestShardWorker(h2.Services, @out, "w2a");
         w2a.Start();
-        await using var w2b = new TestShardWorker(h2.Services, "w2b");
+        await using var w2b = new TestShardWorker(h2.Services, @out, "w2b");
         w2b.Start();
         await Task.Delay(3000);
         await w2a.DisposeSilentlyAsync();
@@ -33,11 +37,11 @@ public class ShardWorkerTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         shardIndexes.Count.Should().Be(shardScheme.ShardCount / 2);
     }
 
-    public class TestShardWorker(IServiceProvider services, string name) : ShardWorker<ShardScheme.Backend>(services)
+    public class TestShardWorker(IServiceProvider services, ITestOutputHelper @out, string name) : ShardWorker<ShardScheme.Backend>(services)
     {
         private static readonly object?[] ShardOwners = new object?[ShardScheme.Backend.Instance.ShardCount];
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
-        private ITestOutputHelper Out { get; } = services.GetRequiredService<ITestOutputHelper>();
+        private ITestOutputHelper Out { get; } = @out;
 
         public Channel<int> Channel { get; } = System.Threading.Channels.Channel.CreateUnbounded<int>(new UnboundedChannelOptions() {
             SingleReader = true,
@@ -72,4 +76,7 @@ public class ShardWorkerTest(ITestOutputHelper @out) : AppHostTestBase(@out)
             return Task.CompletedTask;
         }
     }
+
+    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
+        => TestAppHostFactory.NewAppHost(Out, options);
 }

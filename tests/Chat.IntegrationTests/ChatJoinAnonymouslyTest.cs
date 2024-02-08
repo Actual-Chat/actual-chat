@@ -3,12 +3,16 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class ChatJoinAnonymouslyTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
+public class ChatJoinAnonymouslyTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     [Fact]
     public async Task JoinWithGuestUser()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         var tester = appHost.NewBlazorTester();
 
         // Guest user can not join to a chat with invite code, should we change this?
@@ -41,7 +45,7 @@ public class ChatJoinAnonymouslyTest(ITestOutputHelper @out) : AppHostTestBase(@
     [InlineData(true)]
     public async Task JoinAnonymouslyWithSignedInUser(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
 
         await tester.SignInAsAlice();
@@ -78,7 +82,7 @@ public class ChatJoinAnonymouslyTest(ITestOutputHelper @out) : AppHostTestBase(@
     [Fact]
     public async Task JoinAsGuestShouldBeForbidden()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
 
         await tester.SignInAsAlice();
@@ -103,7 +107,7 @@ public class ChatJoinAnonymouslyTest(ITestOutputHelper @out) : AppHostTestBase(@
     [InlineData(true)]
     public async Task JoinAnonymouslyShouldBeForbidden(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
 
         await tester.SignInAsAlice();

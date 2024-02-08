@@ -7,32 +7,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
-public class HistoricalChatPlayerTest : AppHostTestBase
+[Collection(nameof(ChatUICollection)), Trait("Category", nameof(ChatUICollection))]
+public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
-    private BlazorTester _tester = null!;
-    private AppHost _appHost = null!;
-    private Account _account = null!;
-
-    public HistoricalChatPlayerTest(ITestOutputHelper @out) : base(@out) { }
-
-    public override async Task InitializeAsync()
-    {
-        _appHost = await NewAppHost();
-        _tester = _appHost.NewBlazorTester();
-        _account = await _tester.SignIn(new User(Constants.User.Admin.Name));
-    }
-
-    public override async Task DisposeAsync()
-    {
-        await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
-    }
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     [Fact(Timeout = 60_000)]
     public async Task RewindBackTest()
     {
-        var services = _tester.ScopedAppServices;
-
+        var appHost = Host;
+        await using var tester = appHost.NewBlazorTester();
+        var services = tester.ScopedAppServices;
+        var account = await tester.SignIn(new User(Constants.User.Admin.Name));
         var clocks = services.Clocks();
         var today = clocks.SystemClock.Now.ToDateTime().Date;
         var yesterday = today.AddDays(-1);
@@ -43,9 +30,9 @@ public class HistoricalChatPlayerTest : AppHostTestBase
         var dbContextFactory = services.GetRequiredService<IDbContextFactory<ChatDbContext>>();
         var dbContext = await dbContextFactory.CreateDbContextAsync();
         await using (var _ = dbContext.ConfigureAwait(false)) {
-            var dbChat = AddChat(dbContext, yesterday, _account.Id);
+            var dbChat = AddChat(dbContext, yesterday, account.Id);
             chatId = new ChatId(dbChat.Id);
-            var dbAuthor = AddAuthor(dbContext, chatId, _account.Id);
+            var dbAuthor = AddAuthor(dbContext, chatId, account.Id);
             var authorId = new AuthorId(dbAuthor.Id);
             long localId = 1;
             AddAudioEntry(dbContext, chatId, authorId, ref localId, entry1BeginsAt, TimeSpan.FromSeconds(20));

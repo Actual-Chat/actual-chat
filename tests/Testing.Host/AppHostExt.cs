@@ -8,11 +8,12 @@ public static class AppHostExt
 {
     public static WebClientTester NewWebClientTester(
         this AppHost appHost,
+        ITestOutputHelper output,
         Action<IServiceCollection>? configureClientServices = null)
-        => new(appHost, configureClientServices);
+        => new(appHost, output, configureClientServices);
 
-    public static PlaywrightTester NewPlaywrightTester(this AppHost appHost)
-        => new(appHost);
+    public static PlaywrightTester NewPlaywrightTester(this AppHost appHost, ITestOutputHelper output)
+        => new(appHost, output);
 
     public static BlazorTester NewBlazorTester(this AppHost appHost)
         => new(appHost);

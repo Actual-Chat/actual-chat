@@ -10,8 +10,10 @@ using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
-public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepGramTranscriber> log): TestBase(@out)
+[Collection(nameof(TranscriptionCollection)), Trait("Category", nameof(TranscriptionCollection))]
+public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepGramTranscriber> log)
 {
+    private ITestOutputHelper Out { get; } = @out;
     private ILogger<DeepGramTranscriber> Log { get; } = log;
 
     [Theory(Skip = "For manual runs only")]

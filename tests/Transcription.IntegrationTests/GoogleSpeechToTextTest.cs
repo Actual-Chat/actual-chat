@@ -8,12 +8,12 @@ using ActualLab.IO;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
-public class GoogleSpeechToTextTest : TestBase
+[Collection(nameof(TranscriptionCollection)), Trait("Category", nameof(TranscriptionCollection))]
+public class GoogleSpeechToTextTest(ILogger log, ITestOutputHelper @out)
 {
-    public ILogger Log { get; }
+    private ITestOutputHelper Out { get; } = @out;
+    private ILogger Log { get; } = log;
 
-    public GoogleSpeechToTextTest(ILogger log, ITestOutputHelper @out) : base(@out)
-        => Log = log;
 
     [Theory(Skip = "For manual runs only")]
     [InlineData("0004-AK.webm", false)]

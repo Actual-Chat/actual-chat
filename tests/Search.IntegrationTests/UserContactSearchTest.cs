@@ -5,11 +5,14 @@ using ActualChat.Users;
 
 namespace ActualChat.Search.IntegrationTests;
 
-public class UserContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
+public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     private WebClientTester _tester = null!;
     private ISearchBackend _sut = null!;
-    private AppHost _appHost = null!;
     private ICommander _commander = null!;
 
     private static readonly AccountFull Jack = new (new User(UserId.New(), "Jack")) {
@@ -45,20 +48,19 @@ public class UserContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
         LastName = "Lake",
     };
 
-    public override async Task InitializeAsync()
+    public Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _appHost = await NewAppHost();
-        _tester = _appHost.NewWebClientTester();
-        _sut = _appHost.Services.GetRequiredService<ISearchBackend>();
-        _commander = _appHost.Services.Commander();
+        _tester = Host.NewWebClientTester(Out);
+        _sut = Host.Services.GetRequiredService<ISearchBackend>();
+        _commander = Host.Services.Commander();
+        return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
     }
 
     [Fact]

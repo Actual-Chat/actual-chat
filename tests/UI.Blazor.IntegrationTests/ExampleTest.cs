@@ -2,15 +2,20 @@
 
 namespace ActualChat.UI.Blazor.IntegrationTests;
 
-public class ExampleTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(UICollection)), Trait("Category", nameof(UICollection))]
+public class ExampleTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     [Fact]
-    public async Task SessionTest()
+    public Task SessionTest()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         var session = Session.New();
 
         Assert.NotNull(session);
         session.ToString().Length.Should().Be(20);
+        return Task.CompletedTask;
     }
 }

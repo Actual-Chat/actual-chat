@@ -4,8 +4,12 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 
-public class MeshWatcherTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ServerCollection)), Trait("Category", nameof(ServerCollection))]
+public class MeshWatcherTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
@@ -61,4 +65,9 @@ public class MeshWatcherTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         (r1b.Error is OperationCanceledException).Should().BeTrue();
         (r2.Error is OperationCanceledException).Should().BeTrue();
     }
+
+    // Private methods
+
+    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
+        => TestAppHostFactory.NewAppHost(Out, options);
 }

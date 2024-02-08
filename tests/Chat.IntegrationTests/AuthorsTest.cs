@@ -2,16 +2,18 @@
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class AuthorsTest : AppHostTestBase
+[Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
+public class AuthorsTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
-    public AuthorsTest(ITestOutputHelper @out) : base(@out) { }
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     [Fact(Skip = "Fails on CI")]
     public async Task NullAuthorResult()
     {
         var startedAt = CpuTimestamp.Now;
-        using var appHost = await NewAppHost();
-        using var tester = appHost.NewWebClientTester();
+        var appHost = Host;
+        using var tester = appHost.NewWebClientTester(Out);
         Out.WriteLine($"{startedAt}: app host init");
         var session = tester.Session;
 

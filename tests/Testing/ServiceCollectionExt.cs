@@ -6,6 +6,8 @@ namespace ActualChat.Testing;
 public static class ServiceCollectionExt
 {
     public static IServiceCollection ConfigureLogging(this IServiceCollection services, ITestOutputHelper output)
+        => ConfigureLogging(services, new TestOutputHelperAccessor(new TimestampedTestOutput(output)));
+    public static IServiceCollection ConfigureLogging(this IServiceCollection services, TestOutputHelperAccessor outputAccessor)
         => services.AddLogging(logging => {
             // Overriding default logging to more test-friendly one
             logging.ClearProviders();
@@ -28,8 +30,7 @@ public static class ServiceCollectionExt
             logging.AddProvider(
 #pragma warning disable CS0618
                 new XunitTestOutputLoggerProvider(
-                    new TestOutputHelperAccessor(
-                        new TimestampedTestOutput(output)),
+                    outputAccessor,
                     (_, _) => true));
 #pragma warning restore CS0618
         });
