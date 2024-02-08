@@ -49,6 +49,119 @@ TBD
 TBD
 
 ---
+# Architecture
+### Assumptions:
+- Expect to have multiple independent Search Engines.
+- Should be able to combine or group results.
+- (Optional) Should be able to have feedback on results
+  for iterative improvements.
+- Most (99%) users would have less than 1k chats to search in.
+  Thought there might be outliers.
+
+### Thoughts: 
+#### Document access claims
+There will be tons of documents that are scoped to private chats 
+or in private places that not accessible to all users.
+Filtering out result on the client-side would make lots of
+returned results wasted.
+
+This leads to a conclusion that it makes sense to have 
+access-permissions (claims) for each document.
+Strictly speaking each request must be accommodated with 
+a set of claims. 
+
+Alternative: A filter must be able to have filters
+powerful enough to filter out documents not accessible
+by a user (executable lambdas on the servide side). 
+This seems to be an option that is way harder to implement
+and it still would have little to no benefits
+over the first option.
+
+#### Opinionated Search Engine Provider
+In the initial implementation there would be a single service
+running on the same machine as the requester application.
+However with the growth of the number of documents to index
+the index size would grow and it would require some kind of sharding
+adopted. Most probably it would be time based partitioning first
+and documents sharding by chat id's later. However implementation
+details are unknown at the moment. Given that it is probably better
+to assume each Search Engine to provide its own Adapter for 
+the client applications - Search Engine Provider. 
+
+Search Engine Provider is responsible for:
+- Convert application filter calls into the corresponding calls
+  to their search engine.
+- Convert inner application events into corresponding events in 
+  the Search Engines.
+- Provide document access in case of pull model of the Search Engine.
+- Handle Search Engine availability / backpressure.
+- Implementation based: track query leader, load balancing if needed, etc.
+
+Search Engine Provider can be implemented as a set of different modules
+where each module has it's single responsibility.
+
+#### Minimal result
+(Option) Each result must have:
+- Items list:
+  - URI of the document
+  - Search result score of the document
+- Cursor (continuation) / or null for the end of results.
+
+#### Cursor (continuation) and re-indexing
+Cursors should be immutable to document appends and the resulting
+re-indexing. It should also be tolerant to document updates.
+
+The later can be achieved by an assumption that a document delete
+is the same thing as a claim changed from read:xyz to read-deleted:xyz.
+And an assumption that an update is an equivalent to delete+append.
+
+#### Request result item decorators
+It is very beneficial to add document fragments to 
+result item. It is possible to have other decorator
+types added there (like author, date, etc). 
+To achieve this extensibility a search engine can
+attach decorators to result items. It is client side
+responsibility (Search Engine Provider) to be able
+to parse those results. 
+
+Notes: 
+
+(Nice to have) Search Engine Provider 
+should be able to send what kind of decorators it 
+wants to have. Although it should not be guaranteed
+that all or any resulting items have those decorators
+in a result.
+
+It is also possible to decorate result itself.
+For example a search engine may return an approximate number
+of documents remaining matching the filter. It can also
+add a decorator indicating that the remaining documents 
+are older than certain age.
+
+#### Service Backpressure and Availability
+It can be implemented in any form but should be handled
+on the ISearchEngineProvider side. It must be able to indicate
+in a response that this service is not available at the moment.
+
+It is also required to set corresponding events in to 
+a monitoring infrastructure for warn and alerts if needed.
+
+### Proposed solution:
+Questions...:
+- How to implement a registry for multiple ~~ISearchBackend~~ 
+  ISeachEngineProvider instances?
+  
+  Note: They can be of the same instance type (with different configurations). 
+- ~~Is it possible/needed to add another ISearchBackend instance at runtime?~~
+  - Possible. Not needed now.
+
+(Opinion) It seems that we can have a single implementation of ISearchBackend
+that would have access to different ISearchEngineProviders. It would be resposible
+to multiplex search queries and aggregate results returned in the timed manner.
+It must set corresponding events into a monitoring infrastructure 
+for SearchEngineProviders that missed their time.
+It must throttle requests to non-responsive SearchEngineProviders.
+
 
 # Search Engine
 
