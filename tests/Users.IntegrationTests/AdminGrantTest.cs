@@ -6,27 +6,24 @@ using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 
 namespace ActualChat.Users.IntegrationTests;
 
-public class AdminGrantTest : AppHostTestBase
+[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
+public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     private WebClientTester _tester = null!;
     private IAccountsBackend _accounts = null!;
-    private AppHost _appHost = null!;
 
-    public AdminGrantTest(ITestOutputHelper @out) : base(@out)
-    { }
-
-    public override async Task InitializeAsync()
+    public Task InitializeAsync()
     {
-        _appHost = await NewAppHost();
-        _tester = _appHost.NewWebClientTester();
-        _accounts = _appHost.Services.GetRequiredService<IAccountsBackend>();
+        _tester = Host.NewWebClientTester(Out);
+        _accounts = Host.Services.GetRequiredService<IAccountsBackend>();
+        return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
-    {
-        await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
-    }
+    public Task DisposeAsync()
+        => _tester.DisposeAsync().AsTask();
 
     [Fact]
     public async Task UserWithActualChatDomainAndGoogleIdentityShouldBeGrantedWithAdminRights()

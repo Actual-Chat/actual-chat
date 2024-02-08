@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Configuration.Memory;
 using Microsoft.Extensions.FileProviders;
 using ActualLab.IO;
+using ActualLab.Testing.Output;
 
 namespace ActualChat.Testing.Host;
 
@@ -29,13 +30,26 @@ public static class TestAppHostFactory
         throw new FileNotFoundException("Can't find manifest.", manifestPath);
     }
 
-    public static async Task<AppHost> NewAppHost(
+    public static Task<TestAppHost> NewAppHost(
+        IMessageSink output,
+        string dbInstanceName,
+        TestAppHostOptions? options = null)
+        => NewAppHost(new TestOutputAdapter(output), dbInstanceName, options);
+
+    public static Task<TestAppHost> NewAppHost(
         ITestOutputHelper output,
+        TestAppHostOptions? options = null)
+        => NewAppHost(output, GetInstanceName(output), options);
+
+    public static async Task<TestAppHost> NewAppHost(
+        ITestOutputHelper output,
+        string dbInstanceName,
         TestAppHostOptions? options = null)
     {
         options ??= TestAppHostOptions.Default;
         var manifestPath = GetManifestPath();
-        var appHost = new TestAppHost {
+        var outputAccessor = new TestOutputHelperAccessor(new TimestampedTestOutput(output));
+        var appHost = new TestAppHost(outputAccessor) {
             ServerUrls = options.ServerUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
             HostConfigurationBuilder = cfg => {
                 cfg.Sources.Insert(0,
@@ -52,8 +66,8 @@ public static class TestAppHostFactory
 
                 // The code below runs after module service registration & everything else
                 services.AddSettings<TestSettings>();
-                services.AddSingleton(output);
-                services.ConfigureLogging(output);
+                services.AddSingleton(outputAccessor);
+                services.ConfigureLogging(outputAccessor);
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
@@ -65,7 +79,7 @@ public static class TestAppHostFactory
                 });
             },
             AppConfigurationBuilder = cfg => {
-                ConfigureTestApp(cfg, output);
+                ConfigureTestApp(cfg, dbInstanceName);
                 options.AppConfigurationExtender?.Invoke(cfg);
             },
         };
@@ -82,7 +96,7 @@ public static class TestAppHostFactory
         return appHost;
     }
 
-    private static void ConfigureTestApp(IConfigurationBuilder config, ITestOutputHelper output)
+    private static void ConfigureTestApp(IConfigurationBuilder config, string instanceName)
     {
         var toDelete = config.Sources
             .Where(s => (s is JsonConfigurationSource source
@@ -103,7 +117,7 @@ public static class TestAppHostFactory
                 ReloadOnChange = false,
             });
         config.AddInMemoryCollection(new Dictionary<string, string?> {
-            { "CoreSettings:Instance", GetInstanceName(output) },
+            { "CoreSettings:Instance", instanceName },
         });
         config.AddEnvironmentVariables();
 
@@ -120,17 +134,5 @@ public static class TestAppHostFactory
     }
 
     private static string GetInstanceName(ITestOutputHelper output)
-    {
-        var test = output.GetTest();
-        // Postgres identifier limit is 63 bytes
-        var displayName = test.DisplayName;
-        // On build server displayName is generated based on class full name and method name,
-        // while in Rider only method name is used.
-        // We drop the namespace to have more readable instance name
-        // (with test method name) after the length is truncated.
-        var ns = test.TestCase.TestMethod.TestClass.Class.ToRuntimeType().Namespace;
-        if (displayName.OrdinalStartsWith(ns))
-            displayName = displayName[(ns.Length + 1)..];
-        return FilePath.GetHashedName(test.TestCase.UniqueID, displayName, maxLength: 32);
-    }
+        => output.GetTest().TestCase.Traits.GetValueOrDefault("Category")?.FirstOrDefault() ?? "Test";
 }

@@ -10,12 +10,13 @@ using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
+[Collection(nameof(TranscriptionCollection)), Trait("Category", nameof(TranscriptionCollection))]
 public class GoogleTranscriberTest(
     IConfiguration configuration,
     ITestOutputHelper @out,
     ILogger<GoogleTranscriber> log)
-    : TestBase(@out)
 {
+    private ITestOutputHelper Out { get; } = @out;
     private ILogger<GoogleTranscriber> Log { get; } = log;
     private CoreServerSettings CoreServerSettings { get; }
         = configuration.GetSettings<CoreServerSettings>(nameof(CoreSettings));

@@ -7,32 +7,35 @@ using ActualLab.Fusion.Extensions;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
-public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ContactCollection)), Trait("Category", nameof(ContactCollection))]
+public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     private WebClientTester _tester = null!;
-    private AppHost _appHost = null!;
     private IContacts _contacts = null!;
     private IContactsBackend _contactsBackend = null!;
     private IAccounts _accounts = null!;
 
-    public override async Task InitializeAsync()
+    public Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _appHost = await NewAppHost();
-        _tester = _appHost.NewWebClientTester();
-        _contacts = _appHost.Services.GetRequiredService<IContacts>();
-        _contactsBackend = _appHost.Services.GetRequiredService<IContactsBackend>();
+        _tester = Host.NewWebClientTester(Out);
+        _contacts = Host.Services.GetRequiredService<IContacts>();
+        _contactsBackend = Host.Services.GetRequiredService<IContactsBackend>();
         _accounts = _tester.AppServices.GetRequiredService<IAccounts>();
+
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
+        return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
     }
 
     [Fact]
@@ -41,7 +44,6 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         // arrange
         var bob = await _tester.SignInAsBob();
         await _tester.SignInAsAlice();
-
         // non-place
         var (publicChatId, publicChatInviteId) = await _tester.CreateChat(true);
         var (privateChatId, privateChatInviteId) = await _tester.CreateChat(false);
@@ -200,6 +202,7 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         contactIds = await ListIdsForContactSearch();
         contactIds.Should()
             .BeEquivalentTo(new[] {
+                new ContactId(bob.Id, publicChatId),
                 new ContactId(bob.Id, privateChatId),
                 new ContactId(bob.Id, publicPlacePrivateChatId),
                 new ContactId(bob.Id, privatePlacePublicChatId),

@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using ActualChat.App.Server;
 using ActualChat.Contacts.UI.Blazor.Services;
 using ActualChat.Security;
 using ActualChat.Testing.Assertion;
@@ -10,10 +9,13 @@ using ActualLab.Generators;
 
 namespace ActualChat.Contacts.UI.Blazor.IntegrationTests;
 
-public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ContactUICollection)), Trait("Category", nameof(ContactUICollection))]
+public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     private WebClientTester _tester = null!;
-    private AppHost _appHost = null!;
     private IExternalContacts _externalContacts = null!;
 
     private Symbol DeviceId { get; set; } = RandomStringGenerator.Default.Next();
@@ -32,14 +34,14 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     private static Phone JanePhone => new ("1-3456789012");
     private static string JaneEmail => "jane@actual.chat";
 
-    public override async Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         var deviceContacts = new Mock<DeviceContacts>();
         deviceContacts.SetupGet(x => x.DeviceId).Returns(() => DeviceId);
         deviceContacts.Setup(x => x.List(It.IsAny<CancellationToken>())).Returns(() => Task.FromResult(DeviceContacts.ToApiArray()));
-        _appHost = await NewAppHost(TestAppHostOptions.Default with { ServerUrls = "http://localhost:7080" });
-        _externalContacts = _appHost.Services.GetRequiredService<IExternalContacts>();
-        _tester = _appHost.NewWebClientTester(services => {
+        // _appHost = await NewAppHost(TestAppHostOptions.Default with { ServerUrls = "http://localhost:7080" });
+        _externalContacts = Host.Services.GetRequiredService<IExternalContacts>();
+        _tester = Host.NewWebClientTester( Out,services => {
             TrueSessionResolver? sessionResolver = null;
             services.AddSingleton(c => {
                     sessionResolver ??= new TrueSessionResolver(c);
@@ -55,11 +57,8 @@ public class ContactSyncTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await _tester.SignOut();
     }
 
-    public override async Task DisposeAsync()
-    {
-        await _tester.DisposeSilentlyAsync();
-        _appHost.DisposeSilently();
-    }
+    public Task DisposeAsync()
+        => _tester.DisposeSilentlyAsync().AsTask();
 
     [Fact(Skip = "TODO(FC): Fix for CI")]
     public async Task ShouldAddAndUpdate()

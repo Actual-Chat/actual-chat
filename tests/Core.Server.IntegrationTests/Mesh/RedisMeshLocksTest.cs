@@ -1,30 +1,18 @@
-using ActualChat.App.Server;
 using ActualChat.Mesh;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 
-public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ServerCollection)), Trait("Category", nameof(ServerCollection))]
+public class RedisMeshLocksTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
-    private AppHost _appHost = null!;
-    private IServiceProvider _services = null!;
-
-    public override async Task InitializeAsync()
-    {
-        _appHost = await NewAppHost(TestAppHostOptions.None);
-        _services = _appHost.Services;
-    }
-
-    public override Task DisposeAsync()
-    {
-        _appHost.Dispose();
-        return Task.CompletedTask;
-    }
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
-        var locks = _services.MeshLocks<InfrastructureDbContext>();
+        var locks = Host.Services.MeshLocks<InfrastructureDbContext>();
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
@@ -54,7 +42,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact(Timeout = 30_000)]
     public async Task LockIsGoneTest()
     {
-        var locks = _services.MeshLocks<InfrastructureDbContext>();
+        var locks = Host.Services.MeshLocks<InfrastructureDbContext>();
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
@@ -84,7 +72,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact(Timeout = 30_000)]
     public async Task ReleaseNotifyTest()
     {
-        var locks = _services.MeshLocks<InfrastructureDbContext>();
+        var locks = Host.Services.MeshLocks<InfrastructureDbContext>();
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(10) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();

@@ -3,8 +3,11 @@ using Microsoft.Playwright;
 
 namespace ActualChat.Testing.Host;
 
-public sealed class PlaywrightTester(AppHost appHost, Action<IServiceCollection>? configureClientServices = null)
-    : WebClientTester(appHost, configureClientServices)
+public sealed class PlaywrightTester(
+    AppHost appHost,
+    ITestOutputHelper output,
+    Action<IServiceCollection>? configureClientServices = null)
+    : WebClientTester(appHost, output, configureClientServices)
 {
     private IPlaywright? _playwright;
     private IBrowser? _browser;

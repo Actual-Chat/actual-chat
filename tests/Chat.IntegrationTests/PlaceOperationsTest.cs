@@ -5,15 +5,19 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
+public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private const string PlaceTitle = "AC Place";
     private const string ChatTitle = "General";
 
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     [Fact]
     public async Task TryGetNonExistingPlace()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -29,7 +33,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true)]
     public async Task CreateNewPlace(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -87,7 +91,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true, true)]
     public async Task CreatePlaceChat(bool isPublicPlace, bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -145,7 +149,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true)]
     public async Task JoinPlace(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -194,7 +198,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true, true)]
     public async Task JoinPlaceChat(bool isPublicPlace, bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -253,7 +257,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task PlaceChatMembership()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session1 = tester.Session;
         await tester.SignInAsBob();
@@ -292,7 +296,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true)]
     public async Task ItShouldBeNotPossibleToLeavePublicChatOnPlace(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -321,7 +325,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task UpsertTextEntry()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session1 = tester.Session;
         await tester.SignInAsBob();
@@ -347,7 +351,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task UpsertTextEntryToPublicPlaceChatShouldEnsureThatExplicitAuthorExist()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session1 = tester.Session;
         await tester.SignInAsBob();
@@ -378,7 +382,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(false)]
     public async Task NonPlaceMembersShouldBeAbleToReadPublicPlacesOnly(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session1 = tester.Session;
         await tester.SignInAsBob();
@@ -403,7 +407,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(false)]
     public async Task NonPlaceMembersShouldBeNotAbleToAddChat(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session1 = tester.Session;
         await tester.SignInAsBob();
@@ -430,7 +434,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(false)]
     public async Task ItShouldBeNotPossibleToAddChatToPlaceYouHaveNoAccessTo(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session1 = tester.Session;
         await tester.SignInAsBob();
@@ -462,7 +466,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(false, false, true)]
     public async Task OnlyPlaceOwnerShouldBeAbleToCreatePublicChats(bool isOwner, bool isPublicChat, bool shouldSucceed)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session1 = tester.Session;
         await tester.SignInAsBob();
@@ -495,7 +499,7 @@ public class PlaceOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(false, false)]
     public async Task OnlyPlaceOwnerShouldBeAbleToSwitchChatFromPrivateToPublic(bool isOwner, bool shouldSucceed)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session1 = tester.Session;
         await tester.SignInAsBob();
