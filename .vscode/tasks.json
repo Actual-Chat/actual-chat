@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "command": "dotnet",
+      "group": "build",
+      "label": "dotnet: build App.Server",
+      "args": [
+        "build",
+        "./src/dotnet/App.Server/App.Server.csproj",
+        "--no-restore"
+      ]
+    }
+  ]
+}
