@@ -3,17 +3,18 @@ using ActualLab.Mathematics;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class ChatEntryReaderTest : AppHostTestBase
+[Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
+public class ChatEntryReaderTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
     private ChatId TestChatId { get; } = new("the-actual-one");
-
-    public ChatEntryReaderTest(ITestOutputHelper @out) : base(@out) { }
 
     [Fact(Skip = "Flaky")]
     public async Task BasicTest()
     {
-        using var appHost = await NewAppHost();
-        await using var tester = appHost.NewWebClientTester();
+        var appHost = Host;
+        await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
         var account = await tester.SignInAsBob();
         var session = tester.Session;
@@ -52,8 +53,8 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact(Skip = "Flaky")]
     public async Task FindByMinBeginsAtTest()
     {
-        using var appHost = await NewAppHost();
-        await using var tester = appHost.NewWebClientTester();
+        var appHost = Host;
+        await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
         var account = await tester.SignInAsBob();
         var session = tester.Session;
@@ -93,8 +94,8 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact(Skip = "Flaky")]
     public async Task ReadTilesTest()
     {
-        using var appHost = await NewAppHost();
-        await using var tester = appHost.NewWebClientTester();
+        var appHost = Host;
+        await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
         var account = await tester.SignInAsBob();
         var session = tester.Session;
@@ -127,8 +128,8 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact(Skip = "Flaky")]
     public async Task ShouldReadTilesReverse()
     {
-        using var appHost = await NewAppHost();
-        await using var tester = appHost.NewWebClientTester();
+        var appHost = Host;
+        await using var tester = appHost.NewWebClientTester(Out);
 
         var services = tester.AppServices;
         var account = await tester.SignInAsBob();
@@ -168,8 +169,8 @@ public class ChatEntryReaderTest : AppHostTestBase
     [InlineData(3, null)]
     public async Task GetLastShouldSkipDeleted(int removeLastCount, string? expected)
     {
-        using var appHost = await NewAppHost();
-        await using var tester = appHost.NewWebClientTester();
+        var appHost = Host;
+        await using var tester = appHost.NewWebClientTester(Out);
 
         var services = tester.AppServices;
         var account = await tester.SignInAsBob();
@@ -202,8 +203,8 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact(Skip = "Flaky")]
     public async Task ObserveTest1()
     {
-        using var appHost = await NewAppHost();
-        await using var tester = appHost.NewWebClientTester();
+        var appHost = Host;
+        await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
         var account = await tester.SignInAsBob();
         var session = tester.Session;
@@ -247,8 +248,8 @@ public class ChatEntryReaderTest : AppHostTestBase
     [Fact(Skip = "Flaky")]
     public async Task ObserveTest2()
     {
-        using var appHost = await NewAppHost();
-        await using var tester = appHost.NewWebClientTester();
+        var appHost = Host;
+        await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
         var account = await tester.SignInAsBob();
         var session = tester.Session;

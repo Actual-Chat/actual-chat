@@ -1,4 +1,3 @@
-using ActualChat.App.Server;
 using ActualChat.Performance;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
@@ -6,30 +5,28 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Chat.IntegrationTests;
 
 // TODO: merge with ChatOperationsTest
-public class ChatListingTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
+public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
     private WebClientTester _tester = null!;
-    private IChatsBackend _sut = null!;
-    private AppHost _appHost = null!;
-    private ICommander _commander = null!;
 
-    public override async Task InitializeAsync()
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
+    public Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _appHost = await NewAppHost();
-        _tester = _appHost.NewWebClientTester();
-        _sut = _appHost.Services.GetRequiredService<IChatsBackend>();
-        _commander = _appHost.Services.Commander();
+        _tester = Host.NewWebClientTester(Out);
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
+        return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
-        await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
+        await _tester.DisposeAsync();
     }
 
     [Theory]
@@ -40,8 +37,12 @@ public class ChatListingTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task ShouldListAllChats(int chatCount, int limit)
     {
         // arrange
-        await _tester.SignInAsBob();
+        var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
+        var commander = Host.Services.Commander();
+        var clock = Host.Services.Clocks().ServerClock;
+        var now = clock.Now;
         var allExpectedIds = new List<ChatId>();
+        await _tester.SignInAsBob();
         for (int i = 0; i < chatCount; i++) {
             var diff = new ChatDiff {
                 Title = $"Chat{i}",
@@ -49,14 +50,17 @@ public class ChatListingTest(ITestOutputHelper @out) : AppHostTestBase(@out)
                 Kind = ChatKind.Group,
             };
             var cmd = new Chats_Change(_tester.Session, ChatId.None, null, new () { Create = diff, });
-            var (chatId, _) = await _commander.Call(cmd);
+            var (chatId, _) = await commander.Call(cmd);
             allExpectedIds.Add(chatId);
         }
 
         // act
-        await foreach (var chats in _sut.Batches(Moment.MinValue, ChatId.None, limit, CancellationToken.None)) {
+        await foreach (var chats in chatsBackend.Batches(now, ChatId.None, limit, CancellationToken.None)) {
             chats.Should().NotBeEmpty();
-            var chatIds = chats.Select(x => x.Id).ToList();
+            var chatIds = chats
+                .Where(c => c.Title.StartsWith("Chat"))
+                .Select(x => x.Id)
+                .ToList();
 
             // assert
             allExpectedIds[..chatIds.Count].Should().Equal(chatIds);
@@ -75,8 +79,10 @@ public class ChatListingTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task ShouldReturnEmpty(int chatCount, int limit)
     {
         // arrange
-        await _tester.SignInAsBob();
+        var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
+        var commander = Host.Services.Commander();
         var allChats = new List<Chat>();
+        await _tester.SignInAsBob();
         for (int i = 0; i < chatCount; i++) {
             var diff = new ChatDiff {
                 Title = $"Chat{i}",
@@ -84,14 +90,14 @@ public class ChatListingTest(ITestOutputHelper @out) : AppHostTestBase(@out)
                 Kind = ChatKind.Group,
             };
             var cmd = new Chats_Change(_tester.Session, ChatId.None, null, new () { Create = diff, });
-            var chat = await _commander.Call(cmd);
+            var chat = await commander.Call(cmd);
             allChats.Add(chat);
         }
         var minCreatedAt = allChats[^1].CreatedAt;
         var lastChatId = allChats[^1].Id;
 
         // act
-        var batches = await _sut.Batches(minCreatedAt, lastChatId, limit, CancellationToken.None).ToListAsync();
+        var batches = await chatsBackend.Batches(minCreatedAt, lastChatId, limit, CancellationToken.None).ToListAsync();
 
         // assert
         batches.Should().BeEmpty();

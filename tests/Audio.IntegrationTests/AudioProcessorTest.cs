@@ -1,26 +1,26 @@
 using ActualChat.Audio.Processing;
 using ActualChat.Chat;
-using ActualChat.App.Server;
 using ActualChat.IO;
 using ActualChat.Kvas;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using ActualChat.Users;
 using ActualLab.IO;
-using ActualLab.Mathematics;
 
 namespace ActualChat.Audio.IntegrationTests;
 
-public class AudioProcessorTest : AppHostTestBase
+[Collection(nameof(AudioCollection)), Trait("Category", nameof(AudioCollection))]
+public class AudioProcessorTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
-    public AudioProcessorTest(ITestOutputHelper @out) : base(@out) { }
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     [Theory(Skip = "Flaky")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task EmptyRecordingTest(bool mustSetUserLanguageSettings)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         var services = appHost.Services;
         var session = Session.New();
         _ = await appHost.SignIn(session, new User("Bob"));
@@ -44,7 +44,7 @@ public class AudioProcessorTest : AppHostTestBase
     [Fact]
     public async Task PerformRecordingAndTranscriptionTest()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -90,7 +90,7 @@ public class AudioProcessorTest : AppHostTestBase
     [Fact]
     public async Task ShortTranscriptionTest()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -155,7 +155,7 @@ public class AudioProcessorTest : AppHostTestBase
     [Fact(Skip = "Manual")]
     public async Task LongTranscriptionTest()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -221,7 +221,7 @@ public class AudioProcessorTest : AppHostTestBase
     [Fact]
     public async Task PerformRecordingTest()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -260,7 +260,7 @@ public class AudioProcessorTest : AppHostTestBase
     [Fact]
     public async Task RealtimeAudioStreamerSupportsSkip()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -295,15 +295,6 @@ public class AudioProcessorTest : AppHostTestBase
         var readSize = await readSizeTask;
         readSize.Should().BeLessThan(writtenSize);
     }
-
-    private async Task<AppHost> NewAppHost()
-        => await NewAppHost(TestAppHostOptions.Default with {
-            AppServicesExtender = (_, services) => {
-                services.AddSingleton(new AudioProcessor.Options {
-                    IsEnabled = false,
-                });
-            },
-        });
 
     private async Task<int> ReadTranscriptStream(
         string audioRecordId,
