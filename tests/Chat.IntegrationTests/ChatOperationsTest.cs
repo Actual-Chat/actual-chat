@@ -3,6 +3,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
+using ActualChat.Performance;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
@@ -13,6 +14,18 @@ namespace ActualChat.Chat.IntegrationTests;
 public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
+
+    public override async Task InitializeAsync()
+    {
+        Tracer.Default = new ("TstDefault", x => Out.WriteLine("@ " + x.Format()));
+        await base.InitializeAsync();
+    }
+
+    public override async Task DisposeAsync()
+    {
+        await base.DisposeAsync();
+        Tracer.Default = Tracer.None;
+    }
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
