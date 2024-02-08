@@ -14,6 +14,9 @@ public class DbOperationLog<
     public override async Task<int> Trim(Tenant tenant, DateTime minCommitTime, int maxCount, CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext(tenant, true);
+        if (dbContext.Database.IsInMemory()) {
+            return 0;
+        }
         await using var _ = dbContext.ConfigureAwait(false);
 
         var operationsCount = await dbContext.Database
