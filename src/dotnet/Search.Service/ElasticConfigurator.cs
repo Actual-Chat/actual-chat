@@ -95,16 +95,34 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
     private async Task EnsureContactIndex<T>(IndexName indexName, Action<CreateIndexRequestDescriptor<T>> configure, CancellationToken cancellationToken)
     {
         try {
-            using var _1 = Tracer.Default.Region(nameof(EnsureContactIndex) + "_" + indexName + "_ExistsAsync");
-            var existsResponse = await Elastic.Indices.ExistsAsync(indexName, cancellationToken).ConfigureAwait(false);
+            ElasticsearchClient elasticClient;
+            using (Tracer.Default.Region(nameof(EnsureContactIndex) + "_" + indexName + "_GetElastic")) {
+                elasticClient = Elastic;
+            }
+            IndicesNamespacedClient elasticClientIndices;
+            using (Tracer.Default.Region(nameof(EnsureContactIndex) + "_" + indexName + "_GetElasticIndices")) {
+                elasticClientIndices = elasticClient.Indices;
+            }
+
+            Elastic.Clients.Elasticsearch.IndexManagement.ExistsResponse existsResponse;
+            using (Tracer.Default.Region(nameof(EnsureContactIndex) + "_" + indexName + "_ExistsAsync")) {
+                existsResponse = await elasticClientIndices.ExistsAsync(indexName, cancellationToken)
+                    .ConfigureAwait(false);
+            }
             if (existsResponse.Exists)
                 return;
 
-            using var _2 = Tracer.Default.Region(nameof(EnsureContactIndex) + "_" + indexName + "_CreateAsync");
-            await Elastic.Indices
-                .CreateAsync(indexName, configure, cancellationToken)
-                .Assert(Log)
-                .ConfigureAwait(false);
+            Action<CreateIndexRequestDescriptor<T>> configureWithTracing = d => {
+                using (Tracer.Default.Region(nameof(EnsureContactIndex) + "_" + indexName + "_ConfigureIndex")) {
+                    configure(d);
+                }
+            };
+            using (Tracer.Default.Region(nameof(EnsureContactIndex) + "_" + indexName + "_CreateAsync")) {
+                await elasticClientIndices
+                    .CreateAsync(indexName, configureWithTracing, cancellationToken)
+                    .Assert(Log)
+                    .ConfigureAwait(false);
+            }
         }
         catch(Exception e) {
             Log.LogWarning(e, "Failed to EnsureContactIndex: '{IndexName}'", indexName);
