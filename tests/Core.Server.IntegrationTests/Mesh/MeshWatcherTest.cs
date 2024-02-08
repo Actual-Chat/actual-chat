@@ -65,7 +65,8 @@ public class MeshWatcherTest(AppHostFixture fixture, ITestOutputHelper @out)
         (r1b.Error is OperationCanceledException).Should().BeTrue();
         (r2.Error is OperationCanceledException).Should().BeTrue();
     }
-	
+    // Private methods
+
     private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
         => TestAppHostFactory.NewAppHost(Out, options);
 }
