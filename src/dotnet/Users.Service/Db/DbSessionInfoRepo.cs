@@ -14,6 +14,9 @@ public class DbSessionInfoRepo(DbAuthService<UsersDbContext>.Options settings, I
         CancellationToken cancellationToken = default)
     {
         var dbContext = CreateDbContext(tenant, true);
+        if (dbContext.Database.IsInMemory()) {
+            return 0;
+        }
         await using var _ = dbContext.ConfigureAwait(false);
 
         var operationsCount = await dbContext.Database
