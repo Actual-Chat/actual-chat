@@ -191,7 +191,8 @@
             .Where(c => c.ExpiresOn > threshold)
             .OrderByDescending(c => c.ExpiresOn)
             .ToApiArray();
-        var link = Links.Chat(place.Id.ToRootChatId()).ToDisplayUrl(Hub.UrlMapper());
+        var welcomeChatId = await Places.GetWelcomeChatId(Session, PlaceId, cancellationToken);
+        var link = !welcomeChatId.IsNone ? Links.Chat(welcomeChatId).ToDisplayUrl(Hub.UrlMapper()) : (DisplayUrl?)null;
         return new() {
             Place = place,
             Link = link,
