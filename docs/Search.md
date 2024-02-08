@@ -156,7 +156,7 @@ Questions...:
   - Possible. Not needed now.
 
 (Opinion) It seems that we can have a single implementation of ISearchBackend
-that would have access to different ISearchEngineProviders. It would be resposible
+that would have access to different ISearchEngineProviders. It would be responsible
 to multiplex search queries and aggregate results returned in the timed manner.
 It must set corresponding events into a monitoring infrastructure 
 for SearchEngineProviders that missed their time.
