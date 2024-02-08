@@ -136,11 +136,6 @@ jobs:
 
   integration-tests:
     name: Run Integration tests
-    if: |
-      github.ref == 'refs/heads/master' ||
-      github.ref == 'refs/heads/dev' ||
-      startsWith(github.ref, 'refs/pull/') ||
-      startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     services:
       redis:
