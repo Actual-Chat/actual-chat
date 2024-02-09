@@ -1,7 +1,7 @@
 ﻿
 namespace ActualChat.App.Server;
 
-internal class AppHostLificycleMonitor : IHostedLifecycleService
+internal class AppHostLifecycleMonitor : IHostedLifecycleService
 {
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     public Task StartingAsync(CancellationToken cancellationToken)
