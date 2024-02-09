@@ -12,39 +12,57 @@ public readonly struct MeshRef : ICanBeNone<MeshRef>, IEquatable<MeshRef>
 {
     public static MeshRef None => default;
 
-    public MeshShardRef ShardRef { get; }
-    public MeshNodeId NodeRef { get; }
+    public ShardRef ShardRef { get; }
+    public NodeRef NodeRef { get; }
     public bool IsNone => ShardRef.IsNone && NodeRef.IsNone;
 
-    public MeshRefKind Kind => !ShardRef.IsNone
-        ? MeshRefKind.ShardRef
+    public MeshRefKind Kind => !ShardRef.IsNone ? MeshRefKind.ShardRef
         : NodeRef.IsNone ? MeshRefKind.None : MeshRefKind.NodeRef;
 
-    public static MeshRef Node(MeshNodeId nodeRef)
+    public static MeshRef Node(NodeRef nodeRef)
         => new(nodeRef);
-    public static MeshRef Shard(MeshShardRef shardRef)
+    public static MeshRef Shard(ShardRef shardRef)
         => new(shardRef);
-    public static MeshRef Shard(ShardScheme shardScheme, int shardKey)
-        => new(new MeshShardRef(shardScheme, shardKey));
+    public static MeshRef Shard(ShardScheme scheme, int key)
+        => new(new ShardRef(scheme, key));
+    public static MeshRef Shard(ShardScheme scheme, long key)
+        => new(new ShardRef(scheme, key));
+    public static MeshRef Shard(int key)
+        => new(new ShardRef(key));
+    public static MeshRef Shard(long key)
+        => new(new ShardRef(key));
 
-    public MeshRef(MeshShardRef shardRef)
+    public MeshRef(ShardRef shardRef)
     {
         ShardRef = shardRef;
         NodeRef = default;
     }
 
-    public MeshRef(MeshNodeId nodeRef)
+    public MeshRef(NodeRef nodeRef)
     {
         NodeRef = nodeRef;
         ShardRef = default;
     }
 
-    // Conversion
+    public void Deconstruct(out ShardRef shardRef, out NodeRef nodeRef)
+    {
+        shardRef = ShardRef;
+        nodeRef = NodeRef;
+    }
 
     public override string ToString()
         => !ShardRef.IsNone ? $"@{ShardRef}"
             : !NodeRef.IsNone ? $"@{NodeRef}"
             : "@None";
+
+    // Helpers
+
+    public MeshRef WithSchemeIfUndefined(ShardScheme scheme)
+    {
+        var shardRef = ShardRef;
+        return shardRef.IsNone ? this
+            : new(shardRef.WithSchemeIfUndefined(scheme));
+    }
 
     // Equality
 

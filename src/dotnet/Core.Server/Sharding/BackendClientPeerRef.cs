@@ -15,28 +15,26 @@ public static class BackendClientPeerRef
         return null;
     }
 
-    public static RpcPeerRef? Get(MeshNodeId nodeRef) => Get(nodeRef.Id);
+    public static RpcPeerRef? Get(NodeRef nodeRef) => Get(nodeRef.Id);
     public static RpcPeerRef? Get(Symbol nodeId)
         => nodeId.IsEmpty ? null
             : _nodeRefCache.GetOrAdd(nodeId, n => RpcPeerRef.NewClient($"@node-{n.Value}", true));
 
-    public static RpcPeerRef? Get(MeshShardRef shardRef) => Get(shardRef.ShardScheme, shardRef.ShardKey);
-    public static RpcPeerRef? Get(ShardScheme shardScheme, int shardKey)
-        => shardScheme.IsNone ? null
-            : shardScheme.BackendClientPeerRefs[shardScheme.GetShardIndex(shardKey)];
+    public static RpcPeerRef? Get(ShardRef shardRef)
+        => shardRef.Scheme.BackendClientPeerRefs.GetOrDefault(shardRef.Index);
 
-    public static bool IsNodeRef(this RpcPeerRef peerRef, out MeshNodeId nodeRef)
+    public static bool IsNodeRef(this RpcPeerRef peerRef, out NodeRef nodeRef)
     {
         nodeRef = default;
         var key = peerRef.Key.Value;
         if (!key.OrdinalStartsWith("@node-"))
             return false;
 
-        nodeRef = new MeshNodeId(key[6..], AssumeValid.Option);
+        nodeRef = new NodeRef(key[6..], AssumeValid.Option);
         return true;
     }
 
-    public static bool IsShardRef(this RpcPeerRef peerRef, out MeshShardRef shardRef)
+    public static bool IsShardRef(this RpcPeerRef peerRef, out ShardRef shardRef)
     {
         shardRef = default;
         var key = peerRef.Key.Value;
@@ -55,7 +53,7 @@ public static class BackendClientPeerRef
         if (!ShardScheme.ById.TryGetValue(shardSchemeId, out var shardScheme))
             return false;
 
-        shardRef = new MeshShardRef(shardScheme, shardIndex);
+        shardRef = new ShardRef(shardScheme, shardIndex);
         return true;
     }
 }

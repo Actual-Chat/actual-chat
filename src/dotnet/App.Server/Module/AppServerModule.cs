@@ -179,7 +179,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 }
             }
 
-            var nodeId = new MeshNodeId(Generate.Option);
+            var nodeId = new NodeRef(Generate.Option);
             var node = new MeshNode(
                 nodeId, // $"{host}-{Ulid.NewUlid().ToString()}";
                 $"{host}:{port.Format()}",
@@ -219,8 +219,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 if (peerRef.IsNodeRef(out var nodeRef))
                     node = meshWatcher.State.Value.NodeById.GetValueOrDefault(nodeRef.Id);
                 else if (peerRef.IsShardRef(out var shardRef)) {
-                    var shardMap = meshWatcher.State.Value.GetShardMap(shardRef.ShardScheme);
-                    var nodeIndex = shardMap.NodeIndexes[shardRef.ShardKey];
+                    var shardMap = meshWatcher.State.Value.GetShardMap(shardRef.Scheme);
+                    var nodeIndex = shardMap.NodeIndexes[shardRef.Key];
                     if (nodeIndex.HasValue)
                         node = shardMap.Nodes[nodeIndex.GetValueOrDefault()];
                 }

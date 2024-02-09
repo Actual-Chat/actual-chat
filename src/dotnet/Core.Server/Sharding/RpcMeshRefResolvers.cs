@@ -8,7 +8,7 @@ public delegate RpcMeshRefResolver? RpcMeshRefResolverProvider(RpcMethodDef meth
 
 public sealed class RpcMeshRefResolvers(IServiceProvider services)
 {
-    private static readonly MethodInfo DefaultResolverImplMethod = typeof(ValueMeshRefResolvers)
+    private static readonly MethodInfo DefaultResolverImplMethod = typeof(MeshRefResolvers)
         .GetMethod(nameof(DefaultResolverImpl), BindingFlags.Static | BindingFlags.NonPublic)!;
 
     private readonly RpcMeshRefResolverProvider[] _providers
@@ -40,5 +40,5 @@ public sealed class RpcMeshRefResolvers(IServiceProvider services)
     }
 
     private static MeshRef DefaultResolverImpl<T>(RpcMethodDef methodDef, ArgumentList arguments, ShardScheme shardScheme)
-        => ValueMeshRefResolvers.Resolve(arguments.Get<T>(0), shardScheme);
+        => MeshRefResolvers.Resolve(arguments.Get<T>(0)).WithSchemeIfUndefined(shardScheme);
 }
