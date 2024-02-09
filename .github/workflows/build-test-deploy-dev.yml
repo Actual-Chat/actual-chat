@@ -111,7 +111,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          lfs: true
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
 
       - name: Install dotnet 8.0 SDK
         uses: actions/setup-dotnet@v3
@@ -150,7 +151,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          lfs: true
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
 
       - name: Install dotnet 8.0 SDK
         uses: actions/setup-dotnet@v3
