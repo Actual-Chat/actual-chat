@@ -1,0 +1,67 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatsTab.Model>
+
+@{
+    var m = _rendered = State.Value;
+    if (m is { OwnChatsCount: 0, IsSearchModeOn: false })
+        return;
+
+    var plugs = new Dictionary<string, string>() {
+        {"GuildensternGuildenstern", "bg-red-200"},
+        {"OpheliaOpheliaOphelia", "bg-green-200"},
+        {"Hamlet", "bg-blue-200"},
+        {"Polonius", "bg-yellow-200"},
+        {"Guildenstern", "bg-red-200"},
+        {"Ophelia", "bg-green-200"},
+    };
+}
+
+@if (!m.IsSearchModeOn) {
+    <div class="recent-contacts">
+        @foreach (var plug in plugs) {
+            var cls = $"c-author {plug.Value}";
+            <div class="c-plug">
+                <div class="@cls"></div>
+                <div class="c-name">@plug.Key</div>
+            </div>
+        }
+    </div>
+    <Divider Class="mx-1 my-1.5"/>
+    <RecentlyViewed/>
+} else {
+    <OwnChatsList Count="@m.OwnChatsCount"/>
+}
+
+@code {
+    private Model _rendered;
+    private ChatListKind _kind = ChatListKind.All;
+
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(
+                ChatListUI.GetCountWhenLoading(_kind),
+                false,
+                true),
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var ownChatCount = await ChatListUI.GetCount(_kind);
+
+        var searchPhrase = await SearchUI.GetSearchPhrase(cancellationToken);
+        return new Model(ownChatCount, !searchPhrase.IsEmpty);
+    }
+
+    protected override bool ShouldRender()
+        => State.HasError || State.Value != _rendered;
+
+    public record struct Model(
+        int OwnChatsCount,
+        bool IsSearchModeOn = false,
+        bool IsLoading = false);
+}

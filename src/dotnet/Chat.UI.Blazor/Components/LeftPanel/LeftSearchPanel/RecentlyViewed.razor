@@ -1,0 +1,45 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+@{
+    var plugs = new List<(string, string, string, string)>() {
+        ("bg-red-200", "GuildensternGuildenstern", "Long last message of Guildenstern", "15:25"),
+        ("bg-blue-200", "OpheliaOpheliaOphelia", "Short last message", "12:43"),
+        ("bg-green-200", "Hamlet", "Last message", "21:34"),
+        ("bg-yellow-200", "Polonius", "Message", "05:34"),
+    };
+}
+
+<div class="recently-viewed">
+    <div class="c-header">
+        <div class="c-title">Recently viewed</div>
+        <HeaderButton Class="blackout">
+            <i class="icon-close"></i>
+        </HeaderButton>
+    </div>
+    <div class="c-message-list">
+        @foreach (var plug in plugs) {
+            var cls = $"c-author {plug.Item1}";
+            <div class="c-item">
+                <div class="@cls">
+
+                </div>
+                <div class="c-center">
+                    <div class="c-name">
+                        @plug.Item2
+                    </div>
+                    <div class="c-last-message">
+                        @plug.Item3
+                    </div>
+                </div>
+                <div class="c-ending">
+                    <div class="c-time">
+                        @plug.Item4
+                    </div>
+                    <div class="c-icon">
+                        <i class="icon-pin"></i>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

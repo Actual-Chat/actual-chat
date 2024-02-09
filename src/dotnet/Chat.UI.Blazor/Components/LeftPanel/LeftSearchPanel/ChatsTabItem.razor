@@ -1,0 +1,121 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<ChatsTabItem.Model>
+@{
+    var m = State.Value;
+    if (m == Model.None)
+        return;
+
+    var chatState = m.ChatState;
+    var chat = chatState.Chat;
+    var chatInfo = chatState.Info;
+    var lastTextEntry = chatInfo.LastTextEntry;
+}
+
+@if (m == Model.Loading) {
+    <ChatListItemSkeleton />
+} else {
+    <div class="navbar-item">
+        <div class="navbar-item-content" data-href="@($"/chat/{chat.Id}")">
+            <div class="c-container">
+                <ChatIcon Chat="chatState.Chat"/>
+                <div class="c-description">
+                    <span class="c-title">
+                        <SearchUIHighlighter Text="@chatState.Chat.Title"/>
+                    </span>
+                    @if (lastTextEntry != null) {
+                        <div class="c-last-message">
+                            @if (chatState.Chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
+                                <span>
+                                    <AuthorName AuthorSid="@lastTextEntry.AuthorId" ShowDetailsOnClick="false"/>:
+                                </span>
+                            }
+                            @if (lastTextEntry.IsStreaming) {
+                                <chat-list-item-streaming-svg class="w-4 h-4"/>
+                            } else {
+                                <span class="c-text">
+                                    @chatInfo.LastTextEntryText
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="navbar-item-ending">
+            <UnreadCountWithTime
+                Value="@chatState.Info.UnreadCount"
+                LastEntry="@chatState.Info.LastTextEntry"
+                HideLastEntryTime="@(chatState.IsListening || chatState.IsRecording)"
+                NotificationMode="@chatState.Info.UserSettings.NotificationMode"
+                HasMentions="chatState.Info.HasUnreadMentions"/>
+        </div>
+    </div>
+    @if (m.IsLastItemInBlock) {
+        <Divider Class="mx-1 my-1.5"/>
+    }
+}
+
+@code {
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private ChatUI ChatUI => Hub.ChatUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+    private SearchUI SearchUI => Hub.SearchUI;
+    private ScreenSize ScreenSize => Hub.BrowserInfo.ScreenSize.Value;
+
+    [Parameter, EditorRequired] public ChatListKind ListKind { get; init; } = ChatListKind.All;
+    [Parameter, EditorRequired] public int Index { get; init; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Loading,
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken)
+    {
+        // We intentionally use .ConfigureAwait(false) here: this is one of the most frequently called methods.
+        // Properties are copied to local vars because of this.
+        var listKind = ListKind;
+        var index = Index;
+
+        var (indexIsValid, chatId) = await ChatListUI.GetItem(listKind, index).ConfigureAwait(false);
+        if (chatId.IsNone) {
+            if (indexIsValid) {
+                return Model.Loading;
+            }
+            return Model.None;
+        }
+
+        var chatInfo = await ChatUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chatInfo == null) {
+            return Model.None;
+        }
+
+        var chatState = await ChatUI.GetState(chatId, false, cancellationToken).ConfigureAwait(false);
+        if (chatState == null) {
+            return Model.None;
+        }
+
+        var isLastItemInBlock = false;
+        if (chatState.Contact.IsPinned && listKind == ChatListKind.All) {
+            var (_, nextChatId) = await ChatListUI.GetItem(listKind, index + 1).ConfigureAwait(false);
+            var nextChatInfo = nextChatId.IsNone ? null
+                : await ChatUI.Get(nextChatId, cancellationToken).ConfigureAwait(false);
+            if (nextChatInfo != null)
+                isLastItemInBlock = !nextChatInfo.Contact.IsPinned;
+        }
+
+        return new Model {
+            ChatState = chatState,
+            IsLastItemInBlock = isLastItemInBlock,
+        };
+    }
+
+    public sealed record Model {
+        public static readonly Model Loading = new() { ChatState = ChatState.Loading };
+        public static readonly Model None = new() { ChatState = ChatState.None };
+
+        public ChatState ChatState { get; init; } = ChatState.None;
+        public bool IsLastItemInBlock { get; init; }
+    }
+}

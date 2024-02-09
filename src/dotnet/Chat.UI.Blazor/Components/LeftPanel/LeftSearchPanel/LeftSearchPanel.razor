@@ -1,0 +1,64 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<SearchPanel
+    @ref="_searchPanelRef"
+    Class="left-search-panel"
+    ShowCloseButton="@true"
+    IsSmooth="@true"
+    Side="SearchPanelSide.Left"
+    OnCloseClick="@CloseSearchPanel">
+    <div class="c-content">
+
+        <TabPanel
+            @key="@("left-search-panel")"
+            TabsClass="left-panel-tabs wide-left-panel-tabs"
+            BottomHill="true">
+
+            <Tab @key="@("chats")" Id="chats" Title="Chats" Order="0">
+                <div class="c-container">
+                    <ChatsTab/>
+                </div>
+            </Tab>
+            <Tab @key="@("threads")" Id="Threads" Title="Threads" Order="1">
+                <ToBeDone/>
+            </Tab>
+            <Tab @key="@("tags")" Id="tags" Title="Tags" Order="2">
+                <ToBeDone/>
+            </Tab>
+            <Tab @key="@("media")" Id="media" Title="Media" Order="3">
+                <ToBeDone/>
+            </Tab>
+        </TabPanel>
+
+        <div class="ai-btn">
+            <Button Class="btn-primary" Click="OnClick">
+                <i class="icon-ai-search"></i>
+                Open AI Search
+            </Button>
+        </div>
+
+    </div>
+</SearchPanel>
+
+
+@code {
+    private SearchPanel? _searchPanelRef;
+    private bool _smooth;
+
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; set; } = null!;
+
+    private SearchUI SearchUI => Hub.SearchUI;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_searchPanelRef != null)
+            await _searchPanelRef.Focus();
+    }
+
+    private void CloseSearchPanel() {
+        SearchUI.Text.Value = string.Empty;
+        PanelsUI.Left.SearchToggle();
+    }
+
+    private void OnClick() { }
+}
