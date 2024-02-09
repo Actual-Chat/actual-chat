@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Module;
 using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
@@ -141,7 +142,11 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task NotesChatCreatedOnSignIn()
     {
-        var appHost = Host;
+        using var appHost = await NewAppHost(TestAppHostOptions.Default with {
+            ChatDbInitializerOptions = new ChatDbInitializer.Options {
+                AddNotesChat = true,
+            },
+        });
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         var account = await tester.SignIn(new User("", "Notes"));
@@ -451,4 +456,7 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var authorIds = await authorsBackend.ListAuthorIds(chatId, default);
         authorIds.Should().NotContain(author.Id);
     }
+
+    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
+        => TestAppHostFactory.NewAppHost(Out, options);
 }

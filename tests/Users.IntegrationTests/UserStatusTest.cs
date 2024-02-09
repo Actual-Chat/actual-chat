@@ -20,7 +20,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out): IAs
     {
         _appHost = await NewAppHost(TestAppHostOptions.Default with {
             AppConfigurationExtender = cfg => {
-                cfg.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString()));
+                cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
             },
         });
         _tester = _appHost.NewWebClientTester(Out);
