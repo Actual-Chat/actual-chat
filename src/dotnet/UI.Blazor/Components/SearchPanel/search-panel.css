@@ -12,17 +12,20 @@
     @apply visible;
     @apply opacity-100;
 }
-.search-panel.smooth.open.right {
+.search-panel.smooth.open.right,
+.search-panel.smooth.open.left {
     @apply flex-y;
-    animation: smooth-open 200ms ease-in-out;
+    animation: smooth-open-from-right 200ms ease-in-out;
 }
 .search-panel.instant.open.right.close,
-.search-panel.smooth.open.right.close {
-    animation: smooth-close 200ms ease-in-out;
+.search-panel.instant.open.left.close,
+.search-panel.smooth.open.right.close,
+.search-panel.smooth.open.left.close {
+    animation: smooth-close-to-right 200ms ease-in-out;
     opacity: 0;
 }
 
-@keyframes smooth-open {
+@keyframes smooth-open-from-right {
     from {
         opacity: 0;
         transform: translateX(100%);
@@ -32,7 +35,7 @@
         transform: translateX(0);
     }
 }
-@keyframes smooth-close {
+@keyframes smooth-close-to-right {
     from {
         opacity: 1;
         transform: translateX(0);

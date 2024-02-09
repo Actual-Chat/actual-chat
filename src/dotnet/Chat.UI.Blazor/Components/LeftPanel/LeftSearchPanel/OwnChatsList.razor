@@ -1,0 +1,12 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+
+<div class="chat-list own-chats-list">
+    @for (var i = 0; i < Count; i++) {
+        <ChatsTabItem ListKind="@ChatListKind.All" Index="@i"/>
+    }
+    <Divider Class="mx-1 my-1.5"/>
+</div>
+
+@code {
+    [Parameter] public int Count { get; set; }
+}
