@@ -5,5 +5,5 @@ public class AudioCollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(messageSink)
 {
-    protected override string DbInstanceName => "audio";
+    public override string DbInstanceName => "audio";
 }
