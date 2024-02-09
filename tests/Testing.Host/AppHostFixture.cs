@@ -3,7 +3,7 @@ namespace ActualChat.Testing.Host;
 public abstract class AppHostFixture(IMessageSink messageSink) : IAsyncLifetime
 {
     public IMessageSink MessageSink { get; } = messageSink;
-    public TestAppHost Host { get; private set; } = null!;
+    public TestAppHost Host { get; protected set; } = null!;
 
     protected abstract string DbInstanceName { get; }
 

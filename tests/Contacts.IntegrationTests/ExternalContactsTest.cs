@@ -1,11 +1,11 @@
 using System.Globalization;
 using System.Security.Claims;
-using ActualChat.App.Server;
 using ActualChat.Performance;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
@@ -311,7 +311,7 @@ public class ExternalContactsTest(AppHostFixture fixture, ITestOutputHelper @out
             using var _2 = tracer.Region("Create external contacts " + account.User.Name);
             await _tester.SignIn(account.User);
             var externalContacts = Enumerable.Range(1, count)
-                .Select(idx => NewExternalContact(account, deviceIds[i], idx))
+                .Select(idx => NewExternalContact(account, deviceIds[i], prefix, idx))
                 .ToArray();
             await Add(externalContacts);
         }
@@ -338,7 +338,7 @@ public class ExternalContactsTest(AppHostFixture fixture, ITestOutputHelper @out
         for (int i = 0; i < accounts.Length; i++) {
             var account = accounts[i] = await _tester.SignIn(BuildUser(prefix, i + 1));
             var externalContacts = Enumerable.Range(1, count)
-                .Select(idx => NewExternalContact(account, deviceIds[i], idx))
+                .Select(idx => NewExternalContact(account, deviceIds[i], prefix, idx))
                 .ToArray();
             await Add(externalContacts);
         }
@@ -414,8 +414,8 @@ public class ExternalContactsTest(AppHostFixture fixture, ITestOutputHelper @out
     private static ExternalContact NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (new ExternalContactId(owner.Id, ownerDeviceId, NewDeviceContactId()));
 
-    private static ExternalContact NewExternalContact(AccountFull owner, Symbol deviceId, int i)
-        => NewExternalContact(owner, deviceId).WithPhone(BuildPhone(i)).WithEmail(BuildEmail(i));
+    private static ExternalContact NewExternalContact(AccountFull owner, Symbol deviceId, string prefix, int i)
+        => NewExternalContact(owner, deviceId).WithPhone(BuildPhone(prefix, i)).WithEmail(BuildEmail(prefix, i));
 
     private static Symbol NewDeviceId()
         => new (Guid.NewGuid().ToString());
@@ -429,15 +429,15 @@ public class ExternalContactsTest(AppHostFixture fixture, ITestOutputHelper @out
     private static User BuildUser(string prefix, int i)
         => new User("", BuildUserName(i))
             .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme,  $"{prefix}-{i.ToString("00000", CultureInfo.InvariantCulture)}"))
-            .WithPhone(BuildPhone(i))
-            .WithClaim(ClaimTypes.Email, BuildEmail(i));
+            .WithPhone(BuildPhone(prefix, i))
+            .WithClaim(ClaimTypes.Email, BuildEmail(prefix, i));
 
     private static string BuildUserName(int i)
         => $"user{i:00000}";
 
-    private static Phone BuildPhone(int i)
-        => new ($"1-11111{i:00000}");
+    private static Phone BuildPhone(string prefix, int i)
+        => new ($"1-{Math.Abs(prefix.GetDjb2HashCode() % 100000):00000}{i:00000}");
 
-    private static string BuildEmail(int i)
-        => $"user.{i:00000}@actual.chat";
+    private static string BuildEmail(string prefix, int i)
+        => $"{prefix}.user.{i:00000}@actual.chat";
 }

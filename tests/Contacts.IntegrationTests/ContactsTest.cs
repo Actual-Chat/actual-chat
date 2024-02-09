@@ -4,6 +4,7 @@ using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using ActualLab.Fusion.Extensions;
+using ActualLab.Generators;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
@@ -42,7 +43,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyn
     public async Task ShouldListNotOwnedChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
+        var bob = await _tester.SignInAsBob(RandomStringGenerator.Default.Next());
         await _tester.SignInAsAlice();
         // non-place
         var (publicChatId, publicChatInviteId) = await _tester.CreateChat(true);
@@ -133,7 +134,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyn
     public async Task ShouldListOwnedChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
+        var bob = await _tester.SignInAsBob(RandomStringGenerator.Default.Next());
 
         // act
         // non-place
@@ -202,7 +203,6 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyn
         contactIds = await ListIdsForContactSearch();
         contactIds.Should()
             .BeEquivalentTo(new[] {
-                new ContactId(bob.Id, publicChatId),
                 new ContactId(bob.Id, privateChatId),
                 new ContactId(bob.Id, publicPlacePrivateChatId),
                 new ContactId(bob.Id, privatePlacePublicChatId),
