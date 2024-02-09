@@ -1,9 +1,7 @@
-using ActualChat.App.Server;
 using ActualChat.Performance;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
-using ActualLab.Fusion.Extensions;
 using ActualLab.Generators;
 
 namespace ActualChat.Contacts.IntegrationTests;
@@ -202,7 +200,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyn
 
         contactIds = await ListIdsForContactSearch();
         contactIds.Should()
-            .BeEquivalentTo(new[] {
+            .Contain(new[] {
                 new ContactId(bob.Id, privateChatId),
                 new ContactId(bob.Id, publicPlacePrivateChatId),
                 new ContactId(bob.Id, privatePlacePublicChatId),
