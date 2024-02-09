@@ -55,6 +55,8 @@ public class LocalIdGeneratorTest(AppHostFixture fixture, ITestOutputHelper @out
         // next1.Should().NotBe(next2);
     }
 
+    // Private methods
+
     private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
         => TestAppHostFactory.NewAppHost(Out, options);
 }
