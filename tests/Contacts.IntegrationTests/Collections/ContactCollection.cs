@@ -10,7 +10,7 @@ public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
 
-    protected override string DbInstanceName => "contacts";
+    public override string DbInstanceName => "contacts";
 
     public override async Task InitializeAsync()
         => Host = await TestAppHostFactory.NewAppHost(MessageSink, DbInstanceName, TestAppHostOptions.WithDefaultChat with {

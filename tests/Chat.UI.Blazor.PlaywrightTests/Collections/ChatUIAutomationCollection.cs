@@ -5,5 +5,5 @@ public class ChatUIAutomationCollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(messageSink)
 {
-    protected override string DbInstanceName => "chat-ui-automation";
+    public override string DbInstanceName => "chat-ui-automation";
 }
