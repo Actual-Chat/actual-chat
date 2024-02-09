@@ -1,7 +1,7 @@
-using ActualChat.App.Server;
 using ActualChat.Chat;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
+using ActualLab.Generators;
 
 namespace ActualChat.Search.IntegrationTests;
 
@@ -34,7 +34,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldFindAddedChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
+        var bob = await _tester.SignInAsBob(RandomStringGenerator.Default.Next());
         var privateChat1 = await CreateChat(false, "Private non-place chat 1 one");
         var privateChat2 = await CreateChat(false, "Private non-place chat 2 two");
         var publicChat1 = await CreateChat(true, "Public non-place chat 1 one");
@@ -119,7 +119,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldFindUpdateChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
+        var bob = await _tester.SignInAsBob(RandomStringGenerator.Default.Next());
         var privateChat1 = await CreateChat(false, "Private non-place chat 1");
         var privateChat2 = await CreateChat(false, "Private non-place chat 2");
         var publicChat1 = await CreateChat(true, "Public non-place chat 1");
