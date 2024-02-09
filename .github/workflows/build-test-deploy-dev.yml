@@ -113,6 +113,7 @@ jobs:
         with:
           # Avoid shallow clone for Nerdbank.GitVersioning
           fetch-depth: 0
+          lfs: true
 
       - name: Install dotnet 8.0 SDK
         uses: actions/setup-dotnet@v3
