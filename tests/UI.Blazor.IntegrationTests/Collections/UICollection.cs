@@ -5,5 +5,5 @@ public class UICollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(messageSink)
 {
-    protected override string DbInstanceName => "ui";
+    public override string DbInstanceName => "ui";
 }

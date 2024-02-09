@@ -5,5 +5,5 @@ public class ServerCollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(messageSink)
 {
-    protected override string DbInstanceName => "server";
+    public override string DbInstanceName => "server";
 }

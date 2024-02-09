@@ -8,7 +8,7 @@ public class SearchCollection : ICollectionFixture<AppHostFixture>;
 
 public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(messageSink)
 {
-    protected override string DbInstanceName => "search";
+    public override string DbInstanceName => "search";
 
     public override async Task InitializeAsync()
         => Host = await TestAppHostFactory.NewAppHost(MessageSink,
@@ -18,6 +18,6 @@ public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.
                     cfg.AddInMemory(
                         ("SearchSettings:IsSearchEnabled", "true"),
                         ("UsersSettings:NewAccountStatus", AccountStatus.Active.ToString()));
-                }
+                },
             });
 }
