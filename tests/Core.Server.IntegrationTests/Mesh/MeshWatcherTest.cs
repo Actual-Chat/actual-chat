@@ -5,10 +5,9 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 
 [Collection(nameof(ServerCollection)), Trait("Category", nameof(ServerCollection))]
-public class MeshWatcherTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class MeshWatcherTest(ITestOutputHelper @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = @out;
 
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
