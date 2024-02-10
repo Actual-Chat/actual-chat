@@ -28,9 +28,9 @@ public sealed partial record QueuedCommand(
         var id = NewId();
         var version = now.EpochOffsetTicks;
         // ReSharper disable once SuspiciousTypeConversion.Global
-        var shardKey = command is IHasShardKey hasShardKey
-            ? hasShardKey.ShardKey
-            : command.GetHashCode();
+
+        var shardKeyResolver = ShardKeyResolvers.GetUntyped(command.GetType());
+        var shardKey = shardKeyResolver?.Invoke(command) ?? command.GetHashCode();
         var result = new QueuedCommand(id, version) {
             Command = command,
             QueueId = new QueueId(shardKey, priority),
