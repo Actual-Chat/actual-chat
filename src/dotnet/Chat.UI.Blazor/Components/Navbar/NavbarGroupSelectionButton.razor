@@ -14,7 +14,9 @@
     TooltipPosition="@TooltipPosition"
     Tooltip="@Tooltip"
     Click="OnClick"
-    ChildContent="@ChildContent">
+    ChildContent="@ChildContent"
+    CanMove="@CanMove"
+    AdditionalAttributes="@AdditionalAttributes">
     <Ending>
         <LeftLine/>
         <div class="right-line"></div>
@@ -29,9 +31,12 @@
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
     [Parameter] public string Tooltip { get; set; } = "";
+    [Parameter] public bool CanMove { get; set; }
     [Parameter] public FloatingPosition TooltipPosition { get; set; } = FloatingPosition.Right;
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? BadgeContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
     protected override void OnInitialized() =>
         NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupChanged;

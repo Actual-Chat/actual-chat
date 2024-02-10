@@ -18,8 +18,12 @@
     @apply h-full;
 }
 .left-panel-buttons > .c-content {
-    @apply flex-y;
+    @apply flex-y items-end;
     @apply h-full;
+}
+.left-panel-buttons .c-logo-btn > .btn.btn-square,
+.left-panel-buttons .c-logo-btn > .btn.btn-square:hover {
+    @apply bg-transparent;
 }
 .left-panel-buttons > .c-content > .c-logo {
     @apply flex justify-center;
@@ -28,13 +32,12 @@
     @apply cursor-pointer;
 }
 .left-panel-buttons > .c-content > .c-buttons {
-    @apply flex-y grow items-center gap-y-3 md:gap-y-2;
+    @apply flex-y grow items-end gap-y-3 md:gap-y-2;
     @apply w-full;
     @apply overflow-hidden;
 }
 .left-panel-buttons > .c-content > .c-account {
     @apply flex justify-center;
-    @apply w-full;
     @apply py-2;
 }
 .left-panel-content {
