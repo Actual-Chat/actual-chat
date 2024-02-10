@@ -49,7 +49,6 @@
     <ProjectReference Include="..\MediaPlayback\MediaPlayback.csproj" />
     <ProjectReference Include="..\Transcription.Service\Transcription.Service.csproj" />
     <!-- But don't reference their clients! -->
-    <ProjectReference Include="..\Web\Web.csproj" />
     <ProjectReference Include="..\App.Wasm\App.Wasm.csproj" />
   </ItemGroup>
 

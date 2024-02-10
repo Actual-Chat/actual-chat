@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using ActualLab.Fusion.Server.Authentication;
 
-namespace ActualChat.Web;
+namespace ActualChat;
 
 public static class HttpSessionExt
 {

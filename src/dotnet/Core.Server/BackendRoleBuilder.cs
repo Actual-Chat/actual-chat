@@ -5,7 +5,7 @@ using ActualLab.Rpc;
 namespace ActualChat;
 
 [StructLayout(LayoutKind.Auto)]
-public readonly struct ServerRoleBuilder
+public readonly struct BackendRoleBuilder
 {
     public FusionBuilder Fusion { get; }
     public IServiceCollection Services => Fusion.Services;
@@ -16,7 +16,7 @@ public readonly struct ServerRoleBuilder
     public HostRole ServerRole { get; }
     public ServiceMode ServiceMode { get; }
 
-    internal ServerRoleBuilder(
+    internal BackendRoleBuilder(
         IServiceCollection services,
         HostInfo hostInfo,
         HostRole serverRole)
@@ -29,14 +29,14 @@ public readonly struct ServerRoleBuilder
 
     // AddService auto-detects IComputeService & IRpcService
 
-    public ServerRoleBuilder AddService<
+    public BackendRoleBuilder AddService<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>()
         where TService : class, IRpcService
         where TImplementation : class, TService
         => AddService(typeof(TService), typeof(TImplementation));
 
-    public ServerRoleBuilder AddService(
+    public BackendRoleBuilder AddService(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
         Symbol name = default)
@@ -46,7 +46,7 @@ public readonly struct ServerRoleBuilder
         if (!serviceType.IsAssignableFrom(implementationType))
             throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
 
-        var serverRoleServiceDef = new ServerSideServiceDef(serviceType, implementationType, ServerRole, ServiceMode);
+        var serverRoleServiceDef = new BackendServiceDef(serviceType, implementationType, ServerRole, ServiceMode);
         Services.Add(new ServiceDescriptor(serverRoleServiceDef.GetType(), serverRoleServiceDef));
         var isComputeService = typeof(IComputeService).IsAssignableFrom(serviceType);
         switch (ServiceMode) {

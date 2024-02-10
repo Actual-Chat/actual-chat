@@ -2,7 +2,7 @@ using ActualChat.Hosting;
 
 namespace ActualChat;
 
-public sealed record ServerSideServiceDef(
+public sealed record BackendServiceDef(
     Type ServiceType,
     Type ImplementationType,
     HostRole ServerRole,

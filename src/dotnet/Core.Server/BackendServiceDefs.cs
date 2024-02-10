@@ -2,15 +2,15 @@ using System.Collections.Frozen;
 
 namespace ActualChat;
 
-public class ServerSideServiceDefs
+public class BackendServiceDefs
 {
-    private readonly FrozenDictionary<Type, ServerSideServiceDef> _serviceDefs;
+    private readonly FrozenDictionary<Type, BackendServiceDef> _serviceDefs;
 
-    public ServerSideServiceDef this[Type serviceType] => _serviceDefs[serviceType];
+    public BackendServiceDef this[Type serviceType] => _serviceDefs[serviceType];
 
-    public ServerSideServiceDefs(IServiceProvider services)
+    public BackendServiceDefs(IServiceProvider services)
     {
-        var serviceDefs = services.GetServices<ServerSideServiceDef>().ToList();
+        var serviceDefs = services.GetServices<BackendServiceDef>().ToList();
         _serviceDefs = serviceDefs.Select(x => KeyValuePair.Create(x.ServiceType, x))
             .Concat(serviceDefs.Select(x => KeyValuePair.Create(x.ImplementationType, x)))
             .DistinctBy(kv => kv.Key)
@@ -20,6 +20,6 @@ public class ServerSideServiceDefs
     public bool Contains(Type serviceType)
         => _serviceDefs.ContainsKey(serviceType);
 
-    public bool TryGet(Type serviceType, out ServerSideServiceDef? serviceDef)
+    public bool TryGet(Type serviceType, out BackendServiceDef? serviceDef)
         => _serviceDefs.TryGetValue(serviceType, out serviceDef);
 }

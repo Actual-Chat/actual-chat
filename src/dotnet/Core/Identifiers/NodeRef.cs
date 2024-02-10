@@ -67,7 +67,7 @@ public readonly partial struct NodeRef : ISymbolIdentifier<NodeRef>
         if (s.IsNullOrEmpty())
             return true; // None
 
-        if (s.Length < 8 || !Alphabet.AlphaNumeric.IsMatch(s))
+        if (s.Length < 6 || !Alphabet.AlphaNumericDash.IsMatch(s))
             return false;
 
         result = new NodeRef(s, AssumeValid.Option);

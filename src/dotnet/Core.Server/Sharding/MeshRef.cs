@@ -50,19 +50,24 @@ public readonly struct MeshRef : ICanBeNone<MeshRef>, IEquatable<MeshRef>
         nodeRef = NodeRef;
     }
 
+    // Conversion
+
     public override string ToString()
         => !ShardRef.IsNone ? $"@{ShardRef}"
             : !NodeRef.IsNone ? $"@{NodeRef}"
             : "@None";
 
+    public static implicit operator MeshRef(NodeRef nodeRef) => new(nodeRef);
+    public static implicit operator MeshRef(ShardRef shardRef) => new(shardRef);
+
     // Helpers
 
-    public MeshRef WithSchemeIfUndefined(ShardScheme scheme)
-    {
-        var shardRef = ShardRef;
-        return shardRef.IsNone ? this
-            : new(shardRef.WithSchemeIfUndefined(scheme));
-    }
+    public MeshRef Normalize()
+        => ShardRef.IsNone ? this : ShardRef.Normalize();
+    public MeshRef WithNonDefaultSchemeOr(ShardScheme scheme)
+        => ShardRef.IsNone ? this : ShardRef.WithNonDefaultSchemeOr(scheme);
+    public MeshRef WithNonDefaultSchemeOr(ShardScheme scheme, bool normalize)
+        => ShardRef.IsNone ? this : ShardRef.WithNonDefaultSchemeOr(scheme, normalize);
 
     // Equality
 

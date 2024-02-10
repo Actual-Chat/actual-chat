@@ -50,7 +50,7 @@ public class ShardWorkerTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         protected override async Task OnRun(int shardIndex, CancellationToken cancellationToken)
         {
-            Out.WriteLine($"-> OnRun({shardIndex} @ {ThisNode.Id}-{name})");
+            Out.WriteLine($"-> OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
             lock (ShardOwners) {
                 if (ShardOwners[shardIndex] != null)
                     Channel.Writer.TryComplete(StandardError.Constraint("Shard is used by another worker!"));
@@ -66,7 +66,7 @@ public class ShardWorkerTest(AppHostFixture fixture, ITestOutputHelper @out)
                         Channel.Writer.TryComplete(StandardError.Constraint("Shard must be used by this worker!"));
                     ShardOwners[shardIndex] = null;
                 }
-                Out.WriteLine($"<- OnRun({shardIndex} @ {ThisNode.Id}-{name})");
+                Out.WriteLine($"<- OnRun({shardIndex} @ {ThisNode.Ref}-{name})");
             }
         }
 

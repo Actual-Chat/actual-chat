@@ -1,13 +1,23 @@
+using ActualChat.Hosting;
+using ActualChat.Rpc;
+using ActualLab.Rpc;
+
 namespace ActualChat.Mesh;
 
 public sealed class MeshWatcher : WorkerBase
 {
+    private static readonly TimeSpan DefaultChangeTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DefaultChangeTimeoutIfTested = TimeSpan.FromSeconds(2);
+
+    private readonly ConcurrentDictionary<NodeRef, RpcBackendNodePeerRef> _nodePeerRefs = new();
+    private readonly ConcurrentDictionary<ShardRef, RpcBackendShardPeerRef> _shardPeerRefs = new();
     private readonly IMutableState<MeshState> _state;
     private IMeshLocks NodeLocks { get; }
     private ILogger Log { get; }
 
     public MeshNode ThisNode { get; }
     public IState<MeshState> State => _state;
+    public TimeSpan ChangeTimeout { get; }
     public IMomentClock Clock => NodeLocks.Clock;
 
     public MeshWatcher(IServiceProvider services, bool mustStart = true)
@@ -16,9 +26,28 @@ public sealed class MeshWatcher : WorkerBase
         ThisNode = services.MeshNode();
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
+        var isTested = services.GetRequiredService<HostInfo>().IsTested;
+        ChangeTimeout = isTested ? DefaultChangeTimeoutIfTested : DefaultChangeTimeout;
         if (mustStart)
             this.Start();
     }
+
+    public RpcPeerRef? GetPeerRef(MeshRef meshRef)
+        => !meshRef.ShardRef.IsNone ? GetPeerRef(meshRef.ShardRef)
+            : !meshRef.NodeRef.IsNone ? GetPeerRef(meshRef.NodeRef)
+                : null;
+
+    public RpcBackendNodePeerRef? GetPeerRef(NodeRef nodeRef)
+        => nodeRef.IsNone ? null
+            : _nodePeerRefs.GetOrAdd(nodeRef,
+                static (nodeRef1, self) => new RpcBackendNodePeerRef(self, nodeRef1),
+                this);
+
+    public RpcBackendShardPeerRef? GetPeerRef(ShardRef shardRef)
+        => shardRef.IsNone ? null
+            : _shardPeerRefs.GetOrAdd(shardRef,
+                static (shardRef1, self) => new RpcBackendShardPeerRef(self, shardRef1),
+                this).Latest;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {

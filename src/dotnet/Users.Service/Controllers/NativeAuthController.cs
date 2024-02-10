@@ -1,8 +1,6 @@
 using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Text;
 using ActualChat.Users.Module;
-using ActualChat.Web;
 using AspNet.Security.OAuth.Apple;
 using Cysharp.Text;
 using Microsoft.AspNetCore.Authentication;

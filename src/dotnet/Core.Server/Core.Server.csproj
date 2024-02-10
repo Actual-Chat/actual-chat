@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="ActualLab.Core" />
+    <PackageReference Include="ActualLab.Fusion.Server" />
     <PackageReference Include="Blake3" />
     <PackageReference Include="CliWrap" />
     <PackageReference Include="FFMpegCore" />

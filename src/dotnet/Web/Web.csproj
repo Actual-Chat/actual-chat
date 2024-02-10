@@ -6,7 +6,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ActualLab.Fusion.Server" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Internal\" />
+    <Folder Include="Module\" />
+    <Folder Include="Services\" />
   </ItemGroup>
 
 </Project>

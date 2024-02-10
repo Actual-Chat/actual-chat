@@ -1,16 +1,16 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 
-namespace ActualChat.Web.Internal;
+namespace ActualChat.AspNetCore;
 
-public class ValidationMetadataProvider : IValidationMetadataProvider
+public class BackendValidationMetadataProvider : IValidationMetadataProvider
 {
     public void CreateValidationMetadata(ValidationMetadataProviderContext context)
     {
         var identity = context.Key;
         var containerType = identity.ContainerType;
-        if (containerType is {IsGenericType: true}
+        if (containerType is { IsGenericType: true }
             && containerType.GetGenericTypeDefinition()==typeof(Option<>)) {
-            context.ValidationMetadata.PropertyValidationFilter = OptionPropsValidationFilter.Instance;
+            context.ValidationMetadata.PropertyValidationFilter = OptionPropertyValidationFilter.Instance;
         }
     }
 }

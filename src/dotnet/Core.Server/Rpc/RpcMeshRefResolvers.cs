@@ -1,7 +1,7 @@
 using ActualLab.Interception;
 using ActualLab.Rpc;
 
-namespace ActualChat;
+namespace ActualChat.Rpc;
 
 public delegate MeshRef RpcMeshRefResolver(RpcMethodDef methodDef, ArgumentList arguments, ShardScheme shardScheme);
 public delegate RpcMeshRefResolver? RpcMeshRefResolverProvider(RpcMethodDef methodDef);
@@ -40,5 +40,8 @@ public sealed class RpcMeshRefResolvers(IServiceProvider services)
     }
 
     private static MeshRef DefaultResolverImpl<T>(RpcMethodDef methodDef, ArgumentList arguments, ShardScheme shardScheme)
-        => MeshRefResolvers.Resolve(arguments.Get<T>(0)).WithSchemeIfUndefined(shardScheme);
+    {
+        var meshRef = MeshRefResolvers.Resolve(arguments.Get<T>(0));
+        return meshRef.WithNonDefaultSchemeOr(shardScheme, normalize: true);
+    }
 }
