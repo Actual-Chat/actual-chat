@@ -10,16 +10,16 @@ public sealed class ShardMap
     public bool IsEmpty => Nodes.Length == 0;
 
     // Indexers
-    public MeshNode? this[int shardKey] {
+    public MeshNode? this[int shardIndex] {
         get {
-            var nodeIndex = NodeIndexes[ShardScheme.GetShardIndex(shardKey)];
+            var nodeIndex = NodeIndexes[shardIndex];
             return nodeIndex.HasValue ? Nodes[nodeIndex.GetValueOrDefault()] : null;
         }
     }
 
-    public MeshNode? this[int shardKey, int nodeOffset] {
+    public MeshNode? this[int shardIndex, int nodeOffset] {
         get {
-            var nodeIndex = NodeIndexes[ShardScheme.GetShardIndex(shardKey)];
+            var nodeIndex = NodeIndexes[shardIndex];
             return nodeIndex.HasValue ? Nodes.GetRingItem(nodeOffset + nodeIndex.GetValueOrDefault()) : null;
         }
     }
@@ -63,7 +63,7 @@ public sealed class ShardMap
         sb.AppendLine(" {");
         for (var nodeIndex = 0; nodeIndex < Nodes.Length; nodeIndex++) {
             var node = Nodes[nodeIndex];
-            sb.Append("  ").Append(node.Id).Append(": ");
+            sb.Append("  ").Append(node.Ref).Append(": ");
             foreach (var shardNodeIndex in NodeIndexes)
                 sb.Append(shardNodeIndex == nodeIndex ? '\u25cf' : '•');
             sb.AppendLine();

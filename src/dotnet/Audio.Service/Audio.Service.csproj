@@ -11,7 +11,6 @@
     <ProjectReference Include="..\SignalR.Client\SignalR.Client.csproj" />
     <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
-    <ProjectReference Include="..\Web\Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

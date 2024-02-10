@@ -4,19 +4,19 @@ namespace ActualChat;
 
 public static class ServiceCollectionExt
 {
-    public static ServerRoleBuilder AddServerRole(
+    public static BackendRoleBuilder AddBackendRole(
         this IServiceCollection services,
         HostInfo hostInfo,
         HostRole serverRole)
         => new (services, hostInfo, serverRole);
 
-    public static IServiceCollection AddServerRole(
+    public static IServiceCollection AddBackendRole(
         this IServiceCollection services,
         HostInfo hostInfo,
         HostRole serverRole,
-        Action<ServerRoleBuilder> configure)
+        Action<BackendRoleBuilder> configure)
     {
-        var builder = services.AddServerRole(hostInfo, serverRole);
+        var builder = services.AddBackendRole(hostInfo, serverRole);
         configure.Invoke(builder);
         return services;
     }

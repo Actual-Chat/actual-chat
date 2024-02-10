@@ -1,9 +1,9 @@
 using ActualLab.Fusion.Server.Rpc;
 using ActualLab.Rpc.Infrastructure;
 
-namespace ActualChat.Web;
+namespace ActualChat.Rpc;
 
-public class AppRpcConnection(Channel<RpcMessage> channel, ImmutableOptionSet options, Session session)
+public class RpcBackendConnection(Channel<RpcMessage> channel, ImmutableOptionSet options, Session session)
     : SessionBoundRpcConnection(channel, options, session)
 {
     // Maybe add some extra properties later

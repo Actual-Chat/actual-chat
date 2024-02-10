@@ -1,6 +1,5 @@
 using ActualChat.Security;
 using ActualChat.Transcription;
-using ActualChat.Web;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Hub = Microsoft.AspNetCore.SignalR.Hub;

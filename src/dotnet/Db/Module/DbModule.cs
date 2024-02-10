@@ -5,7 +5,6 @@ using ActualChat.Module;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using ActualLab.Fusion.EntityFramework;
 using ActualLab.Fusion.EntityFramework.Npgsql;
 using ActualLab.Fusion.EntityFramework.Operations;
@@ -15,7 +14,8 @@ using ActualLab.Fusion.Operations.Internal;
 namespace ActualChat.Db.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class DbModule(IServiceProvider moduleServices) : HostModule<DbSettings>(moduleServices)
+public sealed class DbModule(IServiceProvider moduleServices)
+    : HostModule<DbSettings>(moduleServices), IServerModule
 {
     private const int CommandTimeout = 3; // In seconds
     private const int TestCommandTimeout = 30; // In seconds
@@ -131,9 +131,7 @@ public sealed class DbModule(IServiceProvider moduleServices) : HostModule<DbSet
 
     protected override void InjectServices(IServiceCollection services)
     {
-        if (!HostInfo.HostKind.IsServer())
-            return; // Server-side only module
-
+        base.InjectServices(services);
         var fusion = services.AddFusion();
         fusion.AddOperationReprocessor();
     }

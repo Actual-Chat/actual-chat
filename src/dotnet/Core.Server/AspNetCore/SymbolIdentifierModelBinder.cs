@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-namespace ActualChat.Web.Internal;
+namespace ActualChat.AspNetCore;
 
 public class SymbolIdentifierModelBinder : IModelBinder
 {

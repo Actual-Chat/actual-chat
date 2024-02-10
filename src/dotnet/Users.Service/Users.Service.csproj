@@ -9,7 +9,6 @@
     <ProjectReference Include="..\Media\Media.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
     <ProjectReference Include="..\Users.Templates\Users.Templates.csproj" />
-    <ProjectReference Include="..\Web\Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

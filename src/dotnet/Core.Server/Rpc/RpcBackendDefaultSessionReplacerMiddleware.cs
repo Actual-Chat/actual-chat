@@ -1,14 +1,12 @@
 using ActualLab.Rpc.Infrastructure;
 
-namespace ActualChat.Web.Services;
+namespace ActualChat.Rpc;
 
-public class AppDefaultSessionReplacerRpcMiddleware : RpcInboundMiddleware
+public class RpcBackendDefaultSessionReplacerMiddleware(IServiceProvider services) : RpcInboundMiddleware(services)
 {
-    public AppDefaultSessionReplacerRpcMiddleware(IServiceProvider services) : base(services) { }
-
     public override Task OnBeforeCall(RpcInboundCall call)
     {
-        var connection = call.Context.Peer.ConnectionState.Value.Connection as AppRpcConnection;
+        var connection = call.Context.Peer.ConnectionState.Value.Connection as RpcBackendConnection;
         if (connection == null)
             return Task.CompletedTask;
 

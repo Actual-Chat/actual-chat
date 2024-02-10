@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
-namespace ActualChat.Web.Internal;
+namespace ActualChat.AspNetCore;
 
-public class ModelBinderProvider : IModelBinderProvider
+public class BackendModelBinderProvider : IModelBinderProvider
 {
     public IModelBinder? GetBinder(ModelBinderProviderContext context)
     {
@@ -11,7 +11,7 @@ public class ModelBinderProvider : IModelBinderProvider
 
         var tModel = context.Metadata.ModelType;
         return tModel switch {
-            { } when tModel.IsAssignableTo(typeof(ISymbolIdentifier)) => new SymbolIdentifierModelBinder(),
+            not null when tModel.IsAssignableTo(typeof(ISymbolIdentifier)) => new SymbolIdentifierModelBinder(),
             // NOTE(AY): Resolve other binders here
             _ => null,
         };

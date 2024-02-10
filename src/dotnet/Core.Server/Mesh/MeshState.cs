@@ -18,8 +18,8 @@ public sealed partial class MeshState
     public IReadOnlySet<HostRole> Roles { get; } = ImmutableHashSet<HostRole>.Empty;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public IReadOnlyDictionary<Symbol, MeshNode> NodeById { get; }
-        = ImmutableDictionary<Symbol, MeshNode>.Empty;
+    public IReadOnlyDictionary<NodeRef, MeshNode> NodeByRef { get; }
+        = ImmutableDictionary<NodeRef, MeshNode>.Empty;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public IReadOnlyDictionary<HostRole, ImmutableArray<MeshNode>> NodesByRole { get; }
@@ -36,7 +36,7 @@ public sealed partial class MeshState
             return;
 
         Roles = Nodes.SelectMany(x => x.Roles).ToHashSet();
-        NodeById = Nodes.ToDictionary(x => x.Id, x => x);
+        NodeByRef = Nodes.ToDictionary(x => x.Ref, x => x);
         NodesByRole = Roles.Select(r => new KeyValuePair<HostRole, ImmutableArray<MeshNode>>(
             r,
             Nodes.Where(n => n.Roles.Contains(r)).ToImmutableArray())
