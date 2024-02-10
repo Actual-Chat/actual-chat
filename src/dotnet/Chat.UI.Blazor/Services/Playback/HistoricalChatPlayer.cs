@@ -78,7 +78,7 @@ public sealed class HistoricalChatPlayer : ChatPlayer
     {
         if (shift == TimeSpan.Zero)
             return Task.FromResult<Moment?>(playingAt);
-        if (shift.Ticks < 0)
+        if (shift < TimeSpan.Zero)
             return GetRewindMomentInPast(playingAt, shift.Negate(), cancellationToken);
 
         return GetRewindMomentInFuture(playingAt, shift, cancellationToken);
