@@ -15,6 +15,9 @@
     <div @ref="Ref" class="navbar-place-buttons">
         @foreach (var place in places) {
             <NavbarGroupSelectionButton
+                @key="@place.Id"
+                AdditionalAttributes="@(new Dictionary<string, object>() { {"data-place-id", place.Id} })"
+                CanMove="@true"
                 Title="@place.Title"
                 Id="@place.Id.GetNavbarGroupId()"
                 Tooltip="@place.Title">
@@ -48,7 +51,6 @@
 
     private PlacesSettings? _placesSettings;
     private PlacesSettings PlacesSettings => _placesSettings ??= new(Hub.Services, Hub.AccountSettings());
-
 
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
 
@@ -88,7 +90,7 @@
             .ToApiArray();
 
         return new Model {
-            Places = places
+            Places = places,
         };
     }
 

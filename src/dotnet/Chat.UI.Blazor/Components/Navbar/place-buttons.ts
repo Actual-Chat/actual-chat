@@ -6,6 +6,7 @@ export class PlaceButtons {
     private blazorRef: DotNet.DotNetObject;
     private readonly places: HTMLElement;
     private buttons: HTMLElement[] = [];
+    private placeIds: string[] = [];
     private shiftY: number;
     private currentBtn: HTMLElement;
     private ghostBtn: HTMLElement;
@@ -113,9 +114,7 @@ export class PlaceButtons {
             let btn = b as HTMLElement;
             this.buttons.push(btn);
         });
-        //TODO: fill placesOrdering list with placeId's in the right order
-        var placesOrdering = [];
-        this.blazorRef.invokeMethodAsync("StorePlacesOrder", placesOrdering);
+        this.placeIds = this.getPlacesOrdering();
     }
 
     private onPointerDown = (event: PointerEvent) => {
@@ -152,6 +151,21 @@ export class PlaceButtons {
         window.removeEventListener('pointermove', this.onPointerMove);
         window.removeEventListener('pointerup', this.onPointerUp);
         window.removeEventListener('pointercancel', this.onPointerUp);
+
+        void this.saveOnBackend();
+    }
+
+    private getPlacesOrdering() : string[] {
+        let placeIds = [];
+        this.buttons.forEach(b => {
+            let btnId = b.getAttribute('data-place-id');
+            placeIds.push(btnId);
+        });
+        return placeIds;
+    }
+
+    private async saveOnBackend() : Promise<void> {
+        await this.blazorRef.invokeMethodAsync("StorePlacesOrder", this.placeIds);
     }
 
     private onPointerMove = (event: PointerEvent) => {
@@ -199,23 +213,14 @@ export class PlaceButtons {
         this.ghostBtn = document.createElement('div');
         this.ghostBtn.classList.add('ghost-btn');
 
-        let offsetX = 8;
-        let dots = document.createElement('div');
-        dots.innerHTML = `<i class="icon-more-vertical-2 text-xl"></i>`;
-        dots.style.marginRight = offsetX + 'px';
-
         let btn = this.currentBtn.cloneNode(true) as HTMLElement;
-
         let rect = this.currentBtn.getBoundingClientRect();
         this.shiftY = (event.y - rect.top) / 2;
-        this.ghostBtn.appendChild(dots);
         this.ghostBtn.appendChild(btn);
         document.body.appendChild(this.ghostBtn);
 
         this.currentBtn.classList.add('drag-btn');
-
-        let dotsOffset = dots.getBoundingClientRect().width;
-        this.ghostBtn.style.left = rect.left - dotsOffset - offsetX + 'px';
+        this.ghostBtn.style.left = rect.left + 'px';
         this.ghostBtn.style.top = rect.top + 'px';
 
         let placesRect = this.places.getBoundingClientRect();
