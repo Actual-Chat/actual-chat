@@ -3,28 +3,25 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.Web.HtmlRendering;
 
-namespace ActualChat.Web;
+namespace ActualChat.Blazor;
 
-public class BlazorRenderer : IAsyncDisposable
+public class BlazorRenderer : ProcessorBase
 {
-    private readonly ServiceProvider _serviceProvider;
-    private readonly ILoggerFactory _loggerFactory;
-    private readonly HtmlRenderer _htmlRenderer;
+    private ServiceProvider Services { get; }
+    private HtmlRenderer HtmlRenderer { get; }
 
     public BlazorRenderer()
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        _serviceProvider = services.BuildServiceProvider();
-        _loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
-        _htmlRenderer = new HtmlRenderer(_serviceProvider, _loggerFactory);
+        Services = services.BuildServiceProvider();
+        HtmlRenderer = new HtmlRenderer(Services, Services.GetRequiredService<ILoggerFactory>());
     }
 
-    public async ValueTask DisposeAsync()
+    protected override async Task DisposeAsyncCore()
     {
-        await _htmlRenderer.DisposeAsync().ConfigureAwait(false);
-        _loggerFactory.Dispose();
-        await _serviceProvider.DisposeAsync().ConfigureAwait(false);
+        await HtmlRenderer.DisposeAsync().ConfigureAwait(false);
+        await Services.DisposeAsync().ConfigureAwait(false);
     }
 
     public Task<string> RenderComponent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>()
@@ -37,8 +34,8 @@ public class BlazorRenderer : IAsyncDisposable
 
     private Task<string> RenderComponent<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] T>(
         ParameterView parameters) where T : IComponent
-        => _htmlRenderer.Dispatcher.InvokeAsync(async () => {
-            HtmlRootComponent output = await _htmlRenderer.RenderComponentAsync<T>(parameters).ConfigureAwait(false);
+        => HtmlRenderer.Dispatcher.InvokeAsync(async () => {
+            HtmlRootComponent output = await HtmlRenderer.RenderComponentAsync<T>(parameters).ConfigureAwait(false);
             return output.ToHtmlString();
         });
 }

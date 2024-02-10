@@ -4,7 +4,6 @@ using ActualChat.Media;
 using ActualChat.Security;
 using ActualChat.Uploads;
 using ActualChat.Users;
-using ActualChat.Web;
 using Microsoft.AspNetCore.Mvc;
 using SixLabors.ImageSharp;
 

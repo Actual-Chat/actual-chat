@@ -7,15 +7,18 @@ namespace ActualChat.Mesh;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record MeshNode(
-    [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol Id,
+    [property: DataMember(Order = 0), MemoryPackOrder(0)] NodeRef Ref,
     [property: DataMember(Order = 1), MemoryPackOrder(1)] string Endpoint,
     [property: DataMember(Order = 2), MemoryPackOrder(2)] IReadOnlySet<HostRole> Roles
-    ) : IComparable<MeshNode>
+    ) : IComparable<MeshNode>, IHasId<NodeRef>, IHasId<Symbol>
 {
     private static readonly ListFormat Formatter = new(' ');
 
+    NodeRef IHasId<NodeRef>.Id => Ref;
+    Symbol IHasId<Symbol>.Id => Ref.Id;
+
     public override string ToString()
-        => Formatter.Format(Id.Value, Endpoint, Roles.ToDelimitedString(","));
+        => Formatter.Format(Ref.Value, Endpoint, Roles.ToDelimitedString(","));
 
     public static MeshNode Parse(string value)
         => TryParse(value, out var result) ? result : throw StandardError.Format<MeshNode>();
@@ -28,8 +31,7 @@ public sealed partial record MeshNode(
         // Id
         if (!parser.TryParseNext())
             return false;
-        var id = (Symbol)parser.Item;
-        if (id.IsEmpty)
+        if (!NodeRef.TryParse(parser.Item, out var @ref))
             return false;
 
         // Endpoint
@@ -47,25 +49,25 @@ public sealed partial record MeshNode(
                 return false;
         }
 
-        nodeInfo = new MeshNode(id, endpoint, new HashSet<HostRole>(roles));
+        nodeInfo = new MeshNode(@ref, endpoint, new HashSet<HostRole>(roles));
         return true;
     }
 
-    // Equality: uses only Id
+    // Equality: uses only Ref
 
     public bool Equals(MeshNode? other)
     {
         if (ReferenceEquals(null, other))
             return false;
-        return ReferenceEquals(this, other) || Id == other.Id;
+        return ReferenceEquals(this, other) || Equals(Ref.Id, other.Ref.Id);
     }
 
-    public override int GetHashCode() => Id.HashCode;
+    public override int GetHashCode() => Ref.Id.HashCode;
 
     public IEnumerable<T> GetHashes<T>()
         where T : unmanaged
     {
-        for (var hashSource = Id.Value;; hashSource += Id.Value) {
+        for (var hashSource = Ref.Value;; hashSource += Ref.Value) {
             var hashes = hashSource.Hash().Blake2b().AsSpan<T>().ToArray();
             foreach (var hash in hashes)
                 yield return hash;
@@ -77,7 +79,7 @@ public sealed partial record MeshNode(
     public int CompareTo(MeshNode? other)
         => ReferenceEquals(other, null)
             ? 1
-            : StringComparer.Ordinal.Compare(Id.Value, other.Id.Value);
+            : StringComparer.Ordinal.Compare(Ref.Value, other.Ref.Value);
 
     public static bool operator <(MeshNode left, MeshNode right)
         => ReferenceEquals(left, null) ? !ReferenceEquals(right, null) : left.CompareTo(right) < 0;

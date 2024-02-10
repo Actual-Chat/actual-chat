@@ -12,9 +12,9 @@ public abstract class ShardScheme(Symbol id, int shardCount) : IHasId<Symbol>
         public static None Instance { get; } = new();
     }
 
-    public sealed class Undefined() : ShardScheme("Undefined", 0), IShardScheme<Undefined>
+    public sealed class Default() : ShardScheme("Default", 0), IShardScheme<Default>
     {
-        public static Undefined Instance { get; } = new();
+        public static Default Instance { get; } = new();
     }
 
     public sealed class Backend() : ShardScheme(HostRole.BackendServer.Id, 10), IShardScheme<Backend>
@@ -31,7 +31,7 @@ public abstract class ShardScheme(Symbol id, int shardCount) : IHasId<Symbol>
     public Symbol Id { get; } = id;
     public int ShardCount { get; } = shardCount;
     public bool IsNone => ReferenceEquals(this, None.Instance);
-    public bool IsUndefined => ReferenceEquals(this, Undefined.Instance);
+    public bool IsDefault => ReferenceEquals(this, Default.Instance);
 
     public IEnumerable<int> ShardIndexes { get; } = Enumerable.Range(0, shardCount);
     public ImmutableArray<RpcPeerRef> BackendClientPeerRefs { get; }
@@ -39,11 +39,14 @@ public abstract class ShardScheme(Symbol id, int shardCount) : IHasId<Symbol>
             .Select(shardIndex => RpcPeerRef.NewClient($"@shard-{id.Value}-{shardIndex}", true))
             .ToImmutableArray();
 
+    public override string ToString()
+        => $"{nameof(ShardScheme)}({Id}, {ShardCount})";
+
     public int GetShardIndex(int shardKey)
         => ShardCount <= 0 ? -1 : shardKey.Mod(ShardCount);
 
-    public override string ToString()
-        => $"{nameof(ShardScheme)}({Id}, {ShardCount})";
+    public ShardScheme NonDefaultOr(ShardScheme shardScheme)
+        => IsDefault ? shardScheme : this;
 }
 
 public interface IShardScheme<out TSelf>

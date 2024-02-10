@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
-namespace ActualChat.Web.Internal;
+namespace ActualChat.AspNetCore;
 
-public class OptionPropsValidationFilter : IPropertyValidationFilter
+public class OptionPropertyValidationFilter : IPropertyValidationFilter
 {
-    public static readonly OptionPropsValidationFilter Instance = new ();
+    public static readonly OptionPropertyValidationFilter Instance = new ();
 
     public bool ShouldValidateEntry(ValidationEntry entry, ValidationEntry parentEntry)
         => !OrdinalEquals(entry.Metadata.Name,  nameof(Option<object>.Value));

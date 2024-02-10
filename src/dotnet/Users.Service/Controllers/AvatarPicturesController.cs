@@ -2,7 +2,6 @@ using System.Text;
 using ActualChat.Hashing;
 using ActualChat.Media;
 using ActualChat.Security;
-using ActualChat.Web;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ActualChat.Users.Controllers;

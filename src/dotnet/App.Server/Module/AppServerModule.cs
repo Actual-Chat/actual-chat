@@ -1,5 +1,4 @@
 using System.IO.Compression;
-using System.Net;
 using ActualChat.App.Server.Health;
 using ActualChat.Audio;
 using ActualChat.Chat;
@@ -9,21 +8,16 @@ using ActualChat.Feedback;
 using ActualChat.Hosting;
 using ActualChat.Invite;
 using ActualChat.Kubernetes;
-using ActualChat.Mesh;
+using ActualChat.Module;
 using ActualChat.Notification;
-using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualChat.Transcription;
 using ActualChat.Users;
-using ActualChat.Web.Internal;
-using ActualChat.Web.Module;
-using ActualChat.Web.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.AspNetCore.Rewrite;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.FileProviders;
 using Npgsql;
 using OpenTelemetry;
@@ -33,19 +27,14 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Fusion.Server;
-using ActualLab.Fusion.Server.Middlewares;
-using ActualLab.Fusion.Server.Rpc;
 using ActualLab.IO;
 using ActualLab.Rpc;
-using ActualLab.Rpc.Clients;
-using ActualLab.Rpc.Diagnostics;
 using ActualLab.Rpc.Server;
 
 namespace ActualChat.App.Server.Module;
 
 public sealed class AppServerModule(IServiceProvider moduleServices)
-    : HostModule<HostSettings>(moduleServices), IWebModule
+    : HostModule<HostSettings>(moduleServices), IWebServerModule
 {
     public static readonly string AppVersion =
         typeof(AppServerModule).Assembly.GetInformationalVersion() ?? "0.0-unknown";
@@ -139,8 +128,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
-        if (!HostInfo.HostKind.IsServer())
-            return; // Server-side only module
+        var hostKind = HostInfo.HostKind;
+        if (!hostKind.IsServer())
+            throw StandardError.Internal("This module can be used on server side only.");
 
         // Host options
         services.Configure<HostOptions>(o => {
@@ -160,99 +150,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<InfrastructureDbContext>(services, Settings.Redis);
 
-        // MeshStateWatcher
-        services.AddSingleton<MeshNode>(c => {
-            var hostInfo = c.HostInfo();
-            var host = Environment.GetEnvironmentVariable("POD_IP") ?? "";
-            _ = int.TryParse(
-                Environment.GetEnvironmentVariable("POD_PORT") ?? "80",
-                CultureInfo.InvariantCulture,
-                out var port);
-            if (host.IsNullOrEmpty() || port == 0) {
-                var endpoint = ServerEndpoints.List(c, "http://").FirstOrDefault();
-                (host, port) = ServerEndpoints.Parse(endpoint);
-                if (ServerEndpoints.InvalidHostNames.Contains(host)) {
-                    if (!hostInfo.IsDevelopmentInstance)
-                        throw StandardError.Internal($"Server host name is invalid: {host}");
-
-                    host = Dns.GetHostName();
-                }
-            }
-
-            var nodeId = new NodeRef(Generate.Option);
-            var node = new MeshNode(
-                nodeId, // $"{host}-{Ulid.NewUlid().ToString()}";
-                $"{host}:{port.Format()}",
-                hostInfo.Roles);
-            Log.LogInformation("MeshNode: {MeshNode}", node.ToString());
-            return node;
-        });
-        services.AddSingleton(c => new MeshWatcher(c));
-
         // Queues
         services.AddLocalCommandQueues();
         services.AddCommandQueueScheduler();
-
-        // Fusion server + Rpc configuration
-        var fusion = services.AddFusion();
-        var rpc = fusion.Rpc;
-        fusion.AddWebServer();
-
-        // Remove SessionMiddleware - we use SessionCookies directly instead
-        services.RemoveAll<SessionMiddleware.Options>();
-        services.RemoveAll<SessionMiddleware>();
-        // Replace RpcServerConnectionFactory with AppRpcConnectionFactory
-        services.AddSingleton(_ => new AppRpcServerConnectionFactory());
-        services.AddSingleton<RpcServerConnectionFactory>(c => c.GetRequiredService<AppRpcServerConnectionFactory>().Invoke);
-        // Replace DefaultSessionReplacerRpcMiddleware with AppDefaultSessionReplacerRpcMiddleware
-        rpc.RemoveInboundMiddleware<DefaultSessionReplacerRpcMiddleware>();
-        rpc.AddInboundMiddleware<AppDefaultSessionReplacerRpcMiddleware>();
-        // Replace
-        services.AddSingleton(_ => new RpcWebSocketClient.Options() {
-            ConnectionUriResolver = (client, peer) => {
-                var peerRef = peer.Ref;
-                if (!peerRef.IsBackend)
-                    throw StandardError.Internal("Server-side RpcPeer.Ref.IsBackend must be true.");
-
-                var meshWatcher = client.Services.MeshWatcher();
-                MeshNode? node = null;
-                if (peerRef.IsNodeRef(out var nodeRef))
-                    node = meshWatcher.State.Value.NodeById.GetValueOrDefault(nodeRef.Id);
-                else if (peerRef.IsShardRef(out var shardRef)) {
-                    var shardMap = meshWatcher.State.Value.GetShardMap(shardRef.Scheme);
-                    var nodeIndex = shardMap.NodeIndexes[shardRef.Key];
-                    if (nodeIndex.HasValue)
-                        node = shardMap.Nodes[nodeIndex.GetValueOrDefault()];
-                }
-                else
-                    throw StandardError.Internal("Server-side RpcPeer.Ref has invalid format.");
-                if (node == null)
-                    return new Uri("wait://none", UriKind.Absolute);
-
-                var settings = client.Settings;
-                var sb = StringBuilderExt.Acquire();
-                sb.Append("ws://");
-                sb.Append(node.Endpoint);
-                sb.Append(settings.BackendRequestPath);
-                sb.Append('?');
-                sb.Append(settings.ClientIdParameterName);
-                sb.Append('=');
-                sb.Append(client.ClientId.UrlEncode());
-                return sb.ToStringAndRelease().ToUri();
-            },
-        });
-
-        // Add RpcMethodActivityTracer
-        services.AddSingleton<RpcMethodTracerFactory>(method => new RpcMethodActivityTracer(method) {
-            UseCounters = true,
-        });
-
-        // Debug: add RpcRandomDelayMiddleware if you'd like to check how it works w/ delays
-#if DEBUG && false
-        rpc.AddInboundMiddleware(c => new RpcRandomDelayMiddleware(c) {
-            Delay = new(0.2, 0.2), // 0 .. 0.4s
-        });
-#endif
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
@@ -323,12 +223,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         }
 
         // Controllers, etc.
-        services.AddRouting();
-        var mvc = services.AddMvc(options => {
-            options.ModelBinderProviders.Add(new ModelBinderProvider());
-            options.ModelMetadataDetailsProviders.Add(new ValidationMetadataProvider());
-        });
-        mvc.AddApplicationPart(Assembly.GetExecutingAssembly());
+        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
+
+        // Blazor Server
         services.AddServerSideBlazor(o => {
             if (HostInfo.IsDevelopmentInstance) {
                 o.DisconnectedCircuitMaxRetained = 5;
