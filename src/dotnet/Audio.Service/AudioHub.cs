@@ -28,7 +28,7 @@ public class AudioHub(IServiceProvider services) : Hub
 
     public Task ReportLatency(TimeSpan latency, CancellationToken cancellationToken)
     {
-        Metrics.AudioLatency.Record(latency.Ticks / 10000f);
+        Metrics.AudioLatency.Record((float)latency.TotalMilliseconds);
         return Task.CompletedTask;
     }
 
