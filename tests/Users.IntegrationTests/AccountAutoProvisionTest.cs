@@ -4,18 +4,18 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Users.IntegrationTests;
 
 [Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
-public class AccountAutoProvisionTest(ITestOutputHelper @out): IAsyncLifetime
+public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
-    private ITestOutputHelper Out { get; } = @out;
 
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
-        _appHost = await TestAppHostFactory.NewAppHost(TestAppHostOptions.Default with {
+        _appHost = await Fixture.NewHost(options => options with {
             Output = Out,
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
@@ -25,7 +25,7 @@ public class AccountAutoProvisionTest(ITestOutputHelper @out): IAsyncLifetime
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();
