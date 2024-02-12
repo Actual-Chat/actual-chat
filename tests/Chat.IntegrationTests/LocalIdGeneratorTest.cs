@@ -11,7 +11,7 @@ public class LocalIdGeneratorTest(AppHostFixture fixture, ITestOutputHelper @out
     private TestAppHost Host => fixture.Host;
     private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
-    [Fact(Skip = "Manual")]
+    [Fact(Skip = "For manual runs only")]
     public async Task LocalIdsOnDifferentHostsAreUnique()
     {
         using var appHost1 = await NewAppHost();
