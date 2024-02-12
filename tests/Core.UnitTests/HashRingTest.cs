@@ -4,7 +4,7 @@ namespace ActualChat.Core.UnitTests;
 
 public class HashRingTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    [Fact(Skip = "Fails always")]
+    [Fact]
     public void BasicTest()
     {
         var hr = new HashRing<string>(new [] { "a", "b", "c" }, v => v.GetDjb2HashCode());
@@ -28,16 +28,16 @@ public class HashRingTest(ITestOutputHelper @out) : TestBase(@out)
             hr.FindNode(hash + 1).Should().Be(y);
 
             hr.Span(hash, 0).ToArray().Should().BeEmpty();
-            hr.Span(hash, 1).ToArray().Should().Equal(new[] {x});
-            hr.Span(hash, 2).ToArray().Should().Equal(new[] {x, y});
-            hr.Span(hash, 3).ToArray().Should().Equal(new[] {x, y, z});
-            hr.Span(hash, 4).ToArray().Should().Equal(new[] {x, y, z});
+            hr.Span(hash, 1).ToArray().Should().Equal([x]);
+            hr.Span(hash, 2).ToArray().Should().Equal([x, y]);
+            hr.Span(hash, 3).ToArray().Should().Equal([x, y, z]);
+            hr.Span(hash, 4).ToArray().Should().Equal([x, y, z]);
 
             hr.Segment(hash, 0).ToArray().Should().BeEmpty();
-            hr.Segment(hash, 1).Should().Equal(new[] {x});
-            hr.Segment(hash, 2).Should().Equal(new[] {x, y});
-            hr.Segment(hash, 3).Should().Equal(new[] {x, y, z});
-            hr.Segment(hash, 4).Should().Equal(new[] {x, y, z});
+            hr.Segment(hash, 1).Should().Equal([x]);
+            hr.Segment(hash, 2).Should().Equal([x, y]);
+            hr.Segment(hash, 3).Should().Equal([x, y, z]);
+            hr.Segment(hash, 4).Should().Equal([x, y, z]);
         }
 
         hr = HashRing<string>.Empty;
