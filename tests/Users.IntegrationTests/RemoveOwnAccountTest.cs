@@ -13,7 +13,7 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
     [Fact]
     public async Task DeleteOwnAccountTest()
     {
-        var appHost = Host;
+        var appHost = AppHost;
         await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
         var bob = await tester.SignInAsBob();

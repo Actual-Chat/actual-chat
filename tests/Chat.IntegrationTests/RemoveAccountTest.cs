@@ -12,7 +12,7 @@ public class RemoveAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task RemoveOwnEntriesTest()
     {
-        var appHost = Host;
+        var appHost = AppHost;
         await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
         var bob = await tester.SignInAsBob();
@@ -54,7 +54,7 @@ public class RemoveAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task RemoveOwnChatsTest()
     {
-        var appHost = Host;
+        var appHost = AppHost;
         await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
         var bob = await tester.SignInAsBob();

@@ -18,9 +18,9 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _tester = Host.NewWebClientTester(Out);
-        _contacts = Host.Services.GetRequiredService<IContacts>();
-        _contactsBackend = Host.Services.GetRequiredService<IContactsBackend>();
+        _tester = AppHost.NewWebClientTester(Out);
+        _contacts = AppHost.Services.GetRequiredService<IContacts>();
+        _contactsBackend = AppHost.Services.GetRequiredService<IContactsBackend>();
         _accounts = _tester.AppServices.GetRequiredService<IAccounts>();
 
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());

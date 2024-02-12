@@ -10,7 +10,7 @@ public class AuthorsTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task NullAuthorResult()
     {
         var startedAt = CpuTimestamp.Now;
-        var appHost = Host;
+        var appHost = AppHost;
         using var tester = appHost.NewWebClientTester(Out);
         Out.WriteLine($"{startedAt}: app host init");
         var session = tester.Session;

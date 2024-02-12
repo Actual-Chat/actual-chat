@@ -14,7 +14,7 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out)
     public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _tester = Host.NewWebClientTester(Out);
+        _tester = AppHost.NewWebClientTester(Out);
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
     }
@@ -35,9 +35,9 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldListAllChats(int chatCount, int limit)
     {
         // arrange
-        var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
-        var commander = Host.Services.Commander();
-        var clock = Host.Services.Clocks().ServerClock;
+        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
+        var commander = AppHost.Services.Commander();
+        var clock = AppHost.Services.Clocks().ServerClock;
         var now = clock.Now;
         var allExpectedIds = new List<ChatId>();
         await _tester.SignInAsBob();
@@ -79,8 +79,8 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task ShouldReturnEmpty(int chatCount, int limit)
     {
         // arrange
-        var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
-        var commander = Host.Services.Commander();
+        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
+        var commander = AppHost.Services.Commander();
         var allChats = new List<Chat>();
         await _tester.SignInAsBob();
         for (int i = 0; i < chatCount; i++) {
