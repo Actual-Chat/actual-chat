@@ -13,7 +13,7 @@ public class ChatActivityTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task BasicTest()
     {
-        var appHost = Host;
+        var appHost = AppHost;
         await using var tester = appHost.NewBlazorTester();
         var services = tester.AppServices;
         var clientServices = tester.ScopedAppServices;

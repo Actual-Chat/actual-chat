@@ -17,7 +17,7 @@ public class AvatarsTest(AppHostFixture fixture, ITestOutputHelper @out)
         // The issue was solved by adding ActualChat.Web.Internal.OptionPropsValidationFilter
         // which excludes accessing ActualLab.Option.Value property during model validation.
 
-        var appHost = Host;
+        var appHost = AppHost;
         await using var tester = appHost.NewWebClientTester(Out);
         var account = await tester.SignInAsBob("no-admin");
         var command = new Avatars_Change(tester.Session, Symbol.Empty, null, new Change<AvatarFull>() {

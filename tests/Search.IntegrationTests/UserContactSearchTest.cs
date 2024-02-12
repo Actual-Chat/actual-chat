@@ -48,9 +48,9 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _tester = Host.NewWebClientTester(Out);
-        _sut = Host.Services.GetRequiredService<ISearchBackend>();
-        _commander = Host.Services.Commander();
+        _tester = AppHost.NewWebClientTester(Out);
+        _sut = AppHost.Services.GetRequiredService<ISearchBackend>();
+        _commander = AppHost.Services.Commander();
         return Task.CompletedTask;
     }
 

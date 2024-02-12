@@ -36,11 +36,11 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _tester = Host.NewWebClientTester(Out);
-        _externalContacts = Host.Services.GetRequiredService<IExternalContacts>();
-        _accounts = Host.Services.GetRequiredService<IAccounts>();
-        _contacts = Host.Services.GetRequiredService<IContacts>();
-        _commander = Host.Services.Commander();
+        _tester = AppHost.NewWebClientTester(Out);
+        _externalContacts = AppHost.Services.GetRequiredService<IExternalContacts>();
+        _accounts = AppHost.Services.GetRequiredService<IAccounts>();
+        _contacts = AppHost.Services.GetRequiredService<IContacts>();
+        _commander = AppHost.Services.Commander();
 
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;

@@ -18,9 +18,9 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
 
     public override async Task InitializeAsync()
     {
-        _testSettings = Host.Services.GetRequiredService<TestSettings>();
-        _accounts = Host.Services.GetRequiredService<IAccounts>();
-        _tester = Host.NewPlaywrightTester(Out);
+        _testSettings = AppHost.Services.GetRequiredService<TestSettings>();
+        _accounts = AppHost.Services.GetRequiredService<IAccounts>();
+        _tester = AppHost.NewPlaywrightTester(Out);
         _adminSession = Session.New();
 
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));

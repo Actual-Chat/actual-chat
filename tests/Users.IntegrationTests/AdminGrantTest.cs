@@ -15,8 +15,8 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     public override Task InitializeAsync()
     {
-        _tester = Host.NewWebClientTester(Out);
-        _accounts = Host.Services.GetRequiredService<IAccountsBackend>();
+        _tester = AppHost.NewWebClientTester(Out);
+        _accounts = AppHost.Services.GetRequiredService<IAccountsBackend>();
         return Task.CompletedTask;
     }
 

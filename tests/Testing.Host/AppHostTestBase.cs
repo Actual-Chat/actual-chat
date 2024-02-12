@@ -4,12 +4,12 @@ public class AppHostTestBase<TAppHostFixture> : TestBase
     where TAppHostFixture : AppHostFixture
 {
     public TAppHostFixture Fixture { get; }
-    public TestAppHost Host { get; }
+    public TestAppHost AppHost { get; }
 
     public AppHostTestBase(TAppHostFixture fixture, ITestOutputHelper @out) : base(@out)
     {
         Fixture = fixture;
-        Host = fixture.Host;
-        Host.Output = @out;
+        AppHost = fixture.Host;
+        AppHost.Output = @out;
     }
 }
