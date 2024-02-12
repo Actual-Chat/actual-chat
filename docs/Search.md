@@ -231,7 +231,12 @@ Goals:
     https://www.elastic.co/guide/en/elasticsearch/reference/current/document-level-security.html
     Check limitations: 
     [ ] What is the limit on number of different permissions in the system?
+        Notes: Wasn't able to find up-to-date information. It had limitation (2017)
+        like "no more than 64k documents per role" yet it needs to be tested
+        on the latest version.
+        Test: Create a dataset with 66k+ documents with unique permission each.
     [ ] How number of different permissions affect preformance?
+        Test: perf test.
 If all good:
   [ ] Setup Elastic Search backend with any ML model directly from an example.
     https://www.elastic.co/search-labs/blog/articles/how-to-deploy-nlp-text-embeddings-and-vector-search
@@ -249,7 +254,7 @@ If doesn't work for our case:
 [ ] Test: Use existing datasets for search comparison 
 ---
 [Stretch] 
-[ ] Test: Use existing database with chats:
+[ ] Test: Use existing database with chats
 [ ] Test: Few manual queries added. Replace dataset and ensure everyting is working.
 [ ] Test: Generate queries with ChatGPT (who has a subscription?) to skip lot's of manual work.
 ### Next:
