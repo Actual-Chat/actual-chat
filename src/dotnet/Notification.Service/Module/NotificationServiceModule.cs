@@ -14,6 +14,8 @@ namespace ActualChat.Notification.Module;
 public sealed class NotificationServiceModule(IServiceProvider moduleServices)
     : HostModule<NotificationSettings>(moduleServices)
 {
+    private static readonly object _lock = new ();
+
     protected override void InjectServices(IServiceCollection services)
     {
         base.InjectServices(services);
@@ -51,7 +53,9 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
         fusion.AddService<INotificationsBackend, NotificationsBackend>();
 
         // Firebase
-        var firebaseApp = FirebaseApp.DefaultInstance ?? FirebaseApp.Create();
+        FirebaseApp firebaseApp;
+        lock (_lock)
+            firebaseApp = FirebaseApp.DefaultInstance ?? FirebaseApp.Create();
         var firebaseMessaging = FirebaseMessaging.GetMessaging(firebaseApp);
         services.AddSingleton(firebaseMessaging);
         services.AddSingleton<FirebaseMessagingClient>();

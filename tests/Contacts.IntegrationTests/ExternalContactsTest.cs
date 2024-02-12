@@ -9,8 +9,8 @@ using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
-[Collection(nameof(ContactCollection)), Trait("Category", nameof(ContactCollection))]
-public class ExternalContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(ExternalContactCollection)), Trait("Category", nameof(ExternalContactCollection))]
+public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
     private TestAppHost Host => fixture.Host;
     private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
