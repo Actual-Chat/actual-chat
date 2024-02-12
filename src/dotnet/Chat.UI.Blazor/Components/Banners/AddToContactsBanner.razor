@@ -20,6 +20,7 @@
     private Session Session => ChatContext.Hub.Session();
     private Chat Chat => ChatContext.Chat;
     private IContacts Contacts => ChatContext.Hub.Contacts;
+    private AccountUI AccountUI => ChatContext.Hub.AccountUI;
     private UICommander UICommander => ChatContext.Hub.UICommander();
 
     [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
@@ -31,8 +32,9 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var ownAccount = AccountUI.OwnAccount.Value;
         var contact = await Contacts.GetForChat(Session, Chat.Id, cancellationToken);
-        return new(contact);
+        return new(!ownAccount.IsGuestOrNone, contact);
     }
 
     private async Task OnAddClick() {
@@ -43,9 +45,9 @@
         await UICommander.Run(command);
     }
 
-    public sealed record Model(Contact? Contact = null) {
-        public  static readonly Model Loading = new();
+    public sealed record Model(bool IsSignedIn, Contact? Contact = null) {
+        public  static readonly Model Loading = new(false);
 
-        public bool CanAddToContacts => Contact is { ChatId.Kind: ChatKind.Peer } && !Contact.IsStored();
+        public bool CanAddToContacts => IsSignedIn && Contact is { ChatId.Kind: ChatKind.Peer } && !Contact.IsStored();
     }
 }
