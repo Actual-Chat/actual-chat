@@ -9,7 +9,7 @@ namespace ActualChat.Search.IntegrationTests;
 public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     private WebClientTester _tester = null!;
     private ISearchBackend _sut = null!;

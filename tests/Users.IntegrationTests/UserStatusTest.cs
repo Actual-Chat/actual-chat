@@ -9,7 +9,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out): IAs
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;

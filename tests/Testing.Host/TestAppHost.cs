@@ -10,7 +10,7 @@ public class TestAppHost(TestOutputHelperAccessor outputAccessor) : AppHost
 
     public TestOutputHelperAccessor OutputAccessor { get; } = outputAccessor;
 
-    public ITestOutputHelper UseOutput(ITestOutputHelper @out)
+    public ITestOutputHelper SetOutput(ITestOutputHelper @out)
     {
         var output = @out ?? throw new ArgumentException("ITestOutputHelper should not be null", nameof(@out));
         OutputAccessor.Output = output;

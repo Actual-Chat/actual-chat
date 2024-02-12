@@ -6,7 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class AuthorsTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     [Fact(Skip = "Fails on CI")]
     public async Task NullAuthorResult()
