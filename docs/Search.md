@@ -218,46 +218,52 @@ Goals:
   - Gives some level of understanding on the flow and has a good starting point (manuals)
 - Create/try existing dataset for ML searches
 - Put a baseline for search results comparison (stand)
---
-[x] Elastic vs OpenSearch.
+---
+- [x] Elastic vs OpenSearch.
     - TLDR; No major differences so far.
     - Both have knn search available.
       Although OpenSearch provides more options: Painless extensions.
     - Elastic claims to have better search performance.
       Would it matter for the knn searches though? Since it will be a linear scan anyway.
     - There's already a use-case of Elastic in our system.
-[ ] Elastic: Investigate documents permissions.
-    ? https://www.elastic.co/security-and-compliance
-    https://www.elastic.co/guide/en/elasticsearch/reference/current/document-level-security.html
-    Check limitations: 
-    [ ] [1d] What is the limit on number of different permissions in the system?
-        Notes: Wasn't able to find up-to-date information. It had limitation (2017)
-        like "no more than 64k documents per role" yet it needs to be tested
-        on the latest version.
-        Test: Create a dataset with 66k+ documents with unique permission each.
-    [ ] How number of different permissions affect preformance?
-        Test: perf test.
+- [ ] Elastic: Investigate documents permissions.
+      (?) https://www.elastic.co/security-and-compliance
+      https://www.elastic.co/guide/en/elasticsearch/reference/current/document-level-security.html
+      Check limitations: 
+  - [ ] What is the limit on number of different permissions in the system?
+      Notes: Wasn't able to find up-to-date information. It had limitation (2017)
+      like "no more than 64k documents per role" yet it needs to be tested
+      on the latest version.
+  
+      [1d] Test: Create a dataset with 66k+ documents with unique permission each.
+  
+  - [ ] How number of different permissions affect performance?
+      Test: perf test.
+---
 If all good:
-  [ ] [1d] [Andrew] Setup Elastic Search backend with any ML model directly from an example.
+  - [ ] [1d] [Andrew] Setup Elastic Search backend with any ML model directly from an example.
     https://www.elastic.co/search-labs/blog/articles/how-to-deploy-nlp-text-embeddings-and-vector-search
-      Goal: docker compose to run a backend
-  [ ] [0.5h] [Andrew + Alex] Manual test with 2-3 documents added with permissions. Query with embeds + permissions.
-If doesn't work for our case:
-  [ ] Investigate existing DB to use as vectors storage and for the search.
+    
+    Goal: docker compose to run a backend
 
-[ ] App Adapter: Add Embeddings Search for an existing Search Backend
-  [ ] [2d] Documents pipeline: Add Inference processor
+  - [ ] [0.5h] [Andrew + Alex] Manual test with 2-3 documents added with permissions. Query with embeds + permissions.
+
+If doesn't work for our case:
+- [ ] Investigate existing DB to use as vectors storage and for the search.
+---
+- [ ] App Adapter: Add Embeddings Search for an existing Search Backend
+  - [ ] [2d] Documents pipeline: Add Inference processor
       https://www.elastic.co/guide/en/elasticsearch/reference/current/inference-processor.html
-  [ ] [1d] Query pipeline: Add Vector Similarity Search
+  - [ ] [1d] Query pipeline: Add Vector Similarity Search
       https://www.elastic.co/guide/en/elasticsearch/reference/8.1/knn-search.html
-[ ] [2d] App Adapter: Support multiple backends as described in the documents above. 
-[ ] [1-2d] Test: Use existing datasets for search comparison. Includes dataset load.
+- [ ] [2d] App Adapter: Support multiple backends as described in the documents above. 
+- [ ] [1-2d] Test: Use existing datasets for search comparison. Includes dataset load.
 ---
 [Stretch] 
-[ ] Test: Use existing database with chats
-[ ] Test: Few manual queries added. Replace dataset and ensure everyting is working.
-[ ] Test: Generate queries with ChatGPT (who has a subscription?) to skip lot's of manual work.
-### Next:
+- [ ] Test: Use existing database with chats
+- [ ] Test: Few manual queries added. Replace dataset and ensure everyting is working.
+- [ ] Test: Generate queries with ChatGPT (who has a subscription?) to skip lot's of manual work.
+#### Next:
 Goals: 
 - Embed A(A?)/B into the search experience.
 - Text tiling
