@@ -83,6 +83,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyn
         await _tester.JoinChat(publicPlacePrivateChatId, publicPlacePrivateChatInviteId);
         await _tester.JoinChat(privatePlacePublicChatId, privatePlacePublicChatInviteId);
         await _tester.JoinChat(privatePlacePrivateChatId, privatePlacePrivateChatInviteId);
+        await Task.Delay(TimeSpan.FromSeconds(1));
 
         // assert
         var expectedNonPlaceChatIds = new[] {

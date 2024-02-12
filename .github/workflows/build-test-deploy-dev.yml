@@ -29,7 +29,7 @@ permissions:
   statuses: write
 
 jobs:
-  build-image:
+  build:
     name: Build image for ${{ github.ref_name }}
     if: |
       github.ref == 'refs/heads/master' ||
@@ -276,7 +276,7 @@ jobs:
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
-      - build-image
+      - build
       - unit-tests
       - integration-tests
     environment: dev
@@ -326,7 +326,7 @@ jobs:
       startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
     needs:
-      - build-image
+      - build
       - deploy-dev
     environment: prod
     steps:
