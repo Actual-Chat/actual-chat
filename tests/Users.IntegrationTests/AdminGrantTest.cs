@@ -7,22 +7,20 @@ using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 namespace ActualChat.Users.IntegrationTests;
 
 [Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
-public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-
     private WebClientTester _tester = null!;
     private IAccountsBackend _accounts = null!;
 
-    public Task InitializeAsync()
+    public override Task InitializeAsync()
     {
         _tester = Host.NewWebClientTester(Out);
         _accounts = Host.Services.GetRequiredService<IAccountsBackend>();
         return Task.CompletedTask;
     }
 
-    public Task DisposeAsync()
+    public override Task DisposeAsync()
         => _tester.DisposeAsync().AsTask();
 
     [Fact]

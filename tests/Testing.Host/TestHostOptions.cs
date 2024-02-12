@@ -30,11 +30,28 @@ public record TestAppHostOptions
         },
     };
 
-    public string? ServerUrls { get; init; } = null;
-    public Action<IConfigurationBuilder>? HostConfigurationExtender { get; init; } = null;
-    public Action<IConfigurationBuilder>? AppConfigurationExtender { get; init; } = null;
-    public Action<WebHostBuilderContext, IServiceCollection>? AppServicesExtender { get; init; } = null;
+    public string InstanceName { get; init; } = "";
+    public ITestOutputHelper Output { get; init; } = NullTestOutput.Instance;
+    public string? ServerUrls { get; init; }
+    public Action<IConfigurationBuilder>? HostConfigurationExtender { get; init; }
+    public Action<IConfigurationBuilder>? AppConfigurationExtender { get; init; }
+    public Action<WebHostBuilderContext, IServiceCollection>? AppServicesExtender { get; init; }
     public ChatDbInitializer.Options ChatDbInitializerOptions { get; init; } = ChatDbInitializer.Options.None;
     public bool MustInitializeDb { get; init; }
     public bool MustStart { get; init; }
+
+    public TestAppHostOptions With(string instanceName)
+        => this with { InstanceName = instanceName };
+    public TestAppHostOptions With(ITestOutputHelper output)
+        => this with { Output = output };
+    public TestAppHostOptions With(string instanceName, ITestOutputHelper output)
+        => this with {
+            InstanceName = instanceName,
+            Output = output,
+        };
+    public TestAppHostOptions With(string instanceName, IMessageSink messageSink)
+        => this with {
+            InstanceName = instanceName,
+            Output = new TestOutputAdapter(messageSink),
+        };
 }

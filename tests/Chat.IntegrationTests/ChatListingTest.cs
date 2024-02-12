@@ -6,14 +6,12 @@ namespace ActualChat.Chat.IntegrationTests;
 
 // TODO: merge with ChatOperationsTest
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
-public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
 
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-
-    public Task InitializeAsync()
+    public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         _tester = Host.NewWebClientTester(Out);
@@ -21,7 +19,7 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out): IA
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
@@ -58,7 +56,9 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out): IA
         await foreach (var chats in chatsBackend.Batches(now, ChatId.None, limit, CancellationToken.None)) {
             chats.Should().NotBeEmpty();
             var chatIds = chats
+#pragma warning disable CA1310
                 .Where(c => c.Title.StartsWith("Chat"))
+#pragma warning restore CA1310
                 .Select(x => x.Id)
                 .ToList();
 

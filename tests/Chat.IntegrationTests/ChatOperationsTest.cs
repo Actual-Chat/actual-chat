@@ -11,10 +11,8 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
 public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -142,7 +140,7 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task NotesChatCreatedOnSignIn()
     {
-        using var appHost = await NewAppHost(TestAppHostOptions.Default with {
+        using var appHost = await Fixture.NewHost(options => options with {
             ChatDbInitializerOptions = new ChatDbInitializer.Options {
                 AddNotesChat = true,
             },
@@ -435,6 +433,11 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
             TimeSpan.FromSeconds(10));
     }
 
+    // Private methods
+
+    private Task<TestAppHost> NewAppHost()
+        => TestAppHostFactory.NewAppHost(TestAppHostOptions.Default.With(Out));
+
     private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
     {
         var authors = services.GetRequiredService<IAuthors>();
@@ -456,7 +459,4 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var authorIds = await authorsBackend.ListAuthorIds(chatId, default);
         authorIds.Should().NotContain(author.Id);
     }
-
-    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
-        => TestAppHostFactory.NewAppHost(Out, options);
 }

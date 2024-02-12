@@ -11,10 +11,8 @@ namespace ActualChat.Audio.IntegrationTests;
 
 [Collection(nameof(AudioCollection)), Trait("Category", nameof(AudioCollection))]
 public class AudioProcessorTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-
     [Theory(Skip = "Flaky")]
     [InlineData(false)]
     [InlineData(true)]
