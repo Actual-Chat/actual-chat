@@ -7,7 +7,7 @@ namespace ActualChat.Chat.UI.Blazor.PlaywrightTests;
 
 [Collection(nameof(ChatUIAutomationCollection)), Trait("Category", nameof(ChatUIAutomationCollection))]
 public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const string ChatId = "the-actual-one";
 

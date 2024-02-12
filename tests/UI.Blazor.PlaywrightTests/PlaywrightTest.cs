@@ -5,7 +5,7 @@ namespace ActualChat.UI.Blazor.PlaywrightTests;
 
 [Collection(nameof(UIAutomationCollection)), Trait("Category", nameof(UIAutomationCollection))]
 public class PlaywrightTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
     public async Task CloseBrowserTest()

@@ -6,7 +6,7 @@ namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
 public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
     private ISearchBackend _sut = null!;

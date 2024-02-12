@@ -11,7 +11,7 @@ namespace ActualChat.Contacts.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(ContactUICollection)), Trait("Category", nameof(ContactUICollection))]
 public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
     private IExternalContacts _externalContacts = null!;

@@ -8,7 +8,7 @@ namespace ActualChat.Contacts.IntegrationTests;
 
 [Collection(nameof(ContactCollection)), Trait("Category", nameof(ContactCollection))]
 public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
     private IContacts _contacts = null!;

@@ -5,7 +5,7 @@ namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(ChatUICollection)), Trait("Category", nameof(ChatUICollection))]
 public class AvatarsTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact(Skip = "TODO(DF): fix for CI")]
     public async Task CanCreateAnAvatar()

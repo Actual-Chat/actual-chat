@@ -8,7 +8,7 @@ namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
 public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     public override Task InitializeAsync()
     {
@@ -379,7 +379,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     private Task<TestAppHost> NewSearchEnabledAppHost()
-        => fixture.NewHost(options => options with {
+        => Fixture.NewHost(options => options with {
                 AppConfigurationExtender = cfg => {
                     cfg.AddInMemory(
                         ("SearchSettings:IsSearchEnabled", "true"),

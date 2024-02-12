@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(UICollection)), Trait("Category", nameof(UICollection))]
 public class ExampleTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
     public Task SessionTest()
