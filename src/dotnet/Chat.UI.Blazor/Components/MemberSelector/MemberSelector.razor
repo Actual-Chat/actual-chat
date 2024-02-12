@@ -7,7 +7,7 @@
 
 <SearchBox
     Class="icon-alight-right"
-    Placeholder="Whom would you like to add?"
+    Placeholder="@SearchBoxPlaceholder"
     MaxLength="@Constants.Chat.MaxSearchFilterLength"
     TextChanged="@OnFilter"/>
 <div class="contact-selector-badges">
@@ -62,6 +62,11 @@
     private CancellationToken DisposeToken { get; set; }
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private Session Session => Hub.Session();
+    private IStateFactory StateFactory => Hub.StateFactory();
+    private IAccounts Accounts => Hub.Accounts;
+
+    [Parameter] public string SearchBoxPlaceholder { get; set; } = "Whom would you like to add?";
     [Parameter, EditorRequired] public IMemberSelectorDataProvider DataProvider { get; set; } = null!;
     [Parameter] public EventCallback Changed { get; set; }
 
@@ -74,16 +79,15 @@
         DisposeTokenSource = new();
         DisposeToken = DisposeTokenSource.Token;
 
-        _selectedUserIds = Hub.StateFactory().NewMutable(
+        _selectedUserIds = StateFactory.NewMutable(
             ImmutableHashSet<UserId>.Empty,
             StateCategories.Get(GetType(), nameof(SelectedUserIds)));
         _selectedUserIds.Updated += OnSelectedUserIdsUpdated;
 
         var userIds = await DataProvider.ListUserIds(DisposeToken);
 
-        var session = Hub.Session();
         var accounts = await userIds
-            .Select(c => Hub.Accounts.Get(session, c, DisposeToken))
+            .Select(c => Accounts.Get(Session, c, DisposeToken))
             .Collect()
             .ConfigureAwait(false);
 
@@ -142,6 +146,7 @@
     private void Remove(Contact contact) {
         if (contact.IsExisting)
             return;
+        contact.IsChecked = false;
         _selectedUserIds.Set(contact.Account.Id, static (userId1, x) => x.Value.Remove(userId1));
     }
 

@@ -41,7 +41,8 @@ public static class ShareUIExt
         if (chat.IsPublic)
             return new ShareModalModel(
                 ShareKind.Chat, title, chat.Title,
-                new(text, Links.Chat(chat.Id)));
+                new(text, Links.Chat(chat.Id)),
+                new PrivatePlaceMembersShareSelector(chat.Id));
 
         var invites = hub.GetRequiredService<IInvites>();
         var invite = await invites.GetOrGenerateChatInvite(session, chat.Id, cancellationToken).ConfigureAwait(false);
@@ -51,6 +52,7 @@ public static class ShareUIExt
         title = "Share private chat join link";
         return new ShareModalModel(
             ShareKind.ChatInvite, title, chat.Title,
-            new(text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)));
+            new(text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
+            new PrivatePlaceMembersShareSelector(chat.Id));
     }
 }

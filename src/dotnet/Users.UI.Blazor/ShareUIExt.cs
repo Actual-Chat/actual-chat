@@ -34,7 +34,8 @@ public static class ShareUIExt
         var text = $"{name} on Actual Chat";
         return new ShareModalModel(
             ShareKind.Contact, title, name,
-            new(text, Links.User(ownAccount.Id)));
+            new(text, Links.User(ownAccount.Id)),
+            null);
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(
@@ -61,6 +62,7 @@ public static class ShareUIExt
         var text = $"{name} on Actual Chat";
         return new ShareModalModel(
             ShareKind.Contact, title, name,
-            new(text, Links.User(account.Id)));
+            new(text, Links.User(account.Id)),
+            null);
     }
 }
