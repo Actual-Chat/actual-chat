@@ -5,7 +5,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 
 [Collection(nameof(NonStartingServerCollection)), Trait("Category", nameof(NonStartingServerCollection))]
 public class RedisMeshLocksTest(NonStartingAppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<NonStartingAppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<NonStartingAppHostFixture>(fixture, @out)
 {
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()

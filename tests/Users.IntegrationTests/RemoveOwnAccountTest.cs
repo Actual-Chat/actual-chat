@@ -6,7 +6,7 @@ namespace ActualChat.Users.IntegrationTests;
 
 [Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
 public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private ChatId TestChatId { get; } = new("the-actual-one");
 

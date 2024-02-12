@@ -11,7 +11,7 @@ namespace ActualChat.Contacts.IntegrationTests;
 
 [Collection(nameof(ExternalContactStressCollection)), Trait("Category", nameof(ExternalContactStressCollection))]
 public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<ExternalStressAppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<ExternalStressAppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
     private ICommander _commander = null!;

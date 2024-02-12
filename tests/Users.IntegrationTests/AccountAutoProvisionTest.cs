@@ -5,7 +5,7 @@ namespace ActualChat.Users.IntegrationTests;
 
 [Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
 public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
 

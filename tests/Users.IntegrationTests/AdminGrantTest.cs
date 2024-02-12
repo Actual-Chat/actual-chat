@@ -8,7 +8,7 @@ namespace ActualChat.Users.IntegrationTests;
 
 [Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
 public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
     private IAccountsBackend _accounts = null!;

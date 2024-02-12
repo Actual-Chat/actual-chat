@@ -5,7 +5,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
 public class ChatEntryReaderTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private ChatId TestChatId { get; } = new("the-actual-one");
 

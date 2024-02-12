@@ -7,7 +7,7 @@ namespace ActualChat.Chat.IntegrationTests;
 // TODO: merge with ChatOperationsTest
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
 public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
 

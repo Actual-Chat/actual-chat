@@ -4,7 +4,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
 public class AuthorsTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact(Skip = "Fails on CI")]
     public async Task NullAuthorResult()

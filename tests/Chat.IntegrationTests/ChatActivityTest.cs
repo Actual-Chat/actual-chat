@@ -6,7 +6,7 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
 public class ChatActivityTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : AppHostTestBase<AppHostFixture>(fixture, @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private ChatId TestChatId => Constants.Chat.DefaultChatId;
 

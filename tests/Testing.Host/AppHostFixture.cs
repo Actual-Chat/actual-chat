@@ -8,7 +8,7 @@ public abstract class AppHostFixture(
 {
     public string InstanceName { get; } = instanceName;
     public IMessageSink MessageSink { get; } = messageSink;
-    public TestAppHostOptions BaseHostOptions { get; } = baseHostOptions ?? TestAppHostOptions.WithDefaultChat;
+    public TestAppHostOptions BaseHostOptions { get; } = baseHostOptions ?? TestAppHostOptions.Default;
     public TestAppHost Host { get; protected set; } = null!;
 
     async Task IAsyncLifetime.InitializeAsync()
