@@ -10,7 +10,7 @@ public class RedisMeshLocksTest(NonStartingAppHostFixture fixture, ITestOutputHe
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
-        var locks = Host.Services.MeshLocks<InfrastructureDbContext>();
+        var locks = Host.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
@@ -40,7 +40,7 @@ public class RedisMeshLocksTest(NonStartingAppHostFixture fixture, ITestOutputHe
     [Fact(Timeout = 30_000)]
     public async Task LockIsGoneTest()
     {
-        var locks = Host.Services.MeshLocks<InfrastructureDbContext>();
+        var locks = Host.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
@@ -70,7 +70,7 @@ public class RedisMeshLocksTest(NonStartingAppHostFixture fixture, ITestOutputHe
     [Fact(Timeout = 30_000)]
     public async Task ReleaseNotifyTest()
     {
-        var locks = Host.Services.MeshLocks<InfrastructureDbContext>();
+        var locks = Host.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(10) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();
