@@ -9,7 +9,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class LocalIdGeneratorTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     [Fact(Skip = "For manual runs only")]
     public async Task LocalIdsOnDifferentHostsAreUnique()

@@ -13,7 +13,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     [Theory]
     [InlineData(false)]

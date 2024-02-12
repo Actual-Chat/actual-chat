@@ -6,7 +6,7 @@ namespace ActualChat.Users.IntegrationTests;
 public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     [Fact]
     public async Task SetupSessionBugTest1()

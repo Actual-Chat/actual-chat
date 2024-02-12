@@ -12,7 +12,7 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
     private const string ChatTitle = "General";
 
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     [Fact]
     public async Task TryGetNonExistingPlace()

@@ -11,7 +11,7 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out): IA
     private WebClientTester _tester = null!;
 
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     public Task InitializeAsync()
     {

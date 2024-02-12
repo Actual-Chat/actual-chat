@@ -6,7 +6,7 @@ namespace ActualChat.Core.Server.IntegrationTests;
 public class ShardWorkerTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()

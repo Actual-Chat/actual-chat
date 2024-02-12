@@ -7,7 +7,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class ChatEntryReaderTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
     private ChatId TestChatId { get; } = new("the-actual-one");
 
     [Fact(Skip = "Flaky")]
