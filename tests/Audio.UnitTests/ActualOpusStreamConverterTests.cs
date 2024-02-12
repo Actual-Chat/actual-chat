@@ -61,7 +61,7 @@ public class ActualOpusStreamConverterTests(ILogger log)
         outArray.Length.Should().Be(10571); // we added preSkip and createdAt with this commit
     }
 
-    [Fact(Skip = "Manual")]
+    [Fact(Skip = "For manual runs only")]
     public async Task ReadWriteFile()
     {
         var converter = new ActualOpusStreamConverter(MomentClockSet.Default, Log);

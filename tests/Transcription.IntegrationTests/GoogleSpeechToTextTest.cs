@@ -15,7 +15,7 @@ public class GoogleSpeechToTextTest : TestBase
     public GoogleSpeechToTextTest(ILogger log, ITestOutputHelper @out) : base(@out)
         => Log = log;
 
-    [Theory(Skip = "Manual")]
+    [Theory(Skip = "For manual runs only")]
     [InlineData("0004-AK.webm", false)]
     [InlineData("0004-AK.webm", true)]
     [InlineData("0004-AK.opus", false)]

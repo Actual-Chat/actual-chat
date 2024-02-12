@@ -152,7 +152,7 @@ public class AudioProcessorTest : AppHostTestBase
         lastEntry.Content.Should().Be("И");
     }
 
-    [Fact(Skip = "Manual")]
+    [Fact(Skip = "For manual runs only")]
     public async Task LongTranscriptionTest()
     {
         using var appHost = await NewAppHost();

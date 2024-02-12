@@ -11,7 +11,7 @@ public class LocalIdGeneratorTest: AppHostTestBase
     public LocalIdGeneratorTest(ITestOutputHelper @out) : base(@out)
     { }
 
-    [Fact(Skip = "Manual")]
+    [Fact(Skip = "For manual runs only")]
     public async Task LocalIdsOnDifferentHostsAreUnique()
     {
         using var appHost1 = await NewAppHost();
