@@ -117,7 +117,7 @@ public class WebMWriterTest : TestBase
         }
     }
 
-    [Fact(Skip = "Run manually to produce out file")]
+    [Fact(Skip = "Run it manually to produce file-out.webm")]
     public async Task ReadWriteToFileTest()
     {
         await using var inputStream = new FileStream(
