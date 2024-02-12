@@ -238,14 +238,14 @@ Goals:
     [ ] How number of different permissions affect preformance?
         Test: perf test.
 If all good:
-  [ ] Setup Elastic Search backend with any ML model directly from an example.
+  [ ] [Andrew] Setup Elastic Search backend with any ML model directly from an example.
     https://www.elastic.co/search-labs/blog/articles/how-to-deploy-nlp-text-embeddings-and-vector-search
       Goal: docker compose to run a backend
-  [ ] Manual test with 2-3 documents added with permissions. Query with embeds + permissions.
+  [ ] [Andrew + Alex] Manual test with 2-3 documents added with permissions. Query with embeds + permissions.
 If doesn't work for our case:
   [ ] Investigate existing DB to use as vectors storage and for the search.
 
-[ ] App Adapter: Add Embeddings Search for an existing Search Backend:
+[ ] App Adapter: Add Embeddings Search for an existing Search Backend
   [ ] Documents pipeline: Add Inference processor
       https://www.elastic.co/guide/en/elasticsearch/reference/current/inference-processor.html
   [ ] Query pipeline: Add Vector Similarity Search
