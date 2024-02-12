@@ -16,7 +16,7 @@ public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepGramTra
     private ITestOutputHelper Out { get; } = @out;
     private ILogger<DeepGramTranscriber> Log { get; } = log;
 
-    [Theory(Skip = "Manual")]
+    [Theory(Skip = "For manual runs only")]
     // [InlineData("file.webm", false)]
     [InlineData("file.webm", true)]
     // [InlineData("0002-AK.opuss", true)]

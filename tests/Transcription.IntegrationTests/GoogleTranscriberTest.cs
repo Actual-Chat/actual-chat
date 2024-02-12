@@ -21,7 +21,7 @@ public class GoogleTranscriberTest(
     private CoreServerSettings CoreServerSettings { get; }
         = configuration.GetSettings<CoreServerSettings>(nameof(CoreSettings));
 
-    [Theory(Skip = "Manual")]
+    [Theory(Skip = "For manual runs only")]
     [InlineData("file.webm", false)]
     [InlineData("file.webm", true)]
     [InlineData("0002-AK.opuss", true)]
