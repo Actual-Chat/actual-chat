@@ -1,4 +1,3 @@
-using ActualChat.App.Server;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
@@ -46,7 +45,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         LastName = "Lake",
     };
 
-    public Task InitializeAsync()
+    public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         _tester = Host.NewWebClientTester(Out);
@@ -55,7 +54,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         await _tester.DisposeAsync().AsTask();
