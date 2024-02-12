@@ -6,10 +6,9 @@ using ActualLab.Fusion.EntityFramework;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
-public class LocalIdGeneratorTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class LocalIdGeneratorTest(ITestOutputHelper @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
+    private ITestOutputHelper Out { get; } = @out;
 
     [Fact(Skip = "For manual runs only")]
     public async Task LocalIdsOnDifferentHostsAreUnique()
