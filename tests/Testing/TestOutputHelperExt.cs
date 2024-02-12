@@ -28,9 +28,12 @@ public static class TestOutputHelperExt
     }
 
     public static ITest? GetTest(this ITestOutputHelper output)
-        => output.GetWrappedOutput().GetType()
+    {
+        output = output.GetWrappedOutput();
+        return output.GetType()
             .GetField("test", BindingFlags.Instance | BindingFlags.NonPublic)
             ?.GetValue(output) as ITest;
+    }
 
     public static Tracer NewTracer(this ITestOutputHelper output, [CallerMemberName] string name = "")
         => new (name, x => output.WriteLine(x.Format()));

@@ -435,9 +435,6 @@ public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     // Private methods
 
-    private Task<TestAppHost> NewAppHost()
-        => TestAppHostFactory.NewAppHost(TestAppHostOptions.Default.With(Out));
-
     private static async Task AssertNotJoined(IServiceProvider services, Session session, ChatId chatId, Account account)
     {
         var authors = services.GetRequiredService<IAuthors>();

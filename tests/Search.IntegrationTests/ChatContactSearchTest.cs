@@ -7,18 +7,20 @@ using ActualLab.Generators;
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
-public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private ITestOutputHelper Out { get; } = @out;
-
-    public Task InitializeAsync()
+    public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        return Task.CompletedTask;
+        return base.InitializeAsync();
     }
 
-    public Task DisposeAsync()
-        => Task.FromResult(Tracer.Default = Tracer.None);
+    public override Task DisposeAsync()
+    {
+        Tracer.Default = Tracer.None;
+        return base.DisposeAsync();
+    }
 
     [Fact]
     public async Task ShouldFindAddedChats()

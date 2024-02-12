@@ -5,20 +5,19 @@ using ActualLab.Versioning;
 namespace ActualChat.Users.IntegrationTests;
 
 [Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
-public class UserStatusTest(ITestOutputHelper @out): IAsyncLifetime
+public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
-    private ITestOutputHelper Out { get; } = @out;
 
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
     private Session _adminSession = null!;
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
-        _appHost = await TestAppHostFactory.NewAppHost(TestAppHostOptions.Default with {
-            Output = Out,
+        _appHost = await Fixture.NewHost(options => options with {
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
             },
@@ -30,7 +29,7 @@ public class UserStatusTest(ITestOutputHelper @out): IAsyncLifetime
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();
