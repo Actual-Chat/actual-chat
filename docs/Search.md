@@ -203,3 +203,57 @@ Example criteria:
 - When deployment happens, new replicas start working with a newer index version
 - Older replicas continue working with a previous index version
 - Ideally, we shouldn't switch to a newer version until new version index ready to use to avoid search breaking on index rebuild
+
+## ROADMAP
+### 12-16 Feb'24
+Goals:
+- Use Elastic or OpenSearch with ML as an example implementation for a backend.
+  https://opensearch.org/docs/latest/search-plugins/knn/index/
+  https://www.elastic.co/elasticsearch/vector-database
+  - Ensure that elastic has enough functionality that we need.
+  Notes: Why either of the above chosen: 
+  It seems Elastic is a good example for us for the following reasons:
+  - Short learning curve (prev. expertise)
+  - Easy to replace since it works on top of common low level abstractions
+  - Gives some level of understanding on the flow and has a good starting point (manuals)
+- Create/try existing dataset for ML searches
+- Put a baseline for search results comparison (stand)
+--
+[x] Elastic vs OpenSearch.
+    - TLDR; No major differences so far.
+    - Both have knn search available.
+      Although OpenSearch provides more options: Painless extensions.
+    - Elastic claims to have better search performance.
+      Would it matter for the knn searches though? Since it will be a linear scan anyway.
+    - There's already a use-case of Elastic in our system.
+[ ] Elastic: Investigate documents permissions.
+    ? https://www.elastic.co/security-and-compliance
+    https://www.elastic.co/guide/en/elasticsearch/reference/current/document-level-security.html
+    Check limitations: 
+    [ ] What is the limit on number of different permissions in the system?
+    [ ] How number of different permissions affect preformance?
+If all good:
+  [ ] Setup Elastic Search backend with any ML model directly from an example.
+    https://www.elastic.co/search-labs/blog/articles/how-to-deploy-nlp-text-embeddings-and-vector-search
+      Goal: docker compose to run a backend
+  [ ] Manual test with 2-3 documents added with permissions. Query with embeds + permissions.
+If doesn't work for our case:
+  [ ] Investigate existing DB to use as vectors storage and for the search.
+
+[ ] App Adapter: Add Embeddings Search for an existing Search Backend:
+  [ ] Documents pipeline: Add Inference processor
+      https://www.elastic.co/guide/en/elasticsearch/reference/current/inference-processor.html
+  [ ] Query pipeline: Add Vector Similarity Search
+      https://www.elastic.co/guide/en/elasticsearch/reference/8.1/knn-search.html
+[ ] App Adapter: Support multiple backends as described in the documents above. 
+[ ] Test: Use existing datasets for search comparison 
+---
+[Stretch] 
+[ ] Test: Use existing database with chats:
+[ ] Test: Few manual queries added. Replace dataset and ensure everyting is working.
+[ ] Test: Generate queries with ChatGPT (who has a subscription?) to skip lot's of manual work.
+### Next:
+Goals: 
+- Embed A(A?)/B into the search experience.
+- Text tiling
+
