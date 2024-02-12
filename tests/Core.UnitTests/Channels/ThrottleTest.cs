@@ -2,7 +2,7 @@ namespace ActualChat.Core.UnitTests.Channels;
 
 public class ThrottleTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    [Fact(Skip = "Flacky")]
+    [Fact(Skip = "Flaky")]
     public async Task BasicTest()
     {
         // Normal sequence
