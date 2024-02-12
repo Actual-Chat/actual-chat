@@ -6,7 +6,7 @@ namespace ActualChat.UI.Blazor.IntegrationTests;
 public class ExampleTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     [Fact]
     public Task SessionTest()

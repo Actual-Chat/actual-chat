@@ -10,7 +10,7 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
 {
     private const string ChatId = "the-actual-one";
     private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     private PlaywrightTester _tester = null!;
     private TestSettings _testSettings = null!;
