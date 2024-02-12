@@ -10,11 +10,9 @@ using Microsoft.Toolkit.HighPerformance;
 namespace ActualChat.Contacts.IntegrationTests;
 
 [Collection(nameof(ExternalContactStressCollection)), Trait("Category", nameof(ExternalContactStressCollection))]
-public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<ExternalStressAppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-
     private WebClientTester _tester = null!;
     private ICommander _commander = null!;
     private IAccounts _accounts = null!;
@@ -34,7 +32,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         .WithPhone(JackPhone)
         .WithClaim(ClaimTypes.Email, JackEmail);
 
-    public Task InitializeAsync()
+    public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         _tester = Host.NewWebClientTester(Out);
@@ -46,15 +44,13 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();
     }
-
-
 
     [Theory]
     [InlineData("small", 5)]
