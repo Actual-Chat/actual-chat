@@ -93,7 +93,8 @@
                 var text = $"\"{chat.Title}\" on Actual Chat";
                 var shareModel = new ShareModalModel(
                     ShareKind.ChatInvite, title, chat.Title,
-                    new(text, link));
+                    new(text, link),
+                    new PrivatePlaceMembersShareSelector(chat.Id));
                 _ = ShareUI.Share(shareModel);
                 return;
             }
@@ -107,7 +108,8 @@
                 var text = $"\"{place.Title}\" on Actual Chat";
                 var shareModel = new ShareModalModel(
                     ShareKind.PlaceInvite, title, place.Title,
-                    new(text, link));
+                    new(text, link),
+                    null);
                 _ = ShareUI.Share(shareModel);
                 return;
             }

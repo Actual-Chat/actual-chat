@@ -45,7 +45,7 @@
 
     protected override void OnInitialized() {
         _chatId = ChatId.Parse(ChatSid);
-        _memberSelectorBackend = new ChatMemberSelector(Hub, _chatId);
+        _memberSelectorBackend = new NewChatMemberSelector(Hub, _chatId);
     }
 
     private async Task OnAdd() {

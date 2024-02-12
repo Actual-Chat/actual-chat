@@ -32,9 +32,9 @@
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton("Add", OnAdd);
         _submitButtonInfo.CanExecute = false;
         if (Context.Model is ChatId chatId)
-            _backend = new ChatMemberSelector(Hub, chatId);
+            _backend = new NewChatMemberSelector(Hub, chatId);
         else if (Context.Model is PlaceId placeId)
-            _backend = new PlaceMemberSelector(Hub, placeId);
+            _backend = new NewPlaceMemberSelector(Hub, placeId);
         else
             throw StandardError.NotSupported("Not supported model type");
         Context.SetTitle("Add members");
