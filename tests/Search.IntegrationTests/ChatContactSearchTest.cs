@@ -24,7 +24,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldFindAddedChats()
     {
         // arrange
-        using var appHost = await NewAppHost();
+        using var appHost = await NewSearchEnabledAppHost();
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -113,7 +113,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldFindUpdateChats()
     {
         // arrange
-        using var appHost = await NewAppHost();
+        using var appHost = await NewSearchEnabledAppHost();
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -223,7 +223,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldNotFindDeletedChats()
     {
         // arrange
-        using var appHost = await NewAppHost();
+        using var appHost = await NewSearchEnabledAppHost();
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -376,10 +376,8 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return searchResults.Hits;
     }
 
-    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
-        => TestAppHostFactory.NewAppHost(Out,
-            fixture.DbInstanceName,
-            TestAppHostOptions.WithDefaultChat with {
+    private Task<TestAppHost> NewSearchEnabledAppHost()
+        => fixture.NewHost(options => options with {
                 AppConfigurationExtender = cfg => {
                     cfg.AddInMemory(
                         ("SearchSettings:IsSearchEnabled", "true"),

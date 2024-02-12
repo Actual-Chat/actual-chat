@@ -6,11 +6,9 @@ using ActualChat.Users;
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
-public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-
     private WebClientTester _tester = null!;
     private ISearchBackend _sut = null!;
     private ICommander _commander = null!;

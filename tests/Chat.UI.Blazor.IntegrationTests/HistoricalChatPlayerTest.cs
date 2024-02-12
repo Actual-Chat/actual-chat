@@ -2,17 +2,14 @@ using ActualChat.App.Server;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
 [Collection(nameof(ChatUICollection)), Trait("Category", nameof(ChatUICollection))]
 public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-
     [Fact(Timeout = 60_000)]
     public async Task RewindBackTest()
     {

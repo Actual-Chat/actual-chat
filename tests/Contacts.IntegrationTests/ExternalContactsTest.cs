@@ -10,11 +10,9 @@ using Microsoft.Toolkit.HighPerformance;
 namespace ActualChat.Contacts.IntegrationTests;
 
 [Collection(nameof(ContactCollection)), Trait("Category", nameof(ContactCollection))]
-public class ExternalContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+public class ExternalContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-
     private WebClientTester _tester = null!;
     private IExternalContacts _externalContacts = null!;
     private ICommander _commander = null!;
@@ -35,7 +33,7 @@ public class ExternalContactsTest(AppHostFixture fixture, ITestOutputHelper @out
         .WithPhone(JackPhone)
         .WithClaim(ClaimTypes.Email, JackEmail);
 
-    public Task InitializeAsync()
+    public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         _tester = Host.NewWebClientTester(Out);
@@ -48,7 +46,7 @@ public class ExternalContactsTest(AppHostFixture fixture, ITestOutputHelper @out
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
