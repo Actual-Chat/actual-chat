@@ -11,14 +11,20 @@
                     @NavbarUI.SelectedGroupTitle
                 </div>
                 <div class="c-ending">
-                    <ChatSearchBox
-                        @ref="_searchBoxRef"
-                        Placeholder="Find chat..."
-                        IsCollapsed="true"
-                        ShowSpinner="true"
-                        ShowClose="true"
-                        MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                        TextChanged="@_onSearchBoxTextChanged"/>
+                    @if (!_enableIncompleteUI) {
+                        <ChatSearchBox
+                            @ref="_searchBoxRef"
+                            Placeholder="Find chat..."
+                            IsCollapsed="true"
+                            ShowSpinner="true"
+                            ShowClose="true"
+                            MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                            TextChanged="@_onSearchBoxTextChanged"/>
+                    } else {
+                        <HeaderButton Click="@OnSearchClick">
+                            <i class="icon-search text-2xl"></i>
+                        </HeaderButton>
+                    }
                 </div>
             </div>
         </div>;
@@ -75,8 +81,11 @@
     private ChatSearchBox? _searchBoxRef = null;
     private EventCallback<string> _onSearchBoxTextChanged;
     private Place? _place = null;
+    private bool _enableIncompleteUI;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
+    [Inject] private Features Features { get; init; } = null!;
 
     private NavbarUI NavbarUI => Hub.NavbarUI;
     private SearchUI SearchUI => Hub.SearchUI;
@@ -84,6 +93,7 @@
 
     protected override async Task OnInitializedAsync() {
         _onSearchBoxTextChanged = NoStateHasChanged.EventCallback<string>(OnSearchBoxTextChanged);
+        _enableIncompleteUI = await Features.Get<Features_EnableIncompleteUI, bool>(CancellationToken.None);
         NavbarUI.SelectedGroupChanged += OnNavbarSelectedGroupOrTitleChanged;
         NavbarUI.SelectedGroupTitleUpdated += OnNavbarSelectedGroupOrTitleChanged;
         await UpdatePlace();
@@ -114,4 +124,7 @@
             place = await Hub.Places.Get(Hub.Session(), placeId, default).ConfigureAwait(false);
         _place = place;
     }
+
+    private void OnSearchClick()
+        => PanelsUI.Left.SearchToggle();
 }

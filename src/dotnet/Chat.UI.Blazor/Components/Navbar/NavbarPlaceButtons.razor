@@ -1,4 +1,6 @@
-﻿@using ActualChat.Media;
+@using ActualChat.Media;
+@using ActualChat.Chat.UI.Blazor.Module
+@using ActualChat.Kvas;
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits ComputedStateComponent<NavbarPlaceButtons.Model>
 @{
@@ -10,9 +12,12 @@
 
 @if (places.Count > 0) {
     var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
-    <div class="navbar-place-buttons">
+    <div @ref="Ref" class="navbar-place-buttons">
         @foreach (var place in places) {
             <NavbarGroupSelectionButton
+                @key="@place.Id"
+                AdditionalAttributes="@(new Dictionary<string, object>() { {"data-place-id", place.Id} })"
+                CanMove="@true"
                 Title="@place.Title"
                 Id="@place.Id.GetNavbarGroupId()"
                 Tooltip="@place.Title">
@@ -34,10 +39,34 @@
 }
 
 @code {
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.PlaceButtons.create";
+    private DotNetObjectReference<NavbarPlaceButtons> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
     [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
     private Session Session => Hub.Session();
 
+    private PlacesSettings? _placesSettings;
+    private PlacesSettings PlacesSettings => _placesSettings ??= new(Hub.Services, Hub.AccountSettings());
+
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+        }
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -47,20 +76,27 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var placeIds = await Hub.Contacts.ListPlaceIds(Session, cancellationToken);
+
         var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken);
         if (selectedChatId.IsPlaceChat && !placeIds.Contains(selectedChatId.PlaceId))
             placeIds = placeIds.Add(selectedChatId.PlaceId, true);
-        var places = (await placeIds
-            .Select(id => Hub.Places.Get(Session, id, cancellationToken))
-            .Collect())
+
+        var placesOrdered = await PlacesSettings.GetPlacesOrder(Session, placeIds.Items, cancellationToken);
+
+        var places = (await placesOrdered
+                .Select(id => Hub.Places.Get(Session, id, cancellationToken))
+                .Collect())
             .SkipNullItems()
-            .OrderBy(c => c.CreatedAt)
             .ToApiArray();
 
         return new Model {
-            Places = places
+            Places = places,
         };
     }
+
+    [JSInvokable]
+    public Task StorePlacesOrder(PlaceId[] placeIds)
+        => PlacesSettings.SetPlacesOrder(Session, placeIds);
 
     public record Model {
         public ApiArray<Place> Places { get; init; } = ApiArray.Empty<Place>();

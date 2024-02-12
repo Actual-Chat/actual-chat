@@ -87,6 +87,9 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
             };
         });
 
+        // Configure lifecycle monitor
+        services.AddHostedService<AppHostLifecycleMonitor>();
+
         var moduleServices = new DefaultServiceProviderFactory().CreateServiceProvider(services);
         ModuleHost = new ModuleHostBuilder()
             // From less dependent to more dependent!

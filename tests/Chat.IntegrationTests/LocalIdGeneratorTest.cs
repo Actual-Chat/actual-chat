@@ -2,14 +2,14 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Testing.Host;
 using ActualLab.Fusion.EntityFramework;
-using ActualLab.Redis;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class LocalIdGeneratorTest: AppHostTestBase
+[Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
+public class LocalIdGeneratorTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
-    public LocalIdGeneratorTest(ITestOutputHelper @out) : base(@out)
-    { }
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     [Fact(Skip = "Manual")]
     public async Task LocalIdsOnDifferentHostsAreUnique()
@@ -54,4 +54,7 @@ public class LocalIdGeneratorTest: AppHostTestBase
         //
         // next1.Should().NotBe(next2);
     }
+
+    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
+        => TestAppHostFactory.NewAppHost(Out, options);
 }

@@ -3,13 +3,17 @@ using Microsoft.Playwright;
 
 namespace ActualChat.UI.Blazor.PlaywrightTests;
 
-public class PlaywrightTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(UIAutomationCollection)), Trait("Category", nameof(UIAutomationCollection))]
+public class PlaywrightTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     [Fact]
     public async Task CloseBrowserTest()
     {
-        using var appHost = await NewAppHost();
-        using var tester = appHost.NewPlaywrightTester();
+        var appHost = Host;
+        await using var tester = appHost.NewPlaywrightTester(Out);
         var browser = await tester.NewContext();
         await browser.CloseAsync();
     }
@@ -18,8 +22,8 @@ public class PlaywrightTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task AddMessageTest()
     {
         const float timeout = 20_000f;
-        using var appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat);
-        using var tester = appHost.NewPlaywrightTester();
+        var appHost = Host;
+        await using var tester = appHost.NewPlaywrightTester(Out);
         var account = await tester.SignIn(new User("", "it-works"));
         var (page, _) = await tester.NewPage("chat/the-actual-one");
         await page.WaitForLoadStateAsync(LoadState.Load,
@@ -71,8 +75,8 @@ public class PlaywrightTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task ChatPageTest()
     {
-        using var appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat);
-        using var tester = appHost.NewPlaywrightTester();
+        var appHost = Host;
+        await using var tester = appHost.NewPlaywrightTester(Out);
         var account = await tester.SignIn(new User(Symbol.Empty, "ChatPageTester"));
         var (page, _) = await tester.NewPage("chat/the-actual-one");
 

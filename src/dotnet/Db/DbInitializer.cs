@@ -91,5 +91,9 @@ public abstract class DbInitializer<
         => Task.CompletedTask;
 
     protected void ConfigureContext(TDbContext dbContext)
-        => dbContext.Database.SetCommandTimeout(CommandTimeout);
+    {
+        if (!dbContext.Database.IsInMemory()) {
+            dbContext.Database.SetCommandTimeout(CommandTimeout);
+        }
+    }
 }

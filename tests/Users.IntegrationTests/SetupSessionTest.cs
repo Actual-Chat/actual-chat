@@ -2,18 +2,20 @@
 
 namespace ActualChat.Users.IntegrationTests;
 
-public class SetupSessionTest : AppHostTestBase
+[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
+public class SetupSessionTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
-    public SetupSessionTest(ITestOutputHelper @out) : base(@out) { }
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     [Fact]
     public async Task SetupSessionBugTest1()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         var services = appHost.Services;
         var commander = services.Commander();
 
-        await using var tester = appHost.NewWebClientTester();
+        await using var tester = appHost.NewWebClientTester(Out);
         var session = tester.Session;
 
         var tasks = Enumerable.Range(0, 10)
@@ -30,11 +32,11 @@ public class SetupSessionTest : AppHostTestBase
     [Fact]
     public async Task SetupSessionBugTest2()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         var services = appHost.Services;
         var commander = services.Commander();
 
-        await using var tester = appHost.NewWebClientTester();
+        await using var tester = appHost.NewWebClientTester(Out);
 
         var auth = services.GetRequiredService<IAuth>();
         await Parallel.ForEachAsync(Enumerable.Range(0, 10), async (_, cancellationToken) => {

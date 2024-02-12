@@ -9,7 +9,8 @@
 /* Group toggle button on the left side of the navbar */
 .navbar-button {
     @apply relative;
-    @apply flex-none flex-x items-stretch;
+    @apply flex-none flex-x items-center justify-end;
+    @apply lg:w-20;
 }
 .navbar-button .left-line {
     @apply self-center;
@@ -32,6 +33,15 @@
     @apply min-w-4 min-h-4 w-4 h-4;
     @apply text-[0.625rem];
     @apply bg-danger;
+}
+
+.navbar-button > .c-dots {
+    @apply absolute z-10 left-1;
+    @apply hidden;
+    @apply opacity-50;
+}
+.navbar-button:hover > .c-dots {
+    @apply lg:flex;
 }
 
 /* Navbar content */
@@ -116,6 +126,7 @@ body.hoverable .navbar-item:hover {
 }
 
 .navbar-place-buttons {
+    @apply relative;
     @apply flex-y items-center gap-y-3 md:gap-y-2;
     @apply w-full overflow-y-auto;
     @apply pt-2 -mt-2;
@@ -124,4 +135,52 @@ body.hoverable .navbar-item:hover {
 
 .navbar-place-buttons::-webkit-scrollbar {
     display: none;
+}
+
+.right-line {
+    @apply w-[5px];
+}
+
+.navbar-button.drag-btn .btn.btn-square .navbar-button-content.btn-content,
+.navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
+    @apply h-12 w-12;
+}
+
+body.narrow .navbar-button.drag-btn .btn.btn-square .navbar-button-content.btn-content,
+body.narrow .navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
+    @apply h-10 w-10;
+}
+
+.ghost-btn {
+    @apply fixed z-[1000];
+    @apply flex-x items-center justify-center;
+}
+.ghost-btn > .navbar-button {
+    animation: twitch 200ms 2 forwards;
+}
+.ghost-btn > .navbar-button > .c-dots {
+    @apply opacity-100;
+}
+.ghost-btn > .navbar-button .btn.btn-square {
+    @apply opacity-50;
+}
+.ghost-btn .btn.btn-square .navbar-button-content.btn-content {
+    @apply h-10 w-10 md:h-12 md:w-12;
+}
+@keyframes twitch {
+    0% {
+        transform: rotate(0);
+    }
+    25% {
+        transform: rotate(10deg);
+    }
+    50% {
+        transform: rotate(0);
+    }
+    75% {
+        transform: rotate(-10deg);
+    }
+    100% {
+        transform: rotate(0);
+    }
 }

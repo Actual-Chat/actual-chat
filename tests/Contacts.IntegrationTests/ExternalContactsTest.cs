@@ -1,56 +1,59 @@
 using System.Globalization;
 using System.Security.Claims;
-using ActualChat.App.Server;
 using ActualChat.Performance;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
-public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ExternalContactCollection)), Trait("Category", nameof(ExternalContactCollection))]
+public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     private WebClientTester _tester = null!;
-    private IExternalContacts _sut = null!;
-    private AppHost _appHost = null!;
+    private IExternalContacts _externalContacts = null!;
     private ICommander _commander = null!;
     private IAccounts _accounts = null!;
     private IContacts _contacts = null!;
 
     private static string BobEmail => "bob@actual.chat";
     private static Phone BobPhone => new ("1-2345678901");
-    private static User Bob { get; } = new User("", "BobAdmin")
+    private static User Bob { get; } = new User("", $"Bob-{nameof(ExternalContactsTest)}")
         .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "111"))
         .WithPhone(BobPhone)
         .WithClaim(ClaimTypes.Email, BobEmail);
 
     private static string JackEmail => "jack@actual.chat";
     private static Phone JackPhone => new ("1-3456789012");
-    private static User Jack { get; } = new User("", "JackAdmin")
+    private static User Jack { get; } = new User("", $"JackAdmin-{nameof(ExternalContactsTest)}")
         .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, "222"))
         .WithPhone(JackPhone)
         .WithClaim(ClaimTypes.Email, JackEmail);
 
-    public override async Task InitializeAsync()
+    public Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _appHost = await NewAppHost();
-        _tester = _appHost.NewWebClientTester();
-        _sut = _appHost.Services.GetRequiredService<IExternalContacts>();
-        _accounts = _appHost.Services.GetRequiredService<IAccounts>();
-        _contacts = _appHost.Services.GetRequiredService<IContacts>();
-        _commander = _appHost.Services.Commander();
+        _tester = Host.NewWebClientTester(Out);
+        _externalContacts = Host.Services.GetRequiredService<IExternalContacts>();
+        _accounts = Host.Services.GetRequiredService<IAccounts>();
+        _contacts = Host.Services.GetRequiredService<IContacts>();
+        _commander = Host.Services.Commander();
+
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
+        return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
     }
 
     [Fact]
@@ -174,16 +177,17 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         // arrange
         var bobDeviceId = NewDeviceId();
         var bob = await _tester.SignIn(Bob);
+        var bobContacts0 = await ListContactIds(0);
         var externalContact = new ExternalContact(new ExternalContactId(bob.Id, bobDeviceId, NewDeviceContactId()))
             .WithPhone(JackPhone)
             .WithPhone(new ("1-11111111111"));
 
         // act
         await Add(externalContact);
-        var bobContacts = await ListContactIds(0);
+        var bobContacts = await ListContactIds(bobContacts0.Count);
 
         // assert
-        bobContacts.Should().BeEmpty();
+        bobContacts.Count.Should().Be(bobContacts0.Count);
 
         // act
         var jack = await _tester.SignIn(Jack);
@@ -286,9 +290,9 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     }
 
     [Theory]
-    [InlineData(5)]
-    [InlineData(37)]
-    public async Task StressTest_AllUsersExist_AllAreConnected(int count)
+    [InlineData("small", 5)]
+    [InlineData("medium", 37)]
+    public async Task StressTest_AllUsersExist_AllAreConnected(string prefix, int count)
     {
         // arrange
         var tracer = Tracer.Default;
@@ -296,9 +300,9 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
         var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
         var accounts = new AccountFull[count];
         for (int i = 0; i < accounts.Length; i++) {
-            using var _1 = tracer.Region($"Sign in as user #{i + 1}");
+            using var _1 = tracer.Region($"Sign in as user #{i + 1} {prefix}");
             // TODO: find the way of fast user creation to perform real stress test 🙂
-            accounts[i] = await _tester.SignIn(BuildUser(i + 1));
+            accounts[i] = await _tester.SignIn(BuildUser(prefix, i + 1));
         }
 
         // act
@@ -307,7 +311,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
             using var _2 = tracer.Region("Create external contacts " + account.User.Name);
             await _tester.SignIn(account.User);
             var externalContacts = Enumerable.Range(1, count)
-                .Select(idx => NewExternalContact(account, deviceIds[i], idx))
+                .Select(idx => NewExternalContact(account, deviceIds[i], prefix, idx))
                 .ToArray();
             await Add(externalContacts);
         }
@@ -322,9 +326,9 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     }
 
     [Theory(Skip = "Flaky")]
-    [InlineData(5)]
-    [InlineData(37)]
-    public async Task StressTest_UsersCreatedSequentially_AllAreConnected(int count)
+    [InlineData("small", 5)]
+    [InlineData("medium", 37)]
+    public async Task StressTest_UsersCreatedSequentially_AllAreConnected(string prefix, int count)
     {
         // arrange
         var accounts = new AccountFull[count];
@@ -332,9 +336,9 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
 
         // act
         for (int i = 0; i < accounts.Length; i++) {
-            var account = accounts[i] = await _tester.SignIn(BuildUser(i + 1));
+            var account = accounts[i] = await _tester.SignIn(BuildUser(prefix, i + 1));
             var externalContacts = Enumerable.Range(1, count)
-                .Select(idx => NewExternalContact(account, deviceIds[i], idx))
+                .Select(idx => NewExternalContact(account, deviceIds[i], prefix, idx))
                 .ToArray();
             await Add(externalContacts);
         }
@@ -354,7 +358,7 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     }
 
     private Task<ApiArray<ExternalContact>> List(Symbol deviceId)
-        => _sut.List(_tester.Session, deviceId, CancellationToken.None);
+        => _externalContacts.List(_tester.Session, deviceId, CancellationToken.None);
 
     private async Task Add(params ExternalContact[] externalContacts)
     {
@@ -410,8 +414,8 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     private static ExternalContact NewExternalContact(AccountFull owner, Symbol ownerDeviceId)
         => new (new ExternalContactId(owner.Id, ownerDeviceId, NewDeviceContactId()));
 
-    private static ExternalContact NewExternalContact(AccountFull owner, Symbol deviceId, int i)
-        => NewExternalContact(owner, deviceId).WithPhone(BuildPhone(i)).WithEmail(BuildEmail(i));
+    private static ExternalContact NewExternalContact(AccountFull owner, Symbol deviceId, string prefix, int i)
+        => NewExternalContact(owner, deviceId).WithPhone(BuildPhone(prefix, i)).WithEmail(BuildEmail(prefix, i));
 
     private static Symbol NewDeviceId()
         => new (Guid.NewGuid().ToString());
@@ -422,18 +426,18 @@ public class ExternalContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out
     private static ContactId BuildContactId(AccountFull owner, AccountFull friendAccount)
         => ContactId.Peer(owner.Id, friendAccount.Id);
 
-    private static User BuildUser(int i)
+    private static User BuildUser(string prefix, int i)
         => new User("", BuildUserName(i))
-            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme, i.ToString("00000", CultureInfo.InvariantCulture)))
-            .WithPhone(BuildPhone(i))
-            .WithClaim(ClaimTypes.Email, BuildEmail(i));
+            .WithIdentity(new UserIdentity(GoogleDefaults.AuthenticationScheme,  $"{prefix}-{i.ToString("00000", CultureInfo.InvariantCulture)}"))
+            .WithPhone(BuildPhone(prefix, i))
+            .WithClaim(ClaimTypes.Email, BuildEmail(prefix, i));
 
     private static string BuildUserName(int i)
         => $"user{i:00000}";
 
-    private static Phone BuildPhone(int i)
-        => new ($"1-11111{i:00000}");
+    private static Phone BuildPhone(string prefix, int i)
+        => new ($"1-{Math.Abs(prefix.GetDjb2HashCode() % 100000):00000}{i:00000}");
 
-    private static string BuildEmail(int i)
-        => $"user.{i:00000}@actual.chat";
+    private static string BuildEmail(string prefix, int i)
+        => $"{prefix}.user.{i:00000}@actual.chat";
 }

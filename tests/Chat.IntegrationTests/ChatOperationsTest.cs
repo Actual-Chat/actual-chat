@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Module;
 using ActualChat.Contacts;
 using ActualChat.Testing.Host;
 using ActualChat.Invite;
@@ -8,14 +9,18 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
+public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task CreateNewChat(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         var account = await tester.SignInAsBob();
@@ -77,7 +82,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true)]
     public async Task CreateNewChatBackend(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         var account = await tester.SignInAsBob();
@@ -137,7 +142,11 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task NotesChatCreatedOnSignIn()
     {
-        using var appHost = await NewAppHost(TestAppHostOptions.WithAllChats);
+        using var appHost = await NewAppHost(TestAppHostOptions.Default with {
+            ChatDbInitializerOptions = new ChatDbInitializer.Options {
+                AddNotesChat = true,
+            },
+        });
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         var account = await tester.SignIn(new User("", "Notes"));
@@ -181,7 +190,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true)]
     public async Task JoinChat(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
 
         await tester.SignInAsAlice();
@@ -198,7 +207,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true)]
     public async Task Leave(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
 
         await tester.SignInAsAlice();
@@ -248,7 +257,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task ShouldNotAllowJoinOrLeaveAnnouncementsChat(string? userName)
     {
         // arrange
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         var chats = tester.AppServices.GetRequiredService<IChats>();
         var session = tester.Session;
@@ -270,7 +279,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true)]
     public async Task PromoteAuthorToOwner(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
 
@@ -303,7 +312,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task NonOwnerUserShouldNotBeAblePromoteAuthorToOwner()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var tester = appHost.NewBlazorTester();
         await tester.SignInAsAlice();
         var (chatId, inviteId) = await tester.CreateChat(true);
@@ -332,7 +341,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true)]
     public async Task TheOnlyOwnerUserShouldNotBeAbleLeaveChat(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
 
@@ -348,7 +357,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [InlineData(true)]
     public async Task OwnerUserShouldBeAbleToLeaveChat(bool isPublicChat)
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
 
@@ -367,7 +376,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task ExOwnerUserBecomeRegularMemberAfterRejoining()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
 
@@ -395,7 +404,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     [Fact]
     public async Task RemovingChatShouldRemoveItFromContactsList()
     {
-        using var appHost = await NewAppHost();
+        var appHost = Host;
         await using var ownerTester = appHost.NewBlazorTester();
         await ownerTester.SignInAsAlice();
         var session = ownerTester.Session;
@@ -447,4 +456,7 @@ public class ChatOperationsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         var authorIds = await authorsBackend.ListAuthorIds(chatId, default);
         authorIds.Should().NotContain(author.Id);
     }
+
+    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
+        => TestAppHostFactory.NewAppHost(Out, options);
 }

@@ -7,19 +7,26 @@
     IsOpen="@_isOpen"
     VisibilityChanged="@(isOpen => PanelsUI.Left.SetIsVisible(isOpen))">
     <div class="left-panel">
+        <ErrorBarrier Name="LeftPanelContent" Kind="@ErrorBarrierKind.Full">
         <LeftPanelButtons/>
         <div class="left-panel-content">
-            <LeftPanelContentHeader />
+            <LeftPanelContentHeader/>
             <DownloadAppBanner CanBeClosed="true"/>
-            <NavbarContent />
+            <NavbarContent/>
+            @if (_isSearchPanelOpen) {
+                <LeftSearchPanel/>
+            }
         </div>
+        </ErrorBarrier>
     </div>
 </SideNav>
 
 @code {
     // private Debouncer<Unit> _isOpenDebouncer = null!;
     private Action? _leftPanelVisibilityChanged;
+    private Action? _leftPanelSearchModeChanged;
     private bool _isOpen;
+    private bool _isSearchPanelOpen;
 
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     // [Inject] private Dispatcher Dispatcher { get; init; } = null!;
@@ -34,6 +41,8 @@
 #endif
         _leftPanelVisibilityChanged = OnLeftPanelVisibilityChanged;
         PanelsUI.Left.VisibilityChanged += _leftPanelVisibilityChanged;
+        _leftPanelSearchModeChanged = OnLeftPanelSearchModeChanged;
+        PanelsUI.Left.SearchModeChanged += _leftPanelSearchModeChanged;
     }
 
     private void OnLeftPanelVisibilityChanged() {
@@ -45,6 +54,16 @@
         StateHasChanged();
     }
 
-    public void Dispose()
-        => PanelsUI.Left.VisibilityChanged -= _leftPanelVisibilityChanged;
+    private void OnLeftPanelSearchModeChanged() {
+        var isSearchMode = PanelsUI.Left.IsSearchMode;
+        if (_isSearchPanelOpen == isSearchMode)
+            return;
+        _isSearchPanelOpen = isSearchMode;
+        StateHasChanged();
+    }
+
+    public void Dispose() {
+        PanelsUI.Left.VisibilityChanged -= _leftPanelVisibilityChanged;
+        PanelsUI.Left.SearchModeChanged -= _leftPanelSearchModeChanged;
+    }
 }

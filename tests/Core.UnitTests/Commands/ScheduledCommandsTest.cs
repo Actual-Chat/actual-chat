@@ -1,15 +1,10 @@
 using ActualChat.Commands;
 using ActualChat.Commands.Internal;
-using ActualChat.Testing.Collections;
 
 namespace ActualChat.Core.UnitTests.Commands;
 
-[Collection(nameof(AppHostTests)), Trait("Category", nameof(AppHostTests))]
-public class ScheduledCommandsTest: TestBase
+public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public ScheduledCommandsTest(ITestOutputHelper @out) : base(@out)
-    { }
-
     [Fact]
     public async Task EnqueueEventOnCommandCompletion()
     {

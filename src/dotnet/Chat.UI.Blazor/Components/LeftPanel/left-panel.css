@@ -18,8 +18,12 @@
     @apply h-full;
 }
 .left-panel-buttons > .c-content {
-    @apply flex-y;
+    @apply flex-y items-end;
     @apply h-full;
+}
+.left-panel-buttons .c-logo-btn > .btn.btn-square,
+.left-panel-buttons .c-logo-btn > .btn.btn-square:hover {
+    @apply bg-transparent;
 }
 .left-panel-buttons > .c-content > .c-logo {
     @apply flex justify-center;
@@ -28,16 +32,16 @@
     @apply cursor-pointer;
 }
 .left-panel-buttons > .c-content > .c-buttons {
-    @apply flex-y grow items-center gap-y-3 md:gap-y-2;
+    @apply flex-y grow items-end gap-y-3 md:gap-y-2;
     @apply w-full;
     @apply overflow-hidden;
 }
 .left-panel-buttons > .c-content > .c-account {
     @apply flex justify-center;
-    @apply w-full;
     @apply py-2;
 }
 .left-panel-content {
+    @apply relative;
     @apply flex-y;
     @apply w-full lg:w-80 h-full;
     @apply bg-03;
@@ -95,4 +99,138 @@
 .left-panel-content-header.place .chat-search-box .btn-h i,
 .left-panel-content-header.place .chat-search-box *::placeholder {
     @apply text-[var(--place-header-text)];
+}
+
+/* Left Search Panel */
+.left-search-panel {
+    @apply px-0;
+    @apply bg-03;
+}
+.left-search-panel > .c-content {
+    @apply flex-y;
+    @apply h-full;
+    @apply overflow-hidden;
+}
+.left-search-panel > .c-search {
+    @apply px-2;
+}
+.left-search-panel .c-search > .btn-h {
+    @apply hidden;
+}
+.left-search-panel .tab-panel .btn-group {
+    @apply gap-x-4;
+    @apply py-0 px-2;
+}
+.left-search-panel .recent-contacts {
+    @apply flex-none flex-x gap-x-1;
+    @apply mt-2;
+    @apply overflow-y-hidden;
+    @apply custom-scrollbar-hide;
+}
+.left-search-panel .recent-contacts:first-child,
+.left-search-panel .recent-contacts:last-child {
+    @apply px-1;
+}
+.recent-contacts .c-plug {
+    @apply flex-y items-center justify-center;
+    @apply min-w-20;
+    @apply truncate;
+}
+.recent-contacts .c-plug > .c-author {
+    @apply w-10 h-10;
+    @apply rounded-full;
+}
+.recent-contacts .c-plug > .c-name {
+    @apply w-full;
+    @apply text-center;
+    @apply text-caption-6;
+    @apply truncate;
+}
+
+.left-search-panel .recently-viewed {
+    @apply flex-y gap-y-2;
+}
+.left-search-panel .c-header {
+    @apply flex-x items-center;
+    @apply px-2;
+}
+.left-search-panel .recently-viewed .c-header .c-title,
+.left-search-panel .chat-list .c-header .c-title {
+    @apply flex-1;
+    @apply text-caption-1 text-02;
+}
+.left-search-panel .recently-viewed .c-header .btn-h,
+.left-search-panel .chat-list .c-header .btn-h {
+    @apply flex-none;
+    @apply text-02;
+}
+.left-search-panel .recently-viewed .c-header .btn-h i {
+    @apply text-xl text-02;
+}
+.left-search-panel .recently-viewed .c-message-list {
+    @apply flex-y gap-y-0.5;
+    @apply px-2;
+}
+.left-search-panel .recently-viewed .c-message-list > .c-item {
+    @apply flex-x items-center gap-x-2;
+    @apply p-1;
+    @apply rounded-lg;
+}
+.left-search-panel .recently-viewed .c-message-list > .c-item:hover {
+    @apply bg-hover;
+}
+.left-search-panel .recently-viewed .c-message-list > .c-item > .c-author {
+    @apply flex-none;
+    @apply h-10 w-10;
+    @apply rounded-full;
+}
+.left-search-panel .recently-viewed .c-message-list > .c-item > .c-center {
+    @apply flex-1 flex-y gap-y-1;
+    @apply truncate;
+}
+.left-search-panel .recently-viewed .c-message-list > .c-item > .c-center > .c-name {
+    @apply text-headline-1 text-02;
+    @apply truncate;
+}
+.left-search-panel .recently-viewed .c-message-list > .c-item > .c-center > .c-last-message {
+    @apply text-xs text-03;
+    @apply truncate;
+}
+.left-search-panel .recently-viewed .c-message-list > .c-item > .c-ending {
+    @apply flex-none flex-y items-end gap-y-1;
+    @apply text-xs text-03;
+}
+
+.left-search-panel .tab-panel {
+    @apply overflow-hidden;
+}
+.left-search-panel .tab-panel .tab {
+    @apply py-2;
+    @apply overflow-hidden;
+}
+.left-search-panel .tab > .c-container {
+    @apply flex-y;
+    @apply h-full;
+    @apply overflow-y-auto;
+    @apply custom-scrollbar;
+}
+.left-search-panel .own-chats-list {
+    @apply px-2;
+}
+.left-search-panel .chat-list .c-header .btn-h {
+    @apply text-xs text-primary;
+}
+
+.left-search-panel .ai-btn {
+    @apply px-2;
+}
+.left-search-panel .ai-btn .btn {
+    @apply min-w-full;
+}
+body.narrow .left-search-panel .ai-btn .btn {
+    @apply min-h-10 max-h-10;
+}
+.left-search-panel .ai-btn .btn .btn-content {
+    @apply gap-x-3;
+    @apply text-text-1;
 }

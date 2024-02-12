@@ -17,7 +17,13 @@
             data-menu="@(MenuRef.New<CreateMenu>().ToString())"
             data-menu-trigger="@MenuTrigger.Primary"
             data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
-            <i class="icon-plus text-2xl font-medium"></i>
+            <ChildContent>
+                <i class="icon-plus text-2xl font-medium"></i>
+            </ChildContent>
+            <Ending>
+                <LeftLine/>
+                <div class="right-line"></div>
+            </Ending>
         </NavbarButton>
     } else {
         <NavbarButton
@@ -26,7 +32,13 @@
             data-bubble-priority="201"
             data-bubble-placement="@(FloatingPosition.RightStart.ToPositionString())"
             Click="OnCreateChatClick">
-            <i class="icon-plus text-2xl font-medium"></i>
+            <ChildContent>
+                <i class="icon-plus text-2xl font-medium"></i>
+            </ChildContent>
+            <Ending>
+                <LeftLine/>
+                <div class="right-line"></div>
+            </Ending>
         </NavbarButton>
     }
 }

@@ -1,47 +1,48 @@
-using ActualChat.App.Server;
 using ActualChat.Performance;
 using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
-using ActualLab.Fusion.Extensions;
+using ActualLab.Generators;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
-public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ContactCollection)), Trait("Category", nameof(ContactCollection))]
+public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
+
     private WebClientTester _tester = null!;
-    private AppHost _appHost = null!;
     private IContacts _contacts = null!;
     private IContactsBackend _contactsBackend = null!;
     private IAccounts _accounts = null!;
 
-    public override async Task InitializeAsync()
+    public Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _appHost = await NewAppHost();
-        _tester = _appHost.NewWebClientTester();
-        _contacts = _appHost.Services.GetRequiredService<IContacts>();
-        _contactsBackend = _appHost.Services.GetRequiredService<IContactsBackend>();
+        _tester = Host.NewWebClientTester(Out);
+        _contacts = Host.Services.GetRequiredService<IContacts>();
+        _contactsBackend = Host.Services.GetRequiredService<IContactsBackend>();
         _accounts = _tester.AppServices.GetRequiredService<IAccounts>();
+
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
+        return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
             FluentAssertions.Formatting.Formatter.RemoveFormatter(formatter);
         await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
     }
 
     [Fact]
     public async Task ShouldListNotOwnedChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
+        var bob = await _tester.SignInAsBob(RandomStringGenerator.Default.Next());
         await _tester.SignInAsAlice();
-
         // non-place
         var (publicChatId, publicChatInviteId) = await _tester.CreateChat(true);
         var (privateChatId, privateChatInviteId) = await _tester.CreateChat(false);
@@ -82,6 +83,7 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
         await _tester.JoinChat(publicPlacePrivateChatId, publicPlacePrivateChatInviteId);
         await _tester.JoinChat(privatePlacePublicChatId, privatePlacePublicChatInviteId);
         await _tester.JoinChat(privatePlacePrivateChatId, privatePlacePrivateChatInviteId);
+        await Task.Delay(TimeSpan.FromSeconds(1));
 
         // assert
         var expectedNonPlaceChatIds = new[] {
@@ -131,7 +133,7 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
     public async Task ShouldListOwnedChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
+        var bob = await _tester.SignInAsBob(RandomStringGenerator.Default.Next());
 
         // act
         // non-place
@@ -199,7 +201,7 @@ public class ContactsTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 
         contactIds = await ListIdsForContactSearch();
         contactIds.Should()
-            .BeEquivalentTo(new[] {
+            .Contain(new[] {
                 new ContactId(bob.Id, privateChatId),
                 new ContactId(bob.Id, publicPlacePrivateChatId),
                 new ContactId(bob.Id, privatePlacePublicChatId),

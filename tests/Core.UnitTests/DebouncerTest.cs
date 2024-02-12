@@ -1,10 +1,8 @@
 using ActualChat.IO;
-using ActualChat.Testing.Collections;
 using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.UnitTests;
 
-[Collection(nameof(AppHostTests)), Trait("Category", nameof(AppHostTests))]
 public class DebouncerTest
 {
     [Fact(Skip = "Flacky")]

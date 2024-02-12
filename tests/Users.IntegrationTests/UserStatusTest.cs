@@ -4,30 +4,33 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Users.IntegrationTests;
 
-public class UserStatusTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
+public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
     private Session _adminSession = null!;
 
-    public override async Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         _appHost = await NewAppHost(TestAppHostOptions.Default with {
             AppConfigurationExtender = cfg => {
-                cfg.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString()));
+                cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
             },
         });
-        _tester = _appHost.NewWebClientTester();
+        _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _adminSession = Session.New();
 
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
-    public override async Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();
@@ -72,4 +75,7 @@ public class UserStatusTest(ITestOutputHelper @out) : AppHostTestBase(@out)
 
     private Task<AccountFull> GetOwnAccount()
         => _accounts.GetOwn(_tester.Session, default);
+
+    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
+        => TestAppHostFactory.NewAppHost(Out, options);
 }

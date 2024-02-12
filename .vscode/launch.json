@@ -1,0 +1,29 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://code.visualstudio.com/docs/csharp/debugger-settings
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "App.Server Debug",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "dotnet: build App.Server",
+      "program": "${workspaceFolder}/artifacts/bin/App.Server/debug/ActualChat.App.Server.dll",
+      "args": [
+        // "-multihost-role:BackendServer"
+      ],
+      "cwd": "${workspaceFolder}/src/dotnet/App.Server",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "App.Server is started!",
+        "uriFormat": "https://local.actual.chat/chat/the-actual-one"
+      },
+      "console": "internalConsole",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  ]
+}

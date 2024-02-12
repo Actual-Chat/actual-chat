@@ -12,6 +12,7 @@
     IsOpen="@m.IsVisible"
     VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
     <div class="right-chat-panel">
+        <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
         @if (m.RenderContent) {
             @if (m.ShowSearchPanel && ScreenSize.IsWide()) {
                 <ChatSearchPanel ChatContext="@ChatContext"/>
@@ -48,6 +49,7 @@
                 </div>
             </div>
         }
+        </ErrorBarrier>
     </div>
 </SideNav>
 

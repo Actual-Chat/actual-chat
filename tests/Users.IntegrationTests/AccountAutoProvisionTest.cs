@@ -3,26 +3,28 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;
 
-public class AccountAutoProvisionTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
+public class AccountAutoProvisionTest(ITestOutputHelper @out): IAsyncLifetime
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
+    private ITestOutputHelper Out { get; } = @out;
 
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
 
-    public override async Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         _appHost = await NewAppHost(TestAppHostOptions.Default with {
             AppConfigurationExtender = cfg => {
-                cfg.AddInMemory(("UsersSettings:NewUserStatus", NewAccountStatus.ToString()));
+                cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
             },
         });
-        _tester = _appHost.NewWebClientTester();
+        _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
     }
 
-    public override async Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();
@@ -58,4 +60,7 @@ public class AccountAutoProvisionTest(ITestOutputHelper @out) : AppHostTestBase(
             .Excluding(x => x.User)
             .Excluding(x => x.IsGreetingCompleted ));
     }
+
+    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
+        => TestAppHostFactory.NewAppHost(Out, options);
 }

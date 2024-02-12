@@ -1,12 +1,7 @@
-using ActualChat.Testing.Collections;
-
 namespace ActualChat.Core.UnitTests.Channels;
 
-[Collection(nameof(AppHostTests)), Trait("Category", nameof(AppHostTests))]
-public class ThrottleTest : TestBase
+public class ThrottleTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public ThrottleTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact(Skip = "fix it later")]
     public async Task BasicTest()
     {

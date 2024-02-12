@@ -16,6 +16,8 @@ public class LeftPanel : IDisposable
     public IState<bool> IsVisible => _isVisible;
     public IState<bool> CanBeHidden => _canBeHidden;
     public event Action? VisibilityChanged;
+    public event Action? SearchModeChanged;
+    public bool IsSearchMode;
 
     public LeftPanel(PanelsUI owner)
     {
@@ -49,6 +51,12 @@ public class LeftPanel : IDisposable
             History.Save<OwnHistoryState>();
             VisibilityChanged?.Invoke();
         }, Log);
+
+    public void SearchToggle()
+    {
+        IsSearchMode = !IsSearchMode;
+        SearchModeChanged?.Invoke();
+    }
 
     // Private methods
 

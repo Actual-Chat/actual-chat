@@ -5,34 +5,30 @@ using Microsoft.AspNetCore.Http;
 
 namespace ActualChat.Chat.UI.Blazor.PlaywrightTests;
 
-public class ChatPageAuthorizationTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(ChatUIAutomationCollection)), Trait("Category", nameof(ChatUIAutomationCollection))]
+public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
     private const string ChatId = "the-actual-one";
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     private PlaywrightTester _tester = null!;
-    private AppHost _appHost = null!;
     private TestSettings _testSettings = null!;
     private IAccounts _accounts = null!;
     private Session _adminSession = null!;
 
-    public override async Task InitializeAsync()
+    public async Task InitializeAsync()
     {
-        _appHost = await NewAppHost(TestAppHostOptions.WithDefaultChat with {
-            ServerUrls = "http://localhost:7080",
-        });
-        _testSettings = _appHost.Services.GetRequiredService<TestSettings>();
-        _accounts = _appHost.Services.GetRequiredService<IAccounts>();
-        _tester = _appHost.NewPlaywrightTester();
+        _testSettings = Host.Services.GetRequiredService<TestSettings>();
+        _accounts = Host.Services.GetRequiredService<IAccounts>();
+        _tester = Host.NewPlaywrightTester(Out);
         _adminSession = Session.New();
 
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
-    public override async Task DisposeAsync()
-    {
-        await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
-    }
+    public Task DisposeAsync()
+        => _tester.DisposeAsync().AsTask();
 
     [Fact]
     public async Task ShouldNotAuthorizeForInactiveUser()

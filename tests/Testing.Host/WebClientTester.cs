@@ -44,13 +44,13 @@ public class WebClientTester : IWebClientTester
     public ICommander ClientCommander => ClientServices.Commander();
     public IAuth ClientAuth => ClientServices.GetRequiredService<IAuth>();
 
-    public WebClientTester(AppHost appHost, Action<IServiceCollection>? configureClientServices = null)
+    public WebClientTester(AppHost appHost, ITestOutputHelper output, Action<IServiceCollection>? configureClientServices = null)
     {
         AppHost = appHost;
         Session = Session.New();
         var sessionInfo = Commander.Call(new AuthBackend_SetupSession(Session)).Result;
         sessionInfo.GetGuestId().IsGuest.Should().BeTrue();
-        _clientServicesLazy = new Lazy<IServiceProvider>(() => CreateClientServices(configureClientServices));
+        _clientServicesLazy = new Lazy<IServiceProvider>(() => CreateClientServices(output, configureClientServices));
     }
 
     public virtual void Dispose()
@@ -71,9 +71,8 @@ public class WebClientTester : IWebClientTester
             d.Dispose();
     }
 
-    protected virtual IServiceProvider CreateClientServices(Action<IServiceCollection>? configureClientServices)
+    protected virtual IServiceProvider CreateClientServices(ITestOutputHelper output, Action<IServiceCollection>? configureClientServices)
     {
-        var output = AppHost.Services.GetRequiredService<ITestOutputHelper>();
         var services = new ServiceCollection();
         var configuration = AppServices.GetRequiredService<IConfiguration>();
         Program.ConfigureServices(services, configuration, UrlMapper.BaseUrl, true);

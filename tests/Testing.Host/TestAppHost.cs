@@ -1,12 +1,28 @@
 using ActualChat.App.Server;
 using ActualLab.Fusion.EntityFramework.Operations;
+using ActualLab.Testing.Output;
 
 namespace ActualChat.Testing.Host;
 
-public class TestAppHost : AppHost
+public class TestAppHost(TestOutputHelperAccessor outputAccessor) : AppHost
 {
+    private readonly ITestOutputHelper? _output = outputAccessor.Output;
+
+    public TestOutputHelperAccessor OutputAccessor { get; } = outputAccessor;
+
+    public ITestOutputHelper UseOutput(ITestOutputHelper @out)
+    {
+        var output = @out ?? throw new ArgumentException("ITestOutputHelper should not be null", nameof(@out));
+        OutputAccessor.Output = output;
+        return output;
+    }
+
     protected override void Dispose(bool disposing)
     {
+        if (_output != null)
+            // use original IMessageSink as the output - test may have already been terminated
+            OutputAccessor.Output = _output;
+
         if (disposing)
             DisposeDbOperationCompletionNotifiers();
         base.Dispose(disposing);

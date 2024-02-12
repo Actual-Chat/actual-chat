@@ -11,6 +11,8 @@ public class CommandQueueScheduler : WorkerBase
         public TimeSpan MaxKnownCommandAge { get; init; } = TimeSpan.FromHours(1);
     }
 
+    protected static bool DebugMode => Constants.DebugMode.CommandQueue;
+    protected ILogger? DebugLog => DebugMode ? Log : null;
     protected ILogger Log { get; }
     protected IServiceProvider Services { get; }
     protected ICommandQueues Queues { get; }
@@ -72,7 +74,7 @@ public class CommandQueueScheduler : WorkerBase
                 return;
         }
 
-        Log.LogDebug("Running queued command: {Command}", command);
+        DebugLog?.LogDebug("Running queued command: {Command}", command);
         try {
             await Commander.Call(command.Command, true, cancellationToken).ConfigureAwait(false);
             await queueBackend.MarkCompleted(command, cancellationToken).ConfigureAwait(false);

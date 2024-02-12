@@ -1,6 +1,7 @@
 name: Build test and deploy
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
@@ -104,6 +105,8 @@ jobs:
   unit-tests:
     name: Run Unit tests
     runs-on: ubuntu-latest
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -118,9 +121,20 @@ jobs:
           dotnet-version: '8.0'
           dotnet-quality: 'ga'
 
-      - name: Debug Build for tests
+      - name: Use cached dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
         run: |-
           ./run-build.cmd restore
+
+      - name: Debug build of tests
+        run: |-
           dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
 
       - name: Run unit tests
@@ -136,12 +150,9 @@ jobs:
 
   integration-tests:
     name: Run Integration tests
-    if: |
-      github.ref == 'refs/heads/master' ||
-      github.ref == 'refs/heads/dev' ||
-      startsWith(github.ref, 'refs/pull/') ||
-      startsWith(github.ref, 'refs/heads/release/')
     runs-on: ubuntu-latest
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
     services:
       redis:
         image: redis:6.2.6-alpine3.14
@@ -211,9 +222,20 @@ jobs:
           dotnet-version: '8.0'
           dotnet-quality: 'ga'
 
-      - name: Debug Build for tests
+      - name: Use cached dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
         run: |-
           ./run-build.cmd restore
+
+      - name: Debug Build for tests
+        run: |-
           dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
 
       - name: Run integration tests

@@ -1,52 +1,49 @@
-using ActualChat.App.Server;
 using ActualChat.Chat;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
+using ActualChat.Users;
+using ActualLab.Generators;
 
 namespace ActualChat.Search.IntegrationTests;
 
-public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@out)
+[Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
+public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
 {
-    private WebClientTester _tester = null!;
-    private ISearchBackend _sut = null!;
-    private AppHost _appHost = null!;
-    private ICommander _commander = null!;
+    private TestAppHost Host => fixture.Host;
+    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
-    public override async Task InitializeAsync()
+    public Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _appHost = await NewAppHost();
-        _tester = _appHost.NewWebClientTester();
-        _sut = _appHost.Services.GetRequiredService<ISearchBackend>();
-        _commander = _appHost.Services.Commander();
+        return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
-    {
-        Tracer.Default = Tracer.None;
-        await _tester.DisposeAsync().AsTask();
-        _appHost.Dispose();
-    }
+    public Task DisposeAsync()
+        => Task.FromResult(Tracer.Default = Tracer.None);
 
     [Fact]
     public async Task ShouldFindAddedChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
-        var privateChat1 = await CreateChat(false, "Private non-place chat 1 one");
-        var privateChat2 = await CreateChat(false, "Private non-place chat 2 two");
-        var publicChat1 = await CreateChat(true, "Public non-place chat 1 one");
-        var publicChat2 = await CreateChat(true, "Public non-place chat 2 two");
-        var privatePlace = await CreatePlace(false, "Bob's private Place");
-        var privatePlacePrivateChat1 = await CreateChat(false, "Private place private chat 1 one", privatePlace.Id);
-        var privatePlacePrivateChat2 = await CreateChat(false, "Private place private chat 2 two", privatePlace.Id);
-        var privatePlacePublicChat1 = await CreateChat(true, "Private place public chat 1 one", privatePlace.Id);
-        var privatePlacePublicChat2 = await CreateChat(true, "Private place public chat 2 two", privatePlace.Id);
-        var publicPlace = await CreatePlace(true, "Bob's public Place");
-        var publicPlacePrivateChat1 = await CreateChat(false, "Public place private chat 1 one", publicPlace.Id);
-        var publicPlacePrivateChat2 = await CreateChat(false, "Public place private chat 2 two", publicPlace.Id);
-        var publicPlacePublicChat1 = await CreateChat(true, "Public place public chat 1 one", publicPlace.Id);
-        var publicPlacePublicChat2 = await CreateChat(true, "Public place public chat 2 two", publicPlace.Id);
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewWebClientTester(Out);
+        var commander = tester.Commander;
+        var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
+        var bob = await tester.SignInAsBob(RandomStringGenerator.Default.Next());
+        var privateChat1 = await CreateChat(tester, false, "Private non-place chat 1 one");
+        var privateChat2 = await CreateChat(tester, false, "Private non-place chat 2 two");
+        var publicChat1 = await CreateChat(tester, true, "Public non-place chat 1 one");
+        var publicChat2 = await CreateChat(tester, true, "Public non-place chat 2 two");
+        var privatePlace = await CreatePlace(tester, false, "Bob's private Place");
+        var privatePlacePrivateChat1 = await CreateChat(tester, false, "Private place private chat 1 one", privatePlace.Id);
+        var privatePlacePrivateChat2 = await CreateChat(tester, false, "Private place private chat 2 two", privatePlace.Id);
+        var privatePlacePublicChat1 = await CreateChat(tester, true, "Private place public chat 1 one", privatePlace.Id);
+        var privatePlacePublicChat2 = await CreateChat(tester, true, "Private place public chat 2 two", privatePlace.Id);
+        var publicPlace = await CreatePlace(tester, true, "Bob's public Place");
+        var publicPlacePrivateChat1 = await CreateChat(tester, false, "Public place private chat 1 one", publicPlace.Id);
+        var publicPlacePrivateChat2 = await CreateChat(tester, false, "Public place private chat 2 two", publicPlace.Id);
+        var publicPlacePublicChat1 = await CreateChat(tester, true, "Public place public chat 1 one", publicPlace.Id);
+        var publicPlacePublicChat2 = await CreateChat(tester, true, "Public place public chat 2 two", publicPlace.Id);
 
         // act
         var updates = BuildChatContacts(
@@ -63,11 +60,11 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
             publicPlacePrivateChat2,
             publicPlacePublicChat1,
             publicPlacePublicChat2);
-        await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
-        await _commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
+        await commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
+        await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        var searchResults = await Find(bob.Id, true, "chat");
+        var searchResults = await Find(searchBackend, bob.Id, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -77,7 +74,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                     BuildSearchResult(bob.Id, publicPlacePublicChat2),
                 }
             );
-        searchResults = await Find(bob.Id, true, "one");
+        searchResults = await Find(searchBackend, bob.Id, true, "one");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -86,7 +83,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                 }
             );
 
-        searchResults = await Find(bob.Id, false, "chat");
+        searchResults = await Find(searchBackend, bob.Id, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -101,7 +98,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                 }
             );
 
-        searchResults = await Find(bob.Id, false, "two");
+        searchResults = await Find(searchBackend, bob.Id, false, "two");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -117,21 +114,25 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
     public async Task ShouldFindUpdateChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
-        var privateChat1 = await CreateChat(false, "Private non-place chat 1");
-        var privateChat2 = await CreateChat(false, "Private non-place chat 2");
-        var publicChat1 = await CreateChat(true, "Public non-place chat 1");
-        var publicChat2 = await CreateChat(true, "Public non-place chat 2");
-        var privatePlace = await CreatePlace(false, "Bob's private Place");
-        var privatePlacePrivateChat1 = await CreateChat(false, "Private place private chat 1", privatePlace.Id);
-        var privatePlacePrivateChat2 = await CreateChat(false, "Private place private chat 2", privatePlace.Id);
-        var privatePlacePublicChat1 = await CreateChat(true, "Private place public chat 1", privatePlace.Id);
-        var privatePlacePublicChat2 = await CreateChat(true, "Private place public chat 2", privatePlace.Id);
-        var publicPlace = await CreatePlace(true, "Bob's public Place");
-        var publicPlacePrivateChat1 = await CreateChat(false, "Public place private chat 1", publicPlace.Id);
-        var publicPlacePrivateChat2 = await CreateChat(false, "Public place private chat 2", publicPlace.Id);
-        var publicPlacePublicChat1 = await CreateChat(true, "Public place public chat 1", publicPlace.Id);
-        var publicPlacePublicChat2 = await CreateChat(true, "Public place public chat 2", publicPlace.Id);
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewWebClientTester(Out);
+        var commander = tester.Commander;
+        var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
+        var bob = await tester.SignInAsBob(RandomStringGenerator.Default.Next());
+        var privateChat1 = await CreateChat(tester, false, "Private non-place chat 1");
+        var privateChat2 = await CreateChat(tester, false, "Private non-place chat 2");
+        var publicChat1 = await CreateChat(tester, true, "Public non-place chat 1");
+        var publicChat2 = await CreateChat(tester, true, "Public non-place chat 2");
+        var privatePlace = await CreatePlace(tester, false, "Bob's private Place");
+        var privatePlacePrivateChat1 = await CreateChat(tester, false, "Private place private chat 1", privatePlace.Id);
+        var privatePlacePrivateChat2 = await CreateChat(tester, false, "Private place private chat 2", privatePlace.Id);
+        var privatePlacePublicChat1 = await CreateChat(tester, true, "Private place public chat 1", privatePlace.Id);
+        var privatePlacePublicChat2 = await CreateChat(tester, true, "Private place public chat 2", privatePlace.Id);
+        var publicPlace = await CreatePlace(tester, true, "Bob's public Place");
+        var publicPlacePrivateChat1 = await CreateChat(tester, false, "Public place private chat 1", publicPlace.Id);
+        var publicPlacePrivateChat2 = await CreateChat(tester, false, "Public place private chat 2", publicPlace.Id);
+        var publicPlacePublicChat1 = await CreateChat(tester, true, "Public place public chat 1", publicPlace.Id);
+        var publicPlacePublicChat2 = await CreateChat(tester, true, "Public place public chat 2", publicPlace.Id);
 
         // act
         var updates = BuildChatContacts(
@@ -148,11 +149,11 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
             publicPlacePrivateChat2,
             publicPlacePublicChat1 with { Title = "abra cadabra" },
             publicPlacePublicChat2);
-        await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
-        await _commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
+        await commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
+        await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        var searchResults = await Find(bob.Id, true, "chat");
+        var searchResults = await Find(searchBackend, bob.Id, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -163,7 +164,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                 }
             );
 
-        searchResults = await Find(bob.Id, false, "chat");
+        searchResults = await Find(searchBackend, bob.Id, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -182,11 +183,11 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
             new[] { privatePlace, publicPlace },
             privatePlacePrivateChat1,
             publicPlacePublicChat1);
-        await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
-        await _commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
+        await commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
+        await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        searchResults = await Find(bob.Id, true, "chat");
+        searchResults = await Find(searchBackend, bob.Id, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -197,7 +198,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                 }
             );
 
-        searchResults = await Find(bob.Id, false, "chat");
+        searchResults = await Find(searchBackend, bob.Id, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -212,10 +213,10 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                 }
             );
 
-        searchResults = await Find(bob.Id, true, "abra");
+        searchResults = await Find(searchBackend, bob.Id, true, "abra");
         searchResults.Should().BeEmpty();
 
-        searchResults = await Find(bob.Id, false, "abra");
+        searchResults = await Find(searchBackend, bob.Id, false, "abra");
         searchResults.Should().BeEmpty();
     }
 
@@ -223,21 +224,25 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
     public async Task ShouldNotFindDeletedChats()
     {
         // arrange
-        var bob = await _tester.SignInAsBob();
-        var privateChat1 = await CreateChat(false, "Private non-place chat 1 one");
-        var privateChat2 = await CreateChat(false, "Private non-place chat 2 two");
-        var publicChat1 = await CreateChat(true, "Public non-place chat 1 one");
-        var publicChat2 = await CreateChat(true, "Public non-place chat 2 two");
-        var privatePlace = await CreatePlace(false, "Bob's private Place");
-        var privatePlacePrivateChat1 = await CreateChat(false, "Private place private chat 1 one", privatePlace.Id);
-        var privatePlacePrivateChat2 = await CreateChat(false, "Private place private chat 2 two", privatePlace.Id);
-        var privatePlacePublicChat1 = await CreateChat(true, "Private place public chat 1 one", privatePlace.Id);
-        var privatePlacePublicChat2 = await CreateChat(true, "Private place public chat 2 two", privatePlace.Id);
-        var publicPlace = await CreatePlace(true, "Bob's public Place");
-        var publicPlacePrivateChat1 = await CreateChat(false, "Public place private chat 1 one", publicPlace.Id);
-        var publicPlacePrivateChat2 = await CreateChat(false, "Public place private chat 2 two", publicPlace.Id);
-        var publicPlacePublicChat1 = await CreateChat(true, "Public place public chat 1 one", publicPlace.Id);
-        var publicPlacePublicChat2 = await CreateChat(true, "Public place public chat 2 two", publicPlace.Id);
+        using var appHost = await NewAppHost();
+        await using var tester = appHost.NewWebClientTester(Out);
+        var commander = tester.Commander;
+        var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
+        var bob = await tester.SignInAsBob();
+        var privateChat1 = await CreateChat(tester, false, "Private non-place chat 1 one");
+        var privateChat2 = await CreateChat(tester, false, "Private non-place chat 2 two");
+        var publicChat1 = await CreateChat(tester, true, "Public non-place chat 1 one");
+        var publicChat2 = await CreateChat(tester, true, "Public non-place chat 2 two");
+        var privatePlace = await CreatePlace(tester, false, "Bob's private Place");
+        var privatePlacePrivateChat1 = await CreateChat(tester, false, "Private place private chat 1 one", privatePlace.Id);
+        var privatePlacePrivateChat2 = await CreateChat(tester, false, "Private place private chat 2 two", privatePlace.Id);
+        var privatePlacePublicChat1 = await CreateChat(tester, true, "Private place public chat 1 one", privatePlace.Id);
+        var privatePlacePublicChat2 = await CreateChat(tester, true, "Private place public chat 2 two", privatePlace.Id);
+        var publicPlace = await CreatePlace(tester, true, "Bob's public Place");
+        var publicPlacePrivateChat1 = await CreateChat(tester, false, "Public place private chat 1 one", publicPlace.Id);
+        var publicPlacePrivateChat2 = await CreateChat(tester, false, "Public place private chat 2 two", publicPlace.Id);
+        var publicPlacePublicChat1 = await CreateChat(tester, true, "Public place public chat 1 one", publicPlace.Id);
+        var publicPlacePublicChat2 = await CreateChat(tester, true, "Public place public chat 2 two", publicPlace.Id);
 
         // act
         var updates = BuildChatContacts(
@@ -254,11 +259,11 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
             publicPlacePrivateChat2,
             publicPlacePublicChat1,
             publicPlacePublicChat2);
-        await _commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
-        await _commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
+        await commander.Call(new SearchBackend_ChatContactBulkIndex(updates, ApiArray<IndexedChatContact>.Empty));
+        await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        var searchResults = await Find(bob.Id, true, "chat");
+        var searchResults = await Find(searchBackend, bob.Id, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -269,7 +274,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                 }
             );
 
-        searchResults = await Find(bob.Id, false, "chat");
+        searchResults = await Find(searchBackend, bob.Id, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -285,7 +290,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
             );
 
         // act
-        await _commander.Call(new SearchBackend_ChatContactBulkIndex(ApiArray<IndexedChatContact>.Empty,
+        await commander.Call(new SearchBackend_ChatContactBulkIndex(ApiArray<IndexedChatContact>.Empty,
             BuildChatContacts(new[] { privatePlace, publicPlace, },
                 publicChat2,
                 publicPlacePublicChat1,
@@ -293,10 +298,10 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                 publicPlacePrivateChat2,
                 privatePlacePublicChat1,
                 privatePlacePrivateChat2)));
-        await _commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
+        await commander.Call(new SearchBackend_Refresh(refreshPrivateChats: true, refreshPublicChats: true));
 
         // assert
-        searchResults = await Find(bob.Id, true, "chat");
+        searchResults = await Find(searchBackend, bob.Id, true, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -305,7 +310,7 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
                 }
             );
 
-        searchResults = await Find(bob.Id, false, "chat");
+        searchResults = await Find(searchBackend, bob.Id, false, "chat");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
@@ -340,29 +345,29 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
     private static ContactSearchResult BuildSearchResult(UserId ownerId, ChatId chatId, string title)
         => new (new ContactId(ownerId, chatId), SearchMatch.New(title));
 
-    private async Task<Place> CreatePlace(bool isPublic, string title)
+    private async Task<Place> CreatePlace(WebClientTester tester, bool isPublic, string title)
     {
-        var (placeId, _) = await _tester.CreatePlace(x => x with {
+        var (placeId, _) = await tester.CreatePlace(x => x with {
             IsPublic = isPublic,
             Title = title,
         });
-        return await _tester.Places.Get(_tester.Session, placeId, CancellationToken.None).Require();
+        return await tester.Places.Get(tester.Session, placeId, CancellationToken.None).Require();
     }
 
-    private async Task<Chat.Chat> CreateChat(bool isPublic, string title, PlaceId placeId = default)
+    private async Task<Chat.Chat> CreateChat(WebClientTester tester, bool isPublic, string title, PlaceId placeId = default)
     {
-        var (id, _) = await _tester.CreateChat(x => x with {
+        var (id, _) = await tester.CreateChat(x => x with {
             Kind = null,
             Title = title,
             PlaceId = placeId,
             IsPublic = isPublic,
         });
-        return await _tester.Chats.Get(_tester.Session, id, CancellationToken.None).Require();
+        return await tester.Chats.Get(tester.Session, id, CancellationToken.None).Require();
     }
 
-    private async Task<ApiArray<ContactSearchResult>> Find(UserId ownerId, bool isPublic, string criteria)
+    private async Task<ApiArray<ContactSearchResult>> Find(ISearchBackend searchBackend, UserId ownerId, bool isPublic, string criteria)
     {
-        var searchResults = await _sut.FindChatContacts(ownerId,
+        var searchResults = await searchBackend.FindChatContacts(ownerId,
             isPublic,
             criteria,
             0,
@@ -371,4 +376,15 @@ public class ChatContactSearchTest(ITestOutputHelper @out) : AppHostTestBase(@ou
         searchResults.Offset.Should().Be(0);
         return searchResults.Hits;
     }
+
+    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
+        => TestAppHostFactory.NewAppHost(Out,
+            fixture.DbInstanceName,
+            TestAppHostOptions.WithDefaultChat with {
+                AppConfigurationExtender = cfg => {
+                    cfg.AddInMemory(
+                        ("SearchSettings:IsSearchEnabled", "true"),
+                        ("UsersSettings:NewAccountStatus", AccountStatus.Active.ToString()));
+                },
+            });
 }
