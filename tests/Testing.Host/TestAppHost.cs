@@ -4,24 +4,22 @@ using ActualLab.Testing.Output;
 
 namespace ActualChat.Testing.Host;
 
-public class TestAppHost(TestOutputHelperAccessor outputAccessor) : AppHost
+public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor outputAccessor) : AppHost
 {
-    private readonly ITestOutputHelper? _output = outputAccessor.Output;
+    private readonly ITestOutputHelper? _originalOutput = outputAccessor.Output;
 
+    public TestAppHostOptions Options { get; } = options;
     public TestOutputHelperAccessor OutputAccessor { get; } = outputAccessor;
-
-    public ITestOutputHelper SetOutput(ITestOutputHelper @out)
-    {
-        var output = @out ?? throw new ArgumentException("ITestOutputHelper should not be null", nameof(@out));
-        OutputAccessor.Output = output;
-        return output;
+    public ITestOutputHelper Output {
+        get => OutputAccessor.Output ?? NullTestOutput.Instance;
+        set => OutputAccessor.Output = value;
     }
 
     protected override void Dispose(bool disposing)
     {
-        if (_output != null)
+        if (_originalOutput != null)
             // use original IMessageSink as the output - test may have already been terminated
-            OutputAccessor.Output = _output;
+            OutputAccessor.Output = _originalOutput;
 
         if (disposing)
             DisposeDbOperationCompletionNotifiers();

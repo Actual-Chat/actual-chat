@@ -6,15 +6,14 @@ namespace ActualChat.Contacts.IntegrationTests;
 [CollectionDefinition(nameof(ContactCollection))]
 public class ContactCollection : ICollectionFixture<AppHostFixture>;
 
-public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(messageSink)
+public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture("contacts", messageSink)
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
 
-    public override string DbInstanceName => "contacts";
-
-    public override async Task InitializeAsync()
-        => Host = await TestAppHostFactory.NewAppHost(MessageSink, DbInstanceName, TestAppHostOptions.Default with {
+    protected override TestAppHostOptions CreateHostOptions()
+        => base.CreateHostOptions() with {
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
-            }});
+            },
+        };
 }

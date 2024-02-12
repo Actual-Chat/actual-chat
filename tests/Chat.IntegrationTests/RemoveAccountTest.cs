@@ -5,10 +5,9 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
 public class RemoveAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-    private ChatId TestChatId { get; } = Constants.Chat.DefaultChatId;
+    private ChatId TestChatId => Constants.Chat.DefaultChatId;
 
     [Fact]
     public async Task RemoveOwnEntriesTest()

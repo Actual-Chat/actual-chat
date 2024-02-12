@@ -7,17 +7,15 @@ using ActualLab.Generators;
 namespace ActualChat.Contacts.IntegrationTests;
 
 [Collection(nameof(ContactCollection)), Trait("Category", nameof(ContactCollection))]
-public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
-
     private WebClientTester _tester = null!;
     private IContacts _contacts = null!;
     private IContactsBackend _contactsBackend = null!;
     private IAccounts _accounts = null!;
 
-    public Task InitializeAsync()
+    public override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         _tester = Host.NewWebClientTester(Out);
@@ -29,7 +27,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyn
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())

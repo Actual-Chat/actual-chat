@@ -6,9 +6,8 @@ namespace ActualChat.Users.IntegrationTests;
 
 [Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
 public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
     private ChatId TestChatId { get; } = new("the-actual-one");
 
     [Fact]

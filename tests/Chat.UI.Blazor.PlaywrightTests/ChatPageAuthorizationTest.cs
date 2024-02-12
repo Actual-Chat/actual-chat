@@ -6,18 +6,17 @@ using Microsoft.AspNetCore.Http;
 namespace ActualChat.Chat.UI.Blazor.PlaywrightTests;
 
 [Collection(nameof(ChatUIAutomationCollection)), Trait("Category", nameof(ChatUIAutomationCollection))]
-public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const string ChatId = "the-actual-one";
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     private PlaywrightTester _tester = null!;
     private TestSettings _testSettings = null!;
     private IAccounts _accounts = null!;
     private Session _adminSession = null!;
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
         _testSettings = Host.Services.GetRequiredService<TestSettings>();
         _accounts = Host.Services.GetRequiredService<IAccounts>();
@@ -27,7 +26,7 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
-    public Task DisposeAsync()
+    public override Task DisposeAsync()
         => _tester.DisposeAsync().AsTask();
 
     [Fact]

@@ -6,19 +6,18 @@ using ActualLab.Fusion.EntityFramework;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
-public class LocalIdGeneratorTest(ITestOutputHelper @out)
+public class LocalIdGeneratorTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private ITestOutputHelper Out { get; } = @out;
-
     [Fact(Skip = "For manual runs only")]
     public async Task LocalIdsOnDifferentHostsAreUnique()
     {
-        using var appHost1 = await NewAppHost();
-        using var appHost2 = await NewAppHost();
-        var hub1 = appHost1.Services.DbHub<ChatDbContext>();
-        var hub2 = appHost1.Services.DbHub<ChatDbContext>();
-        var idGenerator1 = appHost1.Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
-        var idGenerator2 = appHost2.Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
+        using var h1 = await Fixture.NewHost();
+        using var h2 = await Fixture.NewHost();
+        var hub1 = h1.Services.DbHub<ChatDbContext>();
+        var hub2 = h1.Services.DbHub<ChatDbContext>();
+        var idGenerator1 = h1.Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
+        var idGenerator2 = h2.Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
 
         idGenerator1.Should().NotBeSameAs(idGenerator2);
 
@@ -53,9 +52,4 @@ public class LocalIdGeneratorTest(ITestOutputHelper @out)
         //
         // next1.Should().NotBe(next2);
     }
-
-    // Private methods
-
-    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
-        => TestAppHostFactory.NewAppHost(Out, options);
 }

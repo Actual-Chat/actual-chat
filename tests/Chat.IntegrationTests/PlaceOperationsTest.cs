@@ -7,12 +7,10 @@ namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
 public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : AppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const string PlaceTitle = "AC Place";
     private const string ChatTitle = "General";
-
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.SetOutput(@out);
 
     [Fact]
     public async Task TryGetNonExistingPlace()

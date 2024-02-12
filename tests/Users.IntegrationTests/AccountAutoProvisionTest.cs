@@ -15,7 +15,8 @@ public class AccountAutoProvisionTest(ITestOutputHelper @out): IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        _appHost = await NewAppHost(TestAppHostOptions.Default with {
+        _appHost = await TestAppHostFactory.NewAppHost(TestAppHostOptions.Default with {
+            Output = Out,
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
             },
@@ -60,7 +61,4 @@ public class AccountAutoProvisionTest(ITestOutputHelper @out): IAsyncLifetime
             .Excluding(x => x.User)
             .Excluding(x => x.IsGreetingCompleted ));
     }
-
-    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
-        => TestAppHostFactory.NewAppHost(Out, options);
 }
