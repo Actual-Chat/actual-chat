@@ -1,4 +1,3 @@
-using ActualChat.App.Server;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Testing.Host;
@@ -6,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
-[Collection(nameof(ChatUICollection)), Trait("Category", nameof(ChatUICollection))]
+[Collection(nameof(ChatUICollection))]
 public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
@@ -65,14 +64,14 @@ public class HistoricalChatPlayerTest(AppHostFixture fixture, ITestOutputHelper 
         return dbAuthor;
     }
 
-    private static DbChat AddChat(ChatDbContext dbContext, DateTime сreatedAt, UserId ownerUserId)
+    private static DbChat AddChat(ChatDbContext dbContext, DateTime createdAt, UserId ownerUserId)
     {
         var chatId = new ChatId("testchat");
         var dbChat = new DbChat {
             Id = chatId,
             Version = 1,
             Title = "Test chat",
-            CreatedAt = сreatedAt,
+            CreatedAt = createdAt,
             IsPublic = true,
         };
         dbContext.Chats.Add(dbChat);

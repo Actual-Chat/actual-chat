@@ -4,7 +4,7 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Users.IntegrationTests;
 
-[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
+[Collection(nameof(UserCollection))]
 public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

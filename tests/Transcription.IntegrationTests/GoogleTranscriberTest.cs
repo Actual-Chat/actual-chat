@@ -10,7 +10,7 @@ using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
-[Collection(nameof(TranscriptionCollection)), Trait("Category", nameof(TranscriptionCollection))]
+[Collection(nameof(TranscriptionCollection))]
 public class GoogleTranscriberTest(
     IConfiguration configuration,
     ITestOutputHelper @out,

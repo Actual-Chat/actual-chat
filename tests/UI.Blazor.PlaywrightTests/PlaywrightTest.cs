@@ -3,7 +3,7 @@ using Microsoft.Playwright;
 
 namespace ActualChat.UI.Blazor.PlaywrightTests;
 
-[Collection(nameof(UIAutomationCollection)), Trait("Category", nameof(UIAutomationCollection))]
+[Collection(nameof(UIAutomationCollection))]
 public class PlaywrightTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

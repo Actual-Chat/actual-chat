@@ -4,7 +4,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Search.IntegrationTests;
 
-[Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
+[Collection(nameof(SearchCollection))]
 public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

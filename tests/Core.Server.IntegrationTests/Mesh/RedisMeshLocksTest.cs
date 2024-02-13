@@ -3,7 +3,7 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 
-[Collection(nameof(NonStartingServerCollection)), Trait("Category", nameof(NonStartingServerCollection))]
+[Collection(nameof(NonStartingServerCollection))]
 public class RedisMeshLocksTest(NonStartingAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<NonStartingAppHostFixture>(fixture, @out)
 {

@@ -2,7 +2,7 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests;
 
-[Collection(nameof(NonStartingServerCollection)), Trait("Category", nameof(NonStartingServerCollection))]
+[Collection(nameof(NonStartingServerCollection))]
 public class ShardWorkerTest(NonStartingAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<NonStartingAppHostFixture>(fixture, @out)
 {

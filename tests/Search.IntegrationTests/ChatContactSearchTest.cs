@@ -6,7 +6,7 @@ using ActualLab.Generators;
 
 namespace ActualChat.Search.IntegrationTests;
 
-[Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
+[Collection(nameof(SearchCollection))]
 public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

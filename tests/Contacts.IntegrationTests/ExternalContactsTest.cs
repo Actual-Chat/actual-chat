@@ -9,7 +9,7 @@ using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
-[Collection(nameof(ExternalContactCollection)), Trait("Category", nameof(ExternalContactCollection))]
+[Collection(nameof(ExternalContactCollection))]
 public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ExternalAppHostFixture>(fixture, @out)
 {

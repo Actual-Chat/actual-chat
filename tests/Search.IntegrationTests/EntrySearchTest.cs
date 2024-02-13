@@ -3,7 +3,7 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Search.IntegrationTests;
 
-[Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
+[Collection(nameof(SearchCollection))]
 public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

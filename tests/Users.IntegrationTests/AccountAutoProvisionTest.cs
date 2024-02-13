@@ -3,7 +3,7 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;
 
-[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
+[Collection(nameof(UserCollection))]
 public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

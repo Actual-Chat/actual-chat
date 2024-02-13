@@ -9,7 +9,7 @@ using ActualLab.Generators;
 
 namespace ActualChat.Contacts.UI.Blazor.IntegrationTests;
 
-[Collection(nameof(ContactUICollection)), Trait("Category", nameof(ContactUICollection))]
+[Collection(nameof(ContactUICollection))]
 public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

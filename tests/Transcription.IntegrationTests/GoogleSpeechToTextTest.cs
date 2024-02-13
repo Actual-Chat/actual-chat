@@ -8,7 +8,7 @@ using ActualLab.IO;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
-[Collection(nameof(TranscriptionCollection)), Trait("Category", nameof(TranscriptionCollection))]
+[Collection(nameof(TranscriptionCollection))]
 public class GoogleSpeechToTextTest(ILogger log, ITestOutputHelper @out)
 {
     private ITestOutputHelper Out { get; } = @out;

@@ -3,7 +3,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
-[Collection(nameof(ChatUICollection)), Trait("Category", nameof(ChatUICollection))]
+[Collection(nameof(ChatUICollection))]
 public class AvatarsTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

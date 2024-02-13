@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authentication.MicrosoftAccount;
 
 namespace ActualChat.Users.IntegrationTests;
 
-[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
+[Collection(nameof(UserCollection))]
 public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

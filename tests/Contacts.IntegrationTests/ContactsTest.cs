@@ -6,7 +6,7 @@ using ActualLab.Generators;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
-[Collection(nameof(ContactCollection)), Trait("Category", nameof(ContactCollection))]
+[Collection(nameof(ContactCollection))]
 public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

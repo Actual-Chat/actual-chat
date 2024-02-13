@@ -2,7 +2,7 @@
 
 namespace ActualChat.UI.Blazor.IntegrationTests;
 
-[Collection(nameof(UICollection)), Trait("Category", nameof(UICollection))]
+[Collection(nameof(UICollection))]
 public class ExampleTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {

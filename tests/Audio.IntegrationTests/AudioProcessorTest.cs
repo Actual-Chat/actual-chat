@@ -9,7 +9,7 @@ using ActualLab.IO;
 
 namespace ActualChat.Audio.IntegrationTests;
 
-[Collection(nameof(AudioCollection)), Trait("Category", nameof(AudioCollection))]
+[Collection(nameof(AudioCollection))]
 public class AudioProcessorTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
