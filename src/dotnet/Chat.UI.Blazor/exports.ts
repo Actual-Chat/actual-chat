@@ -9,7 +9,7 @@ export * from './Components/LeftPanel/logo-button-svg.lit';
 export * from './Components/MarkupEditor/markup-editor';
 export * from './Components/MarkupParts/CodeBlockMarkupView/code-block-markup-view';
 export * from './Components/MentionList/mention-list';
-export * from './Components/Navbar/place-buttons';
+export * from './Components/Navbar/navbar-place-buttons';
 export * from './Components/Onboarding/phone-verification-cat-svg.lit';
 export * from './Components/Selection/selection-host';
 export * from './Services/LanguageUI/language-ui';
