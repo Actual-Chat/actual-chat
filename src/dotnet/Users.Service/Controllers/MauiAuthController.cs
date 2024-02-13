@@ -56,7 +56,7 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         CancellationToken cancellationToken = default)
     {
         var session = SecureTokensBackend.ParseSessionToken(sessionToken);
-        await ServerAuthHelper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
+        await ServerAuthHelper.UpdateAuthState(session, HttpContext, true, cancellationToken).ConfigureAwait(false);
         returnUrl = returnUrl.NullIfEmpty() ?? Links.AutoClose("Authentication state update").Value;
         return Redirect(returnUrl);
     }
