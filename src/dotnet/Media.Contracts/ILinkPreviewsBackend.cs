@@ -17,4 +17,8 @@ public interface ILinkPreviewsBackend : IComputeService
 // ReSharper disable once InconsistentNaming
 public sealed partial record LinkPreviewsBackend_Refresh(
     [property: DataMember, MemoryPackOrder(0)] string Url
-) : ICommand<LinkPreview?>, IBackendCommand;
+) : ICommand<LinkPreview?>, IBackendCommand, IHasShardKey<string>
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public string ShardKey => Url;
+}

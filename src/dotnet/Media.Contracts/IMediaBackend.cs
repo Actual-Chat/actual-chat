@@ -16,4 +16,8 @@ public interface IMediaBackend : IComputeService
 public sealed partial record MediaBackend_Change(
     [property: DataMember, MemoryPackOrder(0)] MediaId Id,
     [property: DataMember, MemoryPackOrder(1)] Change<Media> Change
-) : ICommand<Media?>, IBackendCommand;
+) : ICommand<Media?>, IBackendCommand, IHasShardKey<MediaId>
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public MediaId ShardKey => Id;
+}

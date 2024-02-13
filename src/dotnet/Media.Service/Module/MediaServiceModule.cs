@@ -43,19 +43,20 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
                 || commandType == typeof(TextEntryChangedEvent);
         });
 
-        var fusion = services.AddFusion();
+        var backend = services.AddBackend(HostInfo);
+        var isClientBackend = backend.GetServiceMode<IMediaBackend>() == ServiceMode.Client;
 
-        // Module's own services
-        fusion.AddService<IMediaBackend, MediaBackend>();
+        // Media
+        backend.AddService<IMediaBackend, MediaBackend>();
 
         // Links
-        fusion.AddService<IMediaLinkPreviews, MediaLinkPreviews>();
-        fusion.AddService<ILinkPreviewsBackend, LinkPreviewsBackend>();
+        backend.AddService<IMediaLinkPreviews, MediaLinkPreviews>();
+        backend.AddService<ILinkPreviewsBackend, LinkPreviewsBackend>();
+        if (isClientBackend)
+            return;
+
         services.AddHttpClient(nameof(LinkPreviewsBackend))
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));
         services.AddSingleton<Crawler>();
-
-        // Controllers, etc.
-        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

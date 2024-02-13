@@ -28,7 +28,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
         if (serverSideServiceDef.ServiceMode != ServiceMode.Client)
             throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client service.");
 
-        var shardScheme = ShardScheme.ById[serverSideServiceDef.ServerRole.Id];
+        var shardScheme = ShardScheme.ById[serverSideServiceDef.ServedByRoles.Backend.Id];
         var meshRefResolver = RpcMeshRefResolvers[methodDef];
         var meshRef = meshRefResolver.Invoke(methodDef, arguments, shardScheme);
         var peerRef = MeshWatcher.GetPeerRef(meshRef).Require();

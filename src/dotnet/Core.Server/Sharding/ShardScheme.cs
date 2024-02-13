@@ -22,10 +22,25 @@ public abstract class ShardScheme(Symbol id, int shardCount) : IHasId<Symbol>
         public static Backend Instance { get; } = new();
     }
 
+    public sealed class MediaBackend() : ShardScheme(HostRole.MediaBackendServer.Id, 10), IShardScheme<MediaBackend>
+    {
+        public static MediaBackend Instance { get; } = new();
+    }
+
+    // Queues
+
+    public sealed class DefaultQueue() : ShardScheme(HostRole.DefaultQueue.Id, 1), IShardScheme<DefaultQueue>
+    {
+        public static DefaultQueue Instance { get; } = new();
+    }
+
     // A reverse map of ShardScheme.Id to ShardScheme
     public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ById = new Dictionary<Symbol, ShardScheme>() {
         { None.Instance.Id, Backend.Instance },
         { Backend.Instance.Id, Backend.Instance },
+        { MediaBackend.Instance.Id, MediaBackend.Instance },
+        // Queues
+        { DefaultQueue.Instance.Id, DefaultQueue.Instance },
     };
 
     public Symbol Id { get; } = id;
@@ -34,10 +49,6 @@ public abstract class ShardScheme(Symbol id, int shardCount) : IHasId<Symbol>
     public bool IsDefault => ReferenceEquals(this, Default.Instance);
 
     public IEnumerable<int> ShardIndexes { get; } = Enumerable.Range(0, shardCount);
-    public ImmutableArray<RpcPeerRef> BackendClientPeerRefs { get; }
-        = Enumerable.Range(0, shardCount)
-            .Select(shardIndex => RpcPeerRef.NewClient($"@shard-{id.Value}-{shardIndex}", true))
-            .ToImmutableArray();
 
     public override string ToString()
         => $"{nameof(ShardScheme)}({Id}, {ShardCount})";

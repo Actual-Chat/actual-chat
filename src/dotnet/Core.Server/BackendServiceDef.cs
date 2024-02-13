@@ -1,11 +1,9 @@
-using ActualChat.Hosting;
-
 namespace ActualChat;
 
 public sealed record BackendServiceDef(
     Type ServiceType,
     Type ImplementationType,
-    HostRole ServerRole,
+    ServedByRoleSet ServedByRoles,
     ServiceMode ServiceMode)
 {
     public override string ToString()
@@ -13,6 +11,6 @@ public sealed record BackendServiceDef(
         var prefix = ImplementationType == ServiceType
             ? ServiceType.GetName()
             : $"{ServiceType.GetName()} -> {ImplementationType.GetName()}";
-        return $"{prefix} @ {ServerRole} as {ServiceMode:G}";
+        return $"{prefix} as {ServiceMode:G}, served by {ServedByRoles}";
     }
 };
