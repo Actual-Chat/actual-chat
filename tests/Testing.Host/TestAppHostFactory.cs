@@ -17,15 +17,12 @@ public static class TestAppHostFactory
 {
     public static async Task<TestAppHost> NewAppHost(TestAppHostOptions options)
     {
+        var instanceName = options.InstanceName.RequireNonEmpty();
         var output = options.Output.WithTimestamps();
-        var instanceName = options.InstanceName.NullIfEmpty() ?? output.GetInstanceName();
-        options = options with {
-            InstanceName = instanceName,
-            Output = output,
-        };
-
         var outputAccessor = new TestOutputHelperAccessor(output);
         var manifestPath = GetManifestPath();
+        options = options with { Output = output.WithTimestamps() };
+
         var appHost = new TestAppHost(options, outputAccessor) {
             ServerUrls = options.ServerUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
             HostConfigurationBuilder = cfg => {
@@ -56,7 +53,7 @@ public static class TestAppHostFactory
                 });
             },
             AppConfigurationBuilder = cfg => {
-                ConfigureTestApp(cfg, options.InstanceName);
+                ConfigureTestApp(cfg, instanceName.RequireNonEmpty());
                 options.AppConfigurationExtender?.Invoke(cfg);
             },
         };

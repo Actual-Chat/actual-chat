@@ -19,14 +19,6 @@ public static class TestOutputHelperExt
         return output;
     }
 
-    public static string GetInstanceName(this ITestOutputHelper output)
-    {
-        var test = output.GetTest()
-            ?? throw StandardError.Internal("Failed to extract test info.");
-        return test.TestCase.Traits.GetValueOrDefault("Category")?.FirstOrDefault()
-            ?? throw StandardError.Internal("Failed to extract test category.");
-    }
-
     public static ITest? GetTest(this ITestOutputHelper output)
     {
         output = output.GetWrappedOutput();

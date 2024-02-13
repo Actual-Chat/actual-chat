@@ -40,10 +40,11 @@ public record TestAppHostOptions
     public bool MustInitializeDb { get; init; }
     public bool MustStart { get; init; }
 
-    public TestAppHostOptions With(string instanceName)
-        => this with { InstanceName = instanceName };
     public TestAppHostOptions With(ITestOutputHelper output)
-        => this with { Output = output };
+        => this with {
+            InstanceName = output.GetTest().Require().GetInstanceName(),
+            Output = output,
+        };
     public TestAppHostOptions With(string instanceName, ITestOutputHelper output)
         => this with {
             InstanceName = instanceName,
