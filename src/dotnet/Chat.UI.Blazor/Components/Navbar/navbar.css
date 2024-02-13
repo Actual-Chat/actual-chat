@@ -132,7 +132,9 @@ body.hoverable .navbar-item:hover {
     @apply pt-2 -mt-2;
     @apply custom-scrollbar-hide;
 }
-
+.navbar-place-buttons:empty {
+    @apply m-0 -mb-3 md:-mb-2 p-0;
+}
 .navbar-place-buttons::-webkit-scrollbar {
     display: none;
 }

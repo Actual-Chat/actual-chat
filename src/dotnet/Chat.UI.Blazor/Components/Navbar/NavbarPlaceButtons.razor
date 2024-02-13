@@ -6,40 +6,36 @@
 @{
     var m = State.Value;
     var places = m.Places;
-    if (places.Count == 0)
-        return;
+    var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
 }
 
-@if (places.Count > 0) {
-    var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
-    <div @ref="Ref" class="navbar-place-buttons">
-        @foreach (var place in places) {
-            <NavbarGroupSelectionButton
-                @key="@place.Id"
-                AdditionalAttributes="@(new Dictionary<string, object>() { {"data-place-id", place.Id} })"
-                CanMove="@true"
-                Title="@place.Title"
-                Id="@place.Id.GetNavbarGroupId()"
-                Tooltip="@place.Title">
-                <ChildContent>
-                    <Pic
-                        Title="@place.Title"
-                        Picture="@place.Picture.ToPicture()"
-                        Size="@size"
-                        IsSquare="true"
-                        AvatarKind="@AvatarKind.Marble"
-                        AvatarKey="@place.Id.Value"/>
-                </ChildContent>
-                <BadgeContent>
-                    <ChatsNavbarButtonBadge PlaceSid="@place.Id"/>
-                </BadgeContent>
-            </NavbarGroupSelectionButton>
-        }
-    </div>
-}
+<div @ref="Ref" class="navbar-place-buttons">
+    @foreach (var place in places) {
+        <NavbarGroupSelectionButton
+            @key="@place.Id"
+            AdditionalAttributes="@(new Dictionary<string, object>() { {"data-place-id", place.Id} })"
+            CanMove="@true"
+            Title="@place.Title"
+            Id="@place.Id.GetNavbarGroupId()"
+            Tooltip="@place.Title">
+            <ChildContent>
+                <Pic
+                    Title="@place.Title"
+                    Picture="@place.Picture.ToPicture()"
+                    Size="@size"
+                    IsSquare="true"
+                    AvatarKind="@AvatarKind.Marble"
+                    AvatarKey="@place.Id.Value"/>
+            </ChildContent>
+            <BadgeContent>
+                <ChatsNavbarButtonBadge PlaceSid="@place.Id"/>
+            </BadgeContent>
+        </NavbarGroupSelectionButton>
+    }
+</div>
 
 @code {
-    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.PlaceButtons.create";
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.NavbarPlaceButtons.create";
     private DotNetObjectReference<NavbarPlaceButtons> BlazorRef { get; set; } = null!;
     private IJSObjectReference JSRef { get; set; } = null!;
     private ElementReference Ref { get; set; }

@@ -1,7 +1,7 @@
 import { Subject } from 'rxjs';
 import { clearTimeout, setTimeout } from 'timerQueue';
 
-export class PlaceButtons {
+export class NavbarPlaceButtons {
     private readonly disposed$: Subject<void> = new Subject<void>();
     private blazorRef: DotNet.DotNetObject;
     private readonly places: HTMLElement;
@@ -17,8 +17,8 @@ export class PlaceButtons {
     private placeListObserver: MutationObserver;
     private isScrolling: boolean;
 
-    static create(places: HTMLElement, blazorRef: DotNet.DotNetObject): PlaceButtons {
-        return new PlaceButtons(places, blazorRef);
+    static create(places: HTMLElement, blazorRef: DotNet.DotNetObject): NavbarPlaceButtons {
+        return new NavbarPlaceButtons(places, blazorRef);
     }
 
     constructor(places: HTMLElement, blazorRef: DotNet.DotNetObject) {

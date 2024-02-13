@@ -79,7 +79,13 @@
         Class="mt-auto"
         Tooltip="Reload UI"
         Click="@OnReloadUIClick">
-        <i class="icon-refresh text-2xl font-medium"></i>
+        <ChildContent>
+            <i class="icon-refresh text-2xl font-medium"></i>
+        </ChildContent>
+        <Ending>
+            <LeftLine/>
+            <div class="right-line"></div>
+        </Ending>
     </NavbarButton>
 }
 

@@ -55,8 +55,8 @@ body.hoverable .contact-selector-badges-contact:hover .avatar-circle {
 
 /* Place picker */
 .contact-selector-place-picker {
-    @apply flex-x mx-4 gap-x-4 ;
-    @apply overflow-x-auto custom-scrollbar;
+    @apply flex-none flex-x gap-x-4 ;
+    @apply overflow-x-auto custom-scrollbar-hide;
 }
 .contact-selector-place-picker .tab-panel-tabs {
     @apply mb-0 pb-0;
@@ -64,6 +64,11 @@ body.hoverable .contact-selector-badges-contact:hover .avatar-circle {
 .contact-selector-place-picker .tab-panel-tabs .btn-group {
     @apply justify-start;
 }
+.contact-selector-place-picker .tab-panel-tabs .btn-group:first-child,
+.contact-selector-place-picker .tab-panel-tabs .btn-group:last-child {
+    @apply mx-4;
+}
+
 .contact-selector-place-picker .tab-panel-tabs .btn-group-container {
     @apply min-h-12 max-h-12;
     @apply justify-between;
