@@ -12,13 +12,13 @@ public readonly struct BackendServiceBuilder
     public CommanderBuilder Commander => Fusion.Commander;
     public RpcBuilder Rpc => Fusion.Rpc;
     public HostInfo HostInfo { get; }
+    public ILogger? Log { get; }
 
-    internal BackendServiceBuilder(
-        IServiceCollection services,
-        HostInfo hostInfo)
+    internal BackendServiceBuilder(IServiceCollection services, HostInfo hostInfo, ILogger? log)
     {
         Fusion = services.AddFusion(RpcServiceMode.None);
         HostInfo = hostInfo;
+        Log = log;
     }
 
     // GetServiceMode

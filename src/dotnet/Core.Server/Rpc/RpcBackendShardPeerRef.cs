@@ -39,6 +39,9 @@ public sealed record RpcBackendShardPeerRef : RpcPeerRef
         _updateTask = Update();
     }
 
+    public override string ToString()
+        => $"backend @ {ShardRef} (#{GetHashCode()})";
+
     // This record relies on referential equality
     public bool Equals(RpcBackendShardPeerRef? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

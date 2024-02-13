@@ -23,6 +23,9 @@ public sealed record RpcBackendNodePeerRef : RpcPeerRef
         _updateTask = Update();
     }
 
+    public override string ToString()
+        => $"backend @ {NodeRef}";
+
     // This record relies on referential equality
     public bool Equals(RpcBackendNodePeerRef? other) => ReferenceEquals(this, other);
     public override int GetHashCode() => RuntimeHelpers.GetHashCode(this);

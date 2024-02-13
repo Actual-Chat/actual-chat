@@ -32,10 +32,11 @@ public sealed class RpcMeshRefResolvers(IServiceProvider services)
 
     private static RpcMeshRefResolver DefaultProviderImpl(RpcMethodDef methodDef)
     {
-        if (methodDef.ArgumentListType == typeof(ArgumentList0))
+        var parameterTypes = methodDef.ParameterTypes;
+        if (parameterTypes.Length == 0)
             return DefaultResolverImpl<Unit>;
 
-        var arg0Type = methodDef.ArgumentListType.GetGenericArguments()[0];
+        var arg0Type = parameterTypes[0];
         return DefaultResolverImplMethod.MakeGenericMethod(arg0Type).CreateDelegate<RpcMeshRefResolver>();
     }
 
