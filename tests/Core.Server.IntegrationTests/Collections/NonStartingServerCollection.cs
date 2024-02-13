@@ -1,13 +1,10 @@
-using ActualChat.Testing.Host;
-
 namespace ActualChat.Core.Server.IntegrationTests;
 
 [CollectionDefinition(nameof(NonStartingServerCollection))]
 public class NonStartingServerCollection : ICollectionFixture<NonStartingAppHostFixture>;
 
-public class NonStartingAppHostFixture(IMessageSink messageSink)
-    : ActualChat.Testing.Host.AppHostFixture("ns-server", messageSink)
+public class NonStartingAppHostFixture : ActualChat.Testing.Host.AppHostFixture
 {
-    protected override TestAppHostOptions CreateAppHostOptions()
-        => base.CreateAppHostOptions() with { MustStart = false };
+    public NonStartingAppHostFixture(IMessageSink messageSink) : base("ns-server", messageSink)
+        => AppHostOptions = AppHostOptions with { MustStart = false };
 }

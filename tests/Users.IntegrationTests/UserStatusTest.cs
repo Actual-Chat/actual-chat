@@ -8,8 +8,6 @@ namespace ActualChat.Users.IntegrationTests;
 public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private const AccountStatus NewAccountStatus = AccountStatus.Active;
-
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
@@ -17,11 +15,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     protected override async Task InitializeAsync()
     {
-        _appHost = await NewAppHost(options => options with {
-            AppConfigurationExtender = cfg => {
-                cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
-            },
-        });
+        _appHost = await NewAppHost();
         _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _adminSession = Session.New();
@@ -47,7 +41,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
         var account = await GetOwnAccount();
 
         // assert
-        account.Status.Should().Be(NewAccountStatus);
+        account.Status.Should().Be(AccountStatus.Active);
 
         // act
         var newStatuses = new[] {

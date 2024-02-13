@@ -14,6 +14,10 @@ public abstract class SharedAppHostTestBase<TAppHostFixture> : TestBase
     }
 
     // Just a shortcut
-    protected virtual Task<TestAppHost> NewAppHost(Func<TestAppHostOptions, TestAppHostOptions>? optionsBuilder = null)
-        => Fixture.NewAppHost(optionsBuilder);
+    protected virtual Task<TestAppHost> NewAppHost(Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
+        => Fixture.NewAppHost(options => {
+            options = options with { Output = Out };
+            options = optionOverrider?.Invoke(options) ?? options;
+            return options;
+        });
 }

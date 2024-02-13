@@ -3,12 +3,11 @@ namespace ActualChat.Testing.Host;
 public abstract class AppHostFixture(
     string instanceName,
     IMessageSink messageSink,
-    TestAppHostOptions? baseHostOptions = null
+    TestAppHostOptions? appHostOptions = null
     ) : IAsyncLifetime
 {
-    public string InstanceName { get; } = instanceName;
-    public IMessageSink MessageSink { get; } = messageSink;
-    public TestAppHostOptions BaseHostOptions { get; } = baseHostOptions ?? TestAppHostOptions.Default;
+    public TestAppHostOptions AppHostOptions { get; protected init; }
+        = (appHostOptions ?? TestAppHostOptions.Default).With(instanceName, messageSink);
     public TestAppHost AppHost { get; protected set; } = null!;
 
     async Task IAsyncLifetime.InitializeAsync()
@@ -20,15 +19,10 @@ public abstract class AppHostFixture(
         return Task.CompletedTask;
     }
 
-    public virtual Task<TestAppHost> NewAppHost(Func<TestAppHostOptions, TestAppHostOptions>? optionsBuilder = null)
+    public virtual Task<TestAppHost> NewAppHost(Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
     {
-        var o = CreateAppHostOptions();
-        o = optionsBuilder?.Invoke(o) ?? o;
-        return TestAppHostFactory.NewAppHost(o);
+        var options = AppHostOptions;
+        options = optionOverrider?.Invoke(options) ?? options;
+        return TestAppHostFactory.NewAppHost(options);
     }
-
-    // Protected methods
-
-    protected virtual TestAppHostOptions CreateAppHostOptions()
-        => BaseHostOptions.With(InstanceName, MessageSink);
 }
