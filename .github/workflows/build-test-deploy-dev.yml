@@ -190,6 +190,12 @@ jobs:
           ELASTIC_PASSWORD: elastic
           xpack.security.enabled: false
           discovery.type: single-node
+      nats:
+        image: nats:2.10.9-alpine3.19
+        ports:
+          # Maps port 4222 and 8222 on service container to the host
+          - 4222:4222
+          - 8222:8222
     steps:
       - name: Install postgresql-client
         run: |
