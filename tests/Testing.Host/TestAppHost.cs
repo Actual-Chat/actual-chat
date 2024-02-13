@@ -6,21 +6,16 @@ namespace ActualChat.Testing.Host;
 
 public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor outputAccessor) : AppHost
 {
-    private readonly ITestOutputHelper? _originalOutput = outputAccessor.Output;
-
     public TestAppHostOptions Options { get; } = options;
     public TestOutputHelperAccessor OutputAccessor { get; } = outputAccessor;
-    public ITestOutputHelper Output {
-        get => OutputAccessor.Output ?? NullTestOutput.Instance;
+
+    public ITestOutputHelper? Output {
+        get => OutputAccessor.Output;
         set => OutputAccessor.Output = value;
     }
 
     protected override void Dispose(bool disposing)
     {
-        if (_originalOutput != null)
-            // use original IMessageSink as the output - test may have already been terminated
-            OutputAccessor.Output = _originalOutput;
-
         if (disposing)
             DisposeDbOperationCompletionNotifiers();
         base.Dispose(disposing);

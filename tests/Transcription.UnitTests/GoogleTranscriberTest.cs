@@ -7,20 +7,16 @@ namespace ActualChat.Transcription.UnitTests;
 
 public class GoogleTranscriberTest : TestBase
 {
-    private ILogger<GoogleTranscriber> Log { get; }
-    private ServiceProvider Services { get; set; }
+    private ServiceProvider Services { get; }
 
     // ReSharper disable once ContextualLoggerProblem
-    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriber> log) : base(@out)
-    {
-        Log = log;
-        Services = new ServiceCollection()
+    public GoogleTranscriberTest(IServiceProvider testServices) : base(testServices)
+        => Services = new ServiceCollection()
             .AddSingleton(new CoreServerSettings { GoogleProjectId = "n/a" })
             .AddSingleton(MomentClockSet.Default)
             .AddSingleton<GoogleTranscriber>()
-            .ConfigureLogging(Out)
+            .AddTestLogging(Out)
             .BuildServiceProvider();
-    }
 
     [Fact]
     public async Task DuplicateFinalResponsesTest()

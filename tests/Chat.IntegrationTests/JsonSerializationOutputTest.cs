@@ -4,10 +4,8 @@ using ICommand = ActualLab.CommandR.ICommand;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-public class JsonSerializationOutputTest(ITestOutputHelper @out)
+public class JsonSerializationOutputTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public ITestOutputHelper Out { get; } = @out;
-
     [Fact]
     public void DumpWarmupJson()
     {

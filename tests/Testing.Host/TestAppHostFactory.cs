@@ -18,10 +18,8 @@ public static class TestAppHostFactory
     public static async Task<TestAppHost> NewAppHost(TestAppHostOptions options)
     {
         var instanceName = options.InstanceName.RequireNonEmpty();
-        var output = options.Output.WithTimestamps();
-        var outputAccessor = new TestOutputHelperAccessor(output);
+        var outputAccessor = new TestOutputHelperAccessor(options.Output);
         var manifestPath = GetManifestPath();
-        options = options with { Output = output.WithTimestamps() };
 
         var appHost = new TestAppHost(options, outputAccessor) {
             ServerUrls = options.ServerUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
@@ -41,7 +39,7 @@ public static class TestAppHostFactory
                 // The code below runs after module service registration & everything else
                 services.AddSettings<TestSettings>();
                 services.AddSingleton(outputAccessor);
-                services.ConfigureLogging(outputAccessor);
+                services.AddTestLogging(outputAccessor);
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();

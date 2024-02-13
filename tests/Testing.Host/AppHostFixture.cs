@@ -19,7 +19,8 @@ public abstract class AppHostFixture(
         return Task.CompletedTask;
     }
 
-    public virtual Task<TestAppHost> NewAppHost(Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
+    public virtual Task<TestAppHost> NewAppHost(
+        Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
     {
         var options = AppHostOptions;
         options = optionOverrider?.Invoke(options) ?? options;

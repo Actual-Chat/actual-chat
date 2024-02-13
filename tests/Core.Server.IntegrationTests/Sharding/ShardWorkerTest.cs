@@ -3,7 +3,7 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Core.Server.IntegrationTests;
 
 public class ShardWorkerTest(ITestOutputHelper @out)
-    : AppHostTestBase($"x-{nameof(ShardWorkerTest)}", @out, TestAppHostOptions.None)
+    : AppHostTestBase($"x-{nameof(ShardWorkerTest)}", TestAppHostOptions.None, @out)
 {
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()

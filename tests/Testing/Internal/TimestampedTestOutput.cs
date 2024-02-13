@@ -1,6 +1,6 @@
 using Cysharp.Text;
 
-namespace ActualChat.Testing;
+namespace ActualChat.Testing.Internal;
 
 public class TimestampedTestOutput(ITestOutputHelper wrapped) : ITestOutputWrapper
 {

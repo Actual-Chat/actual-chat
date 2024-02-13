@@ -1,4 +1,5 @@
 using ActualChat.Chat.Module;
+using ActualChat.Testing.Internal;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 
@@ -48,6 +49,6 @@ public record TestAppHostOptions
     public TestAppHostOptions With(string instanceName, IMessageSink messageSink)
         => this with {
             InstanceName = instanceName,
-            Output = new TestOutputAdapter(messageSink),
+            Output = new MessageSinkTestOutput(messageSink),
         };
 }

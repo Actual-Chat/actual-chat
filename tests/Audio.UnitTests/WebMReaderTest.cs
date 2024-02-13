@@ -4,11 +4,8 @@ using ActualChat.Audio.WebM.Models;
 
 namespace ActualChat.Audio.UnitTests;
 
-public class WebMReaderTest : TestBase
+public class WebMReaderTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public WebMReaderTest(ITestOutputHelper @out) : base(@out)
-    { }
-
     [Fact]
     public async Task BasicReaderTest()
     {

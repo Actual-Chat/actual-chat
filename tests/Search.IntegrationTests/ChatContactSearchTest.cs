@@ -1,7 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 using ActualLab.Generators;
 
 namespace ActualChat.Search.IntegrationTests;

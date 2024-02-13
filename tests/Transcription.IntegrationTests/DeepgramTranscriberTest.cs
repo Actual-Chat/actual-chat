@@ -11,11 +11,9 @@ using Xunit.DependencyInjection.Logging;
 namespace ActualChat.Transcription.IntegrationTests;
 
 [Collection(nameof(TranscriptionCollection))]
-public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepGramTranscriber> log)
+public class DeepgramTranscriberTest(ITestOutputHelper @out, ILogger<DeepgramTranscriberTest> log)
+    : TestBase(@out, log)
 {
-    private ITestOutputHelper Out { get; } = @out;
-    private ILogger<DeepGramTranscriber> Log { get; } = log;
-
     [Theory(Skip = "For manual runs only")]
     // [InlineData("file.webm", false)]
     [InlineData("file.webm", true)]

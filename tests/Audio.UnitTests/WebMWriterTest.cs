@@ -4,11 +4,8 @@ using ActualChat.Audio.WebM.Models;
 
 namespace ActualChat.Audio.UnitTests;
 
-public class WebMWriterTest : TestBase
+public class WebMWriterTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public WebMWriterTest(ITestOutputHelper @out) : base(@out)
-    { }
-
     [Fact]
     public async Task BasicWriterTest()
     {

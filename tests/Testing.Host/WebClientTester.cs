@@ -76,7 +76,7 @@ public class WebClientTester : IWebClientTester
         var services = new ServiceCollection();
         var configuration = AppServices.GetRequiredService<IConfiguration>();
         Program.ConfigureServices(services, configuration, UrlMapper.BaseUrl, true);
-        services.ConfigureLogging(output); // Override logging
+        services.AddTestLogging(output); // Override logging
 
         services.AddSingleton<IDispatcherResolver>(c => new TestDispatcherResolver(c));
 

@@ -14,10 +14,9 @@ namespace ActualChat.Transcription.IntegrationTests;
 public class GoogleTranscriberTest(
     IConfiguration configuration,
     ITestOutputHelper @out,
-    ILogger<GoogleTranscriber> log)
+    ILogger<GoogleTranscriberTest> log
+    ) : TestBase(@out, log)
 {
-    private ITestOutputHelper Out { get; } = @out;
-    private ILogger<GoogleTranscriber> Log { get; } = log;
     private CoreServerSettings CoreServerSettings { get; }
         = configuration.GetSettings<CoreServerSettings>(nameof(CoreSettings));
 
