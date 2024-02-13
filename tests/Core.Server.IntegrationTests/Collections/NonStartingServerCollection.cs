@@ -8,6 +8,6 @@ public class NonStartingServerCollection : ICollectionFixture<NonStartingAppHost
 public class NonStartingAppHostFixture(IMessageSink messageSink)
     : ActualChat.Testing.Host.AppHostFixture("ns-server", messageSink)
 {
-    protected override TestAppHostOptions CreateHostOptions()
-        => base.CreateHostOptions() with { MustStart = false };
+    protected override TestAppHostOptions CreateAppHostOptions()
+        => base.CreateAppHostOptions() with { MustStart = false };
 }

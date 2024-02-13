@@ -10,7 +10,7 @@ public class ShardWorkerTest(NonStartingAppHostFixture fixture, ITestOutputHelpe
     public async Task BasicTest()
     {
         var shardScheme = ShardScheme.Backend.Instance;
-        using var h1 = await Fixture.NewHost();
+        using var h1 = await NewAppHost();
         await using var w1a = new TestShardWorker(h1.Services, Out, "w1a");
         w1a.Start();
         await Task.Delay(1000);
@@ -21,7 +21,7 @@ public class ShardWorkerTest(NonStartingAppHostFixture fixture, ITestOutputHelpe
         await using var w1b = new TestShardWorker(h1.Services, Out, "w1b");
         w1b.Start();
 
-        using var h2 = await Fixture.NewHost();
+        using var h2 = await NewAppHost();
         await using var w2a = new TestShardWorker(h2.Services, Out, "w2a");
         w2a.Start();
         await using var w2b = new TestShardWorker(h2.Services, Out, "w2b");

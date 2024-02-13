@@ -15,9 +15,9 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
     private AppHost _appHost = null!;
     private Session _adminSession = null!;
 
-    public override async Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
-        _appHost = await Fixture.NewHost(options => options with {
+        _appHost = await NewAppHost(options => options with {
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
             },
@@ -25,11 +25,10 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
         _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _adminSession = Session.New();
-
-        await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
+        await _appHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
-    public override async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();

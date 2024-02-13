@@ -32,7 +32,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
     private static Phone JanePhone => new ("1-3456789012");
     private static string JaneEmail => "jane@actual.chat";
 
-    public override async Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
         var deviceContacts = new Mock<DeviceContacts>();
         deviceContacts.SetupGet(x => x.DeviceId).Returns(() => DeviceId);
@@ -55,7 +55,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
         await _tester.SignOut();
     }
 
-    public override Task DisposeAsync()
+    protected override Task DisposeAsync()
         => _tester.DisposeSilentlyAsync().AsTask();
 
     [Fact(Skip = "TODO(FC): Fix for CI")]

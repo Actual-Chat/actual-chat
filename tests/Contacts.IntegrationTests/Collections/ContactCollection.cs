@@ -10,8 +10,8 @@ public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.
 {
     private const AccountStatus NewAccountStatus = AccountStatus.Active;
 
-    protected override TestAppHostOptions CreateHostOptions()
-        => base.CreateHostOptions() with {
+    protected override TestAppHostOptions CreateAppHostOptions()
+        => base.CreateAppHostOptions() with {
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
             },

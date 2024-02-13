@@ -10,13 +10,13 @@ namespace ActualChat.Search.IntegrationTests;
 public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    public override Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         return base.InitializeAsync();
     }
 
-    public override Task DisposeAsync()
+    protected override Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         return base.DisposeAsync();
@@ -379,11 +379,9 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     private Task<TestAppHost> NewSearchEnabledAppHost()
-        => Fixture.NewHost(options => options with {
+        => NewAppHost(options => options with {
                 AppConfigurationExtender = cfg => {
-                    cfg.AddInMemory(
-                        ("SearchSettings:IsSearchEnabled", "true"),
-                        ("UsersSettings:NewAccountStatus", AccountStatus.Active.ToString()));
+                    cfg.AddInMemory(("SearchSettings:IsSearchEnabled", "true"));
                 },
             });
 }

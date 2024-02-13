@@ -9,26 +9,26 @@ public abstract class AppHostFixture(
     public string InstanceName { get; } = instanceName;
     public IMessageSink MessageSink { get; } = messageSink;
     public TestAppHostOptions BaseHostOptions { get; } = baseHostOptions ?? TestAppHostOptions.Default;
-    public TestAppHost Host { get; protected set; } = null!;
+    public TestAppHost AppHost { get; protected set; } = null!;
 
     async Task IAsyncLifetime.InitializeAsync()
-        => Host = await NewHost();
+        => AppHost = await NewAppHost();
 
-    public Task DisposeAsync()
+    Task IAsyncLifetime.DisposeAsync()
     {
-        Host.DisposeSilently();
+        AppHost.DisposeSilently();
         return Task.CompletedTask;
     }
 
-    public virtual Task<TestAppHost> NewHost(Func<TestAppHostOptions, TestAppHostOptions>? optionsBuilder = null)
+    public virtual Task<TestAppHost> NewAppHost(Func<TestAppHostOptions, TestAppHostOptions>? optionsBuilder = null)
     {
-        var o = CreateHostOptions();
+        var o = CreateAppHostOptions();
         o = optionsBuilder?.Invoke(o) ?? o;
         return TestAppHostFactory.NewAppHost(o);
     }
 
     // Protected methods
 
-    protected virtual TestAppHostOptions CreateHostOptions()
+    protected virtual TestAppHostOptions CreateAppHostOptions()
         => BaseHostOptions.With(InstanceName, MessageSink);
 }

@@ -11,7 +11,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     private ISearchBackend _sut = null!;
     private ICommander _commander = null!;
 
-    public override Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
@@ -20,7 +20,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         await _tester.DisposeAsync().AsTask();

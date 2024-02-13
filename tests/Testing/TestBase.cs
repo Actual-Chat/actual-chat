@@ -4,10 +4,13 @@ namespace ActualChat.Testing;
 
 public abstract class TestBase(ITestOutputHelper @out) : IAsyncLifetime
 {
-    public ITestOutputHelper Out { get; private set; } = @out;
+    protected ITestOutputHelper Out { get; private set; } = @out;
 
-    public virtual Task InitializeAsync() => Task.CompletedTask;
-    public virtual Task DisposeAsync() => Task.CompletedTask;
+    Task IAsyncLifetime.InitializeAsync() => InitializeAsync();
+    protected virtual Task InitializeAsync() => Task.CompletedTask;
+
+    Task IAsyncLifetime.DisposeAsync() => DisposeAsync();
+    protected virtual Task DisposeAsync() => Task.CompletedTask;
 
     protected Disposable<TestOutputCapture> CaptureOutput()
     {

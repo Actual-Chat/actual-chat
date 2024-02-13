@@ -13,9 +13,9 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
 
-    public override async Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
-        _appHost = await Fixture.NewHost(options => options with {
+        _appHost = await NewAppHost(options => options with {
             Output = Out,
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
@@ -25,7 +25,7 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
     }
 
-    public override async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();

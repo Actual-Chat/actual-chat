@@ -15,7 +15,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
     private IContactsBackend _contactsBackend = null!;
     private IAccounts _accounts = null!;
 
-    public override Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
@@ -27,7 +27,7 @@ public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
         return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())

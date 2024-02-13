@@ -45,7 +45,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         LastName = "Lake",
     };
 
-    public override Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
@@ -54,7 +54,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         await _tester.DisposeAsync().AsTask();

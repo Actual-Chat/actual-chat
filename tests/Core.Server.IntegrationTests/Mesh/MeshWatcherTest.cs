@@ -13,7 +13,7 @@ public class MeshWatcherTest(NonStartingAppHostFixture fixture, ITestOutputHelpe
     {
         var syncTimeout = TimeSpan.FromSeconds(3);
 
-        using var h1 = await Fixture.NewHost();
+        using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
         var s = w1.State.Value.GetShardMap<ShardScheme.Backend>();
         Out.WriteLine(s.ToString());
@@ -23,7 +23,7 @@ public class MeshWatcherTest(NonStartingAppHostFixture fixture, ITestOutputHelpe
         Out.WriteLine(s.ToString());
         s.IsEmpty.Should().BeFalse();
 
-        using var h2 = await Fixture.NewHost();
+        using var h2 = await NewAppHost();
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
         await w1.State.When(x => x.Nodes.Length == 2).WaitAsync(syncTimeout);
         await w2.State.When(x => x.Nodes.Length == 2).WaitAsync(syncTimeout);
@@ -42,10 +42,10 @@ public class MeshWatcherTest(NonStartingAppHostFixture fixture, ITestOutputHelpe
     [Fact(Timeout = 30_000)]
     public async Task PeerNodeRefTest()
     {
-        using var h1 = await Fixture.NewHost();
+        using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
 
-        using var h2 = await Fixture.NewHost();
+        using var h2 = await NewAppHost();
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
 
         var w1w2 = w1.GetPeerRef(w2.ThisNode.Ref).Require();

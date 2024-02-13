@@ -16,17 +16,16 @@ public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper
     private IAccounts _accounts = null!;
     private Session _adminSession = null!;
 
-    public override async Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
         _testSettings = AppHost.Services.GetRequiredService<TestSettings>();
         _accounts = AppHost.Services.GetRequiredService<IAccounts>();
         _tester = AppHost.NewPlaywrightTester(Out);
         _adminSession = Session.New();
-
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
-    public override Task DisposeAsync()
+    protected override Task DisposeAsync()
         => _tester.DisposeAsync().AsTask();
 
     [Fact]

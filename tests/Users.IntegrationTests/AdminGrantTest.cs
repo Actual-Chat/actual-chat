@@ -13,14 +13,14 @@ public class AdminGrantTest(AppHostFixture fixture, ITestOutputHelper @out)
     private WebClientTester _tester = null!;
     private IAccountsBackend _accounts = null!;
 
-    public override Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         _tester = AppHost.NewWebClientTester(Out);
         _accounts = AppHost.Services.GetRequiredService<IAccountsBackend>();
         return Task.CompletedTask;
     }
 
-    public override Task DisposeAsync()
+    protected override Task DisposeAsync()
         => _tester.DisposeAsync().AsTask();
 
     [Fact]

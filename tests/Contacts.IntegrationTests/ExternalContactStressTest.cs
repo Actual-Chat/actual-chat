@@ -32,7 +32,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         .WithPhone(JackPhone)
         .WithClaim(ClaimTypes.Email, JackEmail);
 
-    public override Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
         _tester = AppHost.NewWebClientTester(Out);
@@ -44,7 +44,7 @@ public class ExternalContactStressTest(ExternalStressAppHostFixture fixture, ITe
         return Task.CompletedTask;
     }
 
-    public override async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())

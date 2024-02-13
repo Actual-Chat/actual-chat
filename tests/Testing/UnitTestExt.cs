@@ -2,7 +2,8 @@ using ActualLab.IO;
 
 namespace ActualChat.Testing;
 
-public static class TestExt
+// The name is intentionally different from TestExt, which is used in some tests
+public static class UnitTestExt
 {
     public static ITest Require(this ITest? test)
         => test ?? throw StandardError.Internal("Failed to extract test info.");

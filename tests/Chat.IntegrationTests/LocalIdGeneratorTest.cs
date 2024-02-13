@@ -12,8 +12,8 @@ public class LocalIdGeneratorTest(AppHostFixture fixture, ITestOutputHelper @out
     [Fact(Skip = "For manual runs only")]
     public async Task LocalIdsOnDifferentHostsAreUnique()
     {
-        using var h1 = await Fixture.NewHost();
-        using var h2 = await Fixture.NewHost();
+        using var h1 = await NewAppHost();
+        using var h2 = await NewAppHost();
         var hub1 = h1.Services.DbHub<ChatDbContext>();
         var hub2 = h1.Services.DbHub<ChatDbContext>();
         var idGenerator1 = h1.Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();
