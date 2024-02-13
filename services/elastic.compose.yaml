@@ -1,0 +1,35 @@
+services:
+  elasticsearch:
+    image: elasticsearch:8.11.4
+    ports:
+      - 9200:9200
+    environment:
+      - ELASTIC_USERNAME=elastic
+      - ELASTIC_PASSWORD=elastic
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+    healthcheck:
+      interval: 10s
+      retries: 80
+      test: curl --write-out 'HTTP %{http_code}' --fail --silent --output /dev/null http://localhost:9200/
+    deploy:
+      resources:
+        limits:
+          memory: 6G
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+  kibana:
+    depends_on:
+      - elasticsearch
+    image: kibana:8.11.4
+    ports:
+     - 5601:5601
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.2'
