@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.App.Maui;
 
-public static class PermissionsEx
+public static class PermissionsExt
 {
     public static async Task EnsureGrantedAsync<TPermission>()
         where TPermission : Microsoft.Maui.ApplicationModel.Permissions.BasePermission, new()
