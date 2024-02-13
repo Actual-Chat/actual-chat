@@ -2,9 +2,8 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests;
 
-[Collection(nameof(NonStartingServerCollection))]
-public class ShardWorkerTest(NonStartingAppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<NonStartingAppHostFixture>(fixture, @out)
+public class ShardWorkerTest(ITestOutputHelper @out)
+    : AppHostTestBase($"x-{nameof(ShardWorkerTest)}", @out, TestAppHostOptions.None)
 {
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()

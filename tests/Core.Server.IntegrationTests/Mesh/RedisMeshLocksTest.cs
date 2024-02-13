@@ -3,9 +3,8 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 
-[Collection(nameof(NonStartingServerCollection))]
-public class RedisMeshLocksTest(NonStartingAppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<NonStartingAppHostFixture>(fixture, @out)
+public class RedisMeshLocksTest(ITestOutputHelper @out)
+    : LocalAppHostTestBase($"x-{nameof(RedisMeshLocksTest)}", @out, TestAppHostOptions.None)
 {
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
