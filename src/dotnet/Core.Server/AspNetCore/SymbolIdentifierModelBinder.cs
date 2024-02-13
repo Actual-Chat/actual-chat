@@ -23,7 +23,7 @@ public class SymbolIdentifierModelBinder : IModelBinder
                 var mParse = bindingContext.ModelType.GetMethod(
                     "Parse",
                     BindingFlags.Public | BindingFlags.Static,
-                    new[] { typeof(string) });
+                    [ typeof(string) ]);
                 _parser = Expression
                     .Lambda<Func<string?, ISymbolIdentifier>>(Expression.Call(mParse!, pValue), pValue)
                     .Compile();

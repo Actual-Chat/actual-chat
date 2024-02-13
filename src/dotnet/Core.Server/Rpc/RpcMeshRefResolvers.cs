@@ -8,7 +8,7 @@ public delegate RpcMeshRefResolver? RpcMeshRefResolverProvider(RpcMethodDef meth
 
 public sealed class RpcMeshRefResolvers(IServiceProvider services)
 {
-    private static readonly MethodInfo DefaultResolverImplMethod = typeof(MeshRefResolvers)
+    private static readonly MethodInfo DefaultResolverImplMethod = typeof(RpcMeshRefResolvers)
         .GetMethod(nameof(DefaultResolverImpl), BindingFlags.Static | BindingFlags.NonPublic)!;
 
     private readonly RpcMeshRefResolverProvider[] _providers
