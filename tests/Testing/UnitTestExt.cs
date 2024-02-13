@@ -1,3 +1,6 @@
+// Unused, but let's keep it for now
+#if false
+
 using ActualLab.IO;
 
 namespace ActualChat.Testing;
@@ -23,3 +26,5 @@ public static class UnitTestExt
         return FilePath.GetHashedName(test.TestCase.UniqueID, displayName, maxLength: 32);
     }
 }
+
+#endif
