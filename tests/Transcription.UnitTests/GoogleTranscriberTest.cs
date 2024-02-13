@@ -10,7 +10,7 @@ public class GoogleTranscriberTest : TestBase
     private ServiceProvider Services { get; }
 
     // ReSharper disable once ContextualLoggerProblem
-    public GoogleTranscriberTest(IServiceProvider testServices) : base(testServices)
+    public GoogleTranscriberTest(ITestOutputHelper @out, ILogger<GoogleTranscriberTest> log) : base(@out, log)
         => Services = new ServiceCollection()
             .AddSingleton(new CoreServerSettings { GoogleProjectId = "n/a" })
             .AddSingleton(MomentClockSet.Default)
