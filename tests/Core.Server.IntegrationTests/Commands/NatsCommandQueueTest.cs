@@ -3,11 +3,11 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
 
-[Collection(nameof(ServerCollection)), Trait("Category", nameof(ServerCollection))]
+[Collection(nameof(CommandsCollection)), Trait("Category", nameof(CommandsCollection))]
 public class NatsCommandQueueTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(NatsCommandQueueTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 1000_000)]
+    [Fact(Timeout = 10_000)]
     public async Task SmokeTest()
     {
         using var host = await NewAppHost(options => options with  {
