@@ -204,6 +204,75 @@ Example criteria:
 - Older replicas continue working with a previous index version
 - Ideally, we shouldn't switch to a newer version until new version index ready to use to avoid search breaking on index rebuild
 
+## Design notes
+
+Each search session it a chat with two participants. One participant is a User and another one is a chat bot.
+User asks questions and chat bot in response buils and / or modifies search query and shows user search results.
+
+So we have:
+
+```mermaid
+---
+title: Search process
+---
+flowchart LR;
+    subgraph D[Dialog]
+        direction TB
+        dialog(User communicates with chat bot)
+        dialogcomment[/"`*Interaction produces an ordered list of messages*`"/]
+        dialog-.-dialogcomment
+    end
+    subgraph Q[Query Builder]
+        direction TB
+        process_messages(Produces query object)
+        process_messagescomment[/"`*Query consists of:
+          - metadata block;
+          - free text block;*`"/]
+        process_messages-.-process_messagescomment
+    end
+    subgraph S[Search Servise]
+        direction TB
+        L(Looks up matching documents)-->SM(Calculates Summary)
+    end
+    D -- on new mesage --> Q;
+    Q -- on new query --> S;
+```
+
+From the diagram above one can see that the AI assisted search process involves at least three AI enabled components
+- Communication assistant who talks to user asking for search parameters. We assume User drives that conversation but in some cases assistant can ask user additional questions. For example in the case query builder failed to apply previous user statement to a query.
+- Query builder is supposed to extract query parameters from the user input. It transforms input collected by the Communication assistant to the structured query for subsequent execution. Query Builder's input is an ordered list of message records like `Message(Id, Date, AuthorId, Text)` and its output is the query object `Query(MetadataBlock, FreeTextBlock)`.
+    - Metadata block here holds values query engine needs to restrict search area. This, for example, may include `Time range`,  `Author(s)`, `ChatId'(s)`, `PlaceId`, etc
+    - Free text block is a text to be matched with the content of the indexed documents.
+- Search service receives Query object prepared in the previous stage and executes it against one or many search backends. After receiving a query search service:
+    - Selects search one or multiple search backends to be used
+    - Runs search agains each of the selected backends
+    - Selects result to be returned (or maybe merges multiple resuls, if possible)
+    - Prepares result by sorting, filtering, annotating individual items, and building overall summary. The result of the service execution may be imagined as with multiple individual items but also having a summary and probably filtered list of attachments from the items above.
+    ```
+        Result {
+            Items: [
+                {Id, Annotation}, ...
+            ],
+            Summary: {
+                Text: "",
+                Attachments: [] // if appropriate
+            }
+        }
+    ```
+On the low level not all decision have been made yet but we already can provide some details about search backend and query builder.
+
+### Search backend
+
+Search backend is responsible for indexing documents and returning matching documents by request. From the point of view of the search backend a document is a text block with unique id and some associated metadata. Search result is a ranked list of ids found in the underlying search index while metadata serve as a criterion to restrict search area. Document's text participates in vector index and is being matched to query's free text block during the search.
+
+At the first iteration search engines to consider for the search backend implementation are ElasticSearch and OpenSearch (see [Roadmap](#roadmap)).
+
+### Query Builder
+
+[TBD] but likely to be build on top of something like [Microsoft Semantic Kernel](https://learn.microsoft.com/en-us/semantic-kernel/overview/).
+
+
+
 ## ROADMAP
 ### 12-16 Feb'24
 Goals:
