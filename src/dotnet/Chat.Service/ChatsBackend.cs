@@ -488,10 +488,11 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             };
             chat = ApplyDiff(chat, update);
             dbChat = new DbChat(chat);
-            if (!dbChat.SystemTag.IsNullOrEmpty()) {
+            if (!dbChat.SystemTag.IsNullOrEmpty()
+                && !OrdinalEquals(dbChat.SystemTag, Constants.Chat.SystemTags.Welcome)) {
                 // Only group chats can have system tags
                 ownerId.Require("Command.OwnerId");
-                // Chats with system tags should be unique per user.
+                // Chats with system tags should be unique per user except Welcome chat.
                 var existingDbChat = await dbContext.Chats
                     .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
                     .Where(x => x.a.UserId == ownerId && x.c.SystemTag == dbChat.SystemTag)
