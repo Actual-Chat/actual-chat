@@ -8,7 +8,7 @@ public static class FileExt
     public static void Remove(params string[] patterns)
     {
         var workingDir = Environment.CurrentDirectory;
-        var dirPatterns = patterns.Where(x => !x.Contains('*') && Directory.Exists(Path.Combine(workingDir, x))).ToList();
+        var dirPatterns = patterns.Where(x => !x.Contains('*', StringComparison.Ordinal) && Directory.Exists(Path.Combine(workingDir, x))).ToList();
         var filePatterns = patterns.Except(dirPatterns).ToList();
 
         RemoveDirs(dirPatterns, workingDir);

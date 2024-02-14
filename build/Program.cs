@@ -289,7 +289,7 @@ internal static class Program
             }
             finally {
                 if (!cts.IsCancellationRequested)
-                    cts.Cancel();
+                    await cts.CancelAsync().ConfigureAwait(false);
                 cts.Dispose();
             }
         });
@@ -315,7 +315,7 @@ internal static class Program
             }
             finally {
                 if (!cts.IsCancellationRequested)
-                    cts.Cancel();
+                    await cts.CancelAsync().ConfigureAwait(false);
                 cts.Dispose();
             }
         });
@@ -324,12 +324,14 @@ internal static class Program
             await Npm()
                 .WithArguments($"run build:{configuration}")
                 .ToConsole(Blue("webpack: "))
-                .ExecuteAsync(cancellationToken).Task;
+                .ExecuteAsync(cancellationToken).Task
+                .ConfigureAwait(false);
 
             var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
             await AppxManifestGenerator.Generate(
                 isProduction,
-                cancellationToken);
+                cancellationToken)
+                .ConfigureAwait(false);
             await Cli
                 .Wrap(dotnet)
                 .WithArguments("publish",
@@ -343,7 +345,8 @@ internal static class Program
                 .WithWorkingDirectory("src/dotnet/App.Maui")
                 .ToConsole(Green("dotnet: "))
                 .ExecuteAsync(cancellationToken)
-                .Task;
+                .Task
+                .ConfigureAwait(false);
         });
 
         Target(Targets.RestoreTools, async () => {
@@ -372,7 +375,7 @@ internal static class Program
                     .ExecuteAsync(cts.Token).Task.ConfigureAwait(false);
             }
             finally {
-                cts.Cancel();
+                await cts.CancelAsync().ConfigureAwait(false);
                 cts.Dispose();
             }
         });
@@ -427,7 +430,7 @@ internal static class Program
     }
 }
 
-internal class WithoutStackException : Exception
+public class WithoutStackException : Exception
 {
     public WithoutStackException() { }
 
