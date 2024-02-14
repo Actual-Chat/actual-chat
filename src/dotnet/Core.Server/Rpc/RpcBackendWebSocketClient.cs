@@ -9,7 +9,7 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
 {
     // private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
 
-    public override async Task<RpcConnection> CreateConnection(RpcClientPeer peer, CancellationToken cancellationToken)
+    public override async Task<RpcConnection> Connect(RpcClientPeer peer, CancellationToken cancellationToken)
     {
         switch (peer.Ref) {
         case RpcBackendNodePeerRef nodePeerRef: {
@@ -20,13 +20,14 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
             if (meshNode == null)
                 throw MeshNodeIsGoneError();
 
-            return await CreateConnection(peer, meshNode, cancellationToken).ConfigureAwait(false);
+            return await Connect(peer, meshNode, cancellationToken).ConfigureAwait(false);
         }
         case RpcBackendShardPeerRef shardPeerRef: {
             retry:
             var shardNodePeerRef = await shardPeerRef.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (shardNodePeerRef == null)
                 throw InvalidShardRefError();
+
             if (shardNodePeerRef.StopToken.IsCancellationRequested) {
                 shardPeerRef = shardPeerRef.Latest;
                 goto retry;
@@ -38,7 +39,7 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
                 goto retry;
             }
 
-            return await CreateConnection(peer, meshNode, cancellationToken).ConfigureAwait(false);
+            return await Connect(peer, meshNode, cancellationToken).ConfigureAwait(false);
         }
         default:
             throw InvalidPeerRefTypeError();
@@ -47,7 +48,7 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
 
     // Private methods
 
-    private Task<RpcConnection> CreateConnection(RpcClientPeer peer, MeshNode meshNode, CancellationToken cancellationToken)
+    private Task<RpcConnection> Connect(RpcClientPeer peer, MeshNode meshNode, CancellationToken cancellationToken)
     {
         var sb = StringBuilderExt.Acquire();
         sb.Append("ws://");
@@ -56,9 +57,9 @@ public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, ISer
         sb.Append('?');
         sb.Append(Settings.ClientIdParameterName);
         sb.Append('=');
-        sb.Append(ClientId.UrlEncode());
+        sb.Append(peer.ClientId); // Always Url-encoded
         var uri = sb.ToStringAndRelease().ToUri();
-        return CreateConnection(peer, uri, cancellationToken);
+        return Connect(peer, uri, cancellationToken);
     }
 
     private static Exception InvalidPeerRefTypeError()

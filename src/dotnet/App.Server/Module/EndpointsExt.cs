@@ -6,6 +6,7 @@ public static class EndpointsExt
 {
     public const string HealthPathPrefix = "/health";
     public const string PrometheusPathPrefix = "/metrics";
+    public const string BackendPathPrefix = "/backend";
 
     public static IEndpointRouteBuilder MapAppHealth(this IEndpointRouteBuilder endpoints, params string[] tags)
     {
