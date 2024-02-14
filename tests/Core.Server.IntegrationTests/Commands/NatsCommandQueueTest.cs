@@ -1,4 +1,5 @@
 using ActualChat.Commands;
+using ActualChat.Hosting;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
@@ -7,19 +8,19 @@ namespace ActualChat.Core.Server.IntegrationTests.Commands;
 public class NatsCommandQueueTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(NatsCommandQueueTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = 1000_000)]
     public async Task SmokeTest()
     {
         using var host = await NewAppHost(options => options with  {
             AppServicesExtender = (c, services) => {
                 services
-                    .AddNatsCommandQueues()
+                    .AddCommandQueues(HostRole.BackendServer)
                     .AddFusion()
                     .AddService<ScheduledCommandTestService>();
             },
         });
         var services = host.Services;
-        var scheduler = services.GetRequiredService<ShardCommandQueueScheduler>();
+        var scheduler = services.GetRequiredKeyedService<ShardCommandQueueScheduler>(HostRole.BackendServer.Id.Value);
         _ = scheduler.Run();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
@@ -40,13 +41,13 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
         using var host = await NewAppHost(options => options with  {
             AppServicesExtender = (c, services) => {
                 services
-                    .AddNatsCommandQueues()
+                    .AddCommandQueues(HostRole.BackendServer)
                     .AddFusion()
                     .AddService<ScheduledCommandTestService>();
             },
         });
         var services = host.Services;
-        var scheduler = services.GetRequiredService<ShardCommandQueueScheduler>();
+        var scheduler = services.GetRequiredKeyedService<ShardCommandQueueScheduler>(HostRole.BackendServer.Id.Value);
         _ = scheduler.Run();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();

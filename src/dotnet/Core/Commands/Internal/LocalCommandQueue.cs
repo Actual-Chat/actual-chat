@@ -8,7 +8,6 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
     private volatile int _retryCount;
 
     public QueueId QueueId { get; }
-    ICommandQueues ICommandQueue.Queues => Queues;
     public LocalCommandQueues Queues { get; }
     public int SuccessCount => _successCount;
     public int FailureCount => _failureCount;
