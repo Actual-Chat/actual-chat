@@ -113,7 +113,7 @@ public static class AppStartup
                     sb.Append('?');
                     sb.Append(settings.ClientIdParameterName);
                     sb.Append('=');
-                    sb.Append(client.ClientId.UrlEncode());
+                    sb.Append(peer.ClientId); // Always Url-encoded
                     return sb.ToStringAndRelease().ToUri();
                 },
             };

@@ -19,9 +19,12 @@ public static class ApplicationBuilderExt
             _ => port,
         };
         return app.Use((context, next) => {
-            if (context.Request.Path.Value?.OrdinalIgnoreCaseStartsWith(EndpointsExt.HealthPathPrefix) == true)
+            var requestPath = context.Request.Path.Value ?? "";
+            if (requestPath.OrdinalStartsWith(EndpointsExt.BackendPathPrefix))
                 return next();
-            if (context.Request.Path.Value?.OrdinalIgnoreCaseStartsWith(EndpointsExt.PrometheusPathPrefix) == true)
+            if (requestPath.OrdinalIgnoreCaseStartsWith(EndpointsExt.HealthPathPrefix))
+                return next();
+            if (requestPath.OrdinalIgnoreCaseStartsWith(EndpointsExt.PrometheusPathPrefix))
                 return next();
 
             context.Request.Scheme = scheme;
