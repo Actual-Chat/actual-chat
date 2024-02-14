@@ -23,7 +23,7 @@ public static class HttpSessionExt
     public static async Task<(Session Session, bool IsNew)> Authenticate(
         this HttpContext httpContext,
         ServerAuthHelper serverAuthHelper,
-        bool skipIsAllowedCheck,
+        bool assumeAllowed,
         CancellationToken cancellationToken = default)
     {
         var originalSession = httpContext.TryGetSessionFromCookie();
@@ -38,7 +38,7 @@ public static class HttpSessionExt
                 }
 #endif
                 await serverAuthHelper
-                    .UpdateAuthState(session, httpContext, skipIsAllowedCheck, cancellationToken)
+                    .UpdateAuthState(session, httpContext, assumeAllowed, cancellationToken)
                     .WaitAsync(TimeSpan.FromSeconds(1), cancellationToken)
                     .ConfigureAwait(false);
                 var isNew = originalSession != session;

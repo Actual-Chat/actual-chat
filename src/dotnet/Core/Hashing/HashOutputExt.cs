@@ -16,6 +16,13 @@ public static class HashOutputExt
         where THash : struct, IHashOutput
         => Convert.ToBase64String(hash.Bytes.Slice(0, count));
 
+    public static string Base64Url<THash>(this THash hash)
+        where THash : struct, IHashOutput
+        => Base64UrlEncoder.Encode(hash.Bytes);
+    public static string Base64Url<THash>(this THash hash, int count)
+        where THash : struct, IHashOutput
+        => Base64UrlEncoder.Encode(hash.Bytes.Slice(0, count));
+
     public static string AlphaNumeric<THash>(this THash hash)
         where THash : struct, IHashOutput
         => Convert.ToBase64String(hash.Bytes).TrimEnd('=').Replace('+', '0').Replace('/', '1');

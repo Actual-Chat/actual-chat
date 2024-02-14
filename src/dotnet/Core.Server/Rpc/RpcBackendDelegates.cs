@@ -12,11 +12,10 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
     private BackendServiceDefs BackendServiceDefs { get; } = services.GetRequiredService<BackendServiceDefs>();
     private RpcMeshRefResolvers RpcMeshRefResolvers { get; } = services.GetRequiredService<RpcMeshRefResolvers>();
 
-    public bool IsBackendService(Type serviceType, Symbol serviceName)
+    public bool IsBackendService(Type serviceType)
         => BackendServiceDefs.Contains(serviceType)
             || typeof(IBackendService).IsAssignableFrom(serviceType)
-            || serviceType.Name.EndsWith("Backend", StringComparison.Ordinal)
-            || serviceName.Value.StartsWith("backend.", StringComparison.Ordinal);
+            || serviceType.Name.EndsWith("Backend", StringComparison.Ordinal);
 
     public RpcPeer GetPeer(RpcMethodDef methodDef, ArgumentList arguments)
     {

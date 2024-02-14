@@ -82,6 +82,6 @@ public readonly struct BackendHostBuilder
         Services.AddAlias<RpcClient, RpcBackendWebSocketClient>();
 
         // Replace RpcClientPeerReconnectDelayer
-        Services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) { Delays = RetryDelaySeq.Exp(0.25, 10) });
+        Services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) { Delays = RetryDelaySeq.Exp(1, 10) });
     }
 }
