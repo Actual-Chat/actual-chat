@@ -14,7 +14,7 @@
     @if (previewPlace != null) {
         <NavbarGroupSelectionButton
             @key="@previewPlace.Id"
-            AdditionalAttributes="@(new Dictionary<string, object>() { { "data-place-id", previewPlace.Id } })"
+            data-place-id="@previewPlace.Id"
             CanMove="@false"
             Title="@previewPlace.Title"
             Id="@previewPlace.Id.GetNavbarGroupId()"
@@ -33,7 +33,7 @@
     @foreach (var place in places) {
         <NavbarGroupSelectionButton
             @key="@place.Id"
-            AdditionalAttributes="@(new Dictionary<string, object>() { { "data-place-id", place.Id } })"
+            data-place-id="@place.Id"
             CanMove="@true"
             Title="@place.Title"
             Id="@place.Id.GetNavbarGroupId()"
