@@ -2,6 +2,10 @@
   "solution": {
     "path": "ActualChat.sln",
     "projects": [
+      "src\\dotnet\\AiSearch\\AiSearch.csproj",
+      "src\\dotnet\\AiSearch.Contracts\\AiSearch.Contracts.csproj",
+      "src\\dotnet\\AiSearch.Service\\AiSearch.Service.csproj",
+      "src\\dotnet\\AiSearch.Service.Migration\\AiSearch.Service.Migration.csproj",
       "src\\dotnet\\App.Server\\App.Server.csproj",
       "src\\dotnet\\App.Wasm\\App.Wasm.csproj",
       "src\\dotnet\\Audio.Client\\Audio.Client.csproj",
