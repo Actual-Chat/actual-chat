@@ -15,7 +15,7 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), 10, HostRole.MediaBackend);
     public static readonly ShardScheme ContactIndexingWorker = new(nameof(ContactIndexingWorker), 1, HostRole.ContactIndexingWorker);
     public static readonly ShardScheme DefaultQueue = new(nameof(DefaultQueue), 1, HostRole.DefaultQueue);
-
+    public static readonly ShardScheme EventQueue = new(nameof(EventQueue), 1, HostRole.EventQueue);
     // A reverse map of ShardScheme.Id to ShardScheme
     public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ById = new Dictionary<Symbol, ShardScheme>() {
         { None.Id, None },
@@ -25,6 +25,7 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
         { ContactIndexingWorker.Id, ContactIndexingWorker },
         // Queues
         { DefaultQueue.Id, DefaultQueue },
+        { EventQueue.Id, EventQueue },
     };
 
     private string? _toString;

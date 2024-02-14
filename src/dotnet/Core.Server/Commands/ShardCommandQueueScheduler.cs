@@ -1,8 +1,8 @@
-using ActualChat.Commands.Internal;
+using ActualChat.Hosting;
 
 namespace ActualChat.Commands;
 
-public class ShardCommandQueueScheduler(ShardCommandQueueScheduler.Options settings, IServiceProvider services) : ShardWorker<ShardScheme.Backend>(services)
+public class ShardCommandQueueScheduler(HostRole hostRole, IServiceProvider services) : ShardWorker<ShardScheme.Backend>(services)
 {
     public sealed record Options
     {
@@ -10,13 +10,17 @@ public class ShardCommandQueueScheduler(ShardCommandQueueScheduler.Options setti
         public int MaxLocalTryCount { get; set; } = 2;
     }
 
-    private Options Settings { get; } = settings;
+    private HostRole HostRole { get; } = hostRole;
+
+    private Options Settings { get; } = services.GetKeyedService<Options>(hostRole.Id.Value)
+        ?? services.GetRequiredService<Options>();
+
     private ICommandQueues Queues { get; } = services.GetRequiredService<ICommandQueues>();
     private ICommander Commander { get; } = services.GetRequiredService<ICommander>();
 
     protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
-        var queueId = new QueueId(shardIndex);
+        var queueId = new QueueId(HostRole, shardIndex);
         var queueBackend = Queues.GetBackend(queueId);
         var parallelOptions = new ParallelOptions {
             MaxDegreeOfParallelism = Settings.Concurrency,

@@ -37,7 +37,8 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
 
     public QueueId QueueId { get; } = queueId;
     public IServiceProvider Services { get; } = services;
-    public ICommandQueues Queues { get; } = queues;
+    public NatsCommandQueues.Options Settings { get; } = services.GetKeyedService<NatsCommandQueues.Options>(queueId.HostRole.Id.Value)
+        ?? services.GetRequiredService<NatsCommandQueues.Options>();
 
     public async Task Enqueue(QueuedCommand command, CancellationToken cancellationToken = default)
     {
@@ -239,11 +240,9 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             return _jetStreamConsumer!;
 
         var stream = await EnsureStreamExists(cancellationToken).ConfigureAwait(false);
-        var settings = ((NatsCommandQueues)Queues).Settings;
-
         var name = $"WORKER-{QueueId.ShardIndex}";
         var config = new ConsumerConfig(name) {
-            MaxDeliver = settings.MaxTryCount,
+            MaxDeliver = Settings.MaxTryCount,
             FilterSubject = $"commands.*.{QueueId.ShardIndex}.>",
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
             AckWait = TimeSpan.FromMinutes(15),

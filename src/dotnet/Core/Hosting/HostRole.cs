@@ -26,6 +26,7 @@ public partial record struct HostRole(
 
     // Queues
     public static readonly HostRole DefaultQueue = nameof(DefaultQueue);
+    public static readonly HostRole EventQueue = nameof(EventQueue);
 
     // The only role any app has
     public static readonly HostRole App = nameof(App); // Implies BlazorUI
@@ -36,6 +37,8 @@ public partial record struct HostRole(
     public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsQueue => Id.Value.OrdinalEndsWith("Queue");
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool IsBackendServer => Id.Value.OrdinalEndsWith("BackendServer");
 
     public override string ToString() => Value;
 

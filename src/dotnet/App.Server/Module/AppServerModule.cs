@@ -30,6 +30,7 @@ using ActualLab.Fusion.EntityFramework;
 using ActualLab.IO;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Server;
+using NATS.Client.Hosting;
 
 namespace ActualChat.App.Server.Module;
 
@@ -150,8 +151,14 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<InfrastructureDbContext>(services);
 
-        // Queues
-        services.AddNatsCommandQueues();
+        // NATS
+        services.AddNats(
+            poolSize: 4,
+            opts => opts with {
+                // AuthOpts =
+                // Url =
+                // TlsOpts =
+            });
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;

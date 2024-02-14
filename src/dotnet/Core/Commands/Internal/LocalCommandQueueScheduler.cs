@@ -1,8 +1,10 @@
+using ActualChat.Hosting;
+
 namespace ActualChat.Commands.Internal;
 
 public class LocalCommandQueueScheduler : WorkerBase
 {
-    private const int ShardKey = 0;
+    private const int ShardIndex = 0;
 
     private static bool DebugMode => Constants.DebugMode.CommandQueue;
     private ILogger? DebugLog => DebugMode ? Log : null;
@@ -28,20 +30,7 @@ public class LocalCommandQueueScheduler : WorkerBase
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
-    {
-        var priorities = new [] {
-            QueuedCommandPriority.Low,
-            QueuedCommandPriority.Normal,
-            QueuedCommandPriority.High,
-            QueuedCommandPriority.Critical,
-        };
-        var tasks = (
-            from priority in priorities
-            let queueId = new QueueId(ShardKey, priority)
-            select ProcessQueue(queueId, cancellationToken)
-            ).ToList();
-        return Task.WhenAll(tasks);
-    }
+        => ProcessQueue(new QueueId(HostRole.DefaultQueue, ShardIndex), cancellationToken);
 
     private Task ProcessQueue(QueueId queueId, CancellationToken cancellationToken)
     {

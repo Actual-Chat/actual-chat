@@ -2,16 +2,35 @@ using ActualChat.Hosting;
 
 namespace ActualChat.Commands;
 
-public class ShardCommandQueueIdProvider : ICommandQueueIdProvider
+public class ShardCommandQueueIdProvider(IServiceProvider services) : ICommandQueueIdProvider
 {
+    private ILogger Log { get; } = services.LogFor<ShardCommandQueueIdProvider>();
+
     public QueueId Get(QueuedCommand command)
     {
         var type = command.UntypedCommand.GetType();
-        var servedByRoles = HostRoles.GetServedByRoles(type);
+        var isEvent = typeof(IEventCommand).IsAssignableFrom(type);
+        var hostRoles = HostRoles.GetServedByRoles(type)
+            .Where(hr => hr.IsBackendServer)
+            .ToList();
         var shardKeyResolver = ShardKeyResolvers.GetUntyped(type) ?? ShardKeyResolvers.DefaultResolver;
-        // TODO(AK): add host role support
         var shardKey = shardKeyResolver.Invoke(command.UntypedCommand);
-        var shardIndex = ShardScheme.Backend.Instance.GetShardIndex(shardKey);
-        return new QueueId(shardIndex, command.Priority);
+        if (isEvent) {
+            var shardIndex = ShardScheme.EventQueue.Instance.GetShardIndex(shardKey);
+            return new QueueId(HostRole.EventQueue, shardIndex);
+        }
+        if (hostRoles.Count == 0)
+            throw StandardError.Configuration($"There are no host roles found for a {type}.");
+
+        if (hostRoles.Count > 1) {
+            Log.LogWarning("There are {HostRoleCount} host roles found for a {CommandType}. Handling the first one...", hostRoles.Count, type);
+            var shardIndex = ShardScheme.EventQueue.Instance.GetShardIndex(shardKey);
+            return new QueueId(HostRole.EventQueue, shardIndex);
+        }
+        else {
+            var scheme = ShardScheme.ById[hostRoles[0].Id];
+            var shardIndex = scheme.GetShardIndex(shardKey);
+            return new QueueId(HostRole.EventQueue, shardIndex);
+        }
     }
 }
