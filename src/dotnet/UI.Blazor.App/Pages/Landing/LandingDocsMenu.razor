@@ -7,44 +7,46 @@
     var name = avatar.Name;
 }
 
-<MenuEntry
-    Click="@OnAccountClick">
-    <IconContent>
-        <AvatarCircle
-            Avatar="@avatar"
-            Size="SquareSize.Size8"/>
-    </IconContent>
-    <TextContent>
-        <div class="flex-x items-center">
-            <div class="flex-1 flex-y">
-                <div class="text-sm">
-                    @name
+<div class="landing-docs-menu">
+    <MenuEntry
+        Click="@OnAccountClick">
+        <IconContent>
+            <AvatarCircle
+                Avatar="@avatar"
+                Size="SquareSize.Size8"/>
+        </IconContent>
+        <TextContent>
+            <div class="flex-x items-center">
+                <div class="flex-1 flex-y">
+                    <div class="text-sm">
+                        @name
+                    </div>
+                    <div class="text-sm text-primary">
+                        Manage your Account
+                    </div>
                 </div>
-                <div class="text-sm text-primary">
-                    Manage your Account
+                <div class="flex-none w-8 -mt-1 rotate-180">
+                    <i class="icon-chevron-left"></i>
                 </div>
             </div>
-            <div class="flex-none w-8 -mt-1 rotate-180">
-                <i class="icon-chevron-left"></i>
-            </div>
-        </div>
-    </TextContent>
-</MenuEntry>
-<MenuEntry
-    Icon="icon-message-ellipse"
-    Text="Go to Chats"
-    Click="@(_ => NavigateTo(Links.Chats))">
-</MenuEntry>
-<MenuEntry
-    Icon="icon-question-mark-circle"
-    Text="Support"
-    Click="@(_ => NavigateTo("mailto:support@actual.chat"))">
-</MenuEntry>
-<MenuEntry
-    Icon="icon-log-out"
-    Text="Sign out"
-    Click="@(_ => AccountUI.SignOut())">
-</MenuEntry>
+        </TextContent>
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-message-ellipse"
+        Text="Go to Chats"
+        Click="@(_ => NavigateTo(Links.Chats))">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-question-mark-circle"
+        Text="Support"
+        Click="@(_ => NavigateTo("mailto:support@actual.chat"))">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-log-out"
+        Text="Sign out"
+        Click="@(_ => AccountUI.SignOut())">
+    </MenuEntry>
+</div>
 
 @code {
     [Inject] private AccountUI AccountUI { get; init; } = null!;
