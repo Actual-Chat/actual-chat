@@ -30,7 +30,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
 
         // Backend
         var host = services.AddRpcHost(HostInfo);
-        var serviceMode = host.GetServiceMode<IMediaBackend>();
+        var usesBackendClient = host.GetServiceMode<IMediaBackend>().IsClient();
 
         // Commander handlers
         host.Commander.AddHandlerFilter((handler, commandType) => {
@@ -41,7 +41,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
                 return true;
 
             // 2. Check if we're running on the client backend
-            if (serviceMode.IsClient())
+            if (usesBackendClient)
                 return false;
 
             // 3. Make sure it's intact only for local commands
@@ -56,7 +56,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
         // Links
         host.AddFrontend<IMediaLinkPreviews, MediaLinkPreviews>();
         host.AddBackend<ILinkPreviewsBackend, LinkPreviewsBackend>();
-        if (serviceMode.IsClient())
+        if (usesBackendClient)
             return;
 
         // Services used in SingleHost or Server modes only
