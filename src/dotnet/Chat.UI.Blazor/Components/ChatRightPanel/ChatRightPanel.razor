@@ -10,7 +10,7 @@
 <SideNav
     Side="SideNavSide.Right"
     IsOpen="@m.IsVisible"
-    VisibilityChanged="@(isOpen => PanelsUI.Right.SetIsVisible(isOpen))">
+    VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(isOpen => PanelsUI.Right.SetIsVisible(isOpen)))">
     <div class="right-chat-panel">
         <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
         @if (m.RenderContent) {

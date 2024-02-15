@@ -68,8 +68,6 @@ public class LeftPanel : IDisposable
         var localUrl = History.LocalUrl;
         if (localUrl.IsDocsOrDocsRoot())
             return false; // This panel isn't used in narrow mode in /docs
-        if (localUrl.IsChatRoot())
-            return true;
 
         return null;
     }
