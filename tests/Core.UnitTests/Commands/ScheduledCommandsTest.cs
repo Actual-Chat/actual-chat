@@ -1,10 +1,13 @@
 using ActualChat.Commands;
 using ActualChat.Commands.Internal;
+using ActualChat.Hosting;
 
 namespace ActualChat.Core.UnitTests.Commands;
 
 public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
 {
+    private static readonly QueueId _queueId = new (HostRole.BackendServer, 0);
+
     [Fact]
     public async Task EnqueueEventOnCommandCompletion()
     {
@@ -17,7 +20,7 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[default];
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[_queueId];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
@@ -45,7 +48,7 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[default];
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[_queueId];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 
@@ -75,7 +78,7 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
             .BuildServiceProvider();
         await services.HostedServices().Start();
 
-        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[default];
+        var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[_queueId];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
 

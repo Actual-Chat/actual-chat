@@ -2,6 +2,7 @@ using ActualChat.App.Server.Logging;
 using ActualChat.App.Server.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
+using ActualChat.Commands;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Db.Module;
@@ -60,6 +61,9 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
             }
         });
 
+        var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
+        var roles = HostRoles.Server.GetAllRoles(serverRole);
+
         // HostInfo
         services.AddSingleton(c => {
             var baseUrl = hostSettings.BaseUri;
@@ -71,11 +75,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 if (baseUrl.IsNullOrEmpty())
                     throw StandardError.Internal("Can't resolve BaseUrl.");
             }
-
-            var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
-            var roles = HostRoles.Server.GetAllRoles(serverRole);
-
-            return new HostInfo() {
+            return new HostInfo {
                 HostKind = appKind,
                 AppKind = AppKind.Unknown,
                 Environment = Env.EnvironmentName,
@@ -121,6 +121,9 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 // This module should be the last one
                 new AppServerModule(moduleServices)
             ).Build(services);
+
+        // Default configuration for command/event queues
+        services.AddCommandQueues(roles);
     }
 
     public void Configure(IApplicationBuilder app)

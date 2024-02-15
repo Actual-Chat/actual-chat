@@ -12,6 +12,32 @@ public static class ServiceCollectionExt
     [RequiresUnreferencedCode(UnreferencedCode.Commander)]
     public static IServiceCollection AddCommandQueues(
         this IServiceCollection services,
+        IReadOnlyCollection<HostRole> hostRoles,
+        Func<IServiceProvider, NatsCommandQueues.Options>? optionsBuilder = null,
+        Func<IServiceProvider, ShardCommandQueueScheduler.Options>? schedulerOptionsBuilder = null,
+        Func<IServiceProvider, ShardEventQueueScheduler.Options>? eventSchedulerOptionsBuilder = null)
+    {
+        var backendRoles = hostRoles.Where(r => r.IsBackendServer);
+        foreach (var hostRole in backendRoles) {
+            services.AddCommandQueues(hostRole, optionsBuilder, schedulerOptionsBuilder);
+
+            // register EventScheduler
+            var serviceKey = hostRole.Id.Value;
+            if (!services.HasService<ShardEventQueueScheduler>(serviceKey)) {
+                services.AddKeyedSingleton<ShardEventQueueScheduler>(serviceKey, (c, _) => new ShardEventQueueScheduler(hostRole, c));
+                services.AddKeyedSingleton<IHostedService, ShardEventQueueScheduler>(serviceKey, (c, key) => c.GetRequiredKeyedService<ShardEventQueueScheduler>(key));
+            }
+            if (!services.HasService<ShardEventQueueScheduler.Options>())
+                services.AddSingleton(eventSchedulerOptionsBuilder ?? (static _ => new ShardEventQueueScheduler.Options()));
+            if (!services.HasService<ShardEventQueueScheduler.Options>(serviceKey) && eventSchedulerOptionsBuilder != null)
+                services.AddKeyedSingleton(serviceKey, (s, _) => eventSchedulerOptionsBuilder(s));
+        }
+        return services;
+    }
+
+    [RequiresUnreferencedCode(UnreferencedCode.Commander)]
+    public static IServiceCollection AddCommandQueues(
+        this IServiceCollection services,
         HostRole hostRole,
         Func<IServiceProvider, NatsCommandQueues.Options>? optionsBuilder = null,
         Func<IServiceProvider, ShardCommandQueueScheduler.Options>? schedulerOptionsBuilder = null)
