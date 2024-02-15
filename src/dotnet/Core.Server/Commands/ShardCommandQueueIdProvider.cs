@@ -24,13 +24,16 @@ public class ShardCommandQueueIdProvider(IServiceProvider services) : ICommandQu
 
         if (hostRoles.Count > 1) {
             Log.LogWarning("There are {HostRoleCount} host roles found for a {CommandType}. Handling the first one...", hostRoles.Count, type);
-            var shardIndex = ShardScheme.EventQueue.Instance.GetShardIndex(shardKey);
-            return new QueueId(HostRole.EventQueue, shardIndex);
+            var hostRole = hostRoles[0];
+            var shardScheme = ShardScheme.ById[hostRole.Id];
+            var shardIndex = shardScheme.GetShardIndex(shardKey);
+            return new QueueId(hostRole, shardIndex);
         }
         else {
-            var scheme = ShardScheme.ById[hostRoles[0].Id];
+            var hostRole = hostRoles[0];
+            var scheme = ShardScheme.ById[hostRole.Id];
             var shardIndex = scheme.GetShardIndex(shardKey);
-            return new QueueId(HostRole.EventQueue, shardIndex);
+            return new QueueId(hostRole, shardIndex);
         }
     }
 }

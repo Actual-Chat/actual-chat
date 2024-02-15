@@ -5,13 +5,11 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
     private readonly Channel<QueuedCommand> _queue;
     private volatile int _successCount;
     private volatile int _failureCount;
-    private volatile int _retryCount;
 
     public QueueId QueueId { get; }
     public LocalCommandQueues Queues { get; }
     public int SuccessCount => _successCount;
     public int FailureCount => _failureCount;
-    public int RetryCount => _retryCount;
 
     private IMomentClock Clock { get; }
 
@@ -38,15 +36,9 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
         return default;
     }
 
-    public ValueTask MarkFailed(QueuedCommand command, bool mustRetry, Exception? exception, CancellationToken cancellationToken)
+    public ValueTask MarkFailed(QueuedCommand command, Exception? exception, CancellationToken cancellationToken)
     {
-        if (!mustRetry) {
-            Interlocked.Increment(ref _failureCount);
-            return default;
-        }
-
-        Interlocked.Increment(ref _retryCount);
-        var newCommand = command.WithRetry();
-        return _queue.Writer.WriteAsync(newCommand, cancellationToken);
+        Interlocked.Increment(ref _failureCount);
+        return default;
     }
 }

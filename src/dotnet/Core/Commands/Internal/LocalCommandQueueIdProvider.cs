@@ -5,5 +5,5 @@ namespace ActualChat.Commands.Internal;
 public class LocalCommandQueueIdProvider : ICommandQueueIdProvider
 {
     public QueueId Get(QueuedCommand command)
-        => new QueueId(HostRole.DefaultQueue, 0);
+        => new QueueId(HostRole.BackendServer, 0);
 }

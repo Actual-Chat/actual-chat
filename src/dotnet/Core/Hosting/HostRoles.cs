@@ -42,7 +42,7 @@ public static class HostRoles
                 roles.Add(HostRole.AudioBackend);
                 roles.Add(HostRole.MediaBackend);
                 roles.Add(HostRole.ContactIndexingWorker);
-                roles.Add(HostRole.DefaultQueue);
+                roles.Add(HostRole.EventQueue);
             }
             return roles;
         }

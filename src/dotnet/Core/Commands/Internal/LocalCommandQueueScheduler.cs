@@ -30,7 +30,7 @@ public class LocalCommandQueueScheduler : WorkerBase
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
-        => ProcessQueue(new QueueId(HostRole.DefaultQueue, ShardIndex), cancellationToken);
+        => ProcessQueue(new QueueId(HostRole.BackendServer, ShardIndex), cancellationToken);
 
     private Task ProcessQueue(QueueId queueId, CancellationToken cancellationToken)
     {
@@ -63,8 +63,7 @@ public class LocalCommandQueueScheduler : WorkerBase
         }
         catch (Exception e) {
             Log.LogError(e, "Running queued command failed: {Command}", command);
-            var mustRetry = command.TryIndex + 1 < Settings.MaxTryCount;
-            await queueBackend.MarkFailed(command, mustRetry, e, cancellationToken).ConfigureAwait(false);
+            await queueBackend.MarkFailed(command, e, cancellationToken).ConfigureAwait(false);
 
             if (cancellationToken.IsCancellationRequested)
                 throw;

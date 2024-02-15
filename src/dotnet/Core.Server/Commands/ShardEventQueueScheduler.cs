@@ -2,8 +2,8 @@ using ActualChat.Hosting;
 
 namespace ActualChat.Commands;
 
-public class ShardCommandQueueScheduler(HostRole hostRole, IServiceProvider services)
-    : ShardWorker(services, ShardScheme.ById[hostRole], "CommandQueueScheduler")
+public class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider services)
+    : ShardWorker<ShardScheme.EventQueue>(services, "EventQueueScheduler")
 {
     public sealed record Options
     {
@@ -20,18 +20,18 @@ public class ShardCommandQueueScheduler(HostRole hostRole, IServiceProvider serv
 
     protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
-        var queueId = new QueueId(HostRole, shardIndex);
-        var queueBackend = Queues.GetBackend(queueId);
+        var queueId = new QueueId(HostRole.EventQueue, shardIndex);
+        var queueBackend = (IEventQueueBackend)Queues.GetBackend(queueId);
         var parallelOptions = new ParallelOptions {
             MaxDegreeOfParallelism = Settings.Concurrency,
             CancellationToken = cancellationToken,
         };
-        var commands = queueBackend.Read(cancellationToken);
-        return Parallel.ForEachAsync(commands, parallelOptions, (c, ct) => RunCommand(queueBackend, c, ct));
+        var events = queueBackend.Read(HostRole, cancellationToken);
+        return Parallel.ForEachAsync(events, parallelOptions, (c, ct) => HandleEvent(queueBackend, c, ct));
     }
 
-    private async ValueTask RunCommand(
-        ICommandQueueBackend queueBackend,
+    private async ValueTask HandleEvent(
+        IEventQueueBackend queueBackend,
         QueuedCommand command,
         CancellationToken cancellationToken)
     {

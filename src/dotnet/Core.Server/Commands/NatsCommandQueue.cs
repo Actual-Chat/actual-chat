@@ -8,7 +8,7 @@ using NATS.Client.JetStream.Models;
 
 namespace ActualChat.Commands;
 
-public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServiceProvider services) : WorkerBase, ICommandQueue, ICommandQueueBackend
+public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServiceProvider services) : ICommandQueue, ICommandQueueBackend
 {
     private const string CommandStreamName = "COMMANDS";
     private static readonly byte[] Version = [ (byte)CommandVersion.Version1 ];
@@ -16,26 +16,18 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         (byte)CommandVersion.Version1,
     ];
 
-    private volatile ConcurrentDictionary<Symbol, NatsJSMsg<IMemoryOwner<byte>>> _commandsBeingProcessed = new ();
-    private volatile Channel<QueuedCommand> _readChannel = CreateReadChannel();
-
-    private static Channel<QueuedCommand> CreateReadChannel()
-        => Channel.CreateBounded<QueuedCommand>(
-            new BoundedChannelOptions(Constants.Queues.LocalCommandQueueDefaultSize) {
-                SingleReader = false,
-                SingleWriter = false,
-                AllowSynchronousContinuations = false,
-            });
+    private readonly ConcurrentDictionary<Symbol, NatsJSMsg<IMemoryOwner<byte>>> _commandsBeingProcessed = new ();
 
     private NatsConnection? _nats;
     private volatile INatsJSStream? _jetStream;
     private volatile INatsJSConsumer? _jetStreamConsumer;
 
-    private NatsConnection Nats => _nats ??= GetConnection();
-    private AsyncLock AsyncLock { get; } = new(LockReentryMode.CheckedPass);
-    private ILogger<NatsCommandQueue> Log { get; } = services.LogFor<NatsCommandQueue>();
+    protected NatsConnection Nats => _nats ??= GetConnection();
+    protected AsyncLock AsyncLock { get; } = new(LockReentryMode.CheckedPass);
+    protected ILogger<NatsCommandQueue> Log { get; } = services.LogFor<NatsCommandQueue>();
 
     public QueueId QueueId { get; } = queueId;
+    public NatsCommandQueues Queues { get; } = queues;
     public IServiceProvider Services { get; } = services;
     public NatsCommandQueues.Options Settings { get; } = services.GetKeyedService<NatsCommandQueues.Options>(queueId.HostRole.Id.Value)
         ?? services.GetRequiredService<NatsCommandQueues.Options>();
@@ -77,10 +69,21 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         }
     }
 
-    public IAsyncEnumerable<QueuedCommand> Read(CancellationToken cancellationToken)
+    public virtual async IAsyncEnumerable<QueuedCommand> Read([EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        _ = Run();
-        return _readChannel.Reader.ReadAllAsync(cancellationToken);
+        var jetStream = await EnsureStreamExists(cancellationToken).ConfigureAwait(false);
+        var consumer = await EnsureConsumerExists(jetStream, cancellationToken).ConfigureAwait(false);
+        var messages = consumer.ConsumeAsync<IMemoryOwner<byte>>(
+            opts: new NatsJSConsumeOpts {
+                MaxMsgs = 10,
+            },
+            cancellationToken: cancellationToken);
+        await foreach (var message in messages) {
+            if (message.Data == null)
+                continue;
+
+            yield return DeserializeMessage(message);
+        }
     }
 
     public async ValueTask MarkCompleted(QueuedCommand command, CancellationToken cancellationToken)
@@ -94,7 +97,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         await message.AckAsync(new AckOpts { DoubleAck = true }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async ValueTask MarkFailed(QueuedCommand command, bool mustRetry, Exception? exception, CancellationToken cancellationToken)
+    public async ValueTask MarkFailed(QueuedCommand command, Exception? exception, CancellationToken cancellationToken)
     {
         if (!_commandsBeingProcessed.TryRemove(command.Id, out var message)) {
             var streamName = _jetStream?.Info.Config.Name;
@@ -102,76 +105,34 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             return;
         }
 
-        if (!mustRetry) {
-            await message.AckTerminateAsync(new AckOpts { DoubleAck = true }, cancellationToken).ConfigureAwait(false);
-            return;
-        }
-
-        // TODO(AK): We do not use NATS retries - there is no Redelivery counter - we re-add command for reprocessing locally
-        var newCommand = command.WithRetry();
-        await _readChannel.Writer.WriteAsync(newCommand, cancellationToken).ConfigureAwait(false);
+        await message.NakAsync(new AckOpts { DoubleAck = true }, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
-    protected override async Task OnRun(CancellationToken cancellationToken)
+    protected QueuedCommand DeserializeMessage(NatsJSMsg<IMemoryOwner<byte>> message)
     {
-        var baseChains = new[] {
-            AsyncChain.From(ReadQueue),
-        };
-        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        await (
-            from chain in baseChains
-            select chain
-                .Log(LogLevel.Debug, Log)
-                .RetryForever(retryDelays, Log)
-            )
-            .RunIsolated(cancellationToken)
-            .ConfigureAwait(false);
+        var typedSerializer = TypeDecoratingByteSerializer.Default;
+        var messageMemory = message.Data!.Memory;
+        var version = messageMemory.Span[0];
+        if (!SupportedVersions.Contains(version))
+            throw StandardError.NotSupported($"CommandVersion={version} is not supported.");
+
+        var id = new Ulid(messageMemory.Span[1..17]);
+        var command = typedSerializer.Read<ICommand>(messageMemory[17..]);
+        var queuedCommand = QueuedCommand.FromCommand(id, command);
+        if (_commandsBeingProcessed.TryAdd(queuedCommand.Id, message)) // double check duplicates - we have already handled them at the NATS stream
+            return queuedCommand;
+
+        message.Data.DisposeSilently(); // release buffer
+        return queuedCommand;
     }
 
-    private async Task ReadQueue(CancellationToken cancellationToken)
-    {
-        Exception? error = null;
-        try {
-            var typedSerializer = TypeDecoratingByteSerializer.Default;
-            var consumer = await EnsureConsumerExists(cancellationToken).ConfigureAwait(false);
-            var messages = consumer.ConsumeAsync<IMemoryOwner<byte>>(
-                opts: new NatsJSConsumeOpts {
-                    MaxMsgs = 10,
-                },
-                cancellationToken: cancellationToken);
-            await foreach (var message in messages) {
-                if (message.Data == null)
-                    continue;
-
-                var version = message.Data.Memory.Span[0];
-                if (!SupportedVersions.Contains(version))
-                    throw StandardError.NotSupported($"CommandVersion={version} is not supported.");
-
-                var id = new Ulid(message.Data.Memory.Span[1..17]);
-                var command = typedSerializer.Read<ICommand>(message.Data.Memory[17..]);
-                var queuedCommand = QueuedCommand.FromCommand(id, command);
-                if (_commandsBeingProcessed.TryAdd(queuedCommand.Id, message)) // double check duplicates - we have already handled them at the NATS stream
-                    await _readChannel.Writer.WriteAsync(queuedCommand, cancellationToken).ConfigureAwait(false);
-
-                message.Data.DisposeSilently(); // release buffer
-            }
-        }
-        catch (Exception e) when (e is not OperationCanceledException) {
-            error = e;
-        }
-        finally {
-            _readChannel.Writer.TryComplete(error);
-            _readChannel = CreateReadChannel();
-        }
-    }
-
-    private NatsConnection GetConnection()
+    protected NatsConnection GetConnection()
     {
         lock (this)
             return _nats = Services.GetRequiredService<NatsConnection>();
     }
 
-    private async ValueTask<INatsJSStream> EnsureStreamExists(CancellationToken cancellationToken)
+    protected async ValueTask<INatsJSStream> EnsureStreamExists(CancellationToken cancellationToken)
     {
         if (_jetStream != null)
             return _jetStream;
@@ -193,7 +154,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
 
             }
             catch (NatsJSApiException e) when (e.Error.Code == 404) {
-                _jetStream = await CreateCommandsStream(cancellationToken);
+                _jetStream = await CreateJetStream(js, cancellationToken).ConfigureAwait(false);
             }
             catch (NatsJSApiNoResponseException e) {
                 if (retryCount++ > 3)
@@ -205,30 +166,9 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             }
 
         return _jetStream;
-
-        async Task<INatsJSStream> CreateCommandsStream(CancellationToken cancellationToken1)
-        {
-            var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NatsCommandQueue));
-            var lockHolder = await meshLocks.Lock(nameof(EnsureStreamExists), "", cancellationToken1).ConfigureAwait(false);
-            await using var _ = lockHolder.ConfigureAwait(false);
-            var lockCts = cancellationToken1.LinkWith(lockHolder.StopToken);
-
-            var config = new StreamConfig(CommandStreamName, new[] { "commands.>" }) {
-                MaxMsgs = queues.Settings.MaxQueueSize,
-                Compression = StreamConfigCompression.S2,
-                Storage = StreamConfigStorage.File,
-                NumReplicas = queues.Settings.ReplicaCount,
-                Discard = StreamConfigDiscard.Old,
-                Retention = StreamConfigRetention.Workqueue,
-                AllowDirect = true,
-            };
-
-            return await js.CreateStreamAsync(config, lockCts.Token).ConfigureAwait(false);
-        }
-
     }
 
-    private async ValueTask<INatsJSConsumer> EnsureConsumerExists(CancellationToken cancellationToken)
+    protected async ValueTask<INatsJSConsumer> EnsureConsumerExists(INatsJSStream jetStream, CancellationToken cancellationToken)
     {
         if (_jetStreamConsumer != null)
             return _jetStreamConsumer!;
@@ -239,7 +179,33 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         if (_jetStreamConsumer != null)
             return _jetStreamConsumer!;
 
-        var stream = await EnsureStreamExists(cancellationToken).ConfigureAwait(false);
+        return _jetStreamConsumer = await CreateConsumer(jetStream, cancellationToken);
+    }
+
+    protected virtual async Task<INatsJSStream> CreateJetStream(NatsJSContext js, CancellationToken cancellationToken)
+    {
+        var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NatsCommandQueue));
+        var lockHolder = await meshLocks.Lock(nameof(EnsureStreamExists), "", cancellationToken).ConfigureAwait(false);
+        await using var _ = lockHolder.ConfigureAwait(false);
+        var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
+
+        var config = new StreamConfig(CommandStreamName, new[] { "commands.>" }) {
+            MaxMsgs = Queues.Settings.MaxQueueSize,
+            Compression = StreamConfigCompression.S2,
+            Storage = StreamConfigStorage.File,
+            NumReplicas = Queues.Settings.ReplicaCount,
+            Discard = StreamConfigDiscard.Old,
+            Retention = StreamConfigRetention.Workqueue,
+            AllowDirect = true,
+        };
+
+        return await js.CreateStreamAsync(config, lockCts.Token).ConfigureAwait(false);
+    }
+
+    protected virtual async Task<INatsJSConsumer> CreateConsumer(
+        INatsJSStream jetStream,
+        CancellationToken cancellationToken)
+    {
         var name = $"WORKER-{QueueId.ShardIndex}";
         var config = new ConsumerConfig(name) {
             MaxDeliver = Settings.MaxTryCount,
@@ -250,7 +216,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             MaxBatch = 10,
             SampleFreq = "20%",
         };
-        return _jetStreamConsumer = await stream.CreateOrUpdateConsumerAsync(config, cancellationToken).ConfigureAwait(false);
+        return await jetStream.CreateOrUpdateConsumerAsync(config, cancellationToken).ConfigureAwait(false);
     }
 
     private enum CommandVersion : byte
