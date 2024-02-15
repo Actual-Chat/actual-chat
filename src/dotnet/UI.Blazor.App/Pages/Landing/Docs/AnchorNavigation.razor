@@ -3,6 +3,7 @@
 
 @code {
     private static readonly string JSScrollToIdMethod = $"{BlazorUIAppModule.ImportName}.scrollToId";
+    private static readonly string JSSetSettings = $"{BlazorUIAppModule.ImportName}.setSettings";
 
     [Inject] private NavigationManager Nav { get; init; } = null!;
     [Inject] private IJSRuntime JSRuntime { get; init; } = null!;
@@ -10,8 +11,10 @@
     protected override void OnInitialized()
         => Nav.LocationChanged += OnLocationChanged;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-        => await ScrollToFragment();
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        await JSRuntime.InvokeVoidAsync(JSSetSettings);
+        await ScrollToFragment();
+    }
 
     public void Dispose()
         => Nav.LocationChanged -= OnLocationChanged;

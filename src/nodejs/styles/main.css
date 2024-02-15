@@ -223,7 +223,9 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply flex-x;
     @apply h-full w-full;
 }
-
+.page-with-header-and-footer:has(.docs-layout) {
+    @apply theme-light;
+}
 .page-with-header-and-footer .layout-body-wrapper {
     @apply flex-1 flex-x;
     @apply h-full;
