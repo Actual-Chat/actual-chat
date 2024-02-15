@@ -8,7 +8,7 @@ namespace ActualChat.Commands;
 
 public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceProvider services) : NatsCommandQueue(queueId, queues, services), IEventQueueBackend
 {
-    private const string CommandStreamName = "EVENTS";
+    private const string JetStreamName = "EVENTS";
 
     private readonly ConcurrentDictionary<Symbol, INatsJSConsumer> _consumers = new ();
 
@@ -33,14 +33,20 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
         }
     }
 
+    protected override string BuildJetStreamName()
+        => JetStreamName;
+
+    protected override string BuildSubject(Type commandType)
+        => $"events.{QueueId.ShardIndex}.{commandType.Name}";
+
     protected override async Task<INatsJSStream> CreateJetStream(NatsJSContext js, CancellationToken cancellationToken)
     {
-        var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NatsCommandQueue));
+        var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NatsEventQueue));
         var lockHolder = await meshLocks.Lock(nameof(EnsureStreamExists), "", cancellationToken).ConfigureAwait(false);
         await using var _ = lockHolder.ConfigureAwait(false);
         var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
-        var config = new StreamConfig(CommandStreamName, new[] { "events.>" }) {
+        var config = new StreamConfig(JetStreamName, new[] { "events.>" }) {
             MaxMsgs = Queues.Settings.MaxQueueSize,
             Compression = StreamConfigCompression.S2,
             Storage = StreamConfigStorage.File,
@@ -110,9 +116,7 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
 
     private string BuildConsumerName(HostRole hostRole)
     {
-        var backend = hostRole == HostRole.BackendServer
-            ? "backend"
-            : hostRole.Id.Value.Replace(HostRole.BackendServer.Id.Value, "");
+        var backend = GetRoleString(hostRole);
         var name = $"LISTENER-{QueueId.ShardIndex}-{backend}";
         return name;
     }

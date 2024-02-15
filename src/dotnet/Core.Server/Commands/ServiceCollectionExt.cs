@@ -25,7 +25,7 @@ public static class ServiceCollectionExt
             var serviceKey = hostRole.Id.Value;
             if (!services.HasService<ShardEventQueueScheduler>(serviceKey)) {
                 services.AddKeyedSingleton<ShardEventQueueScheduler>(serviceKey, (c, _) => new ShardEventQueueScheduler(hostRole, c));
-                services.AddKeyedSingleton<IHostedService, ShardEventQueueScheduler>(serviceKey, (c, key) => c.GetRequiredKeyedService<ShardEventQueueScheduler>(key));
+                services.AddSingleton<IHostedService, ShardEventQueueScheduler>(c => c.GetRequiredKeyedService<ShardEventQueueScheduler>(serviceKey));
             }
             if (!services.HasService<ShardEventQueueScheduler.Options>())
                 services.AddSingleton(eventSchedulerOptionsBuilder ?? (static _ => new ShardEventQueueScheduler.Options()));
@@ -56,7 +56,7 @@ public static class ServiceCollectionExt
 
         if (!services.HasService<ShardCommandQueueScheduler>(serviceKey)) {
             services.AddKeyedSingleton<ShardCommandQueueScheduler>(serviceKey, (c, _) => new ShardCommandQueueScheduler(hostRole, c));
-            services.AddKeyedSingleton<IHostedService, ShardCommandQueueScheduler>(serviceKey, (c, key) => c.GetRequiredKeyedService<ShardCommandQueueScheduler>(key));
+            services.AddSingleton<IHostedService, ShardCommandQueueScheduler>(c => c.GetRequiredKeyedService<ShardCommandQueueScheduler>(serviceKey));
         }
         if (!services.HasService<ShardCommandQueueScheduler.Options>())
             services.AddSingleton(schedulerOptionsBuilder ?? (static _ => new ShardCommandQueueScheduler.Options()));

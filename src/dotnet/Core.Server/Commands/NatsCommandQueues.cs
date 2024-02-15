@@ -1,3 +1,5 @@
+using ActualChat.Hosting;
+
 namespace ActualChat.Commands;
 
 public class NatsCommandQueues(NatsCommandQueues.Options settings, IServiceProvider services) : ICommandQueues
@@ -25,6 +27,8 @@ public class NatsCommandQueues(NatsCommandQueues.Options settings, IServiceProvi
     private NatsCommandQueue Get(QueueId queueId)
         => _queues.GetOrAdd(
             queueId,
-            static (queueId2, self) => new NatsCommandQueue(queueId2, self, self.Services),
+            static (queueId1, self) => queueId1.HostRole == HostRole.EventQueue
+                ? new NatsEventQueue(queueId1, self, self.Services)
+                : new NatsCommandQueue(queueId1, self, self.Services),
             this);
 }
