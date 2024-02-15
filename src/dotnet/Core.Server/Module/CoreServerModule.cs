@@ -32,7 +32,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         if (!hostKind.IsServer())
             throw StandardError.Internal("This module can be used on server side only.");
 
-        services.AddBackendHost(HostInfo, Log);
+        services.AddRpcHost(HostInfo, Log);
 
         // Controllers, etc.
         services.AddRouting();

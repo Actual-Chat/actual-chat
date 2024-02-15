@@ -16,7 +16,7 @@ using WebView = Android.Webkit.WebView;
 namespace ActualChat.App.Maui;
 
 // Extends https://github.com/dotnet/maui/blob/main/src/BlazorWebView/src/Maui/Android/BlazorWebChromeClient.cs
-internal class AndroidWebChromeClient : WebChromeClient
+public class AndroidWebChromeClient : WebChromeClient
 {
     // Example to control permissions in browser is taken from the comment
     // https://github.com/dotnet/maui/issues/4768#issuecomment-1137906982

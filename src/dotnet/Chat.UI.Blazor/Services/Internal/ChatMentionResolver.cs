@@ -1,18 +1,11 @@
 namespace ActualChat.Chat.UI.Blazor.Services.Internal;
 
-internal class ChatMentionResolver : IChatMentionResolver
+internal class ChatMentionResolver(IServiceProvider services, ChatId chatId) : IChatMentionResolver
 {
-    private Session Session { get; }
-    private IAuthors Authors { get; }
+    private Session Session { get; } = services.Session();
+    private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
 
-    public ChatId ChatId { get; }
-
-    public ChatMentionResolver(IServiceProvider services, ChatId chatId)
-    {
-        Session = services.Session();
-        Authors = services.GetRequiredService<IAuthors>();
-        ChatId = chatId;
-    }
+    public ChatId ChatId { get; } = chatId;
 
     ValueTask<Author?> IMentionResolver<Author>.Resolve(MentionMarkup mention, CancellationToken cancellationToken)
         => ResolveAuthor(mention, cancellationToken);

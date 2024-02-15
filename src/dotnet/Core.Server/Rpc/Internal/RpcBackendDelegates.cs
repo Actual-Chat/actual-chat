@@ -4,7 +4,7 @@ using ActualLab.Rpc;
 using ActualLab.Rpc.Infrastructure;
 using Microsoft.AspNetCore.Http;
 
-namespace ActualChat.Rpc;
+namespace ActualChat.Rpc.Internal;
 
 public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceBase(services)
 {

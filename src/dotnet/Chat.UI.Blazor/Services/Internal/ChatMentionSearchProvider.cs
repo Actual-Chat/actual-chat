@@ -2,19 +2,13 @@ using ActualChat.Search;
 
 namespace ActualChat.Chat.UI.Blazor.Services.Internal;
 
-internal class ChatMentionSearchProvider : ISearchProvider<MentionSearchResult>
+internal class ChatMentionSearchProvider(IServiceProvider services, ChatId chatId)
+    : ISearchProvider<MentionSearchResult>
 {
-    private Session Session { get; }
-    private IChats Chats { get; }
+    private Session Session { get; } = services.Session();
+    private IChats Chats { get; } = services.GetRequiredService<IChats>();
 
-    public ChatId ChatId { get; }
-
-    public ChatMentionSearchProvider(IServiceProvider services, ChatId chatId)
-    {
-        Session = services.Session();
-        Chats = services.GetRequiredService<IChats>();
-        ChatId = chatId;
-    }
+    public ChatId ChatId { get; } = chatId;
 
     public async Task<MentionSearchResult[]> Find(string filter, int limit, CancellationToken cancellationToken)
     {

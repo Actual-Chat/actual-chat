@@ -28,33 +28,38 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
             db.AddEntityResolver<string, DbMedia>();
         });
 
-        // Commander & Fusion
-        var commander = services.AddCommander();
-        commander.AddHandlerFilter((handler, commandType) => {
+        // Backend
+        var host = services.AddRpcHost(HostInfo);
+        var serviceMode = host.GetServiceMode<IMediaBackend>();
+
+        // Commander handlers
+        host.Commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<MediaDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<MediaDbContext>))
                 return true;
 
-            // 2. Make sure it's intact only for local commands
+            // 2. Check if we're running on the client backend
+            if (serviceMode.IsClient())
+                return false;
+
+            // 3. Make sure it's intact only for local commands
             var commandAssembly = commandType.Assembly;
             return commandAssembly == typeof(IMediaBackend).Assembly // Media.Contracts assembly
                 || commandType == typeof(TextEntryChangedEvent);
         });
 
-        var backend = services.AddBackend(HostInfo);
-        var isClientBackend = backend.GetServiceMode<IMediaBackend>() == ServiceMode.Client;
-
         // Media
-        backend.AddService<IMediaBackend, MediaBackend>();
+        host.AddBackend<IMediaBackend, MediaBackend>();
 
         // Links
-        backend.AddService<IMediaLinkPreviews, MediaLinkPreviews>();
-        backend.AddService<ILinkPreviewsBackend, LinkPreviewsBackend>();
-        if (isClientBackend)
+        host.AddFrontend<IMediaLinkPreviews, MediaLinkPreviews>();
+        host.AddBackend<ILinkPreviewsBackend, LinkPreviewsBackend>();
+        if (serviceMode.IsClient())
             return;
 
+        // Services used in SingleHost or Server modes only
         services.AddHttpClient(nameof(LinkPreviewsBackend))
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));
         services.AddSingleton<Crawler>();

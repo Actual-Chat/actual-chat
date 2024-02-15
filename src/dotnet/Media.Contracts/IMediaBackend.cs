@@ -1,8 +1,9 @@
-﻿using MemoryPack;
+﻿using ActualLab.Rpc;
+using MemoryPack;
 
 namespace ActualChat.Media;
 
-public interface IMediaBackend : IComputeService
+public interface IMediaBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     public Task<Media?> Get(MediaId mediaId, CancellationToken cancellationToken);

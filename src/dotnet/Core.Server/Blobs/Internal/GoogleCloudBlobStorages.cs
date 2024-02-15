@@ -2,7 +2,7 @@ using Microsoft.IO;
 
 namespace ActualChat.Blobs.Internal;
 
-internal class GoogleCloudBlobStorages(string blobBucketName) : IBlobStorages
+public class GoogleCloudBlobStorages(string blobBucketName) : IBlobStorages
 {
     private readonly RecyclableMemoryStreamManager _streamManager = new ();
 

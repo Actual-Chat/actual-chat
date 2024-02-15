@@ -2,7 +2,7 @@ using ActualChat.Mesh;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Clients;
 
-namespace ActualChat.Rpc;
+namespace ActualChat.Rpc.Internal;
 
 public class RpcBackendWebSocketClient(RpcWebSocketClient.Options settings, IServiceProvider services)
     : RpcWebSocketClient(settings, services)

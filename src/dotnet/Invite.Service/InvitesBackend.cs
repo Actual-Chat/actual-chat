@@ -9,7 +9,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Invite;
 
-internal class InvitesBackend(IServiceProvider services)
+public class InvitesBackend(IServiceProvider services)
     : DbServiceBase<InviteDbContext>(services), IInvitesBackend
 {
     private IAccounts? _accounts;

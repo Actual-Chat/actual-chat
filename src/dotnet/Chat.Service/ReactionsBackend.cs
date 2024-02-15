@@ -6,7 +6,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-internal class ReactionsBackend(IServiceProvider services)
+public class ReactionsBackend(IServiceProvider services)
     : DbServiceBase<ChatDbContext>(services), IReactionsBackend
 {
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();

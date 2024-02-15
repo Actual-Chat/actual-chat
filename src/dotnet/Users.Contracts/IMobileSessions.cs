@@ -2,8 +2,7 @@ namespace ActualChat.Users;
 
 #pragma warning disable CS0618
 
-public interface IMobileSessions : IMobileAuth
-{ }
+public interface IMobileSessions : IMobileAuth;
 
 [Obsolete("2023.07: Retired in favour of IMobileSessions.")]
 public interface IMobileAuth : IMobileSessionsV1

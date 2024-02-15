@@ -1,6 +1,6 @@
 namespace ActualChat.Users.Internal;
 
-internal class UserPresenceTracker : IAsyncDisposable
+public class UserPresenceTracker : IAsyncDisposable
 {
     private readonly CheckInTracker _checkIns = new();
     private readonly ConcurrentTimerSet<UserId> _awayTimers;

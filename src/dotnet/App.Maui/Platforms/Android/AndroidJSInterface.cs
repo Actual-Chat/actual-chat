@@ -8,7 +8,7 @@ namespace ActualChat.App.Maui;
 
 #pragma warning disable CA1822 // Can be static
 
-internal class AndroidJSInterface(Android.Webkit.WebView webView) : JObject
+public class AndroidJSInterface(Android.Webkit.WebView webView) : JObject
 {
     public event Action<string> MessageReceived = _ => { };
 

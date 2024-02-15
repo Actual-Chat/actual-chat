@@ -6,11 +6,8 @@ public interface IExternalContacts : IComputeService
 {
     [ComputeMethod]
     Task<ApiArray<ExternalContact>> List(Session session, Symbol deviceId, CancellationToken cancellationToken);
-
-    [Obsolete("2023.10: Replaced with OnBulkChange")]
-    [CommandHandler]
+    [CommandHandler, Obsolete("2023.10: Replaced with OnBulkChange")]
     Task<ExternalContact?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken);
-
     [CommandHandler]
     Task<ApiArray<Result<ExternalContact?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
 }

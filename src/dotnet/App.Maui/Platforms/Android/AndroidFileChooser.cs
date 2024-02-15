@@ -11,7 +11,7 @@ using ComponentActivity = AndroidX.Activity.ComponentActivity;
 
 namespace ActualChat.App.Maui;
 
-internal class AndroidFileChooser
+public class AndroidFileChooser
 {
     private const int InputFileRequestCode = 1000;
 

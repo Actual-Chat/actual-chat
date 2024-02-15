@@ -3,7 +3,7 @@ using ActualLab.IO;
 
 namespace ActualChat.Blobs.Internal;
 
-internal class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, IServiceProvider services)
+public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, IServiceProvider services)
     : IBlobStorage
 {
     public record Options

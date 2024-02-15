@@ -4,7 +4,7 @@ using Firebase.Messaging;
 
 namespace ActualChat.App.Maui;
 
-internal class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTokenRetriever
+public class AndroidDeviceTokenRetriever(IServiceProvider services) : IDeviceTokenRetriever
 {
     private ILogger? _log;
     private ILogger Log => _log ??= services.LogFor(GetType());

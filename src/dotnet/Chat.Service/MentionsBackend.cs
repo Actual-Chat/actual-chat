@@ -6,7 +6,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-internal class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IMentionsBackend
+public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IMentionsBackend
 {
     private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();

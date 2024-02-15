@@ -1,8 +1,11 @@
+using ActualChat.Chat.Events;
+using ActualChat.Commands;
+using ActualLab.Rpc;
 using MemoryPack;
 
 namespace ActualChat.Media;
 
-public interface ILinkPreviewsBackend : IComputeService
+public interface ILinkPreviewsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken);
@@ -11,6 +14,8 @@ public interface ILinkPreviewsBackend : IComputeService
 
     [CommandHandler]
     Task<LinkPreview?> OnRefresh(LinkPreviewsBackend_Refresh command, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

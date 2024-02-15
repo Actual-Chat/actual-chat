@@ -4,7 +4,7 @@ using ActualChat.Users;
 
 namespace ActualChat.Invite;
 
-internal class Invites(IServiceProvider services) : IInvites
+public class Invites(IServiceProvider services) : IInvites
 {
     private IChats? _chats;
     private IPlaces? _places;

@@ -1,6 +1,6 @@
 namespace ActualChat.Users.Internal;
 
-internal class CheckInTracker
+public class CheckInTracker
 {
     private readonly ConcurrentDictionary<UserId, CheckIn> _items = new();
 

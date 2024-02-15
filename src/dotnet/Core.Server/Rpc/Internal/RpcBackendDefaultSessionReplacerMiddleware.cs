@@ -1,6 +1,6 @@
 using ActualLab.Rpc.Infrastructure;
 
-namespace ActualChat.Rpc;
+namespace ActualChat.Rpc.Internal;
 
 public class RpcBackendDefaultSessionReplacerMiddleware(IServiceProvider services) : RpcInboundMiddleware(services)
 {
