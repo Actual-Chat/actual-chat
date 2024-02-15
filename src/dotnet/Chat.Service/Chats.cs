@@ -227,13 +227,15 @@ public class Chats(IServiceProvider services) : IChats
                 throw StandardError.Unauthorized("You can edit only your own messages.");
             if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming || textEntry.AudioEntryId.HasValue)
                 throw StandardError.Constraint("Only text messages can be edited.");
+            if (repliedChatEntryId.IsSome(out var v) && textEntry.RepliedEntryLocalId != v)
+                throw StandardError.Constraint("Related entry id can't be changed.");
 
             var upsertCommand = new ChatsBackend_ChangeEntry(
                 textEntryId,
                 null,
                 Change.Update(new ChatEntryDiff {
                     Content = text,
-                    RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
+                    RepliedEntryLocalId = repliedChatEntryId,
                 }));
             textEntry = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
         }
