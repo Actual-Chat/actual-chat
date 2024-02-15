@@ -215,10 +215,10 @@ internal static class Program
             var sb = new StringBuilder(1024);
             sb.AppendLine("  <PropertyGroup>");
             foreach (var (key, val) in dict) {
-                sb.AppendLine($"    <{key}>{val}</{key}>");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"    <{key}>{val}</{key}>");
             }
             foreach (var (key, val) in dictWithCondition) {
-                sb.AppendLine($"    <{key} Condition=\"'$({key})' == ''\">{val}</{key}>");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"    <{key} Condition=\"'$({key})' == ''\">{val}</{key}>");
             }
             sb.AppendLine("  </PropertyGroup>");
             var props = sb.ToString();
@@ -230,11 +230,12 @@ internal static class Program
             await Task.WhenAll(tasks).ConfigureAwait(false);
             Console.WriteLine($"Generated version is {Bold(Yellow(nbgv.NuGetPackageVersion ?? nbgv.SemVer2 ?? "0.0.0.0"))}");
 
-            if (!File.Exists(".dockerignore"))
+            const string? dockerIgnoreFileName = ".dockerignore";
+            if (!File.Exists(dockerIgnoreFileName))
                 return;
 
-            var dockerIgnore = await File.ReadAllTextAsync(".dockerignore", cancellationToken).ConfigureAwait(false);
-            if (!dockerIgnore.Contains(".git")) {
+            var dockerIgnore = await File.ReadAllTextAsync(dockerIgnoreFileName, cancellationToken).ConfigureAwait(false);
+            if (!dockerIgnore.Contains(".git", StringComparison.Ordinal)) {
                 dockerIgnore = ".git\n" + dockerIgnore;
             }
             else {
@@ -242,7 +243,7 @@ internal static class Program
                 const RegexOptions regexOptions = RegexOptions.CultureInvariant | RegexOptions.Multiline | RegexOptions.IgnoreCase;
                 dockerIgnore = Regex.Replace(dockerIgnore, "^[^#]*[#]+(.*\\.git.*)$", "$1", regexOptions, TimeSpan.FromSeconds(5));
             }
-            await File.WriteAllTextAsync(".dockerignore", dockerIgnore, cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(dockerIgnoreFileName, dockerIgnore, cancellationToken).ConfigureAwait(false);
         });
 
         Target(Targets.IntegrationTests, async () => {
@@ -443,10 +444,6 @@ public class WithoutStackException : Exception
     }
 
     public WithoutStackException(string? message, Exception? innerException) : base(message, innerException)
-    {
-    }
-
-    protected WithoutStackException(SerializationInfo info, StreamingContext context) : base(info, context)
     {
     }
 }
