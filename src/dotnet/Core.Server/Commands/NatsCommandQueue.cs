@@ -1,4 +1,5 @@
 using System.Buffers;
+using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualLab.IO;
 using ActualLab.Locking;
@@ -10,7 +11,7 @@ namespace ActualChat.Commands;
 
 public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServiceProvider services) : ICommandQueue, ICommandQueueBackend
 {
-    private const string CommandStreamName = "COMMANDS";
+    private const string JetStreamName = "COMMANDS";
     private static readonly byte[] Version = [ (byte)CommandVersion.Version1 ];
     private static readonly HashSet<byte> SupportedVersions = [
         (byte)CommandVersion.Version1,
@@ -48,7 +49,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             bufferWriter.Advance(16);
 
             typedSerializer.Write(bufferWriter, command.UntypedCommand, commandType);
-            var subject = $"commands.any.{QueueId.ShardIndex}.{commandType.Name}";
+            var subject = BuildSubject(commandType);
             var ackResponse = await js.PublishAsync(subject,
                     bufferWriter,
                     opts: new NatsJSPubOpts { MsgId = command.Id.ToString() },
@@ -108,6 +109,17 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         await message.NakAsync(new AckOpts { DoubleAck = true }, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+    protected virtual string BuildJetStreamName()
+        => JetStreamName;
+
+    protected virtual string BuildSubject(Type commandType)
+        => $"commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.{commandType.Name}";
+
+    protected string GetRoleString(HostRole hostRole)
+        => hostRole == HostRole.BackendServer
+            ? "backend"
+            : hostRole.Id.Value.Replace(HostRole.BackendServer.Id.Value, "");
+
     protected QueuedCommand DeserializeMessage(NatsJSMsg<IMemoryOwner<byte>> message)
     {
         var typedSerializer = TypeDecoratingByteSerializer.Default;
@@ -145,10 +157,11 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
 
         var js = new NatsJSContext(Nats);
         var retryCount = 0;
+        var jetStreamName = BuildJetStreamName();
         while (_jetStream == null)
             try {
                 var jetStream = await js
-                    .GetStreamAsync(CommandStreamName, cancellationToken: cancellationToken)
+                    .GetStreamAsync(jetStreamName, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                 _jetStream = jetStream;
 
@@ -168,7 +181,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         return _jetStream;
     }
 
-    protected async ValueTask<INatsJSConsumer> EnsureConsumerExists(INatsJSStream jetStream, CancellationToken cancellationToken)
+    protected virtual async ValueTask<INatsJSConsumer> EnsureConsumerExists(INatsJSStream jetStream, CancellationToken cancellationToken)
     {
         if (_jetStreamConsumer != null)
             return _jetStreamConsumer!;
@@ -189,7 +202,8 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         await using var _ = lockHolder.ConfigureAwait(false);
         var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
-        var config = new StreamConfig(CommandStreamName, new[] { "commands.>" }) {
+        var jetStreamName = BuildJetStreamName();
+        var config = new StreamConfig(jetStreamName, new[] { "commands.>" }) {
             MaxMsgs = Queues.Settings.MaxQueueSize,
             Compression = StreamConfigCompression.S2,
             Storage = StreamConfigStorage.File,
@@ -209,7 +223,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         var name = $"WORKER-{QueueId.ShardIndex}";
         var config = new ConsumerConfig(name) {
             MaxDeliver = Settings.MaxTryCount,
-            FilterSubject = $"commands.*.{QueueId.ShardIndex}.>",
+            FilterSubject = $"commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.>",
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
             AckWait = TimeSpan.FromMinutes(15),
             MaxAckPending = 100,
