@@ -1,5 +1,5 @@
 
-namespace ActualChat.AiSearch;
+namespace ActualChat.MLSearch;
 
 internal interface IVectorSearchProvider
 {

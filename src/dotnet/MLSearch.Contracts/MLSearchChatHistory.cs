@@ -1,22 +1,22 @@
 using MemoryPack;
 
-namespace ActualChat.AiSearch;
+namespace ActualChat.MLSearch;
 
 // Represents either entire chat history or its tale since the last reset point
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class AiSearchChatHistory
+public partial class MLSearchChatHistory
 {
-    private AiSearchChatMessage[]? _messages;
+    private MLSearchChatMessage[]? _messages;
 
     [DataMember(Order = 0), MemoryPackOrder(0)]
-    public AiSearchChatMessage[] Messages {
+    public MLSearchChatMessage[] Messages {
         get => _messages ?? [];
         init => _messages = value;
     }
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record AiSearchChatMessage(
+public partial record MLSearchChatMessage(
     [property: DataMember, MemoryPackOrder(0)] ChatEntryId Id,
     [property: DataMember, MemoryPackOrder(1)] Moment EndsAt,
     [property: DataMember, MemoryPackOrder(2)] string Role,

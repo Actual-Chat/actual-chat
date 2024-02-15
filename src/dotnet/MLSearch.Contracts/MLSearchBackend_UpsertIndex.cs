@@ -1,8 +1,8 @@
 using MemoryPack;
 
-namespace ActualChat.AiSearch;
+namespace ActualChat.MLSearch;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record AiSearchBackend_Start(
+public sealed partial record MLSearchBackend_UpsertIndex(
 );

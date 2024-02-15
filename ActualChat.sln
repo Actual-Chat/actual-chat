@@ -317,19 +317,19 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Chat.UI.Blazor.PlaywrightTe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UI.Blazor.PlaywrightTests", "tests\UI.Blazor.PlaywrightTests\UI.Blazor.PlaywrightTests.csproj", "{2EA12092-1DA6-4AFF-A1DE-C69AE181CE69}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AiSearch", "src\dotnet\AiSearch\AiSearch.csproj", "{C36BF48E-5CB9-4FB6-B131-28347CA2D309}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MLSearch", "src\dotnet\MLSearch\MLSearch.csproj", "{C36BF48E-5CB9-4FB6-B131-28347CA2D309}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AiSearch.Contracts", "src\dotnet\AiSearch.Contracts\AiSearch.Contracts.csproj", "{C9E6C0EA-CB9F-4028-9D2D-AC00A205B601}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MLSearch.Contracts", "src\dotnet\MLSearch.Contracts\MLSearch.Contracts.csproj", "{C9E6C0EA-CB9F-4028-9D2D-AC00A205B601}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AiSearch.Service", "src\dotnet\AiSearch.Service\AiSearch.Service.csproj", "{1A0A3676-1FFC-439C-A716-932A0262F02A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MLSearch.Service", "src\dotnet\MLSearch.Service\MLSearch.Service.csproj", "{1A0A3676-1FFC-439C-A716-932A0262F02A}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AiSearch.Service.Migration", "src\dotnet\AiSearch.Service.Migration\AiSearch.Service.Migration.csproj", "{D85DC6A3-CC2C-4BF4-AA52-572882273783}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MLSearch.Service.Migration", "src\dotnet\MLSearch.Service.Migration\MLSearch.Service.Migration.csproj", "{D85DC6A3-CC2C-4BF4-AA52-572882273783}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AiSearch", "AiSearch", "{03A5EF2E-8985-4971-884D-E5D646BDA567}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "MLSearch", "MLSearch", "{03A5EF2E-8985-4971-884D-E5D646BDA567}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiSearch.UnitTests", "tests\AiSearch.UnitTests\AiSearch.UnitTests.csproj", "{962B8EA9-5CD8-4403-8850-D1D4AF5EF8FF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MLSearch.UnitTests", "tests\MLSearch.UnitTests\MLSearch.UnitTests.csproj", "{962B8EA9-5CD8-4403-8850-D1D4AF5EF8FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AiSearch.IntegrationTests", "tests\AiSearch.IntegrationTests\AiSearch.IntegrationTests.csproj", "{BF3ACD70-1327-47A3-A8C4-2930B30B54D6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MLSearch.IntegrationTests", "tests\MLSearch.IntegrationTests\MLSearch.IntegrationTests.csproj", "{BF3ACD70-1327-47A3-A8C4-2930B30B54D6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
