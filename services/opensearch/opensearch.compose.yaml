@@ -69,6 +69,35 @@ services:
       - opensearch-ml1:/usr/share/opensearch/data
     networks:
       - opensearch-net
+
+  opensearch-config:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM python:3.12
+        RUN pip install pandas==2.0.3 deprecated opensearch-py opensearch-py-ml requests
+        WORKDIR /workdir
+        CMD python ./opensearch-setup.py
+    environment:
+      OPENSEARCH_CLUSTER_URL: 'http://opensearch-node1:9200'
+      SLEEP_ON_FAILURE_SECONDS: 5
+      TORCHSCRIPT_MODEL_PATH: /ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip
+      TORCHSCRIPT_MODEL_CONFIG_PATH: /ml_model/config.json
+    volumes:
+      - type: bind
+        source: ./ml_model
+        target: /ml_model
+      - type: bind
+        source: ./opensearch-setup.py
+        target: /workdir/opensearch-setup.py
+    networks:
+      - opensearch-net
+    depends_on:
+      - opensearch-ml1
+      - opensearch-node1
+      - opensearch-node2
+    restart: on-failure
+
   opensearch-dashboards:
     build:
       context: .
