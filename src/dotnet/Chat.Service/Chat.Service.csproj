@@ -9,4 +9,12 @@
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None
+      Include="$(MSBuildThisFileDirectory)..\..\..\tests\Audio.IntegrationTests\data\**" 
+      Link="data\%(RecursiveDir)%(Filename)%(Extension)" 
+      Visible="false" 
+      CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  
 </Project>
