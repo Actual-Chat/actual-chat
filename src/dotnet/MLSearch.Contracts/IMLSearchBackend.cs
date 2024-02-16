@@ -2,7 +2,7 @@ using MemoryPack;
 
 namespace ActualChat.MLSearch;
 
-public interface IMLSearchBackend
+public interface IMLSearchBackend: IComputeService
 {
     // Commands
     [CommandHandler]
