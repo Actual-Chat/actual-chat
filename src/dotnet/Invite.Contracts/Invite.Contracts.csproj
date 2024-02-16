@@ -4,8 +4,4 @@
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MemoryPack" />
-  </ItemGroup>
-
 </Project>

@@ -4,8 +4,4 @@
     <ProjectReference Include="..\Api\Api.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MemoryPack" />
-  </ItemGroup>
-
 </Project>

@@ -5,8 +5,4 @@
     <ProjectReference Include="..\Users\Users.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MemoryPack" />
-  </ItemGroup>
-
 </Project>
