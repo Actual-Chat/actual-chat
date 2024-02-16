@@ -86,6 +86,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_", "_", "{9E3D1D2A-7BF6-45
 		run-watch.cmd = run-watch.cmd
 		run.cmd = run.cmd
 		version.json = version.json
+		nats.Dockerfile = nats.Dockerfile
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Transcription.UnitTests", "tests\Transcription.UnitTests\Transcription.UnitTests.csproj", "{33243438-DAC2-4B8E-9C60-32CEB24B1F7A}"
@@ -243,6 +244,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{4C3BF424-4983-404C-A62B-F2D286EBCB4E}"
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\build-monitor.yml = .github\workflows\build-monitor.yml
+		.github\workflows\build-nats.yml = .github\workflows\build-nats.yml
 		.github\workflows\build-test-deploy-dev.yml = .github\workflows\build-test-deploy-dev.yml
 		.github\workflows\create-release-branch.yml = .github\workflows\create-release-branch.yml
 		.github\workflows\test-slow.yml = .github\workflows\test-slow.yml
