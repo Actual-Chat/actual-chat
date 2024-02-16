@@ -153,10 +153,10 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
 
         // NATS
         services.AddNats(
-            poolSize: 4,
+            poolSize: 1,
             opts => opts with {
                 // AuthOpts =
-                // Url =
+                // Url = "ws://localhost:8222",
                 // TlsOpts =
                 CommandTimeout = TimeSpan.FromSeconds(10),
                 ConnectTimeout = TimeSpan.FromSeconds(15),
