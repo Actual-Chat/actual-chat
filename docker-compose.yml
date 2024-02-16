@@ -109,7 +109,7 @@ services:
           memory: 1G
           cpus: '0.2'
   nats:
-    image: nats:2.10.9-alpine3.19
+    image: nats:2.10.10-alpine3.19
     expose:
       - 4222
     ports:

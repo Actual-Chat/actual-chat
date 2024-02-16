@@ -62,7 +62,7 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
         return jsStream;
     }
 
-    protected override Task<INatsJSConsumer> CreateConsumer(INatsJSStream jetStream, CancellationToken cancellationToken)
+    protected override Task<INatsJSConsumer> CreateConsumer(INatsJSStream jetStream, string consumerName, CancellationToken cancellationToken)
         => CreateConsumer(jetStream, HostRole.EventQueue, cancellationToken);
 
     protected async ValueTask<INatsJSConsumer> EnsureConsumerExists(INatsJSStream jetStream, HostRole hostRole, CancellationToken cancellationToken)
@@ -76,12 +76,11 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
         if (_consumers.TryGetValue(hostRole.Id, out consumer))
             return consumer;
 
-        var name = BuildConsumerName(hostRole);
-
+        var consumerName = BuildConsumerName(hostRole);
         var retryCount = 0;
         while (consumer == null)
             try {
-                consumer = await jetStream.GetConsumerAsync(name, cancellationToken).ConfigureAwait(false);
+                consumer = await jetStream.GetConsumerAsync(consumerName, cancellationToken).ConfigureAwait(false);
             }
             catch (NatsJSApiException e) when (e.Error.Code == 404) {
                 consumer = await CreateConsumer(jetStream, hostRole, cancellationToken).ConfigureAwait(false);
@@ -98,6 +97,13 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
         return _consumers.GetOrAdd(hostRole.Id, consumer);
     }
 
+    protected override string BuildConsumerName(HostRole hostRole)
+    {
+        var backend = GetRoleString(hostRole);
+        var name = $"LISTENER-{QueueId.ShardIndex}-{backend}";
+        return name;
+    }
+
     private async Task<INatsJSConsumer> CreateConsumer(INatsJSStream jetStream, HostRole hostRole, CancellationToken cancellationToken)
     {
         var name = BuildConsumerName(hostRole);
@@ -112,12 +118,5 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
             SampleFreq = "20%",
         };
         return await jetStream.CreateOrUpdateConsumerAsync(config, cancellationToken).ConfigureAwait(false);
-    }
-
-    private string BuildConsumerName(HostRole hostRole)
-    {
-        var backend = GetRoleString(hostRole);
-        var name = $"LISTENER-{QueueId.ShardIndex}-{backend}";
-        return name;
     }
 }

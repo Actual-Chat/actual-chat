@@ -192,7 +192,33 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         if (_jetStreamConsumer != null)
             return _jetStreamConsumer!;
 
-        return _jetStreamConsumer = await CreateConsumer(jetStream, cancellationToken);
+        var consumerName = BuildConsumerName(queueId.HostRole);
+        var retryCount = 0;
+        while (_jetStreamConsumer == null)
+            try {
+                var jetStreamConsumer = await jetStream.GetConsumerAsync(consumerName, cancellationToken).ConfigureAwait(false);
+                _jetStreamConsumer = jetStreamConsumer;
+
+            }
+            catch (NatsJSApiException e) when (e.Error.Code == 404) {
+                _jetStreamConsumer = await CreateConsumer(jetStream, consumerName, cancellationToken);
+            }
+            catch (NatsJSApiNoResponseException e) {
+                if (retryCount++ > 3)
+                    throw;
+
+                Log.LogWarning(e, "EnsureStreamExists: error getting stream");
+                var delay = Random.Shared.Next(100, 250);
+                await Services.Clocks().SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+
+        return _jetStreamConsumer;
+    }
+
+    protected virtual string BuildConsumerName(HostRole hostRole)
+    {
+        var consumerName = $"WORKER-{QueueId.ShardIndex}";
+        return consumerName;
     }
 
     protected virtual async Task<INatsJSStream> CreateJetStream(NatsJSContext js, CancellationToken cancellationToken)
@@ -218,10 +244,10 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
 
     protected virtual async Task<INatsJSConsumer> CreateConsumer(
         INatsJSStream jetStream,
+        string consumerName,
         CancellationToken cancellationToken)
     {
-        var name = $"WORKER-{QueueId.ShardIndex}";
-        var config = new ConsumerConfig(name) {
+        var config = new ConsumerConfig(consumerName) {
             MaxDeliver = Settings.MaxTryCount,
             FilterSubject = $"commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.>",
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
