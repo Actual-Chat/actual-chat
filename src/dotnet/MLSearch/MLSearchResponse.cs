@@ -5,9 +5,9 @@ namespace ActualChat.MLSearch;
 
 // Represents an individual result of a search execution
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial class MLSearchResult : SearchResult
+public partial class MLSearchResponse : SearchResult
 {
-    public MLSearchResult(string id, SearchMatch searchMatch) : base(id, searchMatch)
+    public MLSearchResponse(string id, SearchMatch searchMatch) : base(id, searchMatch)
     {
     }
 }
