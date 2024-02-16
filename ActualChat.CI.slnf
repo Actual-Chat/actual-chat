@@ -2,6 +2,10 @@
   "solution": {
     "path": "ActualChat.sln",
     "projects": [
+      "src\\dotnet\\MLSearch\\MLSearch.csproj",
+      "src\\dotnet\\MLSearch.Contracts\\MLSearch.Contracts.csproj",
+      "src\\dotnet\\MLSearch.Service\\MLSearch.Service.csproj",
+      "src\\dotnet\\MLSearch.Service.Migration\\MLSearch.Service.Migration.csproj",
       "src\\dotnet\\App.Server\\App.Server.csproj",
       "src\\dotnet\\App.Wasm\\App.Wasm.csproj",
       "src\\dotnet\\Audio.Client\\Audio.Client.csproj",
@@ -56,6 +60,8 @@
       "src\\dotnet\\Users.Templates\\Users.Templates.csproj",
       "src\\dotnet\\Users.UI.Blazor\\Users.UI.Blazor.csproj",
       "src\\dotnet\\Users\\Users.csproj",
+      "tests\\MLSearch.IntegrationTests\\MLSearch.IntegrationTests.csproj",
+      "tests\\MLSearch.UnitTests\\MLSearch.UnitTests.csproj",
       "tests\\Audio.IntegrationTests\\Audio.IntegrationTests.csproj",
       "tests\\Audio.UnitTests\\Audio.UnitTests.csproj",
       "tests\\Chat.IntegrationTests\\Chat.IntegrationTests.csproj",
