@@ -1,16 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
     <ProjectReference Include="..\Users\Users.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MemoryPack" />
-    <PackageReference Include="ActualLab.RestEase" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="RestEase.SourceGenerator" />
   </ItemGroup>
 
 </Project>

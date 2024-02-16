@@ -5,7 +5,6 @@ using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Commands;
 using ActualChat.Invite;
-using ActualChat.Invite.Backend;
 using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Users;

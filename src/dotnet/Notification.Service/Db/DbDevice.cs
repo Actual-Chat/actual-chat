@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using ActualChat.Notification.Backend;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Versioning;
 

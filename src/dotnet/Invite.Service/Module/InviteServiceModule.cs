@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
-using ActualChat.Invite.Backend;
 using ActualChat.Invite.Db;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
@@ -38,11 +37,10 @@ public sealed class InviteServiceModule(IServiceProvider moduleServices) : HostM
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<InviteDbContext>))
                 return true;
+
             // 2. Make sure it's intact only for local commands
-            var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(IInvites).Assembly) // Invite.Contracts assembly
-                return true;
-            return false;
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(IInvites).Namespace!);
         });
         var fusion = services.AddFusion();
 

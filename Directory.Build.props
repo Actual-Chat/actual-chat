@@ -21,14 +21,12 @@
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Db'">Db</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Redis'">Redis</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Kubernetes'">Kubernetes</ProjectKind>
-    <ProjectKind Condition="'$(MSBuildProjectName)' == 'Web'">Web</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'Testing'">Testing</ProjectKind>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'App.Server'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Core.Server'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Db'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Redis'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Kubernetes'">true</IsServerSideProject>
-    <IsServerSideProject Condition="'$(ProjectKind)' == 'Web'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Service'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Migration'">true</IsServerSideProject>
     <IsServerSideProject Condition="'$(ProjectKind)' == 'Testing'">true</IsServerSideProject>
@@ -50,10 +48,14 @@
     <BaseName>ActualChat</BaseName>
     <AssemblyName>$(BaseName).$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>$(AssemblyName)</RootNamespace>
-    <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Contracts'))">$(AssemblyName.Replace('.Contracts',''))</RootNamespace>
-    <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Service'))">$(AssemblyName.Replace('.Service',''))</RootNamespace>
-    <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Service.Migration'))">$(AssemblyName.Replace('.Service.Migration',''))</RootNamespace>
-    <RootNamespace Condition="$(MSBuildProjectName.EndsWith('.Client'))">$(AssemblyName.Replace('.Client',''))</RootNamespace>
+    <RootNamespace Condition="$(AssemblyName.EndsWith('.Core'))">$(AssemblyName.Replace('.Core',''))</RootNamespace>
+    <RootNamespace Condition="$(AssemblyName.EndsWith('.Core.Server'))">$(AssemblyName.Replace('.Core.Server',''))</RootNamespace>
+    <RootNamespace Condition="$(AssemblyName.EndsWith('.Contracts'))">$(AssemblyName.Replace('.Contracts',''))</RootNamespace>
+    <RootNamespace Condition="$(AssemblyName.EndsWith('.Service'))">$(AssemblyName.Replace('.Service',''))</RootNamespace>
+    <RootNamespace Condition="$(AssemblyName.EndsWith('.Service.Migration'))">$(AssemblyName.Replace('.Service.Migration',''))</RootNamespace>
+    <RootNamespace Condition="$(AssemblyName.EndsWith('.Client'))">$(AssemblyName.Replace('.Client',''))</RootNamespace>
+    <RootNamespace Condition="$(AssemblyName.EndsWith('.Api.Contracts'))">$(AssemblyName.Replace('.Api.Contracts',''))</RootNamespace>
+    <RootNamespace Condition="$(AssemblyName.EndsWith('.Api'))">$(AssemblyName.Replace('.Api',''))</RootNamespace>
     <PackageLicenseExpression>UNLICENSED</PackageLicenseExpression>
 
     <!-- C# / language settings -->

@@ -1,4 +1,3 @@
-using ActualChat.Notification.Backend;
 using FirebaseAdmin.Messaging;
 
 namespace ActualChat.Notification;

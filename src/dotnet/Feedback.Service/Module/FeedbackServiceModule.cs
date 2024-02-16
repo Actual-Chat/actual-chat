@@ -34,11 +34,10 @@ public sealed class FeedbackServiceModule(IServiceProvider moduleServices)
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<FeedbackDbContext>))
                 return true;
+
             // 2. Make sure it's intact only for local commands
-            var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(IFeedbacks).Assembly) // Feedback.Contracts assembly
-                return true;
-            return false;
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(IFeedbacks).Namespace!);
         });
         var fusion = services.AddFusion();
 

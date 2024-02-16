@@ -2,6 +2,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Uploads;
 using ActualChat.Users.Events;
@@ -58,11 +59,9 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices) : HostMod
                 return true;
 
             // 2. Make sure it's intact only for local commands
-            var commandAssembly = commandType.Assembly;
-            return commandAssembly == typeof(ChatModule).Assembly // Chat assembly
-                || commandAssembly == typeof(IAuthors).Assembly // Chat.Contracts assembly
-                || commandAssembly == typeof(Authors).Assembly // Chat.Service assembly
-                || commandType == typeof(NewUserEvent); // NewUserEvent is handled by Chat service - TODO(AK): abstraction leak!!
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(IChats).Namespace!)
+                || commandType == typeof(NewUserEvent); // Event
         });
         var fusion = services.AddFusion();
 

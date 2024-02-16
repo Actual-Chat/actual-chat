@@ -4,7 +4,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\dotnet\Audio.Contracts\Audio.Contracts.csproj" />
     <ProjectReference Include="..\..\src\dotnet\Audio.Service\Audio.Service.csproj" />
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
     <ProjectReference Include="..\Testing\Testing.csproj" />

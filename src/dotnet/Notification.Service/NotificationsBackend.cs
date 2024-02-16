@@ -1,6 +1,5 @@
 using ActualChat.Chat;
 using ActualChat.Chat.Events;
-using ActualChat.Notification.Backend;
 using ActualChat.Notification.Db;
 using ActualChat.Commands;
 using ActualChat.Users;

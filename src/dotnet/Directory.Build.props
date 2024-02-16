@@ -23,7 +23,7 @@
     <InternalsVisibleTo Include="$(RootNamespace).IntegrationTests" />
   </ItemGroup>
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
-    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    <!-- <InternalsVisibleTo Include="DynamicProxyGenAssembly2" /> -->
     <InternalsVisibleTo Include="$(AssemblyName).UnitTests" />
     <InternalsVisibleTo Include="$(AssemblyName).IntegrationTests" />
 

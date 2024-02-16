@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Pidgin" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <InternalsVisibleTo Include="$(RootNamespace).Audio.UnitTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Audio.IntegrationTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Chat.UnitTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Chat.IntegrationTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Contacts.UnitTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Contacts.IntegrationTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Search.UnitTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Search.IntegrationTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Transcription.UnitTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Transcription.IntegrationTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Users.UnitTests" />
+    <InternalsVisibleTo Include="$(RootNamespace).Users.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Audio\WebM\Models\MatroskaModels.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MatroskaModels.cs</LastGenOutput>
+    </None>
+    <None Update="Audio\WebM\MatroskaSpecification.tt">
+      <Generator>TextTemplatingFileGenerator</Generator>
+      <LastGenOutput>MatroskaSpecification.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+</Project>

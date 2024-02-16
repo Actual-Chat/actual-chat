@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\dotnet\Audio.Contracts\Audio.Contracts.csproj" />
     <ProjectReference Include="..\..\src\dotnet\Audio.Service\Audio.Service.csproj" />
     <ProjectReference Include="..\..\src\dotnet\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
