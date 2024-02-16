@@ -192,6 +192,12 @@ jobs:
           discovery.type: single-node
       nats:
         image: nats:2.10.9-alpine3.19
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd 'nats server check jetstream'
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
         ports:
           # Maps port 4222 and 8222 on service container to the host
           - 4222:4222

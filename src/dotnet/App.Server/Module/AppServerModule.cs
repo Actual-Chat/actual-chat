@@ -158,6 +158,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 // AuthOpts =
                 // Url =
                 // TlsOpts =
+                CommandTimeout = TimeSpan.FromSeconds(10),
+                ConnectTimeout = TimeSpan.FromSeconds(15),
             });
 
         // Web
