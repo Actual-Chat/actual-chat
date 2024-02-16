@@ -3,9 +3,8 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat;
 
-public sealed class PlacesSettings (IServiceProvider services, AccountSettings accountSettings)
+public sealed class PlacesSettings(AccountSettings accountSettings)
 {
-    private IServiceProvider Services { get; } = services;
     private AccountSettings AccountSettings { get; } = accountSettings;
 
     public async Task<PlaceId[]> GetPlacesOrder(Session session, PlaceId[] places, CancellationToken cancellationToken)
@@ -17,8 +16,8 @@ public sealed class PlacesSettings (IServiceProvider services, AccountSettings a
         return placesSettings
             .Select(e => e.OrderingHint)
             .Zip(places)
-            .OrderBy(e=> e.First)
-            .Select(e=> e.Second)
+            .OrderBy(e => e.First)
+            .Select(e => e.Second)
             .ToArray();
     }
 
