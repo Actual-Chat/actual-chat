@@ -1,5 +1,5 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\Db\Db.csproj" />
+    <ProjectReference Include="..\MLSearch.Service\MLSearch.Service.csproj" />
   </ItemGroup>
 </Project>

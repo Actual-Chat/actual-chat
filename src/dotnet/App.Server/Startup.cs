@@ -12,6 +12,7 @@ using ActualChat.Invite.Module;
 using ActualChat.Kubernetes.Module;
 using ActualChat.Media.Module;
 using ActualChat.MediaPlayback.Module;
+using ActualChat.MLSearch.Module;
 using ActualChat.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
@@ -114,6 +115,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new TranscriptionServiceModule(moduleServices),
                 new NotificationServiceModule(moduleServices),
                 new SearchServiceModule(moduleServices),
+                new MLSearchServiceModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
                 new AudioBlazorUIModule(moduleServices),
