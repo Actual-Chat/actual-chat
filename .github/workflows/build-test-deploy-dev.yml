@@ -194,6 +194,7 @@ jobs:
         image: nats:2.10.9-alpine3.19
         # Set health checks to wait until postgres has started
         options: >-
+          --jetstream
           --health-cmd "wget --no-verbose --tries=1 --spider 'http://localhost:8222/healthz?js-enabled-only=true' || exit 1"
           --health-interval 10s
           --health-timeout 5s
