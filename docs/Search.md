@@ -310,18 +310,19 @@ Goals:
       Test: perf test.
 ---
 If all good:
-  - [ ] [1d] [Andrew] Setup Elastic Search backend with any ML model directly from an example.
-    https://www.elastic.co/search-labs/blog/articles/how-to-deploy-nlp-text-embeddings-and-vector-search
+  - [x] [~~1d~~1d+1d] [Andrew] Setup OpenSearch backend with any ML model directly from an example.
+    - [x] [1d] Cluster ML setup as a code.
+    ~~https://www.elastic.co/search-labs/blog/articles/how-to-deploy-nlp-text-embeddings-and-vector-search~~
     
     Goal: docker compose to run a backend
 
-  - [ ] [0.5h] [Andrew + Alex] Manual test with 2-3 documents added with permissions. Query with embeds + permissions.
+  - [x] [0.5h] [Andrew + Alex] Manual test with 2-3 documents added with permissions. Query with embeds + permissions.
 
 If doesn't work for our case:
 - [ ] Investigate existing DB to use as vectors storage and for the search.
 ---
 - [ ] App Adapter: Add Embeddings Search for an existing Search Backend
-  - [ ] [2d] Documents pipeline: Add Inference processor
+  - [ ] [2d] [Andrew] Documents pipeline: Add Inference processor
       https://www.elastic.co/guide/en/elasticsearch/reference/current/inference-processor.html
   - [ ] [1d] Query pipeline: Add Vector Similarity Search
       https://www.elastic.co/guide/en/elasticsearch/reference/8.1/knn-search.html
