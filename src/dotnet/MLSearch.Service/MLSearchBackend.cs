@@ -26,6 +26,10 @@ internal class MLSearchBackend: IMLSearchBackend
         // Marks chat as updated
         // Schedules indexing
         // If indexing job is already waiding in a queue, does nothing
+
+        // App converts its data to an abstract doc for the vector search eng
+        // Sends it for indexing
+        // Document includes text part as well as metadata (Date, ChatId, PlaceId, Author, etc)
     }
 
     // Events

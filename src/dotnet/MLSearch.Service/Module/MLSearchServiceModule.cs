@@ -3,6 +3,7 @@ using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.Db;
+using ActualChat.MLSearch.SearchEngine.OpenSearch;
 using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.MLSearch.Module;
@@ -43,6 +44,8 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         fusion.AddService<IMLSearchBackend, MLSearchBackend>();
         services.AddSingleton<IHistoryExtractor, HistoryExtractor>();
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
-        services.AddSingleton<IVectorSearchEngine, VectorSearchEngine>();
+        services.AddKeyedSingleton<ISearchEngine>("OpenSearch", (services, serviceKey) => {
+            return new OpenSearchEngine();
+        });
     }
 }

@@ -1,12 +1,7 @@
 
-namespace ActualChat.MLSearch;
+namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
-internal interface IVectorSearchEngine
-{
-    Task<VectorSearchResult> Find(VectorSearchQuery query, CancellationToken cancellationToken);
-}
-
-internal class VectorSearchEngine : IVectorSearchEngine
+internal class OpenSearchEngine : ISearchEngine
 {
     public Task<VectorSearchResult> Find(VectorSearchQuery query, CancellationToken cancellationToken)
     {
@@ -14,4 +9,6 @@ internal class VectorSearchEngine : IVectorSearchEngine
         // Returns ranked list of documents as a result
         throw new NotImplementedException();
     }
+
+    public Task Ingest(IndexedDocument document, CancellationToken cancellationToken) => throw new NotImplementedException();
 }
