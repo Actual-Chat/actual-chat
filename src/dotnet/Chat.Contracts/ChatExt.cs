@@ -16,7 +16,13 @@ public static class ChatExt
     }
 
     public static PlaceRules? ToPlaceRules(this AuthorRules? authorRules, PlaceId placeId)
-        => authorRules != null
-            ? new (placeId, authorRules.Author, authorRules.Account, (PlacePermissions)(int)authorRules.Permissions)
-            : null;
+    {
+        if (authorRules == null)
+            return null;
+
+        var placePermissions = (PlacePermissions)(int)authorRules.Permissions;
+        if ((placePermissions & PlacePermissions.Owner) == 0) // Only Owners can invite so far.
+            placePermissions &= ~PlacePermissions.Invite;
+        return new (placeId, authorRules.Author, authorRules.Account, placePermissions);
+    }
 }

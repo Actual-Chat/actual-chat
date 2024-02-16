@@ -7,8 +7,15 @@
     @apply gap-y-0;
     @apply md:min-w-96 md:max-w-96 md:h-160 md:max-h-160;
 }
+.share-modal .dialog-body {
+    @apply overflow-y-hidden;
+}
 .share-modal .form-block {
-    @apply p-0;
+    @apply py-0;
+    @apply overflow-y-hidden;
+}
+.share-modal.share-modal-with-contact-selector .form-block {
+    @apply px-0;
 }
 .share-modal .no-padding-header-decorator {
     @apply mx-0;

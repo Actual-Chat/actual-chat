@@ -1,7 +1,4 @@
 using ActualChat.Contacts;
-using ActualChat.Invite;
-using ActualChat.Invite.Backend;
-using ActualChat.Kvas;
 using ActualChat.Users;
 
 namespace ActualChat.Chat;
@@ -15,8 +12,6 @@ public class Chats(IServiceProvider services) : IChats
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
-    private IInvitesBackend InvitesBackend { get; } = services.GetRequiredService<IInvitesBackend>();
-    private IServerKvas ServerKvas { get; } = services.ServerKvas();
     private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
     private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
     private ICommander Commander { get; } = services.Commander();
@@ -98,28 +93,6 @@ public class Chats(IServiceProvider services) : IChats
     {
         var principalId = await GetOwnPrincipalId(session, chatId, cancellationToken).ConfigureAwait(false);
         var rules = await Backend.GetRules(chatId, principalId, cancellationToken).ConfigureAwait(false);
-        if (!rules.CanRead() && chatId.Kind != ChatKind.Peer) {
-            // Has invite = same as having read permission
-            var activationKeyOpt = await ServerKvas
-                .GetClient(session)
-                .TryGet<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
-                .ConfigureAwait(false);
-            if (activationKeyOpt.IsSome(out var activationKey)) {
-                var isValid = await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
-                if (isValid)
-                    rules = rules with {
-                        Permissions = (rules.Permissions | ChatPermissions.Join).AddImplied(),
-                    };
-            }
-        }
-
-        if (chatId.IsPlaceChat && !chatId.PlaceChatId.IsRoot) {
-            var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
-            if (chat?.IsPublic == true)
-                rules = rules with {
-                    Permissions = rules.Permissions & ~ChatPermissions.Leave // Do not allow to leave public chat on a place
-                };
-        }
         return rules;
     }
 
@@ -254,13 +227,15 @@ public class Chats(IServiceProvider services) : IChats
                 throw StandardError.Unauthorized("You can edit only your own messages.");
             if (textEntry.Kind != ChatEntryKind.Text || textEntry.IsStreaming || textEntry.AudioEntryId.HasValue)
                 throw StandardError.Constraint("Only text messages can be edited.");
+            if (repliedChatEntryId.IsSome(out var v) && textEntry.RepliedEntryLocalId != v)
+                throw StandardError.Constraint("Related entry id can't be changed.");
 
             var upsertCommand = new ChatsBackend_ChangeEntry(
                 textEntryId,
                 null,
                 Change.Update(new ChatEntryDiff {
                     Content = text,
-                    RepliedEntryLocalId = repliedChatEntryId.IsSome(out var v) ? v : null,
+                    RepliedEntryLocalId = repliedChatEntryId,
                 }));
             textEntry = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
         }

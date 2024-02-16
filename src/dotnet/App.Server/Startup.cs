@@ -23,7 +23,6 @@ using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
-using ActualChat.Web.Module;
 using Microsoft.Extensions.Logging.Console;
 using Serilog;
 using Serilog.Events;
@@ -100,7 +99,6 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
                 new DbModule(moduleServices),
-                new WebModule(moduleServices),
                 // Generic modules
                 new MediaPlaybackModule(moduleServices),
                 // Service-specific & service modules
@@ -135,7 +133,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
         appHostModule.ConfigureApp(app); // This module must be the first one in ConfigureApp call sequence
 
         ModuleHost.Modules
-            .OfType<IWebModule>()
+            .OfType<IWebServerModule>()
             .Where(m => !ReferenceEquals(m, appHostModule))
             .Apply(m => m.ConfigureApp(app));
     }

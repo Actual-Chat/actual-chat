@@ -22,11 +22,12 @@ public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceP
             Id = user.Id,
             Status = isAdmin ? AccountStatus.Active : UsersSettings.NewAccountStatus,
             Version = VersionGenerator.NextVersion(),
-            Name = user.Claims.TryGetValue(ClaimTypes.GivenName, out var name) ? name : "",
-            LastName = user.Claims.TryGetValue(ClaimTypes.Surname, out var surname) ? surname : "",
-            Email = user.Claims.TryGetValue(ClaimTypes.Email, out var email) ? email : "",
-            Phone = user.Claims.TryGetValue(ClaimTypes.MobilePhone, out var phone) ? phone : "",
+            Name = user.Claims.GetValueOrDefault(ClaimTypes.GivenName, ""),
+            LastName = user.Claims.GetValueOrDefault(ClaimTypes.Surname, ""),
+            Email = user.Claims.GetValueOrDefault(ClaimTypes.Email, ""),
+            Phone = user.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
         };
+        var email = dbAccount.Email;
         dbContext.Accounts.Add(dbAccount);
 
         if (!email.IsNullOrEmpty()) {

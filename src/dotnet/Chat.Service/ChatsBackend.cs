@@ -4,6 +4,9 @@ using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Hosting;
 using ActualChat.Commands;
+using ActualChat.Invite;
+using ActualChat.Invite.Backend;
+using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Users;
 using ActualChat.Users.Events;
@@ -31,11 +34,16 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     private IRolesBackend? _rolesBackend;
     private IMediaBackend? _mediaBackend;
     private ILinkPreviewsBackend? _linkPreviewsBackend;
+    private IInvitesBackend? _invitesBackend;
+    private IServerKvasBackend? _serverKvasBackend;
+
     private IAccountsBackend AccountsBackend => _accountsBackend ??= Services.GetRequiredService<IAccountsBackend>();
     private IAuthorsBackend AuthorsBackend => _authorsBackend ??= Services.GetRequiredService<IAuthorsBackend>();
     private IRolesBackend RolesBackend => _rolesBackend ??= Services.GetRequiredService<IRolesBackend>();
     private IMediaBackend MediaBackend => _mediaBackend ??= Services.GetRequiredService<IMediaBackend>();
     private ILinkPreviewsBackend LinkPreviewsBackend => _linkPreviewsBackend ??= Services.GetRequiredService<ILinkPreviewsBackend>();
+    private IInvitesBackend InvitesBackend => _invitesBackend ??= Services.GetRequiredService<IInvitesBackend>();
+    private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
 
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
@@ -461,9 +469,12 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             }
             else if (chatKind == ChatKind.Place) {
                 if (chatId.IsNone) {
-                    chatId = placeId.IsNone
-                        ? PlaceChatId.Root(new PlaceId(Generate.Option))
-                        : new PlaceChatId(placeId, Generate.Option);
+                    if (placeId.IsNone)
+                        chatId = PlaceChatId.Root(new PlaceId(Generate.Option));
+                    else if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, update.SystemTag))
+                        chatId = new PlaceChatId(PlaceChatId.Format(placeId, Constants.Chat.SystemTags.Welcome));
+                    else
+                        chatId = new PlaceChatId(placeId, Generate.Option);
                 }
                 else
                     throw new ArgumentOutOfRangeException(nameof(command), "Invalid ChatId.");
@@ -477,10 +488,11 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             };
             chat = ApplyDiff(chat, update);
             dbChat = new DbChat(chat);
-            if (!dbChat.SystemTag.IsNullOrEmpty()) {
+            if (!dbChat.SystemTag.IsNullOrEmpty()
+                && !OrdinalEquals(dbChat.SystemTag, Constants.Chat.SystemTags.Welcome)) {
                 // Only group chats can have system tags
                 ownerId.Require("Command.OwnerId");
-                // Chats with system tags should be unique per user.
+                // Chats with system tags should be unique per user except Welcome chat.
                 var existingDbChat = await dbContext.Chats
                     .Join(dbContext.Authors, c => c.Id, a => a.ChatId, (c, a) => new { c, a })
                     .Where(x => x.a.UserId == ownerId && x.c.SystemTag == dbChat.SystemTag)
@@ -565,15 +577,21 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
             ownerId.RequireNone();
             if (update.PlaceId.HasValue)
                 throw new ArgumentOutOfRangeException(nameof(command), "ChatDiff.PlaceId should be null.");
-            if (chatId.IsPlaceChat)
-                update.ValidateForPlaceChat();
             dbChat.RequireVersion(expectedVersion);
+            if (chatId.IsPlaceChat) {
+                update.ValidateForPlaceChat();
+                if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag)
+                    && update.IsPublic == false)
+                    throw StandardError.Constraint("Can't change chat type to private for 'Welcome' chat.");
+            }
 
             chat = ApplyDiff(dbChat.ToModel(), update);
             dbChat.UpdateFrom(chat);
         }
         else if (change.IsRemove()) {
             dbChat.Require();
+            if (OrdinalEquals(Constants.Chat.SystemTags.Welcome, dbChat.SystemTag))
+                throw StandardError.Constraint("It's prohibited to remove 'Welcome' chat.");
 
             if (!dbChat.MediaId.IsNullOrEmpty()) {
                 var removeMediaCommand = new MediaBackend_Change(
@@ -1316,6 +1334,14 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         permissions = permissions.AddImplied();
 
         var rules = new AuthorRules(chatId, author, account, permissions);
+        if (chatId.Kind != ChatKind.Peer && !rules.CanRead()) {
+            // Has invite = same as having read permission
+            var hasActivated = await HasActivatedInvite(account.Id, chatId, cancellationToken).ConfigureAwait(false);
+            if (hasActivated)
+                rules = rules with {
+                    Permissions = (rules.Permissions | ChatPermissions.Join).AddImplied(),
+                };
+        }
         return rules;
     }
 
@@ -1346,8 +1372,11 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         var rootChatPrincipalId = new PrincipalId(account.Id, AssumeValid.Option);
         var rootChatRules = await GetRules(rootChatId, rootChatPrincipalId, cancellationToken).ConfigureAwait(false);
-        if (chat.IsPublic)
-            return rootChatRules;
+        if (chat.IsPublic) {
+            var author = await AuthorsBackend.GetByUserId(chatId, account.Id, AuthorsBackend_GetAuthorOption.Full, cancellationToken).ConfigureAwait(false);
+            var permissions = rootChatRules.Permissions & ~ChatPermissions.Leave; // Do not allow to leave public chat on a place
+            return new AuthorRules(chat.Id, author, account, permissions);
+        }
 
         if (!rootChatRules.CanRead())
             return AuthorRules.None(chatId);
@@ -1481,5 +1510,16 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         var command = new ChatsBackend_Change(peerChatId, null, new() { Create = new ChatDiff() });
         chat = await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
         return chat;
+    }
+
+    private async Task<bool> HasActivatedInvite(UserId userId, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var activationKeyOpt = await ServerKvasBackend
+            .GetUserClient(userId)
+            .TryGet<string>(ServerKvasInviteKey.ForChat(chatId), cancellationToken)
+            .ConfigureAwait(false);
+        if (!activationKeyOpt.IsSome(out var activationKey))
+            return false;
+        return await InvitesBackend.IsValid(activationKey, cancellationToken).ConfigureAwait(false);
     }
 }

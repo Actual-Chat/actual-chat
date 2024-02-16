@@ -72,6 +72,12 @@ public sealed partial record InviteDetails : IUnionRecord<InviteDetailsOption?>
         init => Option ??= value;
     }
 
+    [DataMember, MemoryPackOrder(2)]
+    public PlaceInviteOption? Place {
+        get => Option as PlaceInviteOption;
+        init => Option ??= value;
+    }
+
     public string GetSearchKey()
         => Option.Require().GetSearchKey();
 
@@ -90,6 +96,15 @@ public partial record ChatInviteOption(
 {
     public override string GetSearchKey()
         => $"{nameof(ChatInviteOption)}:{ChatId}";
+}
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+public partial record PlaceInviteOption(
+    [property: DataMember, MemoryPackOrder(0)] PlaceId PlaceId
+) : InviteDetailsOption
+{
+    public override string GetSearchKey()
+        => $"{nameof(PlaceInviteOption)}:{PlaceId}";
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

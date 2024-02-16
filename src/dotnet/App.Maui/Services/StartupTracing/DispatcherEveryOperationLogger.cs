@@ -9,6 +9,7 @@ internal class DispatcherEveryOperationLogger : IDispatcherOperationLogger
     public void OnBeforeOperation()
     {
         _lastOperationStartedAt = CpuTimestamp.Now;
+        // ReSharper disable once ExplicitCallerInfoArgument
         _tracer.Point("Operation is about to start");
     }
 

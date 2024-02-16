@@ -14,7 +14,6 @@
     <ProjectReference Include="..\Notification.Contracts\Notification.Contracts.csproj" />
     <ProjectReference Include="..\Search.Contracts\Search.Contracts.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
-    <ProjectReference Include="..\Web\Web.csproj" />
   </ItemGroup>
 
 </Project>

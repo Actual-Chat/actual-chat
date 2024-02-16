@@ -1,9 +1,7 @@
 namespace ActualChat.Core.UnitTests.Collections;
 
-public class LruCacheTest : TestBase
+public class LruCacheTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public LruCacheTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void BasicTest()
     {

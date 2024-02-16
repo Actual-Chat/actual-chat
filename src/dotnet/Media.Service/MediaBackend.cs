@@ -3,7 +3,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Media;
 
-internal class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbContext>(services), IMediaBackend
+public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbContext>(services), IMediaBackend
 {
     private IDbEntityResolver<string, DbMedia> DbMediaResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbMedia>>();

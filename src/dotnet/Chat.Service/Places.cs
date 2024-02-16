@@ -5,6 +5,7 @@ namespace ActualChat.Chat;
 public class Places(IServiceProvider services) : IPlaces
 {
     private IChats? _chats;
+    private IChatsBackend? _chatsBackend;
     private IContacts? _contacts;
 
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
@@ -12,6 +13,7 @@ public class Places(IServiceProvider services) : IPlaces
     private ICommander Commander { get; } = services.Commander();
 
     private IChats Chats => _chats ??= services.GetRequiredService<IChats>(); // Lazy resolving to prevent cyclic dependency
+    private IChatsBackend ChatsBackend => _chatsBackend ??= services.GetRequiredService<IChatsBackend>(); // Lazy resolving to prevent cyclic dependency
     private IContacts Contacts => _contacts ??= services.GetRequiredService<IContacts>(); // Lazy resolving to prevent cyclic dependency
 
     public virtual async Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken)
@@ -20,10 +22,43 @@ public class Places(IServiceProvider services) : IPlaces
             throw new ArgumentOutOfRangeException(nameof(placeId));
 
         var placeRootChat = await Chats.Get(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
-        if (placeRootChat == null)
-            return null;
+        return placeRootChat?.Rules.CanRead() == true ? placeRootChat.ToPlace() : null;
+    }
 
-        return placeRootChat.Rules.CanRead() ? placeRootChat.ToPlace() : null;
+    public virtual async Task<PlaceRules> GetRules(
+        Session session,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+
+        var placeRootChatRules = await Chats.GetRules(session, placeId.ToRootChatId(), cancellationToken).ConfigureAwait(false);
+        return placeRootChatRules.ToPlaceRules(placeId)!;
+    }
+
+    public virtual async Task<ChatId> GetWelcomeChatId(
+        Session session,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
+    {
+        if (placeId.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(placeId));
+
+        var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
+            return ChatId.None;
+
+        var chatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
+        var chats = await chatIds
+            .Select(c => Chats.Get(session, c, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+
+        // TODO(DF): make it possible to configure Welcome Chat
+        var welcomeChat = chats.SkipNullItems().FirstOrDefault(c => OrdinalEquals(Constants.Chat.SystemTags.Welcome, c.SystemTag))
+            ?? chats.SkipNullItems().MinBy(c => c.CreatedAt);
+        return welcomeChat?.Id ?? ChatId.None;
     }
 
     public virtual async Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken)
@@ -146,12 +181,33 @@ public class Places(IServiceProvider services) : IPlaces
         var contacts = await Contacts.ListIds(session, placeId, cancellationToken).ConfigureAwait(false);
         foreach (var contact in contacts) {
             var chatId = contact.ChatId;
+            var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+            if (chat != null && OrdinalEquals(Constants.Chat.SystemTags.Welcome, chat.SystemTag)) {
+                var resetChatTagCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> {
+                    Update = new ChatDiff { SystemTag = Symbol.Empty }
+                });
+                await Commander.Call(resetChatTagCommand, true, cancellationToken).ConfigureAwait(false);
+            }
             var deleteChatCommand = new Chats_Change(session, chatId, null, new Change<ChatDiff> { Remove = true });
             await Commander.Call(deleteChatCommand, true, cancellationToken).ConfigureAwait(false);
         }
 
         var deleteRootChatCommand = new Chats_Change(session, place.Id.ToRootChatId(), null, new Change<ChatDiff> { Remove = true });
         await Commander.Call(deleteRootChatCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task OnLeave(Places_Leave command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        var (session, placeId) = command;
+        var place = await Get(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (place == null)
+            return;
+
+        place.Rules.Require(PlacePermissions.Leave);
+        await Commander.Call(new Authors_Leave(session, placeId.ToRootChatId()), true, cancellationToken).ConfigureAwait(false);
     }
 
     private static ChatDiff ToChatDiff(PlaceDiff placeDiff)

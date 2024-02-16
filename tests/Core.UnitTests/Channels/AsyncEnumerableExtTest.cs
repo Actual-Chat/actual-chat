@@ -3,11 +3,8 @@ using ActualLab.Time.Testing;
 
 namespace ActualChat.Core.UnitTests.Channels;
 
-public class AsyncEnumerableExtTest : TestBase
+public class AsyncEnumerableExtTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public AsyncEnumerableExtTest(ITestOutputHelper @out) : base(@out)
-    { }
-
     [Fact]
     public async Task BasicMergeTest()
     {

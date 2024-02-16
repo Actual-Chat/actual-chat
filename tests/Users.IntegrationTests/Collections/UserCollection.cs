@@ -1,9 +1,9 @@
+using ActualChat.Testing.Host;
+
 namespace ActualChat.Users.IntegrationTests;
 
 [CollectionDefinition(nameof(UserCollection))]
 public class UserCollection : ICollectionFixture<AppHostFixture>;
 
-public class AppHostFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(messageSink)
-{
-    public override string DbInstanceName => "users";
-}
+public class AppHostFixture(IMessageSink messageSink)
+    : ActualChat.Testing.Host.AppHostFixture("users", messageSink, TestAppHostOptions.WithDefaultChat);

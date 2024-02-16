@@ -32,8 +32,8 @@ public class LinkPreviewsBackend(IServiceProvider services)
     public virtual Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken)
         => GetAndRefreshIfRequired(id, null, true, cancellationToken);
 
-    [Obsolete("2023.10: Remaining only for backward compability")]
     // [ComputeMethod]
+    [Obsolete("2023.10: Remains for backward compability")]
     public virtual async Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
@@ -136,11 +136,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         }
     }
 
-    // Events
-
-    [EventHandler]
-    // ReSharper disable once UnusedMemberHierarchy.Global
-    // ReSharper disable once MemberCanBeProtected.Global
+    // [EventHandler]
     public virtual Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var (entry, _, changeKind) = eventCommand;
@@ -201,7 +197,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             if (await IsAlreadyCrawling(id).ConfigureAwait(false))
                 return linkPreview;
 
-            // intentionally not passing CancellationToken to avoid cancellation on exit
+            // Intentionally not passing CancellationToken to avoid cancellation on exit
             var refreshTask = Commander.Call(new LinkPreviewsBackend_Refresh(url!), CancellationToken.None);
             if (!allowStale)
                 linkPreview = await refreshTask.ConfigureAwait(false);

@@ -1,9 +1,7 @@
 namespace ActualChat.Core.UnitTests.Collections;
 
-public class CollectionSerializationTest : TestBase
+public class CollectionSerializationTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public CollectionSerializationTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void ApiArrayTest()
     {

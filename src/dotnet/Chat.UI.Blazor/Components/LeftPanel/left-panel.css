@@ -40,6 +40,9 @@
     @apply flex justify-center;
     @apply py-2;
 }
+.navbar-button.c-logo-btn {
+    @apply my-3 md:my-2;
+}
 .left-panel-content {
     @apply relative;
     @apply flex-y;

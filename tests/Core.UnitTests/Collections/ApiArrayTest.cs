@@ -1,9 +1,7 @@
 namespace ActualChat.Core.UnitTests.Collections;
 
-public class ApiArrayTest : TestBase
+public class ApiArrayTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public ApiArrayTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void WithTest()
     {

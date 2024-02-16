@@ -6,30 +6,28 @@ using ActualLab.Generators;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
-[Collection(nameof(ContactCollection)), Trait("Category", nameof(ContactCollection))]
-public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(ContactCollection))]
+public class ContactsTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
-
     private WebClientTester _tester = null!;
     private IContacts _contacts = null!;
     private IContactsBackend _contactsBackend = null!;
     private IAccounts _accounts = null!;
 
-    public Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _tester = Host.NewWebClientTester(Out);
-        _contacts = Host.Services.GetRequiredService<IContacts>();
-        _contactsBackend = Host.Services.GetRequiredService<IContactsBackend>();
+        _tester = AppHost.NewWebClientTester(Out);
+        _contacts = AppHost.Services.GetRequiredService<IContacts>();
+        _contactsBackend = AppHost.Services.GetRequiredService<IContactsBackend>();
         _accounts = _tester.AppServices.GetRequiredService<IAccounts>();
 
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())

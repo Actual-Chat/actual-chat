@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Management;
 
 
@@ -19,7 +20,7 @@ internal static class Windows
 
         static IEnumerable<ProcessInfo> GetChildProcessesInternal(uint pid)
         {
-            var query = "SELECT ProcessId,ParentProcessId,CommandLine FROM Win32_Process" + (pid != 0 ? " WHERE ParentProcessId=" + pid.ToString() : "");
+            var query = "SELECT ProcessId,ParentProcessId,CommandLine FROM Win32_Process" + (pid != 0 ? " WHERE ParentProcessId=" + pid.ToString(CultureInfo.InvariantCulture) : "");
             var searcher = new ManagementObjectSearcher(query);
             var collection = searcher.Get().Cast<ManagementBaseObject>().Select(x => new ProcessInfo((uint)x["ProcessId"], (uint)x["ParentProcessId"], (string)x["CommandLine"]));
             return collection;

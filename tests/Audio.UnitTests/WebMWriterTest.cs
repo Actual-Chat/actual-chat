@@ -4,11 +4,8 @@ using ActualChat.Audio.WebM.Models;
 
 namespace ActualChat.Audio.UnitTests;
 
-public class WebMWriterTest : TestBase
+public class WebMWriterTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public WebMWriterTest(ITestOutputHelper @out) : base(@out)
-    { }
-
     [Fact]
     public async Task BasicWriterTest()
     {
@@ -117,7 +114,7 @@ public class WebMWriterTest : TestBase
         }
     }
 
-    [Fact(Skip = "Run manually to produce out file")]
+    [Fact(Skip = "Run it manually to produce file-out.webm")]
     public async Task ReadWriteToFileTest()
     {
         await using var inputStream = new FileStream(

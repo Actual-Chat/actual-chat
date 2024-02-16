@@ -3,7 +3,7 @@ using ActualLab.IO;
 
 namespace ActualChat.Blobs.Internal;
 
-internal class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, IServiceProvider services)
+public class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, IServiceProvider services)
     : IBlobStorage
 {
     public record Options
@@ -65,9 +65,19 @@ internal class LocalFolderBlobStorage(LocalFolderBlobStorage.Options options, IS
 
         var fullPath = BaseDirectory & path;
         Directory.CreateDirectory(fullPath.DirectoryPath);
-        var fileStream = File.Create(fullPath);
-        await using var _ = fileStream.ConfigureAwait(false);
-        await stream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+
+        if (File.Exists(fullPath))
+            return; // already written
+
+        try {
+            var fileStream = new FileStream(fullPath, FileMode.CreateNew);
+            await using var _ = fileStream.ConfigureAwait(false);
+            await stream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+        }
+        catch (IOException e) {
+            DefaultLog.LogWarning(e, "Error writing blob file");
+            // already exists
+        }
     }
 
     public Task Copy(string oldPath, string newPath, CancellationToken cancellationToken)

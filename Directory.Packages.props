@@ -4,10 +4,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>7.0.22</ActualLabFusionVersion>
-    <AspNetCoreVersion>8.0.1</AspNetCoreVersion>
+    <ActualLabFusionVersion>7.0.29</ActualLabFusionVersion>
+    <AspNetCoreVersion>8.0.2</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
-    <EntityFrameworkCoreVersion>8.0.1</EntityFrameworkCoreVersion>
+    <EntityFrameworkCoreVersion>8.0.2</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>8.0.0</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>8.0.0</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
@@ -78,6 +78,7 @@
     <PackageVersion Include="Twilio" Version="6.15.2" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.1.2" />
     <PackageVersion Include="libphonenumber-csharp" Version="8.13.27" />
+    <PackageVersion Include="Mjml.Net" Version="3.8.0" />
   </ItemGroup>
   <!--
     MAUI is not compatible with centralized packages management https://github.com/dotnet/sdk/issues/27840

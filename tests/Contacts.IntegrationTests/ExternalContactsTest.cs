@@ -9,12 +9,10 @@ using Microsoft.Toolkit.HighPerformance;
 
 namespace ActualChat.Contacts.IntegrationTests;
 
-[Collection(nameof(ExternalContactCollection)), Trait("Category", nameof(ExternalContactCollection))]
-public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(ExternalContactCollection))]
+public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<ExternalAppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
-
     private WebClientTester _tester = null!;
     private IExternalContacts _externalContacts = null!;
     private ICommander _commander = null!;
@@ -35,20 +33,20 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         .WithPhone(JackPhone)
         .WithClaim(ClaimTypes.Email, JackEmail);
 
-    public Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _tester = Host.NewWebClientTester(Out);
-        _externalContacts = Host.Services.GetRequiredService<IExternalContacts>();
-        _accounts = Host.Services.GetRequiredService<IAccounts>();
-        _contacts = Host.Services.GetRequiredService<IContacts>();
-        _commander = Host.Services.Commander();
+        _tester = AppHost.NewWebClientTester(Out);
+        _externalContacts = AppHost.Services.GetRequiredService<IExternalContacts>();
+        _accounts = AppHost.Services.GetRequiredService<IAccounts>();
+        _contacts = AppHost.Services.GetRequiredService<IContacts>();
+        _commander = AppHost.Services.Commander();
 
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
@@ -287,74 +285,6 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
         await Add(externalContact);
         var contacts = await ListContactIds(0);
         contacts.Should().BeEmpty("no matching phones or emails");
-    }
-
-    [Theory]
-    [InlineData("small", 5)]
-    [InlineData("medium", 37)]
-    public async Task StressTest_AllUsersExist_AllAreConnected(string prefix, int count)
-    {
-        // arrange
-        var tracer = Tracer.Default;
-        using var __ = tracer.Region();
-        var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
-        var accounts = new AccountFull[count];
-        for (int i = 0; i < accounts.Length; i++) {
-            using var _1 = tracer.Region($"Sign in as user #{i + 1} {prefix}");
-            // TODO: find the way of fast user creation to perform real stress test 🙂
-            accounts[i] = await _tester.SignIn(BuildUser(prefix, i + 1));
-        }
-
-        // act
-        for (var i = 0; i < accounts.Length; i++) {
-            var account = accounts[i];
-            using var _2 = tracer.Region("Create external contacts " + account.User.Name);
-            await _tester.SignIn(account.User);
-            var externalContacts = Enumerable.Range(1, count)
-                .Select(idx => NewExternalContact(account, deviceIds[i], prefix, idx))
-                .ToArray();
-            await Add(externalContacts);
-        }
-
-        // assert
-        using var _3 = tracer.Region($"Assert {count} accounts");
-        foreach (var account in accounts) {
-            using var _4 = tracer.Region($"Assert contacts of {account.User.Name} #({account.User.Id})");
-            await _tester.SignIn(account.User);
-            await AssertConnectedUsers(account, accounts);
-        }
-    }
-
-    [Theory(Skip = "Flaky")]
-    [InlineData("small", 5)]
-    [InlineData("medium", 37)]
-    public async Task StressTest_UsersCreatedSequentially_AllAreConnected(string prefix, int count)
-    {
-        // arrange
-        var accounts = new AccountFull[count];
-        var deviceIds = Enumerable.Repeat(0, count).Select(_ => NewDeviceId()).ToList();
-
-        // act
-        for (int i = 0; i < accounts.Length; i++) {
-            var account = accounts[i] = await _tester.SignIn(BuildUser(prefix, i + 1));
-            var externalContacts = Enumerable.Range(1, count)
-                .Select(idx => NewExternalContact(account, deviceIds[i], prefix, idx))
-                .ToArray();
-            await Add(externalContacts);
-        }
-
-        foreach (var u in accounts.Select(x => x.User)) {
-            // act
-            var account = await _tester.SignIn(u);
-
-            // assert
-            await TestExt.WhenMetAsync(async () => {
-                    var acc = await _accounts.GetOwn(_tester.Session, CancellationToken.None);
-                    acc.IsGreetingCompleted.Should().BeTrue();
-                },
-                TimeSpan.FromSeconds(5));
-            await AssertConnectedUsers(account, accounts);
-        }
     }
 
     private Task<ApiArray<ExternalContact>> List(Symbol deviceId)

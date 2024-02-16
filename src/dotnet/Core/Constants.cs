@@ -35,6 +35,7 @@ public static partial class Constants
             public static readonly Symbol Classmates = "classmates";
             public static readonly Symbol Alumni = "alumni";
             public static readonly Symbol Coworkers = "coworkers";
+            public static readonly Symbol Welcome = "welcome";
         }
     }
 
@@ -63,6 +64,7 @@ public static partial class Constants
         public static class Defaults
         {
             public static readonly int ChatRemaining = 10_000;
+            public static readonly int PlaceRemaining = 10_000;
             public static readonly int UserRemaining = 10;
             public static readonly TimeSpan ExpiresIn = TimeSpan.FromDays(30);
         }

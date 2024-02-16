@@ -2,10 +2,8 @@ using ActualChat.Search;
 
 namespace ActualChat.Core.UnitTests.Search;
 
-public class SearchPhraseTest : TestBase
+public class SearchPhraseTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public SearchPhraseTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void BasicTest()
     {

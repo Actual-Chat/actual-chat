@@ -11,7 +11,7 @@ using ComponentActivity = AndroidX.Activity.ComponentActivity;
 
 namespace ActualChat.App.Maui;
 
-internal class AndroidFileChooser
+public class AndroidFileChooser
 {
     private const int InputFileRequestCode = 1000;
 
@@ -43,12 +43,12 @@ internal class AndroidFileChooser
 
         if (MediaPicker.Default.IsCaptureSupported) {
             try {
-                await PermissionsEx.EnsureGrantedAsync<MauiPermissions.Camera>().ConfigureAwait(true);
+                await PermissionsExt.EnsureGrantedAsync<MauiPermissions.Camera>().ConfigureAwait(true);
                 // StorageWrite no longer exists starting from Android API 33
                 if (!OperatingSystem.IsAndroidVersionAtLeast(33))
-                    await PermissionsEx.EnsureGrantedAsync<MauiPermissions.StorageWrite>().ConfigureAwait(true);
+                    await PermissionsExt.EnsureGrantedAsync<MauiPermissions.StorageWrite>().ConfigureAwait(true);
                 else
-                    await PermissionsEx.EnsureGrantedAsync<MauiPermissions.Media>().ConfigureAwait(true);
+                    await PermissionsExt.EnsureGrantedAsync<MauiPermissions.Media>().ConfigureAwait(true);
 
                 var takePictureIntent = CreateCaptureIntent(activity, true);
                 if (takePictureIntent != null)
@@ -90,9 +90,9 @@ internal class AndroidFileChooser
         var ext = isPhoto ? ".jpg" : ".mp4";
         var timeStamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
         var tmpFileName = prefix + timeStamp + ext;
-        var tmpFile = FileSystemUtilsEx.GetTemporaryFile(context.CacheDir!, tmpFileName);
+        var tmpFile = FileSystemUtilsExt.GetTemporaryFile(context.CacheDir!, tmpFileName);
 
-        var fileUri = FileProviderEx.GetUriForFile(tmpFile);
+        var fileUri = FileProviderExt.GetUriForFile(tmpFile);
         captureIntent.PutExtra(MediaStore.ExtraOutput, fileUri);
         if (isPhoto)
             _cameraPhotoPath = tmpFile;

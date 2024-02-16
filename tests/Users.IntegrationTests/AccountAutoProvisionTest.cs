@@ -3,28 +3,22 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;
 
-[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
-public class AccountAutoProvisionTest(ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(UserCollection))]
+public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private const AccountStatus NewAccountStatus = AccountStatus.Active;
-    private ITestOutputHelper Out { get; } = @out;
-
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
 
-    public async Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
-        _appHost = await NewAppHost(TestAppHostOptions.Default with {
-            AppConfigurationExtender = cfg => {
-                cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
-            },
-        });
+        _appHost = await NewAppHost();
         _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
     }
 
-    public async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();
@@ -42,7 +36,7 @@ public class AccountAutoProvisionTest(ITestOutputHelper @out): IAsyncLifetime
         // assert
         account.Should().NotBeNull();
         account.Id.Should().Be(user.Id);
-        account.Status.Should().Be(NewAccountStatus);
+        account.Status.Should().Be(AccountStatus.Active);
     }
 
     [Fact]
@@ -60,7 +54,4 @@ public class AccountAutoProvisionTest(ITestOutputHelper @out): IAsyncLifetime
             .Excluding(x => x.User)
             .Excluding(x => x.IsGreetingCompleted ));
     }
-
-    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
-        => TestAppHostFactory.NewAppHost(Out, options);
 }

@@ -4,9 +4,10 @@ using ActualChat.Users;
 
 namespace ActualChat.Invite;
 
-internal class Invites(IServiceProvider services) : IInvites
+public class Invites(IServiceProvider services) : IInvites
 {
     private IChats? _chats;
+    private IPlaces? _places;
     private IAccounts? _accounts;
     private MomentClockSet? _clocks;
     private ILogger? _log;
@@ -14,6 +15,7 @@ internal class Invites(IServiceProvider services) : IInvites
     private IServiceProvider Services { get; } = services;
     private IInvitesBackend Backend { get; } = services.GetRequiredService<IInvitesBackend>();
     private IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
+    private IPlaces Places => _places ??= Services.GetRequiredService<IPlaces>();
     private IAccounts Accounts => _accounts ??= Services.GetRequiredService<IAccounts>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks => _clocks ??= Services.GetRequiredService<MomentClockSet>();
@@ -39,6 +41,18 @@ internal class Invites(IServiceProvider services) : IInvites
         await AssertCanListChatInvites(session, chatId, cancellationToken).ConfigureAwait(false);
 
         var searchKey = new ChatInviteOption(chatId).GetSearchKey();
+        return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<Invite>> ListPlaceInvites(
+        Session session,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
+    {
+        await AssertCanListPlaceInvites(session, placeId, cancellationToken).ConfigureAwait(false);
+
+        var searchKey = new PlaceInviteOption(placeId).GetSearchKey();
         return await Backend.GetAll(searchKey, 1, cancellationToken).ConfigureAwait(false);
     }
 
@@ -142,6 +156,12 @@ internal class Invites(IServiceProvider services) : IInvites
         rules.Require(ChatPermissions.Invite);
     }
 
+    private async Task AssertCanListPlaceInvites(Session session, PlaceId placeId, CancellationToken cancellationToken)
+    {
+        var rules = await Places.GetRules(session, placeId, cancellationToken).ConfigureAwait(false);
+        rules.Require(PlacePermissions.Invite);
+    }
+
     private async Task<AccountFull> AssertCanGenerate(Session session, Invite invite, CancellationToken cancellationToken)
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -154,10 +174,16 @@ internal class Invites(IServiceProvider services) : IInvites
                 throw StandardError.Unauthorized("Only admins can generate user invites.");
             break;
         case ChatInviteOption chatInvite:
-            var rules = await Chats
+            var rulesChat = await Chats
                 .GetRules(session, chatInvite.ChatId, cancellationToken)
                 .ConfigureAwait(false);
-            rules.Require(ChatPermissions.Invite);
+            rulesChat.Require(ChatPermissions.Invite);
+            break;
+        case PlaceInviteOption placeInvite:
+            var rulesPlace = await Places
+                .GetRules(session, placeInvite.PlaceId, cancellationToken)
+                .ConfigureAwait(false);
+            rulesPlace.Require(PlacePermissions.Invite);
             break;
         default:
             throw StandardError.Format<Invite>();

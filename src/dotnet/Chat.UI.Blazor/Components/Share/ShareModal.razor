@@ -2,32 +2,45 @@
 @using ActualChat.Search
 @implements IModalView<ShareModalModel>
 @{
-    var selectedChatIds = SelectedChatIds;
-    var shareDialogButtonsClass = selectedChatIds.Count == 0 ? "" : "hidden";
-    var shareButtonClass = selectedChatIds.Count == 0 ? "hidden" : "";
+    var canSend = HasSelectedItems;
+    var shareExternallyButtonClass = !canSend && !_hideShareExternallyButton ? "" : "hidden";
+    var shareButtonClass = !canSend ? "hidden" : "";
     shareButtonClass += " btn-modal btn-primary share-button";
-    var canSend = selectedChatIds.Count > 0;
+    var cls = "share-modal";
+    if (_selectorKind == SelectorKind.Contact)
+        cls += " share-modal-with-contact-selector";
+    else if (_selectorKind == SelectorKind.Members)
+        cls += " share-modal-with-member-selector";
 }
 
 <DialogFrame
-    Class="share-modal"
+    Class="@cls"
     HasCloseButton="true"
     Title="@(ModalModel.Title.NullIfEmpty() ?? "Share")"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Stretch">
     <Body>
     <FormBlock>
-        <ContactSelector
-            @ref="@_contactSelectorRef"
-            SearchPhrase="_searchPhrase"
-            ChatListPreOrder="@ChatListPreOrder.ChatList"
-            Changed="@StateHasChanged">
-            <SearchBoxNew
-                Placeholder="Who would you like to share with"
-                MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                TextChanged="@OnFilter"/>
-            <ContactSelectorPlacePicker/>
-            <ContactSelectorListView/>
-        </ContactSelector>
+        @if (_selectorKind == SelectorKind.Contact) {
+            <ContactSelector
+                @ref="@_contactSelectorRef"
+                SearchPhrase="_searchPhrase"
+                ChatListPreOrder="@ChatListPreOrder.ChatList"
+                Changed="@StateHasChanged">
+                <SearchBoxNew
+                    Placeholder="Who would you like to share with"
+                    MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                    TextChanged="@OnFilter"/>
+                <ContactSelectorPlacePicker/>
+                <ContactSelectorListView/>
+            </ContactSelector>
+        }
+        else if (_selectorKind == SelectorKind.Members) {
+            <MemberSelector
+                @ref="_memberSelectorRef"
+                DataProvider="@_memberSelectorDataProvider"
+                SearchBoxPlaceholder="Who would you like to share with"
+                Changed="@(() => StateHasChanged())" />
+        }
     </FormBlock>
     </Body>
     <Footer>
@@ -44,7 +57,7 @@
     </Footer>
     <Buttons>
         <ShareExternallyButton
-            Class="@shareDialogButtonsClass"
+            Class="@shareExternallyButtonClass"
             Request="@RequestWithComment"
             />
         <Button Class="@shareButtonClass" IsDisabled="@(!canSend)" Click="OnSendClicked">
@@ -57,23 +70,48 @@
 
 @code {
     private ContactSelector? _contactSelectorRef;
+    private MemberSelector? _memberSelectorRef;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
     private string _comment = "";
     private ElementReference _copyTextSourceRef;
+    private SelectorKind _selectorKind = SelectorKind.Contact;
+    private IMemberSelectorDataProvider? _memberSelectorDataProvider;
+    private bool _hideShareExternallyButton;
 
-    private IReadOnlySet<ChatId> SelectedChatIds
-        => _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
+    private bool HasSelectedItems
+        => (_contactSelectorRef?.SelectedChatIds.Value.Count
+            ?? _memberSelectorRef?.SelectedUserIds.Value.Count ?? 0) > 0;
     private ShareRequest RequestWithComment => ModalModel.Request.WithText(_comment);
 
-    [Inject] private IServiceProvider Services { get; init; } = null!;
-    [Inject] private UrlMapper UrlMapper { get; init; } = null!;
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    private UrlMapper UrlMapper => Hub.UrlMapper();
+    private Session Session => Hub.Session();
+    private UICommander UICommander => Hub.UICommander();
+    private IPlaces Places => Hub.Places;
+    private UserId OwnAccountId => Hub.AccountUI.OwnAccount.Value.Id;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter] public ShareModalModel ModalModel { get; set; } = null!;
 
     protected override void OnInitialized()
         => _comment = ModalModel.Request.Text;
+
+    protected override async Task OnInitializedAsync() {
+        if (ModalModel.SelectorPrefs is PrivatePlaceMembersShareSelector selector) {
+            var placeId = selector.ChatId.PlaceId;
+            if (!placeId.IsNone) {
+                _selectorKind = SelectorKind.Unknown;
+                var place = await Places.Get(Session, placeId, default).ConfigureAwait(false);
+                if (place?.IsPublic == false) {
+                    _memberSelectorDataProvider = new PlaceMemberProvider(Hub, placeId, new [] { OwnAccountId });
+                    _hideShareExternallyButton = true;
+                    _selectorKind = SelectorKind.Members;
+                } else {
+                    _selectorKind = SelectorKind.Contact;
+                }
+            }
+        }
+    }
 
     protected override void OnAfterRender(bool firstRender) {
         if (firstRender) {
@@ -91,16 +129,24 @@
 
     private async Task OnSendClicked() {
         var text = RequestWithComment.GetShareTextAndLink(UrlMapper);
-        var session = Services.Session();
-        var uiCommander = Services.UICommander();
-        var selectedChatIds = SelectedChatIds;
+        IEnumerable<ChatId> selectedChatIds = ImmutableHashSet<ChatId>.Empty;
+        if (_selectorKind == SelectorKind.Contact)
+            selectedChatIds = _contactSelectorRef?.SelectedChatIds.Value ?? ImmutableHashSet<ChatId>.Empty;
+        else if (_selectorKind == SelectorKind.Members) {
+            var ownUserId = OwnAccountId;
+            var selectedUserIds = _memberSelectorRef?.SelectedUserIds.Value ?? ImmutableHashSet<UserId>.Empty;
+            selectedChatIds = selectedUserIds.Select(userId => new PeerChatId(ownUserId, userId).ToChatId());
+        }
+
         foreach (var chatId in selectedChatIds) {
-            var cmd = new Chats_UpsertTextEntry(session, chatId, null, text);
-            _ = await uiCommander.Run(cmd, CancellationToken.None);
+            var cmd = new Chats_UpsertTextEntry(Session, chatId, null, text);
+            _ = await UICommander.Run(cmd, CancellationToken.None);
         }
         Modal.Close(true);
     }
 
     private void OnCommentChanged(string text)
         => _comment = text;
+
+    private enum SelectorKind { Unknown, Contact, Members }
 }

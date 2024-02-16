@@ -56,7 +56,6 @@
       "src\\dotnet\\Users.Templates\\Users.Templates.csproj",
       "src\\dotnet\\Users.UI.Blazor\\Users.UI.Blazor.csproj",
       "src\\dotnet\\Users\\Users.csproj",
-      "src\\dotnet\\Web\\Web.csproj",
       "tests\\Audio.IntegrationTests\\Audio.IntegrationTests.csproj",
       "tests\\Audio.UnitTests\\Audio.UnitTests.csproj",
       "tests\\Chat.IntegrationTests\\Chat.IntegrationTests.csproj",

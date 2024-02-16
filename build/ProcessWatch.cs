@@ -74,11 +74,11 @@ public class ProcessWatch : IDisposable
     public async Task WaitForExit()
     {
         try {
-            await Process.WaitForExitAsync(CancellationTokenSource.Token);
+            await Process.WaitForExitAsync(CancellationTokenSource.Token).ConfigureAwait(false);
         }
         finally {
             if (!CancellationTokenSource.IsCancellationRequested)
-                CancellationTokenSource.Cancel();
+                await CancellationTokenSource.CancelAsync().ConfigureAwait(false);
         }
     }
 

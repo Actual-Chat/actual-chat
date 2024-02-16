@@ -8,7 +8,7 @@ public static class OrdinalStringExt
     public static bool OrdinalEquals(string? x, string? y)
         => x?.Equals(y, StringComparison.Ordinal) ?? y is null;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static bool OrdinalEquals(Symbol x, string y)
+    public static bool OrdinalEquals(Symbol x, string? y)
         => x.Value.Equals(y, StringComparison.Ordinal);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool OrdinalEquals(string x, Symbol y)

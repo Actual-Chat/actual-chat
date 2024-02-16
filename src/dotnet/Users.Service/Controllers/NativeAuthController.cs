@@ -1,8 +1,6 @@
 using System.Net.Http.Headers;
 using System.Security.Claims;
-using System.Text;
 using ActualChat.Users.Module;
-using ActualChat.Web;
 using AspNet.Security.OAuth.Apple;
 using Cysharp.Text;
 using Microsoft.AspNetCore.Authentication;
@@ -161,7 +159,7 @@ public sealed class NativeAuthController(IServiceProvider services) : Controller
         HttpContext.User = principal;
         try {
             var helper = Services.GetRequiredService<ServerAuthHelper>();
-            await helper.UpdateAuthState(session, HttpContext, cancellationToken).ConfigureAwait(false);
+            await helper.UpdateAuthState(session, HttpContext, true, cancellationToken).ConfigureAwait(false);
         }
         finally {
             HttpContext.User = oldUser;

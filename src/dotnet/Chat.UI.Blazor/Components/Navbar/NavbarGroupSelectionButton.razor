@@ -27,6 +27,7 @@
 @code {
     [Inject] private NavbarUI NavbarUI { get; init; } = null!;
     [Inject] private TuneUI TuneUI { get; init; } = null!;
+    [Inject] private PanelsUI PanelsUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public string Id { get; set; } = "";
     [Parameter, EditorRequired] public string Title { get; set; } = "";
@@ -54,6 +55,9 @@
         _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
     }
 
-    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)
-        => StateHasChanged();
+    private void OnNavbarSelectedGroupChanged(object? s, EventArgs e) {
+        if (PanelsUI.Left.IsSearchMode)
+            PanelsUI.Left.SearchToggle();
+        StateHasChanged();
+    }
 }

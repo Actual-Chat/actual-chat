@@ -21,7 +21,7 @@ public class ShardMapTest(ITestOutputHelper @out) : TestBase(@out)
         for (var i = 0; i < 200; i++) {
             var mustAdd = nodes.Count == 0 || rnd.Next(nodes.Count + averageNodeCount) > nodes.Count;
             if (mustAdd)
-                nodes.Add(new MeshNode(i.Format(), "local:80", nodeRoles));
+                nodes.Add(new MeshNode(new NodeRef($"node-{i}"), "local:80", nodeRoles));
             else
                 nodes.RemoveAt(rnd.Next(nodes.Count));
             var shardMap = new ShardMap(ShardScheme.Backend.Instance, nodes.ToImmutableArray());

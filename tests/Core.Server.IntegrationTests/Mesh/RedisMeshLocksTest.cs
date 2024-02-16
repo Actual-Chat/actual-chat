@@ -3,16 +3,13 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Mesh;
 
-[Collection(nameof(ServerCollection)), Trait("Category", nameof(ServerCollection))]
-public class RedisMeshLocksTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class RedisMeshLocksTest(ITestOutputHelper @out)
+    : LocalAppHostTestBase($"x-{nameof(RedisMeshLocksTest)}", TestAppHostOptions.None, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
-
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
-        var locks = Host.Services.MeshLocks<InfrastructureDbContext>();
+        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
@@ -42,7 +39,7 @@ public class RedisMeshLocksTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task LockIsGoneTest()
     {
-        var locks = Host.Services.MeshLocks<InfrastructureDbContext>();
+        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with {
             ExpirationPeriod = TimeSpan.FromSeconds(TestRunnerInfo.IsBuildAgent() ? 5 : 2),
         };
@@ -72,7 +69,7 @@ public class RedisMeshLocksTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task ReleaseNotifyTest()
     {
-        var locks = Host.Services.MeshLocks<InfrastructureDbContext>();
+        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
         var lockOptions = locks.LockOptions with { ExpirationPeriod = TimeSpan.FromSeconds(10) };
 
         var key = Alphabet.AlphaNumeric.Generator8.Next();

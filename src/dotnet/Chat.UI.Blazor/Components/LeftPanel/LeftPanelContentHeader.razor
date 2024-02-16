@@ -36,16 +36,7 @@
                     <div class="c-title">
                         @NavbarUI.SelectedGroupTitle
                     </div>
-                    <div
-                        class="menu"
-                        data-menu="@(MenuRef.New<PlaceMenu>(place.Id).ToString())"
-                        data-menu-trigger="@MenuTrigger.Primary"
-                        data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
-
-                        <HeaderButton>
-                            <i class="icon-more-vertical text-2xl"></i>
-                        </HeaderButton>
-                    </div>
+                    <PlaceMenuButton PlaceSid="@place.Id.Value" />
                 </div>
                 <div class="c-ending">
                     <ChatSearchBox

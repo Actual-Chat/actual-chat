@@ -9,7 +9,7 @@ using Elastic.Clients.Elasticsearch.QueryDsl;
 
 namespace ActualChat.Search;
 
-internal class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbContext>(services), ISearchBackend
+public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbContext>(services), ISearchBackend
 {
     private const int MaxRefreshChatCount = 100;
     private ElasticNames? _elasticNames;

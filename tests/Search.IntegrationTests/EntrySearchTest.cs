@@ -3,26 +3,24 @@ using ActualChat.Testing.Host;
 
 namespace ActualChat.Search.IntegrationTests;
 
-[Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
-public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(SearchCollection))]
+public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
-
     private WebClientTester _tester = null!;
     private ISearchBackend _sut = null!;
     private ICommander _commander = null!;
 
-    public Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _tester = Host.NewWebClientTester(Out);
-        _sut = Host.Services.GetRequiredService<ISearchBackend>();
-        _commander = Host.Services.Commander();
+        _tester = AppHost.NewWebClientTester(Out);
+        _sut = AppHost.Services.GetRequiredService<ISearchBackend>();
+        _commander = AppHost.Services.Commander();
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         await _tester.DisposeAsync().AsTask();

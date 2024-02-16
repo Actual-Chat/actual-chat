@@ -1,9 +1,7 @@
 namespace ActualChat.Core.UnitTests.Channels;
 
-public class AsyncMemoizerTest : TestBase
+public class AsyncMemoizerTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public AsyncMemoizerTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact(Skip = "Flaky test, avoid Task.Delay()")]
     public async Task SyncPointTest()
     {

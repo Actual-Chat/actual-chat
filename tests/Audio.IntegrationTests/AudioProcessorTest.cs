@@ -9,18 +9,16 @@ using ActualLab.IO;
 
 namespace ActualChat.Audio.IntegrationTests;
 
-[Collection(nameof(AudioCollection)), Trait("Category", nameof(AudioCollection))]
+[Collection(nameof(AudioCollection))]
 public class AudioProcessorTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
-
     [Theory(Skip = "Flaky")]
     [InlineData(false)]
     [InlineData(true)]
     public async Task EmptyRecordingTest(bool mustSetUserLanguageSettings)
     {
-        var appHost = Host;
+        var appHost = AppHost;
         var services = appHost.Services;
         var session = Session.New();
         _ = await appHost.SignIn(session, new User("Bob"));
@@ -44,7 +42,7 @@ public class AudioProcessorTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task PerformRecordingAndTranscriptionTest()
     {
-        var appHost = Host!;
+        var appHost = AppHost!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -90,7 +88,7 @@ public class AudioProcessorTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task ShortTranscriptionTest()
     {
-        var appHost = Host!;
+        var appHost = AppHost!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -152,10 +150,10 @@ public class AudioProcessorTest(AppHostFixture fixture, ITestOutputHelper @out)
         lastEntry.Content.Should().Be("И");
     }
 
-    [Fact(Skip = "Manual")]
+    [Fact(Skip = "For manual runs only")]
     public async Task LongTranscriptionTest()
     {
-        var appHost = Host!;
+        var appHost = AppHost!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -221,7 +219,7 @@ public class AudioProcessorTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task PerformRecordingTest()
     {
-        var appHost = Host!;
+        var appHost = AppHost!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();
@@ -260,7 +258,7 @@ public class AudioProcessorTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task RealtimeAudioStreamerSupportsSkip()
     {
-        var appHost = Host!;
+        var appHost = AppHost!;
         var services = appHost.Services;
         var commander = services.Commander();
         var session = Session.New();

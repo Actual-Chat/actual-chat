@@ -1,16 +1,15 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using ActualChat.Audio.Db;
+﻿using ActualChat.Audio.Db;
 using ActualChat.Audio.Processing;
 using ActualChat.Hosting;
+using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Transcription;
-using ActualChat.Web.Module;
 using Microsoft.AspNetCore.Builder;
 
 namespace ActualChat.Audio.Module;
 
 public sealed class AudioServiceModule(IServiceProvider moduleServices)
-    : HostModule<AudioSettings>(moduleServices), IWebModule
+    : HostModule<AudioSettings>(moduleServices), IWebServerModule
 {
     public void ConfigureApp(IApplicationBuilder app)
         => app.UseEndpoints(endpoints => {

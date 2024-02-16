@@ -5,7 +5,7 @@
 <SideNav
     Side="SideNavSide.Left"
     IsOpen="@_isOpen"
-    VisibilityChanged="@(isOpen => PanelsUI.Left.SetIsVisible(isOpen))">
+    VisibilityChanged="@(NoStateHasChanged.EventCallback<bool>(isOpen => PanelsUI.Left.SetIsVisible(isOpen)))">
     <div class="left-panel">
         <ErrorBarrier Name="LeftPanelContent" Kind="@ErrorBarrierKind.Full">
         <LeftPanelButtons/>

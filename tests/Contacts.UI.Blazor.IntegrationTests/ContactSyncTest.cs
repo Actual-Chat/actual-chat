@@ -9,12 +9,10 @@ using ActualLab.Generators;
 
 namespace ActualChat.Contacts.UI.Blazor.IntegrationTests;
 
-[Collection(nameof(ContactUICollection)), Trait("Category", nameof(ContactUICollection))]
-public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(ContactUICollection))]
+public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
-
     private WebClientTester _tester = null!;
     private IExternalContacts _externalContacts = null!;
 
@@ -34,14 +32,14 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out): IA
     private static Phone JanePhone => new ("1-3456789012");
     private static string JaneEmail => "jane@actual.chat";
 
-    public async Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
         var deviceContacts = new Mock<DeviceContacts>();
         deviceContacts.SetupGet(x => x.DeviceId).Returns(() => DeviceId);
         deviceContacts.Setup(x => x.List(It.IsAny<CancellationToken>())).Returns(() => Task.FromResult(DeviceContacts.ToApiArray()));
         // _appHost = await NewAppHost(TestAppHostOptions.Default with { ServerUrls = "http://localhost:7080" });
-        _externalContacts = Host.Services.GetRequiredService<IExternalContacts>();
-        _tester = Host.NewWebClientTester( Out,services => {
+        _externalContacts = AppHost.Services.GetRequiredService<IExternalContacts>();
+        _tester = AppHost.NewWebClientTester( Out,services => {
             TrueSessionResolver? sessionResolver = null;
             services.AddSingleton(c => {
                     sessionResolver ??= new TrueSessionResolver(c);
@@ -57,7 +55,7 @@ public class ContactSyncTest(AppHostFixture fixture, ITestOutputHelper @out): IA
         await _tester.SignOut();
     }
 
-    public Task DisposeAsync()
+    protected override Task DisposeAsync()
         => _tester.DisposeSilentlyAsync().AsTask();
 
     [Fact(Skip = "TODO(FC): Fix for CI")]

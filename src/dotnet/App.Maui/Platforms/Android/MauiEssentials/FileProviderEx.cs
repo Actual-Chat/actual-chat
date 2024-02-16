@@ -3,7 +3,7 @@ using FileProvider = Microsoft.Maui.Storage.FileProvider;
 
 namespace ActualChat.App.Maui;
 
-public static class FileProviderEx
+public static class FileProviderExt
 {
     private static MethodInfo? _miGetUriForFile;
 

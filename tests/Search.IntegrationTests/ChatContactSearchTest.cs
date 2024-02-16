@@ -1,31 +1,31 @@
 using ActualChat.Chat;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
-using ActualChat.Users;
 using ActualLab.Generators;
 
 namespace ActualChat.Search.IntegrationTests;
 
-[Collection(nameof(SearchCollection)), Trait("Category", nameof(SearchCollection))]
-public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(SearchCollection))]
+public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
-
-    public Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        return Task.CompletedTask;
+        return base.InitializeAsync();
     }
 
-    public Task DisposeAsync()
-        => Task.FromResult(Tracer.Default = Tracer.None);
+    protected override Task DisposeAsync()
+    {
+        Tracer.Default = Tracer.None;
+        return base.DisposeAsync();
+    }
 
     [Fact]
     public async Task ShouldFindAddedChats()
     {
         // arrange
-        using var appHost = await NewAppHost();
+        using var appHost = await NewSearchEnabledAppHost();
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -114,7 +114,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldFindUpdateChats()
     {
         // arrange
-        using var appHost = await NewAppHost();
+        using var appHost = await NewSearchEnabledAppHost();
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -224,7 +224,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldNotFindDeletedChats()
     {
         // arrange
-        using var appHost = await NewAppHost();
+        using var appHost = await NewSearchEnabledAppHost();
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -377,14 +377,10 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return searchResults.Hits;
     }
 
-    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
-        => TestAppHostFactory.NewAppHost(Out,
-            fixture.DbInstanceName,
-            TestAppHostOptions.WithDefaultChat with {
+    private Task<TestAppHost> NewSearchEnabledAppHost()
+        => NewAppHost(options => options with {
                 AppConfigurationExtender = cfg => {
-                    cfg.AddInMemory(
-                        ("SearchSettings:IsSearchEnabled", "true"),
-                        ("UsersSettings:NewAccountStatus", AccountStatus.Active.ToString()));
+                    cfg.AddInMemory(("SearchSettings:IsSearchEnabled", "true"));
                 },
             });
 }

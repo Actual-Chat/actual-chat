@@ -1,9 +1,7 @@
 ﻿namespace ActualChat.Chat.UnitTests;
 
-public class MarkupParserTest : TestBase
+public class MarkupParserTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public MarkupParserTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void BasicTest()
     {

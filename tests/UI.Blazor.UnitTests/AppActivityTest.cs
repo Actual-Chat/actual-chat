@@ -9,7 +9,7 @@ public class AppActivityTest: TestBase
 
     public AppActivityTest(ITestOutputHelper @out) : base(@out)
         => Services = new ServiceCollection()
-            .ConfigureLogging(Out)
+            .AddTestLogging(Out)
             .AddSingleton(_ => new HostInfo {
                 HostKind = HostKind.MauiApp,
                 AppKind = AppKind.Ios,

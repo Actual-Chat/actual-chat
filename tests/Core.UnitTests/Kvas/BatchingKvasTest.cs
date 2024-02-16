@@ -4,10 +4,8 @@ using Microsoft.Toolkit.HighPerformance.Buffers;
 
 namespace ActualChat.Core.UnitTests.Kvas;
 
-public class BatchingKvasTest : TestBase
+public class BatchingKvasTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public BatchingKvasTest(ITestOutputHelper @out) : base(@out) { }
-
     private IServiceProvider CreateServices()
     {
         var services = new ServiceCollection();

@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-internal class Reactions(IServiceProvider services) : IReactions
+public class Reactions(IServiceProvider services) : IReactions
 {
     private IReactionsBackend Backend { get; } = services.GetRequiredService<IReactionsBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();

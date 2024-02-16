@@ -1,6 +1,7 @@
 @using ActualChat.UI.Blazor.App.Pages.Landing
 @using ActualChat.Hosting
 @inherits LandingApp
+@namespace ActualChat.UI.Blazor
 @{
     var account = State.Value;
     var isGuest = account is not {IsGuestOrNone: false };
@@ -13,24 +14,35 @@
         <ButtonRound Class="menu-button flex-none" Click="@Click">
             <i class="icon-menu text-2xl"></i>
         </ButtonRound>
-        <div class="flex-x flex-1">
-            <div class="min-w-fit">
-                <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="" class="light-icon">
-                <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="" class="dark-icon">
-            </div>
-            <div class="flex-x flex-1">
-                <div class="px-2 self-center -mt-1.5 max-w-40">
-                    <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="" class="light-title">
-                    <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="" class="dark-title">
+        <div class="c-content">
+            <div class="light-header">
+                <div class="c-icon">
+                    <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="" class="light-icon">
                 </div>
-                <div class="max-w-9 -mt-0.5 -ml-1">
-                    <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="" class="light-alpha">
-                    <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="" class="dark-alpha">
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="" class="light-title">
+                    </div>
+                    <div class="c-version">
+                        <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="" class="light-alpha">
+                    </div>
                 </div>
             </div>
-            <div class="header-text"></div>
+            <div class="dark-header">
+                <div class="c-icon">
+                    <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="" class="dark-icon">
+                </div>
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="" class="dark-title">
+                    </div>
+                    <div class="c-version">
+                        <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="" class="dark-alpha">
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="flex-none justify-end">
+        <div class="c-right">
             @if (isGuest) {
                 <ButtonRound Class="signin-button" Click="@(SignIn)">
                     <i class="icon-log-in text-xl"></i>
@@ -48,38 +60,75 @@
             }
         </div>
     } else {
-        <div class="flex-x flex-1">
-            <div class="min-w-fit">
-                <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="" class="light-icon">
-                <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="" class="dark-icon">
-            </div>
-            <div class="flex-x flex-1">
-                <div class="px-2 self-center -mt-1.5 min-w-fit">
-                    <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="" class="light-title">
-                    <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="" class="dark-title">
+        <div class="c-content">
+            <div class="light-header">
+                <div class="c-icon">
+                    <img draggable="false" src="/dist/images/landing/ac-icon-light.svg" alt="" class="light-icon">
                 </div>
-                <div class="max-w-9 -mt-0.5 -ml-1">
-                    <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="" class="light-alpha">
-                    <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="" class="dark-alpha">
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        <img draggable="false" src="/dist/images/landing/ac-title-light.svg" alt="" class="light-title">
+                    </div>
+                    <div class="c-version">
+                        <img draggable="false" src="/dist/images/landing/ac-alpha-light.svg" alt="" class="light-alpha">
+                    </div>
+                    <div class="c-btn-group">
+                        <div class="w-4"></div>
+                        <Button
+                            Click="@WhyUsClick"
+                            Class="btn-text btn-transparent why-us">Why us
+                        </Button>
+                        <Button
+                            Click="@PricingClick"
+                            Class="btn-text btn-transparent">Why now
+                        </Button>
+                        <Button
+                            Click="@(_ => History.NavigateTo(Links.Docs))"
+                            Class="btn-text btn-transparent">Docs
+                        </Button>
+                    </div>
                 </div>
             </div>
-            <div class="header-text">
-                <Button
-                    Click="@(_ => History.NavigateTo(Links.Docs))"
-                    Class="header-text text-headline-1 btn-transparent">Docs
-                </Button>
+
+            <div class="dark-header">
+                <div class="c-icon">
+                    <img draggable="false" src="/dist/images/landing/ac-icon-dark.svg" alt="" class="dark-icon">
+                </div>
+                <div class="c-title-wrapper">
+                    <div class="c-title">
+                        <img draggable="false" src="/dist/images/landing/ac-title-dark.svg" alt="" class="dark-title">
+                    </div>
+                    <div class="c-version">
+                        <img draggable="false" src="/dist/images/landing/ac-alpha-dark.svg" alt="" class="dark-alpha">
+                    </div>
+                    <div class="c-btn-group">
+                        <div class="w-4"></div>
+                        <Button
+                            Click="@WhyUsClick"
+                            Class="btn-text btn-transparent why-us">Why us
+                        </Button>
+                        <Button
+                            Click="@PricingClick"
+                            Class="btn-text btn-transparent">Why now
+                        </Button>
+                        <Button
+                            Click="@(_ => History.NavigateTo(Links.Docs))"
+                            Class="btn-text btn-transparent">Docs
+                        </Button>
+                    </div>
+                </div>
+            </div>
+            <div class="c-btn-group">
                 @if (isGuest) {
-                    <button class="signin-button-group items-center" @onclick="@SignIn">
-                        @if (HostInfo.HostKind.IsMauiApp()) {
-                            <span class="font-medium">Sign in</span>
-                        }
-                        else {
-                            <span class="font-medium">Sign-in to web app</span>
-                        }
+                    <button class="signin-button-group items-center lg-icon" @onclick="@SignIn">
+                        <span class="font-medium">Sign in</span>
                         <i class="icon-monitor text-2xl font-thin"></i>
                     </button>
-                    <DownloadButton Class="download-app"/>
-                    <button class="btn-download btn-to-main-page !hidden">
+                    <DownloadButton
+                        Title="Get app"
+                        Click="DownloadClick"
+                        Class="download-app lg-icon"/>
+                    <button class="btn-download btn-to-main-page !hidden" @onclick="@BackToMainPageClick">
                         Back to Main page
                     </button>
                 } else {
@@ -104,6 +153,10 @@
     [Inject] private HostInfo HostInfo { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public EventCallback PricingClick { get; set; }
+    [Parameter] public EventCallback DownloadClick { get; set; }
+    [Parameter] public EventCallback BackToMainPageClick { get; set; }
+    [Parameter] public EventCallback WhyUsClick { get; set; }
     [Parameter] public EventCallback Click { get; set; }
 
     private Task SignIn()

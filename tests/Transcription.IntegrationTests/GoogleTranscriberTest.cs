@@ -10,18 +10,17 @@ using Xunit.DependencyInjection.Logging;
 
 namespace ActualChat.Transcription.IntegrationTests;
 
-[Collection(nameof(TranscriptionCollection)), Trait("Category", nameof(TranscriptionCollection))]
+[Collection(nameof(TranscriptionCollection))]
 public class GoogleTranscriberTest(
     IConfiguration configuration,
     ITestOutputHelper @out,
-    ILogger<GoogleTranscriber> log)
+    ILogger<GoogleTranscriberTest> log
+    ) : TestBase(@out, log)
 {
-    private ITestOutputHelper Out { get; } = @out;
-    private ILogger<GoogleTranscriber> Log { get; } = log;
     private CoreServerSettings CoreServerSettings { get; }
         = configuration.GetSettings<CoreServerSettings>(nameof(CoreSettings));
 
-    [Theory(Skip = "Manual")]
+    [Theory(Skip = "For manual runs only")]
     [InlineData("file.webm", false)]
     [InlineData("file.webm", true)]
     [InlineData("0002-AK.opuss", true)]

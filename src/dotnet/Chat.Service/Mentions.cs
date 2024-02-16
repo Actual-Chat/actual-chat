@@ -3,7 +3,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-internal class Mentions(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IMentions
+public class Mentions(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IMentions
 {
     private IMentionsBackend Backend { get; } = services.GetRequiredService<IMentionsBackend>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();

@@ -5,29 +5,27 @@ using Microsoft.AspNetCore.Http;
 
 namespace ActualChat.Chat.UI.Blazor.PlaywrightTests;
 
-[Collection(nameof(ChatUIAutomationCollection)), Trait("Category", nameof(ChatUIAutomationCollection))]
-public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(ChatUIAutomationCollection))]
+public class ChatPageAuthorizationTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const string ChatId = "the-actual-one";
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
 
     private PlaywrightTester _tester = null!;
     private TestSettings _testSettings = null!;
     private IAccounts _accounts = null!;
     private Session _adminSession = null!;
 
-    public async Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
-        _testSettings = Host.Services.GetRequiredService<TestSettings>();
-        _accounts = Host.Services.GetRequiredService<IAccounts>();
-        _tester = Host.NewPlaywrightTester(Out);
+        _testSettings = AppHost.Services.GetRequiredService<TestSettings>();
+        _accounts = AppHost.Services.GetRequiredService<IAccounts>();
+        _tester = AppHost.NewPlaywrightTester(Out);
         _adminSession = Session.New();
-
         await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
-    public Task DisposeAsync()
+    protected override Task DisposeAsync()
         => _tester.DisposeAsync().AsTask();
 
     [Fact]

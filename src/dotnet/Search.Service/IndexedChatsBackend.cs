@@ -4,7 +4,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Search;
 
-internal class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<SearchDbContext>(services), IIndexedChatsBackend
+public class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<SearchDbContext>(services), IIndexedChatsBackend
 {
     private static IDbEntityResolver<string,DbIndexedChat>? _dbIndexedChatResolver;
 

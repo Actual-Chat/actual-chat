@@ -1,9 +1,7 @@
 namespace ActualChat.Core.UnitTests.Mathematics;
 
-public class UInt128ExtTest : TestBase
+public class UInt128ExtTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    public UInt128ExtTest(ITestOutputHelper @out) : base(@out) { }
-
     [Fact]
     public void BasicTest()
     {

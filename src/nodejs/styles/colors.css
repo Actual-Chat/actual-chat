@@ -342,6 +342,7 @@
     --rating: var(--warning);
     --background-recording-countdown: var(--background-banner-warning);
     --shadow-main: var(--background-05);
+    --shadow-modal-header-button: var(--black-10);
     --new-separator: var(--magenta-50-10);
     --code: var(--magenta-40);
     --avatar: var(--gray-30);
@@ -531,6 +532,7 @@
     --rating: var(--sienna-40);
     --background-recording-countdown: var(--background-banner-warning);
     --shadow-main: var(--background-05);
+    --shadow-modal-header-button: var(--transparent);
     --new-separator: var(--magenta-50-10);
     --code: var(--magenta-60);
     --avatar: var(--ash-70);
@@ -722,6 +724,7 @@
     --rating: var(--warning);
     --background-recording-countdown: var(--background-banner-warning);
     --shadow-main: var(--background-05);
+    --shadow-modal-header-button: var(--black-10);
     --new-separator: var(--magenta-50-10);
     --code: var(--magenta-40);
     --avatar: var(--gray-30);

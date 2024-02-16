@@ -4,17 +4,16 @@ using ActualLab.Mathematics;
 
 namespace ActualChat.Users.IntegrationTests;
 
-[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
+[Collection(nameof(UserCollection))]
 public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
     private ChatId TestChatId { get; } = new("the-actual-one");
 
     [Fact]
     public async Task DeleteOwnAccountTest()
     {
-        var appHost = Host;
+        var appHost = AppHost;
         await using var tester = appHost.NewWebClientTester(Out);
         var services = tester.AppServices;
         var bob = await tester.SignInAsBob();

@@ -7,6 +7,12 @@ public interface IPlaces : IComputeService
     [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
     Task<Place?> Get(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    Task<PlaceRules> GetRules(Session session, PlaceId placeId, CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 60), ClientComputeMethod(ClientCacheMode = ClientCacheMode.Cache)]
+    Task<ChatId> GetWelcomeChatId(Session session, PlaceId placeId, CancellationToken cancellationToken);
+
     [ComputeMethod]
     Task<ApiArray<UserId>> ListUserIds(Session session, PlaceId placeId, CancellationToken cancellationToken);
 
@@ -44,6 +50,9 @@ public interface IPlaces : IComputeService
 
     [CommandHandler]
     Task OnDelete(Places_Delete command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnLeave(Places_Leave command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -95,6 +104,13 @@ public sealed partial record Places_PromoteToOwner(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record Places_Delete(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
+) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Places_Leave(
     [property: DataMember, MemoryPackOrder(0)] Session Session,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
 ) : ISessionCommand<Unit>;

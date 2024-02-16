@@ -1,10 +1,25 @@
+@using Mjml.Net
 @namespace ActualChat.Users.Templates
 
-<span>
-    Your email verification code is @Token. Don't share it with anyone.
-</span>
+
+@((MarkupString)_html)
 
 @code {
+    private string _html = "";
+
     [Parameter, EditorRequired]
     public string Token { get; set; } = null!;
+
+    protected override void OnParametersSet() {
+        var renderer = new MjmlRenderer();
+        var reader = new StreamReader(Template.EmailVerification.GetStream());
+        var template = reader.ReadToEnd();
+        var mjml = template.Replace("{{TOKEN}}", Token);
+        var mjmlOptions = new MjmlOptions {
+            Minify = true,
+            Beautify = false,
+        };
+        var renderResult = renderer.Render(mjml, mjmlOptions);
+        _html = renderResult.Html;
+    }
 }

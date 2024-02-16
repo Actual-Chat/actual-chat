@@ -2,7 +2,7 @@
 
 namespace ActualChat.Blobs.Internal;
 
-internal class LocalFolderBlobStorages(IServiceProvider services) : IBlobStorages
+public class LocalFolderBlobStorages(IServiceProvider services) : IBlobStorages
 {
     private IServiceProvider Services { get; } = services;
 

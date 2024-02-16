@@ -1,6 +1,6 @@
 ﻿namespace ActualChat.App.Maui;
 
-public static class FileSystemUtilsEx
+public static class FileSystemUtilsExt
 {
     private const string EssentialsFolderHash = "2203693cc04e0be7f4f024d5f9499e13";
 

@@ -73,8 +73,7 @@ public interface IChatsBackend : IComputeService
 
     [CommandHandler]
     Task<Chat> OnChange(ChatsBackend_Change command, CancellationToken cancellationToken);
-    [Obsolete("2024.01: Replaced with OnChangeEntry")]
-    [CommandHandler]
+    [CommandHandler, Obsolete("2024.01: Replaced with OnChangeEntry")]
     Task<ChatEntry> OnUpsertEntry(ChatsBackend_UpsertEntry command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ChatEntry> OnChangeEntry(ChatsBackend_ChangeEntry command, CancellationToken cancellationToken);

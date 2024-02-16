@@ -9,7 +9,8 @@ using ActualLab.Redis;
 namespace ActualChat.Redis.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class RedisModule(IServiceProvider moduleServices) : HostModule<RedisSettings>(moduleServices)
+public sealed class RedisModule(IServiceProvider moduleServices)
+    : HostModule<RedisSettings>(moduleServices), IServerModule
 {
     public void AddRedisDb<TContext>(
         IServiceCollection services,

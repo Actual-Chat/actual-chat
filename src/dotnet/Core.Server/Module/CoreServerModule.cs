@@ -1,15 +1,26 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
+using ActualChat.Mesh;
+using ActualChat.AspNetCore;
+using ActualChat.Rpc;
+using ActualLab.Fusion.Server;
+using ActualLab.Fusion.Server.Middlewares;
+using ActualLab.Fusion.Server.Rpc;
 using ActualLab.Rpc;
+using ActualLab.Rpc.Clients;
+using ActualLab.Rpc.Diagnostics;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Module;
 
 #pragma warning disable IL2026 // Fine for modules
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class CoreServerModule(IServiceProvider moduleServices) : HostModule<CoreServerSettings>(moduleServices)
+public sealed class CoreServerModule(IServiceProvider moduleServices)
+    : HostModule<CoreServerSettings>(moduleServices), IServerModule
 {
     protected override CoreServerSettings ReadSettings()
         => Cfg.GetSettings<CoreServerSettings>(nameof(CoreSettings));
@@ -18,43 +29,18 @@ public sealed class CoreServerModule(IServiceProvider moduleServices) : HostModu
     {
         base.InjectServices(services);
         var hostKind = HostInfo.HostKind;
-        if (hostKind.IsApp())
+        if (!hostKind.IsServer())
             throw StandardError.Internal("This module can be used on server side only.");
 
-        // Core server-side services
-        services.AddSingleton(c => new ServerSideServiceDefs(c));
-        services.AddSingleton(c => new RpcMeshRefResolvers(c));
-        services.AddSingleton<RpcBackendServiceDetector>(c => {
-            var serverSideServiceDefs = c.GetRequiredService<ServerSideServiceDefs>();
-            return (serviceType, serviceName) => serverSideServiceDefs.Contains(serviceType)
-                || typeof(IBackendService).IsAssignableFrom(serviceType)
-                || serviceType.Name.EndsWith("Backend", StringComparison.Ordinal)
-                || serviceName.Value.StartsWith("backend.", StringComparison.Ordinal);
+        services.AddRpcHost(HostInfo, Log);
+
+        // Controllers, etc.
+        services.AddRouting();
+        var mvc = services.AddMvc(options => {
+            options.ModelBinderProviders.Add(new BackendModelBinderProvider());
+            options.ModelMetadataDetailsProviders.Add(new BackendValidationMetadataProvider());
         });
-        services.AddSingleton<RpcCallRouter>(c => {
-            var serverSideServiceDefs = c.GetRequiredService<ServerSideServiceDefs>();
-            var meshRefResolvers = c.GetRequiredService<RpcMeshRefResolvers>();
-            RpcHub? rpcHub = null;
-            return (methodDef, arguments) => {
-                rpcHub ??= c.RpcHub(); // We can't resolve it earlier, coz otherwise it will trigger recursion
-                var serviceDef = methodDef.Service;
-                if (!serviceDef.IsBackend)
-                    throw StandardError.Internal("Only backend service methods can be called by servers.");
-
-                var serverSideServiceDef = serverSideServiceDefs[serviceDef.Type];
-                if (serverSideServiceDef.ServiceMode != ServiceMode.Client)
-                    throw StandardError.Internal($"{serviceDef} must be a ServiceMode.Client service.");
-
-                var shardScheme = ShardScheme.ById[serverSideServiceDef.ServerRole.Id];
-                var meshRefResolver = meshRefResolvers[methodDef];
-                var meshRef = meshRefResolver.Invoke(methodDef, arguments, shardScheme);
-                var peerRef = BackendClientPeerRef.Get(meshRef);
-                if (peerRef == null)
-                    throw StandardError.Internal($"Invalid MeshRef: {meshRef}.");
-
-                return rpcHub.GetClientPeer(peerRef);
-            };
-        });
+        mvc.AddApplicationPart(GetType().Assembly);
 
         // Other services
         services.AddSingleton<IContentSaver>(c => new ContentSaver(c.BlobStorages()));

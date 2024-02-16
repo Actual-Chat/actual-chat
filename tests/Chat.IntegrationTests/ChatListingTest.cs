@@ -5,23 +5,21 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Chat.IntegrationTests;
 
 // TODO: merge with ChatOperationsTest
-[Collection(nameof(ChatCollection)), Trait("Category", nameof(ChatCollection))]
-public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(ChatCollection))]
+public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private WebClientTester _tester = null!;
 
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
-
-    public Task InitializeAsync()
+    protected override Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        _tester = Host.NewWebClientTester(Out);
+        _tester = AppHost.NewWebClientTester(Out);
         FluentAssertions.Formatting.Formatter.AddFormatter(new UserFormatter());
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
         foreach (var formatter in FluentAssertions.Formatting.Formatter.Formatters.OfType<UserFormatter>().ToList())
@@ -37,9 +35,9 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out): IA
     public async Task ShouldListAllChats(int chatCount, int limit)
     {
         // arrange
-        var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
-        var commander = Host.Services.Commander();
-        var clock = Host.Services.Clocks().ServerClock;
+        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
+        var commander = AppHost.Services.Commander();
+        var clock = AppHost.Services.Clocks().ServerClock;
         var now = clock.Now;
         var allExpectedIds = new List<ChatId>();
         await _tester.SignInAsBob();
@@ -58,7 +56,9 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out): IA
         await foreach (var chats in chatsBackend.Batches(now, ChatId.None, limit, CancellationToken.None)) {
             chats.Should().NotBeEmpty();
             var chatIds = chats
+#pragma warning disable CA1310
                 .Where(c => c.Title.StartsWith("Chat"))
+#pragma warning restore CA1310
                 .Select(x => x.Id)
                 .ToList();
 
@@ -79,8 +79,8 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out): IA
     public async Task ShouldReturnEmpty(int chatCount, int limit)
     {
         // arrange
-        var chatsBackend = Host.Services.GetRequiredService<IChatsBackend>();
-        var commander = Host.Services.Commander();
+        var chatsBackend = AppHost.Services.GetRequiredService<IChatsBackend>();
+        var commander = AppHost.Services.Commander();
         var allChats = new List<Chat>();
         await _tester.SignInAsBob();
         for (int i = 0; i < chatCount; i++) {

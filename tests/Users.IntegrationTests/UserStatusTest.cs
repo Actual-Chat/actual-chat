@@ -4,33 +4,25 @@ using ActualLab.Versioning;
 
 namespace ActualChat.Users.IntegrationTests;
 
-[Collection(nameof(UserCollection)), Trait("Category", nameof(UserCollection))]
-public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out): IAsyncLifetime
+[Collection(nameof(UserCollection))]
+public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
+    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private const AccountStatus NewAccountStatus = AccountStatus.Active;
-    private TestAppHost Host => fixture.Host;
-    private ITestOutputHelper Out { get; } = fixture.Host.UseOutput(@out);
-
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;
     private AppHost _appHost = null!;
     private Session _adminSession = null!;
 
-    public async Task InitializeAsync()
+    protected override async Task InitializeAsync()
     {
-        _appHost = await NewAppHost(TestAppHostOptions.Default with {
-            AppConfigurationExtender = cfg => {
-                cfg.AddInMemory(("UsersSettings:NewAccountStatus", NewAccountStatus.ToString()));
-            },
-        });
+        _appHost = await NewAppHost();
         _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _adminSession = Session.New();
-
-        await _tester.AppHost.SignIn(_adminSession, new User("BobAdmin"));
+        await _appHost.SignIn(_adminSession, new User("BobAdmin"));
     }
 
-    public async Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
         await _tester.DisposeAsync().AsTask();
         _appHost.Dispose();
@@ -49,7 +41,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out): IAs
         var account = await GetOwnAccount();
 
         // assert
-        account.Status.Should().Be(NewAccountStatus);
+        account.Status.Should().Be(AccountStatus.Active);
 
         // act
         var newStatuses = new[] {
@@ -75,7 +67,4 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out): IAs
 
     private Task<AccountFull> GetOwnAccount()
         => _accounts.GetOwn(_tester.Session, default);
-
-    private Task<TestAppHost> NewAppHost(TestAppHostOptions? options = default)
-        => TestAppHostFactory.NewAppHost(Out, options);
 }

@@ -28,34 +28,40 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
             db.AddEntityResolver<string, DbMedia>();
         });
 
-        // Commander & Fusion
-        var commander = services.AddCommander();
-        commander.AddHandlerFilter((handler, commandType) => {
+        // Backend
+        var host = services.AddRpcHost(HostInfo);
+        var usesBackendClient = host.GetServiceMode<IMediaBackend>().IsClient();
+
+        // Commander handlers
+        host.Commander.AddHandlerFilter((handler, commandType) => {
             // 1. Check if this is DbOperationScopeProvider<MediaDbContext> handler
             if (handler is not InterfaceCommandHandler<ICommand> ich)
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<MediaDbContext>))
                 return true;
 
-            // 2. Make sure it's intact only for local commands
+            // 2. Check if we're running on the client backend
+            if (usesBackendClient)
+                return false;
+
+            // 3. Make sure it's intact only for local commands
             var commandAssembly = commandType.Assembly;
             return commandAssembly == typeof(IMediaBackend).Assembly // Media.Contracts assembly
                 || commandType == typeof(TextEntryChangedEvent);
         });
 
-        var fusion = services.AddFusion();
-
-        // Module's own services
-        fusion.AddService<IMediaBackend, MediaBackend>();
+        // Media
+        host.AddBackend<IMediaBackend, MediaBackend>();
 
         // Links
-        fusion.AddService<IMediaLinkPreviews, MediaLinkPreviews>();
-        fusion.AddService<ILinkPreviewsBackend, LinkPreviewsBackend>();
+        host.AddFrontend<IMediaLinkPreviews, MediaLinkPreviews>();
+        host.AddBackend<ILinkPreviewsBackend, LinkPreviewsBackend>();
+        if (usesBackendClient)
+            return;
+
+        // Services used in SingleHost or Server modes only
         services.AddHttpClient(nameof(LinkPreviewsBackend))
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));
         services.AddSingleton<Crawler>();
-
-        // Controllers, etc.
-        services.AddMvcCore().AddApplicationPart(GetType().Assembly);
     }
 }

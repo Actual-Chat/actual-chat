@@ -546,7 +546,8 @@ module.exports = {
       'mobile-button': '0px 4px 6px 3px rgba(0, 0, 0, 0.2);',
       'up': '0px -6px 8px 2px rgba(200, 200, 200, 0.2);',
       'modal-wide': '0 4px 12px 0 rgba(0, 0, 0, .25)',
-      'modal-narrow': '0 10px 20px 0 rgba(0, 0, 0, .75)'
+      'modal-narrow': '0 10px 20px 0 rgba(0, 0, 0, .75)',
+      'modal-header-btn': '0px 2px 8px 0 var(--shadow-modal-header-button)',
     },
     boxShadowColor: ({ theme }) => theme('colors'),
     caretColor: ({ theme }) => theme('colors'),

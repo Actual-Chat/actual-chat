@@ -1,6 +1,6 @@
 namespace ActualChat.Blobs;
 
-internal class ContentSaver(IBlobStorages blobStorages) : IContentSaver
+public class ContentSaver(IBlobStorages blobStorages) : IContentSaver
 {
     private readonly IBlobStorage _blobStorage = blobStorages[BlobScope.ContentRecord];
 

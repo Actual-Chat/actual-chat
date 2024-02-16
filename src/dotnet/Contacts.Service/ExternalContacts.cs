@@ -18,9 +18,8 @@ public class ExternalContacts(IServiceProvider services) : IExternalContacts
         return await Backend.List(account.Id, deviceId, cancellationToken).ConfigureAwait(false);
     }
 
-    [Obsolete("2023.10: Replaced with OnBulkChange")]
-
     // [CommandHandler]
+    [Obsolete("2023.10: Replaced with OnBulkChange")]
     public virtual async Task<ExternalContact?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken)
     {
         if (Computed.IsInvalidating())

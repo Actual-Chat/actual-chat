@@ -1,18 +1,29 @@
 namespace ActualChat.Testing.Host;
 
-public abstract class AppHostFixture(IMessageSink messageSink) : IAsyncLifetime
+public abstract class AppHostFixture(
+    string instanceName,
+    IMessageSink messageSink,
+    TestAppHostOptions? appHostOptions = null
+    ) : IAsyncLifetime
 {
-    public IMessageSink MessageSink { get; } = messageSink;
-    public TestAppHost Host { get; protected set; } = null!;
+    public TestAppHostOptions AppHostOptions { get; protected init; }
+        = (appHostOptions ?? TestAppHostOptions.Default).With(instanceName, messageSink);
+    public TestAppHost AppHost { get; protected set; } = null!;
 
-    public abstract string DbInstanceName { get; }
+    async Task IAsyncLifetime.InitializeAsync()
+        => AppHost = await NewAppHost();
 
-    public virtual async Task InitializeAsync()
-        => Host = await TestAppHostFactory.NewAppHost(MessageSink, DbInstanceName, TestAppHostOptions.WithDefaultChat);
-
-    public virtual Task DisposeAsync()
+    Task IAsyncLifetime.DisposeAsync()
     {
-        Host.DisposeSilently();
+        AppHost.DisposeSilently();
         return Task.CompletedTask;
+    }
+
+    public virtual Task<TestAppHost> NewAppHost(
+        Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
+    {
+        var options = AppHostOptions;
+        options = optionOverrider?.Invoke(options) ?? options;
+        return TestAppHostFactory.NewAppHost(options);
     }
 }

@@ -5,7 +5,7 @@ using Microsoft.IO;
 
 namespace ActualChat.Blobs.Internal;
 
-internal class GoogleCloudBlobStorage(string bucket, RecyclableMemoryStreamManager memoryStreamManager)
+public class GoogleCloudBlobStorage(string bucket, RecyclableMemoryStreamManager memoryStreamManager)
     : IBlobStorage
 {
     private const int MinChunkSize = 128 * 1024;

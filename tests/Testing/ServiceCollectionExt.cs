@@ -5,9 +5,9 @@ namespace ActualChat.Testing;
 
 public static class ServiceCollectionExt
 {
-    public static IServiceCollection ConfigureLogging(this IServiceCollection services, ITestOutputHelper output)
-        => ConfigureLogging(services, new TestOutputHelperAccessor(new TimestampedTestOutput(output)));
-    public static IServiceCollection ConfigureLogging(this IServiceCollection services, TestOutputHelperAccessor outputAccessor)
+    public static IServiceCollection AddTestLogging(this IServiceCollection services, ITestOutputHelper output)
+        => AddTestLogging(services, new TestOutputHelperAccessor(output.ToSafe()));
+    public static IServiceCollection AddTestLogging(this IServiceCollection services, TestOutputHelperAccessor outputAccessor)
         => services.AddLogging(logging => {
             // Overriding default logging to more test-friendly one
             logging.ClearProviders();

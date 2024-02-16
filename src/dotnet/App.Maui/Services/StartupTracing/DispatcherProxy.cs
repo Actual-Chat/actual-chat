@@ -1,17 +1,10 @@
 namespace ActualChat.App.Maui.Services.StartupTracing;
 
-internal class DispatcherProxy : IDispatcher
+internal class DispatcherProxy(IDispatcher original, bool logAllOperations) : IDispatcher
 {
-    private readonly IDispatcher _original;
-    private readonly IDispatcherOperationLogger _operationLogger;
+    private readonly IDispatcherOperationLogger _operationLogger = CreateOperationLogger(logAllOperations);
 
-    public bool IsDispatchRequired => _original.IsDispatchRequired;
-
-    public DispatcherProxy(IDispatcher original, bool logAllOperations)
-    {
-        _original = original;
-        _operationLogger = CreateOperationLogger(logAllOperations);
-    }
+    public bool IsDispatchRequired => original.IsDispatchRequired;
 
     private static IDispatcherOperationLogger CreateOperationLogger(bool logEverything)
         => logEverything
@@ -19,13 +12,13 @@ internal class DispatcherProxy : IDispatcher
             : new DispatcherLongOperationLogger();
 
     public bool Dispatch(Action action)
-        => _original.Dispatch(WrapAction(action));
+        => original.Dispatch(WrapAction(action));
 
     public bool DispatchDelayed(TimeSpan delay, Action action)
-        => _original.DispatchDelayed(delay, WrapAction(action));
+        => original.DispatchDelayed(delay, WrapAction(action));
 
     public IDispatcherTimer CreateTimer()
-        => _original.CreateTimer();
+        => original.CreateTimer();
 
     private Action WrapAction(Action action)
         => () => {

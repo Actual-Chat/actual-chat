@@ -15,41 +15,13 @@ namespace ActualChat.Testing.Host;
 
 public static class TestAppHostFactory
 {
-    public static FilePath GetManifestPath()
+    public static async Task<TestAppHost> NewAppHost(TestAppHostOptions options)
     {
-        static FilePath AssemblyPathToManifestPath(FilePath assemblyPath)
-        {
-            return assemblyPath.ChangeExtension("staticwebassets.runtime.json");
-        }
-
-        var hostAssemblyPath = (FilePath)typeof(AppHost).Assembly.Location;
-        var manifestPath = AssemblyPathToManifestPath(hostAssemblyPath);
-        if (File.Exists(manifestPath))
-            return manifestPath;
-
-        throw new FileNotFoundException("Can't find manifest.", manifestPath);
-    }
-
-    public static Task<TestAppHost> NewAppHost(
-        IMessageSink output,
-        string dbInstanceName,
-        TestAppHostOptions? options = null)
-        => NewAppHost(new TestOutputAdapter(output), dbInstanceName, options);
-
-    public static Task<TestAppHost> NewAppHost(
-        ITestOutputHelper output,
-        TestAppHostOptions? options = null)
-        => NewAppHost(output, GetInstanceName(output), options);
-
-    public static async Task<TestAppHost> NewAppHost(
-        ITestOutputHelper output,
-        string dbInstanceName,
-        TestAppHostOptions? options = null)
-    {
-        options ??= TestAppHostOptions.Default;
+        var instanceName = options.InstanceName.RequireNonEmpty();
+        var outputAccessor = new TestOutputHelperAccessor(options.Output);
         var manifestPath = GetManifestPath();
-        var outputAccessor = new TestOutputHelperAccessor(new TimestampedTestOutput(output));
-        var appHost = new TestAppHost(outputAccessor) {
+
+        var appHost = new TestAppHost(options, outputAccessor) {
             ServerUrls = options.ServerUrls ?? WebTestExt.GetLocalUri(WebTestExt.GetUnusedTcpPort()).ToString(),
             HostConfigurationBuilder = cfg => {
                 cfg.Sources.Insert(0,
@@ -67,7 +39,7 @@ public static class TestAppHostFactory
                 // The code below runs after module service registration & everything else
                 services.AddSettings<TestSettings>();
                 services.AddSingleton(outputAccessor);
-                services.ConfigureLogging(outputAccessor);
+                services.AddTestLogging(outputAccessor);
                 services.AddSingleton(options.ChatDbInitializerOptions);
                 services.AddSingleton<IBlobStorages, TempFolderBlobStorages>();
                 services.AddSingleton<PostgreSqlPoolCleaner>();
@@ -79,7 +51,7 @@ public static class TestAppHostFactory
                 });
             },
             AppConfigurationBuilder = cfg => {
-                ConfigureTestApp(cfg, dbInstanceName);
+                ConfigureTestApp(cfg, instanceName.RequireNonEmpty());
                 options.AppConfigurationExtender?.Invoke(cfg);
             },
         };
@@ -94,6 +66,20 @@ public static class TestAppHostFactory
         if (options.MustStart)
             await appHost.Start();
         return appHost;
+    }
+
+    // Private methods
+
+    private static FilePath GetManifestPath()
+    {
+        var hostAssemblyPath = (FilePath)typeof(AppHost).Assembly.Location;
+        var manifestPath = AssemblyPathToManifestPath(hostAssemblyPath);
+        return File.Exists(manifestPath)
+            ? manifestPath
+            : throw new FileNotFoundException("Can't find manifest.", manifestPath);
+
+        static FilePath AssemblyPathToManifestPath(FilePath assemblyPath)
+            => assemblyPath.ChangeExtension("staticwebassets.runtime.json");
     }
 
     private static void ConfigureTestApp(IConfigurationBuilder config, string instanceName)
@@ -132,7 +118,4 @@ public static class TestAppHostFactory
             return result;
         }
     }
-
-    private static string GetInstanceName(ITestOutputHelper output)
-        => output.GetTest().TestCase.Traits.GetValueOrDefault("Category")?.FirstOrDefault() ?? "Test";
 }

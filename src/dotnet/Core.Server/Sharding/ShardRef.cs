@@ -18,9 +18,9 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
     public ShardRef(ShardScheme scheme, long key)
         : this(scheme, unchecked((int)key)) { }
     public ShardRef(int key)
-        : this(ShardScheme.Undefined.Instance, key) { }
+        : this(ShardScheme.Default.Instance, key) { }
     public ShardRef(long key)
-        : this(ShardScheme.Undefined.Instance, unchecked((int)key)) { }
+        : this(ShardScheme.Default.Instance, unchecked((int)key)) { }
 
     public void Deconstruct(out ShardScheme scheme, out int key)
     {
@@ -35,10 +35,15 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
 
     public ShardRef Normalize()
         => new(Scheme, Scheme.GetShardIndex(Key));
-    public ShardRef WithScheme(ShardScheme scheme)
-        => new(scheme, Key);
-    public ShardRef WithSchemeIfUndefined(ShardScheme scheme)
-        => Scheme.IsUndefined ? new(scheme, Key) : this;
+    public ShardRef WithNonDefaultSchemeOr(ShardScheme scheme)
+        => Scheme.IsDefault ? new(scheme, Key) : this;
+    public ShardRef WithNonDefaultSchemeOr(ShardScheme scheme, bool normalize)
+    {
+        scheme = Scheme.NonDefaultOr(scheme);
+        return normalize
+            ? new(scheme, scheme.GetShardIndex(Key))
+            : new(scheme, Key);
+    }
 
     // Equality
 
