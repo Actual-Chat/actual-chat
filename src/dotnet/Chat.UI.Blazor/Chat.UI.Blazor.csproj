@@ -5,11 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Chat\Chat.csproj" />
-    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
-    <ProjectReference Include="..\Contacts.Contracts\Contacts.Contracts.csproj" />
-    <ProjectReference Include="..\Notification.Contracts\Notification.Contracts.csproj" />
-    <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
+    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
     <ProjectReference Include="..\UI.Blazor\UI.Blazor.csproj" />
     <ProjectReference Include="..\Audio.UI.Blazor\Audio.UI.Blazor.csproj" />
     <ProjectReference Include="..\Users.UI.Blazor\Users.UI.Blazor.csproj" />

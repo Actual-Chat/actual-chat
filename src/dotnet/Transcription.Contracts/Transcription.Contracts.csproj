@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Audio\Audio.csproj" />
+    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

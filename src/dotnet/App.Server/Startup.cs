@@ -11,7 +11,6 @@ using ActualChat.Hosting;
 using ActualChat.Invite.Module;
 using ActualChat.Kubernetes.Module;
 using ActualChat.Media.Module;
-using ActualChat.MediaPlayback.Module;
 using ActualChat.MLSearch.Module;
 using ActualChat.Module;
 using ActualChat.Notification.Module;
@@ -100,17 +99,15 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
                 new DbModule(moduleServices),
-                // Generic modules
-                new MediaPlaybackModule(moduleServices),
+                // API modules
+                new ApiModule(moduleServices),
                 // Service-specific & service modules
                 new AudioServiceModule(moduleServices),
                 new FeedbackServiceModule(moduleServices),
                 new MediaServiceModule(moduleServices),
                 new ContactsServiceModule(moduleServices),
                 new InviteServiceModule(moduleServices),
-                new UsersContractsModule(moduleServices),
                 new UsersServiceModule(moduleServices),
-                new ChatModule(moduleServices),
                 new ChatServiceModule(moduleServices),
                 new TranscriptionServiceModule(moduleServices),
                 new NotificationServiceModule(moduleServices),

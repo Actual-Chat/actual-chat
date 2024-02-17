@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 namespace ActualChat.Hosting;
 
 public interface IServerModule; // A tagging interface for server-side modules
+public interface IAppModule; // A tagging interface for client-side modules
 
 public abstract class HostModule(IServiceProvider moduleServices)
 {
@@ -21,7 +22,9 @@ public abstract class HostModule(IServiceProvider moduleServices)
     protected internal void Initialize(ModuleHost host)
     {
         if (this is IServerModule && !HostInfo.HostKind.IsServer())
-            throw StandardError.Internal("This module can be used on server side only.");
+            throw StandardError.Internal("This module can be used only on the server side.");
+        if (this is IAppModule && !HostInfo.HostKind.IsApp())
+            throw StandardError.Internal("This module can be used only in apps.");
 
         Host = host;
     }

@@ -1,11 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Search\Search.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="MemoryPack" />
+    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

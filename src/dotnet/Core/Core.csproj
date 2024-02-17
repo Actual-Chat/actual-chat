@@ -1,9 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <RootNamespace>ActualChat</RootNamespace>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="MemoryPack" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />

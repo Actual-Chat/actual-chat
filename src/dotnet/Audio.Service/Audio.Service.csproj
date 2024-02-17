@@ -2,13 +2,12 @@
 
   <ItemGroup>
 <!--    <ProjectReference Include="..\Audio.Client\Audio.Client.csproj" />-->
-    <ProjectReference Include="..\Audio.Contracts\Audio.Contracts.csproj" />
-    <ProjectReference Include="..\Chat\Chat.csproj" />
-    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Kubernetes\Kubernetes.csproj" />
     <ProjectReference Include="..\Redis\Redis.csproj" />
     <ProjectReference Include="..\SignalR.Client\SignalR.Client.csproj" />
+    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
     <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
   </ItemGroup>

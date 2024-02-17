@@ -1,6 +1,6 @@
 using ActualChat.Chat;
 using ActualChat.Contacts;
-using ActualChat.Notification.Backend;
+using ActualChat.Notification;
 using ActualChat.Users.Db;
 using ActualLab.Fusion.EntityFramework;
 

@@ -128,9 +128,9 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices) : HostMo
                 return true;
             if (commandAssembly == typeof(AuthBackend_SetupSession).Assembly)
                 return true;
-            if (commandAssembly == typeof(IAccounts).Assembly) // Users.Contracts assembly
-                return true;
-            return false;
+
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(IAccounts).Namespace!);
         });
         var fusion = services.AddFusion();
         var rpc = fusion.Rpc;

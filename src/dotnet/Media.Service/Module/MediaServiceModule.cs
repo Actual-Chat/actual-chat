@@ -45,9 +45,9 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
                 return false;
 
             // 3. Make sure it's intact only for local commands
-            var commandAssembly = commandType.Assembly;
-            return commandAssembly == typeof(IMediaBackend).Assembly // Media.Contracts assembly
-                || commandType == typeof(TextEntryChangedEvent);
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(IMediaLinkPreviews).Namespace!)
+                || commandType == typeof(TextEntryChangedEvent); // Event
         });
 
         // Media

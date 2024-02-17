@@ -2,7 +2,6 @@
 using ActualChat.Db.Module;
 using ActualChat.Notification.Db;
 using ActualChat.Hosting;
-using ActualChat.Notification.Backend;
 using ActualChat.Redis.Module;
 using FirebaseAdmin;
 using FirebaseAdmin.Messaging;
@@ -40,11 +39,10 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<NotificationDbContext>))
                 return true;
+
             // 2. Make sure it's intact only for local commands
-            var commandAssembly = commandType.Assembly;
-            if (commandAssembly == typeof(INotifications).Assembly) // Notification.Contracts assembly
-                return true;
-            return false;
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(INotifications).Namespace!);
         });
         var fusion = services.AddFusion();
 

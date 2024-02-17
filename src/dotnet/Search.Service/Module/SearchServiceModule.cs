@@ -41,9 +41,9 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
                 return true;
 
             // 2. Make sure it's intact only for local commands
-            var commandAssembly = commandType.Assembly;
-            return commandAssembly == typeof(ISearchBackend).Assembly // Search.Contracts assembly
-                || commandType == typeof(TextEntryChangedEvent);
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(ISearchBackend).Namespace!)
+                || commandType == typeof(TextEntryChangedEvent); // Event
         });
 
         // Controllers, etc.

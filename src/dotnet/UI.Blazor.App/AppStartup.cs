@@ -1,25 +1,16 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.WebSockets;
-using ActualChat.Audio.Module;
 using ActualChat.Audio.UI.Blazor.Module;
-using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
-using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Diff.Handlers;
-using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
-using ActualChat.Invite.Module;
-using ActualChat.Media.Module;
-using ActualChat.MediaPlayback.Module;
 using ActualChat.Module;
-using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Security;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
-using ActualChat.Users.Module;
 using ActualChat.Users.UI.Blazor.Module;
 using ActualLab.Interception.Interceptors;
 using ActualLab.RestEase;
@@ -151,19 +142,9 @@ public static class AppStartup
             .WithModules(
                 // Core modules
                 new CoreModule(moduleServices),
-                // Generic modules
-                new MediaPlaybackModule(moduleServices),
-                // Service-specific & service client modules
-                new AudioClientModule(moduleServices),
-                new FeedbackClientModule(moduleServices),
-                new UsersContractsModule(moduleServices),
-                new UsersClientModule(moduleServices),
-                new ContactsClientModule(moduleServices),
-                new ChatModule(moduleServices),
-                new ChatClientModule(moduleServices),
-                new MediaClientModule(moduleServices),
-                new InviteClientModule(moduleServices),
-                new NotificationClientModule(moduleServices),
+                // API
+                new ApiModule(moduleServices),
+                new ApiClientModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
                 new AudioBlazorUIModule(moduleServices),

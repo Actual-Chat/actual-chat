@@ -60,7 +60,10 @@ public static class ChatsBackendExt
         }
     }
 
-    public static async Task<Place?> GetPlace(this IChatsBackend chatsBackend, PlaceId placeId, CancellationToken cancellationToken)
+    public static async Task<Place?> GetPlace(
+        this IChatsBackend chatsBackend,
+        PlaceId placeId,
+        CancellationToken cancellationToken)
     {
         placeId.Require();
 

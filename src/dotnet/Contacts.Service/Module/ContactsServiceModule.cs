@@ -43,10 +43,11 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices) : Hos
                 return true;
             if (ich.ServiceType != typeof(DbOperationScopeProvider<ContactsDbContext>))
                 return true;
-            // 2. Make sure it's intact only for ActualLab.Fusion.Authentication + local commands
-            var commandAssembly = commandType.Assembly;
-            return commandAssembly == typeof(IContacts).Assembly // Contacts.Contracts assembly
-                || commandType == typeof(NewUserEvent); // NewUserEvent is handled by ExternalContacts service
+
+            // 2. Make sure it's intact only for local commands
+            var commandNamespace = commandType.Namespace;
+            return commandNamespace.OrdinalStartsWith(typeof(IContacts).Namespace!)
+                || commandType == typeof(NewUserEvent); // Event
         });
         var fusion = services.AddFusion();
 

@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\Feedback.Contracts\Feedback.Contracts.csproj" />
   </ItemGroup>

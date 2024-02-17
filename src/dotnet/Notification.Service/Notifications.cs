@@ -1,5 +1,4 @@
-﻿using ActualChat.Notification.Backend;
-using ActualChat.Notification.Db;
+﻿using ActualChat.Notification.Db;
 using ActualChat.Users;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
