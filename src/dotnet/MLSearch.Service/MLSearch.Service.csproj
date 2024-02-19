@@ -4,4 +4,7 @@
     <ProjectReference Include="..\Db\Db.csproj" />
     <ProjectReference Include="..\MLSearch.Contracts\MLSearch.Contracts.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="OpenSearch.Client" />
+  </ItemGroup>
 </Project>

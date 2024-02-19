@@ -18,6 +18,12 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             return; // Server-side only module
         }
 
+        if (HostInfo.HasRole(HostRole.MLSearchBackendClusterSetup)) {
+            services.AddSingleton<OpenSearchClusterSetup>()
+                .AddHostedService(c => c.GetRequiredService<OpenSearchClusterSetup>());
+            //(?) return;
+        }
+
         // DB
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, MLSearchDbInitializer>();
@@ -45,7 +51,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IHistoryExtractor, HistoryExtractor>();
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
         services.AddKeyedSingleton<ISearchEngine>("OpenSearch", (services, serviceKey) => {
-            return new OpenSearchEngine();
+            return new OpenSearchEngine(services);
         });
     }
 }

@@ -70,6 +70,7 @@
     <PackageVersion Include="Mono.Profiler.Android" Version="7.0.0" />
     <PackageVersion Include="Mono.AotProfiler.Android" Version="7.0.0" />
     <PackageVersion Include="OpenGraph-Net" Version="4.0.1" />
+    <PackageVersion Include="OpenSearch.Client" Version="1.6.0" />
     <PackageVersion Include="SauceControl.Blake2Fast" Version="2.0.0" />
     <PackageVersion Include="Serilog.Extensions.Logging.File" Version="3.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
