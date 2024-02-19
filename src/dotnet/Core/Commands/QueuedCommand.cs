@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace ActualChat.Commands;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public abstract record QueuedCommand : IHasId<Symbol>
+public abstract record QueuedCommand(Ulid Id) : IHasId<Ulid>
 {
     private static readonly MethodInfo CreateFromCommandMethod = typeof(QueuedCommand)
         .GetMethod(nameof(CreateFromCommand), BindingFlags.Static | BindingFlags.NonPublic)!;
@@ -11,11 +11,9 @@ public abstract record QueuedCommand : IHasId<Symbol>
 
     public static IMomentClock Clock { get; set; } = MomentClockSet.Default.CoarseSystemClock;
 
-    public Symbol Id { get; init; }
-    public Ulid Ulid { get; }
     public abstract ICommand UntypedCommand { get; }
     public QueuedCommandPriority Priority { get; init; }
-    public Moment CreatedAt => Ulid.Time;
+    public Moment CreatedAt => Id.Time;
     public Moment? StartedAt { get; init; }
     public Moment? CompletedAt { get; init; }
     public int TryIndex { get; init; }
@@ -40,12 +38,6 @@ public abstract record QueuedCommand : IHasId<Symbol>
         return factoryMethod(ulid, command);
     }
 
-    protected QueuedCommand(Ulid ulid)
-    {
-        Ulid = ulid;
-        Id = Ulid.ToString();
-    }
-
     // Equality is based solely on Id property
     public virtual bool Equals(QueuedCommand? other) => other != null && Id.Equals(other.Id);
     public override int GetHashCode() => Id.GetHashCode();
@@ -54,7 +46,7 @@ public abstract record QueuedCommand : IHasId<Symbol>
         => (ulid, command) => new QueuedCommand<T>(ulid, (T)command);
 }
 
-public sealed record QueuedCommand<T>(Ulid Ulid, T Command) : QueuedCommand(Ulid)
+public sealed record QueuedCommand<T>(Ulid Id, T Command) : QueuedCommand(Id)
     where T: ICommand
 {
     public override ICommand UntypedCommand => Command;

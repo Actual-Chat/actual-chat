@@ -17,7 +17,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         (byte)CommandVersion.Version1,
     ];
 
-    private readonly ConcurrentDictionary<Symbol, NatsJSMsg<IMemoryOwner<byte>>> _commandsBeingProcessed = new ();
+    private readonly ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>> _commandsBeingProcessed = new ();
 
     private NatsConnection? _nats;
     private volatile INatsJSStream? _jetStream;
@@ -45,7 +45,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             bufferWriter.Write(Version);
 
             // Write command.Id - Ulid as 16-byte sequence
-            command.Ulid.TryWriteBytes(bufferWriter.GetSpan(16));
+            command.Id.TryWriteBytes(bufferWriter.GetSpan(16));
             bufferWriter.Advance(16);
 
             typedSerializer.Write(bufferWriter, command.UntypedCommand, commandType);
@@ -192,7 +192,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         if (_jetStreamConsumer != null)
             return _jetStreamConsumer!;
 
-        var consumerName = BuildConsumerName(queueId.HostRole);
+        var consumerName = BuildConsumerName(QueueId.HostRole);
         var retryCount = 0;
         while (_jetStreamConsumer == null)
             try {
