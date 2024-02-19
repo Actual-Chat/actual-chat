@@ -94,8 +94,7 @@ public class OnboardingUI : ScopedServiceBase<ChatUIHub>, IOnboardingUI
         // Finally, wait for the possibility to render onboarding modal
         await LoadingUI.WhenRendered.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var enableIncompleteU = await Features.Get<Features_EnableIncompleteUI, bool>(cancellationToken).ConfigureAwait(false);
-        if (_userSettings.Value.HasUncompletedSteps(enableIncompleteU))
+        if (_userSettings.Value.HasUncompletedSteps)
             return true;
 
         if (!_localSettings.Value.IsPermissionsStepCompleted) {
