@@ -1,5 +1,6 @@
 using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
+using ActualChat.Commands;
 using ActualChat.Search;
 using ActualLab.Generators;
 using Microsoft.AspNetCore.Hosting;
@@ -34,6 +35,11 @@ public static class TestAppHostFactory
                 options.HostConfigurationExtender?.Invoke(cfg);
             },
             AppServicesBuilder = (host, services) => {
+                // register prefix for NATS queues
+                services.AddSingleton<NatsCommandQueues.Options>(new NatsCommandQueues.Options {
+                    CommonPrefix = instanceName,
+                });
+
                 options.AppServicesExtender?.Invoke(host, services);
 
                 // The code below runs after module service registration & everything else
@@ -51,7 +57,7 @@ public static class TestAppHostFactory
                 });
             },
             AppConfigurationBuilder = cfg => {
-                ConfigureTestApp(cfg, instanceName.RequireNonEmpty());
+                ConfigureTestApp(cfg, instanceName);
                 options.AppConfigurationExtender?.Invoke(cfg);
             },
         };
