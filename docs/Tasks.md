@@ -1,49 +1,42 @@
 Near term:
 
-Urgent fixes:
-- [EK] ~~No notif / unread on a message from someone who's not in your contact list~~
-- [EK] ~~Dark theme: fix Apple icon color on sign-in modal~~
-- [DF] Android: sometimes theme change doesn't work / blue status bar color
-- [DF] See if it's possible to disable native splash & use the web version
-- [DF] ~~Anonymous chats: let's hide the list of participants until there are at least 5 of them (for the beginning)~~ and add the option to control how many later
-- [DF] Check share behavior + get rid of activity state persistance on Android
-- [AK] iOS: "Scroll down" sometimes doesn't disappear even when you're at the very bottom
-- [Andrey] Mobile: fix chat header icon position
-- iOS: reconnect banner may take two lines on iPhone (not enough horizontal space)
-- Mobile: Maybe we should pause AudioContext when nothing is playing, otherwise it drains the battery
-- Portrait/landscape mode switch should work in MAUI apps. That's mainly for images & videos; maybe disable fullscreen video mode support on Android. Custom full screen implementation have issues with history if user exits from fullscreen mode with back button.
-- [AY] Fix auto-nav on mobile apps - it shouldn't bring you back to the same chat.
-
-Less urgent fixes:
-- iOS: investigate weird "Back" click behavior (sometimes it does not work when you touch it, maybe related to Safari click event propagation or nearby clickalbe header)
-- There are still some weird UI restarts on Android - prob. MauiLivenessProbe is too aggressive
+Infrastructure:
+- RPC / sharding:
 - SharedResourcePool must be IAsyncDisposable
+
+Potential fixes:
+- [AY] Don't play "new message" sound if it was sent more than 30 seconds ago (it frequently plays when the app awakes)
+- [DF] Check share behavior + get rid of activity state persistence on Android
+- [Andrey] iOS: reconnect banner may take two lines on iPhone (not enough horizontal space)
+- [AK] Mobile: Maybe we should pause AudioContext when nothing is playing, otherwise it drains the battery
+- [EK] Portrait/landscape mode switch should work in MAUI apps. That's mainly for images & videos; maybe disable fullscreen video mode support on Android. Custom full screen implementation have issues with history if user exits from fullscreen mode with back button.
+- [AY] Fix auto-nav on mobile apps - it shouldn't bring you back to the same chat.
+- iOS: investigate weird "Back" click behavior (sometimes it does not work when you touch it, maybe related to Safari click event propagation or nearby clickable header)
+
+UX improvements:
+- [EK] Pin chat/user to the left panel
+- Historical playback speedup
+- Allow to rename contacts + use your custom contact name for any author of a given user (unless anonymous)
+- "New message [in another chat]" notification banner
+- Add "Disable file system cache" option (+ explain it means it stores nearly nothing on the device)
+- Show bios in Members list
+- Show "last online @"
+- Allow to set chat background image (shown @ the top of Chat Settings tab)
 
 General:
 - iOS: render correct unread message counter on app icon
   - See https://stackoverflow.com/questions/77007133/how-to-make-firebase-push-notification-increase-badge-count-when-receive-notific
-- Add open graph tags for /chat/xxx & u/xxx URLs
+- Add open graph tags for /chat/xxx & u/xxx URLs , ideally make them available for crawlers
 - Web hook for posts
-- Historical playback speedup
 - New "Modal with tabs" - Andrey, you can start working on this somewhere in /test/
 - Email digest (once per day):
   - The updates you've missed
   - Summary on your chat updates (list of chats & authors who posted there)
   - Summary on your activities (chats you wrote to, messages sent, the amount of time saved by talking, etc.)
 - Custom chat & account IDs (actual.chat/u/xxx URLs, + similar ones for chats - should be aliases requiring no redirect)
-- Application tab: move Server/WASM mode there
 - Add "Auto" rendering mode (from .NET 8)
-- Add "Disable file system cache" option (+ explain it means it stores nearly nothing on the device)
 - Allow to set author's background image
-- Allow to rename contacts + use your custom contact name for any author of a given user (unless anonymous)
-- Pin chat/user to the left panel
 - Join requests feature
-- "New message [in another chat]" notification banner
-
-Chat Settings panel:
-- Allow to set chat background image (shown @ the top of Chat Settings tab)
-- Show bios in Members list
-- Show "last online @"
 
 Default chats:
 - No preselected default chats (all [x] to [ ])
