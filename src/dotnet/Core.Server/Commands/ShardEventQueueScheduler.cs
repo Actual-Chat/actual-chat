@@ -45,7 +45,7 @@ public class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider servic
         QueuedCommand command,
         CancellationToken cancellationToken)
     {
-        Log.LogDebug("Running queued command: {Command}", command);
+        Log.LogDebug("Running queued event: {Command}", command);
         if (command.UntypedCommand is not IEventCommand untypedCommand) {
             Log.LogWarning("Unable to handle a command as an event: {Event}", command.UntypedCommand);
             return;

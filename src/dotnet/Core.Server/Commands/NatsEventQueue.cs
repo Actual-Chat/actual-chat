@@ -34,19 +34,19 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
     }
 
     protected override string BuildJetStreamName()
-        => JetStreamName;
+        => $"{GetPrefix()}{JetStreamName}";
 
     protected override string BuildSubject(Type commandType)
-        => $"events.{QueueId.ShardIndex}.{commandType.Name}";
+        => $"{GetPrefix()}events.{QueueId.ShardIndex}.{commandType.Name}";
 
-    protected override async Task<INatsJSStream> CreateJetStream(NatsJSContext js, CancellationToken cancellationToken)
+    protected override async Task<INatsJSStream> CreateJetStream(NatsJSContext js, string jetStreamName, CancellationToken cancellationToken)
     {
         var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NatsEventQueue));
         var lockHolder = await meshLocks.Lock(nameof(EnsureStreamExists), "", cancellationToken).ConfigureAwait(false);
         await using var _ = lockHolder.ConfigureAwait(false);
         var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
-        var config = new StreamConfig(JetStreamName, new[] { "events.>" }) {
+        var config = new StreamConfig(jetStreamName, new[] { $"{GetPrefix()}events.>" }) {
             MaxMsgs = Queues.Settings.MaxQueueSize,
             Compression = StreamConfigCompression.S2,
             Storage = StreamConfigStorage.File,
@@ -57,15 +57,13 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
         };
 
         var jsStream = await js.CreateStreamAsync(config, lockCts.Token).ConfigureAwait(false);
-
-
         return jsStream;
     }
 
     protected override Task<INatsJSConsumer> CreateConsumer(INatsJSStream jetStream, string consumerName, CancellationToken cancellationToken)
         => CreateConsumer(jetStream, HostRole.EventQueue, cancellationToken);
 
-    protected async ValueTask<INatsJSConsumer> EnsureConsumerExists(INatsJSStream jetStream, HostRole hostRole, CancellationToken cancellationToken)
+    private async ValueTask<INatsJSConsumer> EnsureConsumerExists(INatsJSStream jetStream, HostRole hostRole, CancellationToken cancellationToken)
     {
         if (_consumers.TryGetValue(hostRole.Id, out var consumer))
             return consumer;
@@ -110,7 +108,7 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
         var config = new ConsumerConfig(name) {
             DurableName = name,
             MaxDeliver = Settings.MaxTryCount,
-            FilterSubject = $"events.{QueueId.ShardIndex}.>",
+            FilterSubject = $"{GetPrefix()}events.{QueueId.ShardIndex}.>",
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
             AckWait = TimeSpan.FromMinutes(15),
             MaxAckPending = 100,

@@ -110,10 +110,10 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
     }
 
     protected virtual string BuildJetStreamName()
-        => JetStreamName;
+        => $"{GetPrefix()}{JetStreamName}";
 
     protected virtual string BuildSubject(Type commandType)
-        => $"commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.{commandType.Name}";
+        => $"{GetPrefix()}commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.{commandType.Name}";
 
     protected string GetRoleString(HostRole hostRole)
         => hostRole == HostRole.BackendServer
@@ -167,7 +167,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
 
             }
             catch (NatsJSApiException e) when (e.Error.Code == 404) {
-                _jetStream = await CreateJetStream(js, cancellationToken).ConfigureAwait(false);
+                _jetStream = await CreateJetStream(js, jetStreamName, cancellationToken).ConfigureAwait(false);
             }
             catch (NatsJSApiNoResponseException e) {
                 if (retryCount++ > 3)
@@ -221,15 +221,14 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         return consumerName;
     }
 
-    protected virtual async Task<INatsJSStream> CreateJetStream(NatsJSContext js, CancellationToken cancellationToken)
+    protected virtual async Task<INatsJSStream> CreateJetStream(NatsJSContext js, string jetStreamName, CancellationToken cancellationToken)
     {
         var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NatsCommandQueue));
         var lockHolder = await meshLocks.Lock(nameof(EnsureStreamExists), "", cancellationToken).ConfigureAwait(false);
         await using var _ = lockHolder.ConfigureAwait(false);
         var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
-        var jetStreamName = BuildJetStreamName();
-        var config = new StreamConfig(jetStreamName, new[] { "commands.>" }) {
+        var config = new StreamConfig(jetStreamName, new[] { $"{GetPrefix()}commands.>" }) {
             MaxMsgs = Queues.Settings.MaxQueueSize,
             Compression = StreamConfigCompression.S2,
             Storage = StreamConfigStorage.File,
@@ -249,7 +248,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
     {
         var config = new ConsumerConfig(consumerName) {
             MaxDeliver = Settings.MaxTryCount,
-            FilterSubject = $"commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.>",
+            FilterSubject = $"{GetPrefix()}commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.>",
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
             AckWait = TimeSpan.FromMinutes(15),
             MaxAckPending = 100,
@@ -258,6 +257,11 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         };
         return await jetStream.CreateOrUpdateConsumerAsync(config, cancellationToken).ConfigureAwait(false);
     }
+
+    protected string GetPrefix()
+        => Settings.CommonPrefix == ""
+            ? ""
+            : $"{Settings.CommonPrefix}-";
 
     private enum CommandVersion : byte
     {

@@ -8,6 +8,7 @@ public class NatsCommandQueues(NatsCommandQueues.Options settings, IServiceProvi
 
     public sealed record Options
     {
+        public string CommonPrefix { get; init; } = "";
         public int MaxQueueSize { get; init; } = Constants.Queues.SharedCommandQueueDefaultSize;
         public int ReplicaCount { get; init; } = 0;
         public int MaxTryCount { get; set; } = 2;

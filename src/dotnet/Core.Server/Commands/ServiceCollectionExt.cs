@@ -51,7 +51,7 @@ public static class ServiceCollectionExt
         }
         if (!services.HasService<NatsCommandQueues.Options>())
             services.AddSingleton(optionsBuilder ?? (static _ => new NatsCommandQueues.Options()));
-        if (!services.HasService<ShardCommandQueueScheduler>(serviceKey) && optionsBuilder != null)
+        if (!services.HasService<NatsCommandQueues.Options>(serviceKey) && optionsBuilder != null)
             services.AddKeyedSingleton(serviceKey, (s, _) => optionsBuilder(s));
 
         if (!services.HasService<ShardCommandQueueScheduler>(serviceKey)) {
