@@ -20,16 +20,13 @@ public sealed partial record UserOnboardingSettings : IHasOrigin
     [Obsolete("Use LocalOnboardingSettings.IsPermissionsStepCompleted.")]
     [DataMember, MemoryPackOrder(7)] public bool IsPermissionsStepCompleted { get; init; }
 
-    public bool HasUncompletedSteps(bool enableIncompleteUI) {
-        if (!IsEmailStepCompleted && enableIncompleteUI)
-            return true;
-
-        return this is not {
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
+    public bool HasUncompletedSteps
+        => this is not {
             IsAvatarStepCompleted: true,
             IsVerifyPhoneStepCompleted: true,
             IsCreateChatsStepCompleted: true,
-            // IsEmailStepCompleted: true,
+            IsEmailStepCompleted: true,
             // IsPermissionsStepCompleted: true,
         };
-    }
 }
