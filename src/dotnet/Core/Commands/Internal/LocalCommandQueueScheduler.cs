@@ -12,7 +12,7 @@ public class LocalCommandQueueScheduler : WorkerBase
     private IServiceProvider Services { get; }
     private ICommandQueues Queues { get; }
     private ICommander Commander { get; }
-    private RecentlySeenMap<Symbol, Unit> KnownCommands { get; }
+    private RecentlySeenMap<Ulid, Unit> KnownCommands { get; }
 
     public LocalCommandQueues.Options Settings { get; }
 
@@ -24,7 +24,7 @@ public class LocalCommandQueueScheduler : WorkerBase
 
         Queues = services.GetRequiredService<LocalCommandQueues>();
         Commander = services.GetRequiredService<ICommander>();
-        KnownCommands = new RecentlySeenMap<Symbol, Unit>(
+        KnownCommands = new RecentlySeenMap<Ulid, Unit>(
             Settings.MaxKnownCommandCount,
             Settings.MaxKnownCommandAge);
     }

@@ -56,19 +56,6 @@ public static class CommandExt
         return command;
     }
 
-    public static QueuedCommand WithRetry(this QueuedCommand command)
-    {
-        var id = command.Id.Value;
-        if (id.OrdinalIndexOf(" @retry-") is var retrySuffixStart and >= 0)
-            id = id[..retrySuffixStart];
-        var newTryIndex = command.TryIndex + 1;
-        var newCommand = command with {
-            Id = $"{id} @retry-{newTryIndex.Format()}",
-            TryIndex = newTryIndex,
-        };
-        return newCommand;
-    }
-
     // Private methods
 
     private static IOperation GetOperation(CommandContext? commandContext)
