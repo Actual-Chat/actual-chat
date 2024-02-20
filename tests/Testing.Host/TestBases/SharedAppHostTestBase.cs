@@ -1,3 +1,5 @@
+using ActualChat.Commands;
+
 namespace ActualChat.Testing.Host;
 
 public abstract class SharedAppHostTestBase<TAppHostFixture>(
@@ -20,10 +22,12 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
         return base.InitializeAsync();
     }
 
-    protected override Task DisposeAsync()
+    protected override async Task DisposeAsync()
     {
+        var queues = AppHost.Services.GetRequiredService<ICommandQueues>();
+        await queues.Purge(CancellationToken.None).ConfigureAwait(false);
         AppHost.Output = _originalAppHostOutput;
-        return base.DisposeAsync();
+        await base.DisposeAsync();
     }
 
     // Just a shortcut

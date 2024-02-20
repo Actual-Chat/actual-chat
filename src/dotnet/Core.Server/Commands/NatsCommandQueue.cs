@@ -109,6 +109,12 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         await message.NakAsync(new AckOpts { DoubleAck = true }, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
+    public async ValueTask Purge(CancellationToken cancellationToken)
+    {
+        var jetStream = await EnsureStreamExists(cancellationToken);
+        await jetStream.PurgeAsync(new StreamPurgeRequest(), cancellationToken).ConfigureAwait(false);
+    }
+
     protected virtual string BuildJetStreamName()
         => $"{GetPrefix()}{JetStreamName}";
 

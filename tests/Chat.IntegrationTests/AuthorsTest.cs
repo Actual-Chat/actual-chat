@@ -3,7 +3,7 @@
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class AuthorsTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class AuthorsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact(Skip = "Fails on CI")]

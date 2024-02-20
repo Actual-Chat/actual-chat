@@ -1,4 +1,5 @@
 using ActualChat.App.Server;
+using ActualChat.Commands;
 using ActualLab.Fusion.EntityFramework.Operations;
 using ActualLab.Testing.Output;
 

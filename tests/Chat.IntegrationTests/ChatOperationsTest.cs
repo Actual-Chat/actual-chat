@@ -10,7 +10,7 @@ using ActualLab.Fusion.EntityFramework;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class ChatOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Theory]

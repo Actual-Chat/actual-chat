@@ -22,6 +22,12 @@ public sealed class LocalCommandQueues(LocalCommandQueues.Options settings, ISer
     public ICommandQueueBackend GetBackend(QueueId queueId)
         => Get(queueId);
 
+    public async Task Purge(CancellationToken cancellationToken)
+    {
+        foreach (var queue in _queues.Values)
+            await queue.Purge(cancellationToken).ConfigureAwait(false);
+    }
+
     // Private methods
 
     private LocalCommandQueue Get(QueueId queueId)
