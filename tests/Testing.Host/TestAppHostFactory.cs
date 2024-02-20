@@ -62,6 +62,9 @@ public static class TestAppHostFactory
             },
         };
         appHost.Build();
+        // Cleanup existing queues
+        var queues = appHost.Services.GetRequiredService<ICommandQueues>();
+        await queues.Purge(CancellationToken.None);
 
         if (Constants.DebugMode.Npgsql)
             Npgsql.NpgsqlLoggingConfiguration.InitializeLogging(appHost.Services.GetRequiredService<ILoggerFactory>(), true);

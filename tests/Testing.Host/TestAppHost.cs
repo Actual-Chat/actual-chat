@@ -15,10 +15,23 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
         set => OutputAccessor.Output = value;
     }
 
+    public Task WaitForProcessingOfAlreadyQueuedCommands()
+        => WaitForProcessingOfAlreadyQueuedCommands(TimeSpan.FromSeconds(3));
+
+    public async Task WaitForProcessingOfAlreadyQueuedCommands(TimeSpan timeout)
+    {
+        var commandQueueSchedulers = Services.GetServices<ICommandQueueScheduler>();
+        foreach (var commandQueueScheduler in commandQueueSchedulers)
+            await commandQueueScheduler.ProcessAlreadyQueued(timeout, CancellationToken.None);
+    }
+
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing) {
             DisposeDbOperationCompletionNotifiers();
+            var queues = Services.GetRequiredService<ICommandQueues>();
+            _ = queues.Purge(CancellationToken.None);
+        }
         base.Dispose(disposing);
     }
 

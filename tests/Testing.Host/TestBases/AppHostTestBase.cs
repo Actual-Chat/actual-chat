@@ -1,6 +1,3 @@
-using System.Collections.Concurrent;
-using ActualChat.Commands;
-
 namespace ActualChat.Testing.Host;
 
 public abstract class AppHostTestBase(
@@ -10,8 +7,6 @@ public abstract class AppHostTestBase(
     ILogger? log = null
     ) : TestBase(@out, log)
 {
-    private readonly ConcurrentBag<TestAppHost> _activeHosts = [];
-
     protected TestAppHostOptions AppHostOptions { get; init; }
         = (appHostOptions ?? TestAppHostOptions.Default).With(instanceName, @out);
 
@@ -24,15 +19,6 @@ public abstract class AppHostTestBase(
         var options = AppHostOptions;
         options = optionOverrider?.Invoke(options) ?? options;
         var appHost = await TestAppHostFactory.NewAppHost(options);
-        _activeHosts.Add(appHost);
         return appHost;
-    }
-
-    protected override async Task DisposeAsync()
-    {
-        foreach (var testAppHost in _activeHosts) {
-            var queues = testAppHost.Services.GetRequiredService<ICommandQueues>();
-            await queues.Purge(CancellationToken.None).ConfigureAwait(false);
-        }
     }
 }

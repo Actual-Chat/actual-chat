@@ -57,6 +57,7 @@ public static class ServiceCollectionExt
         if (!services.HasService<ShardCommandQueueScheduler>(serviceKey)) {
             services.AddKeyedSingleton<ShardCommandQueueScheduler>(serviceKey, (c, _) => new ShardCommandQueueScheduler(hostRole, c));
             services.AddSingleton<IHostedService, ShardCommandQueueScheduler>(c => c.GetRequiredKeyedService<ShardCommandQueueScheduler>(serviceKey));
+            services.AddKeyedSingleton<ICommandQueueScheduler>(serviceKey, (c, _) => c.GetRequiredKeyedService<ShardCommandQueueScheduler>(serviceKey));
         }
         if (!services.HasService<ShardCommandQueueScheduler.Options>())
             services.AddSingleton(schedulerOptionsBuilder ?? (static _ => new ShardCommandQueueScheduler.Options()));

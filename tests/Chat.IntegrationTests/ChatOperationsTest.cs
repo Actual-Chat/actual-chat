@@ -153,7 +153,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var chatsBackend = services.GetRequiredService<IChatsBackend>();
         var authors = services.GetRequiredService<IAuthors>();
 
-        await services.Clocks().SystemClock.Delay(2000);
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         var dbHub = services.DbHub<ChatDbContext>();
         var dbContext = dbHub.CreateDbContext();

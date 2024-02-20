@@ -2,7 +2,7 @@ using ActualChat.Hosting;
 
 namespace ActualChat.Commands.Internal;
 
-public class LocalCommandQueueScheduler : WorkerBase
+public class LocalCommandQueueScheduler : WorkerBase, ICommandQueueScheduler
 {
     private const int ShardIndex = 0;
 
@@ -27,6 +27,20 @@ public class LocalCommandQueueScheduler : WorkerBase
         KnownCommands = new RecentlySeenMap<Ulid, Unit>(
             Settings.MaxKnownCommandCount,
             Settings.MaxKnownCommandAge);
+    }
+
+    public async Task ProcessAlreadyQueued(TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        var queueId = new QueueId(HostRole.BackendServer, ShardIndex);
+        var queueBackend = Queues.GetBackend(queueId);
+        var bufferedCommands = queueBackend.Read(cancellationToken).Buffer(timeout, Services.Clocks().SystemClock, cancellationToken);
+        await foreach (var commands in bufferedCommands) {
+            if (commands.Count == 0)
+                return;
+
+            foreach (var command in commands)
+                await RunCommand(queueBackend, command, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
