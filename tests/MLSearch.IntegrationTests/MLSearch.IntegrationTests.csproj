@@ -2,4 +2,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Testing.Host\Testing.Host.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenSearch.Net" />
+    <PackageReference Include="OpenSearch.Net.VirtualizedCluster" />
+    <PackageReference Include="OpenSearch.Client" />
+  </ItemGroup>
 </Project>
