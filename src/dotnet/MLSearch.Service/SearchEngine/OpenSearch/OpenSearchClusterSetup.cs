@@ -6,23 +6,19 @@ using OpenSearch.Net;
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
 //TODO: Understand Distribute Lock Context usage and requirements.
-using OpenSearchDistributedLockContext = Object;
+public class OpenSearchDistributedLockContext;
 
-public class OpenSearchClusterSetup(IServiceProvider services) : WorkerBase
+public class OpenSearchClusterSetup(
+    IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILogger log, DistributedLocks<OpenSearchDistributedLockContext> distributedLocks
+    ) : WorkerBase
 {
     private readonly TaskCompletionSource _whenCompleted = new ();
-    private OpenSearchClusterSettings? _settings;
-    private OpenSearchClient? _opensearch;
-    private DistributedLocks<OpenSearchDistributedLockContext>? _distributedLock;
-    private ILogger? _log;
 
+    private OpenSearchClusterSettings Settings { get; } = settings;
+    private IOpenSearchClient OpenSearchClient { get; } = openSearch;
+    private DistributedLocks<OpenSearchDistributedLockContext> DistributedLocks { get; } = distributedLocks;
 
-    private OpenSearchClusterSettings Settings => _settings ??= services.GetRequiredService<OpenSearchClusterSettings>();
-    private OpenSearchClient OpenSearchClient => _opensearch ??= services.GetRequiredService<OpenSearchClient>();
-    private DistributedLocks<OpenSearchDistributedLockContext> DistributedLocks
-        => _distributedLock ??= services.GetRequiredService<DistributedLocks<OpenSearchDistributedLockContext>>();
-
-    private ILogger Log => _log ??= services.LogFor(GetType());
+    private ILogger Log { get; } = log;
 
     public Task WhenCompleted => _whenCompleted.Task;
 

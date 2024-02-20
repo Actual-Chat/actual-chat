@@ -4,8 +4,10 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.SearchEngine.OpenSearch;
+using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
+using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -20,8 +22,14 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         }
 
         if (HostInfo.HasRole(HostRole.MLSearchBackendClusterSetup)) {
-            services.AddSingleton<OpenSearchClusterSetup>()
-                .AddHostedService(c => c.GetRequiredService<OpenSearchClusterSetup>());
+            services.AddSingleton(services => {
+                var openSearchClient = services.GetRequiredService<OpenSearchClient>();
+                var settings = services.GetRequiredService<OpenSearchClusterSettings>();
+                var log = services.LogFor(typeof(OpenSearchClusterSetup));
+                var distributedLock = services.GetRequiredService<DistributedLocks<OpenSearchDistributedLockContext>>();
+                return new OpenSearchClusterSetup(openSearchClient, settings, log, distributedLock);
+            })
+            .AddHostedService(c => c.GetRequiredService<OpenSearchClusterSetup>());
             //(?) return;
         }
         // Redis
@@ -55,7 +63,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IHistoryExtractor, HistoryExtractor>();
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
         services.AddKeyedSingleton<ISearchEngine>("OpenSearch", (services, serviceKey) => {
-            return new OpenSearchEngine(services);
+            var openSearchClient = services.GetRequiredService<OpenSearchClient>();
+            var settings = services.GetRequiredService<OpenSearchClusterSettings>();
+            var log = services.LogFor(typeof(OpenSearchEngine));
+            return new OpenSearchEngine(openSearchClient, settings, log);
         });
     }
 }

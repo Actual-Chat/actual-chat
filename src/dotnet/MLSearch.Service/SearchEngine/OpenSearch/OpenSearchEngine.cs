@@ -4,14 +4,12 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
-internal class OpenSearchEngine(IServiceProvider services) : ISearchEngine
+internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILogger log) : ISearchEngine
 {
-    private OpenSearchClusterSettings? _settings;
-    private OpenSearchClient? _opensearch;
-    private ILogger? _log;
+    private ILogger? _log = log;
 
-    private OpenSearchClusterSettings Settings => _settings ??= services.GetRequiredService<OpenSearchClusterSettings>();
-    private OpenSearchClient OpenSearchClient => _opensearch ??= services.GetRequiredService<OpenSearchClient>();
+    private OpenSearchClusterSettings Settings { get; } = settings;
+    private IOpenSearchClient OpenSearchClient { get; } = openSearch;
 
     public Task<VectorSearchResult> Find(VectorSearchQuery query, CancellationToken cancellationToken)
         // Executes search over vector database
