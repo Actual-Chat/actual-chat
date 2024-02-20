@@ -13,10 +13,10 @@ public class TranscriptStreamServer : StreamServerBase<TranscriptDiff>, ITranscr
     public new virtual Task Write(Symbol streamId, IAsyncEnumerable<TranscriptDiff> stream, CancellationToken cancellationToken)
         => base.Write(streamId, stream, cancellationToken);
 
-    public TranscriptStreamServer SkipDispose()
-        => new SkipDisposeWrapper(this);
+    public TranscriptStreamServer SuppressDispose()
+        => new SuppressDisposeWrapper(this);
 
-    private sealed class SkipDisposeWrapper(TranscriptStreamServer instance) : TranscriptStreamServer(instance.Services)
+    private sealed class SuppressDisposeWrapper(TranscriptStreamServer instance) : TranscriptStreamServer(instance.Services)
     {
         public override Task<IAsyncEnumerable<TranscriptDiff>> Read(Symbol streamId, CancellationToken cancellationToken)
             => instance.Read(streamId, cancellationToken);

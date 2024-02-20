@@ -31,11 +31,11 @@ public abstract class StreamServerBase<TItem> : IDisposable
         Metrics = services.GetRequiredService<OtelMetrics>();
     }
 
-    public bool IsStreamExists(Symbol streamId)
-        => _streams.TryGetValue(streamId, out _);
-
     public virtual void Dispose()
         => _disposeTokenSource.CancelAndDisposeSilently();
+
+    public bool HasStream(Symbol streamId)
+        => _streams.TryGetValue(streamId, out _);
 
     protected async Task<IAsyncEnumerable<TItem>> Read(Symbol streamId, CancellationToken cancellationToken)
     {

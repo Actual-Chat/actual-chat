@@ -1,9 +1,9 @@
 namespace ActualChat.Audio;
 
-public class AudioStreamServer : StreamServerBase<byte[]>, IAudioStreamServer
+public class AudioStreamServer(IServiceProvider services) : StreamServerBase<byte[]>(services), IAudioStreamServer
 {
-    public AudioStreamServer(IServiceProvider services) : base(services)
-    { }
+    public AudioStreamServer SuppressDispose()
+        => new SuppressDisposeWrapper(this);
 
     public virtual async Task<IAsyncEnumerable<byte[]>> Read(
         Symbol streamId,
@@ -16,9 +16,6 @@ public class AudioStreamServer : StreamServerBase<byte[]>, IAudioStreamServer
 
     public new virtual Task Write(Symbol streamId, IAsyncEnumerable<byte[]> stream, CancellationToken cancellationToken)
         => base.Write(streamId, stream, cancellationToken);
-
-    public AudioStreamServer SkipDispose()
-        => new SkipDisposeWrapper(this);
 
     // Private methods
 
@@ -39,7 +36,7 @@ public class AudioStreamServer : StreamServerBase<byte[]>, IAudioStreamServer
             .Prepend(headerDataTask);
     }
 
-    private sealed class SkipDisposeWrapper(AudioStreamServer instance) : AudioStreamServer(instance.Services)
+    private sealed class SuppressDisposeWrapper(AudioStreamServer instance) : AudioStreamServer(instance.Services)
     {
         public override Task<IAsyncEnumerable<byte[]>> Read(Symbol streamId, TimeSpan skipTo, CancellationToken cancellationToken)
             => instance.Read(streamId, skipTo, cancellationToken);

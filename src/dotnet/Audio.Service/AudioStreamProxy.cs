@@ -105,8 +105,9 @@ public class AudioStreamProxy : IAudioStreamServer
             var addressRing = serviceEndpoints.GetAddressHashRing();
             if (addressRing.IsEmpty) {
                 Log.LogError("Read({Stream}): empty address ring!", streamName);
-                if (AudioStreamServer.IsStreamExists(streamId))
+                if (AudioStreamServer.HasStream(streamId))
                     return await AudioStreamServer.Read(streamId, skipTo1, cancellationToken1).ConfigureAwait(false);
+
                 return AsyncEnumerable.Empty<byte[]>();
             }
             var port = serviceEndpoints.GetPort()!.Port;
@@ -127,8 +128,9 @@ public class AudioStreamProxy : IAudioStreamServer
                 }
             }
             DebugLog?.LogInformation("Read({Stream}): no stream found", streamName);
-            if (AudioStreamServer.IsStreamExists(streamId))
+            if (AudioStreamServer.HasStream(streamId))
                 return await AudioStreamServer.Read(streamId, skipTo1, cancellationToken1).ConfigureAwait(false);
+
             return AsyncEnumerable.Empty<byte[]>();
         }
     }
@@ -228,6 +230,6 @@ public class AudioStreamProxy : IAudioStreamServer
     private async Task<IAudioStreamServer> GetAudioStreamClient(
         Kube kube, string address, int port, CancellationToken cancellationToken)
         => OrdinalEquals(address, kube.PodIP) && !kube.IsEmulated
-            ? AudioStreamServer.SkipDispose()
+            ? AudioStreamServer.SuppressDispose()
             : await AudioHubBackendClientFactory.GetAudioStreamClient(address, port, cancellationToken).ConfigureAwait(false);
 }
