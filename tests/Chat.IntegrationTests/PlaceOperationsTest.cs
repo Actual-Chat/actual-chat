@@ -6,8 +6,8 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-[Collection(nameof(ChatCollection))]
-public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
+[Collection(nameof(PlaceCollection))]
+public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const string PlaceTitle = "AC Place";

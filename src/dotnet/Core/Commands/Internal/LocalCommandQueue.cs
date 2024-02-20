@@ -41,4 +41,7 @@ public sealed class LocalCommandQueue : ICommandQueue, ICommandQueueBackend
         Interlocked.Increment(ref _failureCount);
         return default;
     }
+
+    public ValueTask Purge(CancellationToken cancellationToken)
+        => ValueTask.CompletedTask;
 }

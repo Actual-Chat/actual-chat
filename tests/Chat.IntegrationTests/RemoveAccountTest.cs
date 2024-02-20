@@ -4,7 +4,7 @@ using ActualLab.Mathematics;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class RemoveAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private ChatId TestChatId => Constants.Chat.DefaultChatId;

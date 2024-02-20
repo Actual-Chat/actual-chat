@@ -8,7 +8,7 @@ using ActualLab.Mathematics;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class DbTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private ChatId TestChatId => Constants.Chat.DefaultChatId;

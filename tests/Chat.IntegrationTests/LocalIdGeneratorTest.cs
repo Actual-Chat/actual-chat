@@ -6,7 +6,7 @@ using ActualLab.Fusion.EntityFramework;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class LocalIdGeneratorTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class LocalIdGeneratorTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact(Skip = "For manual runs only")]
