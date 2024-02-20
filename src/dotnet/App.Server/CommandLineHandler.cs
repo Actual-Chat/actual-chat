@@ -48,35 +48,63 @@ public static class CommandLineHandler
         if (ownRoleIndex < 0)
             throw StandardError.Configuration($"Invalid {MultiHostRoleArgPrefix} argument value.");
 
-        // Using similar host to get own http:// endpoint
-        var similarHost = new AppHost().Build(configurationOnly: true);
-        var endpoint = ServerEndpoints.List(similarHost.Services, "http://").FirstOrDefault();
-        var (host, port) = ServerEndpoints.Parse(endpoint);
-
+        var (host, defaultPort) = GetDefaultHostAndPort();
         var ownUrl = GetUrl(ownRoleIndex);
         WriteLine($"MultiHost mode. Own role: {ownRole} @ {ownUrl}");
 
         for (var roleIndex = 0; roleIndex < AllRoles.Length; roleIndex++) {
-            var url = $"http://{host}:{port + roleIndex}";
             var role = AllRoles[roleIndex];
             if (role == ownRole)
                 continue;
 
-            LaunchAppHost(role, url);
+            LaunchAppHost(role, host, defaultPort + roleIndex);
         }
 
         // In the very end: set env. vars to own role vars
         Environment.SetEnvironmentVariable(UrlsEnvVar, ownUrl);
         Environment.SetEnvironmentVariable(ServerRoleEnvVar, ownRole.Value);
 
+        if (args.Any(x => OrdinalEquals(x, "-kb")))
+            _ = WatchKeyboard();
+
         string GetUrl(int roleIndex)
-            => $"http://{host}:{port + roleIndex}";
+            => $"http://{host}:{defaultPort + roleIndex}";
+
+        async Task WatchKeyboard() {
+            var port = defaultPort + AllRoles.Length;
+            while (true) {
+                if (!KeyAvailable) {
+                    await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+                    continue;
+                }
+
+                var key = ReadKey(true).KeyChar;
+                if (key is < '0' or > '9')
+                    continue;
+
+                var role = AllRoles.GetValueOrDefault(key - '0');
+                if (role.IsNone || role == HostRole.FrontendServer)
+                    continue;
+
+                LaunchAppHost(role, host, port++);
+            }
+            // ReSharper disable once FunctionNeverReturns
+        }
     }
 
     // Private methods
 
-    private static void LaunchAppHost(HostRole role, string url)
+    private static (string Host, int Port) GetDefaultHostAndPort()
     {
+        // Building a similar host to get our own http:// endpoint
+        var similarHost = new AppHost().Build(configurationOnly: true);
+        var endpoint = ServerEndpoints.List(similarHost.Services, "http://").FirstOrDefault();
+        return ServerEndpoints.Parse(endpoint);
+    }
+
+    private static void LaunchAppHost(HostRole role, string host, int port)
+    {
+        var url = $"http://{host}:{port}";
         WriteLine($"Launching host: {role} @ {url}");
         var startInfo = new ProcessStartInfo("cmd.exe") {
             ArgumentList = {

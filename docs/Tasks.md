@@ -1,9 +1,7 @@
 Near term:
 
 Infrastructure:
-- RPC / sharding:
-  - Verify mesh change works as expected
-  - Add a hotkey allowing to start another backend server 
+- Add RpcMonitor
 - Migrate audio pipeline to RPC / sharding
 - Remove Kubernetes project
 - SharedResourcePool must be IAsyncDisposable
