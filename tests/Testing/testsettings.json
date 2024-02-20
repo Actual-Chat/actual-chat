@@ -27,6 +27,8 @@
     "Db": "",
     "Redis": ""
   },
+  "MLSearchSettings": {
+  },
   "SearchSettings": {
   },
   "UsersSettings": {

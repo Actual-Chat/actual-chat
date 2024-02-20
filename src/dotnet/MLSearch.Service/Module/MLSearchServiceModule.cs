@@ -4,6 +4,7 @@ using ActualChat.Db.Module;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.SearchEngine.OpenSearch;
+using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
 
 namespace ActualChat.MLSearch.Module;
@@ -23,6 +24,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 .AddHostedService(c => c.GetRequiredService<OpenSearchClusterSetup>());
             //(?) return;
         }
+        // Redis
+        var redisModule = Host.GetModule<RedisModule>();
+        redisModule.AddRedisDb<MLSearchDbContext>(services, Settings.Redis);
 
         // DB
         var dbModule = Host.GetModule<DbModule>();
