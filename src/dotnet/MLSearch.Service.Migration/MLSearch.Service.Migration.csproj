@@ -2,4 +2,8 @@
   <ItemGroup>
     <ProjectReference Include="..\MLSearch.Service\MLSearch.Service.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+  </ItemGroup>
 </Project>
