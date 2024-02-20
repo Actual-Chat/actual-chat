@@ -3,12 +3,14 @@ using ActualChat.Hosting;
 namespace ActualChat.Commands;
 
 public class ShardCommandQueueScheduler(HostRole hostRole, IServiceProvider services)
-    : ShardWorker(services, ShardScheme.ById[hostRole], "CommandQueueScheduler")
+    : ShardWorker(services, ShardScheme.ById[hostRole], "CommandQueueScheduler"), ICommandQueueScheduler
 {
     public sealed record Options
     {
         public int Concurrency { get; set; } = HardwareInfo.GetProcessorCountFactor(8);
     }
+
+    private long _lastCommandTicks = 0;
 
     private HostRole HostRole { get; } = hostRole;
 
@@ -17,6 +19,18 @@ public class ShardCommandQueueScheduler(HostRole hostRole, IServiceProvider serv
 
     private ICommandQueues Queues { get; } = services.GetRequiredService<ICommandQueues>();
     private ICommander Commander { get; } = services.GetRequiredService<ICommander>();
+
+    public async Task ProcessAlreadyQueued(TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        while (true) {
+            await Clock.Delay(timeout, cancellationToken).ConfigureAwait(false);
+
+            var lastCommandTicks = Interlocked.Read(ref _lastCommandTicks);
+            var currentTicks = Clock.UtcNow.Ticks;
+            if (currentTicks - lastCommandTicks > timeout.Ticks)
+                break;
+        }
+    }
 
     protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
@@ -46,6 +60,22 @@ public class ShardCommandQueueScheduler(HostRole hostRole, IServiceProvider serv
 
             if (cancellationToken.IsCancellationRequested)
                 throw;
+        }
+        finally {
+            var commandCompletionTicks = Clock.UtcNow.Ticks;
+            ExchangeIfGreaterThan(ref _lastCommandTicks, commandCompletionTicks);
+        }
+    }
+
+    private static void ExchangeIfGreaterThan(ref long location, long value)
+    {
+        var current = Interlocked.Read(ref location);
+        while (current < value) {
+            var previous = Interlocked.CompareExchange(ref location, value, current);
+            if (previous == current || previous >= value)
+                break;
+
+            current = Interlocked.Read(ref location);
         }
     }
 }

@@ -44,6 +44,8 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         var place = await CreatePlace(commander, session, isPublicPlace);
         place.Should().NotBeNull();
 
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+
         await TestExt.WhenMetAsync(
             async () => {
                 place = await places.Get(session, place.Id, default);
@@ -66,6 +68,8 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         await using var tester2 = appHost.NewBlazorTester();
         var anotherSession = tester2.Session;
         await tester2.SignInAsAlice();
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(
             async () => {
@@ -98,6 +102,8 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         var chat = await CreateChat(commander, session, place.Id, isPublicChat);
         chat.Should().NotBeNull();
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(
             async () => {
@@ -208,6 +214,8 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         await commander.Call(new Places_Join(anotherSession, place.Id));
 
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+
         await TestExt.WhenMetAsync(
             async () => {
                 var placeIds = await contacts.ListPlaceIds(anotherSession, default);
@@ -267,6 +275,8 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
 
         // Leave
         await commander.Call(new Places_Leave(anotherSession, placeId));
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(
             async () => {
@@ -331,6 +341,8 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
         }
 
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+
         if (isPublicChat) {
             // Assert user can see the Chat while previewing the Place.
             await TestExt.WhenMetAsync(
@@ -348,6 +360,8 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
 
         await commander2.Call(new Places_Join(anotherSession, place.Id));
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         // Assert user can see the Place.
         await TestExt.WhenMetAsync(
@@ -368,6 +382,8 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
             await commander2.Call(new Authors_Join(anotherSession, chat.Id));
         }
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         // Assert user can see the Chat.
         await TestExt.WhenMetAsync(

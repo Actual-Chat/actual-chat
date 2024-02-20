@@ -18,7 +18,8 @@ public static class ServiceCollectionExt
             services.AddSingleton<ICommandQueues>(c => c.GetRequiredService<LocalCommandQueues>());
             services.AddSingleton<ICommandQueueIdProvider>(c => new LocalCommandQueueIdProvider());
             services.AddSingleton<LocalCommandQueueScheduler>();
-            services.AddHostedService<LocalCommandQueueScheduler>();
+            services.AddSingleton<ICommandQueueScheduler>(c => c.GetRequiredService<LocalCommandQueueScheduler>());
+            services.AddHostedService<LocalCommandQueueScheduler>(c => c.GetRequiredService<LocalCommandQueueScheduler>());
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IOperationCompletionListener, EnqueueOnCompletionProcessor>());
         }
         services.AddSingleton(optionsBuilder ?? (static _ => new LocalCommandQueues.Options()));
