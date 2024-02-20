@@ -12,7 +12,7 @@ public sealed class OpenSearchClusterSettings
     public Id IntoIngestPipelineId()
         => new (IngestPipelineName + IntoUniqueKey());
 
-    public String IntoSearchIndexId()
+    public string IntoSearchIndexId()
         => SearchIndexName + IntoUniqueKey();
     public string IntoUniqueKey()
     {

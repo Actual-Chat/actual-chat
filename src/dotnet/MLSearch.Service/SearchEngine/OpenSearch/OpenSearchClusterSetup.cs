@@ -56,7 +56,7 @@ public class OpenSearchClusterSetup(IServiceProvider services) : WorkerBase
         var searchIndexId = Settings.IntoSearchIndexId();
         var modelId = Settings.ModelId;
         var modelDimension = Settings.ModelDimension.ToString("D", CultureInfo.InvariantCulture);
-        OpenSearchClient.Http.Run(
+        await OpenSearchClient.Http.RunAsync(
             $$"""
               PUT /_ingest/pipeline/{{ingestPipelineId}}
               {
@@ -70,10 +70,11 @@ public class OpenSearchClusterSetup(IServiceProvider services) : WorkerBase
                     }
                   ]
               }
-              """
-        );
+              """,
+              cancellationToken
+        ).ConfigureAwait(false);
         // TODO: Assert success and http 200
-        OpenSearchClient.Http.Run(
+        await OpenSearchClient.Http.RunAsync(
             $$"""
               PUT /{{searchIndexId}}
               {
@@ -107,10 +108,9 @@ public class OpenSearchClusterSetup(IServiceProvider services) : WorkerBase
                     }
                 }
               }
-              """
-        );
+              """,
+              cancellationToken
+        ).ConfigureAwait(false);
         // TODO: Assert success and http 200
     }
-
-
 }
