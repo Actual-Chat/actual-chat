@@ -20,7 +20,7 @@ services:
     volumes:
       - opensearch-data1:/usr/share/opensearch/data # Creates volume called opensearch-data1 and mounts it to the container
     ports:
-      - 9200:9200 # REST API
+      - 9201:9200 # REST API
       - 9600:9600 # Performance Analyzer
     networks:
       - opensearch-net # All of the containers will join the same Docker bridge network
@@ -109,9 +109,9 @@ services:
       dockerfile: opensearch-dashboard-no-security.dockerfile
     container_name: opensearch-dashboards
     ports:
-      - 5601:5601 # Map host port 5601 to container port 5601
+      - 5602:5601 # Map host port 5601 to container port 5601
     expose:
-      - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
+      - "5602" # Expose port 5601 for web access to OpenSearch Dashboards
     environment:
       ml_commons_dashboards.enabled: true
       OPENSEARCH_HOSTS: '["http://opensearch-node1:9200","http://opensearch-node2:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
