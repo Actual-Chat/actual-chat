@@ -30,12 +30,14 @@
             </Tab>
         </TabPanel>
 
-        <div class="ai-btn">
-            <Button Class="btn-primary" Click="OnClick">
-                <i class="icon-ai-search"></i>
-                Open AI Search
-            </Button>
-        </div>
+        @if (_showSearchAiButton) {
+            <div class="ai-btn">
+                <Button Class="btn-primary" Click="@OnAISearchClick">
+                    <i class="icon-ai-search"></i>
+                    Open AI Search
+                </Button>
+            </div>
+        }
 
     </div>
 </SearchPanel>
@@ -43,11 +45,20 @@
 
 @code {
     private SearchPanel? _searchPanelRef;
+    private bool _showSearchAiButton;
 
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     [Inject] private ChatUIHub Hub { get; set; } = null!;
 
     private SearchUI SearchUI => Hub.SearchUI;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter] public EventCallback OnAISearchClick { get; set; }
+
+    protected override void OnInitialized() {
+        _showSearchAiButton = !PanelsUI.Right.IsSearchMode.Value;
+        base.OnInitialized();
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (_searchPanelRef != null)
@@ -58,6 +69,4 @@
         SearchUI.Text.Value = string.Empty;
         PanelsUI.Left.SearchToggle();
     }
-
-    private void OnClick() { }
 }
