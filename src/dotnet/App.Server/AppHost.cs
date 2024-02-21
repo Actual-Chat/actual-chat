@@ -1,3 +1,4 @@
+using ActualChat.App.Server.Initializers;
 using ActualChat.Hosting;
 using ActualChat.Mesh;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
@@ -79,54 +80,45 @@ public class AppHost : IDisposable
             || type?.IsAssignableTo(typeof(IAsyncDisposable)) == true ? type : null;
     }
 
-    public virtual async Task InvokeDbInitializers(CancellationToken cancellationToken = default)
-    {
-        if (Services.HostInfo().IsTested) {
-            // Just to speed up tests
-            await InvokeDbInitializersUnsafe(cancellationToken).ConfigureAwait(false);
-            return;
-        }
+    public virtual async Task InvokeInitializers(CancellationToken cancellationToken = default)
+        => await InvokeInitializers(new IServiceInitializer[] {
+                    new ExecuteDbInitializers(Services),
+                    new ExecuteMLBackendInitializers(Services),
+                },
+                cancellationToken
+            )
+            .ConfigureAwait(false);
 
+    private async Task InvokeInitializers(IEnumerable<IServiceInitializer> initializers, CancellationToken cancellationToken = default)
+    {
+        var tasks = new List<Task>();
+        foreach (var initializer in  initializers) {
+            if (Services.HostInfo().IsTested) {
+                // Just to speed up tests
+                tasks.Add(InvokeInitializersUnsafe(initializer, cancellationToken));
+            }
+            else {
+                tasks.Add(InvokeInitializersProtected(initializer,cancellationToken));
+            }
+        }
+        await Task.WhenAll(tasks).ConfigureAwait(false);
+    }
+    private async Task InvokeInitializersProtected(IServiceInitializer initializer, CancellationToken cancellationToken = default)
+    {
         var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(AppHost));
-        var lockHolder = await meshLocks.Lock(nameof(InvokeDbInitializers), "", cancellationToken).ConfigureAwait(false);
+        var lockKey = initializer.GetType().Name;
+        const string lockValue = nameof(InvokeInitializersProtected);
+        var lockHolder = await meshLocks.Lock(lockKey, lockValue, cancellationToken).ConfigureAwait(false);
         await using var _ = lockHolder.ConfigureAwait(false);
         var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
-        await InvokeDbInitializersUnsafe(lockCts.Token).ConfigureAwait(false);
+        await InvokeInitializersUnsafe(initializer, lockCts.Token).ConfigureAwait(false);
     }
 
-    public virtual async Task InvokeDbInitializersUnsafe(CancellationToken cancellationToken = default)
-    {
-        // InitializeSchema
-        await InvokeDbInitializers(
-            nameof(IDbInitializer.InitializeSchema),
-            (x, ct) => x.InitializeSchema(ct),
-            cancellationToken
-            ).ConfigureAwait(false);
-
-        // InitializeData
-        await InvokeDbInitializers(
-            nameof(IDbInitializer.InitializeData),
-            (x, ct) => x.InitializeData(ct),
-            cancellationToken
-            ).ConfigureAwait(false);
-
-        // RepairData
-        await InvokeDbInitializers(
-            nameof(IDbInitializer.RepairData),
-            x => x.ShouldRepairData,
-            (x, ct) => x.RepairData(ct),
-            cancellationToken
-            ).ConfigureAwait(false);
-
-        // VerifyData
-        await InvokeDbInitializers(
-            nameof(IDbInitializer.VerifyData),
-            x => x.ShouldVerifyData,
-            (x, ct) => x.VerifyData(ct),
-            cancellationToken
-            ).ConfigureAwait(false);
-    }
+    private async Task InvokeInitializersUnsafe(IServiceInitializer initializer, CancellationToken cancellationToken)
+        => await initializer
+            .Invoke(cancellationToken)
+            .ConfigureAwait(false);
 
     public virtual Task Run(CancellationToken cancellationToken = default)
         => Host.RunAsync(cancellationToken);
@@ -174,63 +166,4 @@ public class AppHost : IDisposable
         IServiceCollection services)
         => AppServicesBuilder?.Invoke(webHost, services);
 
-    private Task InvokeDbInitializers(
-        string name,
-        Func<IDbInitializer, CancellationToken, Task> invoker,
-        CancellationToken cancellationToken)
-        => InvokeDbInitializers(name, _ => true, invoker, cancellationToken);
-
-    private async Task InvokeDbInitializers(
-        string name,
-        Func<IDbInitializer, bool> mustInvokePredicate,
-        Func<IDbInitializer, CancellationToken, Task> invoker,
-        CancellationToken cancellationToken)
-    {
-        var log = Host.Services.LogFor(GetType());
-        var runningTaskSources = Host.Services.GetServices<IDbInitializer>()
-            .ToDictionary(x => x, _ => TaskCompletionSourceExt.New<bool>());
-        var runningTasks = runningTaskSources
-            .ToDictionary(kv => kv.Key, kv => (Task)kv.Value.Task);
-        foreach (var (dbInitializer, _) in runningTasks)
-            dbInitializer.RunningTasks = runningTasks;
-        var tasks = runningTaskSources
-            .Select(kv => mustInvokePredicate.Invoke(kv.Key) ? InvokeOne(kv.Key, kv.Value) : Task.CompletedTask)
-            .ToArray();
-
-        try {
-            await Task.WhenAll(tasks).ConfigureAwait(false);
-        }
-        finally {
-            foreach (var (dbInitializer, _) in runningTasks)
-                dbInitializer.RunningTasks = null!;
-        }
-        return;
-
-        async Task InvokeOne(IDbInitializer dbInitializer, TaskCompletionSource<bool> initializedSource)
-        {
-            using var _ = dbInitializer.Activate();
-            var dbInitializerName = $"{dbInitializer.GetType().GetName()}.{name}";
-            try {
-                using var _1 = Tracer.Default.Region(dbInitializerName);
-                log.LogInformation("{DbInitializer} started", dbInitializerName);
-                var task = invoker.Invoke(dbInitializer, cancellationToken);
-                if (task.IsCompletedSuccessfully)
-                    log.LogInformation("{DbInitializer} completed synchronously (skipped?)", dbInitializerName);
-                else {
-                    await task.ConfigureAwait(false);
-                    log.LogInformation("{DbInitializer} completed", dbInitializerName);
-                }
-                initializedSource.TrySetResult(default);
-            }
-            catch (OperationCanceledException) {
-                initializedSource.TrySetCanceled(cancellationToken);
-                throw;
-            }
-            catch (Exception e) {
-                log.LogError(e, "{DbInitializer} failed", dbInitializerName);
-                initializedSource.TrySetException(e);
-                throw;
-            }
-        }
-    }
 }

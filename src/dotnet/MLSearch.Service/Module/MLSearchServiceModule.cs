@@ -26,8 +26,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 var openSearchClient = services.GetRequiredService<OpenSearchClient>();
                 var settings = services.GetRequiredService<OpenSearchClusterSettings>();
                 var log = services.LogFor(typeof(OpenSearchClusterSetup));
-                var distributedLock = services.GetRequiredService<DistributedLocks<OpenSearchDistributedLockContext>>();
-                return new OpenSearchClusterSetup(openSearchClient, settings, log, distributedLock);
+                return new OpenSearchClusterSetup(openSearchClient, settings, log);
             })
             .AddHostedService(c => c.GetRequiredService<OpenSearchClusterSetup>());
             //(?) return;
@@ -62,11 +61,18 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         fusion.AddService<IMLSearchBackend, MLSearchBackend>();
         services.AddSingleton<IHistoryExtractor, HistoryExtractor>();
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
+
+        var openSearchClusterSettings = Settings.OpenSearchClusterSettings ?? throw new InvalidOperationException("OpenSearchClusterSettings are not set");
+        services.AddSingleton<IOpenSearchClient>(_ =>
+            new OpenSearchClient(
+                new Uri(openSearchClusterSettings.OpenSearchClusterUri)
+            )
+        );
         services.AddKeyedSingleton<ISearchEngine>("OpenSearch", (services, serviceKey) => {
             var openSearchClient = services.GetRequiredService<OpenSearchClient>();
-            var settings = services.GetRequiredService<OpenSearchClusterSettings>();
             var log = services.LogFor(typeof(OpenSearchEngine));
-            return new OpenSearchEngine(openSearchClient, settings, log);
+            return new OpenSearchEngine(openSearchClient, openSearchClusterSettings, log);
         });
+
     }
 }

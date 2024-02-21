@@ -4,6 +4,7 @@ namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
 public sealed class OpenSearchClusterSettings
 {
+    public string OpenSearchClusterUri { get; set; } = "";
     public string? ModelId { get; set; }
     public int ModelDimension { get; set; }
     public string IngestPipelineName { get; set; } = "ml-ingest-pipeline";

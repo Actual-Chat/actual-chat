@@ -9,14 +9,13 @@ namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 public class OpenSearchDistributedLockContext;
 
 public class OpenSearchClusterSetup(
-    IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILogger log, DistributedLocks<OpenSearchDistributedLockContext> distributedLocks
+    IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILogger log
     ) : WorkerBase
 {
     private readonly TaskCompletionSource _whenCompleted = new ();
 
     private OpenSearchClusterSettings Settings { get; } = settings;
     private IOpenSearchClient OpenSearchClient { get; } = openSearch;
-    private DistributedLocks<OpenSearchDistributedLockContext> DistributedLocks { get; } = distributedLocks;
 
     private ILogger Log { get; } = log;
 
@@ -37,12 +36,6 @@ public class OpenSearchClusterSetup(
 
     private async Task Run(CancellationToken cancellationToken)
     {
-        var clusterSetupSyncLockKey = Settings.IntoUniqueKey();
-        await DistributedLocks.Run(EnsureClusterSetup, "EnsureClusterSetup-"+clusterSetupSyncLockKey, cancellationToken)
-            .ConfigureAwait(false);
-    }
-    private async Task EnsureClusterSetup(CancellationToken cancellationToken)
-    {
         // Notes:
         // There's no reason make this script efficient.
         // It is called once and only once to setup an opensearch cluster.
@@ -50,8 +43,12 @@ public class OpenSearchClusterSetup(
         using var _1 = Tracer.Default.Region();
         var ingestPipelineId = Settings.IntoIngestPipelineId();
         var searchIndexId = Settings.IntoSearchIndexId();
-        var modelId = Settings.ModelId;
+        var modelId = Settings.ModelId ?? throw new InvalidOperationException("Model Id is not set.");
+        if (Settings.ModelDimension == 0) {
+            throw new InvalidOperationException("Model Dimension is not set.");
+        }
         var modelDimension = Settings.ModelDimension.ToString("D", CultureInfo.InvariantCulture);
+
         await OpenSearchClient.Http.RunAsync(
             $$"""
               PUT /_ingest/pipeline/{{ingestPipelineId}}
