@@ -1,0 +1,89 @@
+@namespace ActualChat.Chat.UI.Blazor.Components
+@using ActualLab.Rpc
+@inherits FusionComponentBase
+
+<div class="ai-search-panel">
+    <div class="c-content">
+        <div class="c-header">
+            <div class="c-avatar">
+                <ai-bot-svg />
+            </div>
+            <div class="c-title">
+                Chat AI Bot
+            </div>
+            <HeaderButton>
+                <i class="icon-history"></i>
+            </HeaderButton>
+            <HeaderButton Click="@CloseSearchPanel">
+                <i class="icon-close"></i>
+            </HeaderButton>
+        </div>
+        <div class="c-body"></div>
+        <div class="c-footer">
+            <label for="ai-bot-input" class="ai-input-label">
+                <MarkupEditor
+                    @ref="_editorRef"
+                    MentionNamer="@_chatMarkupHub.MentionNamer"
+                    HtmlConverter="@_chatMarkupHub.EditorHtmlConverter"
+                    Id="ai-bot-input"
+                    Class="ai-bot-editor"
+                    Placeholder="Ask for any help with the chat"
+                    Post="OnPost"
+                    Cancel="OnCancel"
+                    OpenPrevious="OnOpenPrevious"/>
+            </label>
+            <HeaderButton>
+                <ai-talking-svg />
+            </HeaderButton>
+        </div>
+    </div>
+</div>
+
+@code {
+    private MarkupEditor _editorRef = null!;
+    private string _markup = "";
+    private Markup _parsedMarkup = null!;
+    private IChatMarkupHub _chatMarkupHub = null!;
+    private SearchPanel? _searchPanelRef;
+    private ChatId _chatId = ChatId.None;
+
+    [Inject] private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+
+    [Parameter, EditorRequired] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _chatId = ChatContext.Chat.Id;
+        _chatMarkupHub = ChatMarkupHubFactory[Constants.Chat.DefaultChatId];
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (_searchPanelRef != null)
+            await _searchPanelRef.Focus();
+    }
+
+    private void CloseSearchPanel() {
+        ChatContext.Hub.PanelsUI.Right.SearchToggle();
+        if (ScreenSize.IsNarrow()) {
+            ChatContext.Hub.PanelsUI.Right.SetIsVisible(false);
+        }
+        ChatContext.Hub.ChatUI.EnableSearch(ChatId.None);
+    }
+
+    private async Task OnSetMarkupClick()
+        => await _editorRef.SetText(_markup, true);
+
+    private async Task OnPost(string text) {
+        _markup = text;
+        _parsedMarkup = await _chatMarkupHub.Parse(_markup, true, default);
+        await _editorRef.Clear();
+        StateHasChanged();
+    }
+
+    private async Task OnCancel()
+        => await OnSetMarkupClick();
+
+    private async Task OnOpenPrevious()
+        => await _editorRef.SetHtml("This is previous message.");
+}

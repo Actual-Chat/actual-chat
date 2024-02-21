@@ -35,7 +35,7 @@
         <div class="chat-header-control-panel">
         @if (m.EnableIncompleteUI) {
             <HeaderButton Click="@OnSearchClick" Class="@searchCls">
-                <i class="icon-search text-2xl"></i>
+                <i class="icon-ai-search"></i>
             </HeaderButton>
         }
         @if (IsRightNavigateButtonVisible) {
@@ -44,11 +44,6 @@
     </div>
     }
 </div>
-
-@if (m.IsSearchMode && ScreenSize.IsNarrow()) {
-    <ChatSearchPanel ChatContext="@ChatContext" />
-}
-
 
 @code {
     [Inject] private ChatUIHub Hub { get; init; } = null!;
@@ -63,17 +58,17 @@
         => new() {
             UpdateDelayer = FixedDelayer.Instant,
             Category = GetStateCategory(),
-            InitialValue = Model.None
+            InitialValue = Model.None,
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasSelection = await ChatContext.Hub.SelectionUI.HasSelection.Use(cancellationToken);
-        var isSearchMode = await ChatContext.Hub.ChatUI.IsSearchEnabled(ChatContext.Chat.Id);
+        var isSearchMode = await ChatContext.Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken);
         var enableIncompleteUI = await Hub.Features().Get<Features_EnableIncompleteUI, bool>(cancellationToken);
         return new() {
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
-            EnableIncompleteUI = enableIncompleteUI
+            EnableIncompleteUI = enableIncompleteUI,
         };
     }
 
@@ -83,23 +78,8 @@
     private void OnOpenLeftPanelClick()
         => ChatContext.Hub.PanelsUI.Left.SetIsVisible(true);
 
-    private void OnSearchClick() {
-        if (ScreenSize.IsWide()) {
-            var isRightPanelOpened = ChatContext.Hub.PanelsUI.Right.IsVisible.Value;
-            if (isRightPanelOpened && ChatContext.Hub.ChatUI.IsSearchEnabled(ChatContext.Chat.Id).Result) {
-                ChatContext.Hub.ChatUI.EnableSearch(ChatId.None);
-                return;
-            }
-
-            if (!isRightPanelOpened)
-                ChatContext.Hub.PanelsUI.Right.OpenBySearch = true;
-
-            ChatContext.Hub.PanelsUI.Right.SetIsVisible(true);
-            ChatContext.Hub.ChatUI.EnableSearch(ChatContext.Chat.Id);
-        } else {
-            ChatContext.Hub.ChatUI.EnableSearch(ChatContext.Chat.Id);
-        }
-    }
+    private void OnSearchClick()
+        => ChatContext.Hub.PanelsUI.Right.SearchToggle();
 
     public sealed record Model {
         public static readonly Model None = new ();
