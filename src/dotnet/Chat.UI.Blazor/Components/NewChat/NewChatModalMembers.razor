@@ -30,7 +30,6 @@
 
 @code {
     private MemberSelector? _memberSelector;
-    private ChatId _chatId;
     private IMemberSelector _memberSelectorBackend = null!;
 
     private IReadOnlySet<UserId> SelectedUserIds
@@ -38,14 +37,13 @@
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string ChatSid { get; set; } = "";
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public EventCallback<bool> Skipped { get; set; }
     [Parameter, EditorRequired] public EventCallback<bool> Completed { get; set; }
 
     protected override void OnInitialized() {
-        _chatId = ChatId.Parse(ChatSid);
-        _memberSelectorBackend = new NewChatMemberSelector(Hub, _chatId);
+        _memberSelectorBackend = new NewChatMemberSelector(Hub, ChatId);
     }
 
     private async Task OnAdd() {
