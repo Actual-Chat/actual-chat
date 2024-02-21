@@ -9,7 +9,7 @@ using ActualChat.Kvas;
 using ActualChat.Media;
 using ActualChat.Notification;
 using ActualChat.Security;
-using ActualChat.Transcription;
+using ActualChat.Streaming;
 using ActualChat.Users;
 using ActualLab.RestEase;
 
@@ -26,10 +26,9 @@ public sealed class ApiClientModule(IServiceProvider moduleServices) : HostModul
         var rpc = fusion.Rpc;
 
         // Audio
-        services.AddScoped<AudioDownloader>(c => new AudioDownloader(c));
-        services.AddScoped<AudioClient>(c => new AudioClient(c));
-        services.AddTransient<IAudioStreamer>(c => c.GetRequiredService<AudioClient>());
-        services.AddTransient<ITranscriptStreamer>(c => c.GetRequiredService<AudioClient>());
+        rpc.AddClient<IStreamServer>();
+        services.AddSingleton<IStreamClient>(c => new StreamClient(c));
+        services.AddSingleton<AudioDownloader>(c => new AudioDownloader(c));
 
         // Chat
         fusion.AddClient<IChats>();

@@ -1,7 +1,7 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.Audio.UI.Blazor.Services;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Notification.UI.Blazor;
+using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Components;
 using ActualChat.UI.Blazor.Services;
 using Microsoft.JSInterop;

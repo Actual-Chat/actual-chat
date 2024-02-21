@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
   </ItemGroup>
 
 </Project>

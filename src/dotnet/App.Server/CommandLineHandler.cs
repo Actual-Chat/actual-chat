@@ -7,6 +7,7 @@ public static class CommandLineHandler
 {
     private const string UrlArgPrefix = "-url:";
     private const string RoleArgPrefix = "-role:";
+    private const string KeyboardArg = "-kb";
     private const string MultiHostRoleArgPrefix = "-multihost-role:";
     private const string UrlsEnvVar = "URLS";
     private const string ServerRoleEnvVar = "HostSettings__ServerRole";
@@ -17,6 +18,9 @@ public static class CommandLineHandler
 
     public static void Process(string[] args)
     {
+        // -kb argument
+        var useKeyboard = args.Any(x => OrdinalEquals(x, KeyboardArg));
+
         // -url:<url> argument
         var urlOverride = args
             .Select(x => x.OrdinalStartsWith(UrlArgPrefix) ? x[UrlArgPrefix.Length..].Trim() : null)
@@ -41,8 +45,13 @@ public static class CommandLineHandler
             .Select(x => x.OrdinalStartsWith(MultiHostRoleArgPrefix) ? x[MultiHostRoleArgPrefix.Length..].Trim().NullIfEmpty() : null)
             .Select(HostRoles.Server.Parse)
             .SingleOrDefault(x => !x.IsNone);
-        if (ownRole.IsNone)
+        if (ownRole.IsNone) {
+            if (useKeyboard) {
+                var (host1, defaultPort1) = GetDefaultHostAndPort();
+                _ = WatchKeyboard(host1, defaultPort1, useKeyboard);
+            }
             return;
+        }
 
         var ownRoleIndex = Array.IndexOf(AllRoles, ownRole);
         if (ownRoleIndex < 0)
@@ -57,39 +66,19 @@ public static class CommandLineHandler
             if (role == ownRole)
                 continue;
 
-            LaunchAppHost(role, host, defaultPort + roleIndex);
+            LaunchAppHost(role, host, defaultPort + roleIndex, useKeyboard);
         }
 
         // In the very end: set env. vars to own role vars
         Environment.SetEnvironmentVariable(UrlsEnvVar, ownUrl);
         Environment.SetEnvironmentVariable(ServerRoleEnvVar, ownRole.Value);
 
-        if (args.Any(x => OrdinalEquals(x, "-kb")))
-            _ = WatchKeyboard();
+        if (useKeyboard)
+            _ = WatchKeyboard(host, defaultPort, useKeyboard);
+        return;
 
         string GetUrl(int roleIndex)
             => $"http://{host}:{defaultPort + roleIndex}";
-
-        async Task WatchKeyboard() {
-            var port = defaultPort + AllRoles.Length;
-            while (true) {
-                if (!KeyAvailable) {
-                    await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
-                    continue;
-                }
-
-                var key = ReadKey(true).KeyChar;
-                if (key is < '0' or > '9')
-                    continue;
-
-                var role = AllRoles.GetValueOrDefault(key - '0');
-                if (role.IsNone || role == HostRole.FrontendServer)
-                    continue;
-
-                LaunchAppHost(role, host, port++);
-            }
-            // ReSharper disable once FunctionNeverReturns
-        }
     }
 
     // Private methods
@@ -102,7 +91,7 @@ public static class CommandLineHandler
         return ServerEndpoints.Parse(endpoint);
     }
 
-    private static void LaunchAppHost(HostRole role, string host, int port)
+    private static void LaunchAppHost(HostRole role, string host, int port, bool useKeyboard)
     {
         var url = $"http://{host}:{port}";
         WriteLine($"Launching host: {role} @ {url}");
@@ -111,9 +100,31 @@ public static class CommandLineHandler
                 "/C", "start", "/D", Environment.CurrentDirectory, Environment.ProcessPath!,
                 RoleArgPrefix + role.Value,
                 UrlArgPrefix + url,
+                useKeyboard ? KeyboardArg : "",
             },
             UseShellExecute = true,
         };
         System.Diagnostics.Process.Start(startInfo);
+    }
+
+    private static async Task WatchKeyboard(string host, int defaultPort, bool useKeyboard) {
+        var port = defaultPort + AllRoles.Length;
+        while (true) {
+            if (!KeyAvailable) {
+                await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+                continue;
+            }
+
+            var key = ReadKey(true).KeyChar;
+            if (key is < '0' or > '9')
+                continue;
+
+            var role = AllRoles.GetValueOrDefault(key - '0');
+            if (role.IsNone || role == HostRole.FrontendServer)
+                continue;
+
+            LaunchAppHost(role, host, port++, useKeyboard);
+        }
+        // ReSharper disable once FunctionNeverReturns
     }
 }

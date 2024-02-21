@@ -34,6 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Kubernetes\Kubernetes.csproj" />
     <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
     <!-- You must reference migration projects here for services w/ DBs -->
     <ProjectReference Include="..\Chat.Service.Migration\Chat.Service.Migration.csproj" />
@@ -45,7 +46,7 @@
     <ProjectReference Include="..\Media.Service.Migration\Media.Service.Migration.csproj" />
     <ProjectReference Include="..\Search.Service.Migration\Search.Service.Migration.csproj" />
     <!-- And service projects for stateless / other services -->
-    <ProjectReference Include="..\Audio.Service\Audio.Service.csproj" />
+    <ProjectReference Include="..\Streaming.Service\Streaming.Service.csproj" />
     <ProjectReference Include="..\Transcription.Service\Transcription.Service.csproj" />
     <!-- But don't reference their clients! -->
     <ProjectReference Include="..\App.Wasm\App.Wasm.csproj" />

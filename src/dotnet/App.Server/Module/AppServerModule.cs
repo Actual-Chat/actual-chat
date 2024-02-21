@@ -1,18 +1,20 @@
 using System.IO.Compression;
 using ActualChat.App.Server.Health;
-using ActualChat.Audio;
-using ActualChat.Chat;
+using ActualChat.Chat.Module;
 using ActualChat.Commands;
-using ActualChat.Contacts;
-using ActualChat.Feedback;
+using ActualChat.Contacts.Module;
+using ActualChat.Db.Module;
+using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
-using ActualChat.Invite;
-using ActualChat.Kubernetes;
+using ActualChat.Invite.Module;
+using ActualChat.Media.Module;
 using ActualChat.Module;
-using ActualChat.Notification;
+using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
-using ActualChat.Transcription;
-using ActualChat.Users;
+using ActualChat.Search.Module;
+using ActualChat.Streaming.Module;
+using ActualChat.Transcription.Module;
+using ActualChat.Users.Module;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -273,16 +275,23 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddSource(typeof(DbKey).GetActivitySource().Name) // ActualLab.Fusion.EntityFramework
                 // Our own activity sources (one per assembly)
                 .AddSource(AppTrace.Name)
-                .AddSource(typeof(IAudioStreamer).GetActivitySource().Name)
-                .AddSource(typeof(IChats).GetActivitySource().Name)
-                .AddSource(typeof(IContacts).GetActivitySource().Name)
-                .AddSource(typeof(IFeedbacks).GetActivitySource().Name)
-                .AddSource(typeof(IInvites).GetActivitySource().Name)
-                .AddSource(typeof(ITranscriber).GetActivitySource().Name)
-                .AddSource(typeof(INotifications).GetActivitySource().Name)
-                .AddSource(typeof(IAccounts).GetActivitySource().Name)
-                .AddSource(typeof(Constants).GetActivitySource().Name)
-                .AddSource(typeof(KubeServices).GetActivitySource().Name)
+                .AddSource(typeof(CoreModule).GetActivitySource().Name)
+                .AddSource(typeof(CoreServerModule).GetActivitySource().Name)
+                .AddSource(typeof(DbModule).GetActivitySource().Name)
+                .AddSource(typeof(RedisModule).GetActivitySource().Name)
+                .AddSource(typeof(ApiModule).GetActivitySource().Name)
+                .AddSource(typeof(ApiClientModule).GetActivitySource().Name)
+                .AddSource(typeof(StreamingServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(ChatServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(ContactsServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(FeedbackServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(InviteServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(MediaServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(SearchServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(TranscriptionServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(NotificationServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(UsersServiceModule).GetActivitySource().Name)
+                .AddSource(typeof(AppServerModule).GetActivitySource().Name)
                 .AddSource(ActivitySourceExt.Unknown.Name) // Unknown meter
                 .AddAspNetCoreInstrumentation(opt => {
                     var excludedPaths = new PathString[] {

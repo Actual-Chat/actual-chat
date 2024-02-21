@@ -37,10 +37,11 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         // Controllers, etc.
         services.AddRouting();
         var mvc = services.AddMvc(options => {
-            options.ModelBinderProviders.Add(new BackendModelBinderProvider());
-            options.ModelMetadataDetailsProviders.Add(new BackendValidationMetadataProvider());
+            options.ModelBinderProviders.Add(new MvcModelBinderProvider());
+            options.ModelMetadataDetailsProviders.Add(new MvcValidationMetadataProvider());
         });
         mvc.AddApplicationPart(GetType().Assembly);
+        services.AddResponseCaching();
 
         // Other services
         services.AddSingleton<IContentSaver>(c => new ContentSaver(c.BlobStorages()));

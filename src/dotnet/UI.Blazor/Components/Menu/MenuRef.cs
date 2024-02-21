@@ -7,7 +7,7 @@ public readonly struct MenuRef(
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type menuType,
     params string[] arguments)
 {
-    private const char Separator = '|';
+    private const char Delimiter = '|';
 
     public Type MenuType { get; } = menuType;
     public string[] Arguments { get; } = arguments;
@@ -33,7 +33,7 @@ public readonly struct MenuRef(
             span[0] = MenuRegistry.GetTypeId(MenuType).Value;
             for (int i = 0; i < Arguments.Length; i++)
                 span[i + 1] = Arguments[i].ToBase64();
-            return ZString.Join(Separator, (ReadOnlySpan<string>) span);
+            return ZString.Join(Delimiter, (ReadOnlySpan<string>) span);
         }
         finally {
             buffer.Release();
@@ -47,7 +47,7 @@ public readonly struct MenuRef(
 
     public static bool TryParse(string value, out MenuRef result)
     {
-        var parts = value.Split(Separator);
+        var parts = value.Split(Delimiter);
         if (parts.Length == 0) {
             result = default;
             return false;

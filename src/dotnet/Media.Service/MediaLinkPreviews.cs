@@ -13,7 +13,7 @@ public class MediaLinkPreviews(IServiceProvider services) : IMediaLinkPreviews
         => Backend.Get(id, cancellationToken);
 
     // [ComputeMethod]
-    [Obsolete("2023.10: Remains for backward compability")]
+    [Obsolete("2023.10: Remains for backward compability.")]
     public virtual Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken)
         => entryId.IsNone
             ? Task.FromResult<LinkPreview?>(null)

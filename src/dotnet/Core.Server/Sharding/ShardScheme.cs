@@ -22,7 +22,7 @@ public abstract class ShardScheme(Symbol id, int shardCount) : IHasId<Symbol>
         public static Backend Instance { get; } = new();
     }
 
-    public sealed class MediaBackend() : ShardScheme(HostRole.MediaBackendServer.Id, 10), IShardScheme<MediaBackend>
+    public sealed class MediaBackend() : ShardScheme(HostRole.MediaBackend.Id, 10), IShardScheme<MediaBackend>
     {
         public static MediaBackend Instance { get; } = new();
     }
@@ -47,6 +47,7 @@ public abstract class ShardScheme(Symbol id, int shardCount) : IHasId<Symbol>
     public int ShardCount { get; } = shardCount;
     public bool IsNone => ReferenceEquals(this, None.Instance);
     public bool IsDefault => ReferenceEquals(this, Default.Instance);
+    public bool IsQueue => Id.Value.OrdinalEndsWith("Queue");
 
     public IEnumerable<int> ShardIndexes { get; } = Enumerable.Range(0, shardCount);
 

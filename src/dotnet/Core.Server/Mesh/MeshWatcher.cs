@@ -15,7 +15,7 @@ public sealed class MeshWatcher : WorkerBase
     private IMeshLocks NodeLocks { get; }
     private ILogger Log { get; }
 
-    public MeshNode ThisNode { get; }
+    public MeshNode MeshNode { get; }
     public IState<MeshState> State => _state;
     public TimeSpan ChangeTimeout { get; }
     public IMomentClock Clock => NodeLocks.Clock;
@@ -23,7 +23,7 @@ public sealed class MeshWatcher : WorkerBase
     public MeshWatcher(IServiceProvider services, bool mustStart = true)
     {
         Log = services.LogFor(GetType());
-        ThisNode = services.MeshNode();
+        MeshNode = services.MeshNode();
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
         var isTested = services.GetRequiredService<HostInfo>().IsTested;
@@ -135,13 +135,13 @@ public sealed class MeshWatcher : WorkerBase
         var keys = await NodeLocks.ListKeys("", cancellationToken).ConfigureAwait(false);
         return keys.Select(key => {
             var node = MeshNode.Parse(key);
-            return node == ThisNode ? ThisNode : node;
+            return node == MeshNode ? MeshNode : node;
         }).Order().ToImmutableArray();
     }
 
     private async Task KeepLocked(TaskCompletionSource whenLockedTcs, CancellationToken cancellationToken)
     {
-        var key = ThisNode.ToString();
+        var key = MeshNode.ToString();
         while (!cancellationToken.IsCancellationRequested) {
             try {
                 var holder = await NodeLocks

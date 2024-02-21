@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.Streaming.UI.Blazor.Components;
 using ActualChat.Hosting;
 using ActualChat.Permissions;
 using ActualChat.UI.Blazor;

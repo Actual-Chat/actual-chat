@@ -1,0 +1,77 @@
+@namespace ActualChat.Streaming.UI.Blazor.Pages
+@using ActualChat.UI.Blazor.Services
+@using ActualChat.Streaming.UI.Blazor.Components
+@using ActualChat.Streaming.UI.Blazor.Components
+@page "/test/mic-permission-guides"
+
+@{
+    var cls = "btn-danger";
+    if (ScreenSize.IsNarrow()) {
+        cls += " btn-xs";
+    }
+}
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Mic Permission Test Page</MainHeader>
+
+<div class="test-page-text">
+    <div>
+        To call, to text, or
+        to voice message?
+        But... Could these options be purely artificial?
+        Is it possible to create a medium, which naturally combines all of them together?
+
+        We are here to redefine the meaning of "Chat".
+    </div>
+    <div>
+        We used to speak, laugh, and cry
+        But now we text, "like", and send emojis.
+
+        It's slower, inconvenient, and less expressive.
+
+        With all the progress in technology and AI,
+        how it happened that we can't just talk in chats?
+    </div>
+</div>
+
+<div class="test-page-btn-group">
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.WebChrome))">
+        Web Chrome
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.WebEdge))">
+        Web Edge
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.WebSafari))">
+        Web Safari
+    </Button>
+</div>
+<div class="test-page-btn-group">
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.MobileChromeAndroid))">
+        Android Chrome
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.MobileEdgeAndroid))">
+        Android Edge
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.MobileSafariIos))">
+        iOS Safari
+    </Button>
+</div>
+<div class="test-page-btn-group">
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.AndroidApp))">
+        Android App
+    </Button>
+    <Button Class="@cls" Click="@(_ => OnClick(GuideType.IosApp))">
+        iOS App
+    </Button>
+</div>
+
+@code {
+    [Inject] protected AppBlazorCircuitContext CircuitContext { get; init; } = null!;
+    [Inject] private ILogger<MicPermissionTestPage> Log { get; init; } = null!;
+    [Inject] private ModalUI ModalUI { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; init; }
+
+    private void OnClick(GuideType guideType)
+        => ModalUI.Show(new RecordingTroubleshooterModal.Model(guideType));
+}

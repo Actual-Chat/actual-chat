@@ -9,21 +9,21 @@ public static class AppLogging
     public const string OutputTemplate = "{Timestamp:HH:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
     public const string DebugOutputTemplate = "{Timestamp:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
     public const long FileSizeLimit = 10_000_000L;
+    public const string DevLogOutputTemplate = "{ProcessID}: {Timestamp:mm:ss.fff} {Level:u3} T{ThreadID} [{SourceContext}] {Message:l}{NewLine}{Exception}";
+    public const long DevLogFileSizeLimit = 100_000_000L;
 
-    public static readonly bool IsDevLogRequested;
-    public static readonly FilePath DevLogPath;
+    public static readonly FilePath DevLog;
     public static LogLevel MinLevel { get; private set; }
 
     static AppLogging()
     {
         var devLogEnvVar = Environment.GetEnvironmentVariable("ActualChat_DevLog");
-        IsDevLogRequested = !devLogEnvVar.IsNullOrEmpty();
-        DevLogPath = FilePath.New(devLogEnvVar);
+        DevLog = FilePath.New(devLogEnvVar);
     }
 
     public static ILoggingBuilder ConfigureClientFilters(this ILoggingBuilder logging, AppKind appKind)
     {
-        MinLevel = IsDevLogRequested ? LogLevel.Debug : LogLevel.Information;
+        MinLevel = DevLog.IsEmpty ? LogLevel.Information : LogLevel.Debug;
 #if DEBUG
         MinLevel = LogLevel.Debug;
 #endif
@@ -39,9 +39,9 @@ public static class AppLogging
 
     public static ILoggingBuilder ConfigureServerFilters(this ILoggingBuilder logging, string environment)
     {
-        MinLevel = LogLevel.Information;
-        if (IsDevLogRequested || OrdinalEquals(environment, Environments.Development))
-            MinLevel = LogLevel.Debug;
+        MinLevel = DevLog.IsEmpty && !OrdinalEquals(environment, Environments.Development)
+            ? LogLevel.Information
+            : LogLevel.Debug;
 
         logging.SetMinimumLevel(MinLevel);
         // Use appsettings*.json to configure logging filters

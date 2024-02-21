@@ -1,7 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.WebSockets;
-using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Diff.Handlers;
@@ -9,6 +8,7 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Security;
+using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
 using ActualChat.Users.UI.Blazor.Module;
@@ -147,7 +147,7 @@ public static class AppStartup
                 new ApiClientModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
-                new AudioBlazorUIModule(moduleServices),
+                new StreamingBlazorUIModule(moduleServices),
                 new UsersBlazorUIModule(moduleServices),
                 new ContactsBlazorUIModule(moduleServices),
                 new ChatBlazorUIModule(moduleServices),

@@ -6,6 +6,6 @@ public interface IMediaLinkPreviews : IComputeService
     Task<bool> IsEnabled();
     [ComputeMethod]
     Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken);
-    [ComputeMethod, Obsolete("2023.10: Remains for backward compability")]
+    [ComputeMethod, Obsolete("2023.10: Remains for backward compability.")]
     Task<LinkPreview?> GetForEntry(Symbol id, ChatEntryId entryId, CancellationToken cancellationToken);
 }

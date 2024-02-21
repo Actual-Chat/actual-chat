@@ -1,6 +1,6 @@
 namespace ActualChat.Chat;
 
-[Obsolete("2023.10: Use ActualChat.Media.LinkPreviews instead")]
+[Obsolete("2023.10: Use ActualChat.Media.LinkPreviews instead.")]
 public class LinkPreviews(IServiceProvider services) : ILinkPreviews
 {
     private Media.IMediaLinkPreviews Service { get; } = services.GetRequiredService<Media.IMediaLinkPreviews>();

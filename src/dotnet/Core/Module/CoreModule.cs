@@ -62,8 +62,8 @@ public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<Cor
     {
         base.InjectServices(services);
         var hostKind = HostInfo.HostKind;
+        var isApp = hostKind.IsApp();
         var isServer = hostKind.IsServer();
-        var isClient = hostKind.IsApp();
 
         // Common services
         services.AddTracer();
@@ -96,7 +96,7 @@ public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<Cor
             // won't be affected by this mode change!
             fusion = fusion.WithServiceMode(RpcServiceMode.Server, true);
         }
-        else if (isClient) {
+        else if (isApp) {
             services.AddScoped<ISessionResolver>(c => new DefaultSessionResolver(c));
             if (hostKind.IsMauiApp())
                 services.AddSingleton(c => new TrueSessionResolver(c));
@@ -104,18 +104,22 @@ public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<Cor
             services.AddSingleton(c => new RpcClientPeerReconnectDelayer(c) {
                 Delays = RetryDelaySeq.Exp(1, 180),
             });
-            if (hostKind.IsWasmApp() && HostInfo.IsDevelopmentInstance) {
-                if (Constants.DebugMode.RpcClient)
-                    services.AddSingleton<RpcPeerFactory>(_
-                        => static (hub, peerRef) => peerRef.IsServer
-                            ? throw StandardError.NotSupported("No server peers on the client.")
-                            : new RpcClientPeer(hub, peerRef) { CallLogLevel = LogLevel.Debug });
-            }
-            else
-                RpcServiceRegistry.ConstructionDumpLogLevel = LogLevel.None;
+
+            var isDevelopmentInstance = HostInfo.IsDevelopmentInstance;
+            var rpcCallLogLevel = Constants.DebugMode.RpcCalls.ApiClient && isDevelopmentInstance
+                ? LogLevel.Debug
+                : LogLevel.None;
+            services.AddSingleton<RpcPeerFactory>(_
+                => (hub, peerRef) => peerRef.IsServer
+                    ? throw StandardError.Internal("Server peer is requested on the client side!")
+                    : new RpcClientPeer(hub, peerRef) { CallLogLevel = rpcCallLogLevel });
+
+            RpcServiceRegistry.ConstructionDumpLogLevel = hostKind.IsWasmApp() && isDevelopmentInstance
+                ? LogLevel.Debug
+                : LogLevel.None;
         }
         fusion.AddComputedGraphPruner(_ => new ComputedGraphPruner.Options() {
-            CheckPeriod = TimeSpan.FromMinutes(isClient || IsDevelopmentInstance ? 5 : 10).ToRandom(0.1),
+            CheckPeriod = TimeSpan.FromMinutes(isApp || IsDevelopmentInstance ? 5 : 10).ToRandom(0.1),
         });
         fusion.AddFusionTime();
 
@@ -128,7 +132,7 @@ public sealed class CoreModule(IServiceProvider moduleServices) : HostModule<Cor
 
         if (isServer)
             InjectServerServices(services);
-        if (isClient)
+        if (isApp)
             InjectClientServices(services);
     }
 

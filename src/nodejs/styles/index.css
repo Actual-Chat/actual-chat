@@ -6,7 +6,7 @@
 @import '../styles/main.css';
 
 @import '../../dotnet/UI.Blazor/styles.css';
-@import '../../dotnet/Audio.UI.Blazor/styles.css';
 @import '../../dotnet/Chat.UI.Blazor/styles.css';
 @import '../../dotnet/Users.UI.Blazor/styles.css';
+@import '../../dotnet/Streaming.UI.Blazor/styles.css';
 @import '../../dotnet/UI.Blazor.App/styles.css';

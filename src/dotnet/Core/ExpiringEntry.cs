@@ -16,19 +16,18 @@ public sealed class ExpiringEntry<TKey, TValue> : IDisposable
     private CancellationTokenSource? _disposeTokenSource;
     private readonly CancellationToken _disposeToken;
     private Func<ExpiringEntry<TKey, TValue>, ValueTask>? _disposer;
-    private long _expiredAt;
+    private long _expiresAt;
 
     public ConcurrentDictionary<TKey, ExpiringEntry<TKey, TValue>> Dictionary { get; }
     public TKey Key { get; }
     public TValue Value { get; }
-    public IMomentClock Clock { get; private set; }
 
-    public Moment ExpiredAt {
+    public CpuTimestamp ExpiresAt {
         get {
-            var expiredAt = Interlocked.Read(ref _expiredAt);
-            return new Moment(expiredAt);
+            var expiredAt = Interlocked.Read(ref _expiresAt);
+            return new CpuTimestamp(expiredAt);
         }
-        private set => Interlocked.Exchange(ref _expiredAt, value.EpochOffsetTicks);
+        private set => Interlocked.Exchange(ref _expiresAt, value.Value);
     }
 
     public bool IsDisposed => _disposeToken.IsCancellationRequested;
@@ -41,7 +40,6 @@ public sealed class ExpiringEntry<TKey, TValue> : IDisposable
         Key = key;
         Value = value;
         Dictionary = dictionary;
-        Clock = MomentClockSet.Default.CpuClock;
         _disposeTokenSource = disposeTokenSource ?? new CancellationTokenSource();
         _disposeToken = _disposeTokenSource.Token;
     }
@@ -86,19 +84,15 @@ public sealed class ExpiringEntry<TKey, TValue> : IDisposable
         return this;
     }
 
-    public ExpiringEntry<TKey, TValue> BumpExpiresAt(Moment expiresAt, IMomentClock? clock = null)
+    public ExpiringEntry<TKey, TValue> BumpExpiresAt(CpuTimestamp expiresAt)
     {
-        if (clock != null)
-            Clock = clock;
-        ExpiredAt = Moment.Max(ExpiredAt, expiresAt);
+        ExpiresAt = new CpuTimestamp(Math.Max(ExpiresAt.Value, expiresAt.Value));
         return this;
     }
 
     public ExpiringEntry<TKey, TValue> BumpExpiresAt(TimeSpan expiresIn, IMomentClock? clock = null)
     {
-        if (clock != null)
-            Clock = clock;
-        ExpiredAt = Moment.Max(ExpiredAt, Clock.Now + expiresIn);
+        ExpiresAt = new CpuTimestamp(Math.Max(ExpiresAt.Value, (CpuTimestamp.Now + expiresIn).Value));
         return this;
     }
 
@@ -110,21 +104,22 @@ public sealed class ExpiringEntry<TKey, TValue> : IDisposable
 
     public Task Expire()
     {
-        if (ExpiredAt == default)
+        if (ExpiresAt == default)
             throw StandardError.StateTransition("ExpiresAt is not set.");
+
         return BackgroundTask.Run(async () => {
             try {
-                var expiredAt = ExpiredAt;
+                var expiredAt = ExpiresAt;
                 while (true) {
-                    await Clock.Delay(expiredAt, _disposeToken).ConfigureAwait(false);
-                    expiredAt = ExpiredAt;
-                    if (expiredAt <= Clock.Now)
+                    await Task.Delay(-expiredAt.Elapsed, _disposeToken).ConfigureAwait(false);
+                    expiredAt = ExpiresAt;
+                    if (expiredAt.Elapsed >= TimeSpan.Zero)
                         return;
                 }
             }
             finally {
                 Dispose();
             }
-        });
+        }, CancellationToken.None);
     }
 }

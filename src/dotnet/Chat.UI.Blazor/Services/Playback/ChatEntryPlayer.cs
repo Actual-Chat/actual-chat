@@ -1,16 +1,17 @@
 using ActualChat.Audio;
-using ActualChat.Audio.UI.Blazor.Components;
-using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Streaming.UI.Blazor.Components;
 using ActualChat.MediaPlayback;
 using ActualChat.Messaging;
+using ActualChat.Streaming;
+using ActualChat.Streaming.UI.Blazor.Services;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
 
 public sealed class ChatEntryPlayer : ProcessorBase
 {
     private ChatUIHub Hub { get; }
+    private IStreamClient StreamClient => Hub.StreamClient;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
-    private IAudioStreamer AudioStreamer => Hub.AudioStreamer;
     private AudioDownloader AudioDownloader => Hub.AudioDownloader;
     private AudioInitializer AudioInitializer => Hub.AudioInitializer;
     private MomentClockSet Clocks => Hub.Clocks();
@@ -125,7 +126,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         Moment playAt,
         CancellationToken cancellationToken)
     {
-        var audio = await AudioStreamer
+        var audio = await StreamClient
             .GetAudio(audioEntry.StreamId, skipTo, cancellationToken)
             .ConfigureAwait(false);
         var trackInfo = new ChatAudioTrackInfo(audioEntry) {
@@ -135,7 +136,7 @@ public sealed class ChatEntryPlayer : ProcessorBase
         _ = BackgroundTask.Run(async () => {
                 var now = Clocks.SystemClock.Now;
                 var latency = now - audio.CreatedAt;
-                await AudioStreamer.ReportLatency(latency, cancellationToken).ConfigureAwait(false);
+                await StreamClient.ReportAudioLatency(latency, cancellationToken).ConfigureAwait(false);
                 var recorderState = AudioRecorder.State.LastNonErrorValue;
                 if (recorderState.IsRecording && recorderState.ChatId == audioEntry.ChatId)
                     await AudioRecorder.ConversationSignal(cancellationToken).ConfigureAwait(false);

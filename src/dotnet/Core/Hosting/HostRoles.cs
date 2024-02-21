@@ -1,12 +1,7 @@
-using ActualChat.Attributes;
-
 namespace ActualChat.Hosting;
 
 public static class HostRoles
 {
-    private static readonly ConcurrentDictionary<Assembly, IReadOnlySet<HostRole>> _cachedAssemblyRoles = new();
-    private static readonly ConcurrentDictionary<Type, IReadOnlySet<HostRole>> _cachedTypeRoles = new();
-
     public static IReadOnlySet<HostRole> App { get; }
         = new HashSet<HostRole>([ HostRole.App, HostRole.BlazorHost ]);
 
@@ -37,25 +32,11 @@ public static class HostRoles
             if (roles.Contains(HostRole.FrontendServer))
                 roles.Add(HostRole.BlazorHost);
             if (roles.Contains(HostRole.BackendServer)) {
-                roles.Add(HostRole.MediaBackendServer);
+                roles.Add(HostRole.AudioBackend);
+                roles.Add(HostRole.MediaBackend);
                 roles.Add(HostRole.DefaultQueue);
             }
             return roles;
         }
     }
-
-    public static IReadOnlySet<HostRole> GetServedByRoles(Assembly assembly)
-        => _cachedAssemblyRoles.GetOrAdd(assembly, static a => a
-            .GetCustomAttributes<ServedByRoleAttribute>()
-            .Select(x => new HostRole(x.Role))
-            .ToHashSet());
-
-    public static IReadOnlySet<HostRole> GetServedByRoles(Type type)
-        => _cachedTypeRoles.GetOrAdd(type, static t => {
-            var typeRoles = t
-                .GetCustomAttributes<ServedByRoleAttribute>()
-                .Select(x => new HostRole(x.Role))
-                .ToHashSet();
-            return typeRoles.Count != 0 ? typeRoles : GetServedByRoles(t.Assembly);
-        });
 }

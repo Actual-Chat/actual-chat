@@ -2,6 +2,8 @@
 @inherits FusionComponentBase
 @implements IAsyncDisposable
 @using ActualChat.Transcription
+@using ActualChat.Audio
+@using ActualChat.Streaming
 
 <p class="@Class chat-message-transcript">
     @if (ShowEntryKind) {
@@ -19,7 +21,7 @@
     private ILogger? _log;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
-    [Inject] private ITranscriptStreamer TranscriptStreamer { get; init; } = null!;
+    private IStreamClient StreamClient => Hub.StreamClient;
     private Dispatcher Dispatcher => Hub.Dispatcher;
     private ILogger Log => _log ??= Hub.LogFor(GetType());
 
@@ -50,7 +52,7 @@
     private async Task ReadTranscript(ChatMessage message, CancellationToken cancellationToken) {
         try {
             var entry = message.Entry;
-            var diffs = TranscriptStreamer.GetTranscriptDiffStream(entry.StreamId, cancellationToken);
+            var diffs = StreamClient.GetTranscript(entry.StreamId, cancellationToken);
             var transcripts = diffs.ToTranscripts();
             var lastText = "";
             await foreach (var transcript in transcripts.ConfigureAwait(false)) {

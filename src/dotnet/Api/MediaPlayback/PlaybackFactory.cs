@@ -23,7 +23,7 @@ public class PlaybackFactory : IPlaybackFactory
         _trackPlayerFactory = services.GetRequiredService<ITrackPlayerFactory>();
         _sleepDurationProvider = services.GetRequiredService<ISleepDurationProvider>();
         _activePlaybackInfo = services.GetRequiredService<ActivePlaybackInfo>();
-        _playbackLog = services.GetRequiredService<ILogger<Playback>>();
+        _playbackLog = services.LogFor<Playback>();
         _onTrackPlayingChanged = OnTrackPlayingChanged;
     }
 

@@ -11,7 +11,12 @@ public partial record struct HostRole(
     public static readonly HostRole SingleServer = nameof(SingleServer); // + FrontendServer, BackendServer
     public static readonly HostRole FrontendServer = nameof(FrontendServer); // + BlazorHost
     public static readonly HostRole BackendServer = nameof(BackendServer); // + MediaBackendServer, DefaultQueue
-    public static readonly HostRole MediaBackendServer = nameof(MediaBackendServer);
+
+    // Actual backend roles
+    public static readonly HostRole AudioBackend = nameof(AudioBackend);
+    public static readonly HostRole MediaBackend = nameof(MediaBackend);
+
+    // Queues
     public static readonly HostRole DefaultQueue = nameof(DefaultQueue);
 
     // The only role any app has

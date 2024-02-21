@@ -1,4 +1,4 @@
-using ActualChat.Audio.UI.Blazor.Components;
+using ActualChat.Streaming.UI.Blazor.Components;
 using ActualChat.Chat.UI.Blazor.Services;
 using ActualChat.Hosting;
 using ActualChat.Notification.UI.Blazor;

@@ -27,6 +27,8 @@ public static class MeshRefResolvers
     {
         Register<NodeRef>(MeshRef.Node);
         Register<NodeRef?>(x => x is { } nodeRef ? MeshRef.Node(nodeRef) : MeshRef.None);
+        Register<StreamId>(x => MeshRef.Node(x.NodeRef));
+        Register<StreamId?>(x => x is { } v ? MeshRef.Node(v.NodeRef) : MeshRef.None);
         Register<IHasNodeRef?>(x => x != null ? MeshRef.Node(x.NodeRef) : MeshRef.None);
     }
 
@@ -95,5 +97,5 @@ public static class MeshRefResolvers
     }
 
     private static Exception NotFoundError(Type type)
-        => throw StandardError.Internal($"Can't find ValueMeshRefResolver for type {type.GetName()}.");
+        => throw StandardError.Internal($"Can't find MeshRefResolver for type {type.GetName()}.");
 }
