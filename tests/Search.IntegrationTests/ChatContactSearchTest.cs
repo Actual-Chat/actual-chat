@@ -26,7 +26,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldFindAddedChats()
     {
         // arrange
-        using var appHost = await NewSearchEnabledAppHost();
+        using var appHost = await NewSearchEnabledAppHost(nameof(ShouldFindAddedChats));
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -115,7 +115,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldFindUpdateChats()
     {
         // arrange
-        using var appHost = await NewSearchEnabledAppHost();
+        using var appHost = await NewSearchEnabledAppHost(nameof(ShouldFindUpdateChats));
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -224,7 +224,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldNotFindDeletedChats()
     {
         // arrange
-        using var appHost = await NewSearchEnabledAppHost();
+        using var appHost = await NewSearchEnabledAppHost(nameof(ShouldFindUpdateChats));
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -354,8 +354,9 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return searchResults.Hits;
     }
 
-    private Task<TestAppHost> NewSearchEnabledAppHost()
-        => NewAppHost(options => options with {
+    private Task<TestAppHost> NewSearchEnabledAppHost(string instanceName)
+        => NewAppHost(instanceName,
+            options => options with {
                 AppConfigurationExtender = cfg => {
                     cfg.AddInMemory(("SearchSettings:IsSearchEnabled", "true"));
                 },
