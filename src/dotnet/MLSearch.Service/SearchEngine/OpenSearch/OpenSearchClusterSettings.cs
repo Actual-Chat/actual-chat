@@ -5,7 +5,9 @@ namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 public sealed class OpenSearchClusterSettings
 {
     public string OpenSearchClusterUri { get; set; } = "";
+    // TODO: Replace ModelId with ModelGroup and search for the latest version instead.
     public string? ModelId { get; set; }
+    // TODO: Get this value from the Model config in the OpenSearch cluster
     public int ModelDimension { get; set; }
     public string IngestPipelineName { get; set; } = "ml-ingest-pipeline";
     public string SearchIndexName { get; set; } = "ml-search-index";
