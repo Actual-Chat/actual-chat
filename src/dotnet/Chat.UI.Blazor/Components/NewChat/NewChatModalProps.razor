@@ -2,7 +2,7 @@
 @inherits FusionComponentBase
 @namespace ActualChat.Chat.UI.Blazor.Components
 @{
-    var canChangeChatType = _placeId.IsNone || _place != null && _place.Rules.CanApplyPublicChatType();
+    var canChangeChatType = PlaceId.IsNone || _place != null && _place.Rules.CanApplyPublicChatType();
 }
 
 <Form @ref="_formRef" Model="@_form" Id="@_form.FormId">
@@ -58,7 +58,7 @@
             </TileItem>
         </InputRadioGroup>
     </FormBlock>
-    @if (_placeId.IsNone) {
+    @if (PlaceId.IsNone) {
         <FormBlock>
             @if (_isAdmin && _form.IsPublic) {
                 <TileItem Class="field-allow-guest">
@@ -118,14 +118,13 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private bool _isAdmin;
-    private PlaceId _placeId;
     private Place? _place;
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private ComponentIdGenerator ComponentIdGenerator { get; init; } = null!;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-    [Parameter, EditorRequired] public string PlaceSid { get; set; } = "";
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public Action<Chat> ChatCreated { get; set; } = null!;
     [Parameter, EditorRequired] public Action Cancelled { get; set; } = null!;
@@ -133,12 +132,11 @@
     protected override void OnInitialized() {
         _form = new(ComponentIdGenerator);
         _isAdmin = Hub.AccountUI.OwnAccount.Value.IsAdmin;
-        _placeId = PlaceId.Parse(PlaceSid);
     }
 
     protected override async Task OnInitializedAsync() {
-        if (!_placeId.IsNone) {
-            _place = await Hub.Places.Get(Hub.Session(), _placeId, default).Require().ConfigureAwait(false);
+        if (!PlaceId.IsNone) {
+            _place = await Hub.Places.Get(Hub.Session(), PlaceId, default).Require().ConfigureAwait(false);
             if (!_place.Rules.CanApplyPublicChatType())
                 _form.IsPublic = false;
         }
@@ -159,9 +157,9 @@
                     Kind = null,
                     IsPublic = _form.IsPublic,
                     MediaId = _form.Picture?.MediaContent?.MediaId,
-                    AllowGuestAuthors = _placeId.IsNone ? _form.AllowGuestAuthors : null,
-                    AllowAnonymousAuthors = _placeId.IsNone ? _form.AllowAnonymousAuthors : null,
-                    PlaceId = _placeId
+                    AllowGuestAuthors = PlaceId.IsNone ? _form.AllowGuestAuthors : null,
+                    AllowAnonymousAuthors = PlaceId.IsNone ? _form.AllowAnonymousAuthors : null,
+                    PlaceId = PlaceId
                 },
             });
             var (chat, createChatError) = await Hub.UICommander().Run(command, CancellationToken.None);

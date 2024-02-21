@@ -13,7 +13,7 @@
     <Body>
         @if (_page == Page.Props) {
             <NewChatModalProps
-                PlaceSid="@ModalModel.PlaceId.Value"
+                PlaceId="@ModalModel.PlaceId"
                 ButtonsSlotName="@_buttonsSlotName"
                 ChatCreated="OnChatCreated"
                 Cancelled="Close" />
