@@ -140,8 +140,8 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
     [Fact]
     public async Task NotesChatCreatedOnSignIn()
     {
-        using var appHost = await NewAppHost(options => options with {
-            ChatDbInitializerOptions = new ChatDbInitializer.Options {
+        using var appHost = await NewAppHost("notes-chats", options => options with {
+            ChatDbInitializerOptions = ChatDbInitializer.Options.Default with {
                 AddNotesChat = true,
             },
         });

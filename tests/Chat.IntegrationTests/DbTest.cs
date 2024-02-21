@@ -19,7 +19,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
     [InlineData(2000)]
     public async Task ConcurrentUpdatesShouldNotBlockReads(int duration)
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost("concurrent-updates");
         var logger = appHost.Services.LogFor<DbTest>();
         logger.LogInformation("app host init");
 
@@ -80,7 +80,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
     [Fact]
     public async Task DeadlockShouldBeDetected()
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost("deadlock");
         var logger = appHost.Services.LogFor<DbTest>();
         logger.LogInformation("app host init");
 

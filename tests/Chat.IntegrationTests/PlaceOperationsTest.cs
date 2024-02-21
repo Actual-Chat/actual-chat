@@ -185,7 +185,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(true)]
     public async Task JoinPlace(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost(nameof(JoinPlace));
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -230,7 +230,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [InlineData(true)]
     public async Task LeavePlace(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost(nameof(LeavePlace));
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -403,7 +403,7 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task ItShouldBeNotPossibleToActivateInviteLinkToChatOnNonAccessiblePrivatePlace()
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost("private-place");
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();

@@ -15,7 +15,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     protected override async Task InitializeAsync()
     {
-        _appHost = await NewAppHost();
+        _appHost = await NewAppHost("user-status");
         _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _adminSession = Session.New();

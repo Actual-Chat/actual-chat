@@ -346,10 +346,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invPlaceId = context.Operation().Items.GetOrDefault<PlaceId>();
+            var invPlaceId = context.Operation().Items.GetId<PlaceId>();
             if (!invPlaceId.IsNone)
                 _ = PseudoPlaceContact(invPlaceId);
-            var invChatId = context.Operation().Items.GetOrDefault<ChatId>();
+            var invChatId = context.Operation().Items.GetId<ChatId>();
             if (!invChatId.IsNone)
                 _ = PseudoChatContact(invChatId);
             return;
@@ -367,7 +367,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation().Items.Set(placeId);
+            context.Operation().Items.SetId(placeId);
         }
         else {
             var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
@@ -379,7 +379,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ConfigureAwait(false);
 
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            context.Operation().Items.Set(chatId);
+            context.Operation().Items.SetId(chatId);
         }
     }
 
@@ -442,7 +442,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var context = CommandContext.GetCurrent();
 
         if (Computed.IsInvalidating()) {
-            var invOwnerId = context.Operation().Items.GetOrDefault<UserId>();
+            var invOwnerId = context.Operation().Items.GetId<UserId>();
             if (!invOwnerId.IsNone)
                 _ = ListPlaceIds(invOwnerId, default);
             return;
@@ -473,7 +473,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        context.Operation().Items.Set(ownerId);
+        context.Operation().Items.SetId(ownerId);
     }
 
     // Events
