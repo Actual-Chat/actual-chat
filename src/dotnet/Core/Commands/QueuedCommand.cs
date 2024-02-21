@@ -12,19 +12,16 @@ public abstract record QueuedCommand(Ulid Id) : IHasId<Ulid>
     public static IMomentClock Clock { get; set; } = MomentClockSet.Default.CoarseSystemClock;
 
     public abstract ICommand UntypedCommand { get; }
-    public QueuedCommandPriority Priority { get; init; }
     public Moment CreatedAt => Id.Time;
     public Moment? StartedAt { get; init; }
     public Moment? CompletedAt { get; init; }
     public int TryIndex { get; init; }
 
-    public static QueuedCommand New<T>(T command, QueuedCommandPriority priority = QueuedCommandPriority.Normal)
+    public static QueuedCommand New<T>(T command)
         where T : ICommand
     {
         var id = Ulid.NewUlid(Clock.UtcNow);
-        var result = new QueuedCommand<T>(id, command) {
-            Priority = priority,
-        };
+        var result = new QueuedCommand<T>(id, command);
         return result;
     }
 
