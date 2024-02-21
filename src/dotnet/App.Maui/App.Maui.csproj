@@ -75,20 +75,6 @@
     <DefineConstants>$(DefineConstants);IS_FIXED_ENVIRONMENT_PRODUCTION</DefineConstants>
   </PropertyGroup>
 
-  <!--
-   There is an issue in .NET 8.0.1 runtime that does not allow to debug Android apps.
-   https://github.com/dotnet/runtime/issues/96804
-   This fix allows to downgrade runtime from 8.0.1 to 8.0.0.
-   It requires runtime is installed. If runtime is installed there should be a directory with name '8.0.0' at
-   'C:\Program Files\dotnet\packs\Microsoft.NETCore.App.Runtime.Mono.android-arm64\'
-   This fix can be eliminated after runtime 8.0.2 is released and installed.
-    -->
-  <Target Name="UpdateRuntimePackVersion" BeforeTargets="ProcessFrameworkReferences">
-    <ItemGroup>
-      <KnownRuntimePack Condition="%(RuntimePackLabels) == 'Mono'" LatestRuntimeFrameworkVersion="8.0.0" />
-    </ItemGroup>
-  </Target>
-
   <!-- Profiling & tracing -->
   <PropertyGroup Condition="'$(IsProfilingEnabled)' == ''">
     <IsProfilingEnabled>false</IsProfilingEnabled>

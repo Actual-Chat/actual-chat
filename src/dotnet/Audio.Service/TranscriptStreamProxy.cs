@@ -101,7 +101,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
             var addressRing = serviceEndpoints.GetAddressHashRing();
             if (addressRing.IsEmpty) {
                 Log.LogError("Read({Stream}): empty address ring!", streamName);
-                if (TranscriptStreamServer.IsStreamExists(streamId))
+                if (TranscriptStreamServer.HasStream(streamId))
                     return await TranscriptStreamServer.Read(streamId, cancellationToken1).ConfigureAwait(false);
                 return AsyncEnumerable.Empty<TranscriptDiff>();
             }
@@ -123,7 +123,7 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
                 }
             }
             DebugLog?.LogInformation("Read({Stream}): no stream found", streamName);
-            if (TranscriptStreamServer.IsStreamExists(streamId))
+            if (TranscriptStreamServer.HasStream(streamId))
                 return await TranscriptStreamServer.Read(streamId, cancellationToken1).ConfigureAwait(false);
             return AsyncEnumerable.Empty<TranscriptDiff>();
         }
@@ -204,6 +204,6 @@ public class TranscriptStreamProxy : ITranscriptStreamServer
     private async Task<ITranscriptStreamServer> GetTranscriptStreamClient(
         Kube kube, string address, int port, CancellationToken cancellationToken)
         => OrdinalEquals(address, kube.PodIP) && !kube.IsEmulated
-            ? TranscriptStreamServer.SkipDispose()
+            ? TranscriptStreamServer.SuppressDispose()
             : await AudioHubBackendClientFactory.GetTranscriptStreamClient(address, port, cancellationToken).ConfigureAwait(false);
 }
