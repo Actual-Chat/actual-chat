@@ -1,3 +1,6 @@
+using System.Runtime.Intrinsics.Arm;
+using System.Security.Cryptography;
+using System.Text;
 using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
@@ -22,10 +25,8 @@ public sealed class OpenSearchClusterSettings
         // This method must generate a unique key per configuration.
         // This key is later used to namespace models and pipelines
         // on the backend cluster.
-
-        // TODO: Use sha256 hash instead.
-
-        // ReSharper disable once ArrangeMethodOrOperatorBody
-        return this.GetHashCode().ToString("D", CultureInfo.InvariantCulture);
+        var serialized = JsonSerializer.Serialize(this);
+        var hash = SHA1.HashData(Encoding.ASCII.GetBytes(serialized));
+        return BitConverter.ToString(hash);
     }
 }
