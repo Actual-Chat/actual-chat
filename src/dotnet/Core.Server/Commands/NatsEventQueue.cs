@@ -25,7 +25,7 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
                 MaxMsgs = 10,
             },
             cancellationToken: cancellationToken);
-        await foreach (var message in messages) {
+        await foreach (var message in messages.ConfigureAwait(false)) {
             if (message.Data == null)
                 continue;
 

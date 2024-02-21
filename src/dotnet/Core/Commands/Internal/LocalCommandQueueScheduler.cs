@@ -34,7 +34,7 @@ public class LocalCommandQueueScheduler : WorkerBase, ICommandQueueScheduler
         var queueId = new QueueId(HostRole.BackendServer, ShardIndex);
         var queueBackend = Queues.GetBackend(queueId);
         var bufferedCommands = queueBackend.Read(cancellationToken).Buffer(timeout, Services.Clocks().SystemClock, cancellationToken);
-        await foreach (var commands in bufferedCommands) {
+        await foreach (var commands in bufferedCommands.ConfigureAwait(false)) {
             if (commands.Count == 0)
                 return;
 

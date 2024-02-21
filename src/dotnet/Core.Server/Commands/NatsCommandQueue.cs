@@ -18,6 +18,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
     ];
 
     private readonly ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>> _commandsBeingProcessed = new ();
+    private readonly object _lock = new ();
 
     private NatsConnection? _nats;
     private volatile INatsJSStream? _jetStream;
@@ -79,7 +80,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
                 MaxMsgs = 10,
             },
             cancellationToken: cancellationToken);
-        await foreach (var message in messages) {
+        await foreach (var message in messages.ConfigureAwait(false)) {
             if (message.Data == null)
                 continue;
 
@@ -111,7 +112,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
 
     public async ValueTask Purge(CancellationToken cancellationToken)
     {
-        var jetStream = await EnsureStreamExists(cancellationToken);
+        var jetStream = await EnsureStreamExists(cancellationToken).ConfigureAwait(false);
         await jetStream.PurgeAsync(new StreamPurgeRequest(), cancellationToken).ConfigureAwait(false);
     }
 
@@ -121,10 +122,10 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
     protected virtual string BuildSubject(Type commandType)
         => $"{GetPrefix()}commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.{commandType.Name}";
 
-    protected string GetRoleString(HostRole hostRole)
+    protected static string GetRoleString(HostRole hostRole)
         => hostRole == HostRole.BackendServer
             ? "backend"
-            : hostRole.Id.Value.Replace(HostRole.BackendServer.Id.Value, "");
+            : hostRole.Id.Value.Replace(HostRole.BackendServer.Id.Value, "", StringComparison.OrdinalIgnoreCase);
 
     protected QueuedCommand DeserializeMessage(NatsJSMsg<IMemoryOwner<byte>> message)
     {
@@ -146,7 +147,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
 
     protected NatsConnection GetConnection()
     {
-        lock (this)
+        lock (_lock)
             return _nats = Services.GetRequiredService<NatsConnection>();
     }
 
