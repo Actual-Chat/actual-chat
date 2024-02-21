@@ -15,8 +15,8 @@
                 <span>@title</span>
             </TitleContent>
             <TitleExtras>
-               @if (_placeId.IsNone) {
-                   <ChatListTabUnreadCount ChatListFilter="filter" PlaceSid="@PlaceId.None"/>
+               @if (PlaceId.IsNone) {
+                   <ChatListTabUnreadCount ChatListFilter="filter" PlaceId="@PlaceId.None"/>
                }
             </TitleExtras>
         </Tab>;
@@ -34,7 +34,7 @@
                 <ChatListSortButton/>
             </AdditionalButton>
             <ChildContent>
-                @if (_placeId.IsNone) {
+                @if (PlaceId.IsNone) {
                     @for (var i = 0; i < ChatListFilter.All.Count; i++) {
                         var filter = ChatListFilter.All[i];
                         @RenderTab(filter, i)
@@ -45,7 +45,7 @@
                 }
             </ChildContent>
             <TabContent>
-                @if (!_placeId.IsNone && OrdinalEquals(ChatListFilter.People.Id.Value, context)) {
+                @if (!PlaceId.IsNone && OrdinalEquals(ChatListFilter.People.Id.Value, context)) {
                     <PlacePeopleBanner />
                 }
                 <ChatList Kind="ChatListKind.All"/>
@@ -59,28 +59,17 @@
 
 @code {
     private TabPanel _tabPanel = null!;
-    private PlaceId _placeId;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string PlaceSid { get; set; } = "";
-
-    protected override void OnInitialized() {
-        _placeId = PlaceId.Parse(PlaceSid);
-        base.OnInitialized();
-    }
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
     protected override async Task OnInitializedAsync() {
         await ChatListUI.WhenLoaded;
     }
 
-    protected override void OnParametersSet() {
-        _placeId = PlaceId.Parse(PlaceSid);
-        base.OnParametersSet();
-    }
-
     protected override void OnAfterRender(bool firstRender) {
-        if (_placeId.IsNone)
+        if (PlaceId.IsNone)
             _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
     }
 

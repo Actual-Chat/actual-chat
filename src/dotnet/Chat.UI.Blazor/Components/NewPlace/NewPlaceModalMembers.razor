@@ -42,7 +42,6 @@
 @code {
     private ContactSelector? _contactSelectorRef;
     private SearchPhrase _searchPhrase = SearchPhrase.None;
-    private PlaceId _placeId;
 
     private IReadOnlyDictionary<ChatId, ChatInfo> AllChats
         => _contactSelectorRef?.AllChats.Value ?? ImmutableDictionary<ChatId, ChatInfo>.Empty;
@@ -52,13 +51,10 @@
     [Inject] private Session Session { get; init; } = null!;
     [Inject] private UICommander UICommander { get; init; } = null!;
 
-    [Parameter, EditorRequired] public string PlaceSid { get; set; } = "";
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
     [Parameter, EditorRequired] public string ButtonsSlotName { get; set; } = "";
     [Parameter, EditorRequired] public EventCallback<bool> Skipped { get; set; }
     [Parameter, EditorRequired] public EventCallback<bool> Completed { get; set; }
-
-    protected override void OnInitialized()
-        => _placeId = PlaceId.Parse(PlaceSid);
 
     private void OnFilter(string filter) {
         _searchPhrase = filter.ToSearchPhrase(true, false);
@@ -73,7 +69,7 @@
             .Select(c => c.Id)
             .ToArray();
         if (userIds.Length != 0) {
-            var createAuthorsCommand = new Places_Invite(Session, _placeId, userIds);
+            var createAuthorsCommand = new Places_Invite(Session, PlaceId, userIds);
             var (_, error) = await UICommander.Run(createAuthorsCommand);
             if (error != null)
                 return;
