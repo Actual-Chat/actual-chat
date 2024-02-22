@@ -1,4 +1,5 @@
 using ActualChat.Chat;
+using ActualChat.Mesh;
 using ActualChat.Redis;
 using ActualChat.Search.Db;
 using ActualChat.Search.Module;
@@ -16,7 +17,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
     private IChatsBackend? _chatsBackend;
     private IIndexedChatsBackend? _indexedChatsBackend;
     private ElasticConfigurator? _elasticConfigurator;
-    private DistributedLocks<SearchDbContext>? _distributedLock;
+    private IMeshLocks<SearchDbContext>? _meshLocks;
     private ICommander? _commander;
     private ILogger? _log;
 
@@ -29,8 +30,8 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
     private IIndexedChatsBackend IndexedChatsBackend
         => _indexedChatsBackend ??= Services.GetRequiredService<IIndexedChatsBackend>();
 
-    private DistributedLocks<SearchDbContext> DistributedLocks
-        => _distributedLock ??= Services.GetRequiredService<DistributedLocks<SearchDbContext>>();
+    private IMeshLocks<SearchDbContext> MeshLocks
+        => _meshLocks ??= Services.GetRequiredService<IMeshLocks<SearchDbContext>>();
 
     private ICommander Commander => _commander ??= Services.Commander();
     private ILogger Log => _log ??= Services.LogFor(GetType());
@@ -56,7 +57,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
             using var _1 = Tracer.Default.Region();
             if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
                 await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
-            await DistributedLocks.Run(EnsureIndexedChatsCreated, "IndexedChatsSync", cancellationToken)
+            await MeshLocks.Run(EnsureIndexedChatsCreated, "IndexedChatsSync", cancellationToken)
                 .ConfigureAwait(false);
 
             await IndexAllChats(cancellationToken).ConfigureAwait(false);
@@ -72,7 +73,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
         await foreach (var indexedChats in batches)
         foreach (var indexedChat in indexedChats)
             // skip indexing if it is already started on another replica
-            await DistributedLocks
+            await MeshLocks
                 .TryRun(ct1 => IndexChat(indexedChat.Id, ct1), $"ChatHistoryIndex.{indexedChat.Id}", cancellationToken)
                 .ConfigureAwait(false);
     }
