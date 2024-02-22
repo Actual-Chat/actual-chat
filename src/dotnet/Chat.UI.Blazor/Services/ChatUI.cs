@@ -284,8 +284,11 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         var newPinnedChats = mustPin
             ? pinnedChats.Add(chatId, true)
             : pinnedChats.RemoveAll(chatId);
-        _navbarSettings.Value = _navbarSettings.Value with { PinnedChats = newPinnedChats };
+        SetNavbarPinnedChats(newPinnedChats);
     }
+
+    public void SetNavbarPinnedChats(IReadOnlyCollection<ChatId> pinnedChats)
+        => _navbarSettings.Value = _navbarSettings.Value with { PinnedChats = pinnedChats.ToApiArray() };
 
     // Helpers
 

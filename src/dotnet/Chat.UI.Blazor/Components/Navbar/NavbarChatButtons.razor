@@ -12,6 +12,7 @@
     @foreach (var chatInfo in chats) {
         <NavbarGroupSelectionButton
             @key="@chatInfo.Id"
+            data-chat-id="@chatInfo.Id"
             Title="@chatInfo.Chat.Title"
             Id="@chatInfo.Id">
             <ChildContent>
@@ -65,6 +66,10 @@
             Chats = chats,
         };
     }
+
+    [JSInvokable]
+    public void OnOrderChanged(ChatId[] chats)
+        => Hub.ChatUI.SetNavbarPinnedChats(chats);
 
     public record Model {
         public ApiArray<ChatInfo> Chats { get; init; } = ApiArray.Empty<ChatInfo>();
