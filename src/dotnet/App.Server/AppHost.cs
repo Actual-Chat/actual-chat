@@ -81,15 +81,15 @@ public class AppHost : IDisposable
     }
 
     public virtual async Task InvokeInitializers(CancellationToken cancellationToken = default)
-        => await InvokeInitializers(new IServiceInitializer[] {
+        => await InvokeInitializers([
                     new ExecuteDbInitializers(Services),
-                    new ExecuteMLBackendInitializers(Services),
-                },
+                    new ExecuteModuleInitializers(Services),
+                ],
                 cancellationToken
             )
             .ConfigureAwait(false);
 
-    private async Task InvokeInitializers(IEnumerable<IServiceInitializer> initializers, CancellationToken cancellationToken = default)
+    private async Task InvokeInitializers(IEnumerable<IAggregateInitializer> initializers, CancellationToken cancellationToken = default)
     {
         var tasks = new List<Task>();
         foreach (var initializer in  initializers) {
@@ -98,12 +98,12 @@ public class AppHost : IDisposable
                 tasks.Add(InvokeInitializersUnsafe(initializer, cancellationToken));
             }
             else {
-                tasks.Add(InvokeInitializersProtected(initializer,cancellationToken));
+                tasks.Add(InvokeInitializersProtected(initializer, cancellationToken));
             }
         }
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
-    private async Task InvokeInitializersProtected(IServiceInitializer initializer, CancellationToken cancellationToken = default)
+    private async Task InvokeInitializersProtected(IAggregateInitializer initializer, CancellationToken cancellationToken = default)
     {
         var meshLocks = Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(AppHost));
         var lockKey = initializer.GetType().Name;
@@ -115,9 +115,9 @@ public class AppHost : IDisposable
         await InvokeInitializersUnsafe(initializer, lockCts.Token).ConfigureAwait(false);
     }
 
-    private async Task InvokeInitializersUnsafe(IServiceInitializer initializer, CancellationToken cancellationToken)
+    private static async Task InvokeInitializersUnsafe(IAggregateInitializer initializer, CancellationToken cancellationToken)
         => await initializer
-            .Invoke(cancellationToken)
+            .InvokeAll(cancellationToken)
             .ConfigureAwait(false);
 
     public virtual Task Run(CancellationToken cancellationToken = default)

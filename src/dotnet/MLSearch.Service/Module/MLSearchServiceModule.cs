@@ -21,16 +21,6 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             return; // Server-side only module
         }
 
-        if (HostInfo.HasRole(HostRole.MLSearchBackendClusterSetup)) {
-            services.AddSingleton(services => {
-                var openSearchClient = services.GetRequiredService<OpenSearchClient>();
-                var settings = services.GetRequiredService<OpenSearchClusterSettings>();
-                var log = services.LogFor(typeof(OpenSearchClusterSetup));
-                return new OpenSearchClusterSetup(openSearchClient, settings, log);
-            })
-            .AddHostedService(c => c.GetRequiredService<OpenSearchClusterSetup>());
-            //(?) return;
-        }
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<MLSearchDbContext>(services, Settings.Redis);
@@ -69,10 +59,17 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             )
         );
         services.AddKeyedSingleton<ISearchEngine>("OpenSearch", (services, serviceKey) => {
-            var openSearchClient = services.GetRequiredService<OpenSearchClient>();
+            var openSearchClient = services.GetRequiredService<IOpenSearchClient>();
             var log = services.LogFor(typeof(OpenSearchEngine));
             return new OpenSearchEngine(openSearchClient, openSearchClusterSettings, log);
         });
+        services.AddSingleton(services => {
+            var openSearchClient = services.GetRequiredService<IOpenSearchClient>();
+            var settings = services.GetRequiredService<MLSearchSettings>().OpenSearchClusterSettings;
+            var log = services.LogFor(typeof(OpenSearchClusterSetup));
+            return new OpenSearchClusterSetup(openSearchClient, settings, log);
+        })
+        .AddAlias<IModuleInitializer, OpenSearchClusterSetup>();
 
     }
 }

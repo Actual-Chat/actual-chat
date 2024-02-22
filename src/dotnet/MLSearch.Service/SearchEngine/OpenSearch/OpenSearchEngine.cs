@@ -12,9 +12,11 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
     private IOpenSearchClient OpenSearchClient { get; } = openSearch;
 
     public Task<VectorSearchResult> Find(VectorSearchQuery query, CancellationToken cancellationToken)
+    {
         // Executes search over vector database
         // Returns ranked list of documents as a result
-        => throw new NotImplementedException();
+        throw new NotImplementedException();
+    }
 
     public async Task Ingest(IndexedDocument document, CancellationToken cancellationToken)
         // TODO: support bulk api

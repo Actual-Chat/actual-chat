@@ -2,37 +2,24 @@ using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 using OpenSearch.Client;
 using ActualChat.Redis;
 using OpenSearch.Net;
+using ActualChat.Hosting;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
 //TODO: Understand Distribute Lock Context usage and requirements.
-public class OpenSearchDistributedLockContext;
+internal class OpenSearchDistributedLockContext;
 
-public class OpenSearchClusterSetup(
+internal class OpenSearchClusterSetup(
     IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILogger log
-    ) : WorkerBase
+    ) : IModuleInitializer
 {
-    private readonly TaskCompletionSource _whenCompleted = new ();
-
     private OpenSearchClusterSettings Settings { get; } = settings;
+
     private IOpenSearchClient OpenSearchClient { get; } = openSearch;
 
     private ILogger Log { get; } = log;
 
-    public Task WhenCompleted => _whenCompleted.Task;
-
-    protected override async Task OnRun(CancellationToken cancellationToken)
-    {
-        try {
-            await Run(cancellationToken).ConfigureAwait(false);
-            _whenCompleted.SetResult();
-        }
-        catch (Exception e)
-        {
-            _whenCompleted.SetException(e);
-            throw;
-        }
-    }
+    public Task Initialize(CancellationToken cancellationToken) => Run(cancellationToken);
 
     private async Task Run(CancellationToken cancellationToken)
     {
