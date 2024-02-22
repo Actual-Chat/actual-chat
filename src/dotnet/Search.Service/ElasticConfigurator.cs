@@ -1,3 +1,4 @@
+using ActualChat.Mesh;
 using ActualChat.Redis;
 using ActualChat.Search.Db;
 using ActualChat.Search.Module;
@@ -13,14 +14,14 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
     private SearchSettings? _settings;
     private ElasticNames? _elasticNames;
     private ElasticsearchClient? _elastic;
-    private DistributedLocks<SearchDbContext>? _distributedLock;
+    private IMeshLocks<SearchDbContext>? _meshLocks;
     private ILogger? _log;
 
     private SearchSettings Settings => _settings ??= services.GetRequiredService<SearchSettings>();
     private ElasticNames ElasticNames => _elasticNames ??= services.GetRequiredService<ElasticNames>();
     private ElasticsearchClient Elastic => _elastic ??= services.GetRequiredService<ElasticsearchClient>();
-    private DistributedLocks<SearchDbContext> DistributedLocks
-        => _distributedLock ??= services.GetRequiredService<DistributedLocks<SearchDbContext>>();
+    private IMeshLocks<SearchDbContext> MeshLocks
+        => _meshLocks ??= services.GetRequiredService<IMeshLocks<SearchDbContext>>();
     private ILogger Log => _log ??= services.LogFor(GetType());
 
     public Task WhenCompleted => _whenCompleted.Task;
@@ -58,10 +59,10 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
     }
 
     private Task EnsureEntryIndexTemplate(CancellationToken cancellationToken)
-        => DistributedLocks.Run(EnsureEntryIndexTemplateUnsafe, "EnsureEntryIndexTemplate", cancellationToken);
+        => MeshLocks.Run(EnsureEntryIndexTemplateUnsafe, "EnsureEntryIndexTemplate", cancellationToken);
 
     private Task EnsureContactIndices(CancellationToken cancellationToken)
-        => DistributedLocks.Run(EnsureContactIndicesUnsafe, "EnsureContactIndices", cancellationToken);
+        => MeshLocks.Run(EnsureContactIndicesUnsafe, "EnsureContactIndices", cancellationToken);
 
     private async Task EnsureEntryIndexTemplateUnsafe(CancellationToken cancellationToken)
     {

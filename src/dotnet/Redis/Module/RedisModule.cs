@@ -49,6 +49,5 @@ public sealed class RedisModule(IServiceProvider moduleServices)
                     UnconditionalCheckPeriod = TimeSpan.FromSeconds(3),
                 };
         });
-        services.AddTransient<DistributedLocks<TContext>>();
     }
 }
