@@ -62,10 +62,11 @@
     [Parameter, EditorRequired] public AccountFull Account { get; set; } = null!;
 
     public override bool CanSkip => true;
-    public override bool IsCompleted => Account.HasVerifiedEmail() || OnboardingUI.UserSettings.Value.IsEmailStepCompleted;
+    public override bool IsCompleted
+        => Account.HasVerifiedEmail() || OnboardingUI.UserSettings.Value.IsVerifyEmailStepCompleted;
 
     protected override void MarkCompleted()
-        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsEmailStepCompleted = true });
+        => OnboardingUI.UpdateUserSettings(OnboardingUI.UserSettings.Value with { IsVerifyEmailStepCompleted = true });
 
     protected override async Task OnInitializedAsync() {
         var account = await AccountUI.OwnAccount.Use();
