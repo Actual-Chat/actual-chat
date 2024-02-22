@@ -29,6 +29,6 @@ public sealed class OpenSearchClusterSettings
 #pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
         var hash = SHA1.HashData(Encoding.ASCII.GetBytes(serialized));
 #pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
-        return BitConverter.ToString(hash);
+        return Convert.ToHexString(hash).ToLower(CultureInfo.InvariantCulture);
     }
 }
