@@ -1,7 +1,5 @@
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 using OpenSearch.Client;
-using ActualChat.Redis;
-using OpenSearch.Net;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 
@@ -35,7 +33,7 @@ internal class OpenSearchClusterSetup(
         }
         var modelDimension = settings.ModelDimension.ToString("D", CultureInfo.InvariantCulture);
 
-        var ingestResult = await openSearch.Http.RunAsync(
+        var ingestResult = await openSearch.RunAsync(
             $$"""
               PUT /_ingest/pipeline/{{ingestPipelineId}}
               {
@@ -53,7 +51,7 @@ internal class OpenSearchClusterSetup(
               cancellationToken
         ).ConfigureAwait(false);
         // TODO: Assert success and http 200
-        var searchIndexResult = await openSearch.Http.RunAsync(
+        var searchIndexResult = await openSearch.RunAsync(
             $$"""
               PUT /{{searchIndexId}}
               {

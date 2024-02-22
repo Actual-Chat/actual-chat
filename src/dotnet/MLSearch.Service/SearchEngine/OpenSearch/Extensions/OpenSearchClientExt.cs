@@ -1,5 +1,8 @@
+using OpenSearch.Client;
 using OpenSearch.Client.Specification.HttpApi;
 using OpenSearch.Net;
+
+using HttpMethod = OpenSearch.Net.HttpMethod;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 
@@ -9,7 +12,7 @@ public static class OpenSearchClientExt
     /// A helper method to execute OpenSearch requests
     /// in the form like in documentation examples.
     /// </summary>
-    /// <param name="http">OpenSearchClient.Http</param>
+    /// <param name="openSearch">OpenSearchClient instance.</param>
     /// <param name="script">A script that is based on or similar to an example in the OpenSearch documentation.</param>
     /// <returns>A <see cref="DynamicResponse"/> to be processed.</returns>
     /// <exception cref="InvalidOperationException"></exception>
@@ -23,7 +26,7 @@ public static class OpenSearchClientExt
     ///     """
     /// );
     /// </example>
-    public static DynamicResponse Run(this HttpNamespace http, string script)
+    public static DynamicResponse Run(this IOpenSearchClient openSearch, string script)
     {
         using var reader = new StringReader(script);
 
@@ -31,8 +34,8 @@ public static class OpenSearchClientExt
             ?? throw new InvalidOperationException("Script is expected to have a method and a path on the first line");
         var json = reader.ReadToEnd();
 
-        return headline.Trim().Split(' ') switch {
-            ["PUT", var path] => http.Put<DynamicResponse>(path, e => e.Body(json)),
+        return headline.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) switch {
+            ["PUT", var path] => openSearch.LowLevel.DoRequest<DynamicResponse>(HttpMethod.PUT, path, PostData.String(json)),
             _ => throw new InvalidOperationException("Unknown script directive")
         };
     }
@@ -41,7 +44,7 @@ public static class OpenSearchClientExt
     /// A helper method to asyncronously execute OpenSearch requests
     /// in the form like in documentation examples.
     /// </summary>
-    /// <param name="http">OpenSearchClient.Http</param>
+    /// <param name="openSearch">OpenSearchClient instance.</param>
     /// <param name="script">A script that is based on or similar to an example in the OpenSearch documentation.</param>
     /// <returns>Asyncronously returns a <see cref="DynamicResponse"/> to be processed.</returns>
     /// <exception cref="InvalidOperationException"></exception>
@@ -55,7 +58,7 @@ public static class OpenSearchClientExt
     ///     """
     /// ).ConfigureAwait(false);
     /// </example>
-    public static async Task<DynamicResponse> RunAsync(this HttpNamespace http, string script, CancellationToken cancellationToken)
+    public static async Task<DynamicResponse> RunAsync(this IOpenSearchClient openSearch, string script, CancellationToken cancellationToken)
     {
         using var reader = new StringReader(script);
 
@@ -63,8 +66,8 @@ public static class OpenSearchClientExt
             ?? throw new InvalidOperationException("Script is expected to have a method and a path on the first line");
         var json = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
 
-        return await (headline.Trim().Split(' ') switch {
-            ["PUT", var path] => http.PutAsync<DynamicResponse>(path, e => e.Body(json), cancellationToken),
+        return await (headline.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) switch {
+            ["PUT", var path] => openSearch.LowLevel.DoRequestAsync<DynamicResponse>(HttpMethod.PUT, path, cancellationToken, PostData.String(json)),
             _ => throw new InvalidOperationException("Unknown script directive")
         }).ConfigureAwait(false);
     }
