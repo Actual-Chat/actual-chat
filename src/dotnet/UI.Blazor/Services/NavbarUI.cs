@@ -10,6 +10,7 @@ public class NavbarUI(IServiceProvider services)
 
     public string SelectedGroupId { get; private set; } = "chats";
     public string SelectedGroupTitle { get; private set; } = "";
+    public ChatId SelectedChatId { get; private set; } = ChatId.None;
     public event EventHandler<NavbarGroupChangedEventArgs>? SelectedGroupChanged;
     public event EventHandler? SelectedGroupTitleUpdated;
 
@@ -20,10 +21,14 @@ public class NavbarUI(IServiceProvider services)
         if (OrdinalEquals(id, SelectedGroupId))
             return;
 
+        if (!isUserAction && !SelectedChatId.IsNone)
+            return;
+
         var group = _groups.FirstOrDefault(c => OrdinalEquals(c.Id, id));
         Log.LogDebug("Group changed (Id='{Id}', Title='{Title}')", id, group?.Title ?? "(unknown)");
         SelectedGroupId = id;
         SelectedGroupTitle = group?.Title ?? string.Empty;
+        SelectedChatId = ChatId.ParseOrNone(id);
         SelectedGroupChanged?.Invoke(this, new NavbarGroupChangedEventArgs(id, isUserAction));
     }
 
