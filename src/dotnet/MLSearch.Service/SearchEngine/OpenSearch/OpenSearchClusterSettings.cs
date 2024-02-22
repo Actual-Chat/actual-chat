@@ -26,7 +26,9 @@ public sealed class OpenSearchClusterSettings
         // This key is later used to namespace models and pipelines
         // on the backend cluster.
         var serialized = JsonSerializer.Serialize(this);
+#pragma warning disable CA5350 // Do Not Use Weak Cryptographic Algorithms
         var hash = SHA1.HashData(Encoding.ASCII.GetBytes(serialized));
+#pragma warning restore CA5350 // Do Not Use Weak Cryptographic Algorithms
         return BitConverter.ToString(hash);
     }
 }

@@ -3,6 +3,7 @@ using OpenSearch.Client;
 using ActualChat.Redis;
 using OpenSearch.Net;
 using ActualChat.Hosting;
+using ActualChat.MLSearch.ApiAdapters;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
@@ -10,14 +11,11 @@ namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 internal class OpenSearchDistributedLockContext;
 
 internal class OpenSearchClusterSetup(
-    IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILogger log
+    IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILoggerSource loggerSource, ITracerSource tracerSource
     ) : IModuleInitializer
 {
-    private OpenSearchClusterSettings Settings { get; } = settings;
-
-    private IOpenSearchClient OpenSearchClient { get; } = openSearch;
-
-    private ILogger Log { get; } = log;
+    private ILogger? _log;
+    private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
     public Task Initialize(CancellationToken cancellationToken) => Run(cancellationToken);
 
@@ -27,16 +25,17 @@ internal class OpenSearchClusterSetup(
         // There's no reason make this script efficient.
         // It is called once and only once to setup an opensearch cluster.
         // After the initial setup this would never be called again.
-        using var _1 = Tracer.Default.Region();
-        var ingestPipelineId = Settings.IntoIngestPipelineId();
-        var searchIndexId = Settings.IntoSearchIndexId();
-        var modelId = Settings.ModelId ?? throw new InvalidOperationException("Model Id is not set.");
-        if (Settings.ModelDimension == 0) {
+        var tracer = tracerSource.GetTracer();
+        using var _1 = tracer.Region();
+        var ingestPipelineId = settings.IntoIngestPipelineId();
+        var searchIndexId = settings.IntoSearchIndexId();
+        var modelId = settings.ModelId ?? throw new InvalidOperationException("Model Id is not set.");
+        if (settings.ModelDimension == 0) {
             throw new InvalidOperationException("Model Dimension is not set.");
         }
-        var modelDimension = Settings.ModelDimension.ToString("D", CultureInfo.InvariantCulture);
+        var modelDimension = settings.ModelDimension.ToString("D", CultureInfo.InvariantCulture);
 
-        var ingestResult = await OpenSearchClient.Http.RunAsync(
+        var ingestResult = await openSearch.Http.RunAsync(
             $$"""
               PUT /_ingest/pipeline/{{ingestPipelineId}}
               {
@@ -54,7 +53,7 @@ internal class OpenSearchClusterSetup(
               cancellationToken
         ).ConfigureAwait(false);
         // TODO: Assert success and http 200
-        var searchIndexResult = await OpenSearchClient.Http.RunAsync(
+        var searchIndexResult = await openSearch.Http.RunAsync(
             $$"""
               PUT /{{searchIndexId}}
               {

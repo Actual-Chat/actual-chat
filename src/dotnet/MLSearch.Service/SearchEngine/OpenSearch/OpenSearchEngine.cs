@@ -1,12 +1,14 @@
 
+using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.Redis;
 using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
-internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILogger log) : ISearchEngine
+internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILoggerSource loggerSource) : ISearchEngine
 {
-    private ILogger? _log = log;
+    private ILogger? _log;
+    private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
     private OpenSearchClusterSettings Settings { get; } = settings;
     private IOpenSearchClient OpenSearchClient { get; } = openSearch;

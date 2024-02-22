@@ -2,9 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
+using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.SearchEngine.OpenSearch;
-using ActualChat.Redis;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
 using OpenSearch.Client;
@@ -20,6 +20,10 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         if (!HostInfo.HostKind.IsServer()) {
             return; // Server-side only module
         }
+
+        // Api Adapters
+        services.AddSingleton<ILoggerSource, LoggerSource>();
+        services.AddSingleton<ITracerSource, TracerSource>();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
@@ -53,23 +57,13 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
 
         var openSearchClusterSettings = Settings.OpenSearchClusterSettings ?? throw new InvalidOperationException("OpenSearchClusterSettings are not set");
+        services.AddTransient(_ => openSearchClusterSettings);
         services.AddSingleton<IOpenSearchClient>(_ =>
             new OpenSearchClient(
                 new Uri(openSearchClusterSettings.OpenSearchClusterUri)
             )
         );
-        services.AddKeyedSingleton<ISearchEngine>("OpenSearch", (services, serviceKey) => {
-            var openSearchClient = services.GetRequiredService<IOpenSearchClient>();
-            var log = services.LogFor(typeof(OpenSearchEngine));
-            return new OpenSearchEngine(openSearchClient, openSearchClusterSettings, log);
-        });
-        services.AddSingleton(services => {
-            var openSearchClient = services.GetRequiredService<IOpenSearchClient>();
-            var settings = services.GetRequiredService<MLSearchSettings>().OpenSearchClusterSettings;
-            var log = services.LogFor(typeof(OpenSearchClusterSetup));
-            return new OpenSearchClusterSetup(openSearchClient, settings, log);
-        })
-        .AddAlias<IModuleInitializer, OpenSearchClusterSetup>();
-
+        services.AddKeyedSingleton<ISearchEngine, OpenSearchEngine>("OpenSearch");
+        services.AddSingleton<OpenSearchClusterSetup>().AddAlias<IModuleInitializer, OpenSearchClusterSetup>();
     }
 }
