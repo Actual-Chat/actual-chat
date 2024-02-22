@@ -56,14 +56,32 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IHistoryExtractor, HistoryExtractor>();
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
 
-        var openSearchClusterSettings = Settings.OpenSearchClusterSettings ?? throw new InvalidOperationException("OpenSearchClusterSettings are not set");
-        services.AddTransient(_ => openSearchClusterSettings);
+        var openSearchClusterUri = Settings.OpenSearchClusterUri
+            ?? throw new InvalidOperationException("OpenSearchClusterUri is not set");
+        var modelGroupName = Settings.OpenSearchModelGroup
+            ?? throw new InvalidOperationException("OpenSearchModelGroup is not set");
         services.AddSingleton<IOpenSearchClient>(_ =>
             new OpenSearchClient(
-                new Uri(openSearchClusterSettings.OpenSearchClusterUri)
+                new Uri(openSearchClusterUri)
             )
         );
-        services.AddKeyedSingleton<ISearchEngine, OpenSearchEngine>("OpenSearch");
-        services.AddSingleton<OpenSearchClusterSetup>().AddAlias<IModuleInitializer, OpenSearchClusterSetup>();
+        services.AddSingleton<OpenSearchClusterSetup>(e =>
+                new OpenSearchClusterSetup(
+                    e.GetRequiredService<IOpenSearchClient>(),
+                    modelGroupName,
+                    e.GetService<ILoggerSource>(),
+                    e.GetService<ITracerSource>()
+                )
+            )
+            .AddAlias<IModuleInitializer, OpenSearchClusterSetup>();
+        services.AddKeyedSingleton<ISearchEngine, OpenSearchEngine>("OpenSearch", (e, _) =>
+                new OpenSearchEngine(
+                    e.GetRequiredService<IOpenSearchClient>(),
+                    e.GetRequiredService<OpenSearchClusterSetup>().Result ?? throw new InvalidOperationException(
+                        "Initialization script was not called."
+                    ),
+                    e.GetRequiredService<ILoggerSource>()
+                )
+        );
     }
 }

@@ -62,6 +62,7 @@ class API:
 
 def main():
     cluster_url = os.getenv('OPENSEARCH_CLUSTER_URL')
+    model_group_name = os.getenv('OPENSEARCH_ML_MODEL_GROUP')
     api = API(cluster_url)
     api.set_ml_commons_config({
         "only_run_on_ml_node": "true",
@@ -71,7 +72,7 @@ def main():
         "allow_registering_model_via_local_file": "true",
     })
     model_group_id = api.register_model_group(
-        'NLP_model_group',
+        model_group_name,
         description = "A model group for NLP models",
         cluster_url = cluster_url
     )

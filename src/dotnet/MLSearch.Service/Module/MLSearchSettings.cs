@@ -8,5 +8,6 @@ public sealed class MLSearchSettings
     public string Redis { get; set; } = "";
     public string OpenSearchDb { get; set; } = "";
 
-    public OpenSearchClusterSettings? OpenSearchClusterSettings { get; set; }
+    public string? OpenSearchClusterUri { get; set; }
+    public string? OpenSearchModelGroup { get; set; }
 }

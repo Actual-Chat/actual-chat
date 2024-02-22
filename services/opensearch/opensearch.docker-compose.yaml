@@ -85,6 +85,7 @@ services:
         CMD python ./opensearch-setup.py
     environment:
       OPENSEARCH_CLUSTER_URL: 'http://opensearch-node1:9200'
+      OPENSEARCH_ML_MODEL_GROUP: 'NLP_model_group'
       SLEEP_ON_FAILURE_SECONDS: 5
       TORCHSCRIPT_MODEL_PATH: /ml_model/sentence-transformers_paraphrase-MiniLM-L3-v2-1.0.1-torch_script.zip
       TORCHSCRIPT_MODEL_CONFIG_PATH: /ml_model/config.json

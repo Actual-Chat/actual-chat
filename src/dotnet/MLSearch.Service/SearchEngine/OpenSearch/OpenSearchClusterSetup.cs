@@ -1,37 +1,143 @@
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 using OpenSearch.Client;
 using ActualChat.Hosting;
+using OpenSearch.Net;
 using ActualChat.MLSearch.ApiAdapters;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
-//TODO: Understand Distribute Lock Context usage and requirements.
-internal class OpenSearchDistributedLockContext;
+using OpenSearchModelGroupName = string;
+using OpenSearchModelGroupId = string;
+using OpenSearchModelId = string;
 
 internal class OpenSearchClusterSetup(
-    IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILoggerSource? loggerSource, ITracerSource? tracing
+    IOpenSearchClient openSearch,
+    OpenSearchModelGroupName modelGroupName,
+    ILoggerSource? loggerSource,
+    ITracerSource? tracing
     ) : IModuleInitializer
 {
     //private ILogger? _log;
     //private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
-
+    private OpenSearchClusterSettings? _settings = null;
+    public OpenSearchClusterSettings? Result => _settings;
     public Task Initialize(CancellationToken cancellationToken) => Run(cancellationToken);
 
+    public async Task<OpenSearchClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
+    {
+        if (_settings != null)
+            return _settings;
+        using var _1 = tracing.TraceRegion();
+        // Read model group latest state
+        var modelGroupResponse = await openSearch.RunAsync(
+                $$"""
+                  POST /_plugins/_ml/model_groups/_search
+                  {
+                      "query": {
+                          "match": {
+                              "name": "{{modelGroupName}}"
+                          }
+                      },
+                      "sort": [{
+                          "_seq_no": { "order": "desc" }
+                      }],
+                      "size": 1
+                  }
+                  """,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        var modelGroupId = modelGroupResponse.FirstHit().Get<OpenSearchModelGroupId>("_id");
+        if (modelGroupId.IsNullOrEmpty()) {
+            throw new InvalidOperationException(
+                "Failed to retrieve model group id."
+            );
+        }
+        // Read model group latest model id
+        var modelResponse = await openSearch.RunAsync(
+                $$"""
+                POST /_plugins/_ml/models/_search
+                {
+                    "query": {
+                        "match": {
+                            "model_group_id": "{{modelGroupId}}"
+                        }
+                    },
+                    "sort": [{
+                        "_seq_no": { "order": "desc" }
+                    }],
+                    "size": 1
+                }
+                """,
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+        var model = modelResponse.FirstHit();
+        var modelId = model.Get<OpenSearchModelId>("_id");
+        if (modelId.IsNullOrEmpty()) {
+            throw new InvalidOperationException(
+                "Failed to retrieve model id."
+            );
+        }
+        var modelSource = model.Get<IDictionary<string, object>>("_source")
+            ?? throw new InvalidOperationException(
+                "_source is null"
+            );
+
+        // Ensure model is deployed.
+        var modelState = modelSource.Get<string>("model_state");
+        if (!string.Equals(modelState, "DEPLOYED", StringComparison.Ordinal)) {
+            throw new InvalidOperationException(
+                $"Invalid model state. Expecting deployed model, but was {modelState}."
+            );
+        }
+        var modelConfig = modelSource.Get<IDictionary<string, Object>>("model_config")
+            ?? throw new InvalidOperationException(
+                "model_config is null"
+            );
+        var modelEmbeddingDimension = Convert.ToInt32(
+            modelConfig.Get<long>("embedding_dimension")
+        );
+        if (modelEmbeddingDimension == default) {
+            throw new InvalidOperationException(
+                "Failed to retrieve model embedding dimension value."
+            );
+        }
+        // Get configs of the deployed model.
+        var modelAllConfig = modelConfig.Get<string>("all_config");
+        if (modelAllConfig.IsNullOrEmpty()) {
+            throw new InvalidOperationException(
+                "Failed to retrieve model all_config value."
+            );
+        }
+        var settings = new OpenSearchClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
+        _settings = settings;
+        return settings;
+    }
     private async Task Run(CancellationToken cancellationToken)
     {
         // Notes:
+        // Assumption: This is a script.
         // There's no reason make this script efficient.
-        // It is called once and only once to setup an opensearch cluster.
+        // It must fail and retried on any error.
+        // It has to succeed once and only once to setup an opensearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = tracing.TraceRegion();
-        var ingestPipelineId = settings.IntoIngestPipelineId();
-        var searchIndexId = settings.IntoSearchIndexId();
-        var modelId = settings.ModelId ?? throw new InvalidOperationException("Model Id is not set.");
-        if (settings.ModelDimension == 0) {
-            throw new InvalidOperationException("Model Dimension is not set.");
-        }
-        var modelDimension = settings.ModelDimension.ToString("D", CultureInfo.InvariantCulture);
 
+        var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
+        var searchIndexId = settings.IntoSearchIndexId();
+        var isSearchIndexExistsResult = await openSearch
+            .Indices
+            .ExistsAsync(searchIndexId, ct: cancellationToken)
+            .ConfigureAwait(false);
+
+        if (isSearchIndexExistsResult.Exists) {
+            return;
+        }
+
+        var ingestPipelineId = settings.IntoIngestPipelineId();
+        var modelId = settings.ModelId;
+        var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
         var ingestResult = await openSearch.RunAsync(
             $$"""
               PUT /_ingest/pipeline/{{ingestPipelineId}}
@@ -49,7 +155,12 @@ internal class OpenSearchClusterSetup(
               """,
               cancellationToken
         ).ConfigureAwait(false);
-        // TODO: Assert success and http 200
+        if (!ingestResult.Success) {
+            throw new InvalidOperationException(
+                "Failed to update ingest pipeline",
+                ingestResult.OriginalException
+            );
+        }
         var searchIndexResult = await openSearch.RunAsync(
             $$"""
               PUT /{{searchIndexId}}
@@ -87,6 +198,12 @@ internal class OpenSearchClusterSetup(
               """,
               cancellationToken
         ).ConfigureAwait(false);
-        // TODO: Assert success and http 200
+        if (!searchIndexResult.Success) {
+            throw new InvalidOperationException(
+                "Failed to update search index",
+                searchIndexResult.OriginalException
+            );
+        }
     }
 }
+

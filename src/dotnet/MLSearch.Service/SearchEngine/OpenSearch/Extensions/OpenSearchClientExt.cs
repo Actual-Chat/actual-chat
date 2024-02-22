@@ -1,5 +1,4 @@
 using OpenSearch.Client;
-using OpenSearch.Client.Specification.HttpApi;
 using OpenSearch.Net;
 
 using HttpMethod = OpenSearch.Net.HttpMethod;
@@ -68,6 +67,7 @@ public static class OpenSearchClientExt
 
         return await (headline.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) switch {
             ["PUT", var path] => openSearch.LowLevel.DoRequestAsync<DynamicResponse>(HttpMethod.PUT, path, cancellationToken, PostData.String(json)),
+            ["POST", var path] => openSearch.LowLevel.DoRequestAsync<DynamicResponse>(HttpMethod.POST, path, cancellationToken, PostData.String(json)),
             _ => throw new InvalidOperationException("Unknown script directive")
         }).ConfigureAwait(false);
     }

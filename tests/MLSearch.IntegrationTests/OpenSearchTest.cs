@@ -14,28 +14,26 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private readonly OpenSearchClusterSettings settings = new OpenSearchClusterSettings(){
-        OpenSearchClusterUri = "http://localhost:9201",
-        ModelId = "HaNzzI0ByveInLY9yUHQ_2",
-        ModelDimension = 384
-    };
+    private Uri OpenSearchClusterUri => new Uri("http://localhost:9201");
+    private string OpenSearchModelGroupName => "NLP_model_group";
     private OpenSearchLowLevelClient? client;
+    private OpenSearchClusterSettings? settings;
 
     protected override async Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        var clusterUri = new Uri(settings.OpenSearchClusterUri);
-        var config = new ConnectionSettings(clusterUri)
+        var config = new ConnectionSettings(OpenSearchClusterUri)
             .PrettyJson()
             .DefaultFieldNameInferrer(f => f);
         client = new OpenSearchLowLevelClient(config);
         var setup = new OpenSearchClusterSetup(
-            new OpenSearchClient(clusterUri),
-            settings,
+            new OpenSearchClient(OpenSearchClusterUri),
+            OpenSearchModelGroupName,
             null,
             null
         );
         await setup.Initialize(default);
+        settings = setup.Result;
         await base.InitializeAsync();
     }
 
