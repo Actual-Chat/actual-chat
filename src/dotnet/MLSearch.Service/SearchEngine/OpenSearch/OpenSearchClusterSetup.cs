@@ -19,14 +19,14 @@ internal class OpenSearchClusterSetup(
 {
     //private ILogger? _log;
     //private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
-    private OpenSearchClusterSettings? _settings = null;
-    public OpenSearchClusterSettings? Result => _settings;
+    public OpenSearchClusterSettings? Result { get; private set; } = null;
+
     public Task Initialize(CancellationToken cancellationToken) => Run(cancellationToken);
 
     public async Task<OpenSearchClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
     {
-        if (_settings != null)
-            return _settings;
+        if (Result != null)
+            return Result;
         using var _1 = tracing.TraceRegion();
         // Read model group latest state
         var modelGroupResponse = await openSearch.RunAsync(
@@ -111,7 +111,7 @@ internal class OpenSearchClusterSetup(
             );
         }
         var settings = new OpenSearchClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
-        _settings = settings;
+        Result = settings;
         return settings;
     }
     private async Task Run(CancellationToken cancellationToken)
