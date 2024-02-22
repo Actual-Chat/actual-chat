@@ -5,4 +5,5 @@ internal class VectorSearchQuery
 {
     public MetadataFilter MetadataFilter;
     public string FreeTextFilter;
+    public string[] Keywords;
 }

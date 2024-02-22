@@ -1,7 +1,3 @@
-
 namespace ActualChat.MLSearch;
 
-internal class VectorSearchResult
-{
-    public VectorSearchRankedDocument[] Documents;
-}
+internal record VectorSearchResult(IReadOnlyList<VectorSearchRankedDocument> Documents);

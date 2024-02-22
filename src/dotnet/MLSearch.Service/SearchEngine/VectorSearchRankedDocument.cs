@@ -1,8 +1,3 @@
-
 namespace ActualChat.MLSearch;
 
-internal class VectorSearchRankedDocument
-{
-    public double Rank;
-    public IndexedDocument Document;
-}
+internal record struct VectorSearchRankedDocument(double? Rank, IndexedDocument Document);
