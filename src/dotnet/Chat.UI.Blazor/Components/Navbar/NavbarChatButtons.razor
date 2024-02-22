@@ -1,0 +1,72 @@
+﻿@using ActualChat.Media;
+@using ActualChat.Chat.UI.Blazor.Module
+@using ActualChat.Kvas;
+@namespace ActualChat.Chat.UI.Blazor.Components
+@inherits ComputedStateComponent<NavbarChatButtons.Model>
+@{
+    var m = State.Value;
+    var chats = m.Chats;
+}
+
+<div @ref="Ref" class="navbar-chat-buttons">
+    @foreach (var chatInfo in chats) {
+        <NavbarGroupSelectionButton
+            @key="@chatInfo.Id"
+            Title="@chatInfo.Chat.Title"
+            Id="@chatInfo.Id">
+            <ChildContent>
+                <ChatIcon Chat="chatInfo.Chat" ShowPresence="@true"/>
+            </ChildContent>
+            <BadgeContent>
+                @* <ChatsNavbarButtonBadge PlaceSid="@place.Id"/> *@
+            </BadgeContent>
+        </NavbarGroupSelectionButton>
+    }
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{ChatBlazorUIModule.ImportName}.NavbarChatButtons.create";
+    private DotNetObjectReference<NavbarChatButtons> BlazorRef { get; set; } = null!;
+    private IJSObjectReference JSRef { get; set; } = null!;
+    private ElementReference Ref { get; set; }
+
+    [Inject] private ChatUIHub Hub { get; init; } = null!;
+    [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    public override async ValueTask DisposeAsync() {
+        await JSRef.DisposeSilentlyAsync("dispose");
+        JSRef = null!;
+        BlazorRef.DisposeSilently();
+        BlazorRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            BlazorRef = DotNetObjectReference.Create(this);
+            JSRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod, Ref, BlazorRef);
+        }
+    }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = new Model(),
+            Category = GetStateCategory(),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var navbarSettings = await Hub.ChatUI.NavbarSettings.Use(cancellationToken);
+        var chats = (await navbarSettings.PinnedChats
+                .Select(id => Hub.ChatUI.Get(id, cancellationToken))
+                .Collect())
+            .SkipNullItems()
+            .ToApiArray();
+
+        return new Model {
+            Chats = chats,
+        };
+    }
+
+    public record Model {
+        public ApiArray<ChatInfo> Chats { get; init; } = ApiArray.Empty<ChatInfo>();
+    }
+}

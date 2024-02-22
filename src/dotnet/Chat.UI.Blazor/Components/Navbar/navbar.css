@@ -139,6 +139,14 @@ body.hoverable .navbar-item:hover {
     display: none;
 }
 
+.navbar-chat-buttons {
+    @apply relative;
+    @apply flex-y items-center gap-y-3 md:gap-y-2;
+    @apply w-full overflow-y-auto;
+    @apply pt-2 -mt-2;
+    @apply custom-scrollbar-hide;
+}
+
 .right-line {
     @apply w-[5px];
 }
