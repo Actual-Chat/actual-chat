@@ -9,11 +9,11 @@ namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 internal class OpenSearchDistributedLockContext;
 
 internal class OpenSearchClusterSetup(
-    IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILoggerSource loggerSource, ITracerSource tracerSource
+    IOpenSearchClient openSearch, OpenSearchClusterSettings settings, ILoggerSource? loggerSource, ITracerSource? tracing
     ) : IModuleInitializer
 {
-    private ILogger? _log;
-    private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
+    //private ILogger? _log;
+    //private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
     public Task Initialize(CancellationToken cancellationToken) => Run(cancellationToken);
 
@@ -23,8 +23,7 @@ internal class OpenSearchClusterSetup(
         // There's no reason make this script efficient.
         // It is called once and only once to setup an opensearch cluster.
         // After the initial setup this would never be called again.
-        var tracer = tracerSource.GetTracer();
-        using var _1 = tracer.Region();
+        using var _1 = tracing.TraceRegion();
         var ingestPipelineId = settings.IntoIngestPipelineId();
         var searchIndexId = settings.IntoSearchIndexId();
         var modelId = settings.ModelId ?? throw new InvalidOperationException("Model Id is not set.");

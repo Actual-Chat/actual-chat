@@ -28,6 +28,11 @@
     "Redis": ""
   },
   "MLSearchSettings": {
+    "OpenSearchClusterSettings": {
+      "OpenSearchClusterUri": "http://localhost:9201",
+      "ModelId": "HaNzzI0ByveInLY9yUHQ_2",
+      "ModelDimension": 384
+    }
   },
   "SearchSettings": {
   },
