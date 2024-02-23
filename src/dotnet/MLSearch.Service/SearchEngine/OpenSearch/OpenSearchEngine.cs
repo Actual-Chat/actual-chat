@@ -57,7 +57,7 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
             }
 
             return new SearchDescriptor<IndexedDocument>()
-                .Index(settings.SearchIndexName)
+                .Index(settings.IntoSearchIndexId())
                 .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)))
                 .Query(query => query
                     .Bool(bool_query => bool_query
