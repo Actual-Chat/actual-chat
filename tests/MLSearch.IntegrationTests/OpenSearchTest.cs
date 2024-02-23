@@ -1,3 +1,4 @@
+using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.SearchEngine.OpenSearch;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
@@ -40,6 +41,7 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         Tracer.Default = Tracer.None;
         var searchIndexId = settings!.IntoSearchIndexId();
         var pipelineName = settings.IntoIngestPipelineId();
+
         await client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{searchIndexId}", CancellationToken.None);
         await client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineName}", CancellationToken.None);
 
@@ -49,8 +51,7 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task SemanticSearchTest()
     {
-        var modelId = settings!.ModelId;
-        var searchIndexId = settings.IntoSearchIndexId();
+        var searchIndexId = settings!.IntoSearchIndexId();
         var documents = new [] {
             new IndexedDocument { Uri="message_01", Text="OpenSearch supports the following models, categorized by type." },
             new IndexedDocument { Uri="message_02", Text="Quite often, our methods are async, and we can't make constructors async. This is where XUnit's IAsyncLifetime comes in." },
@@ -65,57 +66,9 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
             Assert.True(newDocResponse.Success);
         }
 
-        var queryResponse = await client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.GET, $"/{searchIndexId}/_search", CancellationToken.None,
-            PostData.String(
-                $$"""
-                {
-                    "_source": {
-                        "excludes": [
-                            "event_dense_embedding"
-                        ]
-                    },
-                    "query": {
-                        "bool": {
-                            "filter": {
-                                "wildcard":  { "{{nameof(IndexedDocument.Uri)}}": "*ess*" }
-                            },
-                            "should": [
-                                {
-                                    "script_score": {
-                                        "query": {
-                                        "neural": {
-                                            "event_dense_embedding": {
-                                                "query_text": "Tools for mobile development",
-                                                    "model_id": "{{modelId}}",
-                                                    "k": 100
-                                                }
-                                            }
-                                        },
-                                        "script": {
-                                            "source": "_score * 1.5"
-                                        }
-                                    }
-                                },
-                                {
-                                "script_score": {
-                                    "query": {
-                                        "match": {
-                                            "{{nameof(IndexedDocument.Text)}}": "command"
-                                        }
-                                    },
-                                    "script": {
-                                        "source": "_score * 1.7"
-                                    }
-                                }
-                                }
-                            ]
-                        }
-                    }
-                }
-                """
-            )
-        );
-        Assert.True(queryResponse.Success);
-        Out.WriteLine(queryResponse.Body);
+        var query = new VectorSearchQuery() { FreeTextFilter="Tools for mobile development", Keywords=["command"] };
+        var searchEngine = new OpenSearchEngine(client, settings, NullLoggerSource.Instance);
+        var queryResult = await searchEngine.Find(query, CancellationToken.None);
+        Assert.True(queryResult.Documents.Count > 0);
     }
 }
