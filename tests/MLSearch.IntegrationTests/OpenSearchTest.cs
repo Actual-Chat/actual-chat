@@ -1,8 +1,6 @@
-using ActualChat.Chat;
 using ActualChat.MLSearch.SearchEngine.OpenSearch;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
-using ActualLab.Generators;
 using Mjml.Net.Extensions;
 using OpenSearch.Client;
 using OpenSearch.Net;
@@ -14,9 +12,9 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private Uri OpenSearchClusterUri => new Uri("http://localhost:9201");
+    private Uri OpenSearchClusterUri => new("http://localhost:9201");
     private string OpenSearchModelGroupName => "NLP_model_group";
-    private OpenSearchLowLevelClient? client;
+    private OpenSearchClient? client;
     private OpenSearchClusterSettings? settings;
 
     protected override async Task InitializeAsync()
@@ -25,10 +23,10 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         var config = new ConnectionSettings(OpenSearchClusterUri)
             .PrettyJson()
             .DefaultFieldNameInferrer(f => f);
-        client = new OpenSearchLowLevelClient(config);
+        client = new OpenSearchClient(config);
         var setup = new OpenSearchClusterSetup(
-            new OpenSearchClient(OpenSearchClusterUri),
             OpenSearchModelGroupName,
+            client,
             null,
             null
         );
@@ -40,10 +38,10 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
-        var searchIndexId = settings.IntoSearchIndexId();
+        var searchIndexId = settings!.IntoSearchIndexId();
         var pipelineName = settings.IntoIngestPipelineId();
-        await client!.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{searchIndexId}", CancellationToken.None);
-        await client!.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineName}", CancellationToken.None);
+        await client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{searchIndexId}", CancellationToken.None);
+        await client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineName}", CancellationToken.None);
 
         await base.DisposeAsync();
     }
@@ -51,7 +49,7 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task SemanticSearchTest()
     {
-        var modelId = settings.ModelId;
+        var modelId = settings!.ModelId;
         var searchIndexId = settings.IntoSearchIndexId();
         var documents = new [] {
             new IndexedDocument { Uri="message_01", Text="OpenSearch supports the following models, categorized by type." },
@@ -62,12 +60,12 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         };
         for (var i=0; i<documents.Length; i++) {
             var docId = (i + 1).ToInvariantString();
-            var newDocResponse = await client!.DoRequestAsync<StringResponse>(
+            var newDocResponse = await client!.LowLevel.DoRequestAsync<StringResponse>(
                 HttpMethod.PUT, $"/{searchIndexId}/_doc/{docId}", CancellationToken.None, PostData.Serializable(documents[i]));
             Assert.True(newDocResponse.Success);
         }
 
-        var queryResponse = await client!.DoRequestAsync<StringResponse>(HttpMethod.GET, $"/{searchIndexId}/_search", CancellationToken.None,
+        var queryResponse = await client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.GET, $"/{searchIndexId}/_search", CancellationToken.None,
             PostData.String(
                 $$"""
                 {

@@ -60,28 +60,23 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             ?? throw new InvalidOperationException("OpenSearchClusterUri is not set");
         var modelGroupName = Settings.OpenSearchModelGroup
             ?? throw new InvalidOperationException("OpenSearchModelGroup is not set");
-        services.AddSingleton<IOpenSearchClient>(_ =>
-            new OpenSearchClient(
-                new Uri(openSearchClusterUri)
-            )
-        );
+        services.AddSingleton<IOpenSearchClient>(_ => {
+            var connectionSettings = new ConnectionSettings(new Uri(openSearchClusterUri))
+                // .PrettyJson()
+                .DefaultFieldNameInferrer(f => f);
+            return new OpenSearchClient(connectionSettings);
+        });
         services.AddSingleton<OpenSearchClusterSetup>(e =>
                 new OpenSearchClusterSetup(
-                    e.GetRequiredService<IOpenSearchClient>(),
                     modelGroupName,
+                    e.GetRequiredService<IOpenSearchClient>(),
                     e.GetService<ILoggerSource>(),
                     e.GetService<ITracerSource>()
                 )
             )
             .AddAlias<IModuleInitializer, OpenSearchClusterSetup>();
-        services.AddKeyedSingleton<ISearchEngine, OpenSearchEngine>("OpenSearch", (e, _) =>
-                new OpenSearchEngine(
-                    e.GetRequiredService<IOpenSearchClient>(),
-                    e.GetRequiredService<OpenSearchClusterSetup>().Result ?? throw new InvalidOperationException(
-                        "Initialization script was not called."
-                    ),
-                    e.GetRequiredService<ILoggerSource>()
-                )
-        );
+
+        services.AddTransient<OpenSearchClusterSettings>(e => e.GetRequiredService<OpenSearchClusterSetup>().Result);
+        services.AddKeyedSingleton<ISearchEngine, OpenSearchEngine>("OpenSearch");
     }
 }

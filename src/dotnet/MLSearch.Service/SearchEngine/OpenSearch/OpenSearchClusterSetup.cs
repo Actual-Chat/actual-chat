@@ -1,32 +1,36 @@
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 using OpenSearch.Client;
 using ActualChat.Hosting;
-using OpenSearch.Net;
 using ActualChat.MLSearch.ApiAdapters;
-
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
 using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
 
+namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
+
 internal class OpenSearchClusterSetup(
-    IOpenSearchClient openSearch,
     OpenSearchModelGroupName modelGroupName,
+    IOpenSearchClient openSearch,
     ILoggerSource? loggerSource,
     ITracerSource? tracing
     ) : IModuleInitializer
 {
     //private ILogger? _log;
     //private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
-    public OpenSearchClusterSettings? Result { get; private set; } = null;
+    private OpenSearchClusterSettings? result;
+    public OpenSearchClusterSettings Result => result ?? throw new InvalidOperationException(
+        "Initialization script was not called."
+    );
 
     public Task Initialize(CancellationToken cancellationToken) => Run(cancellationToken);
 
     public async Task<OpenSearchClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
     {
-        if (Result != null)
-            return Result;
+        if (result != null) {
+            return result;
+        }
+
         using var _1 = tracing.TraceRegion();
         // Read model group latest state
         var modelGroupResponse = await openSearch.RunAsync(
@@ -91,14 +95,14 @@ internal class OpenSearchClusterSetup(
                 $"Invalid model state. Expecting deployed model, but was {modelState}."
             );
         }
-        var modelConfig = modelSource.Get<IDictionary<string, Object>>("model_config")
+        var modelConfig = modelSource.Get<IDictionary<string, object>>("model_config")
             ?? throw new InvalidOperationException(
                 "model_config is null"
             );
         var modelEmbeddingDimension = Convert.ToInt32(
-            modelConfig.Get<long>("embedding_dimension")
+            modelConfig.Get<long>("embedding_dimension", int.MinValue)
         );
-        if (modelEmbeddingDimension == default) {
+        if (modelEmbeddingDimension == int.MinValue) {
             throw new InvalidOperationException(
                 "Failed to retrieve model embedding dimension value."
             );
@@ -110,9 +114,7 @@ internal class OpenSearchClusterSetup(
                 "Failed to retrieve model all_config value."
             );
         }
-        var settings = new OpenSearchClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
-        Result = settings;
-        return settings;
+        return result = new OpenSearchClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
     }
     private async Task Run(CancellationToken cancellationToken)
     {
@@ -206,4 +208,3 @@ internal class OpenSearchClusterSetup(
         }
     }
 }
-
