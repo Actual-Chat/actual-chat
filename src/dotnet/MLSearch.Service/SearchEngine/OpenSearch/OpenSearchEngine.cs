@@ -1,6 +1,7 @@
 
 using ActualChat.MLSearch.ApiAdapters;
 using OpenSearch.Client;
+using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
@@ -13,6 +14,11 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
     public async Task<VectorSearchResult> Find(VectorSearchQuery query, CancellationToken cancellationToken)
     {
         var searchRequest = BuildSearchRequest(settings, query);
+
+        // TODO: Make this serialization optional
+        var json = await searchRequest.ToJsonAsync(openSearch, cancellationToken).ConfigureAwait(false);
+
+        Log.LogInformation(json);
 
         var response = await openSearch.SearchAsync<IndexedDocument>(searchRequest, cancellationToken).ConfigureAwait(false);
 
@@ -73,4 +79,19 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
             e=>e.Index(settings.IntoSearchIndexId()),
             cancellationToken
         ).ConfigureAwait(true);
+}
+
+internal static class OpenSearchExtensions
+{
+    public static async Task<string> ToJsonAsync(this ISearchRequest searchRequest, IOpenSearchClient openSearch, CancellationToken cancellationToken)
+    {
+        var serializableRequest = PostData.Serializable(searchRequest);
+        serializableRequest.DisableDirectStreaming = false;
+
+        var ms = new MemoryStream();
+        await serializableRequest.WriteAsync(ms, openSearch.ConnectionSettings, cancellationToken).ConfigureAwait(false);
+        ms.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(ms);
+        return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+    }
 }
