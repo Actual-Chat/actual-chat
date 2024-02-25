@@ -7,8 +7,11 @@ using ActualLab.Versioning;
 namespace ActualChat.Users.Db;
 
 [Index(nameof(IsGreetingCompleted))]
+[Index(nameof(CreatedAt))]
+[Index(nameof(Version), nameof(Id))]
 public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
+    private DateTime _createdAt;
     [Key] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
 
@@ -23,6 +26,10 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string Username { get; set; } = "";
     public string? UsernameNormalized { get; set; }
     public bool IsGreetingCompleted { get; set; }
+    public DateTime CreatedAt {
+        get => _createdAt.DefaultKind(DateTimeKind.Utc);
+        set => _createdAt = value.DefaultKind(DateTimeKind.Utc);
+    }
 
     public AccountFull ToModel(User user)
     {
@@ -39,6 +46,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
             LastName = LastName,
             Username = Username,
             IsGreetingCompleted = IsGreetingCompleted,
+            CreatedAt = CreatedAt,
         };
     }
 
@@ -59,6 +67,7 @@ public class DbAccount : IHasId<string>, IHasVersion<long>, IRequirementTarget
         LastName = model.LastName;
         Username = model.Username;
         IsGreetingCompleted = model.IsGreetingCompleted;
+        CreatedAt = model.CreatedAt;
         if (!model.Username.IsNullOrEmpty())
             UsernameNormalized = model.Username.ToUpper(CultureInfo.InvariantCulture);
     }

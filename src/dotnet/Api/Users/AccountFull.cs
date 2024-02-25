@@ -38,6 +38,7 @@ public sealed partial record AccountFull(
     [DataMember, MemoryPackOrder(11)] public string Username { get; init; } = "";
     [DataMember, MemoryPackOrder(13)] public bool IsGreetingCompleted { get; init; }
     [DataMember, MemoryPackOrder(14)] public bool IsEmailVerified { get; init; }
+    [DataMember, MemoryPackOrder(15)] public Moment CreatedAt { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]

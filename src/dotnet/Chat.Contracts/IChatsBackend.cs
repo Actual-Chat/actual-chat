@@ -54,7 +54,18 @@ public interface IChatsBackend : IComputeService
         CancellationToken cancellationToken);
 
     // Non-compute methods
-    Task<ApiArray<Chat>> List(Moment minCreatedAt, ChatId lastChatId, int limit, CancellationToken cancellationToken);
+    Task<ApiArray<Chat>> List(
+        Moment minCreatedAt,
+        ChatId lastChatId,
+        int limit,
+        CancellationToken cancellationToken);
+
+    Task<ApiArray<Chat>> ListChanged(
+        Moment maxCreatedAt,
+        long minVersion,
+        ChatId lastChatId,
+        int limit,
+        CancellationToken cancellationToken);
 
     Task<ApiList<ChatEntry>> ListChangedEntries(
         ChatId chatId,
@@ -68,6 +79,8 @@ public interface IChatsBackend : IComputeService
         long? startEntryId,
         string text,
         CancellationToken cancellationToken);
+
+    Task<Chat?> GetLastCreated(CancellationToken cancellationToken);
 
     // Commands
 

@@ -15,6 +15,22 @@ public interface IAccountsBackend : IComputeService
 
     [CommandHandler]
     public Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken);
+
+    // Non-compute methods
+    Task<ApiArray<UserId>> ListIds(
+        Moment minCreatedAt,
+        UserId lastUserId,
+        int limit,
+        CancellationToken cancellationToken);
+
+    Task<AccountFull?> GetLastCreated(CancellationToken cancellationToken);
+
+    Task<ApiArray<UserId>> ListChanged(
+        Moment maxCreatedAt,
+        long minVersion,
+        UserId lastUserId,
+        int limit,
+        CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]

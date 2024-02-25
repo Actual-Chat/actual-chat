@@ -8,6 +8,7 @@ namespace ActualChat.Search.Db;
 public class SearchDbContext(DbContextOptions<SearchDbContext> options) : DbContextBase(options)
 {
     public DbSet<DbIndexedChat> IndexedChats { get; protected set; } = null!;
+    public DbSet<DbContactIndexState> ContactIndexStates { get; protected set; } = null!;
     // Stl.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
 

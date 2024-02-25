@@ -38,13 +38,12 @@ public static class ChatsBackendExt
         return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
     }
 
-    public static async IAsyncEnumerable<ApiArray<Chat>> Batches(
+    public static async IAsyncEnumerable<ApiArray<Chat>> Batch(
         this IChatsBackend chatsBackend,
         Moment minCreatedAt,
         ChatId lastChatId,
         int limit,
-        [EnumeratorCancellation]
-        CancellationToken cancellationToken)
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
             var chats = await chatsBackend.List(minCreatedAt, lastChatId, limit, cancellationToken)
@@ -54,9 +53,31 @@ public static class ChatsBackendExt
 
             yield return chats;
 
-            var lastChat = chats[^1];
-            lastChatId = lastChat.Id;
-            minCreatedAt = lastChat.CreatedAt;
+            var last = chats[^1];
+            lastChatId = last.Id;
+            minCreatedAt = last.CreatedAt;
+        }
+    }
+
+    public static async IAsyncEnumerable<ApiArray<Chat>> BatchUpdates(
+        this IChatsBackend chatsBackend,
+        Moment maxCreatedAt,
+        long minVersion,
+        ChatId lastChatId,
+        int limit,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            var chats = await chatsBackend.ListChanged(maxCreatedAt, minVersion, lastChatId, limit, cancellationToken)
+                .ConfigureAwait(false);
+            if (chats.Count == 0)
+                yield break;
+
+            yield return chats;
+
+            var last = chats[^1];
+            lastChatId = last.Id;
+            minVersion = last.Version;
         }
     }
 

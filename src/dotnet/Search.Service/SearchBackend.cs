@@ -1,6 +1,9 @@
 using ActualChat.Chat;
+using ActualChat.Chat.Events;
+using ActualChat.Commands;
 using ActualChat.Contacts;
 using ActualChat.Search.Db;
+using ActualChat.Users.Events;
 using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.Core.Search;
 using Microsoft.AspNetCore.Http;
@@ -16,12 +19,28 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
     private ElasticsearchClient? _elastic;
     private IChatsBackend? _chatsBackend;
     private IContactsBackend? _contactsBackend;
+    private UserContactIndexingQueue? _userContactIndexingQueue;
+    private ChatContactIndexingQueue? _chatContactIndexingQueue;
 
     private ElasticNames ElasticNames => _elasticNames ??= Services.GetRequiredService<ElasticNames>();
     private ElasticsearchClient Elastic => _elastic ??= Services.GetRequiredService<ElasticsearchClient>();
     private IChatsBackend ChatsBackend => _chatsBackend ??= Services.GetRequiredService<IChatsBackend>();
     private IContactsBackend ContactsBackend => _contactsBackend ??= Services.GetRequiredService<IContactsBackend>();
+    private UserContactIndexingQueue UserContactIndexingQueue => _userContactIndexingQueue ??= Services.GetRequiredService<UserContactIndexingQueue>();
+    private ChatContactIndexingQueue ChatContactIndexingQueue => _chatContactIndexingQueue ??= Services.GetRequiredService<ChatContactIndexingQueue>();
     private ElasticConfigurator ElasticConfigurator { get; } = services.GetRequiredService<ElasticConfigurator>();
+
+    [ComputeMethod]
+    protected virtual async Task<ApiSet<string>> GetIndicesForEntrySearch(UserId userId, CancellationToken cancellationToken)
+    {
+        // public place chats are not returned since we use scoped indexes
+        var contactIds = await ContactsBackend.ListIdsForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
+        var indices = new List<IndexName>(ElasticNames.GetPeerChatSearchIndexNamePatterns(userId));
+        indices.AddRange(contactIds.Select(x => ElasticNames.GetIndexName(x.ChatId, false)));
+        return indices.Select(x => x.ToString()).ToApiSet();
+    }
+
+    // Non-compute methods
 
     // Not a [ComputeMethod]!
     public async Task<EntrySearchResultPage> FindEntriesInChat(
@@ -82,16 +101,6 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
                                 m => m.Fields(x => x.FullName, x => x.FirstName, x => x.SecondName)
                                     .Query(criteria)
                                     .Type(TextQueryType.PhrasePrefix)))
-                            // .Query(q => q.MatchPhrasePrefix(p
-                            //     => p.Query(criteria)
-                            //         .Field(x => x.FullName)
-                            //         .Field(x => x.FirstName)
-                            //         .Field(x => x.SecondName)))
-                            .Query(q
-                                => q.Bool(b
-                                    => b.Should(q2
-                                        => q2.MatchPhrasePrefix(p
-                                            => p.Field(f => f.FullName).Query(criteria)))))
                             .IgnoreUnavailable(),
                     cancellationToken)
                 .Assert(Log)
@@ -237,14 +246,34 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         await Elastic.Indices.RefreshAsync(r => r.Indices(indices.ToArray()), cancellationToken).ConfigureAwait(false);
     }
 
-    [ComputeMethod]
-    protected virtual async Task<ApiSet<string>> GetIndicesForEntrySearch(UserId userId, CancellationToken cancellationToken)
+    [EventHandler]
+    public virtual async Task OnAccountChangedEvent(AccountChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        // public place chats are not returned since we use scoped indexes
-        var contactIds = await ContactsBackend.ListIdsForEntrySearch(userId, cancellationToken).ConfigureAwait(false);
-        var indices = new List<IndexName>(ElasticNames.GetPeerChatSearchIndexNamePatterns(userId));
-        indices.AddRange(contactIds.Select(x => ElasticNames.GetIndexName(x.ChatId, false)));
-        return indices.Select(x => x.ToString()).ToApiSet();
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        // NOTE: we don't have any other chance to process removed items
+        if (eventCommand.ChangeKind == ChangeKind.Remove) {
+            var cmd = new SearchBackend_UserContactBulkIndex([], [eventCommand.Account.ToIndexedUserContact()]);
+            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        }
+        else
+            UserContactIndexingQueue.Activate();
+    }
+
+    [EventHandler]
+    public virtual async Task OnChatChangedEvent(ChatChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return; // It just spawns other commands, so nothing to do here
+
+        // NOTE: we don't have any other chance to process removed items
+        if (eventCommand.ChangeKind == ChangeKind.Remove) {
+            var cmd = new SearchBackend_ChatContactBulkIndex([], [eventCommand.Chat.ToIndexedChatContact()]);
+            await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
+        }
+        else
+            ChatContactIndexingQueue.Activate();
     }
 
     // Private methods

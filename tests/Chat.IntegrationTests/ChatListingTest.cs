@@ -53,7 +53,7 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out)
         }
 
         // act
-        await foreach (var chats in chatsBackend.Batches(now, ChatId.None, limit, CancellationToken.None)) {
+        await foreach (var chats in chatsBackend.Batch(now, ChatId.None, limit, CancellationToken.None)) {
             chats.Should().NotBeEmpty();
             var chatIds = chats
 #pragma warning disable CA1310
@@ -97,7 +97,7 @@ public class ChatListingTest(AppHostFixture fixture, ITestOutputHelper @out)
         var lastChatId = allChats[^1].Id;
 
         // act
-        var batches = await chatsBackend.Batches(minCreatedAt, lastChatId, limit, CancellationToken.None).ToListAsync();
+        var batches = await chatsBackend.Batch(minCreatedAt, lastChatId, limit, CancellationToken.None).ToListAsync();
 
         // assert
         batches.Should().BeEmpty();
