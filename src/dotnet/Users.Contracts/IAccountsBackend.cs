@@ -23,8 +23,6 @@ public interface IAccountsBackend : IComputeService
         int limit,
         CancellationToken cancellationToken);
 
-    Task<AccountFull?> GetLastCreated(CancellationToken cancellationToken);
-
     Task<ApiArray<UserId>> ListChanged(
         Moment maxCreatedAt,
         long minVersion,

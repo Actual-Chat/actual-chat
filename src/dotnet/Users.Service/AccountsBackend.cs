@@ -109,22 +109,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     }
 
     // Not a [ComputeMethod]!
-    public async Task<AccountFull?> GetLastCreated(CancellationToken cancellationToken)
-    {
-        var dbContext = CreateDbContext();
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbAccount = await dbContext.Accounts
-            .OrderByDescending(x => x.CreatedAt) // TODO: add index on version column
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        if (dbAccount is null)
-            return null;
-
-        return await Get(new UserId(dbAccount.Id), cancellationToken).ConfigureAwait(false);
-    }
-
-    // Not a [ComputeMethod]!
     public async Task<ApiArray<UserId>> ListChanged(
         Moment maxCreatedAt,
         long minVersion,

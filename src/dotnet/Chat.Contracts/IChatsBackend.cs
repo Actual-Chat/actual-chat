@@ -80,8 +80,6 @@ public interface IChatsBackend : IComputeService
         string text,
         CancellationToken cancellationToken);
 
-    Task<Chat?> GetLastCreated(CancellationToken cancellationToken);
-
     // Commands
 
     [CommandHandler]

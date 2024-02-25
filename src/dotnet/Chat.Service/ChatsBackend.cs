@@ -456,19 +456,6 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
         return dbEntry?.ToModel(); // LinkPreview & other properties aren't populated here!
     }
 
-    // Not a [ComputeMethod]!
-    public async Task<Chat?> GetLastCreated(CancellationToken cancellationToken)
-    {
-        var dbContext = CreateDbContext();
-        await using var _ = dbContext.ConfigureAwait(false);
-
-        var dbChat = await dbContext.Chats
-            .OrderByDescending(x => x.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken)
-            .ConfigureAwait(false);
-        return dbChat?.ToModel();
-    }
-
     // [CommandHandler]
     public virtual async Task<Chat> OnChange(
         ChatsBackend_Change command,
