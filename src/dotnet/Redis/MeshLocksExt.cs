@@ -2,18 +2,16 @@ using ActualChat.Mesh;
 
 namespace ActualChat.Redis;
 
-public class DistributedLocks<TContext>(IServiceProvider services)
+public static class MeshLocksExt
 {
-    private IMeshLocks<TContext>? _meshLocks;
-    private IMeshLocks<TContext> MeshLocks => _meshLocks ??= services.MeshLocks<TContext>();
-
-    public async Task<T> Run<T>(
+    public static async Task<T> Run<T>(
+        this IMeshLocks meshLocks,
         Func<CancellationToken, Task<T>> taskFactory,
         string key,
         MeshLockOptions options,
         CancellationToken cancellationToken)
     {
-        var (_, result) = await RunInternal(taskFactory,
+        var (_, result) = await meshLocks.RunInternal(taskFactory,
                 key,
                 options,
                 true,
@@ -22,55 +20,74 @@ public class DistributedLocks<TContext>(IServiceProvider services)
         return result;
     }
 
-    public Task<T> Run<T>(
+    public static Task<T> Run<T>(
+        this IMeshLocks meshLocks,
         Func<CancellationToken, Task<T>> taskFactory,
         string key,
         CancellationToken cancellationToken)
-        => Run(taskFactory, key, GetDefaultOptions(), cancellationToken);
+        => meshLocks.Run(taskFactory, key, GetDefaultOptions(), cancellationToken);
 
-    public Task Run(
+    public static Task Run(
+        this IMeshLocks meshLocks,
         Func<CancellationToken, Task> taskFactory,
         string key,
         MeshLockOptions options,
         CancellationToken cancellationToken)
-        => Run(taskFactory.ToUnitTaskFactory(),
+        => meshLocks.Run(taskFactory.ToUnitTaskFactory(),
             key,
             options,
             cancellationToken);
 
-    public Task Run(
+    public static Task Run(
+        this IMeshLocks meshLocks,
         Func<CancellationToken, Task> taskFactory,
         string key,
         CancellationToken cancellationToken)
-        => Run(taskFactory.ToUnitTaskFactory(),
+        => meshLocks.Run(taskFactory.ToUnitTaskFactory(),
             key,
             GetDefaultOptions(),
             cancellationToken);
 
-    public Task<(bool WasRun, T Result)> TryRun<T>(Func<CancellationToken, Task<T>> taskFactory, string key, MeshLockOptions options, CancellationToken cancellationToken)
-        => RunInternal(taskFactory, key, options, false, cancellationToken);
+    public static Task<(bool WasRun, T Result)> TryRun<T>(
+        this IMeshLocks meshLocks,
+        Func<CancellationToken, Task<T>> taskFactory,
+        string key,
+        MeshLockOptions options,
+        CancellationToken cancellationToken)
+        => meshLocks.RunInternal(taskFactory,
+            key,
+            options,
+            false,
+            cancellationToken);
 
-    public async Task<bool> TryRun(Func<CancellationToken, Task> taskFactory, string key, MeshLockOptions options, CancellationToken cancellationToken)
+    public static async Task<bool> TryRun(
+        this IMeshLocks meshLocks,
+        Func<CancellationToken, Task> taskFactory,
+        string key,
+        MeshLockOptions options,
+        CancellationToken cancellationToken)
     {
-        var (isStarted, _) = await TryRun(taskFactory.ToUnitTaskFactory(), key, options, cancellationToken)
+        var (isStarted, _) = await meshLocks.TryRun(taskFactory.ToUnitTaskFactory(), key, options, cancellationToken)
             .ConfigureAwait(false);
         return isStarted;
     }
 
-    public Task<bool> TryRun(
+    public static Task<bool> TryRun(
+        this IMeshLocks meshLocks,
         Func<CancellationToken, Task> taskFactory,
         string key,
         CancellationToken cancellationToken)
-        => TryRun(taskFactory, key, GetDefaultOptions(), cancellationToken);
+        => meshLocks.TryRun(taskFactory, key, GetDefaultOptions(), cancellationToken);
 
-    private async Task<(bool WasRun, T Result)> RunInternal<T>(
+    private static async Task<(bool WasRun, T Result)> RunInternal<T>(
+        this IMeshLocks meshLocks,
         Func<CancellationToken, Task<T>> taskFactory,
         string key,
         MeshLockOptions options,
         bool waitLock,
         CancellationToken cancellationToken)
     {
-        using var _1 = Tracer.Default.Region($"{nameof(DistributedLocks<TContext>)}.{nameof(RunInternal)}(): {typeof(TContext).Name}.{key}");
+        using var _1 = Tracer.Default.Region($"MeshLocks.{nameof(RunInternal)}(): {key}");
         var meshLockHolder = await Lock()
             .ConfigureAwait(false);
         if (meshLockHolder is null)
@@ -83,17 +100,16 @@ public class DistributedLocks<TContext>(IServiceProvider services)
 
         async Task<MeshLockHolder?> Lock()
         {
-            using var _ = Tracer.Default.Region($"{nameof(DistributedLocks<TContext>)}.{nameof(RunInternal)}().Lock(): {typeof(TContext).Name}.{key}");
+            using var _ = Tracer.Default.Region($"MeshLocks.{nameof(RunInternal)}().Lock(): {key}");
             return !waitLock
-                ? await MeshLocks
+                ? await meshLocks
                     .TryLock(key, Guid.NewGuid().ToString(), options, cancellationToken)
                     .ConfigureAwait(false)
-                : await MeshLocks
+                : await meshLocks
                     .Lock(key, Guid.NewGuid().ToString(), options, cancellationToken)
                     .ConfigureAwait(false);
         }
     }
-
 
     private static MeshLockOptions GetDefaultOptions() => new (TimeSpan.FromSeconds(15));
 }

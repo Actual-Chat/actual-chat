@@ -9,7 +9,7 @@
 <DialogFrame Title="Voice settings" Class="transcription-options-modal modal-sm" HasCloseButton="true">
     <Body>
     <FormBlock>
-        <LanguageButtonGroup ChatSid="@ModalModel.ChatId" Click="@(() => Modal.Close())"/>
+        <LanguageButtonGroup ChatId="@ModalModel.ChatId" Click="@(() => Modal.Close())"/>
 
         <OptionsItem Status="@status">
             <Left><i class="icon-radio-button-on-fill text-2xl"></i></Left>

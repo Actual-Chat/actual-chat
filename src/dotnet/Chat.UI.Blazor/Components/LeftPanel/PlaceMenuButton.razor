@@ -9,7 +9,7 @@
 
 <div
     class="menu"
-    data-menu="@(MenuRef.New<PlaceMenu>(_placeId).ToString())"
+    data-menu="@(MenuRef.New<PlaceMenu>(PlaceId).ToString())"
     data-menu-trigger="@MenuTrigger.Primary"
     data-menu-placement="@(FloatingPosition.RightStart.ToPositionString())">
 
@@ -19,21 +19,11 @@
 </div>
 
 @code {
-    private PlaceId _placeId;
-
     [Inject] private ChatUIHub Hub { get; set; } = null!;
     private Session Session => Hub.Session();
     private IContacts Contacts => Hub.Contacts;
 
-    [Parameter, EditorRequired] public string PlaceSid { get; set; } = null!;
-
-    protected override void OnInitialized() {
-        _placeId = PlaceId.Parse(PlaceSid);
-        base.OnInitialized();
-    }
-
-    protected override void OnParametersSet()
-        => _placeId = PlaceId.Parse(PlaceSid);
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -43,7 +33,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var places = await Contacts.ListPlaceIds(Session, cancellationToken);
-        var isMember = places.Contains(_placeId);
+        var isMember = places.Contains(PlaceId);
         return new Model(isMember);
     }
 

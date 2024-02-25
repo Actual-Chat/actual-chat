@@ -13,19 +13,13 @@
 
 @code {
     private Model? _rendered;
-    private PlaceId _placeId;
 
     [Inject] private ChatUI ChatUI  { get; init; } = null!;
     [Inject] private ChatListUI ChatListUI  { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
     [Parameter] public ChatListFilter ChatListFilter { get; init; } = ChatListFilter.None;
-    [Parameter, EditorRequired] public string PlaceSid { get; set; } = "";
-
-    protected override void OnInitialized() {
-        _placeId = PlaceId.Parse(PlaceSid);
-        base.OnInitialized();
-    }
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -34,7 +28,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await ChatListUI.GetUnreadChatCount(_placeId, ChatListFilter, cancellationToken).ConfigureAwait(false);
+        var count = await ChatListUI.GetUnreadChatCount(PlaceId, ChatListFilter, cancellationToken).ConfigureAwait(false);
 
         return new Model {
             Count = count,

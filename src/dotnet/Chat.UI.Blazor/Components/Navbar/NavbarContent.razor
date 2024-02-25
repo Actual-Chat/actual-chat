@@ -15,7 +15,7 @@
 <div class="navbar-content">
     <div class="navbar-group @cls">
         @if (isChats) {
-            <ChatListNavbarWidget PlaceSid="@placeId" />
+            <ChatListNavbarWidget PlaceId="@placeId" />
         }
         else if (isAdministration && m.IsAdmin) {
             <NavbarItem ReplaceOnPrefix="/admin/" Url="/admin/user-invites">Invite Users</NavbarItem>

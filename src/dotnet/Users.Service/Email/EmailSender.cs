@@ -1,5 +1,6 @@
 using ActualChat.Users.Module;
 using MailKit.Net.Smtp;
+using MailKit.Security;
 using MimeKit;
 
 namespace ActualChat.Users.Email;
@@ -25,7 +26,7 @@ public class EmailSender(IServiceProvider services) : IEmailSender
         };
 
         using var client = new SmtpClient();
-        await client.ConnectAsync(Settings.SmtpHost, Settings.SmtpPort, Settings.SmtpUseSsl, token).ConfigureAwait(false);
+        await client.ConnectAsync(Settings.SmtpHost, Settings.SmtpPort, SecureSocketOptions.StartTls, token).ConfigureAwait(false);
         await client.AuthenticateAsync(Settings.SmtpLogin, Settings.SmtpPassword, token).ConfigureAwait(false);
         await client.SendAsync(message, token).ConfigureAwait(false);
         await client.DisconnectAsync(true, token).ConfigureAwait(false);
