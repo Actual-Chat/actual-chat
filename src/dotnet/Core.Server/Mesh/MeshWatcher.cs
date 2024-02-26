@@ -14,7 +14,7 @@ public sealed class MeshWatcher : WorkerBase
     private readonly ConcurrentDictionary<ShardRef, RpcBackendShardPeerRef> _shardPeerRefs = new();
     private readonly IMutableState<MeshState> _state;
 
-    private IHostApplicationLifetime HostApplicationLifetime { get; }
+    private IHostApplicationLifetime? HostApplicationLifetime { get; }
     private IMeshLocks NodeLocks { get; }
     private IMomentClock Clock => NodeLocks.Clock;
     private ILogger Log { get; }
@@ -28,7 +28,7 @@ public sealed class MeshWatcher : WorkerBase
     public MeshWatcher(IServiceProvider services, bool mustStart = true)
     {
         Log = services.LogFor(GetType());
-        HostApplicationLifetime = services.GetRequiredService<IHostApplicationLifetime>();
+        HostApplicationLifetime = services.GetService<IHostApplicationLifetime>();
         MeshNode = services.MeshNode();
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
@@ -57,10 +57,9 @@ public sealed class MeshWatcher : WorkerBase
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        Log.LogInformation("Started");
         var whenLockedSource = new TaskCompletionSource();
         var whenLocked = whenLockedSource.Task;
-        _ = Task.Run(() => KeepLocked(whenLockedSource, cancellationToken), CancellationToken.None);
+        _ = Task.Run(() => Announce(whenLockedSource, cancellationToken), CancellationToken.None);
 
         var state = _state.Value;
         IAsyncSubscription<string>? changes = null;
@@ -145,25 +144,34 @@ public sealed class MeshWatcher : WorkerBase
         }).Order().ToImmutableArray();
     }
 
-    private async Task KeepLocked(TaskCompletionSource whenLockedTcs, CancellationToken cancellationToken)
+    private async Task Announce(TaskCompletionSource whenLockedTcs, CancellationToken cancellationToken)
     {
-        using var cts = cancellationToken.LinkWith(HostApplicationLifetime.ApplicationStopping);
-        cancellationToken = cts.Token;
-
         var key = MeshNode.ToString();
-        while (!cancellationToken.IsCancellationRequested) {
-            try {
-                var holder = await NodeLocks
-                    .Lock(key, "", cancellationToken)
-                    .ConfigureAwait(false);
-                await using var _ = holder.ConfigureAwait(false);
-                whenLockedTcs.TrySetResult();
-                using var lts = cancellationToken.LinkWith(holder.StopToken);
-                await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(lts.Token).SilentAwait();
+        Log.LogInformation("-> Announce: {MeshNode}", key);
+
+        var cts = cancellationToken.LinkWith(HostApplicationLifetime?.ApplicationStopping ?? CancellationToken.None);
+        cancellationToken = cts.Token;
+        try {
+            while (!cancellationToken.IsCancellationRequested) {
+                try {
+                    var holder = await NodeLocks
+                        .Lock(key, "", cancellationToken)
+                        .ConfigureAwait(false);
+                    await using var _ = holder.ConfigureAwait(false);
+                    whenLockedTcs.TrySetResult();
+                    Log.LogInformation("[+] {MeshNode}", key);
+                    using var lts = cancellationToken.LinkWith(holder.StopToken);
+                    await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(lts.Token).SilentAwait();
+                }
+                catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                    // Intended: we keep the lock unless cancellationToken is cancelled
+                    Log.LogInformation("[-] {MeshNode} - lost the lock", key);
+                }
             }
-            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                // Intended: we keep the lock unless cancellationToken is cancelled
-            }
+        }
+        finally {
+            Log.LogInformation("<- Announce: {MeshNode}", key);
+            cts.Dispose();
         }
     }
 }
