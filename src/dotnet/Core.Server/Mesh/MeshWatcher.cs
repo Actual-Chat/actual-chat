@@ -87,7 +87,8 @@ public sealed class MeshWatcher : WorkerBase
                     sb.Append("= ").Append(state);
                     var description = sb.ToStringAndRelease();
                     // ReSharper disable once TemplateIsNotCompileTimeConstantProblem
-                    Log.LogInformation($"State changed:{Environment.NewLine}{{Description}}", description);
+                    Log.LogInformation($"State changed @ {MeshNode}:{Environment.NewLine}{{Description}}",
+                        MeshNode.Ref.Value, description);
                 }
 
                 try {
@@ -118,7 +119,8 @@ public sealed class MeshWatcher : WorkerBase
 
                 var delay = NodeLocks.RetryDelays[++failureCount];
                 var resumeAt = Clock.Now + delay;
-                Log.LogError(e, "State update cycle failed, will retry in {Delay}", delay.ToShortString());
+                Log.LogError(e, "State update cycle failed @ {MeshNode}, will retry in {Delay}",
+                    MeshNode.Ref, delay.ToShortString());
 
                 await changes.DisposeSilentlyAsync().ConfigureAwait(false);
                 changes = null;
