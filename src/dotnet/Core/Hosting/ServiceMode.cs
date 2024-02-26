@@ -2,7 +2,8 @@ namespace ActualChat.Hosting;
 
 public enum ServiceMode
 {
-    Local = 0,
+    None = 0,
+    Local,
     Server,
     Client,
     Mixed,
@@ -10,6 +11,8 @@ public enum ServiceMode
 
 public static class ServiceModeExt
 {
+    public static bool IsNone(this ServiceMode serviceMode)
+        => serviceMode == ServiceMode.None;
     public static bool IsLocal(this ServiceMode serviceMode)
         => serviceMode == ServiceMode.Local;
     public static bool IsServer(this ServiceMode serviceMode)

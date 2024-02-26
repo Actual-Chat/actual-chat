@@ -91,6 +91,8 @@ public readonly struct RpcHostBuilder
         Services.Add(new ServiceDescriptor(typeof(BackendServiceDef), serviceDef));
 
         switch (serviceMode) {
+        case ServiceMode.None:
+            break;
         case ServiceMode.Local:
             AddService(serviceType, implementationType);
             break;
