@@ -85,9 +85,9 @@ public readonly struct RpcHostBuilder
             throw ActualLab.Internal.Errors.MustBeAssignableTo(implementationType, serviceType, nameof(implementationType));
 
         var hostRoles = HostInfo.Roles;
-        var serviceMode = hostRoles.GetServiceMode(serviceType);
-        var shardScheme = hostRoles.GetShardScheme(serviceType);
-        var serviceDef = new BackendServiceDef(serviceType, implementationType, serviceMode, shardScheme);
+        var serviceMode = hostRoles.GetBackendServiceMode(serviceType);
+        var hostedByRole = hostRoles.GetBackendClientRole(serviceType);
+        var serviceDef = new BackendServiceDef(serviceType, implementationType, serviceMode, hostedByRole);
         Services.Add(new ServiceDescriptor(typeof(BackendServiceDef), serviceDef));
 
         switch (serviceMode) {

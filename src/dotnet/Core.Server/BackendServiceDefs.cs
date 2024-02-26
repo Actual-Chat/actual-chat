@@ -2,9 +2,10 @@ using System.Collections.Frozen;
 
 namespace ActualChat;
 
-public class BackendServiceDefs
+public sealed class BackendServiceDefs
 {
     private readonly FrozenDictionary<Type, BackendServiceDef> _items;
+    private string? _toStringCached;
 
     public BackendServiceDef this[Type serviceType] => _items[serviceType];
 
@@ -15,6 +16,21 @@ public class BackendServiceDefs
             .Concat(items.Select(x => KeyValuePair.Create(x.ImplementationType, x)))
             .DistinctBy(kv => kv.Key)
             .ToFrozenDictionary();
+        var log = services.LogFor(GetType());
+        log.LogInformation("{Description}", ToString());
+    }
+
+    public override string ToString()
+    {
+        if (_toStringCached != null)
+            return _toStringCached;
+
+        var items = _items.Values
+            .Distinct()
+            .Select(x => $"{Environment.NewLine}- {x}")
+            .Order(StringComparer.Ordinal)
+            .ToDelimitedString("");
+        return _toStringCached = $"{nameof(BackendServiceDefs)}:" + items;
     }
 
     public bool Contains(Type serviceType)
