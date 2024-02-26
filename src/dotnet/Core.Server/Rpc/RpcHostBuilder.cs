@@ -196,7 +196,7 @@ public readonly struct RpcHostBuilder
     {
         // Replace
         Services.AddSingleton(RpcWebSocketServer.Options.Default with {
-            ExposeBackend = !HostInfo.HasRole(HostRole.SingleServer),
+            ExposeBackend = true,
         });
 
         // Replace RpcBackendServiceDetector (it's used by both RPC client & server)
