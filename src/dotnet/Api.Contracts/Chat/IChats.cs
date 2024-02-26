@@ -133,7 +133,7 @@ public sealed partial record Chats_UpsertTextEntry(
     [property: DataMember, MemoryPackOrder(4)] Option<long?> RepliedChatEntryId = default
 ) : ISessionCommand<ChatEntry>
 {
-    [Obsolete($"2023.11: Use '{nameof(EntryAttachments)}' instead")]
+    [Obsolete($"2023.11: Use '{nameof(EntryAttachments)}' instead.")]
     [DataMember, MemoryPackOrder(5)] public ApiArray<MediaId> Attachments { get; set; }
     [DataMember, MemoryPackOrder(6)] public ChatEntryId ForwardedChatEntryId { get; set; }
     [DataMember, MemoryPackOrder(7)] public AuthorId ForwardedAuthorId { get; set; }

@@ -1,5 +1,7 @@
 using ActualChat.Attributes;
 using ActualChat.Hosting;
 
-[assembly: ServedByRole(nameof(HostRole.MediaBackendServer))] // There must be only one backend role!
-[assembly: ServedByRole(nameof(HostRole.DefaultQueue))]
+[assembly: ServiceMode(nameof(HostRole.SingleServer), ServiceMode.Local, Priority = 1)]
+[assembly: ServiceMode(nameof(HostRole.MediaBackend), ServiceMode.Server)]
+[assembly: ShardScheme(nameof(ShardScheme.MediaBackend))]
+[assembly: CommandQueue(nameof(ShardScheme.DefaultQueue))]

@@ -18,10 +18,10 @@ import './src/init'
 
 // Exports
 export * as ui from '../dotnet/UI.Blazor/exports';
-export * as audio from '../dotnet/Audio.UI.Blazor/exports';
 export * as chat from '../dotnet/Chat.UI.Blazor/exports';
-export * as blazorApp from '../dotnet/UI.Blazor.App/exports';
+export * as streaming from '../dotnet/Streaming.UI.Blazor/exports';
 export * as notification from '../dotnet/Notification.UI.Blazor/exports';
+export * as blazorApp from '../dotnet/UI.Blazor.App/exports';
 export * from './src/kvas';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access

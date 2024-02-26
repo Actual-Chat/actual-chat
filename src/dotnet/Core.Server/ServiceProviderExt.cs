@@ -5,6 +5,10 @@ namespace ActualChat;
 public static class ServiceProviderExt
 {
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OtelMetrics Metrics(this IServiceProvider services)
+        => services.GetRequiredService<OtelMetrics>();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static MeshNode MeshNode(this IServiceProvider services)
         => services.GetRequiredService<MeshNode>();
 

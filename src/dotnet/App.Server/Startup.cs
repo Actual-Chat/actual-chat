@@ -1,6 +1,5 @@
+using ActualChat.App.Server.Logging;
 using ActualChat.App.Server.Module;
-using ActualChat.Audio.Module;
-using ActualChat.Audio.UI.Blazor.Module;
 using ActualChat.Chat.Module;
 using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Contacts.Module;
@@ -17,6 +16,8 @@ using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Search.Module;
+using ActualChat.Streaming.Module;
+using ActualChat.Streaming.UI.Blazor.Module;
 using ActualChat.Transcription.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
@@ -47,14 +48,16 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
             logging.ConfigureServerFilters(Env.EnvironmentName);
             logging.AddConsole();
             logging.AddConsoleFormatter<GoogleCloudConsoleFormatter, JsonConsoleFormatterOptions>();
-            if (AppLogging.IsDevLogRequested && appKind.IsServer() && !isTested) { // This excludes TestServer
+            if (!AppLogging.DevLog.IsEmpty && appKind.IsServer() && !isTested) {
                 var serilog = new LoggerConfiguration()
                     .MinimumLevel.Is(LogEventLevel.Verbose)
                     .Enrich.FromLogContext()
-                    .Enrich.With(new ThreadIdEnricher())
-                    .WriteTo.File(AppLogging.DevLogPath,
-                        outputTemplate: AppLogging.OutputTemplate,
-                        fileSizeLimitBytes: AppLogging.FileSizeLimit)
+                    .Enrich.With(new ProcessIdLogEventEnricher())
+                    .Enrich.With(new ThreadIdLogEventEnricher())
+                    .WriteTo.File(AppLogging.DevLog,
+                        outputTemplate: AppLogging.DevLogOutputTemplate,
+                        fileSizeLimitBytes: AppLogging.DevLogFileSizeLimit,
+                        shared: true)
                     .CreateLogger();
                 logging.AddFilteringSerilog(serilog, true);
             }
@@ -102,7 +105,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 // API modules
                 new ApiModule(moduleServices),
                 // Service-specific & service modules
-                new AudioServiceModule(moduleServices),
+                new StreamingServiceModule(moduleServices),
                 new FeedbackServiceModule(moduleServices),
                 new MediaServiceModule(moduleServices),
                 new ContactsServiceModule(moduleServices),
@@ -115,7 +118,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new MLSearchServiceModule(moduleServices),
                 // UI modules
                 new BlazorUICoreModule(moduleServices),
-                new AudioBlazorUIModule(moduleServices),
+                new StreamingBlazorUIModule(moduleServices),
                 new UsersBlazorUIModule(moduleServices),
                 new ContactsBlazorUIModule(moduleServices),
                 new ChatBlazorUIModule(moduleServices),

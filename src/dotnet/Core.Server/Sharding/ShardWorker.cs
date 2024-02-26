@@ -29,7 +29,7 @@ public abstract class ShardWorker : WorkerBase
         Services = services;
         ShardScheme = shardScheme;
         MeshWatcher = services.MeshWatcher();
-        ThisNode = MeshWatcher.ThisNode;
+        ThisNode = MeshWatcher.MeshNode;
 
         keySuffix ??= GetType().Name;
         if (keySuffix.Length != 0)

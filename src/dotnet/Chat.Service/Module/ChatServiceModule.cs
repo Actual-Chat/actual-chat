@@ -1,8 +1,8 @@
 using ActualChat.Chat.Db;
+using ActualChat.Chat.Uploads;
 using ActualChat.Db;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
-using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Uploads;
 using ActualChat.Users.Events;
@@ -98,7 +98,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices) : HostMod
 #pragma warning restore CS0618 // Type or member is obsolete
 
         // ContentSaver
-        services.AddResponseCaching();
         services.AddSingleton<IUploadProcessor, ImageUploadProcessor>();
         services.AddSingleton<IUploadProcessor, VideoUploadProcessor>();
 

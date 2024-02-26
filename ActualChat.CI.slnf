@@ -1,4 +1,4 @@
-﻿{
+{
   "solution": {
     "path": "ActualChat.sln",
     "projects": [
@@ -6,9 +6,6 @@
       "src\\dotnet\\Api.Contracts\\Api.Contracts.csproj",
       "src\\dotnet\\App.Server\\App.Server.csproj",
       "src\\dotnet\\App.Wasm\\App.Wasm.csproj",
-      "src\\dotnet\\Audio.Contracts\\Audio.Contracts.csproj",
-      "src\\dotnet\\Audio.Service\\Audio.Service.csproj",
-      "src\\dotnet\\Audio.UI.Blazor\\Audio.UI.Blazor.csproj",
       "src\\dotnet\\Chat.Contracts\\Chat.Contracts.csproj",
       "src\\dotnet\\Chat.Service.Migration\\Chat.Service.Migration.csproj",
       "src\\dotnet\\Chat.Service\\Chat.Service.csproj",
@@ -43,6 +40,9 @@
       "src\\dotnet\\Search.Service.Migration\\Search.Service.Migration.csproj",
       "src\\dotnet\\Search.Service\\Search.Service.csproj",
       "src\\dotnet\\SignalR.Client\\SignalR.Client.csproj",
+      "src\\dotnet\\Streaming.Contracts\\Streaming.Contracts.csproj",
+      "src\\dotnet\\Streaming.Service\\Streaming.Service.csproj",
+      "src\\dotnet\\Streaming.UI.Blazor\\Streaming.UI.Blazor.csproj",
       "src\\dotnet\\Transcription.Contracts\\Transcription.Contracts.csproj",
       "src\\dotnet\\Transcription.Service\\Transcription.Service.csproj",
       "src\\dotnet\\UI.Blazor.App\\UI.Blazor.App.csproj",
@@ -55,8 +55,6 @@
       "src\\dotnet\\Users\\Users.csproj",
       "tests\\MLSearch.IntegrationTests\\MLSearch.IntegrationTests.csproj",
       "tests\\MLSearch.UnitTests\\MLSearch.UnitTests.csproj",
-      "tests\\Audio.IntegrationTests\\Audio.IntegrationTests.csproj",
-      "tests\\Audio.UnitTests\\Audio.UnitTests.csproj",
       "tests\\Chat.IntegrationTests\\Chat.IntegrationTests.csproj",
       "tests\\Chat.UI.Blazor.IntegrationTests\\Chat.UI.Blazor.IntegrationTests.csproj",
       "tests\\Chat.UI.Blazor.PlaywrightTests\\Chat.UI.Blazor.PlaywrightTests.csproj",
@@ -70,6 +68,8 @@
       "tests\\Core.UnitTests\\Core.UnitTests.csproj",
       "tests\\Kubernetes.IntegrationTests\\Kubernetes.IntegrationTests.csproj",
       "tests\\Search.IntegrationTests\\Search.IntegrationTests.csproj",
+      "tests\\Streaming.IntegrationTests\\Streaming.IntegrationTests.csproj",
+      "tests\\Streaming.UnitTests\\Streaming.UnitTests.csproj",
       "tests\\Testing.Host\\Testing.Host.csproj",
       "tests\\Testing\\Testing.csproj",
       "tests\\Transcription.IntegrationTests\\Transcription.IntegrationTests.csproj",

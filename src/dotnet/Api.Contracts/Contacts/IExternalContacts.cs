@@ -6,13 +6,13 @@ public interface IExternalContacts : IComputeService
 {
     [ComputeMethod]
     Task<ApiArray<ExternalContact>> List(Session session, Symbol deviceId, CancellationToken cancellationToken);
-    [CommandHandler, Obsolete("2023.10: Replaced with OnBulkChange")]
+    [CommandHandler, Obsolete("2023.10: Replaced with OnBulkChange.")]
     Task<ExternalContact?> OnChange(ExternalContacts_Change command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ApiArray<Result<ExternalContact?>>> OnBulkChange(ExternalContacts_BulkChange command, CancellationToken cancellationToken);
 }
 
-[Obsolete("2023.10: Replaced with ExternalContacts_BulkChange")]
+[Obsolete("2023.10: Replaced with ExternalContacts_BulkChange.")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ExternalContacts_Change(

@@ -23,7 +23,7 @@ public sealed class KubernetesModule(IServiceProvider moduleServices) : HostModu
             .ConfigurePrimaryHttpMessageHandler(c => {
                 var handler = new HttpClientHandler();
                 var kubeInfo = c.GetRequiredService<KubeInfo>();
-                var log = c.GetRequiredService<ILogger<KubeServices>>();
+                var log = c.LogFor<KubeServices>();
                 var caCertString = File.ReadAllText(kubeInfo.CACertPath);
                 var caCert = X509Certificate2.CreateFromPem(caCertString);
 #pragma warning disable MA0039

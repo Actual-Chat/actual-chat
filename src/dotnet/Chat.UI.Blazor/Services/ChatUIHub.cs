@@ -1,10 +1,11 @@
 using ActualChat.Audio;
-using ActualChat.Audio.UI.Blazor.Components;
-using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Streaming.UI.Blazor.Components;
 using ActualChat.Contacts;
 using ActualChat.Invite;
 using ActualChat.MediaPlayback;
 using ActualChat.Notification.UI.Blazor;
+using ActualChat.Streaming;
+using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.Services;
@@ -35,12 +36,12 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     private ChatPlayers? _chatPlayers;
     private AudioSettings? _audioSettings;
     private AudioRecorder? _audioRecorder;
-    private IAudioStreamer? _audioStreamer;
     private AudioDownloader? _audioDownloader;
     private AudioInitializer? _audioInitializer;
     private IAudioOutputController? _audioOutputController;
     private IPlaybackFactory? _playbackFactory;
     private KeyedFactory<IChatMarkupHub, ChatId>? _chatMarkupHubFactory;
+    private IStreamClient? _streamClient;
 
     public IChats Chats => _chats ??= Services.GetRequiredService<IChats>();
     public IChatPositions ChatPositions => _chatPositions ??= Services.GetRequiredService<IChatPositions>();
@@ -66,13 +67,13 @@ public sealed class ChatUIHub(IServiceProvider services) : UIHub(services)
     public ChatPlayers ChatPlayers => _chatPlayers ??= Services.GetRequiredService<ChatPlayers>();
     public AudioSettings AudioSettings => _audioSettings ??= Services.GetRequiredService<AudioSettings>();
     public AudioRecorder AudioRecorder => _audioRecorder ??= Services.GetRequiredService<AudioRecorder>();
-    public IAudioStreamer AudioStreamer => _audioStreamer ??= Services.GetRequiredService<IAudioStreamer>();
     public AudioDownloader AudioDownloader => _audioDownloader ??= Services.GetRequiredService<AudioDownloader>();
     public AudioInitializer AudioInitializer => _audioInitializer ??= Services.GetRequiredService<AudioInitializer>();
     public IAudioOutputController AudioOutputController => _audioOutputController ??= Services.GetRequiredService<IAudioOutputController>();
     public IPlaybackFactory PlaybackFactory => _playbackFactory ??= Services.GetRequiredService<IPlaybackFactory>();
     public KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory
         => _chatMarkupHubFactory ??= Services.GetRequiredService<KeyedFactory<IChatMarkupHub, ChatId>>();
+    public IStreamClient StreamClient => _streamClient ??= Services.GetRequiredService<IStreamClient>();
 
     // Some handy helpers
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

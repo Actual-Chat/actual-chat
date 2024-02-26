@@ -158,13 +158,13 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         // Diagnostics
         var isDev = HostInfo.IsDevelopmentInstance;
         var hostKind = HostInfo.HostKind;
-        var isServer = hostKind.IsServer();
-        var isClient = hostKind.IsApp();
+        var isApp = hostKind.IsApp();
         var isWasmApp = hostKind.IsWasmApp();
+        var isServer = hostKind.IsServer();
 
         services.AddScoped(c => new DebugUI(c));
 
-        if (isClient) {
+        if (isApp) {
             services.AddSingleton(c => new TaskMonitor(c));
             services.AddSingleton(c => new TaskEventListener(c));
         }

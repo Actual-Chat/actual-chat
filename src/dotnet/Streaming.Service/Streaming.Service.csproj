@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Db\Db.csproj" />
+    <ProjectReference Include="..\Redis\Redis.csproj" />
+    <ProjectReference Include="..\SignalR.Client\SignalR.Client.csproj" />
+    <ProjectReference Include="..\Chat.Contracts\Chat.Contracts.csproj" />
+    <ProjectReference Include="..\Streaming.Contracts\Streaming.Contracts.csproj" />
+    <ProjectReference Include="..\Transcription.Contracts\Transcription.Contracts.csproj" />
+    <ProjectReference Include="..\Users.Contracts\Users.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Audio.IntegrationTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- TODO: fix T4 generation without VS/Rider or move to source generators, move generation results to a separate folder (?) -->
+    <None Update="Ebml\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="Ebml\%(Filename).cs" />
+    <None Update="WebM\Models\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\Models\%(Filename).cs" />
+    <None Update="WebM\*.tt" Generator="TextTemplatingFileGenerator" LastGenOutput="WebM\%(Filename).cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Ebml\MatroskaSpecification.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MatroskaSpecification.tt</DependentUpon>
+    </Compile>
+    <Compile Update="Ebml\Models\MatroskaModels.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MatroskaModels.tt</DependentUpon>
+    </Compile>
+    <Compile Update="WebM\Models\MatroskaModels.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MatroskaModels.tt</DependentUpon>
+    </Compile>
+    <Compile Update="WebM\MatroskaSpecification.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>MatroskaSpecification.tt</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+</Project>

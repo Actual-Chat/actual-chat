@@ -73,7 +73,7 @@ public interface IChatsBackend : IComputeService
 
     [CommandHandler]
     Task<Chat> OnChange(ChatsBackend_Change command, CancellationToken cancellationToken);
-    [CommandHandler, Obsolete("2024.01: Replaced with OnChangeEntry")]
+    [CommandHandler, Obsolete("2024.01: Replaced with OnChangeEntry.")]
     Task<ChatEntry> OnUpsertEntry(ChatsBackend_UpsertEntry command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ChatEntry> OnChangeEntry(ChatsBackend_ChangeEntry command, CancellationToken cancellationToken);
@@ -102,7 +102,7 @@ public sealed partial record ChatsBackend_Change(
     [property: DataMember, MemoryPackOrder(3)] UserId OwnerId = default
 ) : ICommand<Chat>, IBackendCommand;
 
-[Obsolete("2024.01: Replaced with ChatsBackend_ChangeEntry")]
+[Obsolete("2024.01: Replaced with ChatsBackend_ChangeEntry.")]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_UpsertEntry(

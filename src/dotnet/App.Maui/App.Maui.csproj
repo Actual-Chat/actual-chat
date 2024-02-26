@@ -10,7 +10,7 @@
 
     <!-- MAUI properties -->
     <UseMaui>true</UseMaui>
-    <MauiVersion>8.0.3</MauiVersion>
+    <MauiVersion>8.0.7</MauiVersion>
     <SingleProject>true</SingleProject>
     <IsPublishable>true</IsPublishable>
     <UseMauiNuGets>false</UseMauiNuGets>

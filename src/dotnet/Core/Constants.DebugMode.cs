@@ -8,8 +8,16 @@ public static partial class Constants
 
     public static class DebugMode
     {
+        // Rpc calls
+        public static class RpcCalls
+        {
+            public static readonly bool ApiClient = false;
+            public static readonly bool ApiServer = false;
+            public static readonly bool BackendClient = false;
+            public static readonly bool BackendServer = false;
+        }
+
         // Core components
-        public static readonly bool RpcClient = false;
         public static readonly bool SignalR = false;
         public static readonly bool StoredState = false;
         public static readonly bool SyncedState = false;

@@ -42,7 +42,6 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public ChatListUI(ChatUIHub hub) : base(hub)
     {
         var type = GetType();
-        // var isClient = HostInfo.AppKind.IsClient();
         _loadLimit = StateFactory.NewMutable(Constants.Contacts.MinLoadLimit,
             StateCategories.Get(type, nameof(_loadLimit)));
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,

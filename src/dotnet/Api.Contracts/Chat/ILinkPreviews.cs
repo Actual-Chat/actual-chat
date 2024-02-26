@@ -5,7 +5,7 @@ using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Chat;
 
-[Obsolete("2023.10: Use ActualChat.Media.ILinkPreviews instead")]
+[Obsolete("2023.10: Use ActualChat.Media.ILinkPreviews instead.")]
 public interface ILinkPreviews : IComputeService
 {
     [ComputeMethod]
@@ -14,7 +14,7 @@ public interface ILinkPreviews : IComputeService
     Task<LinkPreview?> Get(Symbol id, CancellationToken cancellationToken);
 }
 
-[Obsolete("2023.10: Use ActualChat.Media.LinkPreview instead")]
+[Obsolete("2023.10: Use ActualChat.Media.LinkPreview instead.")]
 [ParameterComparer(typeof(ByValueParameterComparer))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public sealed partial record LinkPreview : IHasId<Symbol>, IRequirementTarget

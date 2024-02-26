@@ -1,6 +1,6 @@
 using ActualChat.Audio;
-using ActualChat.Audio.UI.Blazor.Components;
-using ActualChat.Audio.UI.Blazor.Services;
+using ActualChat.Streaming.UI.Blazor.Components;
+using ActualChat.Streaming.UI.Blazor.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 

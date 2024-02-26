@@ -18,7 +18,9 @@
         <Stepper Context="stepper" CurrentStepChanged="@OnCurrentStepChanged">
             <Steps>
                 <PhoneStep Account="m.AccountFull"/>
-                <EmailStep Account="m.AccountFull"/>
+                @if (m.EnableIncompleteUI) {
+                    <EmailStep Account="m.AccountFull"/>
+                }
                 <AvatarStep/>
                 <PermissionsStep NextButtonRef="@_nextButtonRef" />
                 <CreateChatsStep/>

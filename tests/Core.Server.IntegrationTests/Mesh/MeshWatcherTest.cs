@@ -47,8 +47,8 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         using var h2 = await NewAppHost();
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
 
-        var w1w2 = w1.GetPeerRef(w2.ThisNode.Ref).Require();
-        var w2w1 = w2.GetPeerRef(w1.ThisNode.Ref).Require();
+        var w1w2 = w1.GetPeerRef(w2.MeshNode.Ref).Require();
+        var w2w1 = w2.GetPeerRef(w1.MeshNode.Ref).Require();
 
         _ = w2.DisposeAsync();
 

@@ -33,7 +33,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         => GetAndRefreshIfRequired(id, null, true, cancellationToken);
 
     // [ComputeMethod]
-    [Obsolete("2023.10: Remains for backward compability")]
+    [Obsolete("2023.10: Remains for backward compability.")]
     public virtual async Task<LinkPreview?> GetForEntry(ChatEntryId entryId, CancellationToken cancellationToken)
     {
         var entry = await ChatsBackend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);

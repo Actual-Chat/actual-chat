@@ -210,6 +210,7 @@ public partial class GoogleTranscriber : ITranscriber
         try {
             var output = state.Output;
             var responses = (IAsyncEnumerable<StreamingRecognizeResponse>)state.RecognizeStream.GetResponseStream();
+            // ReSharper disable once UseCancellationTokenForIAsyncEnumerable
             await foreach (var transcript in ProcessResponses(state, responses).ConfigureAwait(false))
                 await output.WriteAsync(transcript, cancellationToken).ConfigureAwait(false);
         }
