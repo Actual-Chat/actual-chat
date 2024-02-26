@@ -120,7 +120,7 @@ public sealed class MeshWatcher : WorkerBase
                 var delay = NodeLocks.RetryDelays[++failureCount];
                 var resumeAt = Clock.Now + delay;
                 Log.LogError(e, "State update cycle failed @ {MeshNode}, will retry in {Delay}",
-                    MeshNode.Ref, delay.ToShortString());
+                    MeshNode.Ref.Value, delay.ToShortString());
 
                 await changes.DisposeSilentlyAsync().ConfigureAwait(false);
                 changes = null;
