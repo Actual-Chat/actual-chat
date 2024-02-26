@@ -15,10 +15,13 @@ public class StreamHub(IServiceProvider services) : Hub
 {
     private static readonly Task<string> PongTask = Task.FromResult("Pong");
 
+    private readonly bool _preferMeshNode = services.HostInfo().HasRole(HostRole.SingleServer);
+
+    private MeshNode MeshNode { get; } = services.MeshNode();
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
-    private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
     private ISecureTokensBackend SecureTokensBackend { get; } = services.GetRequiredService<ISecureTokensBackend>();
     private IHostApplicationLifetime HostApplicationLifetime { get; } = services.GetRequiredService<IHostApplicationLifetime>();
+    private IStreamingBackend Backend { get; } = services.GetRequiredService<IStreamingBackend>();
     private OtelMetrics Metrics { get; } = services.Metrics();
     private ILogger Log { get; } = services.LogFor<StreamHub>();
 
@@ -92,7 +95,8 @@ public class StreamHub(IServiceProvider services) : Hub
             return; // No backends
         }
 
-        var streamId = new StreamId(nodes.GetRandom().Ref, Generate.Option);
+        var nodeRef = _preferMeshNode ? MeshNode.Ref : nodes.GetRandom().Ref;
+        var streamId = new StreamId(nodeRef, Generate.Option);
         var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartOffset, repliedChatEntryIdTyped);
         Log.LogInformation("ProcessAudio: {AudioRecord}", audioRecord);
         var frames = audioStream
@@ -102,7 +106,7 @@ public class StreamHub(IServiceProvider services) : Hub
                 Duration = Constants.Audio.OpusFrameDuration,
             })
             .TrimOnCancellation(stopCts.Token);
-        var frameStream = new RpcStream<AudioFrame>(frames);
+        var frameStream = RpcStream.New(frames);
         await Backend
             .ProcessAudio(audioRecord, preSkipFrames, frameStream, CancellationToken.None)
             .SilentAwait(false);

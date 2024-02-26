@@ -80,14 +80,14 @@ public sealed partial class StreamingBackend : IStreamingBackend, IDisposable
             return null;
 
         stream = SkipTo(stream, skipTo, cancellationToken);
-        return new RpcStream<byte[]>(stream);
+        return RpcStream.New(stream);
     }
 
     public async Task<RpcStream<TranscriptDiff>?> GetTranscript(StreamId streamId, CancellationToken cancellationToken)
     {
         var stream = await _transcriptStreams.Get(streamId, cancellationToken).ConfigureAwait(false);
         return stream == null ? null
-            : new RpcStream<TranscriptDiff>(stream);
+            : RpcStream.New(stream);
     }
 
     // Private methods
