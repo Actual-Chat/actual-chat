@@ -31,7 +31,6 @@ public class StreamStore<TItem> : ProcessorBase
                 return null;
 
             var memoizer = await entry.Value.Task.ConfigureAwait(false);
-            Log?.LogInformation("Get({StreamId}): got {Data}", streamId, memoizer != null ? "stream" : "null");
             return memoizer?.Replay(cancellationToken);
         }
 
@@ -40,8 +39,8 @@ public class StreamStore<TItem> : ProcessorBase
             var memoizer = await entry.Value.Task
                 .WaitAsync(ShareWaitDelay, cancellationToken)
                 .ConfigureAwait(false);
-            Log?.LogInformation("Get({StreamId}): got {Data}", streamId, memoizer != null ? "stream" : "null");
-            // return memoizer?.Replay(cancellationToken);
+            return memoizer?.Replay(cancellationToken);
+#if false
             if (memoizer == null)
                 return null;
 
@@ -54,6 +53,7 @@ public class StreamStore<TItem> : ProcessorBase
                     yield return item;
                 }
             }
+#endif
         }
         catch (TimeoutException) {
             return null;
