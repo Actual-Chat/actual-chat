@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>7.0.38</ActualLabFusionVersion>
+    <ActualLabFusionVersion>7.0.40</ActualLabFusionVersion>
     <AspNetCoreVersion>8.0.2</AspNetCoreVersion>
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <EntityFrameworkCoreVersion>8.0.2</EntityFrameworkCoreVersion>
@@ -163,7 +163,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
     <PackageVersion Include="banditoth.MAUI.DeviceId" Version="1.0.0" />
     <!-- MAUI - Android -->
-    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.12.0.4" />
+    <PackageVersion Include="Xamarin.AndroidX.Core" Version="1.12.0.3" />
     <PackageVersion Include="Xamarin.Firebase.Messaging" Version="123.3.1.1" />
     <PackageVersion Include="Xamarin.GooglePlayServices.Auth" Version="120.7.0.2" />
     <PackageVersion Include="Xamarin.GooglePlayServices.CroNet" Version="118.0.1.8" />
@@ -171,7 +171,6 @@
     <PackageVersion Include="Xamarin.Twilio.AudioSwitch" Version="1.1.4" />
     <PackageVersion Include="Xamarin.AndroidX.Collection" Version="1.4.0.1" />
     <PackageVersion Include="Xamarin.AndroidX.Collection.Ktx" Version="1.4.0.1" />
-    <PackageVersion Include="Xamarin.AndroidX.Lifecycle.Common" Version="2.7.0.1" />
     <!-- MAUI - iOS -->
     <PackageVersion Include="Plugin.Firebase.CloudMessaging" Version="2.0.4" />
     <PackageVersion Include="Xamarin.Build.Download" Version="0.11.4" />
