@@ -1,6 +1,7 @@
 using ActualChat.Hosting;
 using ActualChat.Rpc;
 using ActualLab.Rpc;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.Mesh;
 
@@ -12,17 +13,22 @@ public sealed class MeshWatcher : WorkerBase
     private readonly ConcurrentDictionary<NodeRef, RpcBackendNodePeerRef> _nodePeerRefs = new();
     private readonly ConcurrentDictionary<ShardRef, RpcBackendShardPeerRef> _shardPeerRefs = new();
     private readonly IMutableState<MeshState> _state;
+
+    private IHostApplicationLifetime HostApplicationLifetime { get; }
     private IMeshLocks NodeLocks { get; }
+    private IMomentClock Clock => NodeLocks.Clock;
     private ILogger Log { get; }
 
     public MeshNode MeshNode { get; }
     public IState<MeshState> State => _state;
-    public TimeSpan ChangeTimeout { get; }
-    public IMomentClock Clock => NodeLocks.Clock;
+
+    // Settings
+    public TimeSpan ChangeTimeout { get; init; }
 
     public MeshWatcher(IServiceProvider services, bool mustStart = true)
     {
         Log = services.LogFor(GetType());
+        HostApplicationLifetime = services.GetRequiredService<IHostApplicationLifetime>();
         MeshNode = services.MeshNode();
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
@@ -52,9 +58,9 @@ public sealed class MeshWatcher : WorkerBase
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
         Log.LogInformation("Started");
-        var whenLockedTcs = new TaskCompletionSource();
-        var whenLocked = whenLockedTcs.Task;
-        _ = Task.Run(() => KeepLocked(whenLockedTcs, cancellationToken), CancellationToken.None);
+        var whenLockedSource = new TaskCompletionSource();
+        var whenLocked = whenLockedSource.Task;
+        _ = Task.Run(() => KeepLocked(whenLockedSource, cancellationToken), CancellationToken.None);
 
         var state = _state.Value;
         IAsyncSubscription<string>? changes = null;
@@ -63,7 +69,7 @@ public sealed class MeshWatcher : WorkerBase
         while (true) {
             try {
                 if (!whenLocked.IsCompleted)
-                    await whenLockedTcs.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+                    await whenLockedSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                 // 1. Subscribe to key space changes unless already subscribed
                 changes ??= await NodeLocks.Changes("", cancellationToken).ConfigureAwait(false);
@@ -141,6 +147,9 @@ public sealed class MeshWatcher : WorkerBase
 
     private async Task KeepLocked(TaskCompletionSource whenLockedTcs, CancellationToken cancellationToken)
     {
+        using var cts = cancellationToken.LinkWith(HostApplicationLifetime.ApplicationStopping);
+        cancellationToken = cts.Token;
+
         var key = MeshNode.ToString();
         while (!cancellationToken.IsCancellationRequested) {
             try {
