@@ -21,7 +21,10 @@
                 <ChatIcon Chat="chatInfo.Chat" ShowPresence="@true"/>
             </ChildContent>
             <BadgeContent>
-                @* <ChatsNavbarButtonBadge PlaceSid="@place.Id"/> *@
+                <UnreadCount
+                    Value="@chatInfo.UnreadCount"
+                    HasMentions="@chatInfo.HasUnreadMentions"
+                    NotificationMode="@chatInfo.UserSettings.NotificationMode"/>
             </BadgeContent>
         </NavbarGroupSelectionButton>
     }
