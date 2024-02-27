@@ -38,7 +38,7 @@ public partial record struct HostRole(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsQueue => Id.Value.OrdinalEndsWith("Queue");
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsBackendServer => Id.Value.OrdinalEndsWith("BackendServer");
+    public bool IsBackend => Id == BackendServer.Id || Id.Value.OrdinalEndsWith("Backend");
 
     public override string ToString() => Value;
 

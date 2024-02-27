@@ -17,7 +17,7 @@ public static class ServiceCollectionExt
         Func<IServiceProvider, ShardCommandQueueScheduler.Options>? schedulerOptionsBuilder = null,
         Func<IServiceProvider, ShardEventQueueScheduler.Options>? eventSchedulerOptionsBuilder = null)
     {
-        var backendRoles = hostRoles.Where(r => r.IsBackendServer);
+        var backendRoles = hostRoles.Where(r => r.IsBackend);
         foreach (var hostRole in backendRoles) {
             services.AddCommandQueues(hostRole, optionsBuilder, schedulerOptionsBuilder);
 

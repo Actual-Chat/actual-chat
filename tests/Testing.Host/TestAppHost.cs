@@ -22,7 +22,7 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
     public async Task WaitForProcessingOfAlreadyQueuedCommands(TimeSpan timeout)
     {
         var hostRoles = Services.GetRequiredService<HostInfo>().Roles;
-        var backendHostRoles = hostRoles.Where(hr => hr.IsBackendServer || hr.IsQueue);
+        var backendHostRoles = hostRoles.Where(hr => hr.IsBackend || hr.IsQueue);
         var schedulers = new List<ICommandQueueScheduler>();
         foreach (var hostRole in backendHostRoles) {
             var serviceKey = hostRole.Id.Value;
