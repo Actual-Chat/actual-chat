@@ -34,4 +34,36 @@ public class DocumentSerializationTests(ITestOutputHelper @out) : TestBase(@out)
         Assert.Equal(attachment.Id, deserializedAttachment.Id);
         Assert.Equal(attachment.Summary, deserializedAttachment.Summary);
     }
+
+    [Fact]
+    public void DocumentMetadataSerializesAndDeserializesProperly()
+    {
+        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
+        var chatId = new ChatId(Generate.Option);
+        var chatEntryId1 = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
+        var chatEntryId2 = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
+        var chatEntries = ImmutableArray.Create(chatEntryId1, chatEntryId2);
+        var (startOffset, endOffset) = (0, 100);
+        var replyToEntries = ImmutableArray.Create(new ChatEntryId(chatId, ChatEntryKind.Text, 100, AssumeValid.Option));
+        var activeUser = new PrincipalId(UserId.New(), AssumeValid.Option);
+        var mentions = ImmutableArray.Create(activeUser);
+        var reactions = ImmutableArray.Create(activeUser);
+        var participants = ImmutableArray.Create(authorId, activeUser);
+        var attachments = ImmutableArray.Create(
+            new DocumentAttachment(new MediaId("chat", Generate.Option), "summary1"),
+            new DocumentAttachment(new MediaId("chat", Generate.Option), "summary2")
+        );
+        const string lang = "en-US";
+        var timestamp = DateTime.Now;
+
+        var metadata = new DocumentMetadata(
+            authorId, chatEntries, startOffset, endOffset,
+            replyToEntries, mentions, reactions, participants, attachments,
+            true, lang, timestamp
+        );
+        var jsonString = JsonSerializer.Serialize(metadata, serializerOptions);
+        var deserializedMetadata = JsonSerializer.Deserialize<DocumentMetadata>(jsonString, serializerOptions);
+        Assert.Equivalent(metadata, deserializedMetadata);
+        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedMetadata, serializerOptions));
+    }
 }
