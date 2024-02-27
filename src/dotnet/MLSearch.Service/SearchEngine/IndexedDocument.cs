@@ -34,14 +34,12 @@ internal readonly record struct DocumentMetadata(
     // Attachments to document's source messages
     in ImmutableArray<DocumentAttachment> Attachments,
     in bool IsPublic,
-    in string Language,
+    in string? Language,
     in DateTime Timestamp
 )
 {
-    public ChatId ChatId => ChatEntries.Length>0
-        ? ChatEntries[0].ChatId
-        : ChatId.None;
-    public PlaceId PlaceIdChatId => ChatId.PlaceId;
+    public ChatId ChatId => ChatEntries.IsDefaultOrEmpty ? ChatId.None : ChatEntries[0].ChatId;
+    public PlaceId PlaceId => ChatId.PlaceId;
 }
 
 [StructLayout(LayoutKind.Auto)]

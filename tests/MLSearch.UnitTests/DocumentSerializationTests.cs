@@ -1,5 +1,3 @@
-using ActualChat.MLSearch;
-
 namespace ActualChat.MLSearch.UnitTests;
 
 public class DocumentSerializationTests(ITestOutputHelper @out) : TestBase(@out)
