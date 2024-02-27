@@ -52,17 +52,31 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task SemanticSearchTest()
     {
         var searchIndexId = settings!.IntoSearchIndexId();
-        var documents = new [] {
-            new IndexedDocument { Uri="message_01", Text="OpenSearch supports the following models, categorized by type." },
-            new IndexedDocument { Uri="message_02", Text="Quite often, our methods are async, and we can't make constructors async. This is where XUnit's IAsyncLifetime comes in." },
-            new IndexedDocument { Uri="message_03", Text="The license for Docker Desktop is not expensive, but it's not free anymore, so I wanted to check if there's an easy and cheap alternative to Docker Desktop for Windows." },
-            new IndexedDocument { Uri="message_04", Text="The sdkmanager is a command-line tool that lets you view, install, update, and uninstall packages for the Android SDK." },
-            new IndexedDocument { Uri="message_05", Text="In Barcelona, a migrant squatter was asked to leave by the property owner. He refused and threatened the home owner with a hammer." },
+        var authorId = UserId.New();
+        var chatId = new ChatId(Generate.Option);
+        var entryIds = Enumerable.Range(1, 5).Select(id => new ChatEntryId(chatId, ChatEntryKind.Text, id, AssumeValid.Option));
+        var textItems = new [] {
+            "OpenSearch supports the following models, categorized by type.",
+            "Quite often, our methods are async, and we can't make constructors async. This is where XUnit's IAsyncLifetime comes in.",
+            "The license for Docker Desktop is not expensive, but it's not free anymore, so I wanted to check if there's an easy and cheap alternative to Docker Desktop for Windows.",
+            "The sdkmanager is a command-line tool that lets you view, install, update, and uninstall packages for the Android SDK.",
+            "In Barcelona, a migrant squatter was asked to leave by the property owner. He refused and threatened the home owner with a hammer.",
         };
-        for (var i=0; i<documents.Length; i++) {
-            var docId = (i + 1).ToInvariantString();
+        var documents = entryIds.Zip(textItems).Select(args => {
+            var (id, text) = args;
+            var metadata = new DocumentMetadata(
+                authorId,
+                [id], null, null,
+                [], [], [], [], [],
+                false,
+                "en-US",
+                DateTime.Now
+            );
+            return new IndexedDocument(metadata, text);
+        });
+        foreach (var document in documents) {
             var newDocResponse = await client!.LowLevel.DoRequestAsync<StringResponse>(
-                HttpMethod.PUT, $"/{searchIndexId}/_doc/{docId}", CancellationToken.None, PostData.Serializable(documents[i]));
+                HttpMethod.PUT, $"/{searchIndexId}/_doc/{document.Uri}", CancellationToken.None, PostData.Serializable(document));
             Assert.True(newDocResponse.Success);
         }
 
