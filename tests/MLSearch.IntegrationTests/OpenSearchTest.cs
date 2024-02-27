@@ -52,7 +52,7 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     public async Task SemanticSearchTest()
     {
         var searchIndexId = settings!.IntoSearchIndexId();
-        var authorId = UserId.New();
+        var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
         var chatId = new ChatId(Generate.Option);
         var entryIds = Enumerable.Range(1, 5).Select(id => new ChatEntryId(chatId, ChatEntryKind.Text, id, AssumeValid.Option));
         var textItems = new [] {

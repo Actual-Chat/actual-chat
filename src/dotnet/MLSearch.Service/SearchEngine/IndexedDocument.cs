@@ -13,7 +13,7 @@ internal record IndexedDocument(in DocumentMetadata Metadata, string Text)
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor]
 internal readonly record struct DocumentMetadata(
     // An id of the author of the document.
-    in UserId AuthorId,
+    in PrincipalId AuthorId,
     // Ordered list of all involved chat entry ids.
     in ImmutableArray<ChatEntryId> ChatEntries,
     // Offset from the beginning of the text of 1st entry in the chat entry list.
@@ -25,12 +25,12 @@ internal readonly record struct DocumentMetadata(
     // Ids of entries replied by document entries.
     in ImmutableArray<ChatEntryId> ReplyToEntries,
     // A list of users explicitly mentioned in the document text.
-    in ImmutableArray<UserId> Mentions,
+    in ImmutableArray<PrincipalId> Mentions,
     // A list of users who reacted to at least one of the source messages.
-    in ImmutableArray<UserId> Reactions,
+    in ImmutableArray<PrincipalId> Reactions,
     // A list of users who are identifyed as a participants of a conversation
     // happenig at the document creation time.
-    in ImmutableArray<UserId> ConversationParticipants,
+    in ImmutableArray<PrincipalId> ConversationParticipants,
     // Attachments to document's source messages
     in ImmutableArray<DocumentAttachment> Attachments,
     in bool IsPublic,
