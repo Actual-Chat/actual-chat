@@ -7,6 +7,9 @@ public partial record struct HostRole(
     [property: DataMember(Order = 0), MemoryPackOrder(0)] Symbol Id
     ) : ICanBeNone<HostRole>
 {
+    public const string QueueSuffix = "Queue";
+    public const string BackendSuffix = "Backend";
+
     public static HostRole None => default;
 
     // Meta / root roles: the only ones you can use to start a host
@@ -36,9 +39,9 @@ public partial record struct HostRole(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public bool IsNone => Id.IsEmpty;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsQueue => Id.Value.OrdinalEndsWith("Queue");
+    public bool IsQueue => Id.Value.OrdinalEndsWith(QueueSuffix);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
-    public bool IsBackend => Id == BackendServer.Id || Id.Value.OrdinalEndsWith("Backend");
+    public bool IsBackend => Id == BackendServer.Id || Id.Value.OrdinalEndsWith(BackendSuffix);
 
     public override string ToString() => Value;
 

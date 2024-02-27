@@ -10,15 +10,15 @@ public class ShardCommandQueueIdProvider(IServiceProvider services) : ICommandQu
     {
         var type = command.UntypedCommand.GetType();
         var isEvent = typeof(IEventCommand).IsAssignableFrom(type);
-        var hostRoles = HostRoles.GetServedByRoles(type)
-            .Where(hr => hr.IsBackend)
-            .ToList();
         var shardKeyResolver = ShardKeyResolvers.GetUntyped(type) ?? ShardKeyResolvers.DefaultResolver;
         var shardKey = shardKeyResolver.Invoke(command.UntypedCommand);
         if (isEvent) {
             var shardIndex = ShardScheme.EventQueue.Instance.GetShardIndex(shardKey);
             return new QueueId(HostRole.EventQueue, shardIndex);
         }
+        var hostRoles = HostRoles.GetServedByRoles(type)
+            .Where(hr => hr.IsBackend)
+            .ToList();
         if (hostRoles.Count == 0)
             throw StandardError.Configuration($"There are no host roles found for a {type}.");
 

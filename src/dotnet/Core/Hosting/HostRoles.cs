@@ -57,8 +57,9 @@ public static class HostRoles
     public static IReadOnlySet<HostRole> GetServedByRoles(Assembly assembly)
         => _cachedAssemblyRoles.GetOrAdd(assembly, static a => a
             .GetCustomAttributes<BackendServiceAttribute>()
-            .Where(x => x.ServiceMode is ServiceMode.Server or ServiceMode.Mixed)
+            .Where(x => x.ServiceMode is ServiceMode.Server)
             .Select(x => new HostRole(x.HostRole))
+            .DefaultIfEmpty(HostRole.BackendServer)
             .SelectMany(Server.GetAllRoles)
             .ToHashSet());
 
@@ -66,7 +67,7 @@ public static class HostRoles
         => _cachedTypeRoles.GetOrAdd(type, static t => {
             var typeRoles = t
                 .GetCustomAttributes<BackendServiceAttribute>()
-                .Where(x => x.ServiceMode is ServiceMode.Server or ServiceMode.Mixed)
+                .Where(x => x.ServiceMode is ServiceMode.Server or ServiceMode.Local)
                 .Select(x => new HostRole(x.HostRole))
                 .ToHashSet();
             return typeRoles.Count != 0 ? typeRoles : GetServedByRoles(t.Assembly);

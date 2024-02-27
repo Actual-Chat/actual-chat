@@ -4,6 +4,7 @@ using ActualChat.Blobs.Internal;
 using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualChat.AspNetCore;
+using ActualChat.Commands;
 using ActualChat.Rpc;
 using ActualLab.Fusion.Server;
 using ActualLab.Fusion.Server.Middlewares;
@@ -53,5 +54,6 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         }
         else
             services.AddSingleton<IBlobStorages>(_ => new GoogleCloudBlobStorages(storageBucket));
+        services.AddSingleton<EventHandlerResolver>(c => new EventHandlerResolver(c));
     }
 }

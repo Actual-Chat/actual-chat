@@ -17,11 +17,20 @@ public static class ServiceCollectionExt
         Func<IServiceProvider, ShardCommandQueueScheduler.Options>? schedulerOptionsBuilder = null,
         Func<IServiceProvider, ShardEventQueueScheduler.Options>? eventSchedulerOptionsBuilder = null)
     {
-        var backendRoles = hostRoles.Where(r => r.IsBackend);
-        foreach (var hostRole in backendRoles) {
+        var backendRoles = hostRoles
+            .Where(r => r.IsBackend)
+            .ToHashSet();
+
+        foreach (var hostRole in backendRoles)
             services.AddCommandQueues(hostRole, optionsBuilder, schedulerOptionsBuilder);
 
-            // register EventScheduler
+        // register EventScheduler
+        if (backendRoles.Contains(HostRole.BackendServer))
+            // if there is BackendServer role that handles all possible actual backends
+            // let's register event handlers just for this role
+            backendRoles = [HostRole.BackendServer];
+
+        foreach (var hostRole in backendRoles) {
             var serviceKey = hostRole.Id.Value;
             if (!services.HasService<ShardEventQueueScheduler>(serviceKey)) {
                 services.AddKeyedSingleton<ShardEventQueueScheduler>(serviceKey, (c, _) => new ShardEventQueueScheduler(hostRole, c));
