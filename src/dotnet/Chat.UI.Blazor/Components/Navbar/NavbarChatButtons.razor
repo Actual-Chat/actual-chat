@@ -15,6 +15,8 @@
             data-chat-id="@chatInfo.Id"
             data-menu="@(MenuRef.New<ChatMenu>(chatInfo.Id, ChatListKind.All.Format()).ToString())"
             data-menu-placement="@(FloatingPosition.Right.ToPositionString())"
+            data-href="@($"/chat/{chatInfo.Id}")"
+            data-replace-on-prefix="/chat/"
             Title="@chatInfo.Chat.Title"
             Id="@chatInfo.Id">
             <ChildContent>
