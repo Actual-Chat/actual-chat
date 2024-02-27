@@ -18,6 +18,7 @@ export class NavbarChatButtons {
             this.list,
             {
                 animation: 150,
+                delay: 100,
                 onUpdate: (_: SortableEvent) => {
                     const chats = Array.from(this.list.children).map((x: HTMLElement) => x.dataset['chatId']);
                     void this.blazorRef.invokeMethodAsync('OnOrderChanged', chats);
