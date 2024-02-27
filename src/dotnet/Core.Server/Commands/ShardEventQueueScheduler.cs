@@ -26,18 +26,41 @@ public class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider servic
     private ICommandQueues Queues { get; } = services.GetRequiredService<ICommandQueues>();
     private ICommander Commander { get; } = services.GetRequiredService<ICommander>();
     private CommandHandlerResolver HandlerResolver { get; } = services.GetRequiredService<CommandHandlerResolver>();
+    private EventHandlerResolver EventHandlerResolver { get; } = services.GetRequiredService<EventHandlerResolver>();
     private Action<IEventCommand, Symbol> ChainIdSetter => _chainIdSetter ??= ChainIdSetterProperty.GetSetter<Symbol>();
 
     protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
     {
         var queueId = new QueueId(HostRole.EventQueue, shardIndex);
         var queueBackend = (IEventQueueBackend)Queues.GetBackend(queueId);
-        var parallelOptions = new ParallelOptions {
-            MaxDegreeOfParallelism = Settings.Concurrency,
-            CancellationToken = cancellationToken,
-        };
-        var events = queueBackend.Read(HostRole, cancellationToken);
-        return Parallel.ForEachAsync(events, parallelOptions, (c, ct) => HandleEvent(queueBackend, c, ct));
+
+        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
+        return EventHandlerResolver.GetEventHandlers(HostRole)
+            .Select(h => new AsyncChain($"{HostRole}.{nameof(HandleEvents)}({h.Id})", ct => HandleEvents(h, queueBackend, ct)))
+            .Select(ac => ac
+                .Log(LogLevel.Debug, Log)
+                .RetryForever(retryDelays, Log))
+            .RunIsolated(cancellationToken);
+    }
+
+    private async Task HandleEvents(CommandHandler handler, IEventQueueBackend queueBackend, CancellationToken cancellationToken)
+    {
+        try {
+            var parallelOptions = new ParallelOptions {
+                MaxDegreeOfParallelism = Settings.Concurrency,
+                CancellationToken = cancellationToken,
+            };
+
+            var consumerPrefix = string.Join("-", handler.Id.Value
+                .Split('.')
+                .TakeLast(2));
+            var events = queueBackend.Read(consumerPrefix, handler.CommandType, cancellationToken);
+            await Parallel.ForEachAsync(events, parallelOptions, (c, ct) => HandleEvent(queueBackend, c, ct)).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogError(e, $"{nameof(HandleEvents)} for {{Handler}} has failed", handler.Id);
+            throw;
+        }
     }
 
     private async ValueTask HandleEvent(
@@ -96,7 +119,7 @@ public class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider servic
         }
     }
 
-    protected virtual ValueTask OnUnhandledEvent(
+    private ValueTask OnUnhandledEvent(
         IEventCommand command,
         CancellationToken cancellationToken)
     {
@@ -107,23 +130,6 @@ public class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider servic
     private IReadOnlySet<HostRole> GetHandlerChainHostRoles(ImmutableArray<CommandHandler> handlerChain)
     {
         var finalHandler = handlerChain.Single(h => !h.IsFilter);
-        var hostRoleProvider = _hostRoleResolverCache.GetOrAdd(finalHandler.GetType(),
-            static type => {
-                if (!type.IsGenericType)
-                    throw StandardError.NotSupported(type, "Unsupported command handler.");
-
-                Func<CommandHandler, Type> serviceTypeGetter;
-                var genericTypeDefinition = type.GetGenericTypeDefinition();
-                if (genericTypeDefinition == typeof(MethodCommandHandler<>))
-                    serviceTypeGetter = type.GetProperty("ServiceType")!.GetGetter<CommandHandler, Type>();
-                else if (genericTypeDefinition == typeof(ActualLab.CommandR.Configuration.InterfaceCommandHandler<>))
-                    serviceTypeGetter = type.GetProperty("ServiceType")!.GetGetter<CommandHandler, Type>();
-                else
-                    throw StandardError.NotSupported(type, "Unsupported command handler.");
-
-                return ch => HostRoles.GetServedByRoles(serviceTypeGetter(ch));
-            });
-
-       return hostRoleProvider(finalHandler);
+        return EventHandlerResolver.GetHandlerChainHostRoles(finalHandler);
     }
 }

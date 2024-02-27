@@ -18,11 +18,11 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
     ];
 
     private readonly ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>> _commandsBeingProcessed = new ();
+    private readonly ConcurrentDictionary<Symbol, INatsJSConsumer> _consumers = new ();
     private readonly object _lock = new ();
 
     private NatsConnection? _nats;
     private volatile INatsJSStream? _jetStream;
-    private volatile INatsJSConsumer? _jetStreamConsumer;
 
     protected NatsConnection Nats => _nats ??= GetConnection();
     protected AsyncLock AsyncLock { get; } = new(LockReentryMode.CheckedPass);
@@ -73,8 +73,9 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
 
     public virtual async IAsyncEnumerable<QueuedCommand> Read([EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        var consumerName = $"WORKER-{QueueId.ShardIndex}";
         var jetStream = await EnsureStreamExists(cancellationToken).ConfigureAwait(false);
-        var consumer = await EnsureConsumerExists(jetStream, cancellationToken).ConfigureAwait(false);
+        var consumer = await EnsureConsumerExists(jetStream, consumerName, typeof(ICommand), cancellationToken).ConfigureAwait(false);
         var messages = consumer.ConsumeAsync<IMemoryOwner<byte>>(
             opts: new NatsJSConsumeOpts {
                 MaxMsgs = 10,
@@ -124,8 +125,8 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
 
     protected static string GetRoleString(HostRole hostRole)
         => hostRole == HostRole.BackendServer
-            ? "backend"
-            : hostRole.Id.Value.Replace(HostRole.BackendServer.Id.Value, "", StringComparison.OrdinalIgnoreCase);
+            ? HostRole.BackendSuffix.ToLowerInvariant()
+            : hostRole.Id.Value.Replace(HostRole.BackendSuffix, "", StringComparison.OrdinalIgnoreCase);
 
     protected QueuedCommand DeserializeMessage(NatsJSMsg<IMemoryOwner<byte>> message)
     {
@@ -176,11 +177,19 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             catch (NatsJSApiException e) when (e.Error.Code == 404) {
                 _jetStream = await CreateJetStream(js, jetStreamName, cancellationToken).ConfigureAwait(false);
             }
+            catch (TimeoutException e) {
+                if (retryCount++ > 3)
+                    throw;
+
+                Log.LogWarning(e, $"{nameof(EnsureStreamExists)}: error getting stream - timeout");
+                var delay = Random.Shared.Next(100, 250);
+                await Services.Clocks().SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
             catch (NatsJSApiNoResponseException e) {
                 if (retryCount++ > 3)
                     throw;
 
-                Log.LogWarning(e, "EnsureStreamExists: error getting stream");
+                Log.LogWarning(e, $"{nameof(EnsureStreamExists)}: error getting stream");
                 var delay = Random.Shared.Next(100, 250);
                 await Services.Clocks().SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
@@ -188,44 +197,48 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         return _jetStream;
     }
 
-    protected virtual async ValueTask<INatsJSConsumer> EnsureConsumerExists(INatsJSStream jetStream, CancellationToken cancellationToken)
+    protected virtual async ValueTask<INatsJSConsumer> EnsureConsumerExists(
+        INatsJSStream jetStream,
+        string consumerName,
+        Type commandType,
+        CancellationToken cancellationToken)
     {
-        if (_jetStreamConsumer != null)
-            return _jetStreamConsumer!;
+        if (_consumers.TryGetValue(consumerName, out var consumer))
+            return consumer;
 
         using var releaser = await AsyncLock.Lock(cancellationToken).ConfigureAwait(false);
         releaser.MarkLockedLocally();
 
-        if (_jetStreamConsumer != null)
-            return _jetStreamConsumer!;
+        if (_consumers.TryGetValue(consumerName, out consumer))
+            return consumer;
 
-        var consumerName = BuildConsumerName(QueueId.HostRole);
         var retryCount = 0;
-        while (_jetStreamConsumer == null)
+        while (consumer == null)
             try {
-                var jetStreamConsumer = await jetStream.GetConsumerAsync(consumerName, cancellationToken).ConfigureAwait(false);
-                _jetStreamConsumer = jetStreamConsumer;
-
+                consumer = await jetStream.GetConsumerAsync(consumerName, cancellationToken).ConfigureAwait(false);
             }
             catch (NatsJSApiException e) when (e.Error.Code == 404) {
-                _jetStreamConsumer = await CreateConsumer(jetStream, consumerName, cancellationToken);
+                consumer = await CreateConsumer(jetStream, consumerName, commandType, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (TimeoutException e) {
+                if (retryCount++ > 3)
+                    throw;
+
+                Log.LogWarning(e, $"{nameof(EnsureConsumerExists)}: error getting consumer - timeout");
+                var delay = Random.Shared.Next(100, 250);
+                await Services.Clocks().SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
             catch (NatsJSApiNoResponseException e) {
                 if (retryCount++ > 3)
                     throw;
 
-                Log.LogWarning(e, "EnsureStreamExists: error getting stream");
+                Log.LogWarning(e, $"{nameof(EnsureConsumerExists)}: error getting consumer - no response");
                 var delay = Random.Shared.Next(100, 250);
                 await Services.Clocks().SystemClock.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
 
-        return _jetStreamConsumer;
-    }
-
-    protected virtual string BuildConsumerName(HostRole hostRole)
-    {
-        var consumerName = $"WORKER-{QueueId.ShardIndex}";
-        return consumerName;
+        return _consumers.GetOrAdd(consumerName, consumer);
     }
 
     protected virtual async Task<INatsJSStream> CreateJetStream(NatsJSContext js, string jetStreamName, CancellationToken cancellationToken)
@@ -251,6 +264,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
     protected virtual async Task<INatsJSConsumer> CreateConsumer(
         INatsJSStream jetStream,
         string consumerName,
+        Type commandType,
         CancellationToken cancellationToken)
     {
         var config = new ConsumerConfig(consumerName) {
