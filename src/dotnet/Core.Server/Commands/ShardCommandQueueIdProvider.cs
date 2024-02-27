@@ -11,7 +11,7 @@ public class ShardCommandQueueIdProvider(IServiceProvider services) : ICommandQu
         var type = command.UntypedCommand.GetType();
         var isEvent = typeof(IEventCommand).IsAssignableFrom(type);
         var hostRoles = HostRoles.GetServedByRoles(type)
-            .Where(hr => hr.IsBackendServer)
+            .Where(hr => hr.IsBackend)
             .ToList();
         var shardKeyResolver = ShardKeyResolvers.GetUntyped(type) ?? ShardKeyResolvers.DefaultResolver;
         var shardKey = shardKeyResolver.Invoke(command.UntypedCommand);

@@ -1,7 +1,13 @@
+using ActualChat.Attributes;
+
 namespace ActualChat.Hosting;
 
 public static class HostRoles
 {
+    private static readonly ConcurrentDictionary<Assembly, IReadOnlySet<HostRole>> _cachedAssemblyRoles = new();
+    private static readonly ConcurrentDictionary<Type, IReadOnlySet<HostRole>> _cachedTypeRoles = new();
+
+
     public static IReadOnlySet<HostRole> App { get; }
         = new HashSet<HostRole>([ HostRole.App, HostRole.BlazorHost ]);
 
@@ -47,4 +53,22 @@ public static class HostRoles
             return roles;
         }
     }
+
+    public static IReadOnlySet<HostRole> GetServedByRoles(Assembly assembly)
+        => _cachedAssemblyRoles.GetOrAdd(assembly, static a => a
+            .GetCustomAttributes<ServiceModeAttribute>()
+            .Where(x => x.ServiceMode is ServiceMode.Server or ServiceMode.Mixed)
+            .Select(x => new HostRole(x.HostRole))
+            .SelectMany(Server.GetAllRoles)
+            .ToHashSet());
+
+    public static IReadOnlySet<HostRole> GetServedByRoles(Type type)
+        => _cachedTypeRoles.GetOrAdd(type, static t => {
+            var typeRoles = t
+                .GetCustomAttributes<ServiceModeAttribute>()
+                .Where(x => x.ServiceMode is ServiceMode.Server or ServiceMode.Mixed)
+                .Select(x => new HostRole(x.HostRole))
+                .ToHashSet();
+            return typeRoles.Count != 0 ? typeRoles : GetServedByRoles(t.Assembly);
+        });
 }
