@@ -71,4 +71,34 @@ public static class OpenSearchClientExt
             _ => throw new InvalidOperationException("Unknown script directive")
         }).ConfigureAwait(false);
     }
+
+    public static async Task<BulkResponse> LogErrors(this Task<BulkResponse> responseTask, ILogger log)
+    {
+        var response = await responseTask.ConfigureAwait(false);
+        foreach (var issue in response.ItemsWithErrors) {
+            log.LogTrace(issue.ToString());
+        }
+        if (response.OriginalException is { } exc) {
+            log.LogError(exc, "Failed to perform OpenSearch operation");
+        }
+        return response;
+    }
+
+    // Note: Shamelessly copied and modified from Search.Service/ElasticExt.cs
+    public static async Task<BulkResponse> AssertSuccess(this Task<BulkResponse> responseTask)
+    {
+        var response = await responseTask.ConfigureAwait(false);
+        if (!response.Errors)
+            return response;
+
+        if (response.OriginalException is { } exc) {
+            // request sending failed
+            throw StandardError.External($"OpenSearch request failed: {exc.Message}");
+        }
+        throw StandardError.External(
+            $"OpenSearch request failed: {response.DebugInformation}."
+                .TrimSuffix(":", ".")
+                .EnsureSuffix(".")
+        );
+    }
 }
