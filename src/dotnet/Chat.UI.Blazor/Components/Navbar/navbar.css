@@ -140,11 +140,13 @@ body.hoverable .navbar-item:hover {
 }
 
 .navbar-chat-buttons {
-    @apply relative;
     @apply flex-y items-center gap-y-3 md:gap-y-2;
-    @apply w-full overflow-y-auto;
+    @apply w-full overflow-y-auto overflow-x-hidden;
     @apply pt-2 -mt-2;
     @apply custom-scrollbar-hide;
+}
+.navbar-chat-buttons::-webkit-scrollbar {
+    display: none;
 }
 
 .right-line {
