@@ -31,8 +31,7 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
         var jsonString = JsonSerializer.Serialize(attachment, serializerOptions);
 
         var deserializedAttachment = JsonSerializer.Deserialize<ChatSliceAttachment>(jsonString, serializerOptions);
-        Assert.Equal(attachment.Id, deserializedAttachment.Id);
-        Assert.Equal(attachment.Summary, deserializedAttachment.Summary);
+        Assert.Equal(attachment, deserializedAttachment);
     }
 
     [Fact]
