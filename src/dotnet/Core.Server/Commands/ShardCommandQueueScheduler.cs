@@ -1,3 +1,4 @@
+using ActualChat.Concurrency;
 using ActualChat.Hosting;
 
 namespace ActualChat.Commands;
@@ -63,19 +64,9 @@ public class ShardCommandQueueScheduler(HostRole hostRole, IServiceProvider serv
         }
         finally {
             var commandCompletionTicks = Clock.UtcNow.Ticks;
-            ExchangeIfGreaterThan(ref _lastCommandTicks, commandCompletionTicks);
+            InterlockedExt.ExchangeIfGreaterThan(ref _lastCommandTicks, commandCompletionTicks);
         }
     }
 
-    private static void ExchangeIfGreaterThan(ref long location, long value)
-    {
-        var current = Interlocked.Read(ref location);
-        while (current < value) {
-            var previous = Interlocked.CompareExchange(ref location, value, current);
-            if (previous == current || previous >= value)
-                break;
 
-            current = Interlocked.Read(ref location);
-        }
-    }
 }

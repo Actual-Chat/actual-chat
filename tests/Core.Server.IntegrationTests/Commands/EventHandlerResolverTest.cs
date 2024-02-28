@@ -1,0 +1,28 @@
+using ActualChat.Commands;
+using ActualChat.Hosting;
+using ActualChat.Testing.Host;
+
+namespace ActualChat.Core.Server.IntegrationTests.Commands;
+
+[Collection(nameof(CommandsCollection)), Trait("Category", nameof(CommandsCollection))]
+public class EventHandlerResolverTest(ITestOutputHelper @out)
+    : AppHostTestBase($"x-{nameof(EventHandlerResolverTest)}", TestAppHostOptions.Default, @out)
+{
+    [Fact(Timeout = 20_000)]
+    public async Task BackendServerRoleShouldHandleAllEvents()
+    {
+        using var host = await NewAppHost(options => options with  {
+            AppServicesExtender = (c, services) => {
+                services
+                    .AddCommandQueues(HostRole.BackendServer)
+                    .AddFusion()
+                    .AddService<ScheduledCommandTestService>();
+            },
+        });
+        var services = host.Services;
+        var eventHandlerResolver = services.GetRequiredService<EventHandlerResolver>();
+        var eventHandlers = eventHandlerResolver.GetEventHandlers(HostRole.BackendServer);
+        eventHandlers.Should().NotBeEmpty();
+
+    }
+}

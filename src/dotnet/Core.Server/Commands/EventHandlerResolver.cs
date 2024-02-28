@@ -14,7 +14,7 @@ public sealed class EventHandlerResolver(IServiceProvider services) : CommandHan
             .Where(h => !h.IsFilter
                 && typeof(IEventCommand).IsAssignableFrom(h.CommandType)
                 && Filter.Invoke(h, h.CommandType))
-            .Where(h => GetHandlerChainHostRoles(h).Contains(hostRole))
+            .Where(h => GetHandlerChainHostRoles(h).Overlaps(HostRoles.Server.GetAllRoles(hostRole)))
             .ToImmutableArray();
 
 
