@@ -38,6 +38,26 @@ public class DocumentSerializationTests(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void DocumentMetadataSerializesAndDeserializesProperly()
     {
+        var metadata = CreateMetadata();
+        var jsonString = JsonSerializer.Serialize(metadata, serializerOptions);
+        var deserializedMetadata = JsonSerializer.Deserialize<DocumentMetadata>(jsonString, serializerOptions);
+        Assert.Equivalent(metadata, deserializedMetadata);
+        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedMetadata, serializerOptions));
+    }
+
+    [Fact]
+    public void IndexedDocumentSerializesAndDeserializesProperly()
+    {
+        var metadata = CreateMetadata();
+        var document = new IndexedDocument(metadata, "Unique and valuable message");
+        var jsonString = JsonSerializer.Serialize(document, serializerOptions);
+        var deserializedDocument = JsonSerializer.Deserialize<IndexedDocument>(jsonString, serializerOptions);
+        Assert.Equivalent(document, deserializedDocument);
+        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedDocument, serializerOptions));
+    }
+
+    private static DocumentMetadata CreateMetadata()
+    {
         var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
         var chatId = new ChatId(Generate.Option);
         var chatEntryId1 = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
@@ -56,14 +76,10 @@ public class DocumentSerializationTests(ITestOutputHelper @out) : TestBase(@out)
         const string lang = "en-US";
         var timestamp = DateTime.Now;
 
-        var metadata = new DocumentMetadata(
+        return new DocumentMetadata(
             authorId, chatEntries, startOffset, endOffset,
             replyToEntries, mentions, reactions, participants, attachments,
             true, lang, timestamp
         );
-        var jsonString = JsonSerializer.Serialize(metadata, serializerOptions);
-        var deserializedMetadata = JsonSerializer.Deserialize<DocumentMetadata>(jsonString, serializerOptions);
-        Assert.Equivalent(metadata, deserializedMetadata);
-        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedMetadata, serializerOptions));
     }
 }
