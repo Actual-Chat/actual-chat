@@ -25,6 +25,13 @@ public partial record struct HostRole(
     // Actual backend roles
     public static readonly HostRole AudioBackend = nameof(AudioBackend);
     public static readonly HostRole MediaBackend = nameof(MediaBackend);
+    public static readonly HostRole ChatBackend = nameof(ChatBackend);
+    public static readonly HostRole ContactsBackend = nameof(ContactsBackend);
+    public static readonly HostRole InviteBackend = nameof(InviteBackend);
+    public static readonly HostRole NotificationBackend = nameof(NotificationBackend);
+    public static readonly HostRole SearchBackend = nameof(SearchBackend);
+    public static readonly HostRole TranscriptionBackend = nameof(TranscriptionBackend);
+    public static readonly HostRole UsersBackend = nameof(UsersBackend);
     public static readonly HostRole ContactIndexingWorker = nameof(ContactIndexingWorker);
 
     // Queues

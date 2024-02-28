@@ -47,6 +47,13 @@ public static class HostRoles
             if (roles.Contains(HostRole.OneBackendServer)) {
                 roles.Add(HostRole.AudioBackend);
                 roles.Add(HostRole.MediaBackend);
+                roles.Add(HostRole.ChatBackend);
+                roles.Add(HostRole.InviteBackend);
+                roles.Add(HostRole.MediaBackend);
+                roles.Add(HostRole.NotificationBackend);
+                roles.Add(HostRole.SearchBackend);
+                roles.Add(HostRole.TranscriptionBackend);
+                roles.Add(HostRole.UsersBackend);
                 roles.Add(HostRole.ContactIndexingWorker);
                 roles.Add(HostRole.EventQueue);
             }
