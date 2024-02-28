@@ -8,6 +8,7 @@ using ActualChat.MLSearch.SearchEngine.OpenSearch;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
 using OpenSearch.Client;
+using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -61,9 +62,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         var modelGroupName = Settings.OpenSearchModelGroup
             ?? throw new InvalidOperationException("OpenSearchModelGroup is not set");
         services.AddSingleton<IOpenSearchClient>(_ => {
-            var connectionSettings = new ConnectionSettings(new Uri(openSearchClusterUri))
-                // .PrettyJson()
-                .DefaultFieldNameInferrer(f => f);
+            var connectionSettings = new ConnectionSettings(
+                new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
+                sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
             return new OpenSearchClient(connectionSettings);
         });
         services.AddSingleton<OpenSearchClusterSetup>(e =>

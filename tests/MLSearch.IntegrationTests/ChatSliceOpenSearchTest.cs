@@ -22,10 +22,10 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     protected override async Task InitializeAsync()
     {
         Tracer.Default = Out.NewTracer();
-        var config = new ConnectionSettings(OpenSearchClusterUri)
-            .PrettyJson()
-            .DefaultFieldNameInferrer(f => f);
-        client = new OpenSearchClient(config);
+        var connectionSettings = new ConnectionSettings(
+            new SingleNodeConnectionPool(OpenSearchClusterUri),
+            sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
+        client = new OpenSearchClient(connectionSettings);
         var setup = new OpenSearchClusterSetup(
             OpenSearchModelGroupName,
             client,
@@ -76,10 +76,11 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             return new ChatSlice(metadata, text);
         });
         foreach (var document in documents) {
-            var encodedId = HttpUtility.UrlDecode(document.Id);
-            var newDocResponse = await client!.LowLevel.DoRequestAsync<StringResponse>(
-                HttpMethod.PUT, $"/{searchIndexId}/_doc/{encodedId}", CancellationToken.None, PostData.Serializable(document));
-            Assert.True(newDocResponse.Success);
+            var encodedId = HttpUtility.UrlEncode(document.Id);
+            var newDocResponse = client!.Index(document, i => i.Index(searchIndexId));
+            // var newDocResponse = await client!.LowLevel.DoRequestAsync<StringResponse>(
+            //     HttpMethod.PUT, $"/{searchIndexId}/_doc/{encodedId}", CancellationToken.None, PostData.Serializable(document));
+            Assert.True(newDocResponse.IsValid);
         }
 
         var query = new VectorSearchQuery() { FreeTextFilter="Tools for mobile development", Keywords=["command"] };
