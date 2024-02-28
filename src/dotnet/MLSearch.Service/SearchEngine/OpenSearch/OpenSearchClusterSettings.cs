@@ -1,4 +1,3 @@
-using System.Runtime.Intrinsics.Arm;
 using System.Security.Cryptography;
 using System.Text;
 using OpenSearch.Client;
@@ -7,16 +6,17 @@ namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
 public sealed class OpenSearchClusterSettings(string modelAllConfig, string modelId, int modelEmbeddingDimension)
 {
-    private const string IngestPipelineNamePrefix = "ml-ingest-pipeline-";
-    private const string SearchIndexNamePrefix = "ml-search-index-";
+    private const string NamePrefix = "ml";
+    private const string IngestPipelineNameSuffix = "ingest-pipeline";
+    private const string SearchIndexNameSuffix = "search-index";
 
     public string ModelId => modelId;
     public int ModelEmbeddingDimension => modelEmbeddingDimension;
-    public Id IntoIngestPipelineId()
-        => new (IngestPipelineNamePrefix + IntoUniqueKey());
+    public Id IntoFullIngestPipelineId(string id)
+        => new (string.Join('-', NamePrefix, id, IngestPipelineNameSuffix, IntoUniqueKey()));
 
-    public string IntoSearchIndexId()
-        => SearchIndexNamePrefix + IntoUniqueKey();
+    public string IntoFullSearchIndexId(string id)
+        => string.Join('-', NamePrefix, id, SearchIndexNameSuffix, IntoUniqueKey());
 
     private string IntoUniqueKey()
     {

@@ -23,7 +23,7 @@ internal class OpenSearchClusterSetup(
         "Initialization script was not called."
     );
 
-    public Task Initialize(CancellationToken cancellationToken) => Run(cancellationToken);
+    public Task Initialize(CancellationToken cancellationToken) => EnsureChatSliceIndex(cancellationToken);
 
     public async Task<OpenSearchClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
     {
@@ -116,7 +116,7 @@ internal class OpenSearchClusterSetup(
         }
         return result = new OpenSearchClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
     }
-    private async Task Run(CancellationToken cancellationToken)
+    private async Task EnsureChatSliceIndex(CancellationToken cancellationToken)
     {
         // Notes:
         // Assumption: This is a script.
@@ -124,10 +124,11 @@ internal class OpenSearchClusterSetup(
         // It must fail and retried on any error.
         // It has to succeed once and only once to setup an opensearch cluster.
         // After the initial setup this would never be called again.
+        const string name = "chat-slice";
         using var _1 = tracing.TraceRegion();
 
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
-        var searchIndexId = settings.IntoSearchIndexId();
+        var searchIndexId = settings.IntoFullSearchIndexId(name);
         var isSearchIndexExistsResult = await openSearch
             .Indices
             .ExistsAsync(searchIndexId, ct: cancellationToken)
@@ -137,9 +138,35 @@ internal class OpenSearchClusterSetup(
             return;
         }
 
-        var ingestPipelineId = settings.IntoIngestPipelineId();
+        var ingestPipelineId = settings.IntoFullIngestPipelineId(name);
         var modelId = settings.ModelId;
         var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
+
+        // Calculate field names
+        var namingPolicy = JsonNamingPolicy.CamelCase;
+        // ChatSlice fields
+        var idField = namingPolicy.ConvertName(nameof(ChatSlice.Id));
+        var metadataField = namingPolicy.ConvertName(nameof(ChatSlice.Metadata));
+        var textField = namingPolicy.ConvertName(nameof(ChatSlice.Text));
+        // ChatSliceMetadata fields
+        var authorIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.AuthorId));
+        var chatEntriesField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatEntries));
+        var startOffsetField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.StartOffset));
+        var endOffsetField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.EndOffset));
+        var replyToEntriesField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ReplyToEntries));
+        var mentionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Mentions));
+        var reactionsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Reactions));
+        var participantsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ConversationParticipants));
+        var attachmentsField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Attachments));
+        var isPublicField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.IsPublic));
+        var languageField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Language));
+        var timestampField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.Timestamp));
+        var chatIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.ChatId));
+        var placeIdField = namingPolicy.ConvertName(nameof(ChatSliceMetadata.PlaceId));
+        // ChatSliceAttachment fields
+        var attachmentIdField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Id));
+        var attachmentSummaryField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Summary));
+
         var ingestResult = await openSearch.RunAsync(
             $$"""
               PUT /_ingest/pipeline/{{ingestPipelineId}}
@@ -149,7 +176,7 @@ internal class OpenSearchClusterSetup(
                     "text_embedding": {
                         "model_id": "{{modelId}}",
                         "field_map": {
-                            "{{nameof(ChatSlice.Text)}}": "event_dense_embedding"
+                            "{{textField}}": "event_dense_embedding"
                         }
                     }
                   }]
@@ -159,7 +186,7 @@ internal class OpenSearchClusterSetup(
         ).ConfigureAwait(false);
         if (!ingestResult.Success) {
             throw new InvalidOperationException(
-                "Failed to update ingest pipeline",
+                $"Failed to update '{name}' ingest pipeline",
                 ingestResult.OriginalException
             );
         }
@@ -174,14 +201,39 @@ internal class OpenSearchClusterSetup(
                 "mappings": {
                     "_source": {
                         "excludes": [
-                          "event_dense_embedding"
+                            "event_dense_embedding"
                         ]
                     },
                     "properties": {
-                        "{{nameof(ChatSlice.Id)}}": {
+                        "{{idField}}": {
                             "type": "keyword"
                         },
-                        "{{nameof(ChatSlice.Text)}}": {
+                        "{{metadataField}}": {
+                            "type": "object",
+                            "properties": {
+                                "{{authorIdField}}": { "type": "keyword" },
+                                "{{chatIdField}}": { "type": "keyword" },
+                                "{{placeIdField}}": { "type": "keyword" },
+                                "{{chatEntriesField}}": { "type": "keyword" },
+                                "{{startOffsetField}}": { "type": "integer" },
+                                "{{endOffsetField}}": { "type": "integer" },
+                                "{{replyToEntriesField}}": { "type": "keyword" },
+                                "{{mentionsField}}": { "type": "keyword" },
+                                "{{reactionsField}}": { "type": "keyword" },
+                                "{{participantsField}}": { "type": "keyword" },
+                                "{{attachmentsField}}": {
+                                    "type": "nested",
+                                    "properties": {
+                                        "{{attachmentIdField}}":  { "type": "keyword" },
+                                        "{{attachmentSummaryField}}": { "type": "text" }
+                                    }
+                                },
+                                "{{isPublicField}}": { "type": "boolean" },
+                                "{{languageField}}": { "type": "keyword" },
+                                "{{timestampField}}": { "type": "date" }
+                            }
+                        },
+                        "{{textField}}": {
                             "type": "text"
                         },
                         "event_dense_embedding": {
@@ -202,7 +254,7 @@ internal class OpenSearchClusterSetup(
         ).ConfigureAwait(false);
         if (!searchIndexResult.Success) {
             throw new InvalidOperationException(
-                "Failed to update search index",
+                $"Failed to update '{name}'search index",
                 searchIndexResult.OriginalException
             );
         }

@@ -62,8 +62,9 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
                     );
             }
 
+            // TODO: index id must be a parameter
             return new SearchDescriptor<ChatSlice>()
-                .Index(settings.IntoSearchIndexId())
+                .Index(settings.IntoFullSearchIndexId("chat-slice"))
                 .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)))
                 .Query(query => query
                     .Bool(bool_query => bool_query
@@ -74,9 +75,10 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
 
     public async Task Ingest(ChatSlice document, CancellationToken cancellationToken)
         // TODO: support bulk api
+        // TODO: index id must be a parameter
         => await openSearch.IndexAsync(
             document,
-            e=>e.Index(settings.IntoSearchIndexId()),
+            e=>e.Index(settings.IntoFullSearchIndexId("chat-slice")),
             cancellationToken
         ).ConfigureAwait(true);
 }

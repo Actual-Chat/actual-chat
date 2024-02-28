@@ -1,3 +1,4 @@
+using System.Web;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.SearchEngine.OpenSearch;
 using ActualChat.Performance;
@@ -12,6 +13,7 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
+    private const string indexName = "chat-slice";
     private Uri OpenSearchClusterUri => new("http://localhost:9201");
     private string OpenSearchModelGroupName => "NLP_model_group";
     private OpenSearchClient? client;
@@ -38,8 +40,8 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
-        var searchIndexId = settings!.IntoSearchIndexId();
-        var pipelineName = settings.IntoIngestPipelineId();
+        var searchIndexId = settings!.IntoFullSearchIndexId(indexName);
+        var pipelineName = settings.IntoFullIngestPipelineId(indexName);
 
         await client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{searchIndexId}", CancellationToken.None);
         await client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineName}", CancellationToken.None);
@@ -50,7 +52,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     [Fact]
     public async Task SemanticSearchTest()
     {
-        var searchIndexId = settings!.IntoSearchIndexId();
+        var searchIndexId = settings!.IntoFullSearchIndexId(indexName);
         var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
         var chatId = new ChatId(Generate.Option);
         var entryIds = Enumerable.Range(1, 5).Select(id => new ChatEntryId(chatId, ChatEntryKind.Text, id, AssumeValid.Option));
@@ -74,8 +76,9 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             return new ChatSlice(metadata, text);
         });
         foreach (var document in documents) {
+            var encodedId = HttpUtility.UrlDecode(document.Id);
             var newDocResponse = await client!.LowLevel.DoRequestAsync<StringResponse>(
-                HttpMethod.PUT, $"/{searchIndexId}/_doc/{document.Id}", CancellationToken.None, PostData.Serializable(document));
+                HttpMethod.PUT, $"/{searchIndexId}/_doc/{encodedId}", CancellationToken.None, PostData.Serializable(document));
             Assert.True(newDocResponse.Success);
         }
 
