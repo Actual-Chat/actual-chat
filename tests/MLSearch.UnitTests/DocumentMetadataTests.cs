@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-
 namespace ActualChat.MLSearch.UnitTests;
 
 public class DocumentMetadataTests(ITestOutputHelper @out) : TestBase(@out)
