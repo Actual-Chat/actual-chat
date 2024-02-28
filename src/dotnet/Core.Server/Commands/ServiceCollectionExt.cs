@@ -12,36 +12,19 @@ public static class ServiceCollectionExt
     [RequiresUnreferencedCode(UnreferencedCode.Commander)]
     public static IServiceCollection AddCommandQueues(
         this IServiceCollection services,
-        IReadOnlyCollection<HostRole> hostRoles,
+        IReadOnlySet<HostRole> hostRoles,
         Func<IServiceProvider, NatsCommandQueues.Options>? optionsBuilder = null,
         Func<IServiceProvider, ShardCommandQueueScheduler.Options>? schedulerOptionsBuilder = null,
         Func<IServiceProvider, ShardEventQueueScheduler.Options>? eventSchedulerOptionsBuilder = null)
     {
+        // register command queue workers for backend roles with ShardScheme defined
         var backendRoles = hostRoles
-            .Where(r => r.IsBackend)
+            .Where(r => r.IsBackend && ShardScheme.ById.ContainsKey(r.Id))
             .ToHashSet();
 
-        // register command queue workers for roles with ShardScheme defined
-        foreach (var hostRole in backendRoles.Where(hr => ShardScheme.ById.ContainsKey(hr.Id)))
+        foreach (var hostRole in backendRoles)
             services.AddCommandQueues(hostRole, optionsBuilder, schedulerOptionsBuilder);
 
-        // register EventScheduler
-        if (backendRoles.Contains(HostRole.BackendServer))
-            // if there is BackendServer role that handles all possible actual backends
-            // let's register event handlers just for this role
-            backendRoles = [HostRole.BackendServer];
-
-        foreach (var hostRole in backendRoles) {
-            var serviceKey = hostRole.Id.Value;
-            if (!services.HasService<ShardEventQueueScheduler>(serviceKey)) {
-                services.AddKeyedSingleton<ShardEventQueueScheduler>(serviceKey, (c, _) => new ShardEventQueueScheduler(hostRole, c));
-                services.AddSingleton<IHostedService, ShardEventQueueScheduler>(c => c.GetRequiredKeyedService<ShardEventQueueScheduler>(serviceKey));
-            }
-            if (!services.HasService<ShardEventQueueScheduler.Options>())
-                services.AddSingleton(eventSchedulerOptionsBuilder ?? (static _ => new ShardEventQueueScheduler.Options()));
-            if (!services.HasService<ShardEventQueueScheduler.Options>(serviceKey) && eventSchedulerOptionsBuilder != null)
-                services.AddKeyedSingleton(serviceKey, (s, _) => eventSchedulerOptionsBuilder(s));
-        }
         return services;
     }
 
@@ -50,7 +33,8 @@ public static class ServiceCollectionExt
         this IServiceCollection services,
         HostRole hostRole,
         Func<IServiceProvider, NatsCommandQueues.Options>? optionsBuilder = null,
-        Func<IServiceProvider, ShardCommandQueueScheduler.Options>? schedulerOptionsBuilder = null)
+        Func<IServiceProvider, ShardCommandQueueScheduler.Options>? schedulerOptionsBuilder = null,
+        Func<IServiceProvider, ShardEventQueueScheduler.Options>? eventSchedulerOptionsBuilder = null)
     {
         var serviceKey = hostRole.Id.Value;
         services.AddCommander();
@@ -64,6 +48,8 @@ public static class ServiceCollectionExt
         if (!services.HasService<NatsCommandQueues.Options>(serviceKey) && optionsBuilder != null)
             services.AddKeyedSingleton(serviceKey, (s, _) => optionsBuilder(s));
 
+        // register CommandScheduler
+
         if (!services.HasService<ShardCommandQueueScheduler>(serviceKey)) {
             services.AddKeyedSingleton<ShardCommandQueueScheduler>(serviceKey, (c, _) => new ShardCommandQueueScheduler(hostRole, c));
             services.AddSingleton<IHostedService, ShardCommandQueueScheduler>(c => c.GetRequiredKeyedService<ShardCommandQueueScheduler>(serviceKey));
@@ -74,6 +60,38 @@ public static class ServiceCollectionExt
         if (!services.HasService<ShardCommandQueueScheduler.Options>(serviceKey) && schedulerOptionsBuilder != null)
             services.AddKeyedSingleton(serviceKey, (s, _) => schedulerOptionsBuilder(s));
 
+        // register EventScheduler
+
+        if (hostRole == HostRole.BackendServer) {
+            // keep single EventScheduler for the host and remove all other registration
+            services.RemoveAll(sd =>
+                sd.ServiceType == typeof(IHostedService)
+                && sd.ImplementationFactory != null
+                && sd.ImplementationFactory.Method == HostEventQueueSchedulerFactory.GetEventSchedulerMethod);
+            services.RemoveAll(sd => sd.ServiceType == typeof(ShardEventQueueScheduler));
+        }
+        else if (services.HasService<ShardEventQueueScheduler>(HostRole.BackendServer.Id.Value))
+            return services; // single event handler for all backend roles has already been registered
+
+        if (!services.HasService<ShardEventQueueScheduler>(serviceKey)) {
+            var schedulerFactory = new HostEventQueueSchedulerFactory(serviceKey);
+            services.AddKeyedSingleton<ShardEventQueueScheduler>(serviceKey, (c, _) => new ShardEventQueueScheduler(hostRole, c));
+            services.AddSingleton<IHostedService, ShardEventQueueScheduler>(schedulerFactory.GetEventScheduler);
+        }
+        if (!services.HasService<ShardEventQueueScheduler.Options>())
+            services.AddSingleton(eventSchedulerOptionsBuilder ?? (static _ => new ShardEventQueueScheduler.Options()));
+        if (!services.HasService<ShardEventQueueScheduler.Options>(serviceKey) && eventSchedulerOptionsBuilder != null)
+            services.AddKeyedSingleton(serviceKey, (s, _) => eventSchedulerOptionsBuilder(s));
+
         return services;
+    }
+
+    private class HostEventQueueSchedulerFactory(string serviceKey)
+    {
+        public static MethodInfo GetEventSchedulerMethod { get; }
+            = typeof(HostEventQueueSchedulerFactory).GetMethod(nameof(GetEventScheduler))!;
+
+        public ShardEventQueueScheduler GetEventScheduler(IServiceProvider services)
+            => services.GetRequiredKeyedService<ShardEventQueueScheduler>(serviceKey);
     }
 }
