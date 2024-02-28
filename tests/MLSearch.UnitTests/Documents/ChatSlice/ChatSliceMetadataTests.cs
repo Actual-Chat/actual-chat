@@ -1,11 +1,11 @@
 namespace ActualChat.MLSearch.UnitTests;
 
-public class DocumentMetadataTests(ITestOutputHelper @out) : TestBase(@out)
+public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
 {
     [Fact]
     public void EmptyStructurePropertiesHaveExpectedDefaults()
     {
-        var emptyMetadata = new DocumentMetadata();
+        var emptyMetadata = new ChatSliceMetadata();
         Assert.Equal(PrincipalId.None, emptyMetadata.AuthorId);
         Assert.True(emptyMetadata.ChatEntries.IsDefault);
         Assert.Null(emptyMetadata.StartOffset);
@@ -38,13 +38,13 @@ public class DocumentMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         var reactions = ImmutableArray.Create(activeUser);
         var participants = ImmutableArray.Create(authorId, activeUser);
         var attachments = ImmutableArray.Create(
-            new DocumentAttachment(new MediaId("chat", Generate.Option), "summary1"),
-            new DocumentAttachment(new MediaId("chat", Generate.Option), "summary2")
+            new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary1"),
+            new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary2")
         );
         const string lang = "en-US";
         var timestamp = DateTime.Now;
 
-        var metadata = new DocumentMetadata(
+        var metadata = new ChatSliceMetadata(
             authorId, chatEntries, startOffset, endOffset,
             replyToEntries, mentions, reactions, participants, attachments,
             true, lang, timestamp
@@ -90,7 +90,7 @@ public class DocumentMetadataTests(ITestOutputHelper @out) : TestBase(@out)
         Assert.Equal(chatId2, placeChatMetadata.ChatId);
         Assert.Equal(placeId, placeChatMetadata.PlaceId);
 
-        static DocumentMetadata CreateMetadata(ChatEntryId chatEntryId) => new (
+        static ChatSliceMetadata CreateMetadata(ChatEntryId chatEntryId) => new (
             PrincipalId.None,
             [chatEntryId], null, null,
             [], [], [], [], [],

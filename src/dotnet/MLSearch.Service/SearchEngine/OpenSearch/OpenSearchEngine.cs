@@ -20,7 +20,7 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
 
         Log.LogInformation(json);
 
-        var response = await openSearch.SearchAsync<IndexedDocument>(searchRequest, cancellationToken).ConfigureAwait(false);
+        var response = await openSearch.SearchAsync<ChatSlice>(searchRequest, cancellationToken).ConfigureAwait(false);
 
         if (!response.IsValid) {
             throw new InvalidOperationException(response.DebugInformation);
@@ -37,7 +37,7 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
         {
             // TODO: Add metadata filtering
             var metadataFilters = Array.Empty<QueryContainer>();
-            var queries = new List<QueryContainer> { new QueryContainerDescriptor<IndexedDocument>()
+            var queries = new List<QueryContainer> { new QueryContainerDescriptor<ChatSlice>()
                 .ScriptScore(scoredQuery => scoredQuery
                     .Query(q => q.Raw(
                         $$"""
@@ -55,14 +55,14 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
             };
 
             foreach (var keyword in query.Keywords) {
-                queries.Add(new QueryContainerDescriptor<IndexedDocument>()
+                queries.Add(new QueryContainerDescriptor<ChatSlice>()
                     .ScriptScore(scoredQuery => scoredQuery
                         .Query(q => q.Match(m => m.Field(f => f.Text).Query(keyword)))
                         .Script(script => script.Source("_score * 1.7")))
                     );
             }
 
-            return new SearchDescriptor<IndexedDocument>()
+            return new SearchDescriptor<ChatSlice>()
                 .Index(settings.IntoSearchIndexId())
                 .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)))
                 .Query(query => query
@@ -72,7 +72,7 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
         }
     }
 
-    public async Task Ingest(IndexedDocument document, CancellationToken cancellationToken)
+    public async Task Ingest(ChatSlice document, CancellationToken cancellationToken)
         // TODO: support bulk api
         => await openSearch.IndexAsync(
             document,

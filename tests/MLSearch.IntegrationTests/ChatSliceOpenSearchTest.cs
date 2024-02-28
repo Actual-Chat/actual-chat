@@ -2,7 +2,6 @@ using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.SearchEngine.OpenSearch;
 using ActualChat.Performance;
 using ActualChat.Testing.Host;
-using Mjml.Net.Extensions;
 using OpenSearch.Client;
 using OpenSearch.Net;
 using HttpMethod = OpenSearch.Net.HttpMethod;
@@ -10,7 +9,7 @@ using HttpMethod = OpenSearch.Net.HttpMethod;
 namespace ActualChat.MLSearch.IntegrationTests;
 
 [Collection(nameof(MLSearchCollection))]
-public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private Uri OpenSearchClusterUri => new("http://localhost:9201");
@@ -64,7 +63,7 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         };
         var documents = entryIds.Zip(textItems).Select(args => {
             var (id, text) = args;
-            var metadata = new DocumentMetadata(
+            var metadata = new ChatSliceMetadata(
                 authorId,
                 [id], null, null,
                 [], [], [], [], [],
@@ -72,7 +71,7 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
                 "en-US",
                 DateTime.Now
             );
-            return new IndexedDocument(metadata, text);
+            return new ChatSlice(metadata, text);
         });
         foreach (var document in documents) {
             var newDocResponse = await client!.LowLevel.DoRequestAsync<StringResponse>(

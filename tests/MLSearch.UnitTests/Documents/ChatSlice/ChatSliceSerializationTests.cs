@@ -1,6 +1,6 @@
 namespace ActualChat.MLSearch.UnitTests;
 
-public class DocumentSerializationTests(ITestOutputHelper @out) : TestBase(@out)
+public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out)
 {
     private const string attachmentSummary = "Don't expect any media here.";
 
@@ -13,7 +13,7 @@ public class DocumentSerializationTests(ITestOutputHelper @out) : TestBase(@out)
     public void AttachmentSerializesProperly()
     {
         var id = new MediaId("testscope", Generate.Option);
-        var attachment = new DocumentAttachment(id, attachmentSummary);
+        var attachment = new ChatSliceAttachment(id, attachmentSummary);
 
         var jsonString = JsonSerializer.Serialize(attachment, serializerOptions);
         Assert.True(jsonString.Contains("id", StringComparison.Ordinal));
@@ -26,37 +26,37 @@ public class DocumentSerializationTests(ITestOutputHelper @out) : TestBase(@out)
     public void AttachmentDeserializesProperly()
     {
         var id = new MediaId("testscope", Generate.Option);
-        var attachment = new DocumentAttachment(id, attachmentSummary);
+        var attachment = new ChatSliceAttachment(id, attachmentSummary);
 
         var jsonString = JsonSerializer.Serialize(attachment, serializerOptions);
 
-        var deserializedAttachment = JsonSerializer.Deserialize<DocumentAttachment>(jsonString, serializerOptions);
+        var deserializedAttachment = JsonSerializer.Deserialize<ChatSliceAttachment>(jsonString, serializerOptions);
         Assert.Equal(attachment.Id, deserializedAttachment.Id);
         Assert.Equal(attachment.Summary, deserializedAttachment.Summary);
     }
 
     [Fact]
-    public void DocumentMetadataSerializesAndDeserializesProperly()
+    public void ChatSliceMetadataSerializesAndDeserializesProperly()
     {
         var metadata = CreateMetadata();
         var jsonString = JsonSerializer.Serialize(metadata, serializerOptions);
-        var deserializedMetadata = JsonSerializer.Deserialize<DocumentMetadata>(jsonString, serializerOptions);
+        var deserializedMetadata = JsonSerializer.Deserialize<ChatSliceMetadata>(jsonString, serializerOptions);
         Assert.Equivalent(metadata, deserializedMetadata);
         Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedMetadata, serializerOptions));
     }
 
     [Fact]
-    public void IndexedDocumentSerializesAndDeserializesProperly()
+    public void ChatSliceSerializesAndDeserializesProperly()
     {
         var metadata = CreateMetadata();
-        var document = new IndexedDocument(metadata, "Unique and valuable message");
+        var document = new ChatSlice(metadata, "Unique and valuable message");
         var jsonString = JsonSerializer.Serialize(document, serializerOptions);
-        var deserializedDocument = JsonSerializer.Deserialize<IndexedDocument>(jsonString, serializerOptions);
+        var deserializedDocument = JsonSerializer.Deserialize<ChatSlice>(jsonString, serializerOptions);
         Assert.Equivalent(document, deserializedDocument);
         Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedDocument, serializerOptions));
     }
 
-    private static DocumentMetadata CreateMetadata()
+    private static ChatSliceMetadata CreateMetadata()
     {
         var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
         var chatId = new ChatId(Generate.Option);
@@ -70,13 +70,13 @@ public class DocumentSerializationTests(ITestOutputHelper @out) : TestBase(@out)
         var reactions = ImmutableArray.Create(activeUser);
         var participants = ImmutableArray.Create(authorId, activeUser);
         var attachments = ImmutableArray.Create(
-            new DocumentAttachment(new MediaId("chat", Generate.Option), "summary1"),
-            new DocumentAttachment(new MediaId("chat", Generate.Option), "summary2")
+            new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary1"),
+            new ChatSliceAttachment(new MediaId("chat", Generate.Option), "summary2")
         );
         const string lang = "en-US";
         var timestamp = DateTime.Now;
 
-        return new DocumentMetadata(
+        return new ChatSliceMetadata(
             authorId, chatEntries, startOffset, endOffset,
             replyToEntries, mentions, reactions, participants, attachments,
             true, lang, timestamp

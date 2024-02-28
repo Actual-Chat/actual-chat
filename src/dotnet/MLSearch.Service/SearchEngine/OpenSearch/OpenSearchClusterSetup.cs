@@ -149,7 +149,7 @@ internal class OpenSearchClusterSetup(
                     "text_embedding": {
                         "model_id": "{{modelId}}",
                         "field_map": {
-                            "{{nameof(IndexedDocument.Text)}}": "event_dense_embedding"
+                            "{{nameof(ChatSlice.Text)}}": "event_dense_embedding"
                         }
                     }
                   }]
@@ -178,10 +178,10 @@ internal class OpenSearchClusterSetup(
                         ]
                     },
                     "properties": {
-                        "{{nameof(IndexedDocument.Id)}}": {
+                        "{{nameof(ChatSlice.Id)}}": {
                             "type": "keyword"
                         },
-                        "{{nameof(IndexedDocument.Text)}}": {
+                        "{{nameof(ChatSlice.Text)}}": {
                             "type": "text"
                         },
                         "event_dense_embedding": {

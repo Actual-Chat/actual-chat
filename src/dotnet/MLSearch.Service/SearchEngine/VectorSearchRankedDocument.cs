@@ -1,3 +1,3 @@
 namespace ActualChat.MLSearch;
 
-internal record struct VectorSearchRankedDocument(double? Rank, IndexedDocument Document);
+internal record struct VectorSearchRankedDocument(double? Rank, ChatSlice Document);

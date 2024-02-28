@@ -1,17 +1,9 @@
 
 namespace ActualChat.MLSearch;
 
-internal record IndexedDocument(DocumentMetadata Metadata, string Text)
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public string Id => Metadata.ChatEntries.IsDefaultOrEmpty
-        ? string.Empty
-        : $"{Metadata.ChatEntries[0]}:{(Metadata.StartOffset ?? 0).ToString(CultureInfo.InvariantCulture)}";
-}
-
 [StructLayout(LayoutKind.Auto)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor]
-internal readonly record struct DocumentMetadata(
+internal readonly record struct ChatSliceMetadata(
     // An id of the author of the document.
     PrincipalId AuthorId,
     // Ordered list of all involved chat entry ids.
@@ -32,7 +24,7 @@ internal readonly record struct DocumentMetadata(
     // happenig at the document creation time.
     ImmutableArray<PrincipalId> ConversationParticipants,
     // Attachments to document's source messages
-    ImmutableArray<DocumentAttachment> Attachments,
+    ImmutableArray<ChatSliceAttachment> Attachments,
     bool IsPublic,
     string? Language,
     DateTime Timestamp
@@ -40,12 +32,4 @@ internal readonly record struct DocumentMetadata(
 {
     public ChatId ChatId => ChatEntries.IsDefaultOrEmpty ? ChatId.None : ChatEntries[0].ChatId;
     public PlaceId PlaceId => ChatId.PlaceId;
-}
-
-[StructLayout(LayoutKind.Auto)]
-[method: JsonConstructor, Newtonsoft.Json.JsonConstructor]
-internal readonly struct DocumentAttachment(MediaId id, string summary)
-{
-    public MediaId Id { get; } = id;
-    public string Summary { get; } = summary;
 }
