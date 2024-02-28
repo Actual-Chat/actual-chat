@@ -30,7 +30,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
 
         // Backend
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetServiceMode<IMediaBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IMediaBackend>().IsClient();
 
         // Commander handlers
         rpcHost.Commander.AddHandlerFilter((handler, commandType) => {
