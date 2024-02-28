@@ -21,7 +21,8 @@ public static class ServiceCollectionExt
             .Where(r => r.IsBackend)
             .ToHashSet();
 
-        foreach (var hostRole in backendRoles)
+        // register command queue workers for roles with ShardScheme defined
+        foreach (var hostRole in backendRoles.Where(hr => ShardScheme.ById.ContainsKey(hr.Id)))
             services.AddCommandQueues(hostRole, optionsBuilder, schedulerOptionsBuilder);
 
         // register EventScheduler
