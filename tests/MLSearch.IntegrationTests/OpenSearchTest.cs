@@ -76,7 +76,7 @@ public class OpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         });
         foreach (var document in documents) {
             var newDocResponse = await client!.LowLevel.DoRequestAsync<StringResponse>(
-                HttpMethod.PUT, $"/{searchIndexId}/_doc/{document.Uri}", CancellationToken.None, PostData.Serializable(document));
+                HttpMethod.PUT, $"/{searchIndexId}/_doc/{document.Id}", CancellationToken.None, PostData.Serializable(document));
             Assert.True(newDocResponse.Success);
         }
 

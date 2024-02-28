@@ -6,7 +6,7 @@ public class IndexedDocumentTests(ITestOutputHelper @out): TestBase(@out)
     public void IdOfAnEmptyDocumentIsEmptyString()
     {
         var emptyDocument = new IndexedDocument(default, string.Empty);
-        Assert.Equal(string.Empty, emptyDocument.Uri);
+        Assert.Equal(string.Empty, emptyDocument.Id);
     }
 
     [Fact]
@@ -17,7 +17,7 @@ public class IndexedDocumentTests(ITestOutputHelper @out): TestBase(@out)
         var chatEntryId2 = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
         var metadata = CreateMetadata(chatEntryId1, chatEntryId2, 33, 111);
         var document = new IndexedDocument(metadata, string.Empty);
-        var id = document.Uri;
+        var id = document.Id;
         Assert.StartsWith(chatEntryId1, id, StringComparison.Ordinal);
         Assert.EndsWith("33", id, StringComparison.Ordinal);
 

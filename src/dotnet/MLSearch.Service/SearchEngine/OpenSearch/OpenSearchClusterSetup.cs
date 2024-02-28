@@ -178,7 +178,7 @@ internal class OpenSearchClusterSetup(
                         ]
                     },
                     "properties": {
-                        "{{nameof(IndexedDocument.Uri)}}": {
+                        "{{nameof(IndexedDocument.Id)}}": {
                             "type": "keyword"
                         },
                         "{{nameof(IndexedDocument.Text)}}": {

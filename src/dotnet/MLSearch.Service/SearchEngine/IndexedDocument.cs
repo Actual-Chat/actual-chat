@@ -4,7 +4,7 @@ namespace ActualChat.MLSearch;
 internal record IndexedDocument(DocumentMetadata Metadata, string Text)
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
-    public string Uri => Metadata.ChatEntries.IsDefaultOrEmpty
+    public string Id => Metadata.ChatEntries.IsDefaultOrEmpty
         ? string.Empty
         : $"{Metadata.ChatEntries[0]}:{(Metadata.StartOffset ?? 0).ToString(CultureInfo.InvariantCulture)}";
 }
