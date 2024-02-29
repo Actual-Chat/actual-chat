@@ -3,7 +3,7 @@ namespace ActualChat.MLSearch;
 
 internal class VectorSearchQuery
 {
-    public MetadataFilter MetadataFilter;
+    public IMetadataFilter[] MetadataFilters;
     public string FreeTextFilter;
     public string[] Keywords;
 }
