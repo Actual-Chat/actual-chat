@@ -8,7 +8,7 @@ namespace ActualChat.Chat.Controllers;
 public sealed class ContentController(IBlobStorages blobs) : ControllerBase
 {
     [HttpGet("{**blobId}")]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client, VaryByQueryKeys = new[] { "blobId" })]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any, VaryByQueryKeys = new[] { "blobId" })]
     [EnableCors("CDN")]
     public async Task<ActionResult> Download(string blobId, CancellationToken cancellationToken)
     {
