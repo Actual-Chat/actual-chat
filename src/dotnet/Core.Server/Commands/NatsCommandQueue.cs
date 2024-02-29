@@ -9,7 +9,7 @@ using NATS.Client.JetStream.Models;
 
 namespace ActualChat.Commands;
 
-public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServiceProvider services) : ICommandQueue, ICommandQueueBackend
+public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServiceProvider services) : ICommandQueue, ICommandQueueBackend, IQueueBackend
 {
     private const string JetStreamName = "COMMANDS";
     private static readonly byte[] Version = [ (byte)CommandVersion.Version1 ];
@@ -17,13 +17,13 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         (byte)CommandVersion.Version1,
     ];
 
-    private readonly ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>> _commandsBeingProcessed = new ();
     private readonly ConcurrentDictionary<Symbol, INatsJSConsumer> _consumers = new ();
     private readonly object _lock = new ();
 
     private NatsConnection? _nats;
     private volatile INatsJSStream? _jetStream;
 
+    protected readonly ConcurrentDictionary<string, ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>>> CommandsBeingProcessed = new ();
     protected NatsConnection Nats => _nats ??= GetConnection();
     protected AsyncLock AsyncLock { get; } = new(LockReentryMode.CheckedPass);
     protected ILogger<NatsCommandQueue> Log { get; } = services.LogFor<NatsCommandQueue>();
@@ -71,7 +71,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         }
     }
 
-    public virtual async IAsyncEnumerable<QueuedCommand> Read([EnumeratorCancellation] CancellationToken cancellationToken)
+    async IAsyncEnumerable<QueuedCommand> ICommandQueueBackend.Read([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var consumerName = $"WORKER-{QueueId.ShardIndex}";
         var jetStream = await EnsureStreamExists(cancellationToken).ConfigureAwait(false);
@@ -85,13 +85,14 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             if (message.Data == null)
                 continue;
 
-            yield return DeserializeMessage(message);
+            yield return DeserializeMessage("", message);
         }
     }
 
-    public async ValueTask MarkCompleted(QueuedCommand command, CancellationToken cancellationToken)
+    async ValueTask ICommandQueueBackend.MarkCompleted(QueuedCommand command, CancellationToken cancellationToken)
     {
-        if (!_commandsBeingProcessed.TryRemove(command.Id, out var message)) {
+        var perConsumerCommands = CommandsBeingProcessed.GetOrAdd("", new ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>>());
+        if (!perConsumerCommands.TryRemove(command.Id, out var message)) {
             var streamName = _jetStream?.Info.Config.Name;
             Log.LogWarning("MarkCompleted. Command has already been completed. Id={Id}, StreamName={StreamName}", command.Id, streamName);
             return;
@@ -100,9 +101,10 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         await message.AckAsync(new AckOpts { DoubleAck = true }, cancellationToken).ConfigureAwait(false);
     }
 
-    public async ValueTask MarkFailed(QueuedCommand command, Exception? exception, CancellationToken cancellationToken)
+    async ValueTask ICommandQueueBackend.MarkFailed(QueuedCommand command, Exception? exception, CancellationToken cancellationToken)
     {
-        if (!_commandsBeingProcessed.TryRemove(command.Id, out var message)) {
+        var perConsumerCommands = CommandsBeingProcessed.GetOrAdd("", new ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>>());
+        if (!perConsumerCommands.TryRemove(command.Id, out var message)) {
             var streamName = _jetStream?.Info.Config.Name;
             Log.LogWarning("MarkFailed. Command has already been completed. Id={Id}, StreamName={StreamName}", command.Id, streamName);
             return;
@@ -128,7 +130,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
             ? HostRole.BackendSuffix.ToLowerInvariant()
             : hostRole.Id.Value.Replace(HostRole.BackendSuffix, "", StringComparison.OrdinalIgnoreCase);
 
-    protected QueuedCommand DeserializeMessage(NatsJSMsg<IMemoryOwner<byte>> message)
+    protected QueuedCommand DeserializeMessage(string consumerPrefix, NatsJSMsg<IMemoryOwner<byte>> message)
     {
         var typedSerializer = TypeDecoratingByteSerializer.Default;
         var messageMemory = message.Data!.Memory;
@@ -139,7 +141,9 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         var id = new Ulid(messageMemory.Span[1..17]);
         var command = typedSerializer.Read<ICommand>(messageMemory[17..]);
         var queuedCommand = QueuedCommand.FromCommand(id, command);
-        if (_commandsBeingProcessed.TryAdd(queuedCommand.Id, message)) // double check duplicates - we have already handled them at the NATS stream
+
+        var perConsumerCommands = CommandsBeingProcessed.GetOrAdd(consumerPrefix, new ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>>());
+        if (!perConsumerCommands.TryAdd(queuedCommand.Id, message)) // double check duplicates - we have already handled them at the NATS stream
             return queuedCommand;
 
         message.Data.DisposeSilently(); // release buffer
