@@ -170,6 +170,9 @@ public sealed partial class UrlMapper
         if (imageUrl.StartsWith("https://api.dicebear.com", StringComparison.OrdinalIgnoreCase))
             return imageUrl;
 
+        if (imageUrl.StartsWith("https://www.gravatar.com", StringComparison.OrdinalIgnoreCase))
+            return imageUrl;
+
         return $"{ImageProxyBaseUrl}128/{imageUrl}";
     }
 
