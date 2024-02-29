@@ -7,13 +7,20 @@ namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
 
 public sealed class OpenSearchClusterSettings(string modelAllConfig, string modelId, int modelEmbeddingDimension)
 {
-    private const string IngestPipelineNamePrefix = "ml-ingest-pipeline-";
     private const string SearchIndexNamePrefix = "ml-search-index-";
+    private const string IngestPipelineNamePrefix = "ml-ingest-pipeline-";
+    private const string IngestCursorIndexNamePrefix = "ml-ingest-cursor-index-";
 
     public string ModelId => modelId;
     public int ModelEmbeddingDimension => modelEmbeddingDimension;
     public Id IntoIngestPipelineId()
-        => new (IngestPipelineNamePrefix + IntoUniqueKey());
+        => new (IntoIngestPipelineName());
+
+    public string IntoIngestPipelineName()
+        => IngestPipelineNamePrefix + IntoUniqueKey();
+
+    public IndexName IntoCursorIndexName()
+        => IngestCursorIndexNamePrefix + IntoUniqueKey();
 
     public string IntoSearchIndexId()
         => SearchIndexNamePrefix + IntoUniqueKey();

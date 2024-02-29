@@ -2,7 +2,7 @@ using ActualChat.MLSearch.ApiAdapters;
 using OpenSearch.Client;
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Stream;
+namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
 
 // Note: Sink implementation requirements.
 // Since Sink api executed on top of bulk actions
@@ -21,17 +21,18 @@ namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Stream;
 internal class Sink<TUpdateDocument, TDeleteDocument>(
     IOpenSearchClient client,
     IndexName indexName,
+    string ingestPipelineName,
     Func<TUpdateDocument, IndexedDocument> intoUpdate,
     Func<TDeleteDocument, Id> intoDelete,
     ILoggerSource loggerSource
 )
 {
     private ILogger? _log;
-    protected ILogger Log => _log ??= loggerSource.GetLogger(GetType());
+    private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
     private IOpenSearchClient OpenSearch => client;
 
-    public virtual Task Execute(
+    public virtual async Task Execute(
         IEnumerable<TUpdateDocument>? updatedDocuments,
         IEnumerable<TDeleteDocument>? deletedDocuments,
         CancellationToken cancellationToken)
@@ -42,18 +43,20 @@ internal class Sink<TUpdateDocument, TDeleteDocument>(
         var deletes = (deletedDocuments ?? Array.Empty<TDeleteDocument>())
             .Select(intoDelete)
             .ToList();
-        return OpenSearch
+        var result = await OpenSearch
             .BulkAsync(r => r
                     .IndexMany(
                         updates,
                         (op, document) =>
                             op
+                                .Pipeline(ingestPipelineName)
                                 .Index(indexName)
                                 .Id(document.Id())
                     )
                     .DeleteMany(deletes, (op, _) => op.Index(indexName)),
-                cancellationToken)
-            .LogErrors(Log)
-            .AssertSuccess();
+                cancellationToken
+            ).ConfigureAwait(false);
+        Log.LogErrors(result);
+        result.AssertSuccess();
     }
 }

@@ -2,7 +2,7 @@ using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 using OpenSearch.Client;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
-
+using ActualChat.MLSearch.SearchEngine.OpenSearch.Stream;
 using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
@@ -128,6 +128,7 @@ internal class OpenSearchClusterSetup(
 
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
         var searchIndexId = settings.IntoSearchIndexId();
+        var ingestCursorIndexId = settings.IntoCursorIndexName();
         var isSearchIndexExistsResult = await openSearch
             .Indices
             .ExistsAsync(searchIndexId, ct: cancellationToken)
@@ -163,6 +164,32 @@ internal class OpenSearchClusterSetup(
                 ingestResult.OriginalException
             );
         }
+        // TODO: Check what's available
+        var ingestCursorIndexResult = await openSearch.RunAsync(
+            $$"""
+              PUT /{{ingestCursorIndexId}}
+              {
+                "mappings": {
+                    "properties": {
+                        "{{nameof( ChatEntriesIndexing.Cursor.LastEntryVersion)}}": {
+                            "type": "text"
+                        },
+                        "{{nameof(ChatEntriesIndexing.Cursor.LastEntryLocalId)}}": {
+                            "type": "text"
+                        }
+                    }
+                }
+              }
+              """,
+            cancellationToken
+        ).ConfigureAwait(false);
+        if (!ingestCursorIndexResult.Success) {
+            throw new InvalidOperationException(
+                "Failed to update search index",
+                ingestCursorIndexResult.OriginalException
+            );
+        }
+
         var searchIndexResult = await openSearch.RunAsync(
             $$"""
               PUT /{{searchIndexId}}

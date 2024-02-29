@@ -7,6 +7,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.Search;
 
+
 public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
 {
     private const int ChatDispatchBatchSize = 20;
