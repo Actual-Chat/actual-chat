@@ -153,7 +153,7 @@ internal class OpenSearchQueryBuilder(OpenSearchClusterSettings settings, string
     internal ISearchRequest Build(VectorSearchQuery query)
     {
         metadataFilters.Clear();
-        foreach (var metadataFiler in query.MetadataFilters) {
+        foreach (var metadataFiler in query.MetadataFilters ?? Enumerable.Empty<IMetadataFilter>()) {
             metadataFiler.Apply(this);
         }
         var queries = new List<QueryContainer> { new QueryContainerDescriptor<ChatSlice>()
@@ -173,7 +173,7 @@ internal class OpenSearchQueryBuilder(OpenSearchClusterSettings settings, string
                 .Script(script => script.Source("_score * 1.5"))),
         };
 
-        foreach (var keyword in query.Keywords) {
+        foreach (var keyword in query.Keywords ?? Enumerable.Empty<string>()) {
             queries.Add(new QueryContainerDescriptor<ChatSlice>()
                 .ScriptScore(scoredQuery => scoredQuery
                     .Query(q => q.Match(m => m.Field(f => f.Text).Query(keyword)))
