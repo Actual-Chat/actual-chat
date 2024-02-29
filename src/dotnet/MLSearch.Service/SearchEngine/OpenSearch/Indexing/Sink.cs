@@ -22,7 +22,7 @@ internal class Sink<TUpdateDocument, TDeleteDocument>(
     IOpenSearchClient client,
     IndexName indexName,
     string ingestPipelineName,
-    Func<TUpdateDocument, IndexedDocument> intoUpdate,
+    Func<TUpdateDocument, ChatSlice> intoUpdate,
     Func<TDeleteDocument, Id> intoDelete,
     ILoggerSource loggerSource
 )

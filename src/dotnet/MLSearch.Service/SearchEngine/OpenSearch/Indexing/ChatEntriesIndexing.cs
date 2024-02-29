@@ -1,16 +1,10 @@
 using ActualChat.Chat;
+using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Spout;
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Stream;
 using OpenSearch.Client;
 
-namespace ActualChat.MLSearch.ApiAdapters;
-
-// A stream represent a sequence of:
-// - Spout: Subscribes to whatever events it needs
-//   and maps events into an internal set of commands.
-// -
-
+namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
 
 internal class ChatEntriesIndexing(
     IChatsBackend chats,

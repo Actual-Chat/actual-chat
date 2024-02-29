@@ -3,7 +3,7 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 
-internal static class IndexedDocumentExt
+internal static class ChatSliceExt
 {
     // TODO: Check how feasible is it to move this logic into ingest pipelines.
     // Note: Intent to have a separate method.
@@ -13,19 +13,19 @@ internal static class IndexedDocumentExt
     // as well. This will eliminate this method entirely.
     // Note: OpenSearch _id key has a limit of 512 bytes string.
     // Note: Moving this into ingest pipeline would require same logic applied for deletions.
-    public static Id Id(this IndexedDocument document)
-        => new (document.Uri);
+    public static Id Id(this ChatSlice document)
+        => new (document.Id);
 
     public static Id IntoDocumentId(this ChatEntry chatEntry)
     {
         return new Id(chatEntry.Id.Id);
     }
 
-    public static IndexedDocument IntoIndexedDocument(this ChatEntry chatEntry)
+    public static ChatSlice IntoIndexedDocument(this ChatEntry chatEntry)
     {
-        var metadata = new DocumentMetadata(
+        var metadata = new ChatSliceMetadata(
             // TODO: verify
-            AuthorId: new UserId(chatEntry.AuthorId.Id),
+            AuthorId: new PrincipalId(chatEntry.AuthorId.Id),
             ChatEntries: [chatEntry.Id],
             // TODO: ensure everything is correct here.
             StartOffset: null,
@@ -42,6 +42,6 @@ internal static class IndexedDocumentExt
             // TODO:
             Timestamp: chatEntry.BeginsAt
         );
-        return new IndexedDocument(metadata, chatEntry.Content);
+        return new ChatSlice(metadata, chatEntry.Content);
     }
 }

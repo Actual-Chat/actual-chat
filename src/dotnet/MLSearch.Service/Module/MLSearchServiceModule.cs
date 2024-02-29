@@ -7,11 +7,12 @@ using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.SearchEngine.OpenSearch;
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
+using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Spout;
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Stream;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
 using OpenSearch.Client;
+using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.Module;
 
@@ -65,9 +66,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         var modelGroupName = Settings.OpenSearchModelGroup
             ?? throw new InvalidOperationException("OpenSearchModelGroup is not set");
         services.AddSingleton<IOpenSearchClient>(_ => {
-            var connectionSettings = new ConnectionSettings(new Uri(openSearchClusterUri))
-                // .PrettyJson()
-                .DefaultFieldNameInferrer(f => f);
+            var connectionSettings = new ConnectionSettings(
+                new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
+                sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
             return new OpenSearchClient(connectionSettings);
         });
         services.AddSingleton<OpenSearchClusterSetup>(e =>
@@ -89,14 +90,14 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 cursors: new IndexingCursors<ChatEntriesIndexing.Cursor>(
                     e.GetRequiredService<IOpenSearchClient>(),
                     e.GetRequiredService<OpenSearchClusterSettings>()
-                        .IntoCursorIndexName()
+                        .IntoFullCursorIndexName(OpenSearchClusterSetup.ChatSliceIndexName)
                 ),
                 sink: new ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Sink<ChatEntry, ChatEntry>(
                     e.GetRequiredService<IOpenSearchClient>(),
-                    e.GetRequiredService<OpenSearchClusterSettings>().IntoSearchIndexId(),
-                    e.GetRequiredService<OpenSearchClusterSettings>().IntoIngestPipelineName(),
-                    IndexedDocumentExt.IntoIndexedDocument,
-                    IndexedDocumentExt.IntoDocumentId,
+                    e.GetRequiredService<OpenSearchClusterSettings>().IntoFullSearchIndexId(OpenSearchClusterSetup.ChatSliceIndexName),
+                    e.GetRequiredService<OpenSearchClusterSettings>().IntoFullIngestPipelineName(OpenSearchClusterSetup.ChatSliceIndexName),
+                    ChatSliceExt.IntoIndexedDocument,
+                    ChatSliceExt.IntoDocumentId,
                     e.GetRequiredService<ILoggerSource>()
                 ),
                 loggerSource: e.GetRequiredService<ILoggerSource>()
