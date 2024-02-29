@@ -42,7 +42,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         if (TryGetPredefined(phone, out _))
             return GetExpiresAt(); // no need to send predefined totp
 
-        var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose).ConfigureAwait(false);
+        var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose, cancellationToken).ConfigureAwait(false);
         var totp = Totps.GenerateCode(securityToken, modifier); // generate totp with the newest one
         var expiresAt = GetExpiresAt();
 
@@ -63,7 +63,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
             return default; // It just spawns other commands, so nothing to do here
 
         var (session, phone, totp) = command;
-        if (!await ValidateCode(session, phone, totp, TotpPurpose.SignIn).ConfigureAwait(false))
+        if (!await ValidateCode(session, phone, totp, TotpPurpose.SignIn, cancellationToken).ConfigureAwait(false))
             return false;
 
         var user = new User(Symbol.Empty, string.Empty).WithPhone(phone);
@@ -86,7 +86,7 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         }
 
         var (session, phone, totp) = command;
-        if (! await ValidateCode(session, phone, totp, TotpPurpose.VerifyPhone).ConfigureAwait(false))
+        if (! await ValidateCode(session, phone, totp, TotpPurpose.VerifyPhone, cancellationToken).ConfigureAwait(false))
             return false;
 
         // save phone to account
@@ -117,18 +117,27 @@ public class PhoneAuth(IServiceProvider services) : DbServiceBase<UsersDbContext
         return true;
     }
 
-    private async Task<bool> ValidateCode(Session session, Phone phone, int totp, TotpPurpose purpose)
+    private async Task<bool> ValidateCode(
+        Session session,
+        Phone phone,
+        int totp,
+        TotpPurpose purpose,
+        CancellationToken cancellationToken)
     {
         if (TryGetPredefined(phone, out var predefinedTotp) && predefinedTotp == totp)
             return true;
 
-        var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose).ConfigureAwait(false);
+        var (securityToken, modifier) = await GetTotpInputs(session, phone, purpose, cancellationToken).ConfigureAwait(false);
         return Totps.ValidateCode(securityToken, totp, modifier);
     }
 
-    private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(Session session, Phone phone, TotpPurpose purpose)
+    private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
+        Session session,
+        Phone phone,
+        TotpPurpose purpose,
+        CancellationToken cancellationToken)
     {
-        var randomSecret = await RandomSecrets.Get(session).ConfigureAwait(false);
+        var randomSecret = await RandomSecrets.Get(session, cancellationToken).ConfigureAwait(false);
         var securityTokens = Encoding.UTF8.GetBytes($"{randomSecret}_{session.Id}_{phone}");
         var modifier = $"{purpose}:{phone}";
         return (securityTokens, modifier);

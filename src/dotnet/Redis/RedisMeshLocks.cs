@@ -4,11 +4,14 @@ using StackExchange.Redis;
 
 namespace ActualChat.Redis;
 
-public class RedisMeshLocks<TContext> : RedisMeshLocks,
-        IMeshLocks<TContext>
+public class RedisMeshLocks<TContext> : RedisMeshLocks, IMeshLocks<TContext>
 {
     public RedisMeshLocks(IServiceProvider services)
-        : base(services.GetRequiredService<RedisDb<TContext>>(), services.Clocks().SystemClock) { }
+        : base(
+            services.GetRequiredService<RedisDb<TContext>>(),
+            services.Clocks().SystemClock,
+            services.LogFor<RedisMeshLocks>())
+    { }
     public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null)
         : base(redisDb, DefaultKeyPrefix, clock) { }
     public RedisMeshLocks(RedisDb redisDb, string keyPrefix, IMomentClock? clock = null)
@@ -77,8 +80,10 @@ public class RedisMeshLocks : MeshLocksBase
 
     public RedisDb RedisDb { get; }
 
-    public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null) : this(redisDb, DefaultKeyPrefix, clock) { }
-    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, IMomentClock? clock = null) : base(clock)
+    public RedisMeshLocks(RedisDb redisDb, IMomentClock? clock = null, ILogger? log = null)
+        : this(redisDb, DefaultKeyPrefix, clock, log) { }
+    public RedisMeshLocks(RedisDb redisDb, string keyPrefix, IMomentClock? clock = null, ILogger? log = null)
+        : base(clock, log)
     {
         if (!keyPrefix.IsNullOrEmpty())
             redisDb = redisDb.WithKeyPrefix(keyPrefix);
@@ -100,8 +105,8 @@ public class RedisMeshLocks : MeshLocksBase
         var failureCount = 0;
         while (true) {
             try {
-                cancellationToken.ThrowIfCancellationRequested();
-                var storedValue = (string?)await RedisDb.Database
+                var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+                var storedValue = (string?)await database
                     .StringGetAsync((RedisKey)key, CommandFlags.DemandMaster)
                     .ConfigureAwait(false);
                 if (storedValue == null)
@@ -122,11 +127,13 @@ public class RedisMeshLocks : MeshLocksBase
         var channel = new RedisChannel(RedisDb.FullKey(key), RedisChannel.PatternMode.Literal);
         var failureCount = 0;
         ChannelMessageQueue queue;
+        CancellationToken goneToken;
         while (true) {
             try {
-                cancellationToken.ThrowIfCancellationRequested();
-                queue = await RedisDb.Redis
-                    .GetSubscriber()
+                (var subscriber, goneToken) = await RedisDb.Subscriber
+                    .GetTemporary(cancellationToken)
+                    .ConfigureAwait(false);
+                queue = await subscriber
                     .SubscribeAsync(channel)
                     .ConfigureAwait(false);
                 break;
@@ -137,30 +144,27 @@ public class RedisMeshLocks : MeshLocksBase
             await Clock.Delay(RetryDelays[++failureCount], cancellationToken).ConfigureAwait(false);
         }
 
-        return new RedisSubscription<string>(queue, _changeMessageMapper);
+        return new RedisSubscription<string>(queue, _changeMessageMapper, goneToken);
     }
 
-    public override async Task<string[]> ListKeys(string prefix, CancellationToken cancellationToken = default)
+    public override async Task<List<string>> ListKeys(string prefix, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        var r = await RedisDb.Database
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var r = await database
             .ExecuteAsync("KEYS", new object[] { (RedisKey)(prefix + "*") }, CommandFlags.DemandMaster)
             .ConfigureAwait(false);
-        var length = r.Length;
-        if (length == 0)
-            return Array.Empty<string>();
 
-        var keys = new string[length];
-        for (var index = 0; index < keys.Length; index++) {
+        var keys = new List<string>(r.Length);
+        for (var index = 0; index < r.Length; index++) {
             var key = (string?)r[index] ?? "";
             key = key.Length >= _fullKeyPrefix.Length ? key[_fullKeyPrefix.Length..] : "";
-            keys[index] = key;
+            keys.Add(key);
         }
         return keys;
     }
 
     public override IMeshLocks WithKeyPrefix(string keyPrefix)
-        => new RedisMeshLocks(RedisDb, keyPrefix, Clock);
+        => new RedisMeshLocks(RedisDb, keyPrefix, Clock, Log);
 
     // Protected methods
 
@@ -169,8 +173,8 @@ public class RedisMeshLocks : MeshLocksBase
         var failureCount = 0;
         while (true) {
             try {
-                cancellationToken.ThrowIfCancellationRequested();
-                var r = (long)await RedisDb.Database
+                var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+                var r = (long)await database
                     .ScriptEvaluateAsync(TryLockScript, [key, ""], [value, (long)expiresIn.TotalMilliseconds], CommandFlags.DemandMaster)
                     .ConfigureAwait(false);
                 return r >= 0;
@@ -185,8 +189,8 @@ public class RedisMeshLocks : MeshLocksBase
     protected override async Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)
     {
         // Must not auto-retry!
-        cancellationToken.ThrowIfCancellationRequested();
-        var r = (long)await RedisDb.Database
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var r = (long)await database
             .ScriptEvaluateAsync(TryRenewScript, [key], [value, (long)expiresIn.TotalMilliseconds], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         return r >= 0;
@@ -195,8 +199,8 @@ public class RedisMeshLocks : MeshLocksBase
     protected override async Task<MeshLockReleaseResult> TryRelease(string key, string value, CancellationToken cancellationToken)
     {
         // Must not auto-retry!
-        cancellationToken.ThrowIfCancellationRequested();
-        var r = (long)await RedisDb.Database
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var r = (long)await database
             .ScriptEvaluateAsync(TryReleaseScript, [key, ""], [value], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         return r switch {
@@ -210,8 +214,8 @@ public class RedisMeshLocks : MeshLocksBase
     protected override async Task<bool> ForceRelease(string key, bool mustNotify, CancellationToken cancellationToken)
     {
         // Must not auto-retry!
-        cancellationToken.ThrowIfCancellationRequested();
-        var r = (long)await RedisDb.Database
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var r = (long)await database
             .ScriptEvaluateAsync(ForceReleaseScript, [key, ""], [mustNotify ? 1 : 0], CommandFlags.DemandMaster)
             .ConfigureAwait(false);
         return r >= 0;

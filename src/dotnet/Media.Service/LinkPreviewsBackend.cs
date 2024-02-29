@@ -226,12 +226,26 @@ public class LinkPreviewsBackend(IServiceProvider services)
     private static string ToRedisKey(Symbol id)
         => $"{RedisKeyPrefix}{id.Value}";
 
-    private Task<bool> MarkCrawling(Symbol id)
-        => RedisDb.Database.StringSetAsync(ToRedisKey(id), SystemNow.ToString(), Settings.CrawlingTimeout, When.NotExists);
+    private async Task<bool> MarkCrawling(Symbol id)
+    {
+        var database = await RedisDb.Database.Get().ConfigureAwait(false);
+        return await database.StringSetAsync(
+            ToRedisKey(id),
+            SystemNow.ToString(),
+            Settings.CrawlingTimeout,
+            When.NotExists
+            ).ConfigureAwait(false);
+    }
 
-    private Task<bool> MarkNotCrawling(Symbol id)
-        => RedisDb.Database.KeyDeleteAsync(ToRedisKey(id));
+    private async Task<bool> MarkNotCrawling(Symbol id)
+    {
+        var database = await RedisDb.Database.Get().ConfigureAwait(false);
+        return await database.KeyDeleteAsync(ToRedisKey(id)).ConfigureAwait(false);
+    }
 
-    private Task<bool> IsAlreadyCrawling(Symbol id)
-        => RedisDb.Database.KeyExistsAsync(ToRedisKey(id));
+    private async Task<bool> IsAlreadyCrawling(Symbol id)
+    {
+        var database = await RedisDb.Database.Get().ConfigureAwait(false);
+        return await database.KeyExistsAsync(ToRedisKey(id)).ConfigureAwait(false);
+    }
 }
