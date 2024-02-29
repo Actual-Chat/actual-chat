@@ -8,7 +8,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
     [Fact(Timeout = 30_000)]
     public async Task BasicTest()
     {
-        var shardScheme = ShardScheme.Backend.Instance;
+        var shardScheme = ShardScheme.AnyServer;
         using var h1 = await NewAppHost();
         await using var w1a = new ShardWorker1(h1.Services, Out, "w1a");
         w1a.Start();
@@ -46,9 +46,9 @@ public class ShardWorkerTest(ITestOutputHelper @out)
     // Nested types
 
     public class ShardWorker1(IServiceProvider services, ITestOutputHelper @out1, string name)
-        : ShardWorker<ShardScheme.Backend>(services)
+        : ShardWorker(services, ShardScheme.AnyServer)
     {
-        private static readonly object?[] ShardOwners = new object?[ShardScheme.Backend.Instance.ShardCount];
+        private static readonly object?[] ShardOwners = new object?[ShardScheme.AnyServer.ShardCount];
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
         private ITestOutputHelper Out { get; } = @out1;
 
@@ -87,7 +87,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
     }
 
     public class ShardWorker2(IServiceProvider services, ITestOutputHelper @out1, string name)
-        : ShardWorker<ShardScheme.Backend>(services)
+        : ShardWorker(services, ShardScheme.AnyServer)
     {
         private ITestOutputHelper Out { get; } = @out1;
 

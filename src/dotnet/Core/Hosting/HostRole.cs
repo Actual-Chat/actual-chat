@@ -8,6 +8,7 @@ public partial record struct HostRole(
     ) : ICanBeNone<HostRole>
 {
     public static HostRole None => default;
+    public static readonly HostRole AnyServer = nameof(AnyServer); // Any server has it
     public static readonly HostRole SingleServer = nameof(SingleServer); // + FrontendServer, BackendServer
     public static readonly HostRole FrontendServer = nameof(FrontendServer); // + BlazorHost
     public static readonly HostRole BackendServer = nameof(BackendServer); // + MediaBackendServer, DefaultQueue

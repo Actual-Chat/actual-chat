@@ -2,10 +2,6 @@ using ActualChat.Mesh;
 
 namespace ActualChat;
 
-public abstract class ShardWorker<TShardScheme>(IServiceProvider services, string? keySuffix = null)
-    : ShardWorker(services, TShardScheme.Instance, keySuffix)
-    where TShardScheme : ShardScheme, IShardScheme<TShardScheme>;
-
 public abstract class ShardWorker : WorkerBase
 {
     private ILogger? _log;

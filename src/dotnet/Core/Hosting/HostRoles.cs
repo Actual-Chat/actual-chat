@@ -23,7 +23,7 @@ public static class HostRoles
         public static HashSet<HostRole> GetAllRoles(HostRole role)
         {
             role = role.IsNone ? HostRole.SingleServer : role;
-            var roles = new HashSet<HostRole>() { role };
+            var roles = new HashSet<HostRole>() { role, HostRole.AnyServer };
 
             if (roles.Contains(HostRole.SingleServer)) {
                 roles.Add(HostRole.FrontendServer);
