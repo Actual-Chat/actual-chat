@@ -409,6 +409,8 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         var (chatId, _) = await ownerTester.CreateChat(true);
 
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+
         var contacts = ownerTester.AppServices.GetRequiredService<IContacts>();
         await TestExt.WhenMetAsync(async () => {
                 var contactIds = await contacts.ListIds(session, PlaceId.None, default);
@@ -424,6 +426,8 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var chats = ownerTester.AppServices.GetRequiredService<IChats>();
         var chat = await chats.Get(session, chatId, default);
         chat.Should().BeNull();
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(async () => {
                 var contactIds = await contacts.ListIds(session, PlaceId.None, default);

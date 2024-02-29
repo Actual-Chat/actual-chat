@@ -24,7 +24,6 @@ public sealed class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider
     private HostRole HostRole { get; } = hostRole;
     private ICommandQueues Queues { get; } = services.GetRequiredService<ICommandQueues>();
     private ICommander Commander { get; } = services.GetRequiredService<ICommander>();
-    private CommandHandlerResolver HandlerResolver { get; } = services.GetRequiredService<CommandHandlerResolver>();
     private EventHandlerResolver EventHandlerResolver { get; } = services.GetRequiredService<EventHandlerResolver>();
     private Action<IEventCommand, Symbol> ChainIdSetter => _chainIdSetter ??= ChainIdSetterProperty.GetSetter<Symbol>();
 
@@ -82,16 +81,17 @@ public sealed class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider
         return Parallel.ForEachAsync(
             events,
             parallelOptions,
-            (c, ct) => HandleEvent(handler, queueBackend, c, ct));
+            (c, ct) => HandleEvent(handler, queueBackend, consumerPrefix, c, ct));
     }
 
     private async ValueTask HandleEvent(
         CommandHandler handler,
         IEventQueueBackend queueBackend,
+        string consumerPrefix,
         QueuedCommand command,
         CancellationToken cancellationToken)
     {
-        Log.LogDebug("Running queued event: {Command}", command);
+        Log.LogDebug("Running queued event with {ConsumerPrefix}: {Command}", consumerPrefix, command.UntypedCommand);
         if (command.UntypedCommand is not IEventCommand untypedCommand) {
             Log.LogWarning("Unable to handle a command as an event: {Event}", command.UntypedCommand);
             return;
@@ -104,13 +104,14 @@ public sealed class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider
             var chainCommand = MemberwiseCloner.Invoke(untypedCommand);
             ChainIdSetter.Invoke(chainCommand, chainId);
             await Commander.Call(chainCommand, context.IsOutermost, cancellationToken).ConfigureAwait(false);
+            Log.LogDebug("Complete handling event with {ConsumerPrefix}: {Command}", consumerPrefix, command.UntypedCommand);
         }
         catch (Exception e) {
             error = e;
             context.SetResult(e);
 
-            Log.LogError(e, "Running queued command failed: {Command}", command);
-            await queueBackend.MarkFailed(command, e, cancellationToken).ConfigureAwait(false);
+            Log.LogError(e, "Running queued event  with {ConsumerPrefix} failed: {Command}", consumerPrefix, command.UntypedCommand);
+            await queueBackend.MarkFailed(consumerPrefix, command, e, cancellationToken).ConfigureAwait(false);
 
             if (cancellationToken.IsCancellationRequested)
                 throw;
@@ -120,7 +121,7 @@ public sealed class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider
             InterlockedExt.ExchangeIfGreaterThan(ref _lastCommandTicks, commandCompletionTicks);
 
             if (error == null)
-                await queueBackend.MarkCompleted(command, cancellationToken).ConfigureAwait(false);
+                await queueBackend.MarkCompleted(consumerPrefix, command, cancellationToken).ConfigureAwait(false);
             context.TryComplete(cancellationToken);
             await context.DisposeAsync().ConfigureAwait(false);
         }

@@ -1,5 +1,4 @@
 using System.Buffers;
-using ActualChat.Hosting;
 using ActualChat.Mesh;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
@@ -9,9 +8,6 @@ namespace ActualChat.Commands;
 public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceProvider services) : NatsCommandQueue(queueId, queues, services), IEventQueueBackend
 {
     private const string JetStreamName = "EVENTS";
-
-    public override IAsyncEnumerable<QueuedCommand> Read(CancellationToken cancellationToken)
-        => throw StandardError.NotSupported("Reading events stream without specifying backend HostRole is not supported.");
 
     public async IAsyncEnumerable<QueuedCommand> Read(string consumerPrefix, Type commandType, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
@@ -27,8 +23,38 @@ public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceP
             if (message.Data == null)
                 continue;
 
-            yield return DeserializeMessage(message);
+            yield return DeserializeMessage(consumerPrefix, message);
         }
+    }
+
+    public async ValueTask MarkCompleted(string consumerPrefix, QueuedCommand command, CancellationToken cancellationToken)
+    {
+        var jetStream = await EnsureStreamExists(cancellationToken).ConfigureAwait(false);
+        var perConsumerCommands = CommandsBeingProcessed.GetOrAdd(consumerPrefix, new ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>>());
+        if (!perConsumerCommands.TryRemove(command.Id, out var message)) {
+            var streamName = jetStream.Info.Config.Name;
+            Log.LogWarning("MarkCompleted. Event has already been completed. Id={Id}, StreamName={StreamName}, ConsumerPrefix={ConsumerPrefix}", command.Id, streamName, consumerPrefix);
+            return;
+        }
+
+        await message.AckAsync(new AckOpts { DoubleAck = true }, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async ValueTask MarkFailed(
+        string consumerPrefix,
+        QueuedCommand command,
+        Exception? exception,
+        CancellationToken cancellationToken)
+    {
+        var jetStream = await EnsureStreamExists(cancellationToken).ConfigureAwait(false);
+        var perConsumerCommands = CommandsBeingProcessed.GetOrAdd(consumerPrefix, new ConcurrentDictionary<Ulid, NatsJSMsg<IMemoryOwner<byte>>>());
+        if (!perConsumerCommands.TryRemove(command.Id, out var message)) {
+            var streamName = jetStream.Info.Config.Name;
+            Log.LogWarning("MarkFailed. Event has already been completed. Id={Id}, StreamName={StreamName}, ConsumerPrefix={ConsumerPrefix}", command.Id, streamName, consumerPrefix);
+            return;
+        }
+
+        await message.NakAsync(new AckOpts { DoubleAck = true }, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     protected override string BuildJetStreamName()
