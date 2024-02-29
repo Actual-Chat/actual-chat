@@ -3,9 +3,8 @@ import { delayAsync, PromiseSource } from 'promises';
 import { Log } from "logging";
 import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
 
-const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
+const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
-const IsReloadEnabled = true;
 const window = globalThis as undefined as Window;
 const sessionStorage = window.sessionStorage;
 
@@ -35,6 +34,7 @@ export class BrowserInit {
             this.sessionHash = sessionHash;
             this.initWindowId();
             this.initAndroid();
+            this.preventSuspend();
             await BrowserInfo.init(browserInfoBackendRef, appKind);
         }
         catch (e) {
@@ -264,6 +264,31 @@ export class BrowserInit {
         };
     }
 
+    private static preventSuspend(): void {
+        const keepWebLock = async (): Promise<void> => {
+            const lockId = `${this.windowId}-${Math.random()}`;
+            // noinspection InfiniteLoopJS
+            while (true) {
+                try {
+                    await navigator.locks.request(lockId, async () => {
+                        debugLog?.log(`preventSuspend: lock acquired:`, lockId)
+                        // noinspection InfiniteLoopJS
+                        while (true) {
+                            await delayAsync(3600_000); // 1h
+                        }
+                    });
+                }
+                catch {
+                    // Intended
+                }
+                debugLog?.log(`preventSuspend: lock is lost`)
+                await delayAsync(5_000); // 5s to retry
+            }
+        }
+
+        void keepWebLock();
+    }
+
     private static setAppConnectionState(state: string = ""): void {
         if (this.connectionState === state)
             return;
@@ -281,7 +306,7 @@ export class BrowserInit {
                 <div class="c-bg"></div>
                 <div class="c-circle-blur"></div>
                 <div class="c-circle">
-                    <img draggable="false" src="/dist/images/loading-cat.svg" alt="">
+                    <loading-cat-svg/>
                     <span class="c-text">${state}</span>
                 </div>
             `;
