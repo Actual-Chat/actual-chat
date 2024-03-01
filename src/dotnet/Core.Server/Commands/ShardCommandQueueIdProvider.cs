@@ -13,7 +13,7 @@ public class ShardCommandQueueIdProvider(IServiceProvider services) : ICommandQu
         var shardKeyResolver = ShardKeyResolvers.GetUntyped(type) ?? ShardKeyResolvers.DefaultResolver;
         var shardKey = shardKeyResolver.Invoke(command.UntypedCommand);
         if (isEvent) {
-            var shardIndex = ShardScheme.EventQueue.Instance.GetShardIndex(shardKey);
+            var shardIndex = ShardScheme.EventQueue.GetShardIndex(shardKey);
             return new QueueId(HostRole.EventQueue, shardIndex);
         }
         var hostRoles = HostRoles.GetServedByRoles(type)
