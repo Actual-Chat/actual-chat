@@ -8,4 +8,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Migrations\20240225140417_ContactIndexState.cs" />
+    <Compile Remove="Migrations\20240225140417_ContactIndexState.Designer.cs" />
+  </ItemGroup>
+
 </Project>

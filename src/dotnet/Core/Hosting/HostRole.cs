@@ -22,6 +22,7 @@ public partial record struct HostRole(
     // Actual backend roles
     public static readonly HostRole AudioBackend = nameof(AudioBackend);
     public static readonly HostRole MediaBackend = nameof(MediaBackend);
+    public static readonly HostRole ContactIndexingWorker = nameof(ContactIndexingWorker);
 
     // Queues
     public static readonly HostRole DefaultQueue = nameof(DefaultQueue);

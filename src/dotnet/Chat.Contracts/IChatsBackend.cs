@@ -54,7 +54,17 @@ public interface IChatsBackend : IComputeService
         CancellationToken cancellationToken);
 
     // Non-compute methods
-    Task<ApiArray<Chat>> List(Moment minCreatedAt, ChatId lastChatId, int limit, CancellationToken cancellationToken);
+    Task<ApiArray<Chat>> List(
+        Moment minCreatedAt,
+        ChatId lastChatId,
+        int limit,
+        CancellationToken cancellationToken);
+
+    Task<ApiArray<Chat>> ListChanged(
+        long minVersion,
+        ApiSet<ChatId> lastIdsWithSameVersion,
+        int limit,
+        CancellationToken cancellationToken);
 
     Task<ApiList<ChatEntry>> ListChangedEntries(
         ChatId chatId,

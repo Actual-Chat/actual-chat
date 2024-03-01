@@ -77,6 +77,49 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         return new UserId(dbUserIdentity?.DbUserId);
     }
 
+    // Not a [ComputeMethod]!
+    public async Task<ApiArray<UserId>> ListChanged(
+        long minVersion,
+        long maxVersion,
+        ApiSet<UserId> lastIdsWithSameVersion,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbAccounts = await dbContext.Accounts
+            .Where(x => x.Version >= minVersion && x.Version <= maxVersion)
+            .Where(x => !Constants.User.SSystemUserIds.Contains(x.Id))
+            .OrderBy(x => x.Version)
+            .ThenBy(x => x.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var userIds = dbAccounts.Select(x => new UserId(x.Id)).ToApiArray();
+        return lastIdsWithSameVersion.Count == 0
+            ? userIds
+            : userIds.Where(x => !lastIdsWithSameVersion.Contains(x)).ToApiArray();
+    }
+
+    public async Task<AccountFull?> GetLastChanged(CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbAccount = await dbContext.Accounts
+            .OrderByDescending(x => x.Version)
+            .ThenByDescending(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var id = new UserId(dbAccount?.Id);
+        if (id.IsNone)
+            return null;
+
+        return await Get(id, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task OnUpdate(
         AccountsBackend_Update command,
@@ -91,14 +134,20 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var sid = account.Id;
         var dbAccount = await dbContext.Accounts.ForUpdate()
-            .FirstOrDefaultAsync(a => a.Id == account.Id, cancellationToken)
+            .FirstOrDefaultAsync(a => a.Id == sid, cancellationToken)
             .ConfigureAwait(false);
         dbAccount = dbAccount.RequireVersion(expectedVersion);
+        var existing = await Get(account.Id, cancellationToken).ConfigureAwait(false);
+        account = account with {
+            Version = VersionGenerator.NextVersion(dbAccount.Version),
+        };
         var mustGreet = dbAccount.IsGreetingCompleted && !account.IsGreetingCompleted;
         dbAccount.UpdateFrom(account);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        new AccountChangedEvent(dbAccount.ToModel(account.User), existing, ChangeKind.Update).EnqueueOnCompletion();
         if (mustGreet)
             ContactGreeter.Activate();
     }
@@ -113,6 +162,10 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             _ = Get(userId, default);
             return;
         }
+
+        var existingAccount = await Get(userId, cancellationToken).ConfigureAwait(false);
+        if (existingAccount is null)
+            return;
 
         var dbContext = await CreateCommandDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -143,6 +196,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ConfigureAwait(false);
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        new AccountChangedEvent(existingAccount, existingAccount, ChangeKind.Remove).EnqueueOnCompletion();
 
         // authors
         var removeAuthorsCommand = new AuthorsBackend_Remove(ChatId.None, AuthorId.None, userId);

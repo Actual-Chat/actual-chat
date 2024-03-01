@@ -11,6 +11,7 @@ public static class HostRoles
             HostRole.OneServer,
             HostRole.OneApiServer,
             HostRole.OneBackendServer,
+            HostRole.ContactIndexingWorker,
         ];
         private static readonly Dictionary<string, HostRole> ParsableRoleByValue = ParsableRoles
             .Select(x => new KeyValuePair<string, HostRole>(x.Value, x))
@@ -40,6 +41,7 @@ public static class HostRoles
             if (roles.Contains(HostRole.OneBackendServer)) {
                 roles.Add(HostRole.AudioBackend);
                 roles.Add(HostRole.MediaBackend);
+                roles.Add(HostRole.ContactIndexingWorker);
                 roles.Add(HostRole.DefaultQueue);
             }
             return roles;

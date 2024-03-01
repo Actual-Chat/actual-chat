@@ -12,6 +12,8 @@
   <ItemGroup>
     <Compile Remove="Migrations\20231012105901_ChatEntry_AddLinkPreviewFillParts.cs" />
     <Compile Remove="Migrations\20231012105901_ChatEntry_AddLinkPreviewFillParts.Designer.cs" />
+    <Compile Remove="Migrations\20240225140004_Chats_VersionAndIdIndex.cs" />
+    <Compile Remove="Migrations\20240225140004_Chats_VersionAndIdIndex.Designer.cs" />
   </ItemGroup>
 
 </Project>

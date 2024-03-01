@@ -7,6 +7,7 @@ namespace ActualChat.Chat.Db;
 
 [Table("Chats")]
 [Index(nameof(CreatedAt))]
+[Index(nameof(Version))]
 public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
     private DateTime _createdAt;

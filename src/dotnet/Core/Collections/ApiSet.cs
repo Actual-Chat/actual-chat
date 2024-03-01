@@ -3,6 +3,17 @@ using MemoryPack;
 
 namespace ActualChat.Collections;
 
+public static class ApiSet
+{
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ApiSet<T> Empty<T>()
+        => ApiSet<T>.Empty;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ApiSet<T> New<T>(params T[] items)
+        => new(items);
+}
+
 [DataContract, MemoryPackable(GenerateType.Collection)]
 public sealed partial class ApiSet<T> : HashSet<T>, ICloneable<ApiSet<T>>
 {
