@@ -14,11 +14,11 @@ public class MeshWatcherTest(ITestOutputHelper @out)
 
         using var h1 = await NewAppHost();
         var w1 = h1.Services.GetRequiredService<MeshWatcher>();
-        var s = w1.State.Value.GetShardMap<ShardScheme.Backend>();
+        var s = w1.State.Value.GetShardMap(ShardScheme.AnyServer);
         Out.WriteLine(s.ToString());
 
         await w1.State.When(x => x.Nodes.Length == 1).WaitAsync(syncTimeout);
-        s = w1.State.Value.GetShardMap<ShardScheme.Backend>();
+        s = w1.State.Value.GetShardMap(ShardScheme.AnyServer);
         Out.WriteLine(s.ToString());
         s.IsEmpty.Should().BeFalse();
 
@@ -26,7 +26,7 @@ public class MeshWatcherTest(ITestOutputHelper @out)
         var w2 = h2.Services.GetRequiredService<MeshWatcher>();
         await w1.State.When(x => x.Nodes.Length == 2).WaitAsync(syncTimeout);
         await w2.State.When(x => x.Nodes.Length == 2).WaitAsync(syncTimeout);
-        s = w1.State.Value.GetShardMap<ShardScheme.Backend>();
+        s = w1.State.Value.GetShardMap(ShardScheme.AnyServer);
         Out.WriteLine(s.ToString());
         s.IsEmpty.Should().BeFalse();
 

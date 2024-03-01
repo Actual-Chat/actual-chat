@@ -24,7 +24,7 @@
     var authSchemas = await ServerAuthHelper.GetSchemas(HttpContext);
     var isBlazorServer = isNewSession || BlazorModeEndpoint.IsBlazorServer(HttpContext);
     var isCloseWindowRequest = ServerAuthHelper.IsCloseWindowRequest(HttpContext, out var closeWindowFlowName);
-    var blazorMaxReconnectRetries = 0; @* 10_000_000; *@
+    var blazorMaxReconnectRetries = 0; // 100_000_000;
     var blazorScriptSuffix = HostInfo.IsDevelopmentInstance ? "" : HostHelper.GetBlazorScriptSuffix();
     Layout = null;
     var nonceGenerator = RandomStringGenerator.Default;

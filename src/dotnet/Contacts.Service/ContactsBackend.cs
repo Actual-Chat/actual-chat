@@ -395,7 +395,8 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return;
 
         var alreadyGreetingKey = ToRedisKey(account.Id);
-        var canStart = await RedisDb.Database.StringSetAsync(
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var canStart = await database.StringSetAsync(
             alreadyGreetingKey,
             Clocks.SystemClock.Now.ToString(),
             Settings.GreetingTimeout,
@@ -417,7 +418,7 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             await Commander.Call(completeCmd, true, cancellationToken).ConfigureAwait(false);
         }
         finally {
-            await RedisDb.Database.KeyDeleteAsync(alreadyGreetingKey).ConfigureAwait(false);
+            await database.KeyDeleteAsync(alreadyGreetingKey).ConfigureAwait(false);
         }
         return;
 

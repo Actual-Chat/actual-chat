@@ -44,6 +44,4 @@ export * from './Components/Skeleton';
 export * from './Components/Share/share';
 export * from './Components/YoutubePlayer/youtube-player';
 
-export * from './Layouts/base-layout';
-
 export { VirtualListEdge } from './Components/VirtualList/ts/virtual-list-edge';

@@ -92,23 +92,23 @@ public sealed class MeshWatcher : WorkerBase
                 }
 
                 try {
-                    consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(cancellationToken);
-                    // It's fine to use CancellationToken.None here:
-                    // consumeTask already depends on cancellationToken.
+                    consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(CancellationToken.None);
                     var canRead = await consumeTask
-                        .WaitAsync(NodeLocks.UnconditionalCheckPeriod, CancellationToken.None)
+                        .WaitAsync(NodeLocks.UnconditionalCheckPeriod, cancellationToken)
                         .ConfigureAwait(false);
                     // It's important to throw on cancellation here: canRead may return false exactly due to this
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!canRead) {
-                        await changes.DisposeSilentlyAsync().ConfigureAwait(false);
-                        changes = null;
-                        consumeTask = null;
-                        continue;
-                    }
+                    if (!canRead)
+                        throw new OperationCanceledException("Subscription to changes is lost.");
                     consumeTask = null;
                 }
                 catch (TimeoutException) { }
+                catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                    await changes.DisposeSilentlyAsync().ConfigureAwait(false);
+                    changes = null;
+                    consumeTask = null;
+                    continue;
+                }
                 failureCount = 0;
             }
             catch (Exception e) {
@@ -139,11 +139,20 @@ public sealed class MeshWatcher : WorkerBase
 
     private async Task<ImmutableArray<MeshNode>> ListNodes(CancellationToken cancellationToken)
     {
-        var keys = await NodeLocks.ListKeys("", cancellationToken).ConfigureAwait(false);
-        return keys.Select(key => {
-            var node = MeshNode.Parse(key);
-            return node == MeshNode ? MeshNode : node;
-        }).Order().ToImmutableArray();
+        try {
+            var keys = await NodeLocks.ListKeys("", cancellationToken).ConfigureAwait(false);
+            var ownKey = MeshNode.ToString();
+            if (!keys.Contains(ownKey, StringComparer.Ordinal))
+                keys.Add(ownKey);
+
+            return keys.Select(key => {
+                var node = MeshNode.Parse(key);
+                return node == MeshNode ? MeshNode : node;
+            }).Order().ToImmutableArray();
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            return new[] { MeshNode }.ToImmutableArray();
+        }
     }
 
     private async Task Announce(TaskCompletionSource whenLockedTcs, CancellationToken cancellationToken)
@@ -156,14 +165,12 @@ public sealed class MeshWatcher : WorkerBase
         try {
             while (!cancellationToken.IsCancellationRequested) {
                 try {
-                    var holder = await NodeLocks
-                        .Lock(key, "", cancellationToken)
-                        .ConfigureAwait(false);
+                    var holder = await NodeLocks.Lock(key, "", cancellationToken).ConfigureAwait(false);
                     await using var _ = holder.ConfigureAwait(false);
                     whenLockedTcs.TrySetResult();
                     Log.LogInformation("[+] {MeshNode}", key);
                     using var lts = cancellationToken.LinkWith(holder.StopToken);
-                    await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(lts.Token).SilentAwait();
+                    await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(lts.Token).ConfigureAwait(false);
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
                     // Intended: we keep the lock unless cancellationToken is cancelled

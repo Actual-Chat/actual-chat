@@ -1,3 +1,4 @@
+using ActualLab.Diagnostics;
 using Cysharp.Text;
 
 namespace ActualChat.Mesh;
@@ -9,8 +10,10 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
 
     protected readonly string HolderKeyPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";
     protected long LastHolderId;
-    ILogger? IMeshLocksBackend.Log => Log;
     protected ILogger? Log { get; init; } = log;
+    protected ILogger? DebugLog { get; init; } = log.IfEnabled(LogLevel.Debug);
+    ILogger? IMeshLocksBackend.Log => Log;
+    ILogger? IMeshLocksBackend.DebugLog => DebugLog;
 
     public MeshLockOptions LockOptions { get; init; } = DefaultLockOptions;
     public TimeSpan UnconditionalCheckPeriod { get; init; } = DefaultUnconditionalCheckPeriod;
@@ -25,18 +28,19 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
         CancellationToken cancellationToken = default)
     {
         var holder = CreateHolder(key, value, lockOptions);
-        Log?.LogInformation("TryLock: {Key} = {StoredValue}", key, holder.StoredValue);
+        DebugLog?.LogDebug("TryLock: {Key} = {StoredValue}", key, holder.StoredValue);
         try {
             cancellationToken.ThrowIfCancellationRequested();
-            var isAcquired = await TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
+            var isAcquired = await TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken)
+                .ConfigureAwait(false);
             if (!isAcquired)
                 return null;
         }
         catch (Exception e) {
             if (e is OperationCanceledException)
-                Log?.LogInformation("TryLock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
+                DebugLog?.LogDebug("TryLock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
             else
-                Log?.LogError(e, "TryLock failed: {Key} = {StoredValue}", key, holder.StoredValue);
+                DebugLog?.LogError(e, "TryLock failed: {Key} = {StoredValue}", key, holder.StoredValue);
             throw;
         }
         holder.Start();
@@ -49,41 +53,44 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
         CancellationToken cancellationToken = default)
     {
         var holder = CreateHolder(key, value, lockOptions);
-        Log?.LogInformation("Lock: {Key} = {StoredValue}", key, holder.StoredValue);
+        DebugLog?.LogDebug("Lock: {Key} = {StoredValue}", key, holder.StoredValue);
         IAsyncSubscription<string>? changes = null;
         try {
             var consumeTask = (Task<bool>?)null;
             while (true) {
-                changes ??= await Changes(key, cancellationToken).ConfigureAwait(false);
-                cancellationToken.ThrowIfCancellationRequested();
-                var isAcquired = await TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
-                if (isAcquired)
-                    break;
+                try {
+                    changes ??= await Changes(key, cancellationToken).ConfigureAwait(false);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var isAcquired = await TryLock(key, holder.StoredValue, lockOptions.ExpirationPeriod, cancellationToken).ConfigureAwait(false);
+                    if (isAcquired)
+                        break;
+                }
+                catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                    continue;
+                }
 
                 try {
-                    consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(cancellationToken);
-                    // It's fine to use CancellationToken.None here:
-                    // consumeTask already depends on cancellationToken.
+                    consumeTask ??= changes.Reader.WaitToReadAndConsumeAsync(CancellationToken.None);
                     var canRead = await consumeTask
-                        .WaitAsync(UnconditionalCheckPeriod, CancellationToken.None)
+                        .WaitAsync(UnconditionalCheckPeriod, cancellationToken)
                         .ConfigureAwait(false);
                     // It's important to throw on cancellation here: canRead may return false exactly due to this
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!canRead) {
-                        // Something is off, prob. Redis disconnect - we need to restart
-                        await changes.DisposeSilentlyAsync().ConfigureAwait(false);
-                        changes = null;
-                        consumeTask = null;
-                        continue;
-                    }
+                    if (!canRead)
+                        throw new OperationCanceledException("Subscription to changes is lost.");
                     consumeTask = null;
                 }
                 catch (TimeoutException) { }
+                catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                    await changes.DisposeSilentlyAsync().ConfigureAwait(false);
+                    changes = null;
+                    consumeTask = null;
+                }
             }
         }
         catch (Exception e) {
             if (e.IsCancellationOf(cancellationToken))
-                Log?.LogInformation("Lock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
+                DebugLog?.LogDebug("Lock cancelled: {Key} = {StoredValue}", key, holder.StoredValue);
             else
                 Log?.LogError(e, "Lock failed: {Key} = {StoredValue}", key, holder.StoredValue);
             throw;
@@ -97,7 +104,7 @@ public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = n
 
     public abstract Task<MeshLockInfo?> GetInfo(string key, CancellationToken cancellationToken = default);
     public abstract Task<IAsyncSubscription<string>> Changes(string key, CancellationToken cancellationToken = default);
-    public abstract Task<string[]> ListKeys(string prefix, CancellationToken cancellationToken = default);
+    public abstract Task<List<string>> ListKeys(string prefix, CancellationToken cancellationToken = default);
     public abstract IMeshLocks WithKeyPrefix(string keyPrefix);
 
     Task<bool> IMeshLocksBackend.TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken)

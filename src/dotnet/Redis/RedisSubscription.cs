@@ -10,10 +10,10 @@ public class RedisSubscription<T> : IAsyncSubscription<T>
 
     public ChannelReader<T> Reader { get; }
 
-    public RedisSubscription(ChannelMessageQueue queue, Func<ChannelMessage, T> mapper)
+    public RedisSubscription(ChannelMessageQueue queue, Func<ChannelMessage, T> mapper, CancellationToken goneToken)
     {
         _queue = queue;
-        Reader = new MappingChannelReader<T, ChannelMessage>(_queue.GetQueueReader(), mapper);
+        Reader = new MappingChannelReader<T, ChannelMessage>(_queue.GetQueueReader(), mapper, goneToken);
     }
 
     public ValueTask DisposeAsync()

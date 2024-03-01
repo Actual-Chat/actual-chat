@@ -25,20 +25,21 @@ public class TotpRandomSecrets
         _rsg = new (Settings.TotpRandomSecretLength);
     }
 
-    public Task<string> Get(Session session)
-        => GetOrSet(ToKey(session), _rsg.Next());
+    public Task<string> Get(Session session, CancellationToken cancellationToken = default)
+        => GetOrSet(ToKey(session), _rsg.Next(), cancellationToken);
 
     private static string ToKey(Session session)
         => $"{RedisKeyPrefix}{session.Id}";
 
     // redis helpers
 
-    private async Task<string> GetOrSet(string key, string value)
+    private async Task<string> GetOrSet(string key, string value, CancellationToken cancellationToken)
     {
         var protectedValue = DataProtector.Protect(value);
         // avoiding multiple sets from different replicas
         // TODO: use StringSetAndGetAsync after switching to redis 7.0
-        var wasUpdated = await RedisDb.Database.StringSetAsync(key,
+        var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
+        var wasUpdated = await database.StringSetAsync(key,
                 protectedValue,
                 Settings.TotpLifetime * 2,
                 false,
@@ -47,7 +48,7 @@ public class TotpRandomSecrets
         if (wasUpdated)
             return value;
 
-        var existing = await RedisDb.Database.StringGetAsync(key).ConfigureAwait(false);
+        var existing = await database.StringGetAsync(key).ConfigureAwait(false);
         return DataProtector.Unprotect(existing.ToString());
     }
 }

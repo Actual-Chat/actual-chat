@@ -10,7 +10,7 @@ public sealed class ContentController(IBlobStorages blobStorages) : ControllerBa
     private IBlobStorages BlobStorages { get; } = blobStorages;
 
     [HttpGet("{**blobId}")]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client, VaryByQueryKeys = new[] { "blobId" })]
+    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Any, VaryByQueryKeys = new[] { "blobId" })]
     [EnableCors("CDN")]
     public async Task<ActionResult> Download(string blobId, CancellationToken cancellationToken)
     {

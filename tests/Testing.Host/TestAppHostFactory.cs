@@ -18,7 +18,7 @@ public static class TestAppHostFactory
     public static async Task<TestAppHost> NewAppHost(TestAppHostOptions options)
     {
         var instanceName = options.InstanceName.RequireNonEmpty();
-        var outputAccessor = new TestOutputHelperAccessor(options.Output);
+        var outputAccessor = new TestOutputHelperAccessor(options.Output.ToSafe());
         var manifestPath = GetManifestPath();
 
         var appHost = new TestAppHost(options, outputAccessor) {

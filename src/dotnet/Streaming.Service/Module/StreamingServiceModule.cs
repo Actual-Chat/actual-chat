@@ -26,7 +26,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
 
         // Backend
         var rpcHost = services.AddRpcHost(HostInfo);
-        var isBackendClient = HostInfo.Roles.GetServiceMode<IStreamingBackend>().IsClient();
+        var isBackendClient = HostInfo.Roles.GetBackendServiceMode<IStreamingBackend>().IsClient();
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();

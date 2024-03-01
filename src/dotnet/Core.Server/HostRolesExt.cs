@@ -5,34 +5,34 @@ namespace ActualChat;
 
 public static class HostRolesExt
 {
-    private static readonly ConcurrentDictionary<object, ServiceModeAttribute[]> _serviceModeAttributes = new();
-    private static readonly ConcurrentDictionary<object, ShardSchemeAttribute?> _shardSchemeAttributes = new();
-    private static readonly ConcurrentDictionary<object, CommandQueueAttribute?> _commandQueueAttributes = new();
+    private static readonly ConcurrentDictionary<object, BackendServiceAttribute[]> _backendServiceAttributes = new();
+    private static readonly ConcurrentDictionary<object, BackendClientAttribute?> _backendClientAttributes = new();
+    private static readonly ConcurrentDictionary<object, DefaultQueueAttribute?> _defaultQueueAttributes = new();
 
     // GetServiceMode
 
-    public static ServiceMode GetServiceMode<T>(this IReadOnlySet<HostRole> hostRoles)
-        => hostRoles.GetServiceMode(typeof(T));
-    public static ServiceMode GetServiceMode(this IReadOnlySet<HostRole> hostRoles, Type type)
+    public static ServiceMode GetBackendServiceMode<T>(this IReadOnlySet<HostRole> hostRoles)
+        => hostRoles.GetBackendServiceMode(typeof(T));
+    public static ServiceMode GetBackendServiceMode(this IReadOnlySet<HostRole> hostRoles, Type type)
     {
-        var attrs = _serviceModeAttributes.GetOrAdd(type,
+        var attrs = _backendServiceAttributes.GetOrAdd(type,
             static (_, t) => t
-                .GetCustomAttributes<ServiceModeAttribute>()
+                .GetCustomAttributes<BackendServiceAttribute>()
                 .OrderByDescending(x => x.Priority)
                 .ToArray(),
             type);
         if (attrs.Length == 0)
-            return hostRoles.GetServiceMode(type.Assembly);
+            return hostRoles.GetBackendServiceMode(type.Assembly);
 
         var attr = attrs.FirstOrDefault(x => hostRoles.Contains(new HostRole(x.HostRole)));
         return attr?.ServiceMode ?? ServiceMode.Client;
     }
 
-    public static ServiceMode GetServiceMode(this IReadOnlySet<HostRole> hostRoles, Assembly assembly)
+    public static ServiceMode GetBackendServiceMode(this IReadOnlySet<HostRole> hostRoles, Assembly assembly)
     {
-        var attrs = _serviceModeAttributes.GetOrAdd(assembly,
+        var attrs = _backendServiceAttributes.GetOrAdd(assembly,
             static (_, a) => a
-                .GetCustomAttributes<ServiceModeAttribute>()
+                .GetCustomAttributes<BackendServiceAttribute>()
                 .OrderByDescending(x => x.Priority)
                 .ToArray(),
             assembly);
@@ -42,67 +42,59 @@ public static class HostRolesExt
 
     // GetShardScheme
 
-    public static ShardScheme GetShardScheme<T>(this IReadOnlySet<HostRole> hostRoles)
-        => hostRoles.GetShardScheme(typeof(T));
-    public static ShardScheme GetShardScheme(this IReadOnlySet<HostRole> hostRoles, Type type)
+    public static HostRole? GetBackendClientRole<T>(this IReadOnlySet<HostRole> hostRoles)
+        => hostRoles.GetBackendClientRole(typeof(T));
+    public static HostRole? GetBackendClientRole(this IReadOnlySet<HostRole> hostRoles, Type type)
     {
-        var attr = _shardSchemeAttributes.GetOrAdd(type,
+        var attr = _backendClientAttributes.GetOrAdd(type,
             static (_, t) => t
-                .GetCustomAttributes<ShardSchemeAttribute>()
+                .GetCustomAttributes<BackendClientAttribute>()
                 .SingleOrDefault(),
             type);
-        return attr == null
-            ? hostRoles.GetShardScheme(type.Assembly)
-            : ShardScheme.ById[attr.ShardScheme];
+        var hostRole = attr != null ? (HostRole)attr.HostedByRole : (HostRole?)null;
+        return hostRole ?? hostRoles.GetBackendClientRole(type.Assembly);
     }
 
-    public static ShardScheme GetShardScheme(this IReadOnlySet<HostRole> hostRoles, Assembly assembly)
+    public static HostRole? GetBackendClientRole(this IReadOnlySet<HostRole> hostRoles, Assembly assembly)
     {
-        var attr = _shardSchemeAttributes.GetOrAdd(assembly,
+        var attr = _backendClientAttributes.GetOrAdd(assembly,
             static (_, t) => t
-                .GetCustomAttributes<ShardSchemeAttribute>()
+                .GetCustomAttributes<BackendClientAttribute>()
                 .SingleOrDefault(),
             assembly);
-        return attr == null
-            ? ShardScheme.None.Instance
-            : ShardScheme.ById[attr.ShardScheme];
+        var hostRole = attr != null ? (HostRole)attr.HostedByRole : (HostRole?)null;
+        return hostRole;
     }
 
     // GetCommandQueue
 
-    public static ShardScheme GetCommandQueue<T>(this IReadOnlySet<HostRole> hostRoles)
-        => hostRoles.GetCommandQueue(typeof(T));
-    public static ShardScheme GetCommandQueue(this IReadOnlySet<HostRole> hostRoles, Type type)
+    public static HostRole? GetDefaultQueueRole<T>(this IReadOnlySet<HostRole> hostRoles)
+        => hostRoles.GetDefaultQueueRole(typeof(T));
+    public static HostRole? GetDefaultQueueRole(this IReadOnlySet<HostRole> hostRoles, Type type)
     {
-        var attr = _commandQueueAttributes.GetOrAdd(type,
+        var attr = _defaultQueueAttributes.GetOrAdd(type,
             static (_, t) => t
-                .GetCustomAttributes<CommandQueueAttribute>()
+                .GetCustomAttributes<DefaultQueueAttribute>()
                 .SingleOrDefault(),
             type);
-        if (attr == null)
-            return hostRoles.GetCommandQueue(type.Assembly);
+        var hostRole = attr != null ? (HostRole)attr.HostedByRole : (HostRole?)null;
+        if (hostRole is { IsQueue: false })
+            throw StandardError.Internal($"Type '{type.FullName}' has invalid {nameof(DefaultQueueAttribute)}.");
 
-        var shardScheme = ShardScheme.ById[attr.QueueShardScheme];
-        if (!shardScheme.IsQueue)
-            throw StandardError.Internal($"Type '{type.FullName}' has invalid {nameof(CommandQueueAttribute)}.");
-
-        return shardScheme;
+        return hostRole ?? hostRoles.GetBackendClientRole(type.Assembly);
     }
 
-    public static ShardScheme GetCommandQueue(this IReadOnlySet<HostRole> hostRoles, Assembly assembly)
+    public static HostRole? GetDefaultQueueRole(this IReadOnlySet<HostRole> hostRoles, Assembly assembly)
     {
-        var attr = _commandQueueAttributes.GetOrAdd(assembly,
+        var attr = _defaultQueueAttributes.GetOrAdd(assembly,
             static (_, t) => t
-                .GetCustomAttributes<CommandQueueAttribute>()
+                .GetCustomAttributes<DefaultQueueAttribute>()
                 .SingleOrDefault(),
             assembly);
-        if (attr == null)
-            return ShardScheme.None.Instance;
+        var hostRole = attr != null ? (HostRole)attr.HostedByRole : (HostRole?)null;
+        if (hostRole is { IsQueue: false })
+            throw StandardError.Internal($"Assembly '{assembly.FullName}' has invalid {nameof(DefaultQueueAttribute)}.");
 
-        var shardScheme = ShardScheme.ById[attr.QueueShardScheme];
-        if (!shardScheme.IsQueue)
-            throw StandardError.Internal($"Assembly '{assembly.FullName}' has invalid {nameof(CommandQueueAttribute)}.");
-
-        return shardScheme;
+        return hostRole;
     }
 }
