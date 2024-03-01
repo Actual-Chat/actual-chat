@@ -7,7 +7,6 @@ using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
-using ActualChat.MLSearch.SearchEngine.OpenSearch;
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Spout;
@@ -111,14 +110,12 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             e,
             e.GetRequiredService<ChatEntriesIndexing>().Execute
         ));
-        services.AddSingleton<ChatEntriesSpout>(e =>
-            new ChatEntriesSpout(
-                e.GetRequiredService<ChatEntriesIndexing>().Trigger
-            )
-        );
 
-        // TODO: remove once events are settled
+        // TODO: remove once events are settled:
+        // -- start of TODO item --
+        fusion.AddService<IChatEntriesSpout, ChatEntriesSpout>();
         // Note: this singleton must work in the main app backend.
-        services.AddSingleton<ChatEntriesEventsDispatcher>();
+        fusion.AddService<ChatEntriesEventsDispatcher>();
+        // -- end of TODO item --
     }
 }

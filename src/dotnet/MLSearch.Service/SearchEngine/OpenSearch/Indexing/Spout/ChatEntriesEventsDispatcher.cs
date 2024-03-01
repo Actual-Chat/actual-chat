@@ -3,11 +3,14 @@ using ActualChat.Commands;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Spout;
 
-public class ChatEntriesEventsDispatcher (ICommander commander) : IComputeService
+public interface IChatEntriesEventsDispatcher
+{ }
+
+public class ChatEntriesEventsDispatcher (ICommander commander) : IComputeService, IChatEntriesEventsDispatcher
 {
     [EventHandler]
     // ReSharper disable once UnusedMember.Global
-    public async Task ProcessTextEntryChangedEventEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var e = new MLSearch_TriggerContinueChatIndexing(eventCommand.Entry.ChatId);
         await commander.Call(e, cancellationToken).ConfigureAwait(false);
