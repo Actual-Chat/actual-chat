@@ -53,7 +53,6 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     [Fact]
     public async Task SemanticSearchTest()
     {
-        var searchIndexId = _settings!.IntoFullSearchIndexId(IndexName);
         var authorId = new PrincipalId(UserId.New(), AssumeValid.Option);
         var chatId1 = new ChatId(Generate.Option);
         var entryIds1 = Enumerable.Range(1, 5).Select(id => new ChatEntryId(chatId1, ChatEntryKind.Text, id, AssumeValid.Option));
@@ -88,9 +87,11 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
                 );
                 return new ChatSlice(metadata, text);
             });
+
+        var searchEngine = new OpenSearchEngine(_client, _settings, NullLoggerSource.Instance);
+
         foreach (var document in documents) {
-            var newDocResponse = await _client!.IndexAsync(document, i => i.Index(searchIndexId));
-            Assert.True(newDocResponse.IsValid);
+            await searchEngine.Ingest(document, CancellationToken.None);
         }
 
         await Task.Delay(200);
@@ -99,7 +100,6 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             Keywords=["command"],
             FreeTextFilter="Tools for mobile development",
         };
-        var searchEngine = new OpenSearchEngine(_client, _settings, NullLoggerSource.Instance);
         var queryResult1 = await searchEngine.Find<ChatSlice>(query1, CancellationToken.None);
         Assert.True(queryResult1.Documents.Count > 0);
 

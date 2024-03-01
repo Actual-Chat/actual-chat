@@ -25,7 +25,7 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
         var response = await openSearch.SearchAsync<TDocument>(searchRequest, cancellationToken).ConfigureAwait(false);
 
         if (!response.IsValid) {
-            throw new InvalidOperationException(response.DebugInformation);
+            throw new InvalidOperationException(response.DebugInformation, response.OriginalException);
         }
 
         var documents = (
@@ -38,13 +38,20 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
 
     public async Task Ingest<TDocument>(TDocument document, CancellationToken cancellationToken)
         where TDocument : class
+    {
         // TODO: support bulk api
         // TODO: index id must be a parameter
-        => await openSearch.IndexAsync(
-            document,
-            e=>e.Index(settings.IntoFullSearchIndexId("chat-slice")),
-            cancellationToken
-        ).ConfigureAwait(true);
+        var response = await openSearch.IndexAsync(
+                document,
+                e => e.Index(settings.IntoFullSearchIndexId("chat-slice")),
+                cancellationToken
+            )
+            .ConfigureAwait(true);
+
+        if (!response.IsValid) {
+            throw new InvalidOperationException(response.DebugInformation, response.OriginalException);
+        }
+    }
 }
 
 internal static class OpenSearchExtensions
