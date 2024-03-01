@@ -290,7 +290,8 @@ export class BrowserInit {
                 <div class="c-bg"></div>
                 <div class="c-circle-blur"></div>
                 <div class="c-circle">
-                    <loading-cat-svg/>
+                    <!-- Must have open and close tags, otherwise doesn't work! -->
+                    <loading-cat-svg></loading-cat-svg>
                     <span class="c-text">${state}</span>
                 </div>
             `;
