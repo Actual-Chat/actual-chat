@@ -20,6 +20,7 @@ public partial record struct HostRole(
     // Queues
     public static readonly HostRole DefaultQueue = nameof(DefaultQueue);
     public static readonly HostRole MLSearchBackendClusterSetup = nameof(MLSearchBackendClusterSetup);
+    public static readonly HostRole MLSearchIndexing = nameof(MLSearchIndexing);
 
     // The only role any app has
     public static readonly HostRole App = nameof(App); // Implies BlazorUI

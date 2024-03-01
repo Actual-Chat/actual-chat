@@ -104,12 +104,18 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 loggerSource: e.GetRequiredService<ILoggerSource>()
             )
         );
-        services.AddHostedService(e => new ShardWorkerFunc(
-            name: "OpenSearch Chat Index",
-            shardCount: 12,
-            e,
-            e.GetRequiredService<ChatEntriesIndexing>().Execute
-        ));
+        services.AddShardScheme(HostRole.MLSearchIndexing, shardCount: 12);
+        services.AddKeyedSingleton<ShardWorkerFunc>(
+            "OpenSearch Chat Index",
+            (e, key) => new ShardWorkerFunc(
+                role: HostRole.MLSearchIndexing,
+                e,
+                e.GetRequiredService<ChatEntriesIndexing>().Execute
+            )
+        );
+        services.AddHostedService(e => e
+            .GetRequiredKeyedService<ShardWorkerFunc>("OpenSearch Chat Index")
+        );
 
         // TODO: remove once events are settled:
         // -- start of TODO item --
