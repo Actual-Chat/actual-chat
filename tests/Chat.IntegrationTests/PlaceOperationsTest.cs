@@ -213,7 +213,6 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
         }
 
         await commander.Call(new Places_Join(anotherSession, place.Id));
-
         await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(

@@ -29,8 +29,8 @@ public class TestAppHost(TestAppHostOptions options, TestOutputHelperAccessor ou
             var commandQueueSchedulers = Services.GetKeyedServices<ICommandQueueScheduler>(serviceKey);
             schedulers.AddRange(commandQueueSchedulers);
         }
-        foreach (var scheduler in schedulers)
-            await scheduler.ProcessAlreadyQueued(timeout, CancellationToken.None);
+
+        await Task.WhenAll(schedulers.Select(s => s.ProcessAlreadyQueued(timeout, CancellationToken.None)));
     }
 
     protected override void Dispose(bool disposing)
