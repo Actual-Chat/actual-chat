@@ -137,3 +137,6 @@ body.hoverable .author-modal .tile:hover {
 .author-modal .dialog-buttons {
     @apply mt-2;
 }
+.start-chat-btn p {
+    @apply truncate;
+}

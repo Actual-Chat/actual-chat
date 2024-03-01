@@ -263,24 +263,23 @@ body.hoverable .chat-header-title:hover {
     @apply text-02 text-text-1;
 }
 .chat-welcome-block .c-link {
-    @apply flex-x items-center gap-x-4;
-    @apply mt-2 px-4 py-4;
-    @apply border border-separator rounded-lg;
+    @apply flex-x items-center self-center gap-x-16;
+    @apply w-fit;
+    @apply mt-2 p-3 md:p-4;
+    @apply rounded-full;
     @apply text-primary text-headline-1;
+    @apply bg-input;
     max-width: 35.5rem;
 }
 .narrow .chat-welcome-block .c-link {
-    @apply flex-y items-start gap-y-4;
+    @apply gap-x-4;
 }
 .chat-welcome-block .c-link .c-link-url,
 .chat-welcome-block .c-link .c-link-buttons {
     @apply flex-x items-center gap-x-4;
 }
-.chat-welcome-block .c-link .c-link-url {
-    @apply flex-1;
-}
 body.narrow .chat-welcome-block .c-link .c-link-buttons {
-    @apply w-full;
+    @apply gap-x-3;
 }
 .chat-welcome-block .c-link i {
     @apply text-xl;
@@ -292,13 +291,15 @@ body.narrow .chat-welcome-block .c-link .c-link-buttons {
 .chat-welcome-block .link-hint {
     @apply text-xs font-normal text-03;
 }
-.chat-welcome-block .btn {
-    @apply min-w-32 min-h-12;
+.chat-welcome-block .btn.btn-round {
+    @apply bg-[var(--round-right-panel)];
 }
-body.narrow .chat-welcome-block .c-link-buttons .copy-trigger,
-body.narrow .chat-welcome-block .btn {
-    @apply flex-1;
+.chat-welcome-block .btn.btn-round i {
+    @apply text-primary text-2xl;
 }
 .chat-welcome-block .btn .btn-content {
     @apply flex-x gap-x-3;
+}
+body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
+    @apply bg-transparent border-transparent;
 }

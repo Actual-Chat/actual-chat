@@ -49,9 +49,14 @@
             <Button Class="btn-modal btn-primary" Click="OnCancel">OK</Button>
         } else {
             @if (m.CanStartPeerChat) {
-                <Button Class="btn-modal btn-primary" Click="OnStartPeerChat">
+                <Button
+                    Class="btn-modal btn-primary start-chat-btn"
+                    ContentClass="truncate"
+                    Click="OnStartPeerChat">
                     <i class="icon-message-ellipse text-xl"></i>
-                    Chat with @m.Author.Avatar.Name
+                    <p>
+                        Chat with @m.Author.Avatar.Name
+                    </p>
                 </Button>
                 <Button Class="btn-modal" Click="OnStartAnonymousPeerChat">
                     <i class="icon-question-mark-bubble text-xl"></i>

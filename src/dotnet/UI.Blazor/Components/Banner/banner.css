@@ -21,7 +21,8 @@ body.narrow .banner-body {
 .banner .btn:not(.close-banner) {
     @apply px-2;
 }
-body.hoverable .banner .btn:hover {
+body.hoverable .banner .btn:hover,
+body.hoverable .banner .btn-h:hover {
     @apply brightness-125 ;
 }
 .severity-icon {
