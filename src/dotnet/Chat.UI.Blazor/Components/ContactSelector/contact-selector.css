@@ -1,14 +1,14 @@
 /* List */
 .contact-selector-list {
     @apply flex-y grow;
-    @apply py-1;
     @apply overflow-y-auto custom-scrollbar;
 }
 
 /* List item */
 .contact-selector-list-item {
-    @apply flex-x items-center;
-    @apply gap-x-1 py-1 px-4;
+    @apply flex-x items-center gap-x-1;
+    @apply h-12;
+    @apply px-2;
     @apply rounded-md;
     @apply hover:bg-hover;
 }

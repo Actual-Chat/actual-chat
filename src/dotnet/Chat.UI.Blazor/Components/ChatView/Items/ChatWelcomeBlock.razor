@@ -35,16 +35,17 @@
                 </div>
                 <div class="c-link-buttons">
                     <CopyTrigger Tooltip="@copyText" CopyText="@copyText">
-                        <Button Class="btn-modal">
+                        <ButtonRound Class="md:btn-md">
                             <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
                             <i class="copied-hint fa fa-check" aria-hidden="true"></i>
-                            Copy
-                        </Button>
+                        </ButtonRound>
                     </CopyTrigger>
-                    <Button Class="btn-modal" Click="@(() => OnShareClick(shareModel))">
+                    <ButtonRound
+                        Class="md:btn-md"
+                        Tooltip="Share"
+                        Click="@(() => OnShareClick(shareModel))">
                         <i class="icon-share"></i>
-                        Share
-                    </Button>
+                    </ButtonRound>
                 </div>
             </div>
         }

@@ -1,7 +1,7 @@
 .right-chat-panel {
     @apply relative;
     @apply flex-y;
-    @apply lg:w-80 h-full;
+    @apply lg:w-90 h-full;
     @apply border-l border-transparent;
     @apply bg-03;
     @apply overflow-hidden;
@@ -11,11 +11,11 @@
 }
 .right-chat-panel > .c-panel-content {
     @apply flex-y;
-    @apply overflow-y-auto custom-scrollbar;
+    @apply overflow-y-hidden;
 }
 .right-chat-panel > .c-panel-content > .c-chat-info {
     @apply flex-y gap-y-1;
-    @apply p-4;
+    @apply p-2 pt-4;
 }
 .right-panel-chat-info-item {
     @apply flex-none flex-x;
@@ -28,8 +28,7 @@
 }
 .right-panel-chat-info-item > .c-icon {
     @apply flex items-center justify-center;
-    @apply min-h-12;
-    @apply ml-2 mr-4;
+    @apply min-h-12 min-w-12;
 }
 .right-panel-chat-info-item > .c-content {
     @apply flex-y self-center grow;
@@ -47,6 +46,8 @@
 }
 .right-chat-panel > .c-panel-content > .c-panel-tabs {
     @apply flex-y;
+    @apply h-full;
+    @apply overflow-hidden;
 }
 
 .right-chat-panel > .c-header {
@@ -74,7 +75,7 @@
     @apply absolute bottom-0 z-10;
     @apply flex-y items-start justify-end;
     @apply h-18 w-full;
-    @apply pr-4 pl-6;
+    @apply px-4;
     @apply bg-transparent;
 }
 .right-chat-panel > .c-header > .c-bottom > .c-content {
@@ -120,18 +121,23 @@
     @apply text-primary;
 }
 
+.right-chat-panel .tab-panel {
+    @apply h-full;
+}
+.right-chat-panel .tab-panel .tab {
+    @apply h-full;
+    @apply overflow-y-auto custom-scrollbar;
+}
 .tab-panel > .tab > .author-list-tab {
     @apply flex-y;
     @apply h-full;
-    @apply px-5 py-2;
+    @apply p-2;
 }
 .author-list-tab .avatar-badge {
-    @apply p-0.5 mr-1;
+    @apply h-12;
+    @apply px-2;
     @apply rounded-xl;
     @apply cursor-pointer;
-}
-.author-list-tab .avatar-badge .avatar-circle {
-    @apply m-0.5;
 }
 body.hoverable .author-list-tab .avatar-badge:hover {
     @apply bg-hover;

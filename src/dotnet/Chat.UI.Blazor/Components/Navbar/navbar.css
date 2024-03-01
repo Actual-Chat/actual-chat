@@ -86,11 +86,11 @@
     @apply relative;
     @apply flex-x justify-start items-center gap-x-1;
     @apply min-h-12 h-12;
+    @apply px-2;
     @apply rounded-lg;
 }
 .navbar-item .navbar-item-content {
     @apply flex-1 flex-x;
-    @apply pl-1;
     @apply h-full;
     @apply overflow-hidden;
     @apply text-02;
