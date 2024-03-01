@@ -3,6 +3,7 @@ using OpenSearch.Client;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
+using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
 using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
@@ -16,6 +17,8 @@ internal class OpenSearchClusterSetup(
     ITracerSource? tracing
     ) : IModuleInitializer
 {
+    public const string ChatSliceIndexName = "chat-slice";
+
     //private ILogger? _log;
     //private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
     private OpenSearchClusterSettings? result;
@@ -124,11 +127,12 @@ internal class OpenSearchClusterSetup(
         // It must fail and retried on any error.
         // It has to succeed once and only once to setup an OpenSearch cluster.
         // After the initial setup this would never be called again.
-        const string name = "chat-slice";
         using var _1 = tracing.TraceRegion();
-
+        var name = ChatSliceIndexName;
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
         var searchIndexId = settings.IntoFullSearchIndexId(name);
+        var ingestCursorIndexId = settings.IntoFullCursorIndexName(name);
+
         var isSearchIndexExistsResult = await openSearch
             .Indices
             .ExistsAsync(searchIndexId, ct: cancellationToken)
@@ -190,6 +194,32 @@ internal class OpenSearchClusterSetup(
                 ingestResult.OriginalException
             );
         }
+        // TODO: Check what's available
+        var ingestCursorIndexResult = await openSearch.RunAsync(
+            $$"""
+              PUT /{{ingestCursorIndexId}}
+              {
+                "mappings": {
+                    "properties": {
+                        "{{nameof( ChatEntriesIndexing.Cursor.LastEntryVersion)}}": {
+                            "type": "text"
+                        },
+                        "{{nameof(ChatEntriesIndexing.Cursor.LastEntryLocalId)}}": {
+                            "type": "text"
+                        }
+                    }
+                }
+              }
+              """,
+            cancellationToken
+        ).ConfigureAwait(false);
+        if (!ingestCursorIndexResult.Success) {
+            throw new InvalidOperationException(
+                "Failed to update search index",
+                ingestCursorIndexResult.OriginalException
+            );
+        }
+
         var searchIndexResult = await openSearch.RunAsync(
             $$"""
               PUT /{{searchIndexId}}

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Chat;
 using ActualChat.Chat.Events;
 using ActualChat.Db.Module;
 using ActualChat.Hosting;
@@ -6,6 +7,10 @@ using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
+using ActualChat.MLSearch.SearchEngine.OpenSearch;
+using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
+using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
+using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Spout;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
 using OpenSearch.Client;
@@ -80,5 +85,40 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         services.AddTransient<OpenSearchClusterSettings>(e => e.GetRequiredService<OpenSearchClusterSetup>().Result);
         services.AddKeyedSingleton<ISearchEngine, OpenSearchEngine>("OpenSearch");
+
+        services.AddTransient<ChatEntriesIndexing>(
+            e => new ChatEntriesIndexing(
+                chats: e.GetRequiredService<IChatsBackend>(),
+                cursors: new IndexingCursors<ChatEntriesIndexing.Cursor>(
+                    e.GetRequiredService<IOpenSearchClient>(),
+                    e.GetRequiredService<OpenSearchClusterSettings>()
+                        .IntoFullCursorIndexName(OpenSearchClusterSetup.ChatSliceIndexName)
+                ),
+                sink: new ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Sink<ChatEntry, ChatEntry>(
+                    e.GetRequiredService<IOpenSearchClient>(),
+                    e.GetRequiredService<OpenSearchClusterSettings>().IntoFullSearchIndexId(OpenSearchClusterSetup.ChatSliceIndexName),
+                    e.GetRequiredService<OpenSearchClusterSettings>().IntoFullIngestPipelineName(OpenSearchClusterSetup.ChatSliceIndexName),
+                    ChatSliceExt.IntoIndexedDocument,
+                    ChatSliceExt.IntoDocumentId,
+                    e.GetRequiredService<ILoggerSource>()
+                ),
+                loggerSource: e.GetRequiredService<ILoggerSource>()
+            )
+        );
+        services.AddHostedService(e => new ShardWorkerFunc(
+            name: "OpenSearch Chat Index",
+            shardCount: 12,
+            e,
+            e.GetRequiredService<ChatEntriesIndexing>().Execute
+        ));
+        services.AddSingleton<ChatEntriesSpout>(e =>
+            new ChatEntriesSpout(
+                e.GetRequiredService<ChatEntriesIndexing>().Trigger
+            )
+        );
+
+        // TODO: remove once events are settled
+        // Note: this singleton must work in the main app backend.
+        services.AddSingleton<ChatEntriesEventsDispatcher>();
     }
 }

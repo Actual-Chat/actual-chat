@@ -9,11 +9,27 @@ public sealed class OpenSearchClusterSettings(string modelAllConfig, string mode
     private const string NamePrefix = "ml";
     private const string IngestPipelineNameSuffix = "ingest-pipeline";
     private const string SearchIndexNameSuffix = "search-index";
+    private const string IngestCursorIndexNameSuffix = "ingest-cursor-index";
 
     public string ModelId => modelId;
     public int ModelEmbeddingDimension => modelEmbeddingDimension;
+
     public Id IntoFullIngestPipelineId(string id)
-        => new (string.Join('-', NamePrefix, id, IngestPipelineNameSuffix, IntoUniqueKey()));
+        => new (IntoFullIngestPipelineName(id));
+
+    public string IntoFullIngestPipelineName(string id)
+        => string.Join('-',
+            NamePrefix,
+            id,
+            IngestPipelineNameSuffix,
+            IntoUniqueKey());
+    public IndexName IntoFullCursorIndexName(string id)
+        => string.Join('-',
+            NamePrefix,
+            id,
+            IngestCursorIndexNameSuffix,
+            IntoUniqueKey()
+        );
 
     public string IntoFullSearchIndexId(string id)
         => string.Join('-', NamePrefix, id, SearchIndexNameSuffix, IntoUniqueKey());
