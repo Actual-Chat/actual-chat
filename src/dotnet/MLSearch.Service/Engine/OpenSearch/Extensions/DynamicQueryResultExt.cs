@@ -1,6 +1,6 @@
 using OpenSearch.Net;
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
 internal static class DynamicQueryResultExt
 {

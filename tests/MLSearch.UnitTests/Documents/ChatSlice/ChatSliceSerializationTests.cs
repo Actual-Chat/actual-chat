@@ -1,10 +1,12 @@
-namespace ActualChat.MLSearch.UnitTests;
+using ActualChat.MLSearch.Documents;
+
+namespace ActualChat.MLSearch.UnitTests.Documents.ChatSlice;
 
 public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out)
 {
-    private const string attachmentSummary = "Don't expect any media here.";
+    private const string AttachmentSummary = "Don't expect any media here.";
 
-    private static readonly JsonSerializerOptions serializerOptions = new() {
+    private static readonly JsonSerializerOptions _serializerOptions = new() {
         AllowTrailingCommas = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
@@ -13,9 +15,9 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
     public void AttachmentSerializesProperly()
     {
         var id = new MediaId("testscope", Generate.Option);
-        var attachment = new ChatSliceAttachment(id, attachmentSummary);
+        var attachment = new ChatSliceAttachment(id, AttachmentSummary);
 
-        var jsonString = JsonSerializer.Serialize(attachment, serializerOptions);
+        var jsonString = JsonSerializer.Serialize(attachment, _serializerOptions);
         Assert.True(jsonString.Contains("id", StringComparison.Ordinal));
         Assert.True(jsonString.Contains("summary", StringComparison.Ordinal));
         Assert.True(jsonString.Contains("testscope:", StringComparison.Ordinal));
@@ -26,11 +28,11 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
     public void AttachmentDeserializesProperly()
     {
         var id = new MediaId("testscope", Generate.Option);
-        var attachment = new ChatSliceAttachment(id, attachmentSummary);
+        var attachment = new ChatSliceAttachment(id, AttachmentSummary);
 
-        var jsonString = JsonSerializer.Serialize(attachment, serializerOptions);
+        var jsonString = JsonSerializer.Serialize(attachment, _serializerOptions);
 
-        var deserializedAttachment = JsonSerializer.Deserialize<ChatSliceAttachment>(jsonString, serializerOptions);
+        var deserializedAttachment = JsonSerializer.Deserialize<ChatSliceAttachment>(jsonString, _serializerOptions);
         Assert.Equal(attachment, deserializedAttachment);
     }
 
@@ -38,21 +40,21 @@ public class ChatSliceSerializationTests(ITestOutputHelper @out) : TestBase(@out
     public void ChatSliceMetadataSerializesAndDeserializesProperly()
     {
         var metadata = CreateMetadata();
-        var jsonString = JsonSerializer.Serialize(metadata, serializerOptions);
-        var deserializedMetadata = JsonSerializer.Deserialize<ChatSliceMetadata>(jsonString, serializerOptions);
+        var jsonString = JsonSerializer.Serialize(metadata, _serializerOptions);
+        var deserializedMetadata = JsonSerializer.Deserialize<ChatSliceMetadata>(jsonString, _serializerOptions);
         Assert.Equivalent(metadata, deserializedMetadata);
-        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedMetadata, serializerOptions));
+        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedMetadata, _serializerOptions));
     }
 
     [Fact]
     public void ChatSliceSerializesAndDeserializesProperly()
     {
         var metadata = CreateMetadata();
-        var document = new ChatSlice(metadata, "Unique and valuable message");
-        var jsonString = JsonSerializer.Serialize(document, serializerOptions);
-        var deserializedDocument = JsonSerializer.Deserialize<ChatSlice>(jsonString, serializerOptions);
+        var document = new MLSearch.Documents.ChatSlice(metadata, "Unique and valuable message");
+        var jsonString = JsonSerializer.Serialize(document, _serializerOptions);
+        var deserializedDocument = JsonSerializer.Deserialize<MLSearch.Documents.ChatSlice>(jsonString, _serializerOptions);
         Assert.Equivalent(document, deserializedDocument);
-        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedDocument, serializerOptions));
+        Assert.Equal(jsonString, JsonSerializer.Serialize(deserializedDocument, _serializerOptions));
     }
 
     private static ChatSliceMetadata CreateMetadata()

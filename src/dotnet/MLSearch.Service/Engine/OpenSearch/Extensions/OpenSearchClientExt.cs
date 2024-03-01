@@ -3,7 +3,7 @@ using OpenSearch.Net;
 
 using HttpMethod = OpenSearch.Net.HttpMethod;
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
 public static class OpenSearchClientExt
 {

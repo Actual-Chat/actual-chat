@@ -1,13 +1,13 @@
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using OpenSearch.Client;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
-
+using ActualChat.MLSearch.Documents;
 using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
+namespace ActualChat.MLSearch.Engine.OpenSearch;
 
 internal class OpenSearchClusterSetup(
     OpenSearchModelGroupName modelGroupName,
@@ -122,7 +122,7 @@ internal class OpenSearchClusterSetup(
         // Assumption: This is a script.
         // There's no reason make this script efficient.
         // It must fail and retried on any error.
-        // It has to succeed once and only once to setup an opensearch cluster.
+        // It has to succeed once and only once to setup an OpenSearch cluster.
         // After the initial setup this would never be called again.
         const string name = "chat-slice";
         using var _1 = tracing.TraceRegion();

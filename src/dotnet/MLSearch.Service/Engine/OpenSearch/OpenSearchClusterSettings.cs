@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using OpenSearch.Client;
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch;
+namespace ActualChat.MLSearch.Engine.OpenSearch;
 
 public sealed class OpenSearchClusterSettings(string modelAllConfig, string modelId, int modelEmbeddingDimension)
 {

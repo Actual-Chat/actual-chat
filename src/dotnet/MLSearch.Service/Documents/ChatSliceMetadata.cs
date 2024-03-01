@@ -1,5 +1,5 @@
 
-namespace ActualChat.MLSearch;
+namespace ActualChat.MLSearch.Documents;
 
 [StructLayout(LayoutKind.Auto)]
 [method: JsonConstructor, Newtonsoft.Json.JsonConstructor]
@@ -11,8 +11,8 @@ internal readonly record struct ChatSliceMetadata(
     // Offset from the beginning of the text of 1st entry in the chat entry list.
     // This is the place where document starts.
     int? StartOffset,
-    // Offset from the beginning of the last enrty in the chat entry list.
-    // That is the plase where document ends.
+    // Offset from the beginning of the last entry in the chat entry list.
+    // That is the place where document ends.
     int? EndOffset,
     // Ids of entries replied by document entries.
     ImmutableArray<ChatEntryId> ReplyToEntries,
@@ -20,8 +20,8 @@ internal readonly record struct ChatSliceMetadata(
     ImmutableArray<PrincipalId> Mentions,
     // A list of users who reacted to at least one of the source messages.
     ImmutableArray<PrincipalId> Reactions,
-    // A list of users who are identifyed as a participants of a conversation
-    // happenig at the document creation time.
+    // A list of users who are identified as a participants of a conversation
+    // happening at the document creation time.
     ImmutableArray<PrincipalId> ConversationParticipants,
     // Attachments to document's source messages
     ImmutableArray<ChatSliceAttachment> Attachments,

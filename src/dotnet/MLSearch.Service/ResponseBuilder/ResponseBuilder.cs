@@ -1,8 +1,12 @@
+using ActualChat.MLSearch.Engine;
+
 namespace ActualChat.MLSearch;
 
 internal class ResponseBuilder : IResponseBuilder
 {
-    public Task<MLSearchResponse> Build(MLSearchChatHistory history, VectorSearchResult searchResult, CancellationToken cancellationToken)
+    public Task<MLSearchResponse> Build<TDocument>(
+        MLSearchChatHistory history, VectorSearchResult<TDocument> searchResult, CancellationToken cancellationToken)
+        where TDocument : class
     {
         // Generates summaries for individual docs
         // Generates overall summary

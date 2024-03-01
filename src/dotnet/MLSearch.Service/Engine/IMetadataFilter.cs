@@ -1,6 +1,5 @@
-using ActualChat.MLSearch.SearchEngine.OpenSearch;
 
-namespace ActualChat.MLSearch;
+namespace ActualChat.MLSearch.Engine;
 
 internal interface IMetadataFilter
 {
@@ -15,7 +14,8 @@ internal class EqualityFilter<TValue>(string fieldName, TValue value) : IMetadat
     public void Apply(IQueryBuilder queryBuilder) => queryBuilder.ApplyEqualityFilter(this);
 }
 
-internal abstract class RangeFilter<TValue>(string fieldName, RangeBound<TValue>? from, RangeBound<TValue>? to) : IMetadataFilter
+internal abstract class RangeFilter<TValue>(string fieldName, RangeBound<TValue>? from, RangeBound<TValue>? to)
+    : IMetadataFilter
     where TValue: struct
 {
     public string FieldName { get; } = fieldName;

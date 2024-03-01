@@ -1,4 +1,6 @@
-namespace ActualChat.MLSearch.UnitTests;
+using ActualChat.MLSearch.Documents;
+
+namespace ActualChat.MLSearch.UnitTests.Documents.ChatSlice;
 
 public class ChatSliceMetadataTests(ITestOutputHelper @out) : TestBase(@out)
 {

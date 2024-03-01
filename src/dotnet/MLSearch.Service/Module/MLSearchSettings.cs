@@ -1,5 +1,4 @@
-﻿using ActualChat.MLSearch.SearchEngine.OpenSearch;
-
+﻿
 namespace ActualChat.MLSearch.Module;
 
 public sealed class MLSearchSettings

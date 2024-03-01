@@ -1,11 +1,13 @@
-namespace ActualChat.MLSearch.UnitTests;
+using ActualChat.MLSearch.Documents;
+
+namespace ActualChat.MLSearch.UnitTests.Documents.ChatSlice;
 
 public class IndexedDocumentTests(ITestOutputHelper @out): TestBase(@out)
 {
     [Fact]
     public void IdOfAnEmptyChatSliceIsEmptyString()
     {
-        var emptyDocument = new ChatSlice(default, string.Empty);
+        var emptyDocument = new MLSearch.Documents.ChatSlice(default, string.Empty);
         Assert.Equal(string.Empty, emptyDocument.Id);
     }
 
@@ -16,7 +18,7 @@ public class IndexedDocumentTests(ITestOutputHelper @out): TestBase(@out)
         var chatEntryId1 = new ChatEntryId(chatId, ChatEntryKind.Text, 1, AssumeValid.Option);
         var chatEntryId2 = new ChatEntryId(chatId, ChatEntryKind.Text, 2, AssumeValid.Option);
         var metadata = CreateMetadata(chatEntryId1, chatEntryId2, 33, 111);
-        var document = new ChatSlice(metadata, string.Empty);
+        var document = new MLSearch.Documents.ChatSlice(metadata, string.Empty);
         var id = document.Id;
         Assert.StartsWith(chatEntryId1, id, StringComparison.Ordinal);
         Assert.EndsWith("33", id, StringComparison.Ordinal);

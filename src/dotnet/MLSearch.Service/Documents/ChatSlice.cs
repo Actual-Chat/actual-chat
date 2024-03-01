@@ -1,5 +1,4 @@
-
-namespace ActualChat.MLSearch;
+namespace ActualChat.MLSearch.Documents;
 
 internal record ChatSlice(ChatSliceMetadata Metadata, string Text)
 {
