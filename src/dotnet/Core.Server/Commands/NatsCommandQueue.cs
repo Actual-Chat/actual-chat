@@ -120,10 +120,20 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
     }
 
     protected virtual string BuildJetStreamName()
-        => $"{GetPrefix()}{JetStreamName}";
+    {
+        var streamName = QueueId.HostRole.IsQueue
+            ? GetRoleString(QueueId.HostRole)
+            : JetStreamName;
+        return $"{GetPrefix()}{streamName}";
+    }
 
     protected virtual string BuildSubject(Type commandType)
-        => $"{GetPrefix()}commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.{commandType.Name}";
+    {
+        var commands = QueueId.HostRole.IsQueue
+            ? ""
+            : "commands.";
+        return $"{GetPrefix()}{commands}{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.{commandType.Name}";
+    }
 
     protected static string GetRoleString(HostRole hostRole)
         => hostRole == HostRole.BackendServer
@@ -252,7 +262,13 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         await using var _ = lockHolder.ConfigureAwait(false);
         var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
 
-        var config = new StreamConfig(jetStreamName, new[] { $"{GetPrefix()}commands.>" }) {
+        var roleChunk = QueueId.HostRole.IsQueue
+            ? $"{GetRoleString(QueueId.HostRole)}."
+            : "";
+        var commandsChunk = QueueId.HostRole.IsQueue
+            ? ""
+            : "commands.";
+        var config = new StreamConfig(jetStreamName, new[] { $"{GetPrefix()}{commandsChunk}{roleChunk}>" }) {
             MaxMsgs = Queues.Settings.MaxQueueSize,
             Compression = StreamConfigCompression.S2,
             Storage = StreamConfigStorage.File,

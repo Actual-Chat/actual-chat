@@ -1,4 +1,6 @@
+using ActualChat.Attributes;
 using ActualChat.Commands;
+using ActualChat.Hosting;
 using MemoryPack;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
@@ -25,5 +27,10 @@ public partial record TestCommand([property:MemoryPackOrder(1)] string? Error) :
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 public partial record TestCommand2 : ICommand<Unit>;
 
+[CommandQueue(nameof(HostRole.DefaultQueue))]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
-public partial record TestCommand3 : ICommand<Unit>;
+public partial record TestCommand3 : ICommand<Unit>, IHasShardKey<int>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public int ShardKey { get; init; }
+}

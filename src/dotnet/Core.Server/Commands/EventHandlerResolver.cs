@@ -4,7 +4,7 @@ namespace ActualChat.Commands;
 
 public sealed class EventHandlerResolver(IServiceProvider services) : CommandHandlerResolver(services)
 {
-    private static readonly ConcurrentDictionary<Type, Func<CommandHandler, IReadOnlySet<HostRole>>>
+    private static readonly ConcurrentDictionary<Type, Func<CommandHandler, IReadOnlySet<HostRole>, bool>>
         _hostRoleResolverCache = new ();
 
     private CommandHandlerResolver Resolver { get; } = services.GetRequiredService<CommandHandlerResolver>();
@@ -14,14 +14,14 @@ public sealed class EventHandlerResolver(IServiceProvider services) : CommandHan
             .Where(h => !h.IsFilter
                 && typeof(IEventCommand).IsAssignableFrom(h.CommandType)
                 && Filter.Invoke(h, h.CommandType))
-            .Where(h => GetHandlerChainHostRoles(h).Overlaps(HostRoles.Server.GetAllRoles(hostRole)))
+            .Where(h => ShouldServe(h, HostRoles.Server.GetAllRoles(hostRole)))
             .ToImmutableArray();
 
 
     public override CommandHandlerSet GetCommandHandlers(Type commandType)
         => Resolver.GetCommandHandlers(commandType);
 
-    public IReadOnlySet<HostRole> GetHandlerChainHostRoles(CommandHandler handler)
+    private static bool ShouldServe(CommandHandler handler, IReadOnlySet<HostRole> hostRoles)
     {
         var hostRoleProvider = _hostRoleResolverCache.GetOrAdd(handler.GetType(),
             static type => {
@@ -37,9 +37,9 @@ public sealed class EventHandlerResolver(IServiceProvider services) : CommandHan
                 else
                     throw StandardError.NotSupported(type, "Unsupported command handler.");
 
-                return ch => HostRoles.GetServedByRoles(serviceTypeGetter(ch));
+                return (ch, hrs) => hrs.ShouldServe(serviceTypeGetter(ch));
             });
 
-        return hostRoleProvider(handler);
+        return hostRoleProvider(handler, hostRoles);
     }
 }

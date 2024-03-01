@@ -1,11 +1,8 @@
 namespace ActualChat.Core.Server.IntegrationTests.Commands;
 
-public class DedicatedInterfaceEventHandler : ICommandHandler<TestEvent2>
+public class DedicatedInterfaceEventHandler(ScheduledCommandTestService testService) : ICommandHandler<TestEvent2>
 {
-    private ScheduledCommandTestService TestService { get; }
-
-    public DedicatedInterfaceEventHandler(ScheduledCommandTestService testService)
-        => TestService = testService;
+    private ScheduledCommandTestService TestService { get; } = testService;
 
     public Task OnCommand(TestEvent2 eventCommand, CommandContext context, CancellationToken cancellationToken)
     {
