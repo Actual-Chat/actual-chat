@@ -10,7 +10,7 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
     private ILogger? _log;
     private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
-    public async Task<VectorSearchResult<TDocument>> Find<TDocument>(VectorSearchQuery query, CancellationToken cancellationToken)
+    public async Task<SearchResult<TDocument>> Find<TDocument>(SearchQuery query, CancellationToken cancellationToken)
         where TDocument : class
     {
         // TODO: index id must be a parameter
@@ -33,7 +33,7 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
                 select new RankedDocument<TDocument>(hit.Score, hit.Source)
             ).ToList().AsReadOnly();
 
-        return new VectorSearchResult<TDocument>(documents);
+        return new SearchResult<TDocument>(documents);
     }
 
     public async Task Ingest<TDocument>(TDocument document, CancellationToken cancellationToken)

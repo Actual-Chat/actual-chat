@@ -95,7 +95,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
 
         await Task.Delay(200);
 
-        var query1 = new VectorSearchQuery() {
+        var query1 = new SearchQuery() {
             Keywords=["command"],
             FreeTextFilter="Tools for mobile development",
         };
@@ -107,7 +107,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
         var timestampField = JsonNamingPolicy.CamelCase.ConvertName(nameof(ChatSliceMetadata.Timestamp));
         var chatIdField = JsonNamingPolicy.CamelCase.ConvertName(nameof(ChatSliceMetadata.ChatId));
         var dateBound = DateTime.Now.AddDays(-3);
-        var query2 = new VectorSearchQuery() {
+        var query2 = new SearchQuery() {
             MetadataFilters=[
                 new DateRangeFilter($"{metadataField}.{timestampField}", new RangeBound<DateTime>(dateBound, true), null),
             ],
@@ -118,7 +118,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
         var query2Count = queryResult2.Documents.Count;
         Assert.True(query2Count > 0);
 
-        var query3 = new VectorSearchQuery() {
+        var query3 = new SearchQuery() {
             MetadataFilters=[
                 new DateRangeFilter($"{metadataField}.{timestampField}", new RangeBound<DateTime>(dateBound, true), null),
                 new EqualityFilter<ChatId>($"{metadataField}.{chatIdField}", chatId1),

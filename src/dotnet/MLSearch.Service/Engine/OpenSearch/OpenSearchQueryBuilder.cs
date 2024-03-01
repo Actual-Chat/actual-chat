@@ -85,7 +85,7 @@ internal class OpenSearchQueryBuilder(OpenSearchClusterSettings settings, string
         }
     }
 
-    internal ISearchRequest Build(VectorSearchQuery query)
+    internal ISearchRequest Build(SearchQuery query)
     {
         _metadataFilters.Clear();
         foreach (var metadataFiler in query.MetadataFilters ?? Enumerable.Empty<IMetadataFilter>()) {

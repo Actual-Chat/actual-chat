@@ -1,7 +1,7 @@
 
 namespace ActualChat.MLSearch.Engine;
 
-internal class VectorSearchQuery
+internal class SearchQuery
 {
     public IMetadataFilter[]? MetadataFilters;
     public string FreeTextFilter;
