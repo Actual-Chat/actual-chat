@@ -35,7 +35,7 @@ export class BrowserInit {
             this.sessionHash = sessionHash;
             this.initWindowId();
             this.initAndroid();
-            this.preventSuspend();
+            // this.preventSuspend();
             await BrowserInfo.init(browserInfoBackendRef, appKind);
         }
         catch (e) {
