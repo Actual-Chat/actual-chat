@@ -1,6 +1,8 @@
 using ActualChat.MLSearch.ApiAdapters;
 using OpenSearch.Client;
 using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Documents;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
 namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
 
