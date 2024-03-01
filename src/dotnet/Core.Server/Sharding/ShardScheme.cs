@@ -12,6 +12,7 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
     public static readonly ShardScheme None = new(nameof(None), 0, HostRole.None);
     public static readonly ShardScheme Undefined = new(nameof(Undefined), 0, HostRole.None);
     public static readonly ShardScheme AnyServer = new(nameof(AnyServer), 10, HostRole.AnyServer); // Mostly for testing
+    public static readonly ShardScheme BackendServer = new(nameof(BackendServer), 10, HostRole.BackendServer);
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), 10, HostRole.MediaBackend);
     public static readonly ShardScheme AudioBackend = new(nameof(AudioBackend), 10, HostRole.AudioBackend);
     public static readonly ShardScheme ChatBackend = new(nameof(ChatBackend), 30, HostRole.ChatBackend);
@@ -24,11 +25,13 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
     public static readonly ShardScheme ContactIndexingWorker = new(nameof(ContactIndexingWorker), 1, HostRole.ContactIndexingWorker);
     public static readonly ShardScheme DefaultQueue = new(nameof(DefaultQueue), 1, HostRole.DefaultQueue);
     public static readonly ShardScheme EventQueue = new(nameof(EventQueue), 1, HostRole.EventQueue);
+
     // A reverse map of ShardScheme.Id to ShardScheme
     public static readonly IReadOnlyDictionary<Symbol, ShardScheme> ById = new Dictionary<Symbol, ShardScheme>() {
         { None.Id, None },
         // { Undefined.Id, Undefined }, // Shouldn't be listed here
         { AnyServer.Id, AnyServer },
+        { BackendServer.Id, BackendServer },
         { MediaBackend.Id, MediaBackend },
         { AudioBackend.Id, AudioBackend },
         { ChatBackend.Id, ChatBackend },
