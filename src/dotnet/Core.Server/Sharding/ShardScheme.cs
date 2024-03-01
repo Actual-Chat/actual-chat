@@ -13,6 +13,7 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
     public static readonly ShardScheme Undefined = new(nameof(Undefined), 0, HostRole.None);
     public static readonly ShardScheme AnyServer = new(nameof(AnyServer), 10, HostRole.AnyServer); // Mostly for testing
     public static readonly ShardScheme MediaBackend = new(nameof(MediaBackend), 10, HostRole.MediaBackend);
+    public static readonly ShardScheme ContactIndexingWorker = new(nameof(ContactIndexingWorker), 1, HostRole.ContactIndexingWorker);
     public static readonly ShardScheme DefaultQueue = new(nameof(DefaultQueue), 1, HostRole.DefaultQueue);
 
     // A reverse map of ShardScheme.Id to ShardScheme
@@ -21,6 +22,8 @@ public sealed class ShardScheme(Symbol id, int shardCount, HostRole hostRole) : 
         // { Undefined.Id, Undefined }, // Shouldn't be listed here
         { AnyServer.Id, AnyServer },
         { MediaBackend.Id, MediaBackend },
+        { ContactIndexingWorker.Id, ContactIndexingWorker },
+        // Queues
         { DefaultQueue.Id, DefaultQueue },
     };
 

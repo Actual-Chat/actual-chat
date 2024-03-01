@@ -16,6 +16,7 @@ public class IndexedChatsBackend(IServiceProvider services) : DbServiceBase<Sear
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
+
         var dbIndexedChat = await dbContext.IndexedChats
             .Where(x => x.Id.StartsWith(DbIndexedChat.IdIndexSchemaVersionPrefix))
             .OrderByDescending(x => x.ChatCreatedAt)

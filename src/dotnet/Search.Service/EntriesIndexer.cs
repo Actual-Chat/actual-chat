@@ -7,7 +7,7 @@ using ActualLab.Interception;
 
 namespace ActualChat.Search;
 
-public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
+public class EntriesIndexer(IServiceProvider services) : WorkerBase, IHasServices, INotifyInitialized
 {
     private const int ChatDispatchBatchSize = 20;
     private const int IndexChatSyncBatchSize = 1000;
@@ -82,7 +82,7 @@ public class IndexingQueue(IServiceProvider services) : WorkerBase, IHasServices
     {
         using var _1 = Tracer.Default.Region();
         var last = await IndexedChatsBackend.GetLast(cancellationToken).ConfigureAwait(false);
-        var batches = ChatsBackend.Batches(
+        var batches = ChatsBackend.Batch(
                 last?.ChatCreatedAt ?? Moment.MinValue,
                 last?.Id ?? ChatId.None,
                 IndexChatSyncBatchSize,

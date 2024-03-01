@@ -38,25 +38,48 @@ public static class ChatsBackendExt
         return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
     }
 
-    public static async IAsyncEnumerable<ApiArray<Chat>> Batches(
+    public static async IAsyncEnumerable<ApiArray<Chat>> Batch(
         this IChatsBackend chatsBackend,
         Moment minCreatedAt,
         ChatId lastChatId,
-        int limit,
-        [EnumeratorCancellation]
-        CancellationToken cancellationToken)
+        int batchSize,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
-            var chats = await chatsBackend.List(minCreatedAt, lastChatId, limit, cancellationToken)
+            var chats = await chatsBackend.List(minCreatedAt, lastChatId, batchSize, cancellationToken)
                 .ConfigureAwait(false);
             if (chats.Count == 0)
                 yield break;
 
             yield return chats;
 
-            var lastChat = chats[^1];
-            lastChatId = lastChat.Id;
-            minCreatedAt = lastChat.CreatedAt;
+            var last = chats[^1];
+            lastChatId = last.Id;
+            minCreatedAt = last.CreatedAt;
+        }
+    }
+
+    public static async IAsyncEnumerable<ApiArray<Chat>> BatchChanged(
+        this IChatsBackend chatsBackend,
+        long minVersion,
+        ApiSet<ChatId> lastIdsWithSameVersion,
+        int batchSize,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested) {
+            var chats = await chatsBackend.ListChanged(minVersion, lastIdsWithSameVersion, batchSize, cancellationToken)
+                .ConfigureAwait(false);
+            if (chats.Count == 0)
+                yield break;
+
+            yield return chats;
+
+            var last = chats[^1];
+            lastIdsWithSameVersion = chats.Reverse()
+                .TakeWhile(x => x.Version == last.Version)
+                .Select(x => x.Id)
+                .ToApiSet();
+            minVersion = last.Version;
         }
     }
 

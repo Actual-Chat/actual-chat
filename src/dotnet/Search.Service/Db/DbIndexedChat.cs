@@ -19,7 +19,6 @@ public class DbIndexedChat : IHasId<string>, IHasVersion<long>, IRequirementTarg
 
     public ChatId GetChatId()
     {
-
         if (Id.IsNullOrEmpty())
             return ChatId.None;
 
