@@ -43,10 +43,7 @@ public class ContactIndexStateBackend(IServiceProvider services) : DbServiceBase
             .ConfigureAwait(false);
 
         if (change.IsCreate(out var create)) {
-            dbState = new DbContactIndexState {
-                Id = create.Id,
-                Version = VersionGenerator.NextVersion(),
-            };
+            dbState = new DbContactIndexState(create with { Version = VersionGenerator.NextVersion() });
             dbContext.Add(dbState);
         }
         else if (change.IsUpdate(out var update)) {
