@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="App.Server (AY)" type="DotNetProject" factoryName=".NET Project">
     <option name="EXE_PATH" value="$PROJECT_DIR$/artifacts/bin/App.Server/debug/ActualChat.App.Server.exe" />
-    <option name="PROGRAM_PARAMETERS" value="-multihost-role:BackendServer -kb" />
+    <option name="PROGRAM_PARAMETERS" value="-xmultihost-role:BackendServer -kb" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/dotnet/App.Server" />
     <option name="PASS_PARENT_ENVS" value="1" />
     <envs>
