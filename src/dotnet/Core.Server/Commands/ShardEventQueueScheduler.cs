@@ -4,7 +4,7 @@ using ActualChat.Hosting;
 namespace ActualChat.Commands;
 
 public sealed class ShardEventQueueScheduler(HostRole hostRole, IServiceProvider services)
-    : ShardWorker<ShardScheme.EventQueue>(services, $"{hostRole}-EventQueueScheduler"), ICommandQueueScheduler
+    : ShardWorker(services, ShardScheme.EventQueue, $"{hostRole}-EventQueueScheduler"), ICommandQueueScheduler
 {
     public sealed record Options
     {
