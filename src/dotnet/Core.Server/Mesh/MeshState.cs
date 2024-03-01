@@ -56,10 +56,6 @@ public sealed partial class MeshState
         return sb.ToStringAndRelease();
     }
 
-    public ShardMap GetShardMap<TShardScheme>()
-        where TShardScheme : ShardScheme, IShardScheme<TShardScheme>
-        => GetShardMap(TShardScheme.Instance);
-
     public ShardMap GetShardMap(ShardScheme shardScheme)
     {
         // ReSharper disable once InconsistentlySynchronizedField

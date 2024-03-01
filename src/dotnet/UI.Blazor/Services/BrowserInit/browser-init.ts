@@ -2,10 +2,10 @@ import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
 import { Log } from "logging";
 import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
+import { isOnline, reloadCurrentPage, whenOnline } from 'connectivity';
 
-const { infoLog, warnLog, errorLog } = Log.get('BrowserInit');
+const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
-const IsReloadEnabled = true;
 const window = globalThis as undefined as Window;
 const sessionStorage = window.sessionStorage;
 
@@ -35,6 +35,7 @@ export class BrowserInit {
             this.sessionHash = sessionHash;
             this.initWindowId();
             this.initAndroid();
+            // this.preventSuspend();
             await BrowserInfo.init(browserInfoBackendRef, appKind);
         }
         catch (e) {
@@ -76,7 +77,7 @@ export class BrowserInit {
             try {
                 const blazor = window['Blazor'];
                 while (blazor) {
-                    await this.whenOnline();
+                    await whenOnline();
                     if (this.whenReloading.isCompleted())
                         return; // Already reloading
 
@@ -89,7 +90,7 @@ export class BrowserInit {
                         // Let's assume it may fail
                     }
                     errorLog?.log('startReconnecting: failed to reconnect');
-                    if (await this.isOnline())
+                    if (await isOnline())
                         break; // Couldn't reconnect while online -> reload
                 }
                 this.startReloading();
@@ -109,10 +110,7 @@ export class BrowserInit {
 
         warnLog?.log('startReloading: reloading...');
         this.whenReloading.resolve(undefined);
-        (async () => {
-            await this.whenOnline();
-            void this.reload();
-        })();
+        void reloadCurrentPage();
     }
 
     public static startReloadWatchers() {
@@ -191,20 +189,6 @@ export class BrowserInit {
         this.removeWebSplash();
     }
 
-    public static async reload(): Promise<void> {
-        // Force stop recording before reload
-        warnLog?.log('reload: reloading...');
-        await globalThis['opusMediaRecorder']?.stop();
-
-        if (!window.location.hash) {
-            // Refresh with GET
-            // noinspection SillyAssignmentJS
-            window.location.href = window.location.href;
-        } else {
-            window.location.reload();
-        }
-    }
-
     // Private methods
 
     private static initWindowId(): void {
@@ -264,6 +248,31 @@ export class BrowserInit {
         };
     }
 
+    private static preventSuspend(): void {
+        const keepWebLock = async (): Promise<void> => {
+            const lockId = `${this.windowId}-${Math.random()}`;
+            // noinspection InfiniteLoopJS
+            while (true) {
+                try {
+                    await navigator.locks.request(lockId, async () => {
+                        debugLog?.log(`preventSuspend: lock acquired:`, lockId)
+                        // noinspection InfiniteLoopJS
+                        while (true) {
+                            await delayAsync(3600_000); // 1h
+                        }
+                    });
+                }
+                catch {
+                    // Intended
+                }
+                debugLog?.log(`preventSuspend: lock is lost`)
+                await delayAsync(5_000); // 5s to retry
+            }
+        }
+
+        void keepWebLock();
+    }
+
     private static setAppConnectionState(state: string = ""): void {
         if (this.connectionState === state)
             return;
@@ -281,7 +290,8 @@ export class BrowserInit {
                 <div class="c-bg"></div>
                 <div class="c-circle-blur"></div>
                 <div class="c-circle">
-                    <img draggable="false" src="/dist/images/loading-cat.svg" alt="">
+                    <!-- Must have open and close tags, otherwise doesn't work! -->
+                    <loading-cat-svg></loading-cat-svg>
                     <span class="c-text">${state}</span>
                 </div>
             `;
@@ -291,41 +301,6 @@ export class BrowserInit {
             appConnectionStateDiv.innerHTML = '';
             appConnectionStateDiv.style.display = 'none';
         }
-    }
-
-    public static async whenOnline(checkInterval = 2000): Promise<void> {
-        let wasOnline = true;
-        while (true) {
-            if (await this.isOnline()) {
-                // Second check - just in case
-                await delayAsync(250);
-                if (await this.isOnline())
-                    break;
-            }
-
-            if (wasOnline) {
-                wasOnline = false;
-                warnLog?.log(`whenOnline: offline`);
-            }
-            await delayAsync(checkInterval);
-        }
-        if (!wasOnline)
-            infoLog?.log(`whenOnline: online`);
-    }
-
-    public static async isOnline(): Promise<boolean> {
-        if (this.isMauiApp)
-            return true;
-
-        try {
-            const response = await fetch('/favicon.ico', { cache: "no-store" });
-            if (response.ok)
-                return true;
-        }
-        catch {
-            // Intended
-        }
-        return false;
     }
 }
 

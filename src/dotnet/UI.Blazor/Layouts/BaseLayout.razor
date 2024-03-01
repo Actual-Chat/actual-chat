@@ -1,7 +1,5 @@
 @inherits LayoutComponentBase
 @using ActualChat.UI.Blazor.Services
-@using ActualChat.UI.Blazor.Module
-@using ActualChat.Hosting
 
 <div class="base-layout">
     <div class="base-layout-body">
@@ -22,14 +20,6 @@
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private RenderModeSelector RenderModeSelector => Hub.RenderModeSelector;
-    private IJSRuntime JS => Hub.JSRuntime();
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
-
-    protected override async Task OnInitializedAsync() {
-        if (Hub.HostInfo().HostKind.IsMauiApp())
-            return;
-        if (BlazorModeHelper.IsBlazorServer && !RenderModeSelector.IsPrerendering)
-            await JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.reloadOnDeviceAwake").ConfigureAwait(false);
-    }
 }

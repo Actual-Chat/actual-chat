@@ -2,11 +2,6 @@ using ActualChat.Mesh;
 
 namespace ActualChat;
 
-
-public abstract class ShardWorker<TShardScheme>(IServiceProvider services, string? keySuffix = null)
-    : ShardWorker(services, TShardScheme.Instance, keySuffix)
-    where TShardScheme : ShardScheme, IShardScheme<TShardScheme>;
-
 public abstract class ShardWorker : WorkerBase
 {
     private ILogger? _log;
@@ -91,6 +86,7 @@ public abstract class ShardWorker : WorkerBase
     {
         var failureCount = 0;
         while (!cancellationToken.IsCancellationRequested) {
+            Log.LogInformation("Shard #{ShardIndex}: acquiring lock for {ThisNodeId}", shardIndex, ThisNode.Ref);
             var lockHolder = await ShardLocks.Lock(shardIndex.Format(), "", cancellationToken).ConfigureAwait(false);
             var lockCts = cancellationToken.LinkWith(lockHolder.StopToken);
             var lockToken = lockCts.Token;
@@ -102,7 +98,7 @@ public abstract class ShardWorker : WorkerBase
                 failureCount = 0;
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                if (lockToken.IsCancellationRequested) {
+                if (lockHolder.StopToken.IsCancellationRequested) {
                     lockIsLost = true;
                     failureCount = 0;
                 }

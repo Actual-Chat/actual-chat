@@ -14,11 +14,13 @@ public sealed partial record MeshNode(
 {
     private static readonly ListFormat Formatter = new(' ');
 
+    private string? _toString;
+
     NodeRef IHasId<NodeRef>.Id => Ref;
     Symbol IHasId<Symbol>.Id => Ref.Id;
 
     public override string ToString()
-        => Formatter.Format(Ref.Value, Endpoint, Roles.ToDelimitedString(","));
+        => _toString ??= Formatter.Format(Ref.Value, Endpoint, Roles.ToDelimitedString(","));
 
     public static MeshNode Parse(string value)
         => TryParse(value, out var result) ? result : throw StandardError.Format<MeshNode>();

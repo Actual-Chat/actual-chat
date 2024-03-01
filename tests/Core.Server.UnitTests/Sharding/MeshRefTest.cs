@@ -2,9 +2,9 @@ namespace ActualChat.Core.Server.UnitTests.Sharding;
 
 public class MeshRefTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private ShardScheme NoneScheme => ShardScheme.None.Instance;
-    private ShardScheme DefaultScheme => ShardScheme.Default.Instance;
-    private ShardScheme BackendScheme => ShardScheme.Backend.Instance;
+    private ShardScheme NoneScheme => ShardScheme.None;
+    private ShardScheme DefaultScheme => ShardScheme.Default;
+    private ShardScheme AnyServerScheme => ShardScheme.AnyServer;
 
     [Fact]
     public void NodeRefTest()
@@ -41,21 +41,21 @@ public class MeshRefTest(ITestOutputHelper @out) : TestBase(@out)
         r.Key.Should().Be(1);
         r.Index.Should().Be(-1);
 
-        r = r.WithNonDefaultSchemeOr(BackendScheme);
-        r.Should().Be(new ShardRef(BackendScheme, 1));
+        r = r.WithNonDefaultSchemeOr(AnyServerScheme);
+        r.Should().Be(new ShardRef(AnyServerScheme, 1));
         r.IsNone.Should().BeFalse();
         r.Scheme.IsNone.Should().BeFalse();
         r.Scheme.IsDefault.Should().BeFalse();
-        r.Scheme.Should().BeSameAs(BackendScheme);
+        r.Scheme.Should().BeSameAs(AnyServerScheme);
         r.Key.Should().Be(1);
         r.Index.Should().Be(r.Scheme.GetShardIndex(r.Key));
 
-        r = new ShardRef(BackendScheme, BackendScheme.ShardCount + 1);
+        r = new ShardRef(AnyServerScheme, AnyServerScheme.ShardCount + 1);
         r.Key.Should().NotBe(1);
         r.Index.Should().Be(1);
         r.Normalize().Key.Should().Be(1);
         r = r.WithNonDefaultSchemeOr(NoneScheme, true);
-        r.Scheme.Should().BeSameAs(BackendScheme);
+        r.Scheme.Should().BeSameAs(AnyServerScheme);
         r.Key.Should().Be(1);
     }
 
@@ -78,18 +78,18 @@ public class MeshRefTest(ITestOutputHelper @out) : TestBase(@out)
         r.ShardRef.Key.Should().Be(1);
         r.ShardRef.Index.Should().Be(r.ShardRef.Scheme.GetShardIndex(r.ShardRef.Key));
 
-        r = r.WithNonDefaultSchemeOr(BackendScheme);
-        r.Should().Be(MeshRef.Shard(BackendScheme, 1));
+        r = r.WithNonDefaultSchemeOr(AnyServerScheme);
+        r.Should().Be(MeshRef.Shard(AnyServerScheme, 1));
         r.ShardRef.Scheme.IsDefault.Should().BeFalse();
-        r.ShardRef.Scheme.Should().BeSameAs(ShardScheme.Backend.Instance);
+        r.ShardRef.Scheme.Should().BeSameAs(AnyServerScheme);
         r.ShardRef.Key.Should().Be(1);
         r.ShardRef.Index.Should().Be(r.ShardRef.Scheme.GetShardIndex(r.ShardRef.Key));
 
-        r = MeshRef.Shard(BackendScheme, BackendScheme.ShardCount + 1);
+        r = MeshRef.Shard(AnyServerScheme, AnyServerScheme.ShardCount + 1);
         r.ShardRef.Index.Should().Be(1);
         r.Normalize().ShardRef.Key.Should().Be(1);
         r = r.WithNonDefaultSchemeOr(NoneScheme, true);
-        r.ShardRef.Scheme.Should().BeSameAs(BackendScheme);
+        r.ShardRef.Scheme.Should().BeSameAs(AnyServerScheme);
         r.ShardRef.Key.Should().Be(1);
     }
 }

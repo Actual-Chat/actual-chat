@@ -87,7 +87,6 @@ public static class MeshLocksExt
         bool waitLock,
         CancellationToken cancellationToken)
     {
-        using var _1 = Tracer.Default.Region($"MeshLocks.{nameof(RunInternal)}(): {key}");
         var meshLockHolder = await Lock()
             .ConfigureAwait(false);
         if (meshLockHolder is null)
@@ -99,16 +98,13 @@ public static class MeshLocksExt
         return (true, result);
 
         async Task<MeshLockHolder?> Lock()
-        {
-            using var _ = Tracer.Default.Region($"MeshLocks.{nameof(RunInternal)}().Lock(): {key}");
-            return !waitLock
+            => !waitLock
                 ? await meshLocks
-                    .TryLock(key, Guid.NewGuid().ToString(), options, cancellationToken)
+                    .TryLock(key, "", options, cancellationToken)
                     .ConfigureAwait(false)
                 : await meshLocks
-                    .Lock(key, Guid.NewGuid().ToString(), options, cancellationToken)
+                    .Lock(key, "", options, cancellationToken)
                     .ConfigureAwait(false);
-        }
     }
 
     private static MeshLockOptions GetDefaultOptions() => new (TimeSpan.FromSeconds(15));

@@ -8,7 +8,7 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
 
     private readonly ShardScheme? _scheme = scheme;
 
-    public ShardScheme Scheme => _scheme ?? ShardScheme.None.Instance;
+    public ShardScheme Scheme => _scheme ?? ShardScheme.None;
     public int Key { get; } = key;
 
     // Computed properties
@@ -18,9 +18,9 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
     public ShardRef(ShardScheme scheme, long key)
         : this(scheme, unchecked((int)key)) { }
     public ShardRef(int key)
-        : this(ShardScheme.Default.Instance, key) { }
+        : this(ShardScheme.Default, key) { }
     public ShardRef(long key)
-        : this(ShardScheme.Default.Instance, unchecked((int)key)) { }
+        : this(ShardScheme.Default, unchecked((int)key)) { }
 
     public void Deconstruct(out ShardScheme scheme, out int key)
     {

@@ -16,13 +16,14 @@ public interface IMeshLocks
     Task<MeshLockHolder?> TryLock(string key, string value, MeshLockOptions lockOptions, CancellationToken cancellationToken = default);
     Task<MeshLockHolder> Lock(string key, string value, MeshLockOptions lockOptions, CancellationToken cancellationToken = default);
     Task<IAsyncSubscription<string>> Changes(string key, CancellationToken cancellationToken = default);
-    Task<string[]> ListKeys(string prefix, CancellationToken cancellationToken = default);
+    Task<List<string>> ListKeys(string prefix, CancellationToken cancellationToken = default);
     IMeshLocks WithKeyPrefix(string keyPrefix);
 }
 
 public interface IMeshLocksBackend : IMeshLocks
 {
     ILogger? Log { get; }
+    ILogger? DebugLog { get; }
 
     // Methods MUST NOT auto-retry in case they can't reach the lock service
     Task<bool> TryRenew(string key, string value, TimeSpan expiresIn, CancellationToken cancellationToken = default);

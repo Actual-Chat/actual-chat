@@ -33,7 +33,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         var session = command.Session;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var email = account.Email;
-        var (securityToken, modifier) = await GetTotpInputs(session, email, TotpPurpose.VerifyEmail).ConfigureAwait(false);
+        var (securityToken, modifier) = await GetTotpInputs(session, email, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false);
         var totp = Totps.GenerateCode(securityToken, modifier); // generate totp with the newest one
         var expiresAt = GetExpiresAt();
 
@@ -70,7 +70,7 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
 
         var (session, totp) = command;
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        if (!await ValidateCode(session, account.Email, totp, TotpPurpose.VerifyEmail).ConfigureAwait(false))
+        if (!await ValidateCode(session, account.Email, totp, TotpPurpose.VerifyEmail, cancellationToken).ConfigureAwait(false))
             return false;
 
         account = account with { IsEmailVerified = true };
@@ -82,13 +82,24 @@ public class Emails(IServiceProvider services) : DbServiceBase<UsersDbContext>(s
         return true;
     }
 
-    private async Task<bool> ValidateCode(Session session, string email, int totp, TotpPurpose purpose) {
-        var (securityToken, modifier) = await GetTotpInputs(session, email, purpose).ConfigureAwait(false);
+    private async Task<bool> ValidateCode(
+        Session session,
+        string email,
+        int totp,
+        TotpPurpose purpose,
+        CancellationToken cancellationToken)
+    {
+        var (securityToken, modifier) = await GetTotpInputs(session, email, purpose, cancellationToken).ConfigureAwait(false);
         return Totps.ValidateCode(securityToken, totp, modifier);
     }
 
-    private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(Session session, string email, TotpPurpose purpose) {
-        var randomSecret = await RandomSecrets.Get(session).ConfigureAwait(false);
+    private async Task<(byte[] SecurityToken, string Modifier)> GetTotpInputs(
+        Session session,
+        string email,
+        TotpPurpose purpose,
+        CancellationToken cancellationToken)
+    {
+        var randomSecret = await RandomSecrets.Get(session, cancellationToken).ConfigureAwait(false);
         var securityTokens = Encoding.UTF8.GetBytes($"{randomSecret}_{session.Id}_{email}");
         var modifier = $"{purpose}:{email}";
         return (securityTokens, modifier);

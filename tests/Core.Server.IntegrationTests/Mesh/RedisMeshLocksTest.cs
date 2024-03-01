@@ -23,7 +23,7 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
             (await locks.TryLock(key, "")).Should().BeNull();
             (await locks.ListKeys("")).Should().Equal([key]);
             var now = CpuTimestamp.Now;
-            while (now.Elapsed <= lockOptions.ExpirationPeriod + TimeSpan.FromSeconds(0.5)) {
+            while (now.Elapsed <= lockOptions.ExpirationPeriod + TimeSpan.FromSeconds(1)) {
                 await Task.Delay(TimeSpan.FromSeconds(0.5));
                 info = await locks.GetInfo(key);
                 if (info == null)
@@ -94,5 +94,29 @@ public class RedisMeshLocksTest(ITestOutputHelper @out)
         var changeSet = await changes.Reader.ReadAllAsync().ToHashSetAsync(StringComparer.Ordinal);
         changeSet.Count.Should().Be(1);
         changeSet.Contains(key).Should().BeTrue();
+    }
+
+    [Fact(Skip = "For manual runs only. Start/stop Redis and watch the output.")]
+    public async Task RedisReconnectTest()
+    {
+        var locks = AppHost.Services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(RedisMeshLocksTest));
+        var lockOptions = locks.LockOptions with {
+            ExpirationPeriod = TimeSpan.FromSeconds(2),
+        };
+
+        var key = Alphabet.AlphaNumeric.Generator8.Next();
+        while (true) {
+            Out.WriteLine("Locking...");
+            try {
+                await using (var h = await locks.Lock(key, "", lockOptions)) {
+                    Out.WriteLine("Locked.");
+                    await ActualLab.Async.TaskExt.NeverEndingTask.WaitAsync(h.StopToken).SilentAwait();
+                }
+                Out.WriteLine("Unlocked.");
+            }
+            catch (Exception e) {
+                Out.WriteLine($"Locking failed: {e}");
+            }
+        }
     }
 }

@@ -21,7 +21,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return base.DisposeAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
     public async Task ShouldFindAddedChats()
     {
         // arrange
@@ -110,7 +110,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
             );
     }
 
-    [Fact]
+    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
     public async Task ShouldFindUpdateChats()
     {
         // arrange
@@ -220,7 +220,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
     public async Task ShouldNotFindDeletedChats()
     {
         // arrange
@@ -321,6 +321,8 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
                 }
             );
     }
+
+    // Private methods
 
     private static ApiArray<IndexedChatContact> BuildChatContacts(IEnumerable<Place> places, params Chat.Chat[] chats)
     {

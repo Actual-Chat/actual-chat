@@ -1,5 +1,6 @@
+using ActualChat.Testing.Internal;
 using ActualLab.Testing.Output;
-using Xunit.DependencyInjection.Logging;
+using MartinCostello.Logging.XUnit;
 
 namespace ActualChat.Testing;
 
@@ -21,6 +22,8 @@ public static class ServiceCollectionExt
             logging.AddFilter("ActualLab.Fusion", LogLevel.Information);
             logging.AddFilter("ActualLab.Fusion.Diagnostics", LogLevel.Information);
             logging.AddFilter("ActualLab.Fusion.Operations", LogLevel.Information);
+            logging.AddFilter("ActualChat.Redis", LogLevel.Information);
+            logging.AddFilter("ActualChat.Mesh", LogLevel.Information);
             // logging.AddFilter("ActualLab.Fusion.EntityFramework", LogLevel.Debug);
             // logging.AddFilter("ActualLab.Fusion.EntityFramework.Operations", LogLevel.Debug);
             // logging.AddFilter(LogFilter);
@@ -29,9 +32,12 @@ public static class ServiceCollectionExt
             // everything below LogLevel.Information
             logging.AddProvider(
 #pragma warning disable CS0618
-                new XunitTestOutputLoggerProvider(
-                    outputAccessor,
-                    (_, _) => true));
+                new XUnitLoggerProvider(
+                    new TestOutputHelperAccessorWrapper(outputAccessor),
+                    new XUnitLoggerOptions() {
+                        Filter = (_, _) => true,
+                        TimestampFormat = "ss:fff",
+                    }));
 #pragma warning restore CS0618
         });
 }

@@ -1,18 +1,30 @@
-using Cysharp.Text;
+using System.Globalization;
 
 namespace ActualChat.Testing.Internal;
 
 public class TimestampedTestOutput(ITestOutputHelper wrapped) : ITestOutputWrapper
 {
+    private static readonly string[] Indents = Enumerable.Range(0, 32)
+        .Select(x => Environment.NewLine + new string(' ', x))
+        .ToArray();
     private readonly CpuTimestamp _startedAt = CpuTimestamp.Now;
 
     public ITestOutputHelper Wrapped { get; } = wrapped;
 
     public void WriteLine(string message)
-        => Wrapped.WriteLine(ZString.Format("{0,5} {1}", _startedAt.Elapsed, message));
+    {
+        FormattableString prefixFormat = $"{_startedAt.Elapsed.TotalSeconds:F3} ";
+        var prefix = prefixFormat.ToString(CultureInfo.InvariantCulture);
+        message = message.Replace(Environment.NewLine, Indents[prefix.Length], StringComparison.Ordinal);
+        Wrapped.WriteLine(prefix + message);
+    }
 
     public void WriteLine(string format, params object[] args)
-        => Wrapped.WriteLine(
-            ZString.Concat($"{{{args.Length},5}} ", format),
-            args.Concat(Enumerable.Repeat((object)_startedAt.Elapsed, 1)).ToArray());
+    {
+        FormattableString prefixFormat = $"{_startedAt.Elapsed.TotalSeconds:F3} ";
+        var prefix = prefixFormat.ToString(CultureInfo.InvariantCulture);
+        var message = string.Format(CultureInfo.InvariantCulture, format, args)
+            .Replace(Environment.NewLine, Indents[prefix.Length], StringComparison.Ordinal);
+        Wrapped.WriteLine(prefix + message);
+    }
 }
