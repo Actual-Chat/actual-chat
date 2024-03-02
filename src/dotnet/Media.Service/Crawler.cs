@@ -23,6 +23,8 @@ public class Crawler(IServiceProvider services)
     private IContentSaver ContentSaver => _contentSaver ??= Services.GetRequiredService<IContentSaver>();
     private HttpClient HttpClient { get; }
         = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(LinkPreviewsBackend));
+    private HttpClient FallbackHttpClient { get; }
+        = services.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(LinkPreviewsBackend) + ".fallback");
     private IReadOnlyList<IUploadProcessor> UploadProcessors
         => _uploadProcessors ??= Services.GetRequiredService<IEnumerable<IUploadProcessor>>().ToList();
     private ICommander Commander => _commander ??= Services.Commander();
@@ -80,20 +82,19 @@ public class Crawler(IServiceProvider services)
 
     private async Task<OpenGraph> ParseUrl(string url, CancellationToken cancellationToken)
     {
-        var openGraph = await OpenGraph.ParseUrlAsync(
-                url,
-                timeout: (int)Settings.CrawlerGraphParsingTimeout.TotalMilliseconds,
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        var openGraph = await GetGraph(HttpClient).ConfigureAwait(false);
         if (!openGraph.Title.IsNullOrEmpty())
             return openGraph;
 
-        return await OpenGraph.ParseUrlAsync(
-                url,
-                userAgent: "googlebot",
-                timeout: (int)Settings.CrawlerGraphParsingTimeout.TotalMilliseconds,
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        return await GetGraph(FallbackHttpClient).ConfigureAwait(false);
+
+        async Task<OpenGraph> GetGraph(HttpClient httpClient)
+        {
+            using var cts = cancellationToken.CreateLinkedTokenSource();
+            cts.CancelAfter(Settings.CrawlerGraphParsingTimeout);
+            var html = await httpClient.GetStringAsync(url, cts.Token).ConfigureAwait(false);
+            return OpenGraph.ParseHtml(html);
+        }
     }
 
     private async Task<CrawledLink> CrawlImageLink(string url, CancellationToken cancellationToken)
