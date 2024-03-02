@@ -117,7 +117,7 @@ internal class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBuilder
         }
 
         return new SearchDescriptor<ChatSlice>()
-            .Index(settings.SearchIndexName)
+            .Index(settings.IndexName)
             .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)))
             .Query(query => query
                 .Bool(boolQuery => boolQuery

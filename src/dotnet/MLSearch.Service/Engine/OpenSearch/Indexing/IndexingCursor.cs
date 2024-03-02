@@ -25,7 +25,7 @@ internal class IndexingCursor<TState>(
     public async Task<TState?> Load(Id key, CancellationToken cancellationToken)
     {
         var path = new DocumentPath<TState>(key)
-            .Index(IndexSettings.CursorIndexName);
+            .Index(IndexSettings.IndexName);
         var result = await client.GetAsync<TState>(
                 path,
                 null,
@@ -40,7 +40,7 @@ internal class IndexingCursor<TState>(
     public async Task Save(Id key, TState state, CancellationToken cancellationToken)
     {
         var path = new DocumentPath<TState>(key)
-            .Index(IndexSettings.CursorIndexName);
+            .Index(IndexSettings.IndexName);
         var result = await client.UpdateAsync<TState>(
                 path,
                 e => e.Upsert(state),

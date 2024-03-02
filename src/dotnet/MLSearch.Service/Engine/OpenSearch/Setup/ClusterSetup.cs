@@ -17,8 +17,6 @@ internal class ClusterSetup(
     ITracerSource? tracing
     ) : IModuleInitializer
 {
-    public const string ChatSliceIndexName = "chat-slice";
-
     //private ILogger? _log;
     //private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
     private ClusterSettings? result;
@@ -128,10 +126,9 @@ internal class ClusterSetup(
         // It has to succeed once and only once to setup an OpenSearch cluster.
         // After the initial setup this would never be called again.
         using var _1 = tracing.TraceRegion();
-        var name = ChatSliceIndexName;
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
-        var searchIndexId = settings.IntoFullSearchIndexName(name);
-        var ingestCursorIndexId = settings.IntoFullCursorIndexName(name);
+        var searchIndexId = settings.IntoFullIndexName(IndexNames.ChatSlice);
+        var ingestCursorIndexId = settings.IntoFullIndexName(IndexNames.ChatSliceCursor);
 
         var isSearchIndexExistsResult = await openSearch
             .Indices
@@ -142,7 +139,7 @@ internal class ClusterSetup(
             return;
         }
 
-        var ingestPipelineId = settings.IntoFullIngestPipelineName(name);
+        var ingestPipelineId = settings.IntoFullIngestPipelineName(IndexNames.ChatSlice);
         var modelId = settings.ModelId;
         var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
 
@@ -190,7 +187,7 @@ internal class ClusterSetup(
         ).ConfigureAwait(false);
         if (!ingestResult.Success) {
             throw new InvalidOperationException(
-                $"Failed to update '{name}' ingest pipeline",
+                $"Failed to update '{IndexNames.ChatSlice}' ingest pipeline",
                 ingestResult.OriginalException
             );
         }
@@ -284,7 +281,7 @@ internal class ClusterSetup(
         ).ConfigureAwait(false);
         if (!searchIndexResult.Success) {
             throw new InvalidOperationException(
-                $"Failed to update '{name}'search index",
+                $"Failed to update '{IndexNames.ChatSlice}'search index",
                 searchIndexResult.OriginalException
             );
         }

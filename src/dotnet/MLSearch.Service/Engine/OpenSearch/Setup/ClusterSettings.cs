@@ -8,8 +8,7 @@ public sealed class ClusterSettings(string modelAllConfig, string modelId, int m
 {
     private const string NamePrefix = "ml";
     private const string IngestPipelineNameSuffix = "ingest-pipeline";
-    private const string SearchIndexNameSuffix = "search-index";
-    private const string IngestCursorIndexNameSuffix = "ingest-cursor-index";
+    private const string IndexNameSuffix = "index";
 
     public string ModelId => modelId;
     public int ModelEmbeddingDimension => modelEmbeddingDimension;
@@ -31,18 +30,10 @@ public sealed class ClusterSettings(string modelAllConfig, string modelId, int m
             IngestPipelineNameSuffix,
             UniqueKey);
 
-    public IndexName IntoFullCursorIndexName(string id)
+    public IndexName IntoFullIndexName(string id)
         => string.Join('-',
             NamePrefix,
             id,
-            IngestCursorIndexNameSuffix,
-            UniqueKey
-        );
-
-    public IndexName IntoFullSearchIndexName(string id)
-        => string.Join('-',
-            NamePrefix,
-            id,
-            SearchIndexNameSuffix,
+            IndexNameSuffix,
             UniqueKey);
 }

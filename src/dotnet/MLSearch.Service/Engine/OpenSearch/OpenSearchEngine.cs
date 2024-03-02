@@ -46,7 +46,7 @@ internal class OpenSearchEngine<TDocument>(
         // TODO: support bulk api
         var response = await openSearch.IndexAsync(
                 document,
-                e => e.Index(IndexSettings.SearchIndexName),
+                e => e.Index(IndexSettings.IndexName),
                 cancellationToken
             )
             .ConfigureAwait(true);

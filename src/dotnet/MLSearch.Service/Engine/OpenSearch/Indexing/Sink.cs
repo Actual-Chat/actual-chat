@@ -62,10 +62,10 @@ internal class Sink<TSource, TDocument>(
                         (op, document) =>
                             op
                                 .Pipeline(IndexSettings.IngestPipelineId)
-                                .Index(IndexSettings.SearchIndexName)
+                                .Index(IndexSettings.IndexName)
                                 .Id(document.Id)
                     )
-                    .DeleteMany(deletes, (op, _) => op.Index(IndexSettings.SearchIndexName)),
+                    .DeleteMany(deletes, (op, _) => op.Index(IndexSettings.IndexName)),
                 cancellationToken
             ).ConfigureAwait(false);
         Log.LogErrors(result);
