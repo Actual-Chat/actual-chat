@@ -135,4 +135,3 @@ public sealed partial record ChatEntryDiff() : RecordDiff
         Attachments = entry.Attachments;
     }
 }
-

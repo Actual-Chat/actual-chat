@@ -770,7 +770,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                     BeginsAt = Clocks.SystemClock.Now,
                 };
                 entry = ApplyDiff(entry, update, false);
-                // Injecting mention names into the markup
+                // Inject mention names into the markup
                 entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
                 dbEntry = new DbChatEntry(entry) {
                     HasAttachments = entry.Attachments.Count > 0,
@@ -785,7 +785,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
                 entry = ApplyDiff(dbEntry.ToModel(), update, true) with {
                     Version = VersionGenerator.NextVersion(dbEntry.Version),
                 };
-                // Injecting mention names into the markup
+                // Inject mention names into the markup
                 entry = await chatMarkupHub.PrepareForSave(entry, cancellationToken).ConfigureAwait(false);
                 var hasAttachments = update.Attachments is { Count: > 0 } || dbEntry.HasAttachments;
                 dbEntry.UpdateFrom(entry);
@@ -811,11 +811,10 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
 
         if (entryKind != ChatEntryKind.Text)
             return entry;
-
         if (changeKind == ChangeKind.Remove)
             return entry;
 
-        if (chatId.IsPlaceChat && !chatId.PlaceChatId.IsRoot)
+        if (chatId is { IsPlaceChat: true, PlaceChatId.IsRoot: false })
             await EnsurePlaceChatAuthorExists(entry.AuthorId).ConfigureAwait(false);
 
         if (entry.IsStreaming)
