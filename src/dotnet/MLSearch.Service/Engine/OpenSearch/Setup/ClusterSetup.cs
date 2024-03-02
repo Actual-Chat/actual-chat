@@ -8,9 +8,9 @@ using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
 
-namespace ActualChat.MLSearch.Engine.OpenSearch;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
-internal class OpenSearchClusterSetup(
+internal class ClusterSetup(
     OpenSearchModelGroupName modelGroupName,
     IOpenSearchClient openSearch,
     ILoggerSource? loggerSource,
@@ -21,14 +21,14 @@ internal class OpenSearchClusterSetup(
 
     //private ILogger? _log;
     //private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
-    private OpenSearchClusterSettings? result;
-    public OpenSearchClusterSettings Result => result ?? throw new InvalidOperationException(
+    private ClusterSettings? result;
+    public ClusterSettings Result => result ?? throw new InvalidOperationException(
         "Initialization script was not called."
     );
 
     public Task Initialize(CancellationToken cancellationToken) => EnsureChatSliceIndex(cancellationToken);
 
-    public async Task<OpenSearchClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
+    public async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
     {
         if (result != null) {
             return result;
@@ -117,7 +117,7 @@ internal class OpenSearchClusterSetup(
                 "Failed to retrieve model all_config value."
             );
         }
-        return result = new OpenSearchClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
+        return result = new ClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
     }
     private async Task EnsureChatSliceIndex(CancellationToken cancellationToken)
     {

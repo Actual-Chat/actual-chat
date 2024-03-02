@@ -1,10 +1,13 @@
+using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-public class OpenSearchIndexSettings(string indexName, OpenSearchClusterSettings settings)
+public class IndexSettings(string indexName, ClusterSettings settings)
 {
-    public Id IngestPipelineId { get; } = settings.IntoFullIngestPipelineName(indexName);
+    public string ModelId => settings.ModelId;
+
+    public string IngestPipelineId { get; } = settings.IntoFullIngestPipelineName(indexName);
     public IndexName SearchIndexName { get; } = settings.IntoFullSearchIndexName(indexName);
     public IndexName CursorIndexName { get; } = settings.IntoFullCursorIndexName(indexName);
 }

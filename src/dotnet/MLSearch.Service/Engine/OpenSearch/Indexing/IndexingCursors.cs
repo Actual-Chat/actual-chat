@@ -8,16 +8,19 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 /// directly in the OpenSearch metadata index.
 /// </summary>
 /// <typeparam name="TState">State to store</typeparam>
-public class IndexingCursors<TState>(
+internal class IndexingCursors<TState>(
     IOpenSearchClient client,
-    IndexName metadataIndexName
+    IIndexSettingsSource indexSettingsSource
 )
 where TState: class
 {
+    private IndexSettings? _indexSettings;
+    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings<TState>();
+
     public async Task<TState?> Load(Id key, CancellationToken cancellationToken)
     {
         var path = new DocumentPath<TState>(key)
-            .Index(metadataIndexName);
+            .Index(IndexSettings.CursorIndexName);
         var result = await client.GetAsync<TState>(
                 path,
                 null,
@@ -32,7 +35,7 @@ where TState: class
     public async Task Save(Id key, TState state, CancellationToken cancellationToken)
     {
         var path = new DocumentPath<TState>(key)
-            .Index(metadataIndexName);
+            .Index(IndexSettings.CursorIndexName);
         var result = await client.UpdateAsync<TState>(
                 path,
                 e => e.Upsert(state),

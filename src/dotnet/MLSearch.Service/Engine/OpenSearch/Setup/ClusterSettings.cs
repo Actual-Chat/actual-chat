@@ -2,9 +2,9 @@ using System.Security.Cryptography;
 using System.Text;
 using OpenSearch.Client;
 
-namespace ActualChat.MLSearch.Engine.OpenSearch;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
-public sealed class OpenSearchClusterSettings(string modelAllConfig, string modelId, int modelEmbeddingDimension)
+public sealed class ClusterSettings(string modelAllConfig, string modelId, int modelEmbeddingDimension)
 {
     private const string NamePrefix = "ml";
     private const string IngestPipelineNameSuffix = "ingest-pipeline";

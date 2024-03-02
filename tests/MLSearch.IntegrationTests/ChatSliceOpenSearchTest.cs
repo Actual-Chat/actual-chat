@@ -1,4 +1,3 @@
-using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
@@ -14,38 +13,21 @@ namespace ActualChat.MLSearch.IntegrationTests;
 public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    private const string IndexName = "chat-slice";
-    private static Uri OpenSearchClusterUri => new("http://localhost:9201");
-    private static string OpenSearchModelGroupName => "NLP_model_group";
-    private OpenSearchClient? _client;
-    private OpenSearchClusterSettings? _settings;
-
     protected override async Task InitializeAsync()
-    {
-        Tracer.Default = Out.NewTracer();
-        var connectionSettings = new ConnectionSettings(
-            new SingleNodeConnectionPool(OpenSearchClusterUri),
-            sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
-        _client = new OpenSearchClient(connectionSettings);
-        var setup = new OpenSearchClusterSetup(
-            OpenSearchModelGroupName,
-            _client,
-            null,
-            null
-        );
-        await setup.Initialize(default);
-        _settings = setup.Result;
-        await base.InitializeAsync();
-    }
+        => await base.InitializeAsync();
 
     protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
-        var searchIndexId = _settings!.IntoFullSearchIndexName(IndexName);
-        var pipelineName = _settings.IntoFullIngestPipelineName(IndexName);
+        var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>().GetSettings<ChatSlice>();
+        var searchIndexName = settings.SearchIndexName;
+        var cursorIndexName = settings.CursorIndexName;
+        var pipelineId = settings.IngestPipelineId;
 
-        await _client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{searchIndexId}", CancellationToken.None);
-        await _client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineName}", CancellationToken.None);
+        var client = AppHost.Services.GetRequiredService<IOpenSearchClient>();
+        await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{searchIndexName}", CancellationToken.None);
+        await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{cursorIndexName}", CancellationToken.None);
+        await client.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineId}", CancellationToken.None);
 
         await base.DisposeAsync();
     }
@@ -88,7 +70,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
                 return new ChatSlice(metadata, text);
             });
 
-        var searchEngine = new OpenSearchEngine(_client, _settings, NullLoggerSource.Instance);
+        var searchEngine = AppHost.Services.GetRequiredService<ISearchEngine<ChatSlice>>();
 
         foreach (var document in documents) {
             await searchEngine.Ingest(document, CancellationToken.None);
@@ -100,7 +82,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             Keywords=["command"],
             FreeTextFilter="Tools for mobile development",
         };
-        var queryResult1 = await searchEngine.Find<ChatSlice>(query1, CancellationToken.None);
+        var queryResult1 = await searchEngine.Find(query1, CancellationToken.None);
         Assert.True(queryResult1.Documents.Count > 0);
 
         var metadataField = JsonNamingPolicy.CamelCase.ConvertName(nameof(ChatSlice.Metadata));
@@ -114,7 +96,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             FreeTextFilter="Search engines and technologies",
         };
 
-        var queryResult2 = await searchEngine.Find<ChatSlice>(query2, CancellationToken.None);
+        var queryResult2 = await searchEngine.Find(query2, CancellationToken.None);
         var query2Count = queryResult2.Documents.Count;
         Assert.True(query2Count > 0);
 
@@ -125,7 +107,7 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
             ],
             FreeTextFilter="Search engines and technologies",
         };
-        var queryResult3 = await searchEngine.Find<ChatSlice>(query3, CancellationToken.None);
+        var queryResult3 = await searchEngine.Find(query3, CancellationToken.None);
         var query3Count = queryResult3.Documents.Count;
         Assert.True(query3Count > 0);
         Assert.True(query2Count > query3Count);

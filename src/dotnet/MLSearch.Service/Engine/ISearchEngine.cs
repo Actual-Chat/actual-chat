@@ -1,11 +1,10 @@
 
 namespace ActualChat.MLSearch.Engine;
 
-internal interface ISearchEngine
+internal interface ISearchEngine<TDocument>
+    where TDocument : class
 {
-    Task<SearchResult<TDocument>> Find<TDocument>(SearchQuery query, CancellationToken cancellationToken)
-        where TDocument : class;
+    Task<SearchResult<TDocument>> Find(SearchQuery query, CancellationToken cancellationToken);
 
-    Task Ingest<TDocument>(TDocument document, CancellationToken cancellationToken)
-        where TDocument : class;
+    Task Ingest(TDocument document, CancellationToken cancellationToken);
 }

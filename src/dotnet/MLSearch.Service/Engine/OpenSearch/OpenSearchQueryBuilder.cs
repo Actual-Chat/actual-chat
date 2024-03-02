@@ -3,7 +3,7 @@ using OpenSearch.Client;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
-internal class OpenSearchQueryBuilder(OpenSearchClusterSettings settings, string indexId) : IQueryBuilder
+internal class OpenSearchQueryBuilder(IndexSettings settings) : IQueryBuilder
 {
     private const string EmbeddingFieldName = "event_dense_embedding";
 
@@ -117,7 +117,7 @@ internal class OpenSearchQueryBuilder(OpenSearchClusterSettings settings, string
         }
 
         return new SearchDescriptor<ChatSlice>()
-            .Index(settings.IntoFullSearchIndexName(indexId))
+            .Index(settings.SearchIndexName)
             .Source(src => src.Excludes(excl => excl.Field(EmbeddingFieldName)))
             .Query(query => query
                 .Bool(boolQuery => boolQuery
