@@ -3,4 +3,4 @@ using ActualChat.Hosting;
 
 [assembly: BackendService(nameof(HostRole.SingleServer), ServiceMode.Mixed, Priority = 1)]
 [assembly: BackendService(nameof(HostRole.AudioBackend), ServiceMode.Server)]
-[assembly: BackendClient(nameof(HostRole.AudioBackend))]
+[assembly: BackendClient(nameof(ShardScheme.None))]

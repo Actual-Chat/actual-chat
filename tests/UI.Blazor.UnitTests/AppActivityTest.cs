@@ -1,5 +1,6 @@
 ﻿using ActualChat.Hosting;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Extensions.Hosting;
 
 namespace ActualChat.UI.Blazor.UnitTests;
 
@@ -13,7 +14,7 @@ public class AppActivityTest: TestBase
             .AddSingleton(_ => new HostInfo {
                 HostKind = HostKind.MauiApp,
                 AppKind = AppKind.Ios,
-                Environment = HostInfo.DevelopmentEnvironment,
+                Environment = Environments.Development,
                 IsTested = true,
             })
             .AddSingleton<UIHub>()

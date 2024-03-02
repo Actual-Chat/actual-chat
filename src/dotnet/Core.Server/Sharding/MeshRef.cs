@@ -14,7 +14,10 @@ public readonly struct MeshRef : ICanBeNone<MeshRef>, IEquatable<MeshRef>
 
     public ShardRef ShardRef { get; }
     public NodeRef NodeRef { get; }
+
+    // Computed properties
     public bool IsNone => ShardRef.IsNone && NodeRef.IsNone;
+    public bool IsValid => ShardRef.IsValid || !NodeRef.IsNone;
 
     public MeshRefKind Kind => !ShardRef.IsNone ? MeshRefKind.ShardRef
         : NodeRef.IsNone ? MeshRefKind.None : MeshRefKind.NodeRef;
@@ -64,10 +67,8 @@ public readonly struct MeshRef : ICanBeNone<MeshRef>, IEquatable<MeshRef>
 
     public MeshRef Normalize()
         => ShardRef.IsNone ? this : ShardRef.Normalize();
-    public MeshRef WithNonDefaultSchemeOr(ShardScheme scheme)
-        => ShardRef.IsNone ? this : ShardRef.WithNonDefaultSchemeOr(scheme);
-    public MeshRef WithNonDefaultSchemeOr(ShardScheme scheme, bool normalize)
-        => ShardRef.IsNone ? this : ShardRef.WithNonDefaultSchemeOr(scheme, normalize);
+    public MeshRef WithSchemeIfUndefined(ShardScheme scheme)
+        => ShardRef.IsNone ? this : ShardRef.WithSchemeIfUndefined(scheme);
 
     // Equality
 

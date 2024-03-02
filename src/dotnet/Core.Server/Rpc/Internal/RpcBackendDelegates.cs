@@ -34,7 +34,7 @@ public sealed class RpcBackendDelegates(IServiceProvider services) : RpcServiceB
 
         var meshRefResolver = RpcMeshRefResolvers[methodDef];
         var meshRef = meshRefResolver.Invoke(methodDef, arguments, serverSideServiceDef.ShardScheme);
-        var peerRef = MeshWatcher.GetPeerRef(meshRef).Require();
+        var peerRef = MeshWatcher.GetPeerRef(meshRef).Require(meshRef);
         if (serviceMode == ServiceMode.Mixed) {
             // Mixed mode services expose a client which may route calls to the server on the same node,
             // so the code below speeds up such calls by returning null RpcPeer for them, which makes

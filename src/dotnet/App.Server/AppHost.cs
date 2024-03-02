@@ -81,8 +81,14 @@ public class AppHost : IDisposable
 
     public virtual async Task InvokeDbInitializers(CancellationToken cancellationToken = default)
     {
-        if (Services.HostInfo().IsTested) {
-            // Just to speed up tests
+        var hostInfo = Services.HostInfo();
+#if DEBUG
+        // See MeshLockBase.DefaultLockOptions - locks expire much longer in DEBUG
+        var mustLock = false;
+#else
+        var mustLock = hostInfo.IsTested;
+#endif
+        if (!mustLock) {
             await InvokeDbInitializersUnsafe(cancellationToken).ConfigureAwait(false);
             return;
         }

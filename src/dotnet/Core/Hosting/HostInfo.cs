@@ -5,13 +5,9 @@ namespace ActualChat.Hosting;
 
 public sealed record HostInfo
 {
-    private readonly BoolOption _isProductionInstance = new();
-    private readonly BoolOption _isStagingInstance = new();
-    private readonly BoolOption _isDevelopmentInstance = new();
-
-    public static readonly Symbol ProductionEnvironment = Environments.Production;
-    public static readonly Symbol StagingEnvironment = Environments.Staging;
-    public static readonly Symbol DevelopmentEnvironment = Environments.Development;
+    private Mutable<BaseUrlKind>? _baseUrlKind;
+    private Mutable<bool>? _isProductionInstance;
+    private Mutable<bool>? _isDevelopmentInstance;
 
     public HostKind HostKind { get; init; }
     public AppKind AppKind { get; init; }
@@ -22,9 +18,28 @@ public sealed record HostInfo
     public bool IsTested { get; init; }
     public string BaseUrl { get; init; } = "";
 
-    public bool IsProductionInstance => _isProductionInstance.Value ??= Environment == ProductionEnvironment;
-    public bool IsStagingInstance => _isStagingInstance.Value ??= Environment == StagingEnvironment;
-    public bool IsDevelopmentInstance => _isDevelopmentInstance.Value ??= Environment == DevelopmentEnvironment;
+    // Computed & cached
+    public BaseUrlKind BaseUrlKind => (_baseUrlKind ??= Mutable.New(GetBaseUrlKind(BaseUrl))).Value;
+    public bool IsProductionInstance => (_isProductionInstance ??= Mutable.New(IsProductionEnv())).Value;
+    public bool IsDevelopmentInstance => (_isDevelopmentInstance ??= Mutable.New(IsDevelopmentEnv())).Value;
 
     public bool HasRole(HostRole role) => Roles.Contains(role);
+
+    // Private methods
+
+    private static BaseUrlKind GetBaseUrlKind(string baseUrl)
+    {
+        var host = baseUrl.EnsureSuffix("/").ToUri().Host;
+        return OrdinalIgnoreCaseEquals(host, "actual.chat") ? BaseUrlKind.Production
+            : OrdinalIgnoreCaseEquals(host, "dev.actual.chat") ? BaseUrlKind.Development
+            : OrdinalIgnoreCaseEquals(host, "local.actual.chat") ? BaseUrlKind.Local
+            : BaseUrlKind.Unknown;
+    }
+
+    private bool IsProductionEnv()
+        => OrdinalEquals(Environment.Value, Environments.Production)
+            || (HostKind.IsServer() && BaseUrlKind == BaseUrlKind.Production); // We don't want to mess it up
+
+    private bool IsDevelopmentEnv()
+        => !IsProductionEnv() && OrdinalEquals(Environment.Value, Environments.Development);
 }
