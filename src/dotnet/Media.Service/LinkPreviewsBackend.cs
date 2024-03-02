@@ -160,7 +160,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
 
         var changeTextEntryCmd = new ChatsBackend_ChangeEntry(
             entry.Id,
-            entry.Version,
+            null, // The entry passed here may have an outdated version
             Change.Update(new ChatEntryDiff { LinkPreviewId = linkPreviewId }));
         await Commander.Call(changeTextEntryCmd, true, cancellationToken).ConfigureAwait(false);
         return linkPreview;
