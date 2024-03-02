@@ -3,16 +3,21 @@ using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
+internal interface IIndexingCursor<TState> where TState : class
+{
+    Task<TState?> Load(Id key, CancellationToken cancellationToken);
+    Task Save(Id key, TState state, CancellationToken cancellationToken);
+}
+
 /// <summary>
 /// This class is intended to store a state of a stream
 /// directly in the OpenSearch metadata index.
 /// </summary>
 /// <typeparam name="TState">State to store</typeparam>
-internal class IndexingCursors<TState>(
+internal class IndexingCursor<TState>(
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource
-)
-where TState: class
+) : IIndexingCursor<TState> where TState: class
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings<TState>();

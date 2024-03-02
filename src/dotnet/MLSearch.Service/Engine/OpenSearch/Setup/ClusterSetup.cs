@@ -201,10 +201,10 @@ internal class ClusterSetup(
               {
                 "mappings": {
                     "properties": {
-                        "{{nameof( ChatEntriesIndexing.Cursor.LastEntryVersion)}}": {
+                        "{{nameof(ChatEntriesIndexing.CursorState.LastEntryVersion)}}": {
                             "type": "text"
                         },
-                        "{{nameof(ChatEntriesIndexing.Cursor.LastEntryLocalId)}}": {
+                        "{{nameof(ChatEntriesIndexing.CursorState.LastEntryLocalId)}}": {
                             "type": "text"
                         }
                     }

@@ -85,25 +85,14 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             .AddAlias<IModuleInitializer, ClusterSetup>();
 
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();
+        // ChatSlice engine registrations
         services.AddSingleton<ISearchEngine<ChatSlice>, OpenSearchEngine<ChatSlice>>();
 
-        services.AddTransient<ChatEntriesIndexing>(
-            e => new ChatEntriesIndexing(
-                chats: e.GetRequiredService<IChatsBackend>(),
-                cursors: new IndexingCursors<ChatEntriesIndexing.Cursor>(
-                    e.GetRequiredService<IOpenSearchClient>(),
-                    e.GetRequiredService<IIndexSettingsSource>()
-                ),
-                sink: new Sink<ChatEntry, ChatEntry>(
-                    e.GetRequiredService<IOpenSearchClient>(),
-                    e.GetRequiredService<IIndexSettingsSource>(),
-                    ChatSliceExt.IntoIndexedDocument,
-                    ChatSliceExt.IntoDocumentId,
-                    e.GetRequiredService<ILoggerSource>()
-                ),
-                loggerSource: e.GetRequiredService<ILoggerSource>()
-            )
-        );
+        services.AddSingleton(typeof(IIndexingCursor<>), typeof(IndexingCursor<>));
+        services.AddSingleton<ISink<ChatEntry>, Sink<ChatEntry, ChatSlice>>();
+        services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
+        services.AddTransient<ChatEntriesIndexing>();
+
         services.AddShardScheme(HostRole.MLSearchIndexing, shardCount: 12);
         services.AddKeyedSingleton<ShardWorkerFunc>(
             "OpenSearch Chat Index",

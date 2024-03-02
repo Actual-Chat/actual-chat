@@ -6,8 +6,8 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
 internal class ChatEntriesIndexing(
     IChatsBackend chats,
-    IndexingCursors<ChatEntriesIndexing.Cursor> cursors,
-    Sink<ChatEntry, ChatEntry> sink,
+    IIndexingCursor<ChatEntriesIndexing.CursorState> indexingCursor,
+    ISink<ChatEntry> sink,
     ILoggerSource loggerSource
 )
 {
@@ -18,8 +18,8 @@ internal class ChatEntriesIndexing(
 
     private Channel<MLSearch_TriggerContinueChatIndexing>? _channel;
     private IChatsBackend Chats => chats;
-    private Sink<ChatEntry, ChatEntry> Sink => sink;
-    private IndexingCursors<Cursor> Cursors => cursors;
+    private ISink<ChatEntry> Sink => sink;
+    private IIndexingCursor<CursorState> Cursor => indexingCursor;
 
     protected virtual Channel<MLSearch_TriggerContinueChatIndexing> TriggersChannel {
         get {
@@ -30,7 +30,7 @@ internal class ChatEntriesIndexing(
 
     public ChannelWriter<MLSearch_TriggerContinueChatIndexing> Trigger => TriggersChannel.Writer;
 
-    private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
+    private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, CursorState cursor, CancellationToken cancellationToken)
     {
         // Note: Copied from IndexingQueue
         var result = new List<ChatEntry>();
@@ -55,7 +55,7 @@ internal class ChatEntriesIndexing(
         return result;
     }
 
-    private async Task<(IList<ChatEntry> updates, IList<ChatEntry> deletes)> ListUpdatedAndRemovedEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
+    private async Task<(IList<ChatEntry> updates, IList<ChatEntry> deletes)> ListUpdatedAndRemovedEntries(ChatId chatId, CursorState cursor, CancellationToken cancellationToken)
     {
         // Note: Copied from IndexingQueue
         var updates = new List<ChatEntry>();
@@ -82,7 +82,7 @@ internal class ChatEntriesIndexing(
 
     private async Task<IndexingResult> IndexNext(ChatId chatId, CancellationToken cancellationToken)
     {
-        var state = await Cursors.Load(
+        var state = await Cursor.Load(
             IdOf(chatId),
             cancellationToken
             )
@@ -104,10 +104,10 @@ internal class ChatEntriesIndexing(
             // This is a simple logic to determine the end of changes currently available.
             return new IndexingResult(IsEndReached: true);
         }
-        await Sink.Execute(creates.Concat(updates), deletes, cancellationToken)
+        await Sink.ExecuteAsync(creates.Concat(updates), deletes, cancellationToken)
             .ConfigureAwait(false);
-        var next = new Cursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
-        await Cursors.Save(IdOf(chatId), next, cancellationToken).ConfigureAwait(false);
+        var next = new CursorState(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
+        await Cursor.Save(IdOf(chatId), next, cancellationToken).ConfigureAwait(false);
         return new IndexingResult(IsEndReached: false);
     }
 
@@ -145,11 +145,11 @@ internal class ChatEntriesIndexing(
 
     private Id IdOf(ChatId chatId) => new (chatId);
 
-    private Cursor NewFor(ChatId chatId)
+    private CursorState NewFor(ChatId chatId)
         => new (0, 0);
 
     internal record IndexingResult(bool IsEndReached);
 
-    internal record Cursor(long LastEntryLocalId, long LastEntryVersion);
+    internal record CursorState(long LastEntryLocalId, long LastEntryVersion);
 
 }
