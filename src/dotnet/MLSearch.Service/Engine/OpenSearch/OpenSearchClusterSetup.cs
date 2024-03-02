@@ -3,7 +3,7 @@ using OpenSearch.Client;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
+using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
@@ -130,7 +130,7 @@ internal class OpenSearchClusterSetup(
         using var _1 = tracing.TraceRegion();
         var name = ChatSliceIndexName;
         var settings = await RetrieveClusterSettingsAsync(cancellationToken).ConfigureAwait(false);
-        var searchIndexId = settings.IntoFullSearchIndexId(name);
+        var searchIndexId = settings.IntoFullSearchIndexName(name);
         var ingestCursorIndexId = settings.IntoFullCursorIndexName(name);
 
         var isSearchIndexExistsResult = await openSearch
@@ -142,7 +142,7 @@ internal class OpenSearchClusterSetup(
             return;
         }
 
-        var ingestPipelineId = settings.IntoFullIngestPipelineId(name);
+        var ingestPipelineId = settings.IntoFullIngestPipelineName(name);
         var modelId = settings.ModelId;
         var modelDimension = settings.ModelEmbeddingDimension.ToString("D", CultureInfo.InvariantCulture);
 

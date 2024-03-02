@@ -41,8 +41,8 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     protected override async Task DisposeAsync()
     {
         Tracer.Default = Tracer.None;
-        var searchIndexId = _settings!.IntoFullSearchIndexId(IndexName);
-        var pipelineName = _settings.IntoFullIngestPipelineId(IndexName);
+        var searchIndexId = _settings!.IntoFullSearchIndexName(IndexName);
+        var pipelineName = _settings.IntoFullIngestPipelineName(IndexName);
 
         await _client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/{searchIndexId}", CancellationToken.None);
         await _client!.LowLevel.DoRequestAsync<StringResponse>(HttpMethod.DELETE, $"/_ingest/pipeline/{pipelineName}", CancellationToken.None);

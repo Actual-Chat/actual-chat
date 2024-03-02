@@ -1,10 +1,8 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.ApiAdapters;
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Spout;
 using OpenSearch.Client;
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
 internal class ChatEntriesIndexing(
     IChatsBackend chats,

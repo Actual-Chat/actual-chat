@@ -1,5 +1,5 @@
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Spout;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing.Spout;
 
 
 // Note: solution drawback

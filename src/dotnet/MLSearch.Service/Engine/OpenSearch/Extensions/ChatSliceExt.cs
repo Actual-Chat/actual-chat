@@ -2,7 +2,7 @@ using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using OpenSearch.Client;
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
 internal static class ChatSliceExt
 {

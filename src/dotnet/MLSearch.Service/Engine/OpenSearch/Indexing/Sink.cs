@@ -1,10 +1,9 @@
 using ActualChat.MLSearch.ApiAdapters;
 using OpenSearch.Client;
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
 // Note: Sink implementation requirements.
 // Since Sink api executed on top of bulk actions

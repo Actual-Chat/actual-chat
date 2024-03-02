@@ -7,9 +7,9 @@ using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Extensions;
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
-using ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Spout;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
+using ActualChat.MLSearch.Engine.OpenSearch.Indexing.Spout;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
 using OpenSearch.Client;
@@ -93,9 +93,9 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                     e.GetRequiredService<OpenSearchClusterSettings>()
                         .IntoFullCursorIndexName(OpenSearchClusterSetup.ChatSliceIndexName)
                 ),
-                sink: new ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing.Sink<ChatEntry, ChatEntry>(
+                sink: new Sink<ChatEntry, ChatEntry>(
                     e.GetRequiredService<IOpenSearchClient>(),
-                    e.GetRequiredService<OpenSearchClusterSettings>().IntoFullSearchIndexId(OpenSearchClusterSetup.ChatSliceIndexName),
+                    e.GetRequiredService<OpenSearchClusterSettings>().IntoFullSearchIndexName(OpenSearchClusterSetup.ChatSliceIndexName),
                     e.GetRequiredService<OpenSearchClusterSettings>().IntoFullIngestPipelineName(OpenSearchClusterSetup.ChatSliceIndexName),
                     ChatSliceExt.IntoIndexedDocument,
                     ChatSliceExt.IntoDocumentId,

@@ -43,7 +43,7 @@ internal class OpenSearchEngine(IOpenSearchClient openSearch, OpenSearchClusterS
         // TODO: index id must be a parameter
         var response = await openSearch.IndexAsync(
                 document,
-                e => e.Index(settings.IntoFullSearchIndexId("chat-slice")),
+                e => e.Index(settings.IntoFullSearchIndexName("chat-slice")),
                 cancellationToken
             )
             .ConfigureAwait(true);

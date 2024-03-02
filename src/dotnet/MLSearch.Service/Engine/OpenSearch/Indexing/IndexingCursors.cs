@@ -1,7 +1,7 @@
 using OpenSearch.Client;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
-namespace ActualChat.MLSearch.SearchEngine.OpenSearch.Indexing;
+namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 
 /// <summary>
 /// This class is intended to store a state of a stream
