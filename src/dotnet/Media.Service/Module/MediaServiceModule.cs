@@ -62,6 +62,8 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
         // Services used in SingleHost or Server modes only
         services.AddHttpClient(nameof(LinkPreviewsBackend))
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("ActualChat-Bot", "0.1")));
+        services.AddHttpClient(nameof(LinkPreviewsBackend) + ".fallback")
+            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.Add(new ("googlebot", null)));
         services.AddSingleton<Crawler>();
     }
 }
