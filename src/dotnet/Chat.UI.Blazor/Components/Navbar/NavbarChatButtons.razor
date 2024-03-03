@@ -1,4 +1,4 @@
-﻿@using ActualChat.Media;
+@using ActualChat.Media;
 @using ActualChat.Chat.UI.Blazor.Module
 @using ActualChat.Kvas;
 @namespace ActualChat.Chat.UI.Blazor.Components
@@ -17,8 +17,6 @@
         <NavbarGroupSelectionButton
             @key="@chatInfo.Id"
             data-chat-id="@chatInfo.Id"
-            data-menu="@(MenuRef.New<ChatMenu>(chatInfo.Id, ChatListKind.All.Format()).ToString())"
-            data-menu-placement="@(FloatingPosition.Right.ToPositionString())"
             Title="@chatInfo.Chat.Title"
             Id="@chatInfo.Id">
             <ChildContent>
