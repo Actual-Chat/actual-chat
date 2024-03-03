@@ -1,5 +1,6 @@
 import { Subject } from 'rxjs';
 import Sortable, { SortableEvent } from 'sortablejs';
+import { DeviceInfo } from 'device-info';
 
 export class NavbarChatButtons {
     private readonly disposed$: Subject<void> = new Subject<void>();
@@ -14,17 +15,28 @@ export class NavbarChatButtons {
     constructor(list: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.list = list;
         this.blazorRef = blazorRef;
-        this.sortable = Sortable.create(
-            this.list,
-            {
+
+        const options: Sortable.Options = DeviceInfo.isMobile
+            ? {
                 animation: 150,
-                delay: 100,
+                delay: 500,
+                dragClass: 'sortable-target',
+                chosenClass: 'sortable-target',
                 delayOnTouchOnly: true,
                 onUpdate: (_: SortableEvent) => {
                     const chats = Array.from(this.list.children).map((x: HTMLElement) => x.dataset['chatId']);
                     void this.blazorRef.invokeMethodAsync('OnOrderChanged', chats);
-                }
-            });
+                },
+            }
+            : {
+                animation: 150,
+                handle: '.c-dots',
+                onUpdate: (_: SortableEvent) => {
+                    const chats = Array.from(this.list.children).map((x: HTMLElement) => x.dataset['chatId']);
+                    void this.blazorRef.invokeMethodAsync('OnOrderChanged', chats);
+                },
+            };
+        this.sortable = Sortable.create(this.list, options);
     }
 
     public dispose() {
