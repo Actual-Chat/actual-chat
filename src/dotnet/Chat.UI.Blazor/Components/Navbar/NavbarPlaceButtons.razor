@@ -10,6 +10,10 @@
     var size = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
 }
 
+@if (places.Any() || previewPlace != null) {
+    <div class=c-delimiter></div>
+}
+
 <div @ref="Ref" class="navbar-place-buttons">
     @if (previewPlace != null) {
         <NavbarGroupSelectionButton
