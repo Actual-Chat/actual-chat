@@ -39,6 +39,7 @@
     @apply absolute z-10 left-1;
     @apply hidden;
     @apply opacity-50;
+    @apply cursor-move;
 }
 .navbar-button:hover > .c-dots {
     @apply lg:flex;
@@ -198,4 +199,7 @@ body.narrow .navbar-button.ghost-btn .btn.btn-square .navbar-button-content.btn-
     100% {
         transform: rotate(0);
     }
+}
+.sortable-target {
+    animation: twitch 200ms 2 forwards;
 }
