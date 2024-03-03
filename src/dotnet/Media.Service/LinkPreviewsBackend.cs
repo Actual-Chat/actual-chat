@@ -3,7 +3,6 @@ using ActualChat.Chat.Events;
 using ActualChat.Media.Db;
 using ActualChat.Media.Module;
 using ActualChat.Mesh;
-using ActualChat.Redis;
 using Microsoft.EntityFrameworkCore;
 using ActualLab.Fusion.EntityFramework;
 
@@ -66,10 +65,16 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (id.IsEmpty)
             return null;
 
-        var (wasRun, result) = await MeshLocks
-            .TryRun(ct => RefreshUnsafe(id, url, ct), ToRedisKey(id), cancellationToken)
+        var lockHolder = await MeshLocks.TryLock(ToRedisKey(id),
+                "",
+                new MeshLockOptions(Settings.CrawlingTimeout),
+                cancellationToken)
             .ConfigureAwait(false);
-        return !wasRun ? LinkPreview.UseExisting : result;
+        if (lockHolder == null)
+            return LinkPreview.UseExisting;
+
+        await using var __ = lockHolder.ConfigureAwait(false);
+        return await RefreshUnsafe(id, url, cancellationToken).ConfigureAwait(false);
     }
 
     // [EventHandler]
