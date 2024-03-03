@@ -2,7 +2,6 @@ Near term:
 
 Infrastructure:
 - Add RpcMonitor
-- Remove Kubernetes project
 
 Potential fixes:
 - [DF] Check share behavior + get rid of activity state persistence on Android

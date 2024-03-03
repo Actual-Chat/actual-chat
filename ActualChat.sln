@@ -230,8 +230,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{FC821FB9-9
 	ProjectSection(SolutionItems) = preProject
 		docs\Places.md = docs\Places.md
 		docs\Search.md = docs\Search.md
-		docs\Tasks.md = docs\Tasks.md
 		docs\SmallTasks.md = docs\SmallTasks.md
+		docs\BigTasks.md = docs\BigTasks.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "svg2font", "svg2font", "{69BADAEC-4FA5-48E1-91DE-26A4F2F3DE10}"

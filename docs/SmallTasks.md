@@ -1,3 +1,9 @@
+Places:
+- [Andrey] Fix "Share" & "Forward" views (there is no vertical padding in places bar)
+- Fix duplicate author ID bug
+- [AY] Make Chat -> Place migration available for everyone
+    - Implement a common API for object upgrade/migration
+
 Audio and transcription:
 - Add in-memory buffering: sometimes the beginning of your phrase isn't transcribed due to VAD / disconnect
 - Investigate why the transcript is sometimes wiped out / gets rewritten
@@ -10,8 +16,6 @@ Onboarding:
 - Add "[Your Last Name] Clan" (+ ask Grisha to come up with an icon)
 
 Chat:
-- [AY] Make Chat -> Place migration available for everyone
-  - Implement a common API for object upgrade/migration 
 - Your own author should be the first one in Members list
 - Show bios in Members list
 - Show anonymous chat members as a single "group" while their count is < 5 -- unless it's a peer chat
@@ -34,3 +38,4 @@ iOS/Android:
 Infrastructure / codebase:
 - SettingsPanel / SettingsTab - make sure they inherit or use TabPanel / Tab
 - SharedResourcePool must be IAsyncDisposable
+- Remove Kubernetes project?
