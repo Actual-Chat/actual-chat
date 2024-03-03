@@ -8,6 +8,10 @@
     var chats = m.Chats;
 }
 
+@if (chats.Any()) {
+    <div class=c-delimiter></div>
+}
+
 <div @ref="Ref" class="navbar-chat-buttons">
     @foreach (var chatInfo in chats) {
         <NavbarGroupSelectionButton
