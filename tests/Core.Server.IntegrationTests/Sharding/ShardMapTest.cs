@@ -15,7 +15,7 @@ public class ShardMapTest(ITestOutputHelper @out) : TestBase(@out)
 
     private void Test(int averageNodeCount)
     {
-        var nodeRoles = HostRoles.Server.GetAllRoles(HostRole.BackendServer);
+        var nodeRoles = HostRoles.Server.GetAllRoles(HostRole.OneBackendServer);
         var rnd = new Random(15 + averageNodeCount);
         var nodes = new List<MeshNode>();
         for (var i = 0; i < 200; i++) {

@@ -33,7 +33,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         redisModule.AddRedisDb<StreamingContext>(services, Settings.Redis);
 
         // SignalR hub & related services
-        if (HostInfo.HasRole(HostRole.FrontendServer)) {
+        if (HostInfo.HasRole(HostRole.Api)) {
             var signalR = services.AddSignalR(options => {
                 options.StreamBufferCapacity = 20;
                 options.EnableDetailedErrors = false;
@@ -48,7 +48,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<AudioSegmentSaver>();
             services.AddSingleton<StreamingBackend.Options>();
         }
-        rpcHost.AddFrontend<IStreamServer, StreamServer>();
+        rpcHost.AddApiService<IStreamServer, StreamServer>();
         rpcHost.AddBackend<IStreamingBackend, StreamingBackend>();
         services.AddSingleton<IStreamClient, StreamBackendClient>();
         services.AddSingleton<AudioDownloader, LocalAudioDownloader>();

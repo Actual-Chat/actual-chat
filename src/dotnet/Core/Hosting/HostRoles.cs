@@ -8,9 +8,9 @@ public static class HostRoles
     public static class Server
     {
         private static readonly HashSet<HostRole> ParsableRoles = [
-            HostRole.SingleServer,
-            HostRole.FrontendServer,
-            HostRole.BackendServer,
+            HostRole.OneServer,
+            HostRole.OneApiServer,
+            HostRole.OneBackendServer,
         ];
         private static readonly Dictionary<string, HostRole> ParsableRoleByValue = ParsableRoles
             .Select(x => new KeyValuePair<string, HostRole>(x.Value, x))
@@ -22,16 +22,22 @@ public static class HostRoles
 
         public static HashSet<HostRole> GetAllRoles(HostRole role)
         {
-            role = role.IsNone ? HostRole.SingleServer : role;
+            role = role.IsNone ? HostRole.OneServer : role;
             var roles = new HashSet<HostRole>() { role, HostRole.AnyServer };
 
-            if (roles.Contains(HostRole.SingleServer)) {
-                roles.Add(HostRole.FrontendServer);
-                roles.Add(HostRole.BackendServer);
+            if (roles.Contains(HostRole.OneServer)) {
+                roles.Add(HostRole.OneApiServer);
+                roles.Add(HostRole.OneBackendServer);
             }
-            if (roles.Contains(HostRole.FrontendServer))
+
+            // Api roles
+            if (roles.Contains(HostRole.OneApiServer))
+                roles.Add(HostRole.Api);
+            if (roles.Contains(HostRole.Api))
                 roles.Add(HostRole.BlazorHost);
-            if (roles.Contains(HostRole.BackendServer)) {
+
+            // Backend roles
+            if (roles.Contains(HostRole.OneBackendServer)) {
                 roles.Add(HostRole.AudioBackend);
                 roles.Add(HostRole.MediaBackend);
                 roles.Add(HostRole.DefaultQueue);

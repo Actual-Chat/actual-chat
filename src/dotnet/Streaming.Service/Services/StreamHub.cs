@@ -15,7 +15,7 @@ public class StreamHub(IServiceProvider services) : Hub
 {
     private static readonly Task<string> PongTask = Task.FromResult("Pong");
 
-    private readonly bool _preferMeshNode = services.HostInfo().HasRole(HostRole.SingleServer);
+    private readonly bool _preferMeshNode = services.HostInfo().HasRole(HostRole.OneServer);
 
     private MeshNode MeshNode { get; } = services.MeshNode();
     private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();

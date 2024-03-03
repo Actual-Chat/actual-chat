@@ -9,12 +9,18 @@ public static class CommandLineHandler
     private const string RoleArgPrefix = "-role:";
     private const string KeyboardArg = "-kb";
     private const string MultiHostRoleArgPrefix = "-multihost-role:";
+    private const string RoleGroupDelimiter = ":";
     private const string UrlsEnvVar = "URLS";
     private const string ServerRoleEnvVar = "HostSettings__ServerRole";
-    private static readonly HostRole[] AllRoles = [
-        HostRole.FrontendServer,
-        HostRole.BackendServer,
-    ];
+
+    private static readonly Dictionary<Symbol, HostRole[]> AllRoleGroups = new() {
+        { "1", [HostRole.OneServer] },
+        { "2", [HostRole.OneApiServer, HostRole.OneBackendServer] },
+    };
+    private static Symbol RoleGroupName { get; set; } = "1";
+    private static int OwnRoleIndex { get; set; } = -1;
+    private static HostRole[] RoleGroup => AllRoleGroups[RoleGroupName];
+    private static HostRole OwnRole => RoleGroup[OwnRoleIndex];
 
     public static void Process(string[] args)
     {
@@ -30,58 +36,58 @@ public static class CommandLineHandler
             Environment.SetEnvironmentVariable(UrlsEnvVar, urlOverride);
         }
 
-        // -role:<role> argument
-        var roleOverride = args
-            .Select(x => x.OrdinalStartsWith(RoleArgPrefix) ? x[RoleArgPrefix.Length..].Trim() : null)
-            .Select(HostRoles.Server.Parse)
-            .SingleOrDefault(x => !x.IsNone);
-        if (!roleOverride.IsNone) {
-            WriteLine($"Role override: {roleOverride}");
-            Environment.SetEnvironmentVariable(ServerRoleEnvVar, roleOverride.Value);
-        }
+        // -multihost-role:<role-group>:<own-role> argument
+        var multihostMode = TryParseRoleArgument(args, MultiHostRoleArgPrefix);
+        // -role:<role-group>:<own-role> argument
+        if (TryParseRoleArgument(args, RoleArgPrefix)) {
+            if (multihostMode)
+                throw StandardError.CommandLine($"{RoleArgPrefix} and {MultiHostRoleArgPrefix} can't be used together.");
 
-        // "-multihost-role:<role>" argument
-        var ownRole = args
-            .Select(x => x.OrdinalStartsWith(MultiHostRoleArgPrefix) ? x[MultiHostRoleArgPrefix.Length..].Trim().NullIfEmpty() : null)
-            .Select(HostRoles.Server.Parse)
-            .SingleOrDefault(x => !x.IsNone);
-        if (ownRole.IsNone) {
-            if (useKeyboard) {
-                var (host1, defaultPort1) = GetDefaultHostAndPort();
-                _ = WatchKeyboard(host1, defaultPort1, useKeyboard);
-            }
-            return;
+            WriteLine($"Role override: {OwnRole} of role group '{RoleGroupName}'.");
+            Environment.SetEnvironmentVariable(ServerRoleEnvVar, OwnRole.Value);
+            if (!useKeyboard)
+                return;
         }
-
-        var ownRoleIndex = Array.IndexOf(AllRoles, ownRole);
-        if (ownRoleIndex < 0)
-            throw StandardError.Configuration($"Invalid {MultiHostRoleArgPrefix} argument value.");
 
         var (host, defaultPort) = GetDefaultHostAndPort();
-        var ownUrl = GetUrl(ownRoleIndex);
-        WriteLine($"MultiHost mode. Own role: {ownRole} @ {ownUrl}");
-
-        for (var roleIndex = 0; roleIndex < AllRoles.Length; roleIndex++) {
-            var role = AllRoles[roleIndex];
-            if (role == ownRole)
-                continue;
-
-            LaunchAppHost(role, host, defaultPort + roleIndex, useKeyboard);
+        if (multihostMode) {
+            var ownUrl = $"http://{host}:{defaultPort + OwnRoleIndex}";
+            WriteLine($"MultiHost mode. Own role: {OwnRole} of role group '{RoleGroupName}' @ {ownUrl}");
+            for (var roleIndex = 0; roleIndex < RoleGroup.Length; roleIndex++) {
+                if (roleIndex != OwnRoleIndex)
+                    LaunchAppHost(RoleGroup[roleIndex], host, defaultPort + roleIndex, useKeyboard);
+            }
+            // In the very end: set env. vars to own role vars
+            Environment.SetEnvironmentVariable(UrlsEnvVar, ownUrl);
+            Environment.SetEnvironmentVariable(ServerRoleEnvVar, OwnRole.Value);
         }
-
-        // In the very end: set env. vars to own role vars
-        Environment.SetEnvironmentVariable(UrlsEnvVar, ownUrl);
-        Environment.SetEnvironmentVariable(ServerRoleEnvVar, ownRole.Value);
 
         if (useKeyboard)
             _ = WatchKeyboard(host, defaultPort, useKeyboard);
-        return;
-
-        string GetUrl(int roleIndex)
-            => $"http://{host}:{defaultPort + roleIndex}";
     }
 
     // Private methods
+
+    private static bool TryParseRoleArgument(string[] args, string argPrefix)
+    {
+        var value = args
+            .Select(x => x.OrdinalStartsWith(argPrefix) ? x[argPrefix.Length..].Trim().NullIfEmpty() : null)
+            .SingleOrDefault(x => !x.IsNullOrEmpty());
+        if (value.IsNullOrEmpty())
+            return false;
+
+        if (value.Split(RoleGroupDelimiter) is not [ var roleGroupName, var sOwnRole ])
+            throw StandardError.CommandLine($"invalid argument: {argPrefix}{value} - <role-group>:<role-name> expected.");
+        if (!AllRoleGroups.ContainsKey(roleGroupName))
+            throw StandardError.CommandLine($"invalid argument: {argPrefix}{value} - no role group '{roleGroupName}'.");
+
+        RoleGroupName = roleGroupName; // This changes RoleGroup
+        OwnRoleIndex = Array.IndexOf(RoleGroup, sOwnRole); // This changes OwnRole
+        if (OwnRoleIndex < 0)
+            throw StandardError.CommandLine($"invalid argument: {argPrefix}{value} - role group '{roleGroupName}' doesn't contain '{sOwnRole}' role.");
+
+        return true;
+    }
 
     private static (string Host, int Port) GetDefaultHostAndPort()
     {
@@ -98,7 +104,7 @@ public static class CommandLineHandler
         var startInfo = new ProcessStartInfo("cmd.exe") {
             ArgumentList = {
                 "/C", "start", "/D", Environment.CurrentDirectory, Environment.ProcessPath!,
-                RoleArgPrefix + role.Value,
+                $"{RoleArgPrefix}{RoleGroupName}{RoleGroupDelimiter}{role.Value}",
                 UrlArgPrefix + url,
                 useKeyboard ? KeyboardArg : "",
             },
@@ -108,7 +114,7 @@ public static class CommandLineHandler
     }
 
     private static async Task WatchKeyboard(string host, int defaultPort, bool useKeyboard) {
-        var port = defaultPort + AllRoles.Length;
+        var port = defaultPort + RoleGroup.Length;
         while (true) {
             if (!KeyAvailable) {
                 await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
@@ -119,8 +125,8 @@ public static class CommandLineHandler
             if (key is < '0' or > '9')
                 continue;
 
-            var role = AllRoles.GetValueOrDefault(key - '0');
-            if (role.IsNone || role == HostRole.FrontendServer)
+            var role = RoleGroup.GetValueOrDefault(key - '0');
+            if (role.IsNone || role == HostRole.OneApiServer)
                 continue;
 
             LaunchAppHost(role, host, port++, useKeyboard);

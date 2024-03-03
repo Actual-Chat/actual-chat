@@ -54,7 +54,7 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostMo
         rpcHost.AddBackend<IMediaBackend, MediaBackend>();
 
         // Links
-        rpcHost.AddFrontend<IMediaLinkPreviews, MediaLinkPreviews>();
+        rpcHost.AddApiService<IMediaLinkPreviews, MediaLinkPreviews>();
         rpcHost.AddBackend<ILinkPreviewsBackend, LinkPreviewsBackend>();
         if (isBackendClient)
             return;
