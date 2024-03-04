@@ -75,7 +75,11 @@ public sealed partial record SearchBackend_ChatContactBulkIndex(
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
-public sealed partial record SearchBackend_StartUserContactIndexing : ICommand<Unit>, IBackendCommand;
+public sealed partial record SearchBackend_StartUserContactIndexing : ICommand<Unit>, IBackendCommand, IHasShardKey<Unit>
+{
+    [IgnoreDataMember, MemoryPackIgnore]
+    public Unit ShardKey => Unit.Default;
+}
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
