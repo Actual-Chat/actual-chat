@@ -31,7 +31,7 @@ RUN apt update \
 
 WORKDIR /src
 COPY lib/ lib/
-COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.CI.slnf ActualChat.sln ./
+COPY nuget.config Directory.Build.* Directory.Packages.props .editorconfig ActualChat.sln ./
 COPY .config/ .config/
 # copy from {repoRoot}/src/dotnet/
 COPY src/dotnet/*/*.csproj ./
