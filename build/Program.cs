@@ -28,6 +28,7 @@ internal static class Program
         public const string GenerateVersion = "generate-version";
         public const string GenerateCISolutionFilter = "slnf";
         public const string IntegrationTests = "integration-tests";
+        public const string SlowTests = "slow-tests";
         public const string CleanTests = "clean-tests";
         public const string Tests = "tests";
         public const string Build = "build";
@@ -154,26 +155,6 @@ internal static class Program
             }
         });
 
-        Target(Targets.UnitTests,
-            async () => {
-                await Cli.Wrap(dotnet)
-                    .WithArguments("test",
-                        "ActualChat.CI.slnf",
-                        "--nologo",
-                        "--filter \"FullyQualifiedName~UnitTests\"",
-                        "--no-restore",
-                        "--blame-hang",
-                        "--blame-hang-timeout 60s",
-                        "--logger \"console;verbosity=detailed\"",
-                        "--logger \"trx;LogFileName=Results.trx\"",
-                        Utils.GithubLogger(),
-                        $"-c {configuration} "
-                    )
-                    .ToConsole()
-                    .ExecuteBufferedAsync(cancellationToken)
-                    .Task.ConfigureAwait(false);
-            });
-
         Target(Targets.GenerateVersion, async () => {
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments("nbgv get-version --format json")
@@ -248,23 +229,11 @@ internal static class Program
 
         Target(Targets.GenerateCISolutionFilter, SolutionFilterGenerator.Generate);
 
-        Target(Targets.IntegrationTests, async () => {
-            await Cli.Wrap(dotnet)
-                .WithArguments("test",
-                    "ActualChat.CI.slnf",
-                    "--nologo",
-                    "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests\"",
-                    "--no-restore",
-                    "--blame-hang",
-                    "--blame-hang-timeout 300s",
-                    "--logger \"console;verbosity=detailed\"",
-                    "--logger \"trx;LogFileName=Results.trx\"",
-                    Utils.GithubLogger(),
-                    $"-c {configuration}")
-                .ToConsole()
-                .ExecuteBufferedAsync(cancellationToken)
-                .Task.ConfigureAwait(false);
-        });
+        Target(Targets.UnitTests, () => RunTests("FullyQualifiedName~UnitTests", 60));
+
+        Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow", 300));
+
+        Target(Targets.SlowTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow", 300));
 
         Target(Targets.CleanTests, () => {
             FileExt.Remove("artifacts/tests/output");
@@ -405,7 +374,6 @@ internal static class Program
             return 1;
         }
 
-
         static void SetEnvVariables()
         {
             Environment.SetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", "1");
@@ -434,6 +402,23 @@ internal static class Program
             }
             Console.Write("\n");
         }
+
+        Task<BufferedCommandResult> RunTests(string filter, int timeoutSec)
+            => Cli.Wrap(dotnet)
+                .WithArguments("test",
+                    "ActualChat.CI.slnf",
+                    "--nologo",
+                    $"--filter \"{filter}\"",
+                    "--no-restore",
+                    "--blame-hang",
+                    $"--blame-hang-timeout {timeoutSec}s",
+                    "--logger \"console;verbosity=detailed\"",
+                    "--logger \"trx;LogFileName=Results.trx\"",
+                    Utils.GithubLogger(),
+                    $"-c {configuration}")
+                .ToConsole()
+                .ExecuteBufferedAsync(cancellationToken)
+                .Task;
     }
 }
 

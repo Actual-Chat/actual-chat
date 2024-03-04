@@ -259,6 +259,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		.github\workflows\build-monitor.yml = .github\workflows\build-monitor.yml
 		.github\workflows\build-test-deploy-dev.yml = .github\workflows\build-test-deploy-dev.yml
 		.github\workflows\create-release-branch.yml = .github\workflows\create-release-branch.yml
+		.github\workflows\build-test-slow.yml = .github\workflows\build-test-slow.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Contacts.UI.Blazor", "src\dotnet\Contacts.UI.Blazor\Contacts.UI.Blazor.csproj", "{7C92432E-7ED8-436B-974B-7F077C7E4A86}"

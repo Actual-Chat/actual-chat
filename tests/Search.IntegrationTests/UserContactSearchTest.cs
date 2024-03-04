@@ -5,6 +5,7 @@ using ActualChat.Users;
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection))]
+[Trait("Category", "Slow")]
 public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
@@ -60,7 +61,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await _tester.DisposeAsync().AsTask();
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldFindAddedUsers()
     {
         // arrange
@@ -104,7 +105,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
             ));
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldFindUpdatedUsers()
     {
         // arrange
@@ -147,7 +148,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
             ));
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldNotFindDeletedUsers()
     {
         // arrange

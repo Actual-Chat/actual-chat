@@ -1,0 +1,150 @@
+name: Run slow tests
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  create:
+  push:
+    branches:
+      - "**"
+      - master
+      - dev
+      - release/v*
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    branches:
+      - master
+      - dev
+      - release/v*
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+  issues: read
+  checks: write
+  statuses: write
+
+jobs:
+  slow-tests:
+    name: Run Slow tests
+    runs-on: ubuntu-latest
+    env:
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+    services:
+      redis:
+        image: redis:6.2.6-alpine3.14
+        # Set health checks to wait until redis has started
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps port 6379 on service container to the host
+          - 6379:6379
+      postgres:
+        image: postgres:16.1-alpine3.19
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: password
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+      elasticsearch:
+        image: elasticsearch:8.11.3
+        ports:
+          - 9200:9200
+        env:
+          ELASTIC_USERNAME: elastic
+          ELASTIC_PASSWORD: elastic
+          xpack.security.enabled: false
+          discovery.type: single-node
+    steps:
+      - name: Install postgresql-client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: "Set some postgres settings"
+        run: |
+          docker exec -i ${{ job.services.postgres.id }} bash << EOF
+          sed -i -e 's/max_connections = 100/max_connections = 1000/' /var/lib/postgresql/data/postgresql.conf
+          sed -i -e 's/shared_buffers = 128MB/shared_buffers = 256MB/' /var/lib/postgresql/data/postgresql.conf
+          cat /var/lib/postgresql/data/postgresql.conf
+          EOF
+          docker restart --time 0 ${{ job.services.postgres.id }}
+          sleep 5
+
+      - name: Show max connections
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW max_connections;'
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # Avoid shallow clone for Nerdbank.GitVersioning
+          fetch-depth: 0
+          lfs: true
+
+      - name: Install dotnet 8.0 SDK
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0'
+          dotnet-quality: 'ga'
+
+      - name: Use cached dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: |-
+          ./run-build.cmd restore
+
+      - name: Debug Build for tests
+        run: |-
+          dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
+
+      - name: Run slow tests
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{github.workspace}}/.config/gcp-key.json
+          HostSettings__WebRootPath: ${{github.workspace}}/src/dotnet/App.Wasm/wwwroot/
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          NPM_READ_TOKEN: ${{secrets.NPM_READ_TOKEN}}
+          USERSSETTINGS__GOOGLECLIENTID: ${{secrets.USERSSETTINGS__GOOGLECLIENTID}}
+          USERSSETTINGS__GOOGLECLIENTSECRET: ${{secrets.USERSSETTINGS__GOOGLECLIENTSECRET}}
+          USERSSETTINGS__MICROSOFTACCOUNTCLIENTID: ${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTID}}
+          USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET: ${{secrets.USERSSETTINGS__MICROSOFTACCOUNTCLIENTSECRET}}
+          TESTS__USERS__USER1__EMAIL: ${{secrets.TESTS__USERS__USER1__EMAIL}}
+          TESTS__USERS__USER1__PASSWORD: ${{secrets.TESTS__USERS__USER1__PASSWORD}}
+          RedisSettings__DefaultRedis: localhost|test_{instance.}{context}
+          DbSettings__DefaultDb: postgresql:Server=localhost;Database=ac_{instance_}{context};Port=5432;User Id=postgres;Password=postgres
+          CoreSettings__GoogleProjectId: ${{secrets.CORESETTINGS_GOOGLEPROJECTID}}
+        run: |-
+          cat <<- 'EOF' > ./.config/gcp-key.json
+          ${{secrets.GCP_KEY_JSON}}
+          EOF
+
+          ./run-build.cmd slow-tests --configuration Debug
+
+      - name: Report slow test results
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    # run this step even if previous step failed
+        with:
+          name: Slow tests results     # Name of the check run which will be created
+          path: './tests/**/*.trx'   # Path to test results
+          reporter: dotnet-trx        # Format of test results

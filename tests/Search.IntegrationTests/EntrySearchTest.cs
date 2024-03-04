@@ -4,6 +4,7 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection))]
+[Trait("Category", "Slow")]
 public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
@@ -26,7 +27,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         await _tester.DisposeAsync().AsTask();
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldAdd()
     {
         // arrange
@@ -52,7 +53,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
         searchResults.Should().BeEquivalentTo(BuildResponse(BuildSearchResult(chatId, 4, "Wake up")));
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldAddForPlace()
     {
         // arrange
@@ -136,7 +137,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
                     BuildSearchResult(privateChat2Id, 4, "PrivateChat2: Wake up")));
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldFindIfUpdatedMatchesCriteria()
     {
         // arrange
@@ -166,7 +167,7 @@ public class EntrySearchTest(AppHostFixture fixture, ITestOutputHelper @out)
                 BuildSearchResult(chatId, 4, "Wake up")));
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldNotFindDeleted()
     {
         // arrange
