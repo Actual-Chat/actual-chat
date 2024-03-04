@@ -11,6 +11,7 @@ using ActualChat.Invite.Module;
 using ActualChat.Kubernetes.Module;
 using ActualChat.Media.Module;
 using ActualChat.Module;
+using ActualChat.Nats.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Notification.UI.Blazor.Module;
 using ActualChat.Redis.Module;
@@ -106,6 +107,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new CoreServerModule(moduleServices),
                 new KubernetesModule(moduleServices),
                 new RedisModule(moduleServices),
+                new NatsModule(moduleServices),
                 new DbModule(moduleServices),
                 // API modules
                 new ApiModule(moduleServices),

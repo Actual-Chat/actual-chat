@@ -1,6 +1,7 @@
 using ActualChat.App.Server;
 using ActualChat.Blobs.Internal;
 using ActualChat.Commands;
+using ActualChat.Nats;
 using ActualChat.Search;
 using ActualLab.Generators;
 using Microsoft.AspNetCore.Hosting;
@@ -36,7 +37,7 @@ public static class TestAppHostFactory
             },
             AppServicesBuilder = (host, services) => {
                 // register prefix for NATS queues
-                services.AddSingleton<NatsCommandQueues.Options>(new NatsCommandQueues.Options {
+                services.AddSingleton(new NatsCommandQueues.Options {
                     CommonPrefix = instanceName,
                 });
 

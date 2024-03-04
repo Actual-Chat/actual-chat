@@ -1,6 +1,7 @@
+using ActualChat.Commands;
 using ActualChat.Hosting;
 
-namespace ActualChat.Commands;
+namespace ActualChat.Nats;
 
 public class NatsCommandQueues(NatsCommandQueues.Options settings, IServiceProvider services) : ICommandQueues
 {

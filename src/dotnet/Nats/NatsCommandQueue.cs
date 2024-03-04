@@ -1,4 +1,5 @@
 using System.Buffers;
+using ActualChat.Commands;
 using ActualChat.Hosting;
 using ActualChat.Mesh;
 using ActualLab.IO;
@@ -7,7 +8,7 @@ using NATS.Client.Core;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
 
-namespace ActualChat.Commands;
+namespace ActualChat.Nats;
 
 public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServiceProvider services) : ICommandQueue, ICommandQueueBackend, IQueueBackend
 {

@@ -8,6 +8,7 @@ using ActualChat.Hosting;
 using ActualChat.Invite.Module;
 using ActualChat.Media.Module;
 using ActualChat.Module;
+using ActualChat.Nats.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Search.Module;
@@ -30,6 +31,7 @@ using ActualLab.Fusion.EntityFramework;
 using ActualLab.IO;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Server;
+using NATS.Client.Core;
 using NATS.Client.Hosting;
 
 namespace ActualChat.App.Server.Module;
@@ -152,16 +154,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
         redisModule.AddRedisDb<InfrastructureDbContext>(services);
 
         // NATS
-        services.AddNats(
-            poolSize: 1,
-            opts => opts with {
-                // AuthOpts =
-                // Url = "ws://localhost:8222",
-                // TlsOpts =
-                CommandTimeout = TimeSpan.FromSeconds(10),
-                ConnectTimeout = TimeSpan.FromSeconds(15),
-                RequestTimeout = TimeSpan.FromSeconds(15),
-            });
+        var natsModule = Host.GetModule<NatsModule>();
+        natsModule.AddNatsQueues(services);
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
