@@ -1,4 +1,5 @@
 using ActualChat.App.Server;
+using ActualChat.Chat;
 using Bunit;
 
 namespace ActualChat.Testing.Host;
@@ -12,6 +13,8 @@ public class BlazorTester : TestContext, IWebTester
     public IServiceProvider ScopedAppServices => _serviceScope!.ServiceProvider;
     public ICommander Commander => AppServices.Commander();
     public IAuth Auth => AppServices.GetRequiredService<IAuth>();
+    public IChats Chats => AppServices.GetRequiredService<IChats>();
+    public IPlaces Places => AppServices.GetRequiredService<IPlaces>();
     public IAuthBackend AuthBackend => AppServices.GetRequiredService<IAuthBackend>();
     public Session Session { get; }
     public UrlMapper UrlMapper => AppServices.UrlMapper();
