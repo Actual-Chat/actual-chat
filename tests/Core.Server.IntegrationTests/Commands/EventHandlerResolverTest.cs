@@ -1,5 +1,6 @@
 using ActualChat.Commands;
 using ActualChat.Hosting;
+using ActualChat.Nats.Module;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Core.Server.IntegrationTests.Commands;

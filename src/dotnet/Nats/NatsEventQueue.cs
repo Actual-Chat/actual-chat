@@ -1,9 +1,10 @@
 using System.Buffers;
+using ActualChat.Commands;
 using ActualChat.Mesh;
 using NATS.Client.JetStream;
 using NATS.Client.JetStream.Models;
 
-namespace ActualChat.Commands;
+namespace ActualChat.Nats;
 
 public class NatsEventQueue(QueueId queueId, NatsCommandQueues queues, IServiceProvider services) : NatsCommandQueue(queueId, queues, services), IEventQueueBackend
 {

@@ -1,11 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
+using ActualChat.Commands;
 using ActualChat.Commands.Internal;
 using ActualChat.Hosting;
 using ActualLab.CommandR.Internal;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
-namespace ActualChat.Commands;
+namespace ActualChat.Nats.Module;
 
 public static class ServiceCollectionExt
 {
