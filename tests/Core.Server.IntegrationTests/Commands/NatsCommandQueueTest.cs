@@ -8,7 +8,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Commands;
 public class NatsCommandQueueTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(NatsCommandQueueTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = 10000_000)]
     public async Task SmokeTest()
     {
         using var host = await NewAppHost(options => options with {

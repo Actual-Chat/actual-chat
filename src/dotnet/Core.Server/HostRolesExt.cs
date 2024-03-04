@@ -55,7 +55,10 @@ public static class HostRolesExt
                 .ToArray(),
             assembly);
         var attr = attrs.FirstOrDefault(x => hostRoles.Contains(new HostRole(x.HostRole)));
-        return attr is { ServiceMode: ServiceMode.Server };
+        if (attr == null)
+            throw StandardError.Configuration($"Assembly '{assembly.FullName}' implements event handlers and should have {nameof(BackendServiceAttribute)} attribute.");
+
+        return attr is { ServiceMode: ServiceMode.Server or ServiceMode.Mixed };
     }
 
     // Private methods
