@@ -6,6 +6,7 @@ using ActualLab.Generators;
 
 namespace ActualChat.Search.IntegrationTests;
 
+[Trait("Category", "Slow")]
 public class UserContactIndexingTest(ITestOutputHelper @out)
     : LocalAppHostTestBase( "contact_indexing_" + new RandomSymbolGenerator(length: 5, alphabet: Alphabet.AlphaLower).Next(),
         TestAppHostOptions.Default with {
