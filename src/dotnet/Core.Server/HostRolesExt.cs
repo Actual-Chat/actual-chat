@@ -54,10 +54,10 @@ public static class HostRolesExt
                 .OrderByDescending(x => x.Priority)
                 .ToArray(),
             assembly);
-        var attr = attrs.FirstOrDefault(x => hostRoles.Contains(new HostRole(x.HostRole)));
-        if (attr == null)
-            throw StandardError.Configuration($"Assembly '{assembly.FullName}' implements event handlers and should have {nameof(BackendServiceAttribute)} attribute.");
+        if (attrs.Length == 0)
+            throw StandardError.Configuration($"Assembly '{assembly.FullName}' defines event handlers and should have {nameof(BackendServiceAttribute)} attribute.");
 
+        var attr = attrs.FirstOrDefault(x => hostRoles.Contains(new HostRole(x.HostRole)));
         return attr is { ServiceMode: ServiceMode.Server or ServiceMode.Mixed };
     }
 

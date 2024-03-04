@@ -6,6 +6,7 @@ public sealed class HostSettings
 {
     public HostKind? AppKind { get; set; }
     public string ServerRole { get; set; } = "";
+    public string CommandQueueRoles { get; set; } = "";
     public bool? IsTested { get; set; }
 
     // Please don't rename this - we use externally stored settings / env variables to fulfill the value

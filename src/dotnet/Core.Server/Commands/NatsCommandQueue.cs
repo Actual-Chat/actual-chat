@@ -287,9 +287,15 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
         Type commandType,
         CancellationToken cancellationToken)
     {
+        var roleChunk = QueueId.HostRole.IsQueue
+            ? $"{GetRoleString(QueueId.HostRole)}."
+            : "";
+        var commandsChunk = QueueId.HostRole.IsQueue
+            ? ""
+            : "commands.";
         var config = new ConsumerConfig(consumerName) {
             MaxDeliver = Settings.MaxTryCount,
-            FilterSubject = $"{GetPrefix()}commands.{GetRoleString(QueueId.HostRole)}.{QueueId.ShardIndex}.>",
+            FilterSubject = $"{GetPrefix()}{commandsChunk}{roleChunk}{QueueId.ShardIndex}.>",
             AckPolicy = ConsumerConfigAckPolicy.Explicit,
             AckWait = TimeSpan.FromMinutes(15),
             MaxAckPending = 100,

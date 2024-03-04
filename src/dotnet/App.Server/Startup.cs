@@ -63,6 +63,14 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
 
         var serverRole = HostRoles.Server.Parse(hostSettings.ServerRole);
         var roles = HostRoles.Server.GetAllRoles(serverRole);
+        var commandQueueRoles = hostSettings.CommandQueueRoles
+            .Split(',')
+            .Select(sr => HostRoles.Queue.Parse(sr.Trim()))
+            .Where(hr => hr.IsQueue)
+            .ToHashSet();
+        var combinedRoles = roles
+            .Concat(commandQueueRoles)
+            .ToImmutableHashSet();
 
         // HostInfo
         services.AddSingleton(c => {
@@ -80,7 +88,7 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 AppKind = AppKind.Unknown,
                 Environment = Env.EnvironmentName,
                 Configuration = Cfg,
-                Roles = roles,
+                Roles = combinedRoles,
                 IsTested = isTested,
                 BaseUrl = baseUrl,
             };

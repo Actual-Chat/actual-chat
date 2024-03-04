@@ -65,6 +65,20 @@ public static class HostRoles
                 });
     }
 
+    public static class Queue
+    {
+        private static readonly HashSet<HostRole> ParsableRoles = [
+            HostRole.DefaultQueue,
+        ];
+        private static readonly Dictionary<string, HostRole> ParsableRoleByValue = ParsableRoles
+            .Select(x => new KeyValuePair<string, HostRole>(x.Value, x))
+            .ToDictionary(StringComparer.OrdinalIgnoreCase);
+
+        public static HostRole Parse(string? value)
+            => value.IsNullOrEmpty() ? default
+                : ParsableRoleByValue.GetValueOrDefault(value);
+    }
+
     public static HostRole GetCommandRole(Type commandType)
     {
         if (!typeof(ICommand).IsAssignableFrom(commandType))
