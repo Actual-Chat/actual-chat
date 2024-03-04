@@ -6,6 +6,7 @@
 @{
     var m = State.Value;
     var chats = m.Chats;
+    var iconSize = ScreenSize.IsNarrow() ? SquareSize.Size10 : SquareSize.Size12;
 }
 
 @if (chats.Any()) {
@@ -21,7 +22,7 @@
             Title="@chatInfo.Chat.Title"
             Id="@chatInfo.Id">
             <ChildContent>
-                <ChatIcon Chat="chatInfo.Chat" ShowPresence="@true"/>
+                <ChatIcon Chat="chatInfo.Chat" ShowPresence="@true" Size="@iconSize"/>
             </ChildContent>
             <BadgeContent>
                 <UnreadCount
@@ -41,6 +42,8 @@
 
     [Inject] private ChatUIHub Hub { get; init; } = null!;
     [Inject] private IJSRuntime JS { get; init; } = null!;
+
+    [CascadingParameter] private ScreenSize ScreenSize { get; set; }
 
     public override async ValueTask DisposeAsync() {
         await JSRef.DisposeSilentlyAsync("dispose");
