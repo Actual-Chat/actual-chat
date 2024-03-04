@@ -5,5 +5,8 @@ internal record ChatSlice(ChatSliceMetadata Metadata, string Text): IHasDocId
     [JsonIgnore, Newtonsoft.Json.JsonIgnore]
     public string Id => Metadata.ChatEntries.IsDefaultOrEmpty
         ? string.Empty
-        : $"{Metadata.ChatEntries[0]}:{(Metadata.StartOffset ?? 0).ToString(CultureInfo.InvariantCulture)}";
+        : FormatId(Metadata.ChatEntries[0], Metadata.StartOffset);
+
+    public static string FormatId(in ChatEntryId entryId, int? startOffset)
+        => $"{entryId}:{(startOffset ?? 0).ToString(CultureInfo.InvariantCulture)}";
 }

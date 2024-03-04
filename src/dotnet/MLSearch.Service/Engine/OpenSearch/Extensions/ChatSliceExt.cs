@@ -19,7 +19,7 @@ internal static class ChatSliceExt
 
     public static Id IntoDocumentId(this ChatEntry chatEntry)
     {
-        return new Id(chatEntry.Id.Id);
+        return new Id(ChatSlice.FormatId(chatEntry.Id, default));
     }
 
     public static ChatSlice IntoIndexedDocument(this ChatEntry chatEntry)
