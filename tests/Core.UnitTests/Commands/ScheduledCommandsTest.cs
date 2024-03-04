@@ -23,12 +23,13 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[_queueId];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
+        var scheduler = services.GetRequiredService<ICommandQueueScheduler>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand(null));
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await Awaiter.WaitFor(() => queue.SuccessCount != 0);
+        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(1), CancellationToken.None);
 
         testService.ProcessedEvents.Count.Should().Be(1);
     }
@@ -51,11 +52,12 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[_queueId];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
+        var scheduler = services.GetRequiredService<ICommandQueueScheduler>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand2());
 
-        await Awaiter.WaitFor(() => queue.SuccessCount == 2);
+        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(1), CancellationToken.None);
 
         foreach (var eventCommand in testService.ProcessedEvents)
             Out.WriteLine(eventCommand.ToString());
@@ -81,11 +83,12 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         var queue = (LocalCommandQueue)services.GetRequiredService<ICommandQueues>()[_queueId];
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var commander = services.GetRequiredService<ICommander>();
+        var scheduler = services.GetRequiredService<ICommandQueueScheduler>();
 
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand3());
 
-        await Awaiter.WaitFor(() => queue.SuccessCount == 2);
+        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(1), CancellationToken.None);
 
         foreach (var eventCommand in testService.ProcessedEvents)
             Out.WriteLine(eventCommand.ToString());
