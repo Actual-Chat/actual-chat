@@ -6,7 +6,7 @@ namespace ActualChat.Core.UnitTests.Commands;
 
 public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private static readonly QueueId _queueId = new (HostRole.BackendServer, 0);
+    private static readonly QueueId _queueId = new (HostRole.OneBackendServer, 0);
 
     [Fact]
     public async Task EnqueueEventOnCommandCompletion()

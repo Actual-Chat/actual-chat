@@ -14,13 +14,13 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
         using var host = await NewAppHost(options => options with {
             AppServicesExtender = (c, services) => {
                 services
-                    .AddCommandQueues(HostRole.BackendServer)
+                    .AddCommandQueues(HostRole.OneBackendServer)
                     .AddFusion()
                     .AddService<ScheduledCommandTestService>();
             },
         });
         var services = host.Services;
-        var scheduler = services.GetRequiredKeyedService<ShardCommandQueueScheduler>(HostRole.BackendServer.Id.Value);
+        var scheduler = services.GetRequiredKeyedService<ShardCommandQueueScheduler>(HostRole.OneBackendServer.Id.Value);
         _ = scheduler.Run();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
@@ -41,13 +41,13 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
         using var host = await NewAppHost(options => options with {
             AppServicesExtender = (c, services) => {
                 services
-                    .AddCommandQueues(HostRole.BackendServer)
+                    .AddCommandQueues(HostRole.OneBackendServer)
                     .AddFusion()
                     .AddService<ScheduledCommandTestService>();
             },
         });
         var services = host.Services;
-        var scheduler = services.GetRequiredKeyedService<ShardCommandQueueScheduler>(HostRole.BackendServer.Id.Value);
+        var scheduler = services.GetRequiredKeyedService<ShardCommandQueueScheduler>(HostRole.OneBackendServer.Id.Value);
         _ = scheduler.Run();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
