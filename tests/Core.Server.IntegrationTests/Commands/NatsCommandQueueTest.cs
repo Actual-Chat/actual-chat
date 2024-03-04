@@ -8,7 +8,7 @@ namespace ActualChat.Core.Server.IntegrationTests.Commands;
 public class NatsCommandQueueTest(ITestOutputHelper @out)
     : AppHostTestBase($"x-{nameof(NatsCommandQueueTest)}", TestAppHostOptions.Default, @out)
 {
-    [Fact(Timeout = 10000_000)]
+    [Fact(Timeout = 10_000)]
     public async Task SmokeTest()
     {
         using var host = await NewAppHost(options => options with {
@@ -69,27 +69,29 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
         using var host = await NewAppHost(options => options with {
             AppServicesExtender = (c, services) => {
                 services
-                    // .AddCommandQueues(HostRole.BackendServer)
+                    // Remove all ShardCommandQueueScheduler to debug just one
+                    // .RemoveAll(sd => sd.IsKeyedService)
+                    // .RemoveAll(sd => sd.ServiceType == typeof(IHostedService))
                     .AddCommandQueues(HostRole.DefaultQueue)
                     .AddFusion()
                     .AddService<ScheduledCommandTestService>();
             },
+            HostConfigurationExtender = cfg => {
+                cfg.AddInMemory(("HostSettings:CommandQueueRoles", "DefaultQueue"));
+            },
         });
         var services = host.Services;
-        // var scheduler = services.GetRequiredKeyedService<ShardCommandQueueScheduler>(HostRole.BackendServer.Id.Value);
         var queueScheduler = services.GetRequiredKeyedService<ShardCommandQueueScheduler>(HostRole.DefaultQueue.Id.Value);
-        // _ = scheduler.Run();
         _ = queueScheduler.Run();
 
         var testService = services.GetRequiredService<ScheduledCommandTestService>();
         var queues = services.GetRequiredService<ICommandQueues>();
-        var countComputed = await Computed.Capture(() => testService.GetProcessedEventCount(CancellationToken.None));
-
         testService.ProcessedEvents.Count.Should().Be(0);
+
         await queues.Enqueue(new TestCommand3 { ShardKey = 7 });
 
-        await countComputed.When(i => i >= 1).WaitAsync(TimeSpan.FromSeconds(10));
-        //
-        // testService.ProcessedEvents.Count.Should().BeGreaterThanOrEqualTo(100);
+        await queueScheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(1), CancellationToken.None);
+
+        testService.ProcessedEvents.Count.Should().Be(2);
     }
 }

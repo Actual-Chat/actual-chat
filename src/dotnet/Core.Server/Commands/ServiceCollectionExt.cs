@@ -73,6 +73,9 @@ public static class ServiceCollectionExt
         else if (services.HasService<ShardEventQueueScheduler>(HostRole.OneBackendServer.Id.Value))
             return services; // single event handler for all backend roles has already been registered
 
+        if (hostRole.IsQueue)
+            return services; // queue roles do not implement event handlers
+
         if (!services.HasService<ShardEventQueueScheduler>(serviceKey)) {
             var schedulerFactory = new HostEventQueueSchedulerFactory(serviceKey);
             services.AddKeyedSingleton<ShardEventQueueScheduler>(serviceKey, (c, _) => new ShardEventQueueScheduler(hostRole, c));
