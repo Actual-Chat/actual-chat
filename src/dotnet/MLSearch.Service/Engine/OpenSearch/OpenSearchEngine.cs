@@ -1,4 +1,5 @@
 using ActualChat.MLSearch.ApiAdapters;
+using ActualChat.MLSearch.Documents;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -9,7 +10,7 @@ internal class OpenSearchEngine<TDocument>(
     IIndexSettingsSource indexSettingsSource,
     ILoggerSource loggerSource)
     : ISearchEngine<TDocument>
-    where TDocument : class
+    where TDocument : class, IHasDocId
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings<TDocument>();
@@ -46,7 +47,10 @@ internal class OpenSearchEngine<TDocument>(
         // TODO: support bulk api
         var response = await openSearch.IndexAsync(
                 document,
-                e => e.Index(IndexSettings.IndexName),
+                e => e
+                    .Pipeline(IndexSettings.IngestPipelineId)
+                    .Index(IndexSettings.IndexName)
+                    .Id(document.Id),
                 cancellationToken
             )
             .ConfigureAwait(true);
