@@ -7,7 +7,7 @@ namespace ActualChat.Search.IntegrationTests;
 
 [Trait("Category", "Slow")]
 public class UserContactIndexingTest(ITestOutputHelper @out)
-    : LocalAppHostTestBase( "contact_indexing",
+    : LocalAppHostTestBase( "user_contact_indexing",
         TestAppHostOptions.Default with {
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
@@ -34,6 +34,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out)
     {
         Tracer.Default = Tracer.None;
         await _tester.DisposeAsync().AsTask();
+        await base.DisposeAsync();
     }
 
     [Fact]

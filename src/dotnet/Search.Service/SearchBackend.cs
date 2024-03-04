@@ -304,7 +304,8 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
 
         // NOTE: we don't have any other chance to process removed items
         if (eventCommand.ChangeKind == ChangeKind.Remove) {
-            var cmd = new SearchBackend_ChatContactBulkIndex([], ApiArray.New(eventCommand.Chat.ToIndexedChatContact()));
+            var place = await ChatsBackend.GetPlace(eventCommand.Chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
+            var cmd = new SearchBackend_ChatContactBulkIndex([], ApiArray.New(eventCommand.Chat.ToIndexedChatContact(place)));
             await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }
         else {
