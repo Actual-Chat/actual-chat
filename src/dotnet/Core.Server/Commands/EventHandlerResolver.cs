@@ -10,12 +10,11 @@ public sealed class EventHandlerResolver(IServiceProvider services) : CommandHan
     private CommandHandlerResolver Resolver { get; } = services.GetRequiredService<CommandHandlerResolver>();
 
     public ImmutableArray<CommandHandler> GetEventHandlers(HostRole hostRole)
-        => Registry.Handlers
-            .Where(h => !h.IsFilter
-                && typeof(IEventCommand).IsAssignableFrom(h.CommandType)
-                && Filter.Invoke(h, h.CommandType))
-            .Where(h => ShouldServe(h, HostRoles.Server.GetAllRoles(hostRole)))
-            .ToImmutableArray();
+        => [..Registry.Handlers
+                .Where(h => !h.IsFilter
+                    && typeof(IEventCommand).IsAssignableFrom(h.CommandType)
+                    && Filter.Invoke(h, h.CommandType))
+                .Where(h => ShouldServe(h, HostRoles.Server.GetAllRoles(hostRole)))];
 
 
     public override CommandHandlerSet GetCommandHandlers(Type commandType)
