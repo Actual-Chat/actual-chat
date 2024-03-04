@@ -104,7 +104,8 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 loggerSource: e.GetRequiredService<ILoggerSource>()
             )
         );
-        Symbol ShardingSchemeId = "ml-search-indexing";
+        // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
+        Symbol ShardingSchemeId = HostRole.MLSearchIndexing;
         services.AddShardScheme(ShardingSchemeId, HostRole.MLSearchIndexing, shardCount: 12);
         services.AddKeyedSingleton<ShardWorkerFunc>(
             "OpenSearch Chat Index",
