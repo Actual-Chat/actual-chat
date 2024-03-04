@@ -1,3 +1,4 @@
+using ActualChat.Concurrency;
 using ActualChat.Hosting;
 
 namespace ActualChat.Commands.Internal;
@@ -7,6 +8,8 @@ public class LocalCommandQueueScheduler : WorkerBase, ICommandQueueScheduler
     private const int ShardIndex = 0;
 
     private static bool DebugMode => Constants.DebugMode.CommandQueue;
+
+    private long _lastCommandTicks = 0;
     private ILogger? DebugLog => DebugMode ? Log : null;
     private ILogger Log { get; }
     private IServiceProvider Services { get; }
@@ -15,11 +18,13 @@ public class LocalCommandQueueScheduler : WorkerBase, ICommandQueueScheduler
     private RecentlySeenMap<Ulid, Unit> KnownCommands { get; }
 
     public LocalCommandQueues.Options Settings { get; }
+    public IMomentClock Clock { get; }
 
     public LocalCommandQueueScheduler(LocalCommandQueues.Options settings, IServiceProvider services)
     {
         Settings = settings;
         Services = services;
+        Clock = services.Clocks().SystemClock;
         Log = services.LogFor(GetType());
 
         Queues = services.GetRequiredService<LocalCommandQueues>();
@@ -31,15 +36,14 @@ public class LocalCommandQueueScheduler : WorkerBase, ICommandQueueScheduler
 
     public async Task ProcessAlreadyQueued(TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var queueId = new QueueId(HostRole.AnyServer, ShardIndex);
-        var queueBackend = Queues.GetBackend(queueId);
-        var bufferedCommands = queueBackend.Read(cancellationToken).Buffer(timeout, Services.Clocks().SystemClock, cancellationToken);
-        await foreach (var commands in bufferedCommands.ConfigureAwait(false)) {
-            if (commands.Count == 0)
-                return;
+        var clock = Services.Clocks().SystemClock;
+        while (true) {
+            await clock.Delay(timeout, cancellationToken).ConfigureAwait(false);
 
-            foreach (var command in commands)
-                await RunCommand(queueBackend, command, cancellationToken).ConfigureAwait(false);
+            var lastCommandTicks = Interlocked.Read(ref _lastCommandTicks);
+            var currentTicks = clock.UtcNow.Ticks;
+            if (currentTicks - lastCommandTicks > timeout.Ticks)
+                break;
         }
     }
 
@@ -81,6 +85,10 @@ public class LocalCommandQueueScheduler : WorkerBase, ICommandQueueScheduler
 
             if (cancellationToken.IsCancellationRequested)
                 throw;
+        }
+        finally {
+            var commandCompletionTicks = Clock.UtcNow.Ticks;
+            InterlockedExt.ExchangeIfGreaterThan(ref _lastCommandTicks, commandCompletionTicks);
         }
     }
 }
