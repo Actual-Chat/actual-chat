@@ -62,7 +62,7 @@ public static class ServiceCollectionExt
 
         // register EventScheduler
 
-        if (hostRole == HostRole.BackendServer) {
+        if (hostRole == HostRole.OneBackendServer) {
             // keep single EventScheduler for the host and remove all other registration
             services.RemoveAll(sd =>
                 sd.ServiceType == typeof(IHostedService)
@@ -70,7 +70,7 @@ public static class ServiceCollectionExt
                 && sd.ImplementationFactory.Method == HostEventQueueSchedulerFactory.GetEventSchedulerMethod);
             services.RemoveAll(sd => sd.ServiceType == typeof(ShardEventQueueScheduler));
         }
-        else if (services.HasService<ShardEventQueueScheduler>(HostRole.BackendServer.Id.Value))
+        else if (services.HasService<ShardEventQueueScheduler>(HostRole.OneBackendServer.Id.Value))
             return services; // single event handler for all backend roles has already been registered
 
         if (!services.HasService<ShardEventQueueScheduler>(serviceKey)) {

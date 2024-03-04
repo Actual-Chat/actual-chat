@@ -14,14 +14,14 @@ public class EventHandlerResolverTest(ITestOutputHelper @out)
         using var host = await NewAppHost(options => options with  {
             AppServicesExtender = (c, services) => {
                 services
-                    .AddCommandQueues(HostRole.BackendServer)
+                    .AddCommandQueues(HostRole.OneBackendServer)
                     .AddFusion()
                     .AddService<ScheduledCommandTestService>();
             },
         });
         var services = host.Services;
         var eventHandlerResolver = services.GetRequiredService<EventHandlerResolver>();
-        var eventHandlers = eventHandlerResolver.GetEventHandlers(HostRole.BackendServer);
+        var eventHandlers = eventHandlerResolver.GetEventHandlers(HostRole.OneBackendServer);
         eventHandlers.Should().NotBeEmpty();
 
     }

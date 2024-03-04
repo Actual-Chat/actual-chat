@@ -31,7 +31,7 @@ public class LocalCommandQueueScheduler : WorkerBase, ICommandQueueScheduler
 
     public async Task ProcessAlreadyQueued(TimeSpan timeout, CancellationToken cancellationToken)
     {
-        var queueId = new QueueId(HostRole.BackendServer, ShardIndex);
+        var queueId = new QueueId(HostRole.AnyServer, ShardIndex);
         var queueBackend = Queues.GetBackend(queueId);
         var bufferedCommands = queueBackend.Read(cancellationToken).Buffer(timeout, Services.Clocks().SystemClock, cancellationToken);
         await foreach (var commands in bufferedCommands.ConfigureAwait(false)) {
@@ -44,7 +44,7 @@ public class LocalCommandQueueScheduler : WorkerBase, ICommandQueueScheduler
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
-        => ProcessQueue(new QueueId(HostRole.BackendServer, ShardIndex), cancellationToken);
+        => ProcessQueue(new QueueId(HostRole.AnyServer, ShardIndex), cancellationToken);
 
     private Task ProcessQueue(QueueId queueId, CancellationToken cancellationToken)
     {

@@ -136,7 +136,7 @@ public class NatsCommandQueue(QueueId queueId, NatsCommandQueues queues, IServic
     }
 
     protected static string GetRoleString(HostRole hostRole)
-        => hostRole == HostRole.BackendServer
+        => hostRole == HostRole.OneBackendServer
             ? HostRole.BackendSuffix.ToLowerInvariant()
             : hostRole.Id.Value.Replace(HostRole.BackendSuffix, "", StringComparison.OrdinalIgnoreCase);
 
