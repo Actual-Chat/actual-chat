@@ -19,17 +19,17 @@ internal class ClusterSetup(
 {
     //private ILogger? _log;
     //private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
-    private ClusterSettings? result;
-    public ClusterSettings Result => result ?? throw new InvalidOperationException(
+    private ClusterSettings? _result;
+    public ClusterSettings Result => _result ?? throw new InvalidOperationException(
         "Initialization script was not called."
     );
 
     public Task Initialize(CancellationToken cancellationToken) => EnsureChatSliceIndex(cancellationToken);
 
-    public async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
+    private async Task<ClusterSettings> RetrieveClusterSettingsAsync(CancellationToken cancellationToken)
     {
-        if (result != null) {
-            return result;
+        if (_result != null) {
+            return _result;
         }
 
         using var _1 = tracing.TraceRegion();
@@ -115,7 +115,7 @@ internal class ClusterSetup(
                 "Failed to retrieve model all_config value."
             );
         }
-        return result = new ClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
+        return _result = new ClusterSettings(modelAllConfig, modelId, modelEmbeddingDimension);
     }
     private async Task EnsureChatSliceIndex(CancellationToken cancellationToken)
     {
