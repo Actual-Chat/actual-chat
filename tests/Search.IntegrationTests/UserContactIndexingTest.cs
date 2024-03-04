@@ -37,7 +37,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out)
         await _tester.DisposeAsync().AsTask();
     }
 
-    [Fact(Skip = "Slow and unstable, must be fixed")]
+    [Fact]
     public async Task ShouldIndexAll()
     {
         // arrange
