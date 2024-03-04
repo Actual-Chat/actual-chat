@@ -43,6 +43,7 @@ public static class HostRoles
                 roles.Add(HostRole.MediaBackend);
                 roles.Add(HostRole.ContactIndexingWorker);
                 roles.Add(HostRole.DefaultQueue);
+                roles.Add(HostRole.MLSearchIndexing);
             }
             return roles;
         }

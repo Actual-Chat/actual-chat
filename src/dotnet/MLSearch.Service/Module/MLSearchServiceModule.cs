@@ -104,11 +104,12 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 loggerSource: e.GetRequiredService<ILoggerSource>()
             )
         );
-        services.AddShardScheme(HostRole.MLSearchIndexing, shardCount: 12);
+        Symbol ShardingSchemeId = "ml-search-indexing";
+        services.AddShardScheme(ShardingSchemeId, HostRole.MLSearchIndexing, shardCount: 12);
         services.AddKeyedSingleton<ShardWorkerFunc>(
             "OpenSearch Chat Index",
             (e, key) => new ShardWorkerFunc(
-                role: HostRole.MLSearchIndexing,
+                shardingSchemeId: ShardingSchemeId,
                 e,
                 e.GetRequiredService<ChatEntriesIndexing>().Execute
             )

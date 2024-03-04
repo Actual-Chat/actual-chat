@@ -20,18 +20,19 @@ public static class ShardSchemeExplicit
 {
     public static IServiceCollection AddShardScheme(
         this IServiceCollection services,
+        Symbol shardingSchemeId,
         HostRole role,
         int shardCount
-    ) => services.AddKeyedSingleton(role, new ShardScheme(role, shardCount));
+    ) => services.AddKeyedSingleton(shardingSchemeId, new ShardScheme(shardingSchemeId, shardCount, role));
 }
 
 
 public class ShardWorkerFunc(
-    HostRole role,
+    Symbol shardingSchemeId,
     IServiceProvider services,
     Func<int, CancellationToken, Task> run
 ) :
-    ShardWorker(services, services.GetRequiredKeyedService<ShardScheme>(role))
+    ShardWorker(services, services.GetRequiredKeyedService<ShardScheme>(shardingSchemeId))
 {
     protected override Task OnRun(int shardIndex, CancellationToken cancellationToken)
         => run(shardIndex, cancellationToken);
