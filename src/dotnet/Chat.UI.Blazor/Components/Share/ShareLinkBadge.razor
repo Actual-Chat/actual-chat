@@ -5,22 +5,20 @@
     var displayLink = new ShareRequest(Link).GetDisplayLink();
 }
 
-<div class="link-info">
-    <div class="c-icon">
-        <i class="icon-link-2 text-xl"></i>
-    </div>
-    <div class="c-body">
-        <div class="c-link">
-            @displayLink
+<div class="chat-link">
+    <div class="c-link-url">
+        <div class="c-round">
+            <i class="icon-link-2 text-xl"></i>
+        </div>
+        <div>
+            <div class="link-url">@displayLink</div>
         </div>
     </div>
-    <div class="c-right">
+    <div class="c-link-buttons">
         <CopyTrigger CopyTextSourceRef="@CopyTextSource">
-            <ButtonRound
-                ContentClass="flex-x gap-x-1"
-                Class="transparent">
-                <i class="hide-on-copied-hint icon-copy text-xl" aria-hidden="true"></i>
-                <i class="copied-hint fa fa-check text-xl" aria-hidden="true"></i>
+            <ButtonRound Class="md:btn-md">
+                <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+                <i class="copied-hint fa fa-check" aria-hidden="true"></i>
             </ButtonRound>
         </CopyTrigger>
     </div>

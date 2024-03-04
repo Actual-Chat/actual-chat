@@ -1,6 +1,12 @@
 ﻿@namespace ActualChat.UI.Blazor.Components
 
-<div class="@Class embedded-message-editor">
+@{
+    var cls = "embedded-message-editor";
+    if (IsTransparent)
+        cls += " transparent-editor";
+}
+
+<div class="@Class @cls">
     <label>
         <TextInput
             @ref="_inputRef"
@@ -29,6 +35,7 @@
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string Placeholder { get; set; } = "";
     [Parameter] public string Text { get; set; } = "";
+    [Parameter] public bool IsTransparent { get; set; }
     [Parameter] public EventCallback<string> TextChanged { get; set; }
     [Parameter] public EventCallback<string> Post { get; set; }
 
