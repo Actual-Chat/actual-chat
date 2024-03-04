@@ -46,6 +46,7 @@
     <Footer>
         <EmbeddedMessageEditor
             Text="@_comment"
+            IsTransparent="@true"
             Placeholder="Add your comment (optional)"
             TextChanged="OnCommentChanged" />
         @if (ModalModel.Request.HasLink(out var link)) {

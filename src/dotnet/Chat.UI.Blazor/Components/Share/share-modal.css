@@ -18,7 +18,8 @@
     @apply mx-0;
 }
 .share-modal .dialog-footer {
-    @apply p-0;
+    @apply gap-y-1;
+    @apply py-1;
 }
 .share-modal .contact-selector-list {
     @apply pt-2;
@@ -32,7 +33,6 @@
 }
 .share-modal .link-info {
     @apply flex-x gap-x-4;
-    @apply mx-4 mt-3;
     @apply border rounded-lg border-separator;
 }
 .share-modal .link-info .c-icon {
@@ -54,7 +54,7 @@
 
 .share-modal .dialog-buttons {
     @apply -flex-x;
-    @apply px-4 pt-2 pb-4;
+    @apply px-4 pt-0 pb-4;
 }
 .share-modal .dialog-buttons > * {
     @apply flex-1 max-w-none;
@@ -67,4 +67,9 @@
 }
 .share-externally-button .btn {
     @apply flex-1;
+}
+
+.share-modal .chat-link {
+    @apply w-full;
+    @apply p-0.5 m-0;
 }

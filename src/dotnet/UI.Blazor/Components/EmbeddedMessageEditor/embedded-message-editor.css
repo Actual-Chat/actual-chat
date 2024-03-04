@@ -26,3 +26,23 @@
 .embedded-message-editor input::placeholder {
     @apply text-left;
 }
+
+.embedded-message-editor.transparent-editor {
+    @apply h-12;
+    @apply bg-transparent;
+    @apply border-none;
+}
+.embedded-message-editor.transparent-editor input {
+    @apply h-12;
+    @apply pl-4 pr-12;
+    @apply rounded-full;
+    @apply bg-input;
+    @apply text-02 font-normal;
+    @apply border border-transparent;
+}
+.embedded-message-editor.transparent-editor input:focus {
+    @apply border-primary;
+}
+.embedded-message-editor.transparent-editor .glyph {
+    @apply h-12;
+}
