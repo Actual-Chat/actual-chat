@@ -43,6 +43,6 @@ public sealed class RpcMeshRefResolvers(IServiceProvider services)
     private static MeshRef DefaultResolverImpl<T>(RpcMethodDef methodDef, ArgumentList arguments, ShardScheme shardScheme)
     {
         var meshRef = MeshRefResolvers.Resolve(arguments.Get<T>(0));
-        return meshRef.WithNonDefaultSchemeOr(shardScheme, normalize: true);
+        return meshRef.WithSchemeIfUndefined(shardScheme);
     }
 }

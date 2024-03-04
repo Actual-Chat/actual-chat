@@ -12,15 +12,15 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
     public int Key { get; } = key;
 
     // Computed properties
-    public int Index => Scheme.GetShardIndex(Key);
-    public bool IsNone => Scheme.IsNone;
+    public bool IsNone => _scheme == null || _scheme.IsNone;
+    public bool IsValid => _scheme?.IsValid == true;
 
     public ShardRef(ShardScheme scheme, long key)
         : this(scheme, unchecked((int)key)) { }
     public ShardRef(int key)
-        : this(ShardScheme.Default, key) { }
+        : this(ShardScheme.Undefined, key) { }
     public ShardRef(long key)
-        : this(ShardScheme.Default, unchecked((int)key)) { }
+        : this(ShardScheme.Undefined, unchecked((int)key)) { }
 
     public void Deconstruct(out ShardScheme scheme, out int key)
     {
@@ -29,20 +29,30 @@ public readonly struct ShardRef(ShardScheme scheme, int key)
     }
 
     public override string ToString()
-        => $"{Scheme.Id}[{Key.Format()}]";
+    {
+        var shardScheme = Scheme;
+        return shardScheme.IsNone
+            ? $"{nameof(ShardRef)}.{nameof(None)}"
+            : $"{shardScheme.Id.Value}[{Key.Format()} % {shardScheme.ShardCount}]";
+    }
 
     // Helpers
 
+    public int? TryGetShardIndex() => Scheme.TryGetShardIndex(Key);
+    public int GetShardIndex() => Scheme.GetShardIndex(Key);
+
     public ShardRef Normalize()
-        => new(Scheme, Scheme.GetShardIndex(Key));
-    public ShardRef WithNonDefaultSchemeOr(ShardScheme scheme)
-        => Scheme.IsDefault ? new(scheme, Key) : this;
-    public ShardRef WithNonDefaultSchemeOr(ShardScheme scheme, bool normalize)
     {
-        scheme = Scheme.NonDefaultOr(scheme);
-        return normalize
-            ? new(scheme, scheme.GetShardIndex(Key))
-            : new(scheme, Key);
+        var shardScheme = Scheme;
+        return shardScheme.IsNone ? this : new (shardScheme, shardScheme.GetShardIndex(Key));
+    }
+
+    public ShardRef WithSchemeIfUndefined(ShardScheme scheme)
+    {
+        var shardScheme = Scheme;
+        return shardScheme.IsNone
+            ? this
+            : shardScheme.IsUndefined ? new(scheme, Key) : this;
     }
 
     // Equality

@@ -29,6 +29,7 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
         services.AddSingleton<IDbInitializer, SearchDbInitializer>();
         dbModule.AddDbContextServices<SearchDbContext>(services, Settings.Db, db => {
             db.AddEntityResolver<string, DbIndexedChat>();
+            db.AddEntityResolver<string, DbContactIndexState>();
         });
 
         // Commander & Fusion
@@ -65,8 +66,11 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
         var fusion = services.AddFusion();
         fusion.AddService<ISearchBackend, SearchBackend>();
         fusion.AddService<IIndexedChatsBackend, IndexedChatsBackend>();
+        fusion.AddService<IContactIndexStatesBackend, ContactIndexStateBackend>();
         services.AddSingleton<ElasticConfigurator>().AddAlias<IHostedService, ElasticConfigurator>();
-        services.AddSingleton<IndexingQueue>().AddHostedService(c => c.GetRequiredService<IndexingQueue>());
+        services.AddSingleton<EntriesIndexer>().AddHostedService(c => c.GetRequiredService<EntriesIndexer>());
         services.AddSingleton<ElasticNames>();
+        services.AddSingleton<UserContactIndexer>().AddHostedService(c => c.GetRequiredService<UserContactIndexer>());
+        services.AddSingleton<ChatContactIndexer>().AddHostedService(c => c.GetRequiredService<ChatContactIndexer>());
     }
 }

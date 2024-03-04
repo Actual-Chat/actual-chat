@@ -211,6 +211,7 @@
     <PackageVersion Include="Microsoft.Playwright" Version="1.41.2" />
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="Moq.Autocomplete" Version="0.0.1" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageVersion Include="Moq.Contrib.HttpClient" Version="1.4.0" />
     <PackageVersion Include="Nerdbank.GitVersioning" Version="3.6.133" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
     <PackageVersion Include="xunit" Version="2.7.0" />
     <PackageVersion Include="Xunit.DependencyInjection" Version="8.7.2" />

@@ -17,10 +17,36 @@ namespace ActualChat.Search.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.1")
+                .HasAnnotation("ProductVersion", "8.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("ActualChat.Search.Db.DbContactIndexState", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text")
+                        .HasColumnName("id");
+
+                    b.Property<string>("LastUpdatedId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("last_updated_id");
+
+                    b.Property<long>("LastUpdatedVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_updated_version");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_contact_index_state");
+
+                    b.ToTable("contact_index_state");
+                });
 
             modelBuilder.Entity("ActualChat.Search.Db.DbIndexedChat", b =>
                 {

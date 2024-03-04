@@ -7,7 +7,8 @@ namespace ActualChat.Mesh;
 
 public sealed class MeshWatcher : WorkerBase
 {
-    private static readonly TimeSpan DefaultChangeTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan DefaultChangeTimeout = TimeSpan.FromMinutes(3);
+    private static readonly TimeSpan DefaultChangeTimeoutIfDev = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan DefaultChangeTimeoutIfTested = TimeSpan.FromSeconds(2);
 
     private readonly ConcurrentDictionary<NodeRef, RpcBackendNodePeerRef> _nodePeerRefs = new();
@@ -23,7 +24,7 @@ public sealed class MeshWatcher : WorkerBase
     public IState<MeshState> State => _state;
 
     // Settings
-    public TimeSpan ChangeTimeout { get; init; }
+    public TimeSpan NodeTimeout { get; init; }
 
     public MeshWatcher(IServiceProvider services, bool mustStart = true)
     {
@@ -32,8 +33,10 @@ public sealed class MeshWatcher : WorkerBase
         MeshNode = services.MeshNode();
         NodeLocks = services.MeshLocks<InfrastructureDbContext>().WithKeyPrefix(nameof(NodeLocks));
         _state = services.StateFactory().NewMutable(new MeshState());
-        var isTested = services.GetRequiredService<HostInfo>().IsTested;
-        ChangeTimeout = isTested ? DefaultChangeTimeoutIfTested : DefaultChangeTimeout;
+        var hostInfo = services.GetRequiredService<HostInfo>();
+        NodeTimeout = hostInfo.IsTested ? DefaultChangeTimeoutIfTested
+            : hostInfo.IsDevelopmentInstance ? DefaultChangeTimeoutIfDev
+            : DefaultChangeTimeout;
         if (mustStart)
             this.Start();
     }

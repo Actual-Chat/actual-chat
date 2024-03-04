@@ -11,6 +11,7 @@ public abstract class SharedAppHostTestBase<TAppHostFixture>(
 
     protected TAppHostFixture Fixture { get; } = fixture;
     protected TestAppHost AppHost { get; } = fixture.AppHost;
+    protected ICommander Commander { get; } = fixture.AppHost.Services.Commander();
 
     protected override Task InitializeAsync()
     {

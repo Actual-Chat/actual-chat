@@ -1,8 +1,13 @@
 namespace ActualChat;
 
-public sealed class Mutable<T>
+public static class Mutable
 {
-    private T _value = default!;
+    public static Mutable<T>New<T>(T initialValue) => new(initialValue);
+}
+
+public sealed class Mutable<T>(T initialValue = default!)
+{
+    private T _value = initialValue;
 
     public T Value {
         get => _value;

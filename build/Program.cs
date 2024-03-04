@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -27,7 +26,9 @@ internal static class Program
         public const string NpmInstall = "npm-install";
         public const string UnitTests = "unit-tests";
         public const string GenerateVersion = "generate-version";
+        public const string GenerateCISolutionFilter = "slnf";
         public const string IntegrationTests = "integration-tests";
+        public const string SlowTests = "slow-tests";
         public const string CleanTests = "clean-tests";
         public const string Tests = "tests";
         public const string Build = "build";
@@ -154,26 +155,6 @@ internal static class Program
             }
         });
 
-        Target(Targets.UnitTests,
-            async () => {
-                await Cli.Wrap(dotnet)
-                    .WithArguments("test",
-                        "ActualChat.CI.slnf",
-                        "--nologo",
-                        "--filter \"FullyQualifiedName~UnitTests\"",
-                        "--no-restore",
-                        "--blame-hang",
-                        "--blame-hang-timeout 60s",
-                        "--logger \"console;verbosity=detailed\"",
-                        "--logger \"trx;LogFileName=Results.trx\"",
-                        Utils.GithubLogger(),
-                        $"-c {configuration} "
-                    )
-                    .ToConsole()
-                    .ExecuteBufferedAsync(cancellationToken)
-                    .Task.ConfigureAwait(false);
-            });
-
         Target(Targets.GenerateVersion, async () => {
             var cmd = await Cli.Wrap(dotnet)
                 .WithArguments("nbgv get-version --format json")
@@ -246,23 +227,13 @@ internal static class Program
             await File.WriteAllTextAsync(dockerIgnoreFileName, dockerIgnore, cancellationToken).ConfigureAwait(false);
         });
 
-        Target(Targets.IntegrationTests, async () => {
-            await Cli.Wrap(dotnet)
-                .WithArguments("test",
-                    "ActualChat.CI.slnf",
-                    "--nologo",
-                    "--filter \"FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests\"",
-                    "--no-restore",
-                    "--blame-hang",
-                    "--blame-hang-timeout 300s",
-                    "--logger \"console;verbosity=detailed\"",
-                    "--logger \"trx;LogFileName=Results.trx\"",
-                    Utils.GithubLogger(),
-                    $"-c {configuration}")
-                .ToConsole()
-                .ExecuteBufferedAsync(cancellationToken)
-                .Task.ConfigureAwait(false);
-        });
+        Target(Targets.GenerateCISolutionFilter, SolutionFilterGenerator.Generate);
+
+        Target(Targets.UnitTests, () => RunTests("FullyQualifiedName~UnitTests", 60));
+
+        Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow", 300));
+
+        Target(Targets.SlowTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow", 300));
 
         Target(Targets.CleanTests, () => {
             FileExt.Remove("artifacts/tests/output");
@@ -270,7 +241,7 @@ internal static class Program
 
         Target(Targets.Tests, DependsOn(Targets.CleanTests, Targets.UnitTests, Targets.IntegrationTests), () => { });
 
-        Target(Targets.Build, DependsOn(Targets.CleanDist, Targets.NpmInstall), async () => {
+        Target(Targets.Build, DependsOn(Targets.GenerateCISolutionFilter, Targets.CleanDist, Targets.NpmInstall), async () => {
             // if one of process exits then close another on Cancel()
             var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var token = cts.Token;
@@ -367,19 +338,23 @@ internal static class Program
                 .ExecuteAsync().Task.ConfigureAwait(false);
         });
 
-        Target(Targets.Restore, async () => {
-            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            try {
-                await Cli.Wrap(dotnet).WithArguments("restore ActualChat.CI.slnf")
-                    .ToConsole(Green("dotnet restore: "))
-                    .WithValidation(CommandResultValidation.None)
-                    .ExecuteAsync(cts.Token).Task.ConfigureAwait(false);
-            }
-            finally {
-                await cts.CancelAsync().ConfigureAwait(false);
-                cts.Dispose();
-            }
-        });
+        Target(Targets.Restore,
+            DependsOn(Targets.GenerateCISolutionFilter),
+            async () => {
+                var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                try {
+                    await Cli.Wrap(dotnet)
+                        .WithArguments("restore ActualChat.CI.slnf")
+                        .ToConsole(Green("dotnet restore: "))
+                        .WithValidation(CommandResultValidation.None)
+                        .ExecuteAsync(cts.Token)
+                        .Task.ConfigureAwait(false);
+                }
+                finally {
+                    await cts.CancelAsync().ConfigureAwait(false);
+                    cts.Dispose();
+                }
+            });
 
         Target(Targets.Default, DependsOn(Targets.Build));
 
@@ -398,7 +373,6 @@ internal static class Program
             Console.WriteLine(Red($"Unhandled exception: {ex}"));
             return 1;
         }
-
 
         static void SetEnvVariables()
         {
@@ -428,6 +402,23 @@ internal static class Program
             }
             Console.Write("\n");
         }
+
+        Task<BufferedCommandResult> RunTests(string filter, int timeoutSec)
+            => Cli.Wrap(dotnet)
+                .WithArguments("test",
+                    "ActualChat.CI.slnf",
+                    "--nologo",
+                    $"--filter \"{filter}\"",
+                    "--no-restore",
+                    "--blame-hang",
+                    $"--blame-hang-timeout {timeoutSec}s",
+                    "--logger \"console;verbosity=detailed\"",
+                    "--logger \"trx;LogFileName=Results.trx\"",
+                    Utils.GithubLogger(),
+                    $"-c {configuration}")
+                .ToConsole()
+                .ExecuteBufferedAsync(cancellationToken)
+                .Task;
     }
 }
 

@@ -6,6 +6,7 @@ public class RightPanel
 {
     private const string StatePrefix = nameof(RightPanel) + "UI";
     private readonly IMutableState<bool> _isVisible;
+    private readonly IMutableState<bool> _isSearchMode;
     private readonly IStoredState<bool> _isVisibleStored;
 
     private UIHub Hub { get; }
@@ -15,7 +16,7 @@ public class RightPanel
     public PanelsUI Owner { get; }
     // ReSharper disable once InconsistentlySynchronizedField
     public IState<bool> IsVisible => _isVisible;
-    public bool OpenBySearch;
+    public IState<bool> IsSearchMode => _isSearchMode;
 
     public RightPanel(PanelsUI owner)
     {
@@ -24,6 +25,7 @@ public class RightPanel
 
         var stateFactory = Hub.StateFactory();
         _isVisible = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsVisible)));
+        _isSearchMode = stateFactory.NewMutable(false, StateCategories.Get(GetType(), nameof(IsSearchMode)));
         var initialState = new OwnHistoryState(this, false);
         History.Register(initialState);
 
@@ -46,6 +48,19 @@ public class RightPanel
     public void Toggle()
         => SetIsVisible(!IsVisible.Value);
 
+    public void SearchToggle()
+        => SetSearchMode(!IsSearchMode.Value);
+
+    public void SetSearchMode(bool value)
+    {
+        if (_isSearchMode.Value == value)
+            return;
+
+        if (!_isVisible.Value && value)
+            Toggle();
+        _isSearchMode.Value = !IsSearchMode.Value;
+    }
+
     public void SetIsVisible(bool value)
         => _ = Dispatcher.InvokeSafeAsync(() => {
             if (_isVisible.Value == value)
@@ -55,7 +70,7 @@ public class RightPanel
             if (Owner.IsWide())
                 _isVisibleStored.Value = value;
             if (!value)
-                OpenBySearch = false;
+                _isSearchMode.Value = false;
             History.Save<OwnHistoryState>();
         }, DefaultLog);
 

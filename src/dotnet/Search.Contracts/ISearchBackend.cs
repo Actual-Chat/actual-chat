@@ -14,6 +14,12 @@ public interface ISearchBackend : IComputeService
     [CommandHandler]
     Task OnRefresh(SearchBackend_Refresh command, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task OnStartUserContactIndexing(SearchBackend_StartUserContactIndexing command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnStartChatContactIndexing(SearchBackend_StartChatContactIndexing command, CancellationToken cancellationToken);
+
     // Non-compute methods
     Task<EntrySearchResultPage> FindEntriesInChat(
         ChatId chatId,
@@ -56,16 +62,24 @@ public sealed partial record SearchBackend_EntryBulkIndex(
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SearchBackend_UserContactBulkIndex(
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedUserContact> Updated,
-    [property: DataMember, MemoryPackOrder(2)] ApiArray<IndexedUserContact> Deleted
+    [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedUserContact> Updated,
+    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedUserContact> Deleted
 ) : ICommand<Unit>, IBackendCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 // ReSharper disable once InconsistentNaming
 public sealed partial record SearchBackend_ChatContactBulkIndex(
-    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedChatContact> Updated,
-    [property: DataMember, MemoryPackOrder(2)] ApiArray<IndexedChatContact> Deleted
+    [property: DataMember, MemoryPackOrder(0)] ApiArray<IndexedChatContact> Updated,
+    [property: DataMember, MemoryPackOrder(1)] ApiArray<IndexedChatContact> Deleted
 ) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record SearchBackend_StartUserContactIndexing : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record SearchBackend_StartChatContactIndexing : ICommand<Unit>, IBackendCommand;
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
 [method: MemoryPackConstructor]

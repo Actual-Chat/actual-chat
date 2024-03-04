@@ -14,10 +14,9 @@
     <div class="right-chat-panel">
         <ErrorBarrier Name="RightPanelContent" Kind="@ErrorBarrierKind.Full">
         @if (m.RenderContent) {
-            @if (m.ShowSearchPanel && ScreenSize.IsWide()) {
-                <ChatSearchPanel ChatContext="@ChatContext"/>
+            @if (m.ShowSearchPanel) {
+                <AISearchPanel ChatContext="@ChatContext"/>
             }
-
             <RightPanelHeader ChatContext="@ChatContext" ShareModel="@m.ShareModel"/>
             <div class="c-panel-content">
                 <RightPanelChatInfo ChatContext="@ChatContext"/>
@@ -77,7 +76,10 @@
         var rules = await Chats.GetRules(Session, Chat.Id, cancellationToken);
         var showMemberTab = rules.CanSeeMembers();
         var shareModel = await ShareUI.GetModel(Chat.Id, cancellationToken);
-        var showSearchPanel = await ChatContext.Hub.ChatUI.IsSearchEnabled(Chat.Id);
+        var showSearchPanel = await ChatContext.Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken);
+        if (showSearchPanel && !isVisible) {
+            ChatContext.Hub.PanelsUI.Right.SetIsVisible(true);
+        }
         return new () {
             IsVisible = isVisible,
             RenderContent = true,

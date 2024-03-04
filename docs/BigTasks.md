@@ -2,15 +2,10 @@ Near term:
 
 Infrastructure:
 - Add RpcMonitor
-- Migrate audio pipeline to RPC / sharding
-- Remove Kubernetes project
-- SharedResourcePool must be IAsyncDisposable
 
 Potential fixes:
-- [AY] Don't play "new message" sound if it was sent more than 30 seconds ago (it frequently plays when the app awakes)
 - [DF] Check share behavior + get rid of activity state persistence on Android
 - [Andrey] iOS: reconnect banner may take two lines on iPhone (not enough horizontal space)
-- [AK] Mobile: Maybe we should pause AudioContext when nothing is playing, otherwise it drains the battery
 - [EK] Portrait/landscape mode switch should work in MAUI apps. That's mainly for images & videos; maybe disable fullscreen video mode support on Android. Custom full screen implementation have issues with history if user exits from fullscreen mode with back button.
 - [AY] Fix auto-nav on mobile apps - it shouldn't bring you back to the same chat.
 - iOS: investigate weird "Back" click behavior (sometimes it does not work when you touch it, maybe related to Safari click event propagation or nearby clickable header)
@@ -20,9 +15,7 @@ UX improvements:
 - Historical playback speedup
 - Allow to rename contacts + use your custom contact name for any author of a given user (unless anonymous)
 - "New message [in another chat]" notification banner
-- Add "Disable file system cache" option (+ explain it means it stores nearly nothing on the device)
 - Show bios in Members list
-- Show "last online @"
 - Allow to set chat background image (shown @ the top of Chat Settings tab)
 
 General:
@@ -40,15 +33,8 @@ General:
 - Allow to set author's background image
 - Join requests feature
 
-Default chats:
-- No preselected default chats (all [x] to [ ])
-- Replace "Alumni" with "[You name it] Clan", 
-- Allow name edits for each of default chats
-- Ask Grisha to come up with icon for "Clan"
- 
-Chat permissions:
+Permissions:
 - Only owners can post
-- Owners must be able to delete other people's messages
 - Allow/disallow reactions from others
 - Require join to view the content above last N messages
 - Later:
@@ -57,30 +43,21 @@ Chat permissions:
   - Pause between text messages: [same as above]
   - Add Moderator role: like Owner, but can't assign roles
 
-Anonymous chats:
-- Hide anonymous members unless there are N of them 
-  - N should be 1 for all existing chats
-  - N should be 1 for any P2P anonymous chat by default  
-
-Constraints:
-- Max. message length = 64K symbols?
+Auth:
+- Extract Sessions service w/ proper sharding (+ use Redis?) 
+- Migrate to our own AuthService
+- Get rid of User type
 
 Less urgent bugs:
 - Back button behavior on Android
-- "Copy" for multiple messages should also contain author names.
 - Swipe from the very right edge of the screen to remove the left panel doesn't work consistently
 
 Mid-term (team):
 - Refactor notifications
-- Extract Session service & migrate it to Redis
 - Join as guest shouldn't be enabled by default in chats w/ anonymity enabled
 - How private chat links work (no timer, no max. invite count, manually revoke, show the list of private links, but no "New private link" for public chats)
 - Create chat should have ~ the same anonymity options as in Chat Settings
 - "Join as guest": think of how key walk-through items should look like after this / onboarding
 
 Backlog (team):
-
-- ChatInfo & ChatState: get rid of one of these. ChatInfo = ChatState + ChatAudioState, i.e. doesn't change frequently enough to have a dedicated entity
-- Extract SessionService w/ proper sharding (+ use Redis?) and migrate to our own AuthService
-- SettingsPanel / SettingsTab - make sure they inherit or use TabPanel / Tab
-- Don't highlight SelectedChat(s) on mobile
+- ChatInfo & ChatState: get rid of one of these? ChatInfo = ChatState + ChatAudioState, i.e. doesn't change frequently enough to have a dedicated entity

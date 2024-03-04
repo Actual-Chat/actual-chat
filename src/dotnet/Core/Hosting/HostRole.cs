@@ -8,14 +8,21 @@ public partial record struct HostRole(
     ) : ICanBeNone<HostRole>
 {
     public static HostRole None => default;
+
+    // Meta / root roles: the only ones you can use to start a host
     public static readonly HostRole AnyServer = nameof(AnyServer); // Any server has it
-    public static readonly HostRole SingleServer = nameof(SingleServer); // + FrontendServer, BackendServer
-    public static readonly HostRole FrontendServer = nameof(FrontendServer); // + BlazorHost
-    public static readonly HostRole BackendServer = nameof(BackendServer); // + MediaBackendServer, DefaultQueue
+    public static readonly HostRole OneServer = nameof(OneServer); // + OneFrontendServer, OneBackendServer
+    public static readonly HostRole OneApiServer = nameof(OneApiServer); // + Api
+    public static readonly HostRole OneBackendServer = nameof(OneBackendServer); // + MediaBackendServer, DefaultQueue
+
+    // Actual front-end roles
+    public static readonly HostRole Api = nameof(Api); // + BlazorHost
+    public static readonly HostRole BlazorHost = nameof(BlazorHost); // Used on both sides (server & client)
 
     // Actual backend roles
     public static readonly HostRole AudioBackend = nameof(AudioBackend);
     public static readonly HostRole MediaBackend = nameof(MediaBackend);
+    public static readonly HostRole ContactIndexingWorker = nameof(ContactIndexingWorker);
 
     // Queues
     public static readonly HostRole DefaultQueue = nameof(DefaultQueue);
@@ -24,9 +31,6 @@ public partial record struct HostRole(
 
     // The only role any app has
     public static readonly HostRole App = nameof(App); // Implies BlazorUI
-
-    // This implicit roles are used on both sides (server & client)
-    public static readonly HostRole BlazorHost = nameof(BlazorHost);
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore]
     public string Value => Id.Value;

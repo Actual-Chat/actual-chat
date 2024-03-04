@@ -93,7 +93,14 @@ public class AppHost : IDisposable
     {
         var tasks = new List<Task>();
         foreach (var initializer in  initializers) {
-            if (Services.HostInfo().IsTested) {
+#if DEBUG
+            // See MeshLockBase.DefaultLockOptions - locks expire much longer in DEBUG
+            var mustLock = false;
+#else
+            var hostInfo = Services.HostInfo();
+            var mustLock = hostInfo.IsTested;
+#endif
+            if (!mustLock) {
                 // Just to speed up tests
                 tasks.Add(InvokeInitializersUnsafe(initializer, cancellationToken));
             }
