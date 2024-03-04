@@ -14,9 +14,6 @@
     @apply py-0;
     @apply overflow-y-hidden;
 }
-.share-modal.share-modal-with-contact-selector .form-block {
-    @apply px-0;
-}
 .share-modal .no-padding-header-decorator {
     @apply mx-0;
 }
