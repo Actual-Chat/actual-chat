@@ -8,7 +8,6 @@ using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
-using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing.Spout;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
@@ -68,20 +67,13 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             ?? throw new InvalidOperationException("OpenSearchClusterUri is not set");
         var modelGroupName = Settings.OpenSearchModelGroup
             ?? throw new InvalidOperationException("OpenSearchModelGroup is not set");
-        services.AddSingleton<IOpenSearchClient>(_ => {
-            var connectionSettings = new ConnectionSettings(
-                new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
-                sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
-            return new OpenSearchClient(connectionSettings);
-        });
-        services.AddSingleton<ClusterSetup>(e =>
-                new ClusterSetup(
-                    modelGroupName,
-                    e.GetRequiredService<IOpenSearchClient>(),
-                    e.GetService<ILoggerSource>(),
-                    e.GetService<ITracerSource>()
-                )
-            )
+
+        var connectionSettings = new ConnectionSettings(
+            new SingleNodeConnectionPool(new Uri(openSearchClusterUri)),
+            sourceSerializer: (builtin, settings) => new OpenSearchJsonSerializer(builtin, settings));
+
+        services.AddSingleton<IOpenSearchClient>(_ => new OpenSearchClient(connectionSettings));
+        services.AddSingleton(e => ActivatorUtilities.CreateInstance<ClusterSetup>(e, modelGroupName))
             .AddAlias<IModuleInitializer, ClusterSetup>();
 
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();
