@@ -92,11 +92,22 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
                 chats: e.GetRequiredService<IChatsBackend>(),
                 cursors: new IndexingCursors<ChatEntriesIndexing.Cursor>(
                     e.GetRequiredService<IOpenSearchClient>(),
-                    e.GetRequiredService<IIndexSettingsSource>()
+                    // Note: weak logic.
+                    e.GetRequiredService<ClusterSetup>()
+                        .Result
+                        .IntoFullCursorIndexName(ClusterSetup.ChatSliceIndexName)
+                    //e.GetRequiredService<IIndexSettingsSource>()
+                    //    .GetSettings<ChatEntriesIndexing.Cursor>()
+                    //    .CursorIndexName
                 ),
                 sink: new Sink<ChatEntry, ChatEntry>(
                     e.GetRequiredService<IOpenSearchClient>(),
-                    e.GetRequiredService<IIndexSettingsSource>(),
+                    ingestPipelineId: e.GetRequiredService<ClusterSetup>()
+                        .Result
+                        .IntoFullIngestPipelineName(ClusterSetup.ChatSliceIndexName),
+                    indexName: e.GetRequiredService<ClusterSetup>()
+                        .Result
+                        .IntoFullSearchIndexName(ClusterSetup.ChatSliceIndexName),
                     ChatSliceExt.IntoIndexedDocument,
                     ChatSliceExt.IntoDocumentId,
                     e.GetRequiredService<ILoggerSource>()

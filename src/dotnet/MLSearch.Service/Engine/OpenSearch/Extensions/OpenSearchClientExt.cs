@@ -86,11 +86,19 @@ public static class OpenSearchClientExt
 
 
     // Note: Shamelessly copied and modified from Search.Service/ElasticExt.cs
-    public static T AssertSuccess<T>(this T response)
+    public static T AssertSuccess<T>(this T response, bool allowNotFound = false)
     where T: ResponseBase
     {
         if (response.IsValid)
             return response;
+            
+        if (response.ApiCall.Success 
+            && response.ApiCall.HttpStatusCode == 404
+            && allowNotFound
+        ) 
+        {
+            return response;
+        }
 
         if (response.OriginalException is { } exc) {
             // request sending failed

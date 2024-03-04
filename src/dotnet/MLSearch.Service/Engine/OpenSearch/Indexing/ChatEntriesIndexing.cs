@@ -16,17 +16,13 @@ internal class ChatEntriesIndexing(
     private ILogger? _log;
     private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
-    private Channel<MLSearch_TriggerContinueChatIndexing>? _channel;
+    private Channel<MLSearch_TriggerContinueChatIndexing> _channel =
+        Channel.CreateBounded<MLSearch_TriggerContinueChatIndexing>(ChannelCapacity);
     private IChatsBackend Chats => chats;
     private Sink<ChatEntry, ChatEntry> Sink => sink;
     private IndexingCursors<Cursor> Cursors => cursors;
 
-    protected virtual Channel<MLSearch_TriggerContinueChatIndexing> TriggersChannel {
-        get {
-            _channel ??= Channel.CreateBounded<MLSearch_TriggerContinueChatIndexing>(ChannelCapacity);
-            return _channel;
-        }
-    }
+    protected virtual Channel<MLSearch_TriggerContinueChatIndexing> TriggersChannel => _channel;
 
     public ChannelWriter<MLSearch_TriggerContinueChatIndexing> Trigger => TriggersChannel.Writer;
 
@@ -122,23 +118,27 @@ internal class ChatEntriesIndexing(
         // issues in case of re-sharding or new cluster rollouts.
         // It might have some other concurrent worker has updated
         // a cursor. TLDR: prevent stale cursor data.
-        await foreach (
-            // TODO: Make unique.
-            var e in TriggersChannel
-                .Reader
-                .ReadAllAsync(cancellationToken)
-                .ConfigureAwait(false)
-        ) {
-            var result = await IndexNext(e.Id, cancellationToken).ConfigureAwait(false);
-            if (!result.IsEndReached) {
-                // Enqueue event to continue indexing.
-                if (!Trigger.TryWrite(new MLSearch_TriggerContinueChatIndexing(e.Id))) {
-                    Log.LogWarning("Event queue is full: We can't process till this indexing is fully complete.");
-                    while (!result.IsEndReached) {
-                        result = await IndexNext(e.Id, cancellationToken).ConfigureAwait(false);
+        while (!cancellationToken.IsCancellationRequested) {
+            try {
+                var e = await TriggersChannel
+                    .Reader
+                    .ReadAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                var result = await IndexNext(e.Id, cancellationToken).ConfigureAwait(false);
+                if (!result.IsEndReached) {
+                    // Enqueue event to continue indexing.
+                    if (!Trigger.TryWrite(new MLSearch_TriggerContinueChatIndexing(e.Id))) {
+                        Log.LogWarning("Event queue is full: We can't process till this indexing is fully complete.");
+                        while (!result.IsEndReached) {
+                            result = await IndexNext(e.Id, cancellationToken).ConfigureAwait(false);
+                        }
+                        Log.LogWarning("Event queue is full: exiting an element.");
                     }
-                    Log.LogWarning("Event queue is full: exiting an element.");
                 }
+            }
+            catch (Exception e){
+                Log.LogError(e.Message);
+                throw;
             }
         }
     }

@@ -21,15 +21,13 @@ namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 //   deleted.
 internal class Sink<TUpdateDocument, TDeleteDocument>(
     IOpenSearchClient client,
-    IIndexSettingsSource indexSettingsSource,
+    string ingestPipelineId,
+    IndexName indexName,
     Func<TUpdateDocument, ChatSlice> intoUpdate,
     Func<TDeleteDocument, Id> intoDelete,
     ILoggerSource loggerSource
 )
 {
-    private IndexSettings? _indexSettings;
-    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings<TUpdateDocument>();
-
     private ILogger? _log;
     private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
@@ -52,11 +50,11 @@ internal class Sink<TUpdateDocument, TDeleteDocument>(
                         updates,
                         (op, document) =>
                             op
-                                .Pipeline(IndexSettings.IngestPipelineId)
-                                .Index(IndexSettings.SearchIndexName)
+                                .Pipeline(ingestPipelineId)
+                                .Index(indexName)
                                 .Id(document.Id())
                     )
-                    .DeleteMany(deletes, (op, _) => op.Index(IndexSettings.SearchIndexName)),
+                    .DeleteMany(deletes, (op, _) => op.Index(indexName)),
                 cancellationToken
             ).ConfigureAwait(false);
         Log.LogErrors(result);
