@@ -6,7 +6,7 @@
 
 /* List item */
 .contact-selector-list-item {
-    @apply flex-x items-center gap-x-1;
+    @apply flex-none flex-x items-center gap-x-1;
     @apply h-12;
     @apply px-2;
     @apply rounded-md;

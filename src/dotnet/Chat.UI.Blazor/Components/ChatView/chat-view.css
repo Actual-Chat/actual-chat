@@ -263,12 +263,12 @@ body.hoverable .chat-header-title:hover {
     @apply text-02 text-text-1;
 }
 .chat-welcome-block .c-link {
-    @apply flex-x items-center self-center gap-x-16;
-    @apply w-fit;
-    @apply mt-2 p-3 md:p-4;
-    @apply rounded-full;
+    @apply flex-x items-center gap-x-16;
+    @apply w-full md:w-fit;
+    @apply mt-2 p-2 md:p-2;
+    @apply border border-separator rounded-full;
     @apply text-primary text-headline-1;
-    @apply bg-input;
+    @apply bg-transparent;
     max-width: 35.5rem;
 }
 .narrow .chat-welcome-block .c-link {
@@ -277,6 +277,16 @@ body.hoverable .chat-header-title:hover {
 .chat-welcome-block .c-link .c-link-url,
 .chat-welcome-block .c-link .c-link-buttons {
     @apply flex-x items-center gap-x-4;
+}
+.chat-welcome-block .c-link .c-link-url {
+    @apply flex-1;
+    @apply text-caption-1 md:text-headline-1;
+}
+.chat-welcome-block .c-link .c-link-url > .c-round {
+    @apply flex-none flex items-center justify-center;
+    @apply h-12 w-12;
+    @apply rounded-full;
+    @apply bg-hover;
 }
 body.narrow .chat-welcome-block .c-link .c-link-buttons {
     @apply gap-x-3;
@@ -291,9 +301,9 @@ body.narrow .chat-welcome-block .c-link .c-link-buttons {
 .chat-welcome-block .link-hint {
     @apply text-xs font-normal text-03;
 }
-.chat-welcome-block .btn.btn-round {
-    @apply bg-[var(--round-right-panel)];
-}
+/*.chat-welcome-block .btn.btn-round {*/
+    /*@apply bg-[var(--round-right-panel)];*/
+/*}*/
 .chat-welcome-block .btn.btn-round i {
     @apply text-primary text-2xl;
 }
