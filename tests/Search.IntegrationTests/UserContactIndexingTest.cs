@@ -2,13 +2,12 @@ using ActualChat.Performance;
 using ActualChat.Search.Module;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
-using ActualLab.Generators;
 
 namespace ActualChat.Search.IntegrationTests;
 
 [Trait("Category", "Slow")]
 public class UserContactIndexingTest(ITestOutputHelper @out)
-    : LocalAppHostTestBase( "contact_indexing_" + new RandomSymbolGenerator(length: 5, alphabet: Alphabet.AlphaLower).Next(),
+    : LocalAppHostTestBase( "contact_indexing",
         TestAppHostOptions.Default with {
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
