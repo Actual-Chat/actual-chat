@@ -6,6 +6,7 @@ using ActualLab.Generators;
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection))]
+[Trait("Category", "Slow")]
 public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
@@ -21,7 +22,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return base.DisposeAsync();
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldFindAddedChats()
     {
         // arrange
@@ -110,7 +111,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
             );
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldFindUpdateChats()
     {
         // arrange
@@ -220,7 +221,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should().BeEmpty();
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldNotFindDeletedChats()
     {
         // arrange
