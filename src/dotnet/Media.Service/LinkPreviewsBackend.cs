@@ -41,7 +41,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
             return linkPreview;
 
         // Regenerate link preview in background in case there is no preview yet (or it was wiped)
-        _ = BackgroundTask.Run(() => GenerateForEntry(entry, CancellationToken.None), CancellationToken.None);
+        _ = BackgroundTask.Run(() => GetOrGenerateForEntry(entry, CancellationToken.None), CancellationToken.None);
         return null;
     }
 
@@ -84,7 +84,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (changeKind is ChangeKind.Remove)
             return Task.CompletedTask;
 
-        return GenerateForEntry(entry, cancellationToken);
+        return GetOrGenerateForEntry(entry, cancellationToken);
     }
 
     // Private methods
@@ -152,7 +152,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         return dbLinkPreview.ToModel();
     }
 
-    private async Task<LinkPreview?> GenerateForEntry(ChatEntry entry, CancellationToken cancellationToken)
+    private async Task<LinkPreview?> GetOrGenerateForEntry(ChatEntry entry, CancellationToken cancellationToken)
     {
         var linkPreview = await GetAndRefreshIfRequired(entry, false, cancellationToken).ConfigureAwait(false);
         var linkPreviewId = linkPreview?.Id ?? Symbol.Empty;
