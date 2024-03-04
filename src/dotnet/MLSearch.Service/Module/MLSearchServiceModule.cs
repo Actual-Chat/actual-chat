@@ -87,7 +87,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();
         services.AddSingleton<ISearchEngine<ChatSlice>, OpenSearchEngine<ChatSlice>>();
 
-        services.AddTransient<ChatEntriesIndexing>(
+        services.AddSingleton<ChatEntriesIndexing>(
             e => new ChatEntriesIndexing(
                 chats: e.GetRequiredService<IChatsBackend>(),
                 cursors: new IndexingCursors<ChatEntriesIndexing.Cursor>(
