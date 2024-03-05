@@ -42,12 +42,9 @@ internal class Sink<TSource, TDocument>(
         IEnumerable<TSource>? deletedDocuments,
         CancellationToken cancellationToken)
     {
-        var updates = (updatedDocuments ?? Array.Empty<TSource>())
-            .Select(mapper.Map)
-            .ToList();
-        var deletes = (deletedDocuments ?? Array.Empty<TSource>())
-            .Select(mapper.MapId)
-            .ToList();
+        var updates = updatedDocuments?.Select(mapper.Map) ?? Enumerable.Empty<TDocument>();
+        var deletes = deletedDocuments?.Select(mapper.MapId) ?? Enumerable.Empty<Id>();
+
         var result = await OpenSearch
             .BulkAsync(r => r
                     .IndexMany(
