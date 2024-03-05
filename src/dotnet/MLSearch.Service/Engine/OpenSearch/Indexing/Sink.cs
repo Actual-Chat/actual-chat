@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualChat.MLSearch.ApiAdapters;
 using OpenSearch.Client;
 using ActualChat.MLSearch.Documents;
@@ -65,19 +64,4 @@ internal class Sink<TSource, TDocument>(
         Log.LogErrors(result);
         result.AssertSuccess();
     }
-}
-
-internal interface IDocumentMapper<in TSource, out TDocument>
-{
-    TDocument Map(TSource source);
-    Id MapId(TSource source);
-}
-
-internal class ChatSliceMapper : IDocumentMapper<ChatEntry, ChatSlice>
-{
-    public ChatSlice Map(ChatEntry source)
-        => source.IntoIndexedDocument();
-
-    public Id MapId(ChatEntry source)
-        => source.IntoDocumentId();
 }
