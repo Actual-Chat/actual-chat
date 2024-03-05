@@ -28,10 +28,20 @@
 </div>
 
 @code {
+    private PlaceId _placeId;
+
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
-    private void OnClick(ChatListOrder order) {
-        ChatListUI.Settings.Set(order, static (order1, r) => {
+    protected override void OnParametersSet() {
+        if (Arguments is not [ var placeSid ])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+
+        _placeId = new PlaceId(placeSid);
+    }
+
+    private async Task OnClick(ChatListOrder order) {
+        using var settingsState = await ChatListUI.LeaseSettingsState(_placeId, default).ConfigureAwait(false);
+        settingsState.Set(order, static (order1, r) => {
             var settings = r.Value;
             if (settings.Order != order1)
                 settings = settings with { Order = order1 };
