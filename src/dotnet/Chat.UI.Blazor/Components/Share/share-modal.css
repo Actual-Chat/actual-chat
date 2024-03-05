@@ -18,8 +18,8 @@
     @apply mx-0;
 }
 .share-modal .dialog-footer {
-    @apply gap-y-1;
-    @apply py-1;
+    @apply gap-y-2;
+    @apply py-2;
 }
 .share-modal .contact-selector-list {
     @apply pt-2;
@@ -65,11 +65,26 @@
 .share-externally-button {
     @apply flex-x;
 }
-.share-externally-button .btn {
-    @apply flex-1;
-}
 
 .share-modal .chat-link {
     @apply w-full;
     @apply p-0.5 m-0;
+}
+
+.share-modal .form-block.with-contact-list .search-box {
+    @apply px-4;
+}
+
+.share-modal .copy-btn,
+.share-externally-button .btn {
+    @apply flex-1;
+    @apply max-w-none;
+}
+.share-modal .copy-btn span,
+.share-externally-button .btn span {
+    @apply text-02;
+}
+.share-modal .copy-btn i,
+.share-externally-button .btn i {
+    @apply text-2xl;
 }

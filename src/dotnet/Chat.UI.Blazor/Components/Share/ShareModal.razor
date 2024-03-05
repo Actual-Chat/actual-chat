@@ -48,6 +48,7 @@
             Text="@_comment"
             IsTransparent="@true"
             Placeholder="Add your comment (optional)"
+            PlaceholderIcon="icon-message-ellipse"
             TextChanged="OnCommentChanged" />
         @if (ModalModel.Request.HasLink(out var link)) {
             <input type="hidden" @ref="@_copyTextSourceRef" value="@RequestWithComment.GetShareTextAndLink(UrlMapper)" />
