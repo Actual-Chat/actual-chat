@@ -4,8 +4,8 @@ using ActualLab.Time.Testing;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-[Collection(nameof(ChatCollection))]
-public class ChatActivityTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
+[Collection(nameof(ChatActivityCollection))]
+public class ChatActivityTest(ChatActivityCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private ChatId TestChatId => Constants.Chat.DefaultChatId;
