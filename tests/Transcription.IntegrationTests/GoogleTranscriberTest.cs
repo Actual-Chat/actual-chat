@@ -61,7 +61,7 @@ public class GoogleTranscriberTest(
             Out.WriteLine(t.ToString());
     }
 
-    [Fact]
+    [Fact(Skip = "Depends on Google API")]
     public async Task ProperTextMapTest()
     {
         var fileName = "0000-AY.webm";

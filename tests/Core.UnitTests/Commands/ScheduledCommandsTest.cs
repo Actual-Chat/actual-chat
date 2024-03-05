@@ -29,7 +29,7 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         await commander.Call(new TestCommand(null));
         testService.ProcessedEvents.Count.Should().Be(0);
 
-        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(1), CancellationToken.None);
+        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(3), CancellationToken.None);
 
         testService.ProcessedEvents.Count.Should().Be(1);
     }
@@ -57,7 +57,7 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand2());
 
-        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(1), CancellationToken.None);
+        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(3), CancellationToken.None);
 
         foreach (var eventCommand in testService.ProcessedEvents)
             Out.WriteLine(eventCommand.ToString());
@@ -88,7 +88,7 @@ public class ScheduledCommandsTest(ITestOutputHelper @out) : TestBase(@out)
         testService.ProcessedEvents.Count.Should().Be(0);
         await commander.Call(new TestCommand3());
 
-        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(1), CancellationToken.None);
+        await scheduler.ProcessAlreadyQueued(TimeSpan.FromSeconds(3), CancellationToken.None);
 
         foreach (var eventCommand in testService.ProcessedEvents)
             Out.WriteLine(eventCommand.ToString());

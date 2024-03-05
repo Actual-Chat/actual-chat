@@ -5,8 +5,7 @@ using ActualLab.Versioning;
 namespace ActualChat.Users.IntegrationTests;
 
 [Collection(nameof(UserCollection))]
-public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
+public class UserStatusTest(ITestOutputHelper @out): AppHostTestBase("user-status", @out)
 {
     private WebClientTester _tester = null!;
     private IAccounts _accounts = null!;
@@ -15,7 +14,7 @@ public class UserStatusTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     protected override async Task InitializeAsync()
     {
-        _appHost = await NewAppHost("user-status");
+        _appHost = await NewAppHost();
         _tester = _appHost.NewWebClientTester(Out);
         _accounts = _appHost.Services.GetRequiredService<IAccounts>();
         _adminSession = Session.New();
