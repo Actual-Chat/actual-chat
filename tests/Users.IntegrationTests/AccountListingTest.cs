@@ -20,7 +20,10 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     protected override async Task DisposeAsync()
-        => await _tester.DisposeAsync().AsTask();
+    {
+        await _tester.DisposeAsync();
+        await base.DisposeAsync();
+    }
 
     [Theory]
     [InlineData(10, 3)]
