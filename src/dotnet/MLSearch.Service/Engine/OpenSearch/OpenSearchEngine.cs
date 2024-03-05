@@ -1,7 +1,7 @@
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
+using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 using OpenSearch.Client;
-using OpenSearch.Net;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
@@ -59,24 +59,5 @@ internal class OpenSearchEngine<TDocument>(
         if (!response.IsValid) {
             throw new InvalidOperationException(response.DebugInformation, response.OriginalException);
         }
-    }
-}
-
-internal static class OpenSearchExtensions
-{
-    public static async Task<string> ToJsonAsync(
-        this ISearchRequest searchRequest,
-        IOpenSearchClient openSearch,
-        CancellationToken cancellationToken)
-    {
-        var serializableRequest = PostData.Serializable(searchRequest);
-        serializableRequest.DisableDirectStreaming = false;
-
-        var ms = new MemoryStream();
-        await serializableRequest.WriteAsync(ms, openSearch.ConnectionSettings, cancellationToken)
-            .ConfigureAwait(false);
-        ms.Seek(0, SeekOrigin.Begin);
-        using var reader = new StreamReader(ms);
-        return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
 }

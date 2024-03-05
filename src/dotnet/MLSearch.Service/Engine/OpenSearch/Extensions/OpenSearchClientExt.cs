@@ -5,7 +5,7 @@ using HttpMethod = OpenSearch.Net.HttpMethod;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Extensions;
 
-public static class OpenSearchClientExt
+internal static class OpenSearchClientExt
 {
     /// <summary>
     /// A helper method to execute OpenSearch requests
@@ -84,18 +84,17 @@ public static class OpenSearchClientExt
         return log;
     }
 
-
     // Note: Shamelessly copied and modified from Search.Service/ElasticExt.cs
     public static T AssertSuccess<T>(this T response, bool allowNotFound = false)
     where T: ResponseBase
     {
         if (response.IsValid)
             return response;
-            
-        if (response.ApiCall.Success 
+
+        if (response.ApiCall.Success
             && response.ApiCall.HttpStatusCode == 404
             && allowNotFound
-        ) 
+        )
         {
             return response;
         }
@@ -113,5 +112,21 @@ public static class OpenSearchClientExt
                 .TrimSuffix(":", ".")
                 .EnsureSuffix(".")
         );
+    }
+
+    public static async Task<string> ToJsonAsync(
+        this ISearchRequest searchRequest,
+        IOpenSearchClient openSearch,
+        CancellationToken cancellationToken)
+    {
+        var serializableRequest = PostData.Serializable(searchRequest);
+        serializableRequest.DisableDirectStreaming = false;
+
+        var ms = new MemoryStream();
+        await serializableRequest.WriteAsync(ms, openSearch.ConnectionSettings, cancellationToken)
+            .ConfigureAwait(false);
+        ms.Seek(0, SeekOrigin.Begin);
+        using var reader = new StreamReader(ms);
+        return await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
     }
 }
