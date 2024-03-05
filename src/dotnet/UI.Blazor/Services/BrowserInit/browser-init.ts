@@ -1,8 +1,8 @@
+import { Connectivity } from 'connectivity';
 import { EventHandlerSet } from "event-handling";
 import { delayAsync, PromiseSource } from 'promises';
-import { Log } from "logging";
 import { AppKind, BrowserInfo } from "../BrowserInfo/browser-info";
-import { isOnline, reloadCurrentPage, whenOnline } from 'connectivity';
+import { Log } from "logging";
 
 const { debugLog, infoLog, warnLog, errorLog } = Log.get('BrowserInit');
 
@@ -77,7 +77,7 @@ export class BrowserInit {
             try {
                 const blazor = window['Blazor'];
                 while (blazor) {
-                    await whenOnline();
+                    await Connectivity.whenOnline();
                     if (this.whenReloading.isCompleted())
                         return; // Already reloading
 
@@ -90,7 +90,7 @@ export class BrowserInit {
                         // Let's assume it may fail
                     }
                     errorLog?.log('startReconnecting: failed to reconnect');
-                    if (await isOnline())
+                    if (await Connectivity.isOnline())
                         break; // Couldn't reconnect while online -> reload
                 }
                 this.startReloading();
@@ -110,7 +110,7 @@ export class BrowserInit {
 
         warnLog?.log('startReloading: reloading...');
         this.whenReloading.resolve(undefined);
-        void reloadCurrentPage();
+        void Connectivity.reloadCurrentPage();
     }
 
     public static startReloadWatchers() {

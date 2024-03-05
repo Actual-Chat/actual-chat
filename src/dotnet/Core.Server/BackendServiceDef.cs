@@ -12,8 +12,8 @@ public sealed record BackendServiceDef(
 
     public ShardScheme ShardScheme { get; }
         = HostedByRole is { } hostedByRole
-            ? ShardScheme.ById.GetValueOrDefault(hostedByRole, ShardScheme.None)
-            : ShardScheme.None;
+            ? ShardScheme.ById.GetValueOrDefault(hostedByRole, ShardScheme.Undefined)
+            : ShardScheme.Undefined;
 
     public override string ToString()
     {

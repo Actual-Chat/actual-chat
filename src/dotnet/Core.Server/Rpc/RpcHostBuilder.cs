@@ -36,19 +36,19 @@ public readonly struct RpcHostBuilder
 
     // AddFrontend & AddBackend auto-detect IComputeService & IRpcService
 
-    public RpcHostBuilder AddFrontend<
+    public RpcHostBuilder AddApiService<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TService,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TImplementation>()
         where TService : class, IRpcService
         where TImplementation : class, TService
-        => AddFrontend(typeof(TService), typeof(TImplementation));
+        => AddApiService(typeof(TService), typeof(TImplementation));
 
-    public RpcHostBuilder AddFrontend(
+    public RpcHostBuilder AddApiService(
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type serviceType,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type implementationType,
         Symbol name = default)
     {
-        if (!HostInfo.HasRole(HostRole.FrontendServer))
+        if (!HostInfo.HasRole(HostRole.Api))
             return this;
 
         if (!typeof(IRpcService).IsAssignableFrom(serviceType))
@@ -86,8 +86,8 @@ public readonly struct RpcHostBuilder
 
         var hostRoles = HostInfo.Roles;
         var serviceMode = hostRoles.GetBackendServiceMode(serviceType);
-        var hostedByRole = hostRoles.GetBackendClientRole(serviceType);
-        var serviceDef = new BackendServiceDef(serviceType, implementationType, serviceMode, hostedByRole);
+        var shardScheme = ShardScheme.ForType(serviceType) ?? ShardScheme.None;
+        var serviceDef = new BackendServiceDef(serviceType, implementationType, serviceMode, shardScheme.HostRole);
         Services.Add(new ServiceDescriptor(typeof(BackendServiceDef), serviceDef));
 
         switch (serviceMode) {

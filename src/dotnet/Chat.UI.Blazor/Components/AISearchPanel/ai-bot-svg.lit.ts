@@ -1,0 +1,22 @@
+import {customElement, property} from "lit/decorators.js";
+import {css, html, LitElement} from "lit";
+
+@customElement('ai-bot-svg')
+class AiBotSvg extends LitElement {
+
+    protected render(): unknown {
+        return html`
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="40" height="40" rx="20" fill="url(#paint0_linear_14755_45313)"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M30.9844 16.9233C26.5908 16.8941 23.0334 13.3649 22.9923 9C22.9511 13.3648 19.3937 16.894 15.0002 16.9233C19.3937 16.9525 22.9511 20.4817 22.9923 24.8465C23.0334 20.4817 26.5909 16.9525 30.9844 16.9233Z" fill="white"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M10.0004 25.0759C12.5079 25.0759 14.5444 23.0594 14.5767 20.5596C14.6089 23.0594 16.6454 25.0759 19.1529 25.0759L19.1533 25.0759L19.1533 25.0764L19.1529 25.0764C16.6454 25.0764 14.6089 27.093 14.5767 29.5928C14.5444 27.093 12.5079 25.0764 10.0004 25.0764C10.0003 25.0764 10.0001 25.0764 10 25.0764L10 25.0759L10.0004 25.0759Z" fill="white"/>
+                <defs>
+                    <linearGradient id="paint0_linear_14755_45313" x1="20" y1="-51.6667" x2="20.5944" y2="48.7465" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#2970FF"/>
+                        <stop offset="1" stop-color="#FF3880"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+        `;
+    }
+}

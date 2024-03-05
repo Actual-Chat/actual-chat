@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\dotnet\Search.Service\Search.Service.csproj" />
+    <ProjectReference Include="..\Testing\Testing.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -14,7 +14,7 @@
             <DownloadAppBanner CanBeClosed="true"/>
             <NavbarContent/>
             @if (_isSearchPanelOpen) {
-                <LeftSearchPanel/>
+                <LeftSearchPanel OnAISearchClick="@OpenRightSearchPanel"/>
             }
         </div>
         </ErrorBarrier>
@@ -30,6 +30,8 @@
 
     [Inject] private PanelsUI PanelsUI { get; init; } = null!;
     // [Inject] private Dispatcher Dispatcher { get; init; } = null!;
+
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     protected override void OnInitialized() {
         _isOpen = PanelsUI.Left.IsVisible.Value;
@@ -60,6 +62,14 @@
             return;
         _isSearchPanelOpen = isSearchMode;
         StateHasChanged();
+    }
+
+    private void OpenRightSearchPanel() {
+        PanelsUI.Right.SearchToggle();
+        PanelsUI.Left.SearchToggle();
+        if (ScreenSize.IsNarrow()) {
+            PanelsUI.Left.SetIsVisible(false);
+        }
     }
 
     public void Dispose() {

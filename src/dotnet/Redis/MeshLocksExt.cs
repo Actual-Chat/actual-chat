@@ -52,6 +52,17 @@ public static class MeshLocksExt
         this IMeshLocks meshLocks,
         Func<CancellationToken, Task<T>> taskFactory,
         string key,
+        CancellationToken cancellationToken)
+        => meshLocks.RunInternal(taskFactory,
+            key,
+            GetDefaultOptions(),
+            false,
+            cancellationToken);
+
+    public static Task<(bool WasRun, T Result)> TryRun<T>(
+        this IMeshLocks meshLocks,
+        Func<CancellationToken, Task<T>> taskFactory,
+        string key,
         MeshLockOptions options,
         CancellationToken cancellationToken)
         => meshLocks.RunInternal(taskFactory,

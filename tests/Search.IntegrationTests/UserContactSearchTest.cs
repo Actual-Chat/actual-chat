@@ -5,6 +5,7 @@ using ActualChat.Users;
 namespace ActualChat.Search.IntegrationTests;
 
 [Collection(nameof(SearchCollection))]
+[Trait("Category", "Slow")]
 public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
@@ -60,7 +61,7 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         await _tester.DisposeAsync().AsTask();
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldFindAddedUsers()
     {
         // arrange
@@ -77,34 +78,29 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await _sut.FindUserContacts(bob.Id,
-            "Ja",
-            0,
-            20,
-            CancellationToken.None);
+        var searchResults = await Find(bob, "Ja");
 
         // assert
-        searchResults.Should()
-            .BeEquivalentTo(BuildResponse(
-                (bob.Id, Jack)
-            ));
+        searchResults.Should().BeEquivalentTo([BuildSearchResult(bob.Id, Jack)]);
 
         // act
-        searchResults = await _sut.FindUserContacts(bob.Id,
-            "em",
+        searchResults = await Find(bob, "Emily Yel");
+
+        // assert
+        searchResults.Should().BeEquivalentTo([BuildSearchResult(bob.Id, Emily)]);
+    }
+
+    private async Task<ApiArray<ContactSearchResult>> Find(AccountFull bob, string criteria)
+    {
+        var response = await _sut.FindUserContacts(bob.Id,
+            criteria,
             0,
             20,
             CancellationToken.None);
-
-        // assert
-        searchResults.Should()
-            .BeEquivalentTo(BuildResponse(
-                (bob.Id, Emily),
-                (bob.Id, Emma)
-            ));
+        return response.Hits;
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldFindUpdatedUsers()
     {
         // arrange
@@ -121,33 +117,22 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await _sut.FindUserContacts(bob.Id,
-            "Camila",
-            0,
-            20,
-            CancellationToken.None);
+        var searchResults = await Find(bob, "Camila");
 
         // assert
-        searchResults.Hits.Should().BeEmpty();
+        searchResults.Should().BeEmpty();
 
         // act
         updates = ApiArray.New(BuildUserContact(Camila));
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        searchResults = await _sut.FindUserContacts(bob.Id,
-            "Camila",
-            0,
-            20,
-            CancellationToken.None);
+        searchResults = await Find(bob, "Camila");
 
         // assert
-        searchResults.Should()
-            .BeEquivalentTo(BuildResponse(
-                (bob.Id, Camila)
-            ));
+        searchResults.Should().BeEquivalentTo([BuildSearchResult(bob.Id, Camila)]);
     }
 
-    [Fact(Skip = "Super slow & fails w/ timeouts, must be fixed.")]
+    [Fact]
     public async Task ShouldNotFindDeletedUsers()
     {
         // arrange
@@ -164,33 +149,22 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex(updates, ApiArray<IndexedUserContact>.Empty));
         await _commander.Call(new SearchBackend_Refresh(true));
-        var searchResults = await _sut.FindUserContacts(bob.Id,
-            "em",
-            0,
-            20,
-            CancellationToken.None);
+        var searchResults = await Find(bob, "em");
 
         // assert
         searchResults.Should()
-            .BeEquivalentTo(BuildResponse(
-                (bob.Id, Emily),
-                (bob.Id, Emma)
-            ));
+            .BeEquivalentTo([
+                BuildSearchResult(bob.Id, Emily),
+                BuildSearchResult(bob.Id, Emma),
+            ]);
 
         // act
         await _commander.Call(new SearchBackend_UserContactBulkIndex(ApiArray<IndexedUserContact>.Empty, BuildUserContacts(Emma)));
         await _commander.Call(new SearchBackend_Refresh(true));
-        searchResults = await _sut.FindUserContacts(bob.Id,
-            "em",
-            0,
-            20,
-            CancellationToken.None);
+        searchResults = await Find(bob, "em");
 
         // assert
-        searchResults.Should()
-            .BeEquivalentTo(BuildResponse(
-                (bob.Id, Emily)
-            ));
+        searchResults.Should().BeEquivalentTo([BuildSearchResult(bob.Id, Emily)]);
     }
 
     // Private methods
@@ -214,13 +188,4 @@ public class UserContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
 
     private static ContactSearchResult BuildSearchResult(UserId ownerId, UserId otherUserId, string fullName)
         => new (new ContactId(ownerId, new PeerChatId(ownerId, otherUserId).ToChatId()), SearchMatch.New(fullName));
-
-    private static ContactSearchResultPage BuildResponse(params (UserId OwnerId, AccountFull Other)[] hits)
-        => BuildResponse(hits.Select(x => BuildSearchResult(x.OwnerId, x.Other)).ToArray());
-
-    private static ContactSearchResultPage BuildResponse(params ContactSearchResult[] hits)
-        => new() {
-            Offset = 0,
-            Hits = hits.ToApiArray(),
-        };
 }

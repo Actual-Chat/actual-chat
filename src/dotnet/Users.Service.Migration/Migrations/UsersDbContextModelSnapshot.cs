@@ -17,7 +17,7 @@ namespace ActualChat.Users.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.1")
+                .HasAnnotation("ProductVersion", "8.0.2")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -27,6 +27,10 @@ namespace ActualChat.Users.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("text")
                         .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -88,6 +92,9 @@ namespace ActualChat.Users.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_accounts_username_normalized")
                         .HasFilter("username_normalized is not null");
+
+                    b.HasIndex("Version", "Id")
+                        .HasDatabaseName("ix_accounts_version_id");
 
                     b.ToTable("accounts");
                 });

@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using ActualChat.Commands;
+using ActualChat.Users.Events;
 using ActualChat.Users.Module;
 using ActualLab.Fusion.Authentication.Services;
 
@@ -26,6 +28,7 @@ public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceP
             LastName = user.Claims.GetValueOrDefault(ClaimTypes.Surname, ""),
             Email = user.Claims.GetValueOrDefault(ClaimTypes.Email, ""),
             Phone = user.Claims.GetValueOrDefault(ClaimTypes.MobilePhone, ""),
+            CreatedAt = dbUser.CreatedAt,
         };
         var email = dbAccount.Email;
         dbContext.Accounts.Add(dbAccount);
@@ -36,6 +39,7 @@ public class DbUserRepo(DbAuthService<UsersDbContext>.Options options, IServiceP
         }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        new AccountChangedEvent(dbAccount.ToModel(user), null, ChangeKind.Create).EnqueueOnCompletion();
         return dbUser;
     }
 }

@@ -1,0 +1,52 @@
+.ai-search-panel {
+    @apply absolute inset-0 z-[100];
+    @apply bg-03;
+}
+.ai-search-panel > .c-content {
+    @apply relative;
+    @apply flex-y;
+    @apply h-full;
+}
+.ai-search-panel .c-header {
+    @apply ordinary-header;
+    @apply gap-x-2;
+    @apply border-b border-separator;
+}
+.ai-search-panel .c-header > .c-avatar {
+    @apply h-10 w-10;
+}
+.ai-search-panel .c-header > .c-title {
+    @apply flex-1;
+    @apply text-headline-1;
+}
+.ai-search-panel .c-body {
+    @apply flex-1 flex-y;
+}
+.ai-search-panel .c-footer {
+    @apply flex-none flex-x items-end gap-x-1;
+    @apply h-auto;
+    @apply px-4;
+    @apply border-t border-separator;
+    @apply truncate;
+}
+.ai-search-panel .c-footer > .ai-input-label {
+    @apply flex-1 flex items-center;
+    @apply h-auto min-h-14 max-h-36;
+    @apply py-2;
+    @apply break-all;
+    @apply overflow-y-auto;
+    @apply custom-scrollbar-hide;
+}
+.ai-search-panel .c-footer .ai-bot-editor {
+    @apply flex items-center;
+    @apply h-full;
+    @apply cursor-text;
+    word-break: break-word;
+}
+.ai-search-panel .c-footer .ai-bot-editor > .editor-content {
+    word-break: break-word;
+}
+.ai-search-panel .c-footer .btn-h {
+    @apply w-10 h-10;
+    @apply my-2;
+}

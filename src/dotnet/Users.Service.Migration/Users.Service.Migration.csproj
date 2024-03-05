@@ -10,4 +10,11 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Migrations\20240228045322_Account_SimplifyVersionIndex.cs" />
+    <Compile Remove="Migrations\20240228045322_Account_SimplifyVersionIndex.Designer.cs" />
+    <Compile Remove="Migrations\20240225143055_Account_CopyCreatedAtFromUser.cs" />
+    <Compile Remove="Migrations\20240225143055_Account_CopyCreatedAtFromUser.Designer.cs" />
+  </ItemGroup>
+
 </Project>

@@ -52,8 +52,8 @@ public class MeshWatcherTest(ITestOutputHelper @out)
 
         _ = w2.DisposeAsync();
 
-        var t1a = Task.Delay(w1.ChangeTimeout * 0.5, w1w2.StopToken);
-        var t1b = Task.Delay(w1.ChangeTimeout * 1.5, w1w2.StopToken);
+        var t1a = Task.Delay(w1.NodeTimeout * 0.5, w1w2.StopToken);
+        var t1b = Task.Delay(w1.NodeTimeout * 1.5, w1w2.StopToken);
         var t2 = Task.Delay(TimeSpan.FromSeconds(1), w2w1.StopToken);
         var r1a = await t1a.ResultAwait();
         var r1b = await t1b.ResultAwait();

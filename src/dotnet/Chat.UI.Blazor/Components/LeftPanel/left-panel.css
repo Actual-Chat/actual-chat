@@ -85,6 +85,9 @@
     @apply w-full;
     @apply px-2;
 }
+body.narrow .left-panel-content-header .c-ending {
+    @apply pr-4;
+}
 .left-panel-content-header.place .c-ending {
     @apply static z-10;
     @apply h-14;

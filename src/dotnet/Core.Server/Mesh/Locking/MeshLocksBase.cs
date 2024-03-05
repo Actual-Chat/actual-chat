@@ -5,7 +5,12 @@ namespace ActualChat.Mesh;
 
 public abstract class MeshLocksBase(IMomentClock? clock = null, ILogger? log = null) : IMeshLocksBackend
 {
-    public static readonly MeshLockOptions DefaultLockOptions = new(TimeSpan.FromSeconds(15));
+    public static readonly MeshLockOptions DefaultLockOptions =
+#if DEBUG
+        new(TimeSpan.FromSeconds(60));
+#else
+        new(TimeSpan.FromSeconds(15));
+#endif
     public static readonly TimeSpan DefaultUnconditionalCheckPeriod = TimeSpan.FromSeconds(10);
 
     protected readonly string HolderKeyPrefix = Alphabet.AlphaNumeric.Generator8.Next() + "-";

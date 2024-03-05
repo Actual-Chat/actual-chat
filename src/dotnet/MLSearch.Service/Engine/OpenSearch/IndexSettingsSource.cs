@@ -4,6 +4,7 @@ using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
+// TODO: KILL THIS. 
 internal interface IIndexSettingsSource
 {
     IndexSettings GetSettings<TDocument>();

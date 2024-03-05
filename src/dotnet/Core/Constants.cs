@@ -17,6 +17,7 @@ public static partial class Constants
         public static readonly ChatId FeedbackTemplateChatId = ChatId.Group("feedback-template");
         public static readonly IReadOnlySet<Symbol> SystemChatIds =
             new HashSet<Symbol>(new [] { DefaultChatId.Id, AnnouncementsChatId.Id, FeedbackTemplateChatId.Id });
+        public static readonly string[] SystemChatSids = SystemChatIds.Select(x => x.Value).ToArray();
 
         public static readonly TileStack<long> ServerIdTileStack = TileStacks.Long5To1K;
         public static readonly TileStack<long> ReaderIdTileStack = TileStacks.Long5To80;
@@ -56,6 +57,8 @@ public static partial class Constants
             public static readonly string Picture = "https://api.dicebear.com/7.x/bottts/svg?seed=12";
         }
 
+        public static readonly IReadOnlyList<UserId> SystemUserIds = [Admin.UserId, Walle.UserId];
+        public static readonly IReadOnlyList<string> SSystemUserIds = SystemUserIds.Select(x => x.Value).ToArray();
         public static readonly int TestBotCount = 30;
     }
 
