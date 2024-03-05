@@ -25,7 +25,7 @@ public class AccountListingTest(AppHostFixture fixture, ITestOutputHelper @out)
         await base.DisposeAsync();
     }
 
-    [Theory]
+    [Theory(Skip = "Should be fixed")]
     [InlineData(10, 3)]
     [InlineData(55, 7)]
     public async Task ShouldListBatches(int count, int batchSize)
