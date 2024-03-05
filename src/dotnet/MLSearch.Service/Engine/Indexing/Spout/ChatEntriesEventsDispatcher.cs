@@ -3,10 +3,10 @@ using ActualChat.Commands;
 
 namespace ActualChat.MLSearch.Engine.Indexing.Spout;
 
-public interface IChatEntriesEventsDispatcher
+internal interface IChatEntriesEventsDispatcher
 { }
 
-public class ChatEntriesEventsDispatcher (ICommander commander) : IComputeService, IChatEntriesEventsDispatcher
+internal class ChatEntriesEventsDispatcher (ICommander commander) : IComputeService, IChatEntriesEventsDispatcher
 {
     [EventHandler]
     // ReSharper disable once UnusedMember.Global

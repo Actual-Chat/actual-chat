@@ -6,16 +6,16 @@ namespace ActualChat.MLSearch.Engine.Indexing.Spout;
 // It has a chance that the receiving counter part will fail to complete
 // event handling while the event will be marked as complete.
 // This means: At most once logic.
-public class ChatEntriesSpout : IChatEntriesSpout, IComputeService//, ICommandHandler<MLSearch_TriggerContinueChatIndexing>
+internal class ChatEntriesSpout : IChatEntriesSpout, IComputeService//, ICommandHandler<MLSearch_TriggerContinueChatIndexing>
 {
-    private readonly ChannelWriter<MLSearch_TriggerContinueChatIndexing> send;
+    private readonly ChannelWriter<MLSearch_TriggerContinueChatIndexing> _send;
     public ChatEntriesSpout(IServiceProvider serviceProvider)
     {
         // TODO: fix. Testing if this helps with fusion.AddService to make it working.
-        send = serviceProvider.GetRequiredService<ChatEntriesIndexer>().Trigger;
+        _send = serviceProvider.GetRequiredService<ChatEntriesIndexer>().Trigger;
     }
 
     // ReSharper disable once UnusedMember.Global
     public virtual async Task OnCommand(MLSearch_TriggerContinueChatIndexing e, CancellationToken cancellationToken)
-        => await send.WriteAsync(e, cancellationToken).ConfigureAwait(false);
+        => await _send.WriteAsync(e, cancellationToken).ConfigureAwait(false);
 }

@@ -86,7 +86,7 @@ internal class ChatEntriesIndexer(
             .ConfigureAwait(false);
 
         // TODO: Ask @frol
-        // - If an entry was added to a chat whould it have larger version than every other existing item there?
+        // - If an entry was added to a chat would it have larger version than every other existing item there?
         var lastTouchedEntry =
             creates.Concat(updates).Concat(deletes).MaxBy(e=>e.Version);
         // -- End of logic that depends on the answer above
