@@ -22,8 +22,8 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     {
         Tracer.Default = Tracer.None;
         var cursorIndexName = AppHost.Services.GetRequiredService<IIndexSettingsSource>()
-            .GetSettings<ChatEntriesIndexing.CursorState>().IndexName;
-        var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>().GetSettings<ChatSlice>();
+            .GetSettings(IndexNames.ChatSliceCursor).IndexName;
+        var settings = AppHost.Services.GetRequiredService<IIndexSettingsSource>().GetSettings(IndexNames.ChatSlice);
         var searchIndexName = settings.IndexName;
         var pipelineId = settings.IngestPipelineId;
 

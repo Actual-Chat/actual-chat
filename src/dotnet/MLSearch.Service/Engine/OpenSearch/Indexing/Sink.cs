@@ -30,6 +30,7 @@ internal interface ISink<in TSource>
 //   deleted.
 
 internal class Sink<TSource, TDocument>(
+    string docIndexName,
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource,
     IDocumentMapper<TSource, TDocument> mapper,
@@ -37,7 +38,7 @@ internal class Sink<TSource, TDocument>(
 ) : ISink<TSource> where TDocument: class, IHasDocId
 {
     private IndexSettings? _indexSettings;
-    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings<TDocument>();
+    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
 
     private ILogger? _log;
     private ILogger Log => _log ??= loggerSource.GetLogger(GetType());

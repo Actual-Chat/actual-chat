@@ -6,6 +6,7 @@ using OpenSearch.Net;
 namespace ActualChat.MLSearch.Engine.OpenSearch;
 
 internal class OpenSearchEngine<TDocument>(
+    string docIndexName,
     IOpenSearchClient openSearch,
     IIndexSettingsSource indexSettingsSource,
     ILoggerSource loggerSource)
@@ -13,7 +14,7 @@ internal class OpenSearchEngine<TDocument>(
     where TDocument : class, IHasDocId
 {
     private IndexSettings? _indexSettings;
-    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings<TDocument>();
+    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
     private ILogger? _log;
     private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 

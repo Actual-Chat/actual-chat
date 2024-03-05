@@ -15,12 +15,13 @@ internal interface IIndexingCursor<TState> where TState : class
 /// </summary>
 /// <typeparam name="TState">State to store</typeparam>
 internal class IndexingCursor<TState>(
+    string cursorIndexName,
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource
 ) : IIndexingCursor<TState> where TState: class
 {
     private IndexSettings? _indexSettings;
-    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings<TState>();
+    private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(cursorIndexName);
 
     public async Task<TState?> Load(Id key, CancellationToken cancellationToken)
     {

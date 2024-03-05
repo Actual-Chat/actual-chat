@@ -78,12 +78,18 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();
         // ChatSlice engine registrations
-        services.AddSingleton<ISearchEngine<ChatSlice>, OpenSearchEngine<ChatSlice>>();
+        services.AddSingleton<ISearchEngine<ChatSlice>>(e
+            => ActivatorUtilities.CreateInstance<OpenSearchEngine<ChatSlice>>(e, IndexNames.ChatSlice));
 
-        services.AddSingleton(typeof(IIndexingCursor<>), typeof(IndexingCursor<>));
-        services.AddSingleton<ISink<ChatEntry>, Sink<ChatEntry, ChatSlice>>();
+//       services.AddSingleton(typeof(IIndexingCursor<>), typeof(IndexingCursor<>));
+//        services.AddSingleton<ISink<ChatEntry>, Sink<ChatEntry, ChatSlice>>();
+        services.AddSingleton<IIndexingCursor<ChatEntriesIndexing.CursorState>>(e
+            => ActivatorUtilities.CreateInstance<IndexingCursor<ChatEntriesIndexing.CursorState>>(e, IndexNames.ChatSliceCursor));
+        services.AddSingleton<ISink<ChatEntry>>(e
+            => ActivatorUtilities.CreateInstance<Sink<ChatEntry, ChatSlice>>(e, IndexNames.ChatSlice));
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
         services.AddSingleton<ChatEntriesIndexing>();
+
         // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
         Symbol ShardingSchemeId = HostRole.MLSearchIndexing;
         services.AddShardScheme(ShardingSchemeId, HostRole.MLSearchIndexing, shardCount: 12);
