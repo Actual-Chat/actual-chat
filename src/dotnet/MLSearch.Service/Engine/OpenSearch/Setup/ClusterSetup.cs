@@ -167,6 +167,9 @@ internal class ClusterSetup(
         // ChatSliceAttachment fields
         var attachmentIdField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Id));
         var attachmentSummaryField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Summary));
+        // Cursor fields
+        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.CursorState.LastEntryVersion));
+        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.CursorState.LastEntryLocalId));
 
         var ingestResult = await openSearch.RunAsync(
             $$"""
@@ -198,10 +201,10 @@ internal class ClusterSetup(
               {
                 "mappings": {
                     "properties": {
-                        "{{nameof(ChatEntriesIndexer.CursorState.LastEntryVersion)}}": {
+                        "{{lastEntryVersionField}}": {
                             "type": "text"
                         },
-                        "{{nameof(ChatEntriesIndexer.CursorState.LastEntryLocalId)}}": {
+                        "{{lastEntryLocalIdField}}": {
                             "type": "text"
                         }
                     }
