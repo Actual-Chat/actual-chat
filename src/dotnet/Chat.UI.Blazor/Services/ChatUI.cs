@@ -352,12 +352,15 @@ public partial class ChatUI : ScopedWorkerBase<ChatUIHub>, IComputeService, INot
         if (chatId.Kind == ChatKind.Peer &&
             !SelectedPlaceId.Value.IsNone &&
             OrdinalEquals(NavbarUI.SelectedGroupId, SelectedPlaceId.Value.GetNavbarGroupId())) {
-            using var settingsState = await ChatListUI.LeaseSettingsState(SelectedPlaceId.Value, default).ConfigureAwait(false);
-            if (settingsState.Value.Filter == ChatListFilter.People) {
-                // Check if peer chat was shown for place people view
-                var chats = await ChatListUI.ListAllUnordered(SelectedPlaceId.Value).ConfigureAwait(false);
-                if (chats.ContainsKey(chatId))
-                    return; // Keep selected group
+            var listView = ChatListUI.ActiveChatListView.Value;
+            if (listView != null && listView.PlaceId == SelectedPlaceId.Value) {
+                var settings = await listView.GetSettings().ConfigureAwait(false);
+                if (settings.Filter == ChatListFilter.People) {
+                    // Check if peer chat was shown for place people view
+                    var chats = await ChatListUI.ListAllUnordered(SelectedPlaceId.Value).ConfigureAwait(false);
+                    if (chats.ContainsKey(chatId))
+                        return; // Keep selected group
+                }
             }
         }
 

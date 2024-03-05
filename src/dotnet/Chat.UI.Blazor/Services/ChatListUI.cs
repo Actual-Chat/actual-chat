@@ -1,6 +1,5 @@
 using ActualChat.Contacts;
 using ActualChat.Kvas;
-using ActualChat.Pooling;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
 
@@ -16,8 +15,8 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     private readonly List<ChatId> _activeItems = new List<ChatId>().AddMany(default, ActiveItemCountWhenLoading);
     private readonly List<ChatId> _allItems = new List<ChatId>().AddMany(default, AllItemCountWhenLoading);
     private readonly IMutableState<bool> _isSelectedChatUnlisted;
-    private readonly SharedResourcePool<Symbol,IStoredState<ChatListSettings>> _settingsStates;
     private readonly IMutableState<int> _loadLimit;
+    private readonly IMutableState<ChatListView?> _activeChatListView;
 
     private bool _isFirstLoad = true;
     private IComputedState<Trimmed<int>>? _unreadChatCount;
@@ -38,6 +37,8 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
 
     private Moment CpuNow => Clocks.CpuClock.Now;
 
+    public IState<ChatListView?> ActiveChatListView => _activeChatListView;
+
     public ChatListUI(ChatUIHub hub) : base(hub)
     {
         var type = GetType();
@@ -45,7 +46,8 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
             StateCategories.Get(type, nameof(_loadLimit)));
         _isSelectedChatUnlisted = StateFactory.NewMutable(false,
             StateCategories.Get(type, nameof(_isSelectedChatUnlisted)));
-        _settingsStates = new SharedResourcePool<Symbol, IStoredState<ChatListSettings>>(CreateSettingsState);
+        _activeChatListView = StateFactory.NewMutable((ChatListView?)null,
+            StateCategories.Get(type, nameof(ActiveChatListView)));
     }
 
     void INotifyInitialized.Initialized()
@@ -61,18 +63,11 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         this.Start();
     }
 
-    public async ValueTask<IMutableStateLease<ChatListSettings>> LeaseSettingsState(PlaceId placeId, CancellationToken cancellationToken)
+    public ChatListView ActivateChatList(PlaceId placeId)
     {
-        var lease = await _settingsStates.Rent(placeId, cancellationToken).ConfigureAwait(false);
-        try {
-            var result = new StoredStateLease<ChatListSettings>(lease);
-            await result.WhenRead.WaitAsync(cancellationToken).ConfigureAwait(false);
-            return result;
-        }
-        catch {
-            lease.Dispose();
-            throw;
-        }
+        if (_activeChatListView.Value == null || _activeChatListView.Value.PlaceId != placeId)
+            _activeChatListView.Value = new ChatListView(placeId, CreateSettingsState(placeId));
+        return _activeChatListView.Value;
     }
 
 #pragma warning disable CA1822 // Can be static
@@ -144,11 +139,12 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
     public virtual async Task<IReadOnlyList<ChatInfo>> ListAll(
         CancellationToken cancellationToken = default)
     {
-        await ChatUI.WhenActivePlaceRestored.ConfigureAwait(false);
-        var placeId = await ChatUI.SelectedPlaceId.Use(cancellationToken).ConfigureAwait(false);
-        using var settingsState = await LeaseSettingsState(placeId, cancellationToken).ConfigureAwait(false);
-        var settings = await settingsState.Use(cancellationToken).ConfigureAwait(false);
-        return await ListAll(placeId, settings, cancellationToken).ConfigureAwait(false);
+        var listView = await ActiveChatListView.Use(cancellationToken).ConfigureAwait(false);
+        if (listView == null)
+            return ImmutableList<ChatInfo>.Empty;
+
+        var settings = await listView.GetSettings(cancellationToken).ConfigureAwait(false);
+        return await ListAll(listView.PlaceId, settings, cancellationToken).ConfigureAwait(false);
     }
 
     [ComputeMethod]
@@ -323,9 +319,8 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
         return count;
     }
 
-    private Task<IStoredState<ChatListSettings>> CreateSettingsState(Symbol placeSid, CancellationToken cancellationToken)
+    private IStoredState<ChatListSettings> CreateSettingsState(PlaceId placeId)
     {
-        var placeId = PlaceId.Parse(placeSid.Value);
         var type = GetType();
         var key = ChatListSettings.GetKvasKey(placeId);
         var settings = StateFactory.NewKvasStored<ChatListSettings>(
@@ -333,6 +328,6 @@ public partial class ChatListUI : ScopedWorkerBase<ChatUIHub>, IComputeService, 
                 InitialValue = new(),
                 Category = StateCategories.Get(type, key),
             });
-        return Task.FromResult(settings);
+        return settings;
     }
 }

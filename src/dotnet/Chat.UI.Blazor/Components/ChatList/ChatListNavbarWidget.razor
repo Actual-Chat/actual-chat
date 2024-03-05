@@ -1,7 +1,5 @@
-@using ActualChat.Kvas
 @namespace ActualChat.Chat.UI.Blazor.Components
 @inherits FusionComponentBase
-@implements IDisposable
 @{
     RenderFragment RenderTab(ChatListFilter filter, double order) {
         var id = filter.Id.Value;
@@ -19,7 +17,7 @@
             </TitleContent>
             <TitleExtras>
                @if (PlaceId.IsNone) {
-                   <ChatListTabUnreadCount ChatListFilter="filter" PlaceId="@PlaceId.None"/>
+                   <ChatListTabUnreadCount ChatListView="@_chatListView" ChatListFilter="filter" />
                }
             </TitleExtras>
         </Tab>;
@@ -34,7 +32,7 @@
             TabsClass="left-panel-tabs"
             SelectedTabIdChanged="@OnSelectedTabIdChanged">
             <AdditionalButton>
-                <ChatListSortButton PlaceId="@PlaceId" Settings="@SettingsState" />
+                <ChatListSortButton ChatListView="@_chatListView" />
             </AdditionalButton>
             <ChildContent>
                 @for (var i = 0; i < ChatListFilter.All.Count; i++) {
@@ -58,39 +56,34 @@
 @code {
     private TabPanel _tabPanel = null!;
     private bool _updateSelectedTab = true;
-
-    private IMutableStateLease<ChatListSettings>? SettingsState { get; set; } = null!;
+    private ChatListView? _chatListView;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
-    public void Dispose() {
-        SettingsState.DisposeSilently();
-        SettingsState = null!;
+    protected override void OnParametersSet() {
+        var oldChatListView = _chatListView;
+        _chatListView = ChatListUI.ActivateChatList(PlaceId);
+        if (_chatListView != oldChatListView)
+            _updateSelectedTab = true;
     }
 
-    protected override async Task OnParametersSetAsync() {
-        _updateSelectedTab = true;
-        SettingsState.DisposeSilently();
-        SettingsState = null;
-        SettingsState = await ChatListUI.LeaseSettingsState(PlaceId, default);
-    }
-
-    protected override void OnAfterRender(bool firstRender) {
-        if (_updateSelectedTab && SettingsState != null) {
-            _updateSelectedTab = false;
-            _tabPanel.SelectedTabId = SettingsState.Value.FilterId;
-        }
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!_updateSelectedTab)
+            return;
+        var chatListView = _chatListView;
+        if (chatListView == null)
+            return;
+        var settings = await chatListView.GetSettings();
+        if (chatListView != _chatListView)
+            return;
+        _updateSelectedTab = false;
+        _tabPanel.SelectedTabId = settings.FilterId;
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {
         var filterId = tabId ?? "";
-        SettingsState?.Set(filterId, static (filterId1, r) => {
-            var settings = r.Value;
-            if (settings.FilterId != filterId1)
-                settings = settings with { FilterId = filterId1 };
-            return settings;
-        });
+        _chatListView?.SetFilter(filterId);
     }
 }

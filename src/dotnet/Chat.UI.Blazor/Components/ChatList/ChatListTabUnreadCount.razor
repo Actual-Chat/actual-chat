@@ -18,8 +18,8 @@
     [Inject] private ChatListUI ChatListUI  { get; init; } = null!;
     [Inject] private History History { get; init; } = null!;
 
-    [Parameter] public ChatListFilter ChatListFilter { get; init; } = ChatListFilter.None;
-    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public ChatListView ChatListView { get; set; } = null!;
+    [Parameter, EditorRequired] public ChatListFilter ChatListFilter { get; init; } = ChatListFilter.None;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -28,7 +28,7 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var count = await ChatListUI.GetUnreadChatCount(PlaceId, ChatListFilter, cancellationToken).ConfigureAwait(false);
+        var count = await ChatListUI.GetUnreadChatCount(ChatListView.PlaceId, ChatListFilter, cancellationToken).ConfigureAwait(false);
 
         return new Model {
             Count = count,
@@ -36,10 +36,12 @@
     }
 
     private async Task OnUnreadBadgeClick() {
-        using var settingsState = await ChatListUI.LeaseSettingsState(PlaceId.None, default).ConfigureAwait(false);
-        var settings = await settingsState.Use().ConfigureAwait(false);
+        var chatListView = ChatListView;
+        var settings = await chatListView.GetSettings();
         settings = settings with { FilterId = ChatListFilter.Id };
-        var list = await ChatListUI.ListAll(PlaceId.None, settings).ConfigureAwait(true);
+        var list = await ChatListUI.ListAll(chatListView.PlaceId, settings);
+        if (chatListView != ChatListView)
+            return;
         var firstUnreadChat = list.FirstOrDefault(c => c.UnreadCount > 0);
         if (firstUnreadChat == null || firstUnreadChat.Id == ChatUI.SelectedChatId.Value)
             return;
