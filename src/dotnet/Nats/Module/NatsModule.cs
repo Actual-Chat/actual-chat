@@ -17,9 +17,16 @@ public sealed class NatsModule(IServiceProvider moduleServices)
         services.AddNats(
             poolSize: 1,
             opts => opts with {
-                // AuthOpts =
-                // Url = "ws://localhost:8222",
-                TlsOpts = new NatsTlsOpts { Mode = TlsMode.Auto },
+                AuthOpts = Settings.Seed.IsNullOrEmpty() || Settings.NKey.IsNullOrEmpty()
+                    ? NatsAuthOpts.Default
+                    : new NatsAuthOpts {
+                        Seed = Settings.Seed,
+                        NKey = Settings.NKey,
+                    },
+                Url = Settings.Url,
+                TlsOpts = new NatsTlsOpts {
+                    Mode = TlsMode.Auto,
+                },
                 CommandTimeout = TimeSpan.FromSeconds(natsTimeout),
                 ConnectTimeout = TimeSpan.FromSeconds(natsTimeout),
                 RequestTimeout = TimeSpan.FromSeconds(natsTimeout),
