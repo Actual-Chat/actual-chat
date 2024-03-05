@@ -6,7 +6,7 @@ namespace ActualChat.MLSearch.Engine.Indexing;
 internal class ChatEntriesIndexer(
     IChatsBackend chats,
     ICursorStates<ChatEntriesIndexer.CursorState> indexingCursor,
-    ISink<ChatEntry> sink,
+    ISink<ChatEntry, ChatEntry> sink,
     ILoggerSource loggerSource
 )
 {
@@ -18,7 +18,7 @@ internal class ChatEntriesIndexer(
     private readonly Channel<MLSearch_TriggerContinueChatIndexing> _channel =
         Channel.CreateBounded<MLSearch_TriggerContinueChatIndexing>(ChannelCapacity);
     private IChatsBackend Chats => chats;
-    private ISink<ChatEntry> Sink => sink;
+    private ISink<ChatEntry, ChatEntry> Sink => sink;
     private ICursorStates<CursorState> Cursor => indexingCursor;
 
     protected virtual Channel<MLSearch_TriggerContinueChatIndexing> TriggersChannel => _channel;

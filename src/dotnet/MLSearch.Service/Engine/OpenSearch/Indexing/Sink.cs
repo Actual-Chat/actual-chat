@@ -28,7 +28,7 @@ internal class Sink<TSource, TDocument>(
     IIndexSettingsSource indexSettingsSource,
     IDocumentMapper<TSource, TDocument> mapper,
     ILoggerSource loggerSource
-) : ISink<TSource> where TDocument: class, IHasDocId
+) : ISink<TSource, TSource> where TDocument: class, IHasDocId
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(docIndexName);
