@@ -14,7 +14,7 @@ using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
+public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IChatsBackend
 {
     private static readonly TileStack<long> IdTileStack = Constants.Chat.ServerIdTileStack;
     private static readonly Dictionary<MediaId, Media.Media> EmptyMediaMap = new ();
@@ -45,6 +45,7 @@ public class ChatsBackend(IServiceProvider services) : DbServiceBase<ChatDbConte
     private IServerKvasBackend ServerKvasBackend => _serverKvasBackend ??= Services.GetRequiredService<IServerKvasBackend>();
 
     private HostInfo HostInfo { get; } = services.HostInfo();
+    private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory { get; } = services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef> DbChatEntryIdGenerator { get; } = services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, DbChatEntryShardRef>>();

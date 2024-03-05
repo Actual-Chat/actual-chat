@@ -14,10 +14,11 @@ public abstract class AppHostTestBase(
         : this(instanceName, null, @out, log)
     { }
 
-    protected virtual Task<TestAppHost> NewAppHost(Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
+    protected virtual async Task<TestAppHost> NewAppHost(Func<TestAppHostOptions, TestAppHostOptions>? optionOverrider = null)
     {
         var options = AppHostOptions;
         options = optionOverrider?.Invoke(options) ?? options;
-        return TestAppHostFactory.NewAppHost(options);
+        var appHost = await TestAppHostFactory.NewAppHost(options);
+        return appHost;
     }
 }

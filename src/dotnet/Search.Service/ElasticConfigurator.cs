@@ -14,14 +14,13 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
     private SearchSettings? _settings;
     private ElasticNames? _elasticNames;
     private ElasticsearchClient? _elastic;
-    private IMeshLocks<SearchDbContext>? _meshLocks;
     private ILogger? _log;
 
     private SearchSettings Settings => _settings ??= services.GetRequiredService<SearchSettings>();
     private ElasticNames ElasticNames => _elasticNames ??= services.GetRequiredService<ElasticNames>();
     private ElasticsearchClient Elastic => _elastic ??= services.GetRequiredService<ElasticsearchClient>();
-    private IMeshLocks<SearchDbContext> MeshLocks
-        => _meshLocks ??= services.GetRequiredService<IMeshLocks<SearchDbContext>>();
+    private IMeshLocks MeshLocks { get; }
+        = services.GetRequiredService<IMeshLocks<SearchDbContext>>().WithKeyPrefix(nameof(ElasticConfigurator));
     private ILogger Log => _log ??= services.LogFor(GetType());
 
     public Task WhenCompleted => _whenCompleted.Task;
@@ -59,10 +58,24 @@ public class ElasticConfigurator(IServiceProvider services) : WorkerBase
     }
 
     private Task EnsureEntryIndexTemplate(CancellationToken cancellationToken)
-        => MeshLocks.Run(EnsureEntryIndexTemplateUnsafe, "EnsureEntryIndexTemplate", cancellationToken);
+    {
+        var runOptions = RunLockedOptions.Default with { Log = Log };
+        return MeshLocks.RunLocked(
+            nameof(EnsureEntryIndexTemplate),
+            runOptions,
+            EnsureEntryIndexTemplateUnsafe,
+            cancellationToken);
+    }
 
     private Task EnsureContactIndices(CancellationToken cancellationToken)
-        => MeshLocks.Run(EnsureContactIndicesUnsafe, "EnsureContactIndices", cancellationToken);
+    {
+        var runOptions = RunLockedOptions.Default with { Log = Log };
+        return MeshLocks.RunLocked(
+            nameof(EnsureContactIndices),
+            runOptions,
+            EnsureContactIndicesUnsafe,
+            cancellationToken);
+    }
 
     private async Task EnsureEntryIndexTemplateUnsafe(CancellationToken cancellationToken)
     {

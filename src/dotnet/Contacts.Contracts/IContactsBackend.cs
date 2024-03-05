@@ -14,6 +14,7 @@ public interface IContactsBackend : IComputeService
     Task<ApiArray<ContactId>> ListIds(UserId ownerId, PlaceId placeId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<PlaceId>> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task<Contact?> OnChange(ContactsBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -26,6 +27,8 @@ public interface IContactsBackend : IComputeService
     Task OnGreet(ContactsBackend_Greet command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnChangePlaceMembership(ContactsBackend_ChangePlaceMembership command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnMoveChatToPlace(ContactsBackend_MoveChatToPlace command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -66,4 +69,11 @@ public sealed partial record ContactsBackend_ChangePlaceMembership(
     [property: DataMember, MemoryPackOrder(0)] UserId OwnerId,
     [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId,
     [property: DataMember, MemoryPackOrder(2)] bool HasLeft
+) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_MoveChatToPlace(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
 ) : ICommand<Unit>, IBackendCommand;

@@ -4,7 +4,7 @@ using ActualLab.Mathematics;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class RemoveAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private ChatId TestChatId => Constants.Chat.DefaultChatId;
@@ -24,6 +24,9 @@ public class RemoveAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
         chat.Should().NotBeNull();
         // NOTE(DF): await till user has joined to default chat (for admins it happens automatically) before
         // creating text entries
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+
         await TestExt.WhenMetAsync(async () => {
             var author = await authors.GetOwn(session, chat!.Id, default);
             author.Should().NotBeNull();
@@ -79,6 +82,8 @@ public class RemoveAccountTest(AppHostFixture fixture, ITestOutputHelper @out)
         var entries = await CreateChatEntries(chats, session, chat.Id, 3);
         var removeEntriesCommand = new ChatsBackend_RemoveOwnChats(bob.Id);
         await services.Commander().Call(removeEntriesCommand);
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         var chat1 = await chats.Get(session, chat.Id, CancellationToken.None);
         chat1.Should().BeNull();

@@ -12,12 +12,13 @@ public interface IMeshLocks
     IMeshLocksBackend Backend { get; }
 
     // Methods MUST auto-retry in case they can't reach the lock service
+    string GetFullKey(string key);
     Task<MeshLockInfo?> GetInfo(string key, CancellationToken cancellationToken = default);
     Task<MeshLockHolder?> TryLock(string key, string value, MeshLockOptions lockOptions, CancellationToken cancellationToken = default);
     Task<MeshLockHolder> Lock(string key, string value, MeshLockOptions lockOptions, CancellationToken cancellationToken = default);
     Task<IAsyncSubscription<string>> Changes(string key, CancellationToken cancellationToken = default);
     Task<List<string>> ListKeys(string prefix, CancellationToken cancellationToken = default);
-    IMeshLocks WithKeyPrefix(string keyPrefix);
+    IMeshLocks With(string keyPrefix, MeshLockOptions? lockOptions);
 }
 
 public interface IMeshLocksBackend : IMeshLocks

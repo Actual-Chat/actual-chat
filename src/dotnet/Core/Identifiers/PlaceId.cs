@@ -45,6 +45,7 @@ public readonly partial struct PlaceId : ISymbolIdentifier<PlaceId>
     public override string ToString() => Value;
     public static implicit operator Symbol(PlaceId source) => source.Id;
     public static implicit operator string(PlaceId source) => source.Id.Value;
+    public static explicit operator PlaceId(string source) => new (source);
 
     // Equality
 

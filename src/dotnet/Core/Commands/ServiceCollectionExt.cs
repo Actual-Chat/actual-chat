@@ -14,27 +14,15 @@ public static class ServiceCollectionExt
     {
         services.AddCommander();
         if (!services.HasService<ICommandQueues>()) {
-            services.AddSingleton<ICommandQueues, LocalCommandQueues>();
+            services.AddSingleton<LocalCommandQueues>(c => new LocalCommandQueues(c.GetRequiredService<LocalCommandQueues.Options>(), c));
+            services.AddSingleton<ICommandQueues>(c => c.GetRequiredService<LocalCommandQueues>());
+            services.AddSingleton<ICommandQueueIdProvider>(c => new LocalCommandQueueIdProvider());
+            services.AddSingleton<LocalCommandQueueScheduler>();
+            services.AddSingleton<ICommandQueueScheduler>(c => c.GetRequiredService<LocalCommandQueueScheduler>());
+            services.AddHostedService<LocalCommandQueueScheduler>(c => c.GetRequiredService<LocalCommandQueueScheduler>());
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IOperationCompletionListener, EnqueueOnCompletionProcessor>());
         }
         services.AddSingleton(optionsBuilder ?? (static _ => new LocalCommandQueues.Options()));
-        return services;
-    }
-
-    [RequiresUnreferencedCode(UnreferencedCode.Commander)]
-    public static IServiceCollection AddCommandQueueScheduler(
-        this IServiceCollection services,
-        Action<CommandQueueScheduler.Options>? optionsBuilder = null)
-    {
-        var options = services.GetSingletonInstance<CommandQueueScheduler.Options>();
-        if (options == null) {
-            options = new();
-            services.AddCommander();
-            services.AddSingleton(options);
-            services.AddSingleton<CommandQueueScheduler>();
-            services.AddHostedService<CommandQueueScheduler>();
-        }
-        optionsBuilder?.Invoke(options);
         return services;
     }
 }

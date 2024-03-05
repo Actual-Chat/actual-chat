@@ -68,7 +68,7 @@ public sealed partial class MeshState
             if (cache != null && cache.TryGetValue(shardScheme, out shardMap))
                 return shardMap;
 
-            if (!NodesByRole.TryGetValue(shardScheme.Id, out var nodes))
+            if (!NodesByRole.TryGetValue(shardScheme.HostRole, out var nodes))
                 nodes = ImmutableArray<MeshNode>.Empty;
             shardMap = new ShardMap(shardScheme, nodes);
             cache = cache == null ? new() : new Dictionary<ShardScheme, ShardMap>(cache);

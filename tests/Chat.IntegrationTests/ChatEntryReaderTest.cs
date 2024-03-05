@@ -4,7 +4,7 @@ using ActualLab.Mathematics;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class ChatEntryReaderTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private ChatId TestChatId { get; } = new("the-actual-one");

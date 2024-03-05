@@ -6,4 +6,6 @@ public interface ICommandQueues : IHasServices
     ICommandQueue this[QueueId queueId] { get; }
 
     ICommandQueueBackend GetBackend(QueueId queueId);
+
+    Task Purge(CancellationToken cancellationToken);
 }

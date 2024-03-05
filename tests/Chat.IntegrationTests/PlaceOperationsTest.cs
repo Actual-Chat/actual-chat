@@ -6,8 +6,8 @@ using ActualChat.Users;
 
 namespace ActualChat.Chat.IntegrationTests;
 
-[Collection(nameof(ChatCollection))]
-public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
+[Collection(nameof(PlaceCollection))]
+public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private const string PlaceTitle = "AC Place";
@@ -44,6 +44,8 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
         var place = await CreatePlace(commander, session, isPublicPlace);
         place.Should().NotBeNull();
 
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+
         await TestExt.WhenMetAsync(
             async () => {
                 place = await places.Get(session, place.Id, default);
@@ -66,6 +68,8 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
         await using var tester2 = appHost.NewBlazorTester();
         var anotherSession = tester2.Session;
         await tester2.SignInAsAlice();
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(
             async () => {
@@ -98,6 +102,8 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         var chat = await CreateChat(commander, session, place.Id, isPublicChat);
         chat.Should().NotBeNull();
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(
             async () => {
@@ -179,7 +185,7 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
     [InlineData(true)]
     public async Task JoinPlace(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost(nameof(JoinPlace));
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -207,6 +213,7 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
         }
 
         await commander.Call(new Places_Join(anotherSession, place.Id));
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(
             async () => {
@@ -222,7 +229,7 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
     [InlineData(true)]
     public async Task LeavePlace(bool isPublicPlace)
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost(nameof(LeavePlace));
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();
@@ -267,6 +274,8 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
 
         // Leave
         await commander.Call(new Places_Leave(anotherSession, placeId));
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         await TestExt.WhenMetAsync(
             async () => {
@@ -331,6 +340,8 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
             await commander2.Call(new Invites_Use(anotherSession, invite.Id));
         }
 
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+
         if (isPublicChat) {
             // Assert user can see the Chat while previewing the Place.
             await TestExt.WhenMetAsync(
@@ -348,6 +359,8 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
         }
 
         await commander2.Call(new Places_Join(anotherSession, place.Id));
+
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
 
         // Assert user can see the Place.
         await TestExt.WhenMetAsync(
@@ -369,6 +382,8 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
             await commander2.Call(new Authors_Join(anotherSession, chat.Id));
         }
 
+        await appHost.WaitForProcessingOfAlreadyQueuedCommands();
+
         // Assert user can see the Chat.
         await TestExt.WhenMetAsync(
             async () => {
@@ -387,7 +402,7 @@ public class PlaceOperationsTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task ItShouldBeNotPossibleToActivateInviteLinkToChatOnNonAccessiblePrivatePlace()
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost("private-place");
         await using var tester = appHost.NewBlazorTester();
         var session = tester.Session;
         await tester.SignInAsBob();

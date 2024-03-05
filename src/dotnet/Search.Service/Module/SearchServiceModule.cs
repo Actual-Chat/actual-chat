@@ -22,12 +22,12 @@ public sealed class SearchServiceModule(IServiceProvider moduleServices) : HostM
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<SearchDbContext>(services, Settings.Redis);
+        redisModule.AddRedisDb<SearchDbContext>(services);
 
         // DB
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, SearchDbInitializer>();
-        dbModule.AddDbContextServices<SearchDbContext>(services, Settings.Db, db => {
+        dbModule.AddDbContextServices<SearchDbContext>(services, db => {
             db.AddEntityResolver<string, DbIndexedChat>();
             db.AddEntityResolver<string, DbContactIndexState>();
         });

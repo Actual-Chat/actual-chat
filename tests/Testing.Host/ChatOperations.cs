@@ -6,6 +6,9 @@ namespace ActualChat.Testing.Host;
 
 public static class ChatOperations
 {
+    private const string DefaultChatTitle = "test chat";
+    private const string DefaultPlaceTitle = "test place";
+
     public static Task<AccountFull> SignInAsAlice(this IWebTester tester)
         => tester.SignIn(new User("", "Alice"));
 
@@ -17,14 +20,18 @@ public static class ChatOperations
         return tester.SignIn(user);
     }
 
-    public static Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, bool isPublicChat)
-        => CreateChat(tester, c => c with { IsPublic = isPublicChat });
+    public static Task<(ChatId, Symbol)> CreateChat(
+        this IWebTester tester,
+        bool isPublicChat,
+        string title = DefaultChatTitle,
+        PlaceId? placeId = null)
+        => CreateChat(tester, c => c with { IsPublic = isPublicChat, Title = title, PlaceId = placeId, Kind = null });
 
     public static async Task<(ChatId, Symbol)> CreateChat(this IWebTester tester, Func<ChatDiff, ChatDiff> configure)
     {
         var session = tester.Session;
         var chatDiff = configure(new ChatDiff() {
-            Title = "test chat",
+            Title = DefaultChatTitle,
             Kind = ChatKind.Group,
         });
         var isPublicChat = chatDiff.IsPublic ?? false;
@@ -50,14 +57,14 @@ public static class ChatOperations
         return (chatId, inviteId);
     }
 
-    public static Task<(PlaceId, Symbol)> CreatePlace(this IWebTester tester, bool isPublicPlace)
+    public static Task<(PlaceId, Symbol)> CreatePlace(this IWebTester tester, bool isPublicPlace, string title = DefaultPlaceTitle)
         => CreatePlace(tester, c => c with { IsPublic = isPublicPlace });
 
     public static async Task<(PlaceId, Symbol)> CreatePlace(this IWebTester tester, Func<PlaceDiff, PlaceDiff> configure)
     {
         var session = tester.Session;
         var placeDiff = configure(new PlaceDiff() {
-            Title = "test place",
+            Title = DefaultPlaceTitle,
         });
         var isPublicPlace = placeDiff.IsPublic ?? false;
 

@@ -6,16 +6,17 @@ using ActualChat.Users;
 namespace ActualChat.Search.IntegrationTests;
 
 [Trait("Category", "Slow")]
-public class UserContactIndexingTest(ITestOutputHelper @out)
-    : LocalAppHostTestBase( "contact_indexing",
+public class UserContactIndexingTest(ITestOutputHelper @out, ILogger<UserContactIndexingTest> log)
+    : LocalAppHostTestBase( "user_contact_indexing",
         TestAppHostOptions.Default with {
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
-                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:02"));
+                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:01"));
                 cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingSignalInterval)}", "00:00:00.5"));
             },
         },
-        @out)
+        @out,
+        log)
 {
     private WebClientTester _tester = null!;
     private ISearchBackend _searchBackend = null!;
@@ -34,6 +35,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out)
     {
         Tracer.Default = Tracer.None;
         await _tester.DisposeAsync().AsTask();
+        await base.DisposeAsync();
     }
 
     [Fact]
@@ -89,7 +91,7 @@ public class UserContactIndexingTest(ITestOutputHelper @out)
                     0,
                     requestCount,
                     CancellationToken.None);
-                Out.WriteLine("Found {0} out of expected {1}",
+                Log.LogInformation("Found {FoundCount} out of expected {ExpectedCount}",
                         searchResults.Hits.Count,
                         expectedCount);
                 searchResults.Offset.Should().Be(0);

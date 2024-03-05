@@ -2,7 +2,8 @@ using ActualChat.Audio;
 using ActualChat.Hosting;
 using ActualChat.IO;
 using ActualChat.Module;
-using ActualChat.Transcription.Google;
+using ActualChat.Streaming;
+using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.Extensions.Configuration;
 using ActualLab.IO;
 using ActualLab.Testing.Output;
@@ -60,7 +61,7 @@ public class GoogleTranscriberTest(
             Out.WriteLine(t.ToString());
     }
 
-    [Fact]
+    [Fact(Skip = "Depends on Google API")]
     public async Task ProperTextMapTest()
     {
         var fileName = "0000-AY.webm";

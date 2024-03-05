@@ -9,7 +9,6 @@ public class ContactIndexingSignal : IAsyncDisposable
     private SearchSettings Settings { get; }
 
     private readonly ConcurrentTimerSet<Moment> _timers;
-    private readonly TimeSpan _delay;
 
     public ContactIndexingSignal(IServiceProvider services)
     {
@@ -18,7 +17,6 @@ public class ContactIndexingSignal : IAsyncDisposable
                 Quanta = Settings.ContactIndexingSignalInterval,
             },
             OnTimer);
-        _delay = Settings.ContactIndexingDelay;
         Clocks = services.Clocks();
         NeedsSync = services.StateFactory().NewMutable<bool>();
     }
@@ -28,7 +26,9 @@ public class ContactIndexingSignal : IAsyncDisposable
 
     public void SetDelayed()
     {
-        var fireAt = Clocks.SystemClock.Now.ToLastIntervalStart(Settings.ContactIndexingSignalInterval) + _delay;
+        var fireAt = Clocks.SystemClock.Now.ToLastIntervalStart(Settings.ContactIndexingSignalInterval)
+            + Settings.ContactIndexingDelay
+            + Settings.ContactIndexingSignalInterval;
         _timers.AddOrUpdate(fireAt, fireAt);
     }
 

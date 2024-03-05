@@ -2,29 +2,31 @@ namespace ActualChat.Commands;
 
 public static class CommandExt
 {
-    public static Task Enqueue(
-        this ICommand command,
+    public static Task Enqueue<TCommand>(
+        this TCommand command,
         CancellationToken cancellationToken = default)
-        => Enqueue(command, default, cancellationToken);
+        where TCommand : ICommand, IHasShardKey
+        => Enqueue(CommandContext.GetCurrent().Services.GetRequiredService<ICommandQueues>(),
+            command,
+            cancellationToken);
 
-    public static Task Enqueue(
-        this ICommand command,
-        QueuedCommandPriority priority,
+    public static Task Enqueue<TCommand>(
+        this ICommandQueues queues,
+        TCommand command,
         CancellationToken cancellationToken = default)
+        where TCommand: ICommand, IHasShardKey
     {
-        var queuedCommand = QueuedCommand.New(command, priority);
-        var commandContext = CommandContext.GetCurrent();
-        var queues = commandContext.Services.GetRequiredService<ICommandQueues>();
-        var queue = queues[queuedCommand.QueueId];
+        var queuedCommand = QueuedCommand.New(command);
+        var queueIdProvider = queues.Services.GetRequiredService<ICommandQueueIdProvider>();
+        var queueId = queueIdProvider.Get(queuedCommand);
+        var queue = queues[queueId];
         return queue.Enqueue(queuedCommand, cancellationToken);
     }
 
-    public static TCommand EnqueueOnCompletion<TCommand>(
-        this TCommand command,
-        QueuedCommandPriority priority = default)
-        where TCommand : ICommand
+    public static TCommand EnqueueOnCompletion<TCommand>(this TCommand command)
+        where TCommand : ICommand, IHasShardKey
     {
-        var queuedCommand = QueuedCommand.New(command, priority);
+        var queuedCommand = QueuedCommand.New(command);
         var commandContext = CommandContext.GetCurrent();
         if (Computed.IsInvalidating())
             throw StandardError.Internal("The operation is already completed.");

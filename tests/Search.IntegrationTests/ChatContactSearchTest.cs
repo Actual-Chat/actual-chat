@@ -26,7 +26,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldFindAddedChats()
     {
         // arrange
-        using var appHost = await NewSearchEnabledAppHost();
+        using var appHost = await NewSearchEnabledAppHost(nameof(ShouldFindAddedChats));
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -69,18 +69,18 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, publicChat1),
-                    BuildSearchResult(bob.Id, publicChat2),
-                    BuildSearchResult(bob.Id, publicPlacePublicChat1),
-                    BuildSearchResult(bob.Id, publicPlacePublicChat2),
+                    publicChat1.ToSearchResult(bob.Id),
+                    publicChat2.ToSearchResult(bob.Id),
+                    publicPlacePublicChat1.ToSearchResult(bob.Id),
+                    publicPlacePublicChat2.ToSearchResult(bob.Id),
                 }
             );
         searchResults = await Find(searchBackend, bob.Id, true, "one");
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, publicChat1),
-                    BuildSearchResult(bob.Id, publicPlacePublicChat1),
+                    publicChat1.ToSearchResult(bob.Id),
+                    publicPlacePublicChat1.ToSearchResult(bob.Id),
                 }
             );
 
@@ -88,14 +88,14 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, privateChat1),
-                    BuildSearchResult(bob.Id, privateChat2),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat1),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat2),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat1),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat2),
-                    BuildSearchResult(bob.Id, privatePlacePrivateChat1),
-                    BuildSearchResult(bob.Id, privatePlacePrivateChat2),
+                    privateChat1.ToSearchResult(bob.Id),
+                    privateChat2.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
+                    privatePlacePublicChat1.ToSearchResult(bob.Id),
+                    privatePlacePublicChat2.ToSearchResult(bob.Id),
+                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
+                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
                 }
             );
 
@@ -103,10 +103,10 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, privateChat2),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat2),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat2),
-                    BuildSearchResult(bob.Id, privatePlacePrivateChat2),
+                    privateChat2.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
+                    privatePlacePublicChat2.ToSearchResult(bob.Id),
+                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
                 }
             );
     }
@@ -115,7 +115,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldFindUpdateChats()
     {
         // arrange
-        using var appHost = await NewSearchEnabledAppHost();
+        using var appHost = await NewSearchEnabledAppHost(nameof(ShouldFindUpdateChats));
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -158,10 +158,9 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, publicChat1),
-                    BuildSearchResult(bob.Id, publicChat2),
-                    // BuildSearchResult(bob.Id, publicPlacePublicChat1),
-                    BuildSearchResult(bob.Id, publicPlacePublicChat2),
+                    publicChat1.ToSearchResult(bob.Id),
+                    publicChat2.ToSearchResult(bob.Id),
+                    publicPlacePublicChat2.ToSearchResult(bob.Id),
                 }
             );
 
@@ -169,13 +168,13 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, privateChat1),
-                    BuildSearchResult(bob.Id, privateChat2),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat1),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat2),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat1),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat2),
-                    BuildSearchResult(bob.Id, privatePlacePrivateChat2),
+                    privateChat1.ToSearchResult(bob.Id),
+                    privateChat2.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
+                    privatePlacePublicChat1.ToSearchResult(bob.Id),
+                    privatePlacePublicChat2.ToSearchResult(bob.Id),
+                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
                 }
             );
 
@@ -192,10 +191,10 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, publicChat1),
-                    BuildSearchResult(bob.Id, publicChat2),
-                    BuildSearchResult(bob.Id, publicPlacePublicChat1),
-                    BuildSearchResult(bob.Id, publicPlacePublicChat2),
+                    publicChat1.ToSearchResult(bob.Id),
+                    publicChat2.ToSearchResult(bob.Id),
+                    publicPlacePublicChat1.ToSearchResult(bob.Id),
+                    publicPlacePublicChat2.ToSearchResult(bob.Id),
                 }
             );
 
@@ -203,14 +202,14 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, privateChat1),
-                    BuildSearchResult(bob.Id, privateChat2),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat1),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat2),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat1),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat2),
-                    BuildSearchResult(bob.Id, privatePlacePrivateChat1),
-                    BuildSearchResult(bob.Id, privatePlacePrivateChat2),
+                    privateChat1.ToSearchResult(bob.Id),
+                    privateChat2.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
+                    privatePlacePublicChat1.ToSearchResult(bob.Id),
+                    privatePlacePublicChat2.ToSearchResult(bob.Id),
+                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
+                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
                 }
             );
 
@@ -225,7 +224,7 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task ShouldNotFindDeletedChats()
     {
         // arrange
-        using var appHost = await NewSearchEnabledAppHost();
+        using var appHost = await NewSearchEnabledAppHost(nameof(ShouldFindUpdateChats));
         await using var tester = appHost.NewWebClientTester(Out);
         var commander = tester.Commander;
         var searchBackend = appHost.Services.GetRequiredService<ISearchBackend>();
@@ -268,10 +267,10 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, publicChat1),
-                    BuildSearchResult(bob.Id, publicChat2),
-                    BuildSearchResult(bob.Id, publicPlacePublicChat1),
-                    BuildSearchResult(bob.Id, publicPlacePublicChat2),
+                    publicChat1.ToSearchResult(bob.Id),
+                    publicChat2.ToSearchResult(bob.Id),
+                    publicPlacePublicChat1.ToSearchResult(bob.Id),
+                    publicPlacePublicChat2.ToSearchResult(bob.Id),
                 }
             );
 
@@ -279,14 +278,14 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, privateChat1),
-                    BuildSearchResult(bob.Id, privateChat2),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat1),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat2),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat1),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat2),
-                    BuildSearchResult(bob.Id, privatePlacePrivateChat1),
-                    BuildSearchResult(bob.Id, privatePlacePrivateChat2),
+                    privateChat1.ToSearchResult(bob.Id),
+                    privateChat2.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat2.ToSearchResult(bob.Id),
+                    privatePlacePublicChat1.ToSearchResult(bob.Id),
+                    privatePlacePublicChat2.ToSearchResult(bob.Id),
+                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
+                    privatePlacePrivateChat2.ToSearchResult(bob.Id),
                 }
             );
 
@@ -306,8 +305,8 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, publicChat1),
-                    BuildSearchResult(bob.Id, publicPlacePublicChat2),
+                    publicChat1.ToSearchResult(bob.Id),
+                    publicPlacePublicChat2.ToSearchResult(bob.Id),
                 }
             );
 
@@ -315,10 +314,10 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         searchResults.Should()
             .BeEquivalentTo(
                 new[] {
-                    BuildSearchResult(bob.Id, privateChat2),
-                    BuildSearchResult(bob.Id, publicPlacePrivateChat1),
-                    BuildSearchResult(bob.Id, privatePlacePublicChat2),
-                    BuildSearchResult(bob.Id, privatePlacePrivateChat1),
+                    privateChat2.ToSearchResult(bob.Id),
+                    publicPlacePrivateChat1.ToSearchResult(bob.Id),
+                    privatePlacePublicChat2.ToSearchResult(bob.Id),
+                    privatePlacePrivateChat1.ToSearchResult(bob.Id),
                 }
             );
     }
@@ -328,43 +327,18 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
     private static ApiArray<IndexedChatContact> BuildChatContacts(IEnumerable<Place> places, params Chat.Chat[] chats)
     {
         var placeMap = places.ToDictionary(x => x.Id);
-        return chats.Select(x => BuildChatContact(placeMap.GetValueOrDefault(x.Id.PlaceId), x)).ToApiArray();
+        return chats.Select(x => x.ToIndexedChatContact(placeMap.GetValueOrDefault(x.Id.PlaceId))).ToApiArray();
     }
-
-    private static IndexedChatContact BuildChatContact(Place? place, Chat.Chat chat)
-        => BuildChatContact(chat.Id, chat.Title, chat.IsPublic && place is not { IsPublic: false });
-
-    private static IndexedChatContact BuildChatContact(ChatId chatId, string title, bool isPublic)
-        => new () {
-            Id = chatId,
-            Title = title,
-            IsPublic = isPublic,
-            PlaceId = chatId.PlaceId,
-        };
-
-    private static ContactSearchResult BuildSearchResult(UserId ownerId, Chat.Chat chat)
-        => BuildSearchResult(ownerId, chat.Id, chat.Title);
-
-    private static ContactSearchResult BuildSearchResult(UserId ownerId, ChatId chatId, string title)
-        => new (new ContactId(ownerId, chatId), SearchMatch.New(title));
 
     private async Task<Place> CreatePlace(WebClientTester tester, bool isPublic, string title)
     {
-        var (placeId, _) = await tester.CreatePlace(x => x with {
-            IsPublic = isPublic,
-            Title = title,
-        });
+        var (placeId, _) = await tester.CreatePlace(isPublic, title);
         return await tester.Places.Get(tester.Session, placeId, CancellationToken.None).Require();
     }
 
     private async Task<Chat.Chat> CreateChat(WebClientTester tester, bool isPublic, string title, PlaceId placeId = default)
     {
-        var (id, _) = await tester.CreateChat(x => x with {
-            Kind = null,
-            Title = title,
-            PlaceId = placeId,
-            IsPublic = isPublic,
-        });
+        var (id, _) = await tester.CreateChat(isPublic, title, placeId);
         return await tester.Chats.Get(tester.Session, id, CancellationToken.None).Require();
     }
 
@@ -380,8 +354,9 @@ public class ChatContactSearchTest(AppHostFixture fixture, ITestOutputHelper @ou
         return searchResults.Hits;
     }
 
-    private Task<TestAppHost> NewSearchEnabledAppHost()
-        => NewAppHost(options => options with {
+    private Task<TestAppHost> NewSearchEnabledAppHost(string instanceName)
+        => NewAppHost(instanceName,
+            options => options with {
                 AppConfigurationExtender = cfg => {
                     cfg.AddInMemory(("SearchSettings:IsSearchEnabled", "true"));
                 },

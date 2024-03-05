@@ -44,7 +44,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         await cts.CancelAsync();
     }
 
-    [Fact]
+    [Fact(Skip = "Depends on Google API")]
     public async Task PerformRecordingAndTranscriptionTest()
     {
         var appHost = AppHost;
@@ -91,7 +91,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         readSize.Should().BeLessOrEqualTo(writtenSize);
     }
 
-    [Fact]
+    [Fact(Skip = "Depends on Google API")]
     public async Task ShortTranscriptionTest()
     {
         var appHost = AppHost!;
@@ -225,7 +225,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         lastEntry.Content.Should().NotBeEmpty();
     }
 
-    [Fact]
+    [Fact(Skip = "Depends on Google API")]
     public async Task PerformRecordingTest()
     {
         var appHost = AppHost!;
@@ -265,7 +265,7 @@ public class StreamingBackendTest(AppHostFixture fixture, ITestOutputHelper @out
         readSize.Should().BeLessThan(writtenSize);
     }
 
-    [Fact]
+    [Fact(Skip = "Depends on Google API")]
     public async Task RealtimeAudioStreamerSupportsSkip()
     {
         var appHost = AppHost!;

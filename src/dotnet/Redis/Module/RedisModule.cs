@@ -14,7 +14,7 @@ public sealed class RedisModule(IServiceProvider moduleServices)
 {
     public void AddRedisDb<TContext>(
         IServiceCollection services,
-        string? connectionString)
+        string? connectionString = null)
     {
         if (connectionString.IsNullOrEmpty())
             connectionString = Settings.DefaultRedis;

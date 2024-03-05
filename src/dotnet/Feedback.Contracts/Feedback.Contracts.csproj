@@ -1,7 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
-  </ItemGroup>
-
-</Project>

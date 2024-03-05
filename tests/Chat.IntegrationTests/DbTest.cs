@@ -8,7 +8,7 @@ using ActualLab.Mathematics;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class DbTest(AppHostFixture fixture, ITestOutputHelper @out)
+public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     private ChatId TestChatId => Constants.Chat.DefaultChatId;
@@ -19,7 +19,7 @@ public class DbTest(AppHostFixture fixture, ITestOutputHelper @out)
     [InlineData(2000)]
     public async Task ConcurrentUpdatesShouldNotBlockReads(int duration)
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost("concurrent-updates");
         var logger = appHost.Services.LogFor<DbTest>();
         logger.LogInformation("app host init");
 
@@ -80,7 +80,7 @@ public class DbTest(AppHostFixture fixture, ITestOutputHelper @out)
     [Fact]
     public async Task DeadlockShouldBeDetected()
     {
-        using var appHost = await NewAppHost();
+        using var appHost = await NewAppHost("deadlock");
         var logger = appHost.Services.LogFor<DbTest>();
         logger.LogInformation("app host init");
 

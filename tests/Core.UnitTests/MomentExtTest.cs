@@ -1,6 +1,6 @@
 namespace ActualChat.Core.UnitTests;
 
-public class MomentExtTest(ITestOutputHelper @out)
+public class MomentExtTest
 {
     [Theory]
     [InlineData("2024-02-29T07:31:19.1651302Z", "2024-02-29T07:31:19.0Z")]

@@ -40,6 +40,7 @@ public sealed partial record AuthorsBackend_Remove(
     [property: DataMember, MemoryPackOrder(2)] UserId ByUserId
 ) : ICommand<AuthorFull>, IBackendCommand;
 
+// ReSharper disable once InconsistentNaming
 public enum AuthorsBackend_GetAuthorOption
 {
     // Gets Author as it is.

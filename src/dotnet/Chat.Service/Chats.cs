@@ -5,18 +5,22 @@ namespace ActualChat.Chat;
 
 public class Chats(IServiceProvider services) : IChats
 {
+    private IContacts? _contacts;
     private IPlaces? _places;
 
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IAuthors Authors { get; } = services.GetRequiredService<IAuthors>();
-    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAvatars Avatars { get; } = services.GetRequiredService<IAvatars>();
-    private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
-    private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
-    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
-    private ICommander Commander { get; } = services.Commander();
-
+    private IContacts Contacts => _contacts ??= services.GetRequiredService<IContacts>();
     private IPlaces Places => _places ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
+
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
+    private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
+    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
+    private IChatsBackend Backend { get; } = services.GetRequiredService<IChatsBackend>();
+
+    private ICommander Commander { get; } = services.Commander();
+    private ILogger Log { get; } = services.LogFor<Chats>();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
@@ -624,5 +628,51 @@ public class Chats(IServiceProvider services) : IChats
             await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false); // Make sure we can read the chat
             return await Backend.GetRemovedEntry(entryId, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    // [CommandHandler]
+    public virtual async Task<bool> OnMoveToPlace(Chat_MoveChatToPlace command, CancellationToken cancellationToken)
+    {
+        if (Computed.IsInvalidating())
+            return default; // It just spawns other commands, so nothing to do here
+
+        var (session, chatId, placeId) = command;
+        var executed = false;
+        Log.LogInformation("OnMoveToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'", chatId.Value, placeId);
+        var chat = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Chat for chat id '{ChatId}' is {Chat}", chatId, chat);
+        if (chat != null) {
+            if (chat.Id.Kind != ChatKind.Group)
+                throw StandardError.Constraint("Only group chats can be moved to a Place.");
+            if (!chat.Rules.IsOwner())
+                throw StandardError.Constraint("You must be the Owner of this chat to perform the migration.");
+
+            var place = await Places.Get(session, placeId, cancellationToken).Require().ConfigureAwait(false);
+            if (!place.Rules.IsOwner())
+                throw StandardError.Constraint("You should be a place owner to perform 'move to place' operation.");
+
+            var backendCmd = new ChatBackend_MoveChatToPlace(chatId, placeId);
+            await Commander.Call(backendCmd, true, cancellationToken).ConfigureAwait(false);
+            executed = true;
+        }
+
+        var placeChatId = new PlaceChatId(PlaceChatId.Format(placeId, chatId.Id));
+        var newChatId = (ChatId)placeChatId;
+        var contact = await Contacts.GetForChat(session, newChatId, cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Contact for chat id '{ChatId}' is {Contact}", newChatId, contact);
+        if (contact == null || contact.PlaceId.IsNone || !contact.IsStored()) {
+            var backendCmd2 = new ContactsBackend_MoveChatToPlace(chatId, placeId);
+            await Commander.Call(backendCmd2, true, cancellationToken).ConfigureAwait(false);
+            executed = true;
+        }
+
+        {
+            var backendCmd3 = new AccountsBackend_MoveChatToPlace(chatId, placeId);
+            var hasChanges = await Commander.Call(backendCmd3, true, cancellationToken).ConfigureAwait(false);
+            executed |= hasChanges;
+        }
+
+        Log.LogInformation("OnMoveToPlace: completed");
+        return executed;
     }
 }

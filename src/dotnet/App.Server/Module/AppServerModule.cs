@@ -4,16 +4,15 @@ using ActualChat.Chat.Module;
 using ActualChat.Commands;
 using ActualChat.Contacts.Module;
 using ActualChat.Db.Module;
-using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
 using ActualChat.Media.Module;
 using ActualChat.Module;
+using ActualChat.Nats.Module;
 using ActualChat.Notification.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Search.Module;
 using ActualChat.Streaming.Module;
-using ActualChat.Transcription.Module;
 using ActualChat.Users.Module;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.StaticWebAssets;
@@ -32,6 +31,8 @@ using ActualLab.Fusion.EntityFramework;
 using ActualLab.IO;
 using ActualLab.Rpc;
 using ActualLab.Rpc.Server;
+using NATS.Client.Core;
+using NATS.Client.Hosting;
 
 namespace ActualChat.App.Server.Module;
 
@@ -150,11 +151,11 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<InfrastructureDbContext>(services, Settings.Redis);
+        redisModule.AddRedisDb<InfrastructureDbContext>(services);
 
-        // Queues
-        services.AddLocalCommandQueues();
-        services.AddCommandQueueScheduler();
+        // NATS
+        var natsModule = Host.GetModule<NatsModule>();
+        natsModule.AddNatsQueues(services);
 
         // Web
         var binPath = new FilePath(Assembly.GetExecutingAssembly().Location).FullPath.DirectoryPath;
@@ -284,11 +285,9 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddSource(typeof(StreamingServiceModule).GetActivitySource().Name)
                 .AddSource(typeof(ChatServiceModule).GetActivitySource().Name)
                 .AddSource(typeof(ContactsServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(FeedbackServiceModule).GetActivitySource().Name)
                 .AddSource(typeof(InviteServiceModule).GetActivitySource().Name)
                 .AddSource(typeof(MediaServiceModule).GetActivitySource().Name)
                 .AddSource(typeof(SearchServiceModule).GetActivitySource().Name)
-                .AddSource(typeof(TranscriptionServiceModule).GetActivitySource().Name)
                 .AddSource(typeof(NotificationServiceModule).GetActivitySource().Name)
                 .AddSource(typeof(UsersServiceModule).GetActivitySource().Name)
                 .AddSource(typeof(AppServerModule).GetActivitySource().Name)

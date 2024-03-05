@@ -51,7 +51,9 @@
       "Microsoft.EntityFrameworkCore.Database": "Warning",
       // "Microsoft.EntityFrameworkCore.Database.Command": "Debug",
       "Stl": "Warning",
-      "Microsoft.Hosting.Lifetime": "Warning"
+      "Microsoft.Hosting.Lifetime": "Warning",
+      "NATS.Client.Core": "Warning",
+      "NATS.Client": "Warning"
     }
   }
 }
