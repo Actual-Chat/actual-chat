@@ -1,4 +1,6 @@
-﻿namespace ActualChat.Transcription;
+﻿using ActualChat.Transcription;
+
+namespace ActualChat.Streaming;
 
 public interface ITranscriberFactory
 {

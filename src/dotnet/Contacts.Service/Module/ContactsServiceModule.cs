@@ -10,22 +10,21 @@ using ActualLab.Fusion.EntityFramework.Operations;
 namespace ActualChat.Contacts.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class ContactsServiceModule(IServiceProvider moduleServices) : HostModule<ContactsSettings>(moduleServices)
+public sealed class ContactsServiceModule(IServiceProvider moduleServices) : HostModule(moduleServices)
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
         if (!HostInfo.HostKind.IsServer())
             return; // Server-side only module
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<ContactsDbContext>(services, Settings.Redis);
+        redisModule.AddRedisDb<ContactsDbContext>(services);
 
         // DB
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, ContactsDbInitializer>();
-        dbModule.AddDbContextServices<ContactsDbContext>(services, Settings.Db, db => {
+        dbModule.AddDbContextServices<ContactsDbContext>(services, db => {
             // Overriding / adding extra DbAuthentication services
             db.AddEntityResolver<string, DbContact>();
 
@@ -56,7 +55,6 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices) : Hos
         fusion.AddService<IContactsBackend, ContactsBackend>();
         fusion.AddService<IExternalContacts, ExternalContacts>();
         fusion.AddService<IExternalContactsBackend, ExternalContactsBackend>();
-        fusion.AddService<IContactMigratorBackend, ContactMigratorBackend>();
 
         // Controllers, etc.
         services.AddMvcCore().AddApplicationPart(GetType().Assembly);

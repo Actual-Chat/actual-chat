@@ -2,16 +2,16 @@
 using System.Numerics;
 using System.Text.RegularExpressions;
 using ActualChat.Audio;
-using ActualChat.Transcription.Deepgram;
-using ActualChat.Transcription.Module;
+using ActualChat.Streaming.Module;
+using ActualChat.Transcription;
 using Deepgram;
 using Deepgram.Common;
 using Deepgram.CustomEventArgs;
 using Deepgram.Models;
 
-namespace ActualChat.Transcription.DeepGram;
+namespace ActualChat.Streaming.Services.Transcribers;
 
-public partial class DeepGramTranscriber : ITranscriber
+public partial class DeepgramTranscriber : ITranscriber
 {
     private static readonly double TranscriptionSpeed = 2;
     [GeneratedRegex(@"([\?\!\.]\s*$)|(^\s*$)", RegexOptions.Singleline | RegexOptions.ExplicitCapture)]
@@ -25,19 +25,19 @@ public partial class DeepGramTranscriber : ITranscriber
 
     private ILogger Log { get; }
     private MomentClockSet Clocks { get; }
-    private TranscriptSettings TranscriptSettings { get; }
+    private StreamingSettings StreamingSettings { get; }
     private OggOpusStreamConverter OggOpusStreamConverter { get; }
     private DeepgramClient DeepgramClient { get; }
 
-    public DeepGramTranscriber(IServiceProvider services)
+    public DeepgramTranscriber(IServiceProvider services)
     {
         Log = services.LogFor(GetType());
         Clocks = services.Clocks();
-        TranscriptSettings = services.GetRequiredService<TranscriptSettings>();
+        StreamingSettings = services.GetRequiredService<StreamingSettings>();
         OggOpusStreamConverter = new OggOpusStreamConverter(new OggOpusStreamConverter.Options {
             PageDuration = TimeSpan.FromMilliseconds(200),
         });
-        var credentials = new Credentials(TranscriptSettings.DeepGramKey);
+        var credentials = new Credentials(StreamingSettings.DeepgramKey);
         DeepgramClient = new DeepgramClient(credentials);
     }
 
@@ -108,7 +108,7 @@ public partial class DeepGramTranscriber : ITranscriber
                 "es-US" => "es-419",
                 "ru-RU" => "ru",
                 "zh-CN" => "zh-CN",
-                _ => throw StandardError.NotSupported(typeof(DeepGramTranscriber), $"Language '{options1.Language.Id}' is not supported"),
+                _ => throw StandardError.NotSupported(typeof(DeepgramTranscriber), $"Language '{options1.Language.Id}' is not supported"),
             };
         }
 

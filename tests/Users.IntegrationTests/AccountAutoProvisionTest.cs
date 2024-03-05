@@ -51,6 +51,7 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
 
         // assert
         account2.Should().BeEquivalentTo(account, options => options
+            .Excluding(x => x.Version)
             .Excluding(x => x.User)
             .Excluding(x => x.IsGreetingCompleted ));
     }

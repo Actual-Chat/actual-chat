@@ -97,6 +97,9 @@ public class RedisMeshLocks : MeshLocksBase
         };
     }
 
+    public override string GetFullKey(string key)
+        => RedisDb.FullKey(key);
+
     public override async Task<MeshLockInfo?> GetInfo(string key, CancellationToken cancellationToken = default)
     {
         if (key.IsNullOrEmpty())
@@ -163,8 +166,20 @@ public class RedisMeshLocks : MeshLocksBase
         return keys;
     }
 
-    public override IMeshLocks WithKeyPrefix(string keyPrefix)
-        => new RedisMeshLocks(RedisDb, keyPrefix, Clock, Log);
+    public override IMeshLocks With(string? keyPrefix, MeshLockOptions? lockOptions)
+    {
+        if (!keyPrefix.IsNullOrEmpty())
+            return new RedisMeshLocks(RedisDb, keyPrefix, Clock, Log) {
+                LockOptions = lockOptions ?? LockOptions,
+            };
+
+        if (!ReferenceEquals(lockOptions, null) && lockOptions != LockOptions)
+            return new RedisMeshLocks(RedisDb, "", Clock, Log) {
+                LockOptions = lockOptions,
+            };
+
+        return this;
+    }
 
     // Protected methods
 

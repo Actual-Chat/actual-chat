@@ -1,5 +1,5 @@
 using System.Globalization;
-using ActualChat.Transcription.Google;
+using ActualChat.Streaming.Services.Transcribers;
 
 namespace ActualChat.Transcription.UnitTests;
 

@@ -9,22 +9,21 @@ using ActualLab.Fusion.EntityFramework.Operations;
 namespace ActualChat.Media.Module;
 
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostModule<MediaSettings>(moduleServices)
+public sealed class MediaServiceModule(IServiceProvider moduleServices) : HostModule(moduleServices)
 {
     protected override void InjectServices(IServiceCollection services)
     {
-        base.InjectServices(services);
         if (!HostInfo.HostKind.IsServer())
             return; // Server-side only module
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<MediaDbContext>(services, Settings.Redis);
+        redisModule.AddRedisDb<MediaDbContext>(services);
 
         // DB
         var dbModule = Host.GetModule<DbModule>();
         services.AddSingleton<IDbInitializer, MediaDbInitializer>();
-        dbModule.AddDbContextServices<MediaDbContext>(services, Settings.Db, db => {
+        dbModule.AddDbContextServices<MediaDbContext>(services, db => {
             db.AddEntityResolver<string, DbMedia>();
         });
 

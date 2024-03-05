@@ -82,6 +82,9 @@ public interface IChats : IComputeService
 
     [CommandHandler]
     Task<Unit> OnForwardTextEntries(Chats_ForwardTextEntries command, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task<bool> OnMoveToPlace(Chat_MoveChatToPlace command, CancellationToken cancellationToken);
 }
 
 [DataContract, MemoryPackable(GenerateType.VersionTolerant)]
@@ -160,3 +163,11 @@ public sealed partial record Chats_ForwardTextEntries(
     [property: DataMember, MemoryPackOrder(2)] ApiArray<ChatEntryId> ChatEntries,
     [property: DataMember, MemoryPackOrder(3)] ApiArray<ChatId> DestinationChatIds
 ) : ISessionCommand<Unit>;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Chat_MoveChatToPlace(
+    [property: DataMember, MemoryPackOrder(0)] Session Session,
+    [property: DataMember, MemoryPackOrder(1)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(2)] PlaceId PlaceId
+) : ISessionCommand<bool>;

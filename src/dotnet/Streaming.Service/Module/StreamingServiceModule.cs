@@ -3,14 +3,16 @@ using ActualChat.Hosting;
 using ActualChat.Module;
 using ActualChat.Redis.Module;
 using ActualChat.Streaming.Services;
+using ActualChat.Streaming.Services.Transcribers;
 using Microsoft.AspNetCore.Builder;
+using GoogleTranscriber = ActualChat.Streaming.Services.Transcribers.GoogleTranscriber;
 using LocalAudioDownloader = ActualChat.Streaming.Services.LocalAudioDownloader;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
 namespace ActualChat.Streaming.Module;
 
 public sealed class StreamingServiceModule(IServiceProvider moduleServices)
-    : HostModule<AudioSettings>(moduleServices), IWebServerModule
+    : HostModule<StreamingSettings>(moduleServices), IWebServerModule
 {
     public void ConfigureApp(IApplicationBuilder app)
         => app.UseEndpoints(endpoints => {
@@ -30,7 +32,7 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
 
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
-        redisModule.AddRedisDb<StreamingContext>(services, Settings.Redis);
+        redisModule.AddRedisDb<StreamingContext>(services);
 
         // SignalR hub & related services
         if (HostInfo.HasRole(HostRole.Api)) {
@@ -44,6 +46,10 @@ public sealed class StreamingServiceModule(IServiceProvider moduleServices)
         }
 
         // Module's own services
+        services.AddSingleton<ITranscriberFactory, TranscriberFactory>();
+        services.AddSingleton<GoogleTranscriber>();
+        services.AddSingleton<DeepgramTranscriber>();
+
         if (!isBackendClient) {
             services.AddSingleton<AudioSegmentSaver>();
             services.AddSingleton<StreamingBackend.Options>();

@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Text.RegularExpressions;
 using ActualChat.Audio;
 using ActualChat.Module;
+using ActualChat.Transcription;
 using Google.Api.Gax;
 using Google.Api.Gax.Grpc;
 using Google.Cloud.Speech.V2;
@@ -9,7 +10,7 @@ using Google.Protobuf;
 using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 
-namespace ActualChat.Transcription.Google;
+namespace ActualChat.Streaming.Services.Transcribers;
 
 public partial class GoogleTranscriber : ITranscriber
 {
@@ -458,13 +459,17 @@ public partial class GoogleTranscriber : ITranscriber
             .Concat(audioSource, cancellationToken)
             .ConcatUntil(SilenceAudioSource, SilentSuffixDuration, cancellationToken);
 
-    private static Task<AudioSource> LoadSilenceAudio()
+    private static async Task<AudioSource> LoadSilenceAudio()
     {
-        var byteStream = typeof(GoogleTranscriber).Assembly
-            .GetManifestResourceStream("ActualChat.Transcription.data.silence.opuss")!
-            .ReadByteStream(true);
+        var silenceChunks = await typeof(GoogleTranscriber).Assembly
+            .GetManifestResourceStream("ActualChat.Streaming.data.silence.opuss")!
+            .ReadByteStream(true)
+            .ToListAsync()
+            .ConfigureAwait(false);
         var converter = new ActualOpusStreamConverter(MomentClockSet.Default, DefaultLog);
-        return converter.FromByteStream(byteStream, CancellationToken.None);
+        return await converter
+            .FromByteStream(silenceChunks.AsAsyncEnumerable(), CancellationToken.None)
+            .ConfigureAwait(false);
     }
 
     private record struct RecognizerOptions(string LanguageCode, bool EnableAutomaticPunctuation, bool ProfanityFilter);

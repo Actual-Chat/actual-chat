@@ -57,7 +57,7 @@ public sealed class ChatBlazorUIModule(IServiceProvider moduleServices)
         fusion.AddService<ChatStreamingActivity>(ServiceLifetime.Transient);
 
         // Settings
-        services.AddSingleton(_ => new AudioSettings());
+        services.AddSingleton(new AudioSettings());
         services.AddScoped(c => new LanguageUI(c.ChatUIHub()));
 
         // OnboardingUI

@@ -1,30 +1,24 @@
-using ActualChat.Db;
 using ActualChat.Chat.Db;
+using ActualChat.Db;
 using Microsoft.EntityFrameworkCore;
-using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
-public class ChatMigratorBackend(IServiceProvider services)
-    : DbServiceBase<ChatDbContext>(services), IChatMigratorBackend
+public partial class ChatsBackend
 {
-    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
-    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
-    private IMarkupParser MarkupParser { get; } = services.GetRequiredService<IMarkupParser>();
-
     public virtual async Task OnMoveToPlace(
-        ChatMigratorBackend_MoveChatToPlace command,
+        ChatBackend_MoveChatToPlace command,
         CancellationToken cancellationToken)
     {
         var (chatId, placeId) = command;
 
         if (Computed.IsInvalidating()) {
-            _ = ChatsBackend.Get(chatId, default);
-            _ = ChatsBackend.GetPublicChatIdsFor(placeId, default);
+            _ = Get(chatId, default);
+            _ = GetPublicChatIdsFor(placeId, default);
             return;
         }
 
-        Log.LogInformation("ChatMigratorBackend_MoveChatToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'",
+        Log.LogInformation("OnMoveToPlace: starting, moving chat '{ChatId}' to place '{PlaceId}'",
             chatId.Value,
             placeId);
 
@@ -87,7 +81,7 @@ public class ChatMigratorBackend(IServiceProvider services)
                 cancellationToken)
             .ConfigureAwait(false);
 
-        Log.LogInformation("ChatMigratorBackend_MoveChatToPlace: completed");
+        Log.LogInformation("OnMoveToPlace: completed");
     }
 
     private async Task UpdateChat(

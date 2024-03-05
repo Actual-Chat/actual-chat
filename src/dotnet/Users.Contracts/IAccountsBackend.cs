@@ -16,6 +16,9 @@ public interface IAccountsBackend : IComputeService
     [CommandHandler]
     public Task OnDelete(AccountsBackend_Delete command, CancellationToken cancellationToken);
 
+    [CommandHandler]
+    Task<bool> OnMoveChatToPlace(AccountsBackend_MoveChatToPlace command, CancellationToken cancellationToken);
+
     // Non-compute methods
 
     Task<ApiArray<UserId>> ListChanged(
@@ -40,3 +43,10 @@ public sealed partial record AccountsBackend_Update(
 public sealed partial record AccountsBackend_Delete(
     [property: DataMember, MemoryPackOrder(0)] UserId UserId
 ) : ICommand<Unit>, IBackendCommand;
+
+[DataContract, MemoryPackable(GenerateType.VersionTolerant)]
+// ReSharper disable once InconsistentNaming
+public sealed partial record AccountsBackend_MoveChatToPlace(
+    [property: DataMember, MemoryPackOrder(0)] ChatId ChatId,
+    [property: DataMember, MemoryPackOrder(1)] PlaceId PlaceId
+) : ICommand<bool>, IBackendCommand;

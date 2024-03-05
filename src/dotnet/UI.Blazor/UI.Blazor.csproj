@@ -28,5 +28,4 @@
     <Content Remove="Components\Account\VerificationStatus.razor" />
   </ItemGroup>
 
-
 </Project>

@@ -26,7 +26,6 @@ export * from './Components/Avatar/marble-avatar.lit';
 export * from './Components/Bubble/bubble-host';
 export * from './Components/Clipboard/copy-trigger';
 export * from './Components/Dropdown/dropdown';
-export * from './Components/Feedback/feedback';
 export * from './Components/VisualMediaViewerModal/visual-media-viewer';
 export * from './Components/Menu/menu-host';
 export * from './Components/Modal/modal-host';

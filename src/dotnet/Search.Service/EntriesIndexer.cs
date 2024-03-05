@@ -57,9 +57,10 @@ public class EntriesIndexer(IServiceProvider services) : WorkerBase, IHasService
             using var _1 = Tracer.Default.Region();
             if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
                 await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
-            await MeshLocks.Run(EnsureIndexedChatsCreated, "IndexedChatsSync", cancellationToken)
+            var runOptions = RunLockedOptions.NoRetries with { Log = Log };
+            await MeshLocks
+                .TryRunLocked(nameof(SyncHistory), runOptions, EnsureIndexedChatsCreated, cancellationToken)
                 .ConfigureAwait(false);
-
             await IndexAllChats(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { }
@@ -68,14 +69,17 @@ public class EntriesIndexer(IServiceProvider services) : WorkerBase, IHasService
     private async Task IndexAllChats(CancellationToken cancellationToken)
     {
         using var _2 = Tracer.Default.Region();
-        var batches = IndexedChatsBackend.Batches(Moment.MinValue, ChatId.None, ChatDispatchBatchSize, cancellationToken)
+        var batches = IndexedChatsBackend
+            .Batches(Moment.MinValue, ChatId.None, ChatDispatchBatchSize, cancellationToken)
             .ConfigureAwait(false);
+        var runOptions = RunLockedOptions.Default with { Log = Log };
         await foreach (var indexedChats in batches)
-        foreach (var indexedChat in indexedChats)
-            // skip indexing if it is already started on another replica
-            await MeshLocks
-                .TryRun(ct1 => IndexChat(indexedChat.Id, ct1), $"ChatHistoryIndex.{indexedChat.Id}", cancellationToken)
-                .ConfigureAwait(false);
+            foreach (var indexedChat in indexedChats) {
+                var key = $"{nameof(IndexChat)}({indexedChat.Id.Value})";
+                await MeshLocks
+                    .TryRunLocked(key, runOptions, ct1 => IndexChat(indexedChat.Id, ct1), cancellationToken)
+                    .ConfigureAwait(false);
+            }
     }
 
     private async Task EnsureIndexedChatsCreated(CancellationToken cancellationToken)

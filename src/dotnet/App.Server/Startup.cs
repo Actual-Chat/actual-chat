@@ -5,7 +5,6 @@ using ActualChat.Chat.UI.Blazor.Module;
 using ActualChat.Contacts.Module;
 using ActualChat.Contacts.UI.Blazor.Module;
 using ActualChat.Db.Module;
-using ActualChat.Feedback.Module;
 using ActualChat.Hosting;
 using ActualChat.Invite.Module;
 using ActualChat.Kubernetes.Module;
@@ -17,7 +16,6 @@ using ActualChat.Redis.Module;
 using ActualChat.Search.Module;
 using ActualChat.Streaming.Module;
 using ActualChat.Streaming.UI.Blazor.Module;
-using ActualChat.Transcription.Module;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Module;
 using ActualChat.UI.Blazor.Module;
@@ -105,13 +103,11 @@ public class Startup(IConfiguration cfg, IWebHostEnvironment environment)
                 new ApiModule(moduleServices),
                 // Service-specific & service modules
                 new StreamingServiceModule(moduleServices),
-                new FeedbackServiceModule(moduleServices),
                 new MediaServiceModule(moduleServices),
                 new ContactsServiceModule(moduleServices),
                 new InviteServiceModule(moduleServices),
                 new UsersServiceModule(moduleServices),
                 new ChatServiceModule(moduleServices),
-                new TranscriptionServiceModule(moduleServices),
                 new NotificationServiceModule(moduleServices),
                 new SearchServiceModule(moduleServices),
                 // UI modules

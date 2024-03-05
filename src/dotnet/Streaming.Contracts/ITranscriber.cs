@@ -1,6 +1,7 @@
 ﻿using ActualChat.Audio;
+using ActualChat.Transcription;
 
-namespace ActualChat.Transcription;
+namespace ActualChat.Streaming;
 
 public interface ITranscriber
 {
