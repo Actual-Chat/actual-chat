@@ -67,6 +67,4 @@ public class ShardCommandQueueScheduler(HostRole hostRole, IServiceProvider serv
             InterlockedExt.ExchangeIfGreaterThan(ref _lastCommandTicks, commandCompletionTicks);
         }
     }
-
-
 }
