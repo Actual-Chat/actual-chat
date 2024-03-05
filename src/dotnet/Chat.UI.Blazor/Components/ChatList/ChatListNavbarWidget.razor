@@ -1,4 +1,7 @@
+@using ActualChat.Kvas
 @namespace ActualChat.Chat.UI.Blazor.Components
+@inherits FusionComponentBase
+@implements IDisposable
 @{
     RenderFragment RenderTab(ChatListFilter filter, double order) {
         var id = filter.Id.Value;
@@ -31,17 +34,12 @@
             TabsClass="left-panel-tabs"
             SelectedTabIdChanged="@OnSelectedTabIdChanged">
             <AdditionalButton>
-                <ChatListSortButton/>
+                <ChatListSortButton PlaceId="@PlaceId" Settings="@SettingsState" />
             </AdditionalButton>
             <ChildContent>
-                @if (PlaceId.IsNone) {
-                    @for (var i = 0; i < ChatListFilter.All.Count; i++) {
-                        var filter = ChatListFilter.All[i];
-                        @RenderTab(filter, i)
-                    }
-                } else {
-                    @RenderTab(ChatListFilter.Groups, 1)
-                    @RenderTab(ChatListFilter.People, 2)
+                @for (var i = 0; i < ChatListFilter.All.Count; i++) {
+                    var filter = ChatListFilter.All[i];
+                    @RenderTab(filter, i)
                 }
             </ChildContent>
             <TabContent>
@@ -59,23 +57,36 @@
 
 @code {
     private TabPanel _tabPanel = null!;
+    private bool _updateSelectedTab = true;
+
+    private IMutableStateLease<ChatListSettings>? SettingsState { get; set; } = null!;
 
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
 
     [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
 
-    protected override async Task OnInitializedAsync() {
-        await ChatListUI.WhenLoaded;
+    public void Dispose() {
+        SettingsState.DisposeSilently();
+        SettingsState = null!;
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        _updateSelectedTab = true;
+        SettingsState.DisposeSilently();
+        SettingsState = null;
+        SettingsState = await ChatListUI.LeaseSettingsState(PlaceId, default);
     }
 
     protected override void OnAfterRender(bool firstRender) {
-        if (PlaceId.IsNone)
-            _tabPanel.SelectedTabId = ChatListUI.Settings.Value.FilterId;
+        if (_updateSelectedTab && SettingsState != null) {
+            _updateSelectedTab = false;
+            _tabPanel.SelectedTabId = SettingsState.Value.FilterId;
+        }
     }
 
     private void OnSelectedTabIdChanged(string? tabId) {
         var filterId = tabId ?? "";
-        ChatListUI.Settings.Set(filterId, static (filterId1, r) => {
+        SettingsState?.Set(filterId, static (filterId1, r) => {
             var settings = r.Value;
             if (settings.FilterId != filterId1)
                 settings = settings with { FilterId = filterId1 };

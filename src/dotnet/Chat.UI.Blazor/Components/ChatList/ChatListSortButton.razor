@@ -11,14 +11,19 @@
     data-bubble="@(BubbleRef.New<ChatListTabsBubble>())"
     data-bubble-priority="203"
     data-bubble-placement="@(FloatingPosition.BottomStart.ToPositionString())"
-    data-menu="@(MenuRef.New<ChatListSortMenu>())"
+    data-menu="@(MenuRef.New<ChatListSortMenu>(PlaceId))"
     data-menu-trigger="@MenuTrigger.Primary"
     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
     <i class="@order.GetIcon() text-2xl"></i>
 </ButtonRound>
 
 @code {
+    private IMutableStateLease<ChatListSettings>? SettingsState { get; set; } = null!;
+
     [Inject] private ChatListUI ChatListUI { get; init; } = null!;
+
+    [Parameter, EditorRequired] public PlaceId PlaceId { get; set; }
+    [Parameter, EditorRequired] public IMutableState<ChatListSettings>? Settings { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() {
@@ -27,7 +32,9 @@
         };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var settings = await ChatListUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+        if (Settings == null)
+            return Model.Loading;
+        var settings = await Settings.Use(cancellationToken).ConfigureAwait(false);
         return new Model {
             SortOrder = settings.Order,
         };
