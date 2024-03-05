@@ -24,29 +24,37 @@ internal class IndexingCursor<TState>(
 
     public async Task<TState?> Load(Id key, CancellationToken cancellationToken)
     {
-        var path = new DocumentPath<TState>(key)
-            .Index(IndexSettings.IndexName);
+        var request = new GetRequest(IndexSettings.IndexName, key);
         var result = await client.GetAsync<TState>(
-                path,
-                null,
+                request,
                 cancellationToken
             )
             .ConfigureAwait(false);
-
-        result.AssertSuccess();
-        return result.Source;
+        result.AssertSuccess(allowNotFound: true);
+        return result.Found ? result.Source : null;
     }
 
     public async Task Save(Id key, TState state, CancellationToken cancellationToken)
     {
-        var path = new DocumentPath<TState>(key)
-            .Index(IndexSettings.IndexName);
-        var result = await client.UpdateAsync<TState>(
-                path,
-                e => e.Upsert(state),
+        var response = await client.IndexAsync(
+                state,
+                e => e
+                    .Index(IndexSettings.IndexName)
+                    .Id(key),
                 cancellationToken
             )
-            .ConfigureAwait(false);
-        result.AssertSuccess();
+            .ConfigureAwait(true);
+
+        // TODO: figure out why the code below doesn't work. Probably serialization related issue.
+        // var request = new UpdateRequest<TState, TState>(IndexSettings.IndexName, key) {
+        //     Doc = state,
+        //     DocAsUpsert = true,
+        // };
+        // var result = await client.UpdateAsync(
+        //         request,
+        //         cancellationToken
+        //     )
+        //     .ConfigureAwait(false);
+        response.AssertSuccess();
     }
 }
