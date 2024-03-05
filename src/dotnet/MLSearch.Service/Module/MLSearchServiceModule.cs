@@ -7,10 +7,10 @@ using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Db;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
-using ActualChat.MLSearch.Engine.OpenSearch;
-using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Engine.Indexing;
 using ActualChat.MLSearch.Engine.Indexing.Spout;
+using ActualChat.MLSearch.Engine.OpenSearch;
+using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
@@ -79,13 +79,12 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
         services.AddSingleton<IIndexSettingsSource, IndexSettingsSource>();
         // ChatSlice engine registrations
-        services.AddSingleton<ISearchEngine<ChatSlice>>(e
-            => ActivatorUtilities.CreateInstance<OpenSearchEngine<ChatSlice>>(e, IndexNames.ChatSlice));
-
-        services.AddSingleton<ICursorStates<ChatEntriesIndexer.CursorState>>(e
-            => ActivatorUtilities.CreateInstance<CursorStates<ChatEntriesIndexer.CursorState>>(e, IndexNames.ChatSliceCursor));
-        services.AddSingleton<ISink<ChatEntry, ChatEntry>>(e
-            => ActivatorUtilities.CreateInstance<Sink<ChatEntry, ChatSlice>>(e, IndexNames.ChatSlice));
+        services.AddSingleton<ISearchEngine<ChatSlice>>(services
+            => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatSlice));
+        services.AddSingleton<ICursorStates<ChatEntriesIndexer.CursorState>>(services
+            => services.CreateInstanceWith<CursorStates<ChatEntriesIndexer.CursorState>>(IndexNames.ChatSliceCursor));
+        services.AddSingleton<ISink<ChatEntry, ChatEntry>>(services
+            => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
         services.AddSingleton<ChatEntriesIndexer>();
 
