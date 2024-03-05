@@ -5,24 +5,14 @@
     var displayLink = new ShareRequest(Link).GetDisplayLink();
 }
 
-<div class="chat-link">
-    <div class="c-link-url">
-        <div class="c-round">
-            <i class="icon-link-2 text-xl"></i>
-        </div>
-        <div>
-            <div class="link-url">@displayLink</div>
-        </div>
-    </div>
-    <div class="c-link-buttons">
-        <CopyTrigger CopyTextSourceRef="@CopyTextSource">
-            <ButtonRound Class="md:btn-md">
-                <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
-                <i class="copied-hint fa fa-check" aria-hidden="true"></i>
-            </ButtonRound>
-        </CopyTrigger>
-    </div>
-</div>
+<CopyTrigger CopyTextSourceRef="@CopyTextSource" Tooltip="@displayLink">
+    <Button Class="btn-modal copy-btn">
+        <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
+        <i class="copied-hint fa fa-check" aria-hidden="true"></i>
+        <span class="hide-on-copied-hint">Copy link</span>
+        <span class="copied-hint">Link copied!</span>
+    </Button>
+</CopyTrigger>
 
 @code {
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;

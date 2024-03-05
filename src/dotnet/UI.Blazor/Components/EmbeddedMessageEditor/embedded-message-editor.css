@@ -4,6 +4,15 @@
 .embedded-message-editor label {
     @apply relative flex-x;
 }
+.embedded-message-editor label:has(input) .c-placeholder {
+    @apply absolute left-4;
+    @apply flex-x gap-x-2 items-center justify-start;
+    @apply h-full;
+    @apply text-placeholder;
+}
+.embedded-message-editor label:has(input:focus) .c-placeholder {
+    @apply hidden;
+}
 .embedded-message-editor button {
     @apply absolute right-1;
     @apply flex items-center justify-center;
