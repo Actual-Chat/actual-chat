@@ -64,35 +64,40 @@ public static partial class MeshLocksExt
         var log = options.Log;
         var tryIndex = 0;
         while (true) {
-            try {
-                MeshLockHolder? h;
-                if (exitIfLocked) {
-                    h = await meshLocks.TryLock(key, cancellationToken).ConfigureAwait(false);
-                    if (h == null)
-                        return default;
-                }
-                else
-                    h = await meshLocks.Lock(key, cancellationToken).ConfigureAwait(false);
+            MeshLockHolder? lockHolder;
+            if (exitIfLocked) {
+                lockHolder = await meshLocks.TryLock(key, cancellationToken).ConfigureAwait(false);
+                if (lockHolder == null)
+                    return default;
+            }
+            else
+                lockHolder = await meshLocks.Lock(key, cancellationToken).ConfigureAwait(false);
 
-                await using var _ = h.ConfigureAwait(false);
-                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, h.StopToken);
+            try {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lockHolder.StopToken);
                 var result = await taskFactory.Invoke(cts.Token).ConfigureAwait(false);
                 return Option<T>.Some(result);
             }
-            catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            catch (OperationCanceledException e) when (!cancellationToken.IsCancellationRequested) {
+                if (!lockHolder.StopToken.IsCancellationRequested)
+                    throw;
+
                 fullKey ??= meshLocks.GetFullKey(key);
-                if (++tryIndex >= options.TryCount) {
+                if (++tryIndex >= options.MaxRelockCount) {
                     log?.LogError(e,
-                        "MeshLocks.{Method}('{Key}') failed ({TryIndex}/{TryCount}), retry limit is reached",
-                        method, fullKey, tryIndex, options.TryCount);
+                        "MeshLocks.{Method}('{Key}') lost the lock ({TryIndex}/{TryCount}), retry limit is reached",
+                        method, fullKey, tryIndex, options.MaxRelockCount);
                     throw;
                 }
 
-                var delay = options.Delays[tryIndex];
+                var delay = options.RelockDelays[tryIndex];
                 log?.LogWarning(e,
-                    "MeshLocks.{Method}('{Key}') failed ({TryIndex}/{TryCount}), will retry in {Delay}",
-                    method, fullKey, tryIndex, options.TryCount, delay.ToShortString());
+                    "MeshLocks.{Method}('{Key}') lost the lock ({TryIndex}/{TryCount}), will retry in {Delay}",
+                    method, fullKey, tryIndex, options.MaxRelockCount, delay.ToShortString());
                 await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+            finally {
+                await lockHolder.DisposeSilentlyAsync().ConfigureAwait(false);
             }
         }
     }

@@ -57,7 +57,7 @@ public class EntriesIndexer(IServiceProvider services) : WorkerBase, IHasService
             using var _1 = Tracer.Default.Region();
             if (!ElasticConfigurator.WhenCompleted.IsCompletedSuccessfully)
                 await ElasticConfigurator.WhenCompleted.ConfigureAwait(false);
-            var runOptions = RunLockedOptions.NoRetries with { Log = Log };
+            var runOptions = RunLockedOptions.NoRelock with { Log = Log };
             await MeshLocks
                 .TryRunLocked(nameof(SyncHistory), runOptions, EnsureIndexedChatsCreated, cancellationToken)
                 .ConfigureAwait(false);

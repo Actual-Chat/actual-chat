@@ -1,18 +1,18 @@
 namespace ActualChat.Mesh;
 
 public sealed record RunLockedOptions(
-    int TryCount,
-    RetryDelaySeq Delays,
+    int MaxRelockCount,
+    RetryDelaySeq RelockDelays,
     ILogger? Log = null)
 {
     public static readonly RunLockedOptions Default = new(3, RetryDelaySeq.Exp(0.25, 5));
-    public static readonly RunLockedOptions NoRetries = new(1);
+    public static readonly RunLockedOptions NoRelock = new(1);
 
-    public RunLockedOptions(int tryCount, ILogger? log = null)
-        : this(tryCount, Default.Delays, log)
+    public RunLockedOptions(int maxRelockCount, ILogger? log = null)
+        : this(maxRelockCount, Default.RelockDelays, log)
     { }
 
     public RunLockedOptions(ILogger? log = null)
-        : this(Default.TryCount, Default.Delays, log)
+        : this(Default.MaxRelockCount, Default.RelockDelays, log)
     { }
 }
