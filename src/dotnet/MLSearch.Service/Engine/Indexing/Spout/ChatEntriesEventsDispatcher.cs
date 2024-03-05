@@ -1,7 +1,7 @@
 using ActualChat.Chat.Events;
 using ActualChat.Commands;
 
-namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing.Spout;
+namespace ActualChat.MLSearch.Engine.Indexing.Spout;
 
 public interface IChatEntriesEventsDispatcher
 { }

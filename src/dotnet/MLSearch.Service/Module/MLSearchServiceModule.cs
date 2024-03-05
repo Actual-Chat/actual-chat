@@ -9,7 +9,8 @@ using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
 using ActualChat.MLSearch.Engine.OpenSearch;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
-using ActualChat.MLSearch.Engine.OpenSearch.Indexing.Spout;
+using ActualChat.MLSearch.Engine.Indexing;
+using ActualChat.MLSearch.Engine.Indexing.Spout;
 using ActualChat.MLSearch.Engine.OpenSearch.Setup;
 using ActualChat.Redis.Module;
 using ActualLab.Fusion.EntityFramework.Operations;
@@ -83,12 +84,12 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
 
 //       services.AddSingleton(typeof(IIndexingCursor<>), typeof(IndexingCursor<>));
 //        services.AddSingleton<ISink<ChatEntry>, Sink<ChatEntry, ChatSlice>>();
-        services.AddSingleton<IIndexingCursor<ChatEntriesIndexing.CursorState>>(e
-            => ActivatorUtilities.CreateInstance<IndexingCursor<ChatEntriesIndexing.CursorState>>(e, IndexNames.ChatSliceCursor));
+        services.AddSingleton<ICursorStates<ChatEntriesIndexer.CursorState>>(e
+            => ActivatorUtilities.CreateInstance<CursorStates<ChatEntriesIndexer.CursorState>>(e, IndexNames.ChatSliceCursor));
         services.AddSingleton<ISink<ChatEntry>>(e
             => ActivatorUtilities.CreateInstance<Sink<ChatEntry, ChatSlice>>(e, IndexNames.ChatSlice));
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();
-        services.AddSingleton<ChatEntriesIndexing>();
+        services.AddSingleton<ChatEntriesIndexer>();
 
         // TODO: remove workaround. Reason: NodesByRole.TryGetValue(shardScheme.Id, out var nodes)
         Symbol ShardingSchemeId = HostRole.MLSearchIndexing;
@@ -98,7 +99,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
             (e, key) => new ShardWorkerFunc(
                 shardingSchemeId: ShardingSchemeId,
                 e,
-                e.GetRequiredService<ChatEntriesIndexing>().Execute
+                e.GetRequiredService<ChatEntriesIndexer>().Execute
             )
         );
         services.AddHostedService(e => e

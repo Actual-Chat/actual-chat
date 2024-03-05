@@ -1,5 +1,5 @@
 
-namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing.Spout;
+namespace ActualChat.MLSearch.Engine.Indexing.Spout;
 
 
 // Note: solution drawback
@@ -12,7 +12,7 @@ public class ChatEntriesSpout : IChatEntriesSpout, IComputeService//, ICommandHa
     public ChatEntriesSpout(IServiceProvider serviceProvider)
     {
         // TODO: fix. Testing if this helps with fusion.AddService to make it working.
-        send = serviceProvider.GetRequiredService<ChatEntriesIndexing>().Trigger;
+        send = serviceProvider.GetRequiredService<ChatEntriesIndexer>().Trigger;
     }
 
     // ReSharper disable once UnusedMember.Global

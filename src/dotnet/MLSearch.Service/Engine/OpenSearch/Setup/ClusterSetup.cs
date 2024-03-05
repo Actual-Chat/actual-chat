@@ -3,7 +3,7 @@ using OpenSearch.Client;
 using ActualChat.Hosting;
 using ActualChat.MLSearch.ApiAdapters;
 using ActualChat.MLSearch.Documents;
-using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
+using ActualChat.MLSearch.Engine.Indexing;
 using OpenSearchModelGroupName = string;
 using OpenSearchModelGroupId = string;
 using OpenSearchModelId = string;
@@ -198,10 +198,10 @@ internal class ClusterSetup(
               {
                 "mappings": {
                     "properties": {
-                        "{{nameof(ChatEntriesIndexing.CursorState.LastEntryVersion)}}": {
+                        "{{nameof(ChatEntriesIndexer.CursorState.LastEntryVersion)}}": {
                             "type": "text"
                         },
-                        "{{nameof(ChatEntriesIndexing.CursorState.LastEntryLocalId)}}": {
+                        "{{nameof(ChatEntriesIndexer.CursorState.LastEntryLocalId)}}": {
                             "type": "text"
                         }
                     }

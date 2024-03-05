@@ -1,12 +1,11 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.ApiAdapters;
-using OpenSearch.Client;
 
-namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
+namespace ActualChat.MLSearch.Engine.Indexing;
 
-internal class ChatEntriesIndexing(
+internal class ChatEntriesIndexer(
     IChatsBackend chats,
-    IIndexingCursor<ChatEntriesIndexing.CursorState> indexingCursor,
+    ICursorStates<ChatEntriesIndexer.CursorState> indexingCursor,
     ISink<ChatEntry> sink,
     ILoggerSource loggerSource
 )
@@ -16,11 +15,11 @@ internal class ChatEntriesIndexing(
     private ILogger? _log;
     private ILogger Log => _log ??= loggerSource.GetLogger(GetType());
 
-    private Channel<MLSearch_TriggerContinueChatIndexing> _channel =
+    private readonly Channel<MLSearch_TriggerContinueChatIndexing> _channel =
         Channel.CreateBounded<MLSearch_TriggerContinueChatIndexing>(ChannelCapacity);
     private IChatsBackend Chats => chats;
     private ISink<ChatEntry> Sink => sink;
-    private IIndexingCursor<CursorState> Cursor => indexingCursor;
+    private ICursorStates<CursorState> Cursor => indexingCursor;
 
     protected virtual Channel<MLSearch_TriggerContinueChatIndexing> TriggersChannel => _channel;
 
@@ -143,9 +142,9 @@ internal class ChatEntriesIndexing(
         }
     }
 
-    private Id IdOf(ChatId chatId) => new (chatId);
+    private static Symbol IdOf(in ChatId chatId) => chatId.Id;
 
-    private CursorState NewFor(ChatId chatId)
+    private static CursorState NewFor(in ChatId chatId)
         => new (0, 0);
 
     internal record IndexingResult(bool IsEndReached);

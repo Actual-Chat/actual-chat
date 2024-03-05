@@ -1,29 +1,24 @@
 using OpenSearch.Client;
 using ActualChat.MLSearch.Engine.OpenSearch.Extensions;
+using ActualChat.MLSearch.Engine.Indexing;
 
 namespace ActualChat.MLSearch.Engine.OpenSearch.Indexing;
-
-internal interface IIndexingCursor<TState> where TState : class
-{
-    Task<TState?> Load(Id key, CancellationToken cancellationToken);
-    Task Save(Id key, TState state, CancellationToken cancellationToken);
-}
 
 /// <summary>
 /// This class is intended to store a state of a stream
 /// directly in the OpenSearch metadata index.
 /// </summary>
 /// <typeparam name="TState">State to store</typeparam>
-internal class IndexingCursor<TState>(
+internal class CursorStates<TState>(
     string cursorIndexName,
     IOpenSearchClient client,
     IIndexSettingsSource indexSettingsSource
-) : IIndexingCursor<TState> where TState: class
+) : ICursorStates<TState> where TState: class
 {
     private IndexSettings? _indexSettings;
     private IndexSettings IndexSettings => _indexSettings ??= indexSettingsSource.GetSettings(cursorIndexName);
 
-    public async Task<TState?> Load(Id key, CancellationToken cancellationToken)
+    public async Task<TState?> Load(string key, CancellationToken cancellationToken)
     {
         var request = new GetRequest(IndexSettings.IndexName, key);
         var result = await client.GetAsync<TState>(
@@ -35,7 +30,7 @@ internal class IndexingCursor<TState>(
         return result.Found ? result.Source : null;
     }
 
-    public async Task Save(Id key, TState state, CancellationToken cancellationToken)
+    public async Task Save(string key, TState state, CancellationToken cancellationToken)
     {
         var response = await client.IndexAsync(
                 state,
