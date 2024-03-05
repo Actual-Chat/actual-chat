@@ -21,7 +21,7 @@ public class UserContactIndexer(IServiceProvider services) : ContactIndexer(serv
         var batches = AccountsBackend
             .BatchChanged(state.LastUpdatedVersion,
                 MaxVersion,
-                ApiSet.New(state.LastUpdatedUserId),
+                state.LastUpdatedUserId,
                 SyncBatchSize,
                 cancellationToken);
         var hasChanges = false;

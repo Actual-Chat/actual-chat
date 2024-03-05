@@ -25,7 +25,7 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         await base.DisposeAsync();
     }
 
-    [Fact(Skip = "Doesn't work. Should not use SharedAppHost")]
+    [Fact(Skip = "TODO: fix http client mocking for shared collection or use separate AppHost")]
     public async Task ShouldRefreshOnTextEntryChanges()
     {
         // arrange

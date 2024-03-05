@@ -389,15 +389,17 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // Not a [ComputeMethod]!
     public async Task<ApiArray<Chat>> ListChanged(
         long minVersion,
-        ApiSet<ChatId> lastIdsWithSameVersion,
+        long maxVersion,
+        ChatId lastId,
         int limit,
         CancellationToken cancellationToken)
     {
         var dbContext = CreateDbContext();
         await using var _ = dbContext.ConfigureAwait(false);
         var dbChats = await dbContext.Chats
-            .Where(x => x.Version >= minVersion)
-            .Where(x => !Constants.Chat.SystemChatSids.Contains(x.Id))
+            .Where(x => x.Version >= minVersion
+                && x.Version <= maxVersion
+                && !Constants.Chat.SystemChatSids.Contains(x.Id))
             .OrderBy(x => x.Version)
             .ThenBy(x => x.Id)
             .Take(limit)
@@ -406,13 +408,41 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (dbChats.Count == 0)
             return ApiArray<Chat>.Empty;
 
-        if (lastIdsWithSameVersion.Count == 0)
+        var chats = dbChats.ConvertAll(x => x.ToModel());
+        if (lastId.IsNone)
             // no chats created at minCreatedAt that we need to skip
-            return dbChats.Select(x => x.ToModel()).ToApiArray();
+            return chats.ToApiArray();
 
-        return dbChats.Where(x => !lastIdsWithSameVersion.Contains(new ChatId(x.Id)))
-            .Select(x => x.ToModel())
-            .ToApiArray();
+        var lastIdIndex = GetLastIndex();
+        return lastIdIndex < 0 ? chats.ToApiArray() : chats[(lastIdIndex + 1)..].ToApiArray();
+
+        int GetLastIndex()
+        {
+            for (int i = 0; i < chats.Count; i++) {
+                var chat = chats[i];
+                if (chat.Version > minVersion)
+                    return -1;
+
+                if (chat.Id == lastId)
+                    return i;
+            }
+            return -1;
+        }
+    }
+
+    // Not a [ComputeMethod]!
+    public async Task<Chat?> GetLastChanged(CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChat = await dbContext.Chats
+            .OrderByDescending(x => x.Version)
+            .ThenByDescending(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return dbChat?.ToModel();
     }
 
     public async Task<ApiList<ChatEntry>> ListChangedEntries(

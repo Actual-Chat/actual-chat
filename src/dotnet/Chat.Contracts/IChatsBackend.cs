@@ -62,9 +62,12 @@ public interface IChatsBackend : IComputeService
 
     Task<ApiArray<Chat>> ListChanged(
         long minVersion,
-        ApiSet<ChatId> lastIdsWithSameVersion,
+        long maxVersion,
+        ChatId lastId,
         int limit,
         CancellationToken cancellationToken);
+
+    Task<Chat?> GetLastChanged(CancellationToken cancellationToken);
 
     Task<ApiList<ChatEntry>> ListChangedEntries(
         ChatId chatId,

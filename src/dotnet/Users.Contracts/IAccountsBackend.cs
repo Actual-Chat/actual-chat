@@ -24,7 +24,7 @@ public interface IAccountsBackend : IComputeService
     Task<ApiArray<UserId>> ListChanged(
         long minVersion,
         long maxVersion,
-        ApiSet<UserId> lastIdsWithSameVersion,
+        UserId lastId,
         int limit,
         CancellationToken cancellationToken);
 
