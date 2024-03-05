@@ -55,7 +55,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (Computed.IsInvalidating()) {
             var wasChanged = context.Operation().Items.GetOrDefault(false);
             if (wasChanged)
-                _ = Get(id, default);
+                _ = GetFromDb(id, default);
             return default!;
         }
 
@@ -183,14 +183,7 @@ public class LinkPreviewsBackend(IServiceProvider services)
         if (id.IsEmpty)
             return null;
 
-        var dbContext = CreateDbContext();
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbLinkPreview = await dbContext.LinkPreviews
-            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
-            .ConfigureAwait(false);
-
-        var linkPreview = dbLinkPreview?.ToModel();
+        var linkPreview = await GetFromDb(id, cancellationToken).ConfigureAwait(false);
         url ??= linkPreview?.Url;
         var mustRefresh = !url.IsNullOrEmpty()
             && (linkPreview == null || linkPreview.ModifiedAt + LinkPreviewUpdatePeriod < SystemNow);
@@ -214,6 +207,19 @@ public class LinkPreviewsBackend(IServiceProvider services)
             PreviewMedia = await MediaBackend.Get(linkPreview.PreviewMediaId, cancellationToken)
                 .ConfigureAwait(false),
         };
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<LinkPreview?> GetFromDb(Symbol id, CancellationToken cancellationToken)
+    {
+        var dbContext = CreateDbContext();
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbLinkPreview = await dbContext.LinkPreviews
+            .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+
+        return dbLinkPreview?.ToModel();
     }
 
     private HashSet<string> ExtractUrls(ChatEntry entry)
