@@ -23,7 +23,7 @@ public class ChatContactIndexer(IServiceProvider services) : ContactIndexer(serv
         var batches = ChatsBackend
             .BatchChanged(
                 state.LastUpdatedVersion,
-                ApiSet.New(state.LastUpdatedChatId),
+                state.LastUpdatedChatId,
                 SyncBatchSize,
                 cancellationToken);
         var hasPublicChatChanges = false;

@@ -389,7 +389,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     // Not a [ComputeMethod]!
     public async Task<ApiArray<Chat>> ListChanged(
         long minVersion,
-        ApiSet<ChatId> lastIdsWithSameVersion,
+        ChatId lastId,
         int limit,
         CancellationToken cancellationToken)
     {
@@ -406,13 +406,16 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (dbChats.Count == 0)
             return ApiArray<Chat>.Empty;
 
-        if (lastIdsWithSameVersion.Count == 0)
+        var chats = dbChats.Select(x => x.ToModel()).ToList();
+        if (lastId.IsNone)
             // no chats created at minCreatedAt that we need to skip
-            return dbChats.Select(x => x.ToModel()).ToApiArray();
+            return chats.ToApiArray();
 
-        return dbChats.Where(x => !lastIdsWithSameVersion.Contains(new ChatId(x.Id)))
-            .Select(x => x.ToModel())
-            .ToApiArray();
+        var lastIdIndex = chats.FindIndex(x => x.Id == lastId);
+        if (lastIdIndex <= 0 || chats[lastIdIndex].Version > minVersion)
+            return chats.ToApiArray();
+
+        return chats[(lastIdIndex + 1)..].ToApiArray();
     }
 
     public async Task<ApiList<ChatEntry>> ListChangedEntries(

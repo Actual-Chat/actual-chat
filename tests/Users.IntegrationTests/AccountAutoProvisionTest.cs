@@ -1,4 +1,5 @@
 using ActualChat.App.Server;
+using ActualChat.Testing.Assertion;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Users.IntegrationTests;
@@ -51,8 +52,8 @@ public class AccountAutoProvisionTest(AppHostFixture fixture, ITestOutputHelper 
 
         // assert
         account2.Should().BeEquivalentTo(account, options => options
-            .Excluding(x => x.Version)
+            .ExcludingSystemProperties()
             .Excluding(x => x.User)
-            .Excluding(x => x.IsGreetingCompleted ));
+            .Excluding(x => x.IsGreetingCompleted));
     }
 }

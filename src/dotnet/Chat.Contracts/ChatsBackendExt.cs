@@ -62,12 +62,12 @@ public static class ChatsBackendExt
     public static async IAsyncEnumerable<ApiArray<Chat>> BatchChanged(
         this IChatsBackend chatsBackend,
         long minVersion,
-        ApiSet<ChatId> lastIdsWithSameVersion,
+        ChatId lastId,
         int batchSize,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested) {
-            var chats = await chatsBackend.ListChanged(minVersion, lastIdsWithSameVersion, batchSize, cancellationToken)
+            var chats = await chatsBackend.ListChanged(minVersion, lastId, batchSize, cancellationToken)
                 .ConfigureAwait(false);
             if (chats.Count == 0)
                 yield break;
@@ -75,10 +75,7 @@ public static class ChatsBackendExt
             yield return chats;
 
             var last = chats[^1];
-            lastIdsWithSameVersion = chats.Reverse()
-                .TakeWhile(x => x.Version == last.Version)
-                .Select(x => x.Id)
-                .ToApiSet();
+            lastId = last.Id;
             minVersion = last.Version;
         }
     }
