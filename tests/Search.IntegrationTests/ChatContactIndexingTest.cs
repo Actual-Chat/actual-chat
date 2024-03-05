@@ -12,7 +12,7 @@ public class ChatContactIndexingTest(ITestOutputHelper @out)
         TestAppHostOptions.Default with {
             AppConfigurationExtender = cfg => {
                 cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.IsSearchEnabled)}", "true"));
-                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:02"));
+                cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingDelay)}", "00:00:01"));
                 cfg.AddInMemory(($"{nameof(SearchSettings)}:{nameof(SearchSettings.ContactIndexingSignalInterval)}", "00:00:00.5"));
             },
         },

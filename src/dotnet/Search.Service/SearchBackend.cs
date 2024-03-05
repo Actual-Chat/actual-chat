@@ -285,9 +285,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
+        var (account, _, changeKind) = eventCommand;
         // NOTE: we don't have any other chance to process removed items
-        if (eventCommand.ChangeKind == ChangeKind.Remove) {
-            var cmd = new SearchBackend_UserContactBulkIndex([], ApiArray.New(eventCommand.Account.ToIndexedUserContact()));
+        Log.LogDebug("Received AccountChangedEvent {ChangeKind} #{Id}", changeKind, account.Id);
+        if (changeKind == ChangeKind.Remove) {
+            var cmd = new SearchBackend_UserContactBulkIndex([], ApiArray.New(account.ToIndexedUserContact()));
             await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }
         else {
@@ -302,10 +304,11 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<SearchDbCo
         if (Computed.IsInvalidating())
             return; // It just spawns other commands, so nothing to do here
 
+        var (chat, _, changeKind) = eventCommand;
         // NOTE: we don't have any other chance to process removed items
-        if (eventCommand.ChangeKind == ChangeKind.Remove) {
-            var place = await ChatsBackend.GetPlace(eventCommand.Chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
-            var cmd = new SearchBackend_ChatContactBulkIndex([], ApiArray.New(eventCommand.Chat.ToIndexedChatContact(place)));
+        if (changeKind == ChangeKind.Remove) {
+            var place = await ChatsBackend.GetPlace(chat.Id.PlaceId, cancellationToken).ConfigureAwait(false);
+            var cmd = new SearchBackend_ChatContactBulkIndex([], ApiArray.New(chat.ToIndexedChatContact(place)));
             await Commander.Call(cmd, true, cancellationToken).ConfigureAwait(false);
         }
         else {
