@@ -81,8 +81,8 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // ChatSlice engine registrations
         services.AddSingleton<ISearchEngine<ChatSlice>>(services
             => services.CreateInstanceWith<OpenSearchEngine<ChatSlice>>(IndexNames.ChatSlice));
-        services.AddSingleton<ICursorStates<ChatEntriesIndexer.CursorState>>(services
-            => services.CreateInstanceWith<CursorStates<ChatEntriesIndexer.CursorState>>(IndexNames.ChatSliceCursor));
+        services.AddSingleton<ICursorStates<ChatEntriesIndexer.Cursor>>(services
+            => services.CreateInstanceWith<CursorStates<ChatEntriesIndexer.Cursor>>(IndexNames.ChatSliceCursor));
         services.AddSingleton<ISink<ChatEntry, ChatEntry>>(services
             => services.CreateInstanceWith<Sink<ChatEntry, ChatSlice>>(IndexNames.ChatSlice));
         services.AddSingleton<IDocumentMapper<ChatEntry, ChatSlice>, ChatSliceMapper>();

@@ -168,8 +168,8 @@ internal class ClusterSetup(
         var attachmentIdField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Id));
         var attachmentSummaryField = namingPolicy.ConvertName(nameof(ChatSliceAttachment.Summary));
         // Cursor fields
-        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.CursorState.LastEntryVersion));
-        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.CursorState.LastEntryLocalId));
+        var lastEntryVersionField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.Cursor.LastEntryVersion));
+        var lastEntryLocalIdField = namingPolicy.ConvertName(nameof(ChatEntriesIndexer.Cursor.LastEntryLocalId));
 
         var ingestResult = await openSearch.RunAsync(
             $$"""

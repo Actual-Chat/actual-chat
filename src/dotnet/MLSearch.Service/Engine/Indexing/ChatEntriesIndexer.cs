@@ -5,7 +5,7 @@ namespace ActualChat.MLSearch.Engine.Indexing;
 
 internal class ChatEntriesIndexer(
     IChatsBackend chats,
-    ICursorStates<ChatEntriesIndexer.CursorState> indexingCursor,
+    ICursorStates<ChatEntriesIndexer.Cursor> cursorStates,
     ISink<ChatEntry, ChatEntry> sink,
     ILoggerSource loggerSource
 )
@@ -17,20 +17,17 @@ internal class ChatEntriesIndexer(
 
     private readonly Channel<MLSearch_TriggerContinueChatIndexing> _channel =
         Channel.CreateBounded<MLSearch_TriggerContinueChatIndexing>(ChannelCapacity);
-    private IChatsBackend Chats => chats;
-    private ISink<ChatEntry, ChatEntry> Sink => sink;
-    private ICursorStates<CursorState> Cursor => indexingCursor;
 
     protected virtual Channel<MLSearch_TriggerContinueChatIndexing> TriggersChannel => _channel;
 
     public ChannelWriter<MLSearch_TriggerContinueChatIndexing> Trigger => TriggersChannel.Writer;
 
-    private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, CursorState cursor, CancellationToken cancellationToken)
+    private async Task<IList<ChatEntry>> ListNewEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
     {
         // Note: Copied from IndexingQueue
         var result = new List<ChatEntry>();
         var lastIndexedLid = cursor.LastEntryLocalId;
-        var news = await Chats.GetNews(chatId, cancellationToken).ConfigureAwait(false);
+        var news = await chats.GetNews(chatId, cancellationToken).ConfigureAwait(false);
         var lastLid = (news.TextEntryIdRange.End - 1).Clamp(0, long.MaxValue);
         if (lastIndexedLid >= lastLid)
             return result;
@@ -39,7 +36,7 @@ internal class ChatEntriesIndexer(
             Constants.Chat.ServerIdTileStack.LastLayer.GetCoveringTiles(
                 news.TextEntryIdRange.WithStart(lastIndexedLid));
         foreach (var tile in idTiles) {
-            var chatTile = await Chats.GetTile(chatId,
+            var chatTile = await chats.GetTile(chatId,
                     ChatEntryKind.Text,
                     tile.Range,
                     false,
@@ -50,7 +47,7 @@ internal class ChatEntriesIndexer(
         return result;
     }
 
-    private async Task<(IList<ChatEntry> updates, IList<ChatEntry> deletes)> ListUpdatedAndRemovedEntries(ChatId chatId, CursorState cursor, CancellationToken cancellationToken)
+    private async Task<(IList<ChatEntry> updates, IList<ChatEntry> deletes)> ListUpdatedAndRemovedEntries(ChatId chatId, Cursor cursor, CancellationToken cancellationToken)
     {
         // Note: Copied from IndexingQueue
         var updates = new List<ChatEntry>();
@@ -59,7 +56,7 @@ internal class ChatEntriesIndexer(
         if (cursor.LastEntryVersion >= maxEntryVersion)
             return (updates, deletes);
 
-        var changedEntries = await Chats
+        var changedEntries = await chats
             .ListChangedEntries(chatId,
                 EntryBatchSize,
                 cursor.LastEntryLocalId,
@@ -77,7 +74,7 @@ internal class ChatEntriesIndexer(
 
     private async Task<IndexingResult> IndexNext(ChatId chatId, CancellationToken cancellationToken)
     {
-        var state = await Cursor.Load(
+        var state = await cursorStates.Load(
             IdOf(chatId),
             cancellationToken
             )
@@ -99,10 +96,10 @@ internal class ChatEntriesIndexer(
             // This is a simple logic to determine the end of changes currently available.
             return new IndexingResult(IsEndReached: true);
         }
-        await Sink.ExecuteAsync(creates.Concat(updates), deletes, cancellationToken)
+        await sink.ExecuteAsync(creates.Concat(updates), deletes, cancellationToken)
             .ConfigureAwait(false);
-        var next = new CursorState(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
-        await Cursor.Save(IdOf(chatId), next, cancellationToken).ConfigureAwait(false);
+        var next = new Cursor(lastTouchedEntry.LocalId, lastTouchedEntry.Version);
+        await cursorStates.Save(IdOf(chatId), next, cancellationToken).ConfigureAwait(false);
         return new IndexingResult(IsEndReached: false);
     }
 
@@ -144,11 +141,10 @@ internal class ChatEntriesIndexer(
 
     private static Symbol IdOf(in ChatId chatId) => chatId.Id;
 
-    private static CursorState NewFor(in ChatId chatId)
+    private static Cursor NewFor(in ChatId _)
         => new (0, 0);
 
     internal record IndexingResult(bool IsEndReached);
 
-    internal record CursorState(long LastEntryLocalId, long LastEntryVersion);
-
+    internal record Cursor(long LastEntryLocalId, long LastEntryVersion);
 }
