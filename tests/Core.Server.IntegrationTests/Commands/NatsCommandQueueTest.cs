@@ -13,6 +13,7 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
     public async Task SmokeTest()
     {
         using var host = await NewAppHost(options => options with {
+            InstanceName = $"x-{nameof(NatsCommandQueueTest)}-{nameof(SmokeTest)}",
             AppServicesExtender = (c, services) => {
                 services
                     .AddCommandQueues(HostRole.OneBackendServer)
@@ -41,6 +42,7 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
     public async Task MultipleCommandsCanBeScheduled()
     {
         using var host = await NewAppHost(options => options with {
+            InstanceName = $"x-{nameof(NatsCommandQueueTest)}-{nameof(MultipleCommandsCanBeScheduled)}",
             AppServicesExtender = (c, services) => {
                 services
                     .AddCommandQueues(HostRole.OneBackendServer)
@@ -62,6 +64,7 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
 
         await host.WaitForProcessingOfAlreadyQueuedCommands();
 
+        Out.WriteLine($"{nameof(MultipleCommandsCanBeScheduled)}: event count is {countComputed.Value}. Collection has {testService.ProcessedEvents.Count}");
         await countComputed.When(i => i >= 100).WaitAsync(TimeSpan.FromSeconds(10));
 
         testService.ProcessedEvents.Count.Should().BeGreaterThanOrEqualTo(100);
@@ -71,6 +74,7 @@ public class NatsCommandQueueTest(ITestOutputHelper @out)
     public async Task CommandsWithCustomQueuesAreHandled()
     {
         using var host = await NewAppHost(options => options with {
+            InstanceName = $"x-{nameof(NatsCommandQueueTest)}-{nameof(CommandsWithCustomQueuesAreHandled)}",
             AppServicesExtender = (c, services) => {
                 services
                     // Remove all ShardCommandQueueScheduler to debug just one
