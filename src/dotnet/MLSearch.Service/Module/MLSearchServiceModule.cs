@@ -61,6 +61,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // Module's own services
         var fusion = services.AddFusion();
         fusion.AddService<IMLSearchBackend, MLSearchBackend>();
+        services.AddSingleton<IChatEntriesEventsDispatcher, ChatEntriesEventsDispatcher>();
         services.AddSingleton<IHistoryExtractor, HistoryExtractor>();
         services.AddSingleton<IResponseBuilder, ResponseBuilder>();
 
@@ -107,7 +108,7 @@ public sealed class MLSearchServiceModule(IServiceProvider moduleServices) : Hos
         // -- start of TODO item --
         fusion.AddService<IChatEntriesSpout, ChatEntriesSpout>();
         // Note: this singleton must work in the main app backend.
-        fusion.AddService<ChatEntriesEventsDispatcher>();
+//        fusion.AddService<ChatEntriesEventsDispatcher>();
         // -- end of TODO item --
     }
 }

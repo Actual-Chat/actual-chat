@@ -1,9 +1,10 @@
 using ActualChat.Chat.Events;
 using ActualChat.Commands;
+using ActualChat.MLSearch.Engine.Indexing.Spout;
 
 namespace ActualChat.MLSearch;
 
-internal class MLSearchBackend: IMLSearchBackend
+internal class MLSearchBackend(IChatEntriesEventsDispatcher chatEntriesEventsDispatcher): IMLSearchBackend
 {
     // Commands
     public virtual async Task OnStartSearch(MLSearchBackend_Start command, CancellationToken cancellationToken)
@@ -37,6 +38,7 @@ internal class MLSearchBackend: IMLSearchBackend
     [EventHandler]
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
+        await chatEntriesEventsDispatcher.OnTextEntryChangedEvent(eventCommand, cancellationToken).ConfigureAwait(false);
         // if (isSearchChat) {
             // run MLSearchBackend_Start command
         //}

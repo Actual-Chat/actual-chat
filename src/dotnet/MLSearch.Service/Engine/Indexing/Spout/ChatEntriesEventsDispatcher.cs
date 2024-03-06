@@ -1,20 +1,20 @@
 using ActualChat.Chat.Events;
-using ActualChat.Commands;
 
 namespace ActualChat.MLSearch.Engine.Indexing.Spout;
 
 internal interface IChatEntriesEventsDispatcher
-{ }
+{
+    Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken);
+}
 
 internal class ChatEntriesEventsDispatcher (ICommander commander) : IComputeService, IChatEntriesEventsDispatcher
 {
-    [EventHandler]
     // ReSharper disable once UnusedMember.Global
     public virtual async Task OnTextEntryChangedEvent(TextEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         // TODO: Decide if we want to have it in the dispatcher vs indexing services all have their own filters.
         if (!eventCommand.Entry.ChatId.PeerChatId.IsNone
-            && eventCommand.Entry.ChatId.PeerChatId.HasUser(ActualChat.Constants.User.MLSearchBot.UserId)
+            && eventCommand.Entry.ChatId.PeerChatId.HasUser(Constants.User.MLSearchBot.UserId)
         ) {
             // A conversation with ML Search bot
             await OnMLSearchBotConversation(eventCommand, cancellationToken).ConfigureAwait(false);
