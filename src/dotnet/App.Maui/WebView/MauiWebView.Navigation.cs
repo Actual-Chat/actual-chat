@@ -13,7 +13,7 @@ public partial class MauiWebView
         : new(StringComparer.Ordinal) { "accounts.google.com", "appleid.apple.com" };
 
     public static readonly Uri BaseLocalUri = new($"https://{MauiSettings.LocalHost}/");
-    public Uri LastUri { get; private set; }= BaseLocalUri;
+    public Uri LastUri { get; private set; } = BaseLocalUri;
     public Uri LastLocalUri { get; private set; } = BaseLocalUri;
     public bool IsOnLocalUri => LastUri == LastLocalUri;
 
