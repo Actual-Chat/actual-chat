@@ -1,6 +1,7 @@
 using ActualChat.Chat;
 using ActualChat.MLSearch.Documents;
 using ActualChat.MLSearch.Engine;
+using ActualChat.MLSearch.Engine.Indexing;
 using ActualChat.MLSearch.Engine.OpenSearch;
 using ActualChat.MLSearch.Engine.OpenSearch.Indexing;
 using ActualChat.Performance;
@@ -119,8 +120,8 @@ public class ChatSliceOpenSearchTest(AppHostFixture fixture, ITestOutputHelper @
     [Fact]
     public void ResolvesOfIndexingServicesWorkCorrectly()
     {
-        Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatEntriesIndexer.CursorState>>());
-        Assert.NotNull(AppHost.Services.GetService<ISink<ChatEntry>>());
+        Assert.NotNull(AppHost.Services.GetService<ICursorStates<ChatEntriesIndexer.Cursor>>());
+        Assert.NotNull(AppHost.Services.GetService<ISink<ChatEntry, ChatEntry>>());
         Assert.NotNull(AppHost.Services.GetService<IDocumentMapper<ChatEntry, ChatSlice>>());
 
         var chatEntriesIndexing = AppHost.Services.GetService<ChatEntriesIndexer>();
