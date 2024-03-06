@@ -33,7 +33,7 @@
                         Revoke
                     </Button>
                 }
-                <Button Class="btn-modal" Click="@(() => _ = OnShareClick(invite))">
+                <Button Class="btn-modal" Click="@(() => OnShareClick(invite).AsTask())">
                     <i class="icon-share-more text-xl"></i>
                     Share
                 </Button>
