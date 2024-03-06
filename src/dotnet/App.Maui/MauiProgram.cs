@@ -248,8 +248,7 @@ public static partial class MauiProgram
     public static HostInfo CreateHostInfo(IConfiguration configuration)
     {
         // Add HostInfo
-
-#if IS_FIXED_ENVIRONMENT_PRODUCTION || !DEBUG
+#if IS_PRODUCTION_ENV || !DEBUG
         var environment = Environments.Production;
 #else
         var environment = Environments.Development;
